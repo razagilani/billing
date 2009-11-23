@@ -1,0 +1,479 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (self) -->
+<utilitybill xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="..\billmodel\UtilityBill.xsd">
+	<car>
+		<accountnumber>101</accountnumber>
+		<serviceaddress>
+			<addressee>MPR, Inc.</addressee>
+			<street>1800 King street</street>
+			<city>Alexandria</city>
+			<state>Virginia</state>
+			<country>USA</country>
+			<postalcode>21002</postalcode>
+			<telephonenumber>555-1212</telephonenumber>
+			<hours>9-5 Mon-Fri</hours>
+		</serviceaddress>
+		<billingaddress>
+			<addressee>MPR, Inc.</addressee>
+			<street>1800 King street</street>
+			<city>Alexandria</city>
+			<state>VA</state>
+			<country>USA</country>
+			<postalcode>21002</postalcode>
+			<telephonenumber>555-1212</telephonenumber>
+			<hours/>
+		</billingaddress>
+	</car>
+	<uar>
+		<tin/>
+		<customerservice>
+			<addressee>Dominion Customer Service</addressee>
+			<street>888-667-3000</street>
+			<city/>
+			<state/>
+			<country/>
+			<postalcode/>
+			<telephonenumber/>
+			<hours/>
+		</customerservice>
+		<serviceoutage>
+			<addressee/>
+			<street/>
+			<city/>
+			<state/>
+			<country/>
+			<postalcode/>
+			<telephonenumber>888-667-3000</telephonenumber>
+			<hours/>
+		</serviceoutage>
+	</uar>
+	<unknownaddress description="online payments">
+		<addressee>EBill Pay Location</addressee>
+		<street>http://www.dom.com</street>
+		<city/>
+		<state/>
+		<country/>
+		<postalcode/>
+		<telephonenumber/>
+		<hours/>
+	</unknownaddress>
+		<unknownaddress description="test">
+		<addressee>EBill Pay Location</addressee>
+		<street>http://www.dom.com</street>
+		<city/>
+		<state/>
+		<country/>
+		<postalcode/>
+		<telephonenumber/>
+		<hours/>
+	</unknownaddress>
+	<summary>
+		<priorbalance>12101.51</priorbalance>
+		<previouspayment>
+			<payee>Dominion</payee>
+			<amount>12101.51</amount>
+			<date>
+				<month>May</month>
+				<day>05</day>
+				<year>2009</year>
+			</date>
+		</previouspayment>
+		<adjustment>
+			<payee/>
+			<amount>0.0</amount>
+			<date>
+				<month/>
+				<day/>
+				<year/>
+			</date>
+		</adjustment>
+		<balanceforward>0.0</balanceforward>
+		<billperiodbegin>
+			<month/>
+			<day/>
+			<year/>
+		</billperiodbegin>
+		<billperiodend>
+			<month/>
+			<day/>
+			<year/>
+		</billperiodend>
+		<issuedate>
+			<month/>
+			<day/>
+			<year/>
+		</issuedate>
+		<currentcharges>13574.14</currentcharges>
+		<totaldue>13574.14</totaldue>
+		<duedate>
+			<month>May</month>
+			<day>28</day>
+			<year>2009</year>
+		</duedate>
+		<latepayment>
+			<penalty>1.5%</penalty>
+			<amount>181.52</amount>
+		</latepayment>
+	</summary>
+	<currentcharges>
+		<distributer>
+			<priorbalance>12101.51</priorbalance>
+			<payment>12101.51</payment>
+			<currentcharges>13574.14</currentcharges>
+			<balanceforward>0.0</balanceforward>
+		</distributer>
+		<supplier name="">
+			<priorbalance>0.0</priorbalance>
+			<payment>0.0</payment>
+			<currentcharges>0.0</currentcharges>
+			<balanceforward>0.0</balanceforward>
+		</supplier>
+	</currentcharges>
+	<details>
+		<rateschedule>Non Residential Service (Schedule GS-3)</rateschedule>
+		<distribution>
+			<charges>
+				<charge>
+					<description>Basic Customer Charge</description>
+					<total>119.80</total>
+				</charge>
+				<charge>
+					<description>rkVA Demand</description>
+					<quantity>259</quantity>
+					<total>38.85</total>
+				</charge>
+				<charge>
+					<description>Distribution Demand</description>
+					<quantity>501</quantity>
+					<total>1062.12</total>
+				</charge>
+			</charges>
+			<total>1220.77</total>
+		</distribution>
+		<service>
+			<charges>
+				<charge>
+					<description>ESS Adjustment</description>
+					<total>-320.64</total>
+				</charge>
+				<charge>
+					<description>ESS On Peak Energy</description>
+					<quantity>91388</quantity>
+					<total>369.21</total>
+				</charge>
+				<charge>
+					<description>ESS Off Peak Energy</description>
+					<quantity>57412</quantity>
+					<total>156.16</total>
+				</charge>
+				<charge>
+					<description>Total kWh</description>
+					<quantity>148800</quantity>
+					<total>0</total>
+				</charge>
+				<charge>
+					<description>ESS On Peak Demand Charge</description>
+					<quantity>436</quantity>
+					<total>5299.14</total>
+				</charge>
+				<charge>
+					<description>ESS Off Peak Demand Charge</description>
+					<quantity>0</quantity>
+					<total>0.0</total>
+				</charge>
+				<charge>
+					<description>Rider S</description>
+					<total>214.08</total>
+				</charge>
+				<charge>
+					<description>Electricity Supply Service (fuel)</description>
+					<total>5792.78</total>
+				</charge>
+				<charge>
+					<description>Sales and Use Surcharge</description>
+					<total>37.20</total>
+				</charge>
+			</charges>
+			<total>11547.93</total>
+		</service>
+		<tax>
+			<charges>
+				<charge>
+					<description>State/Local Consumption Tax</description>
+					<total>118.50</total>
+				</charge>
+				<charge>
+					<description>Alexandria Utility Tax</description>
+					<total>686.94</total>
+				</charge>
+			</charges>
+			<total>805.44</total>
+		</tax>
+		<total>13574.14</total>
+	</details>
+	<meters>
+		<electricmeter>
+			<identifier>0005748089</identifier>
+			<estimated>no</estimated>
+			<register>
+				<identifier/>
+				<description>kWh</description>
+				<units>kWh</units>
+				<priorreading>6185</priorreading>
+				<presentreading>6340</presentreading>
+				<factor>960</factor>
+				<total>148800</total>
+			</register>
+			<register>
+				<identifier/>
+				<description>KQH</description>
+				<units>KQH</units>
+				<priorreading>5708</priorreading>
+				<presentreading>5852</presentreading>
+				<factor>960</factor>
+				<total>138240</total>
+			</register>
+			<priorreaddate>
+				<month>April</month>
+				<day>01</day>
+				<year>2009</year>
+			</priorreaddate>
+			<presentreaddate>
+				<month>May</month>
+				<day>01</day>
+				<year>2009</year>
+			</presentreaddate>
+			<nextreaddate>
+				<month/>
+				<day/>
+				<year/>
+			</nextreaddate>
+		</electricmeter>
+		<electricmeter>
+			<identifier>00RG002738</identifier>
+			<estimated>no</estimated>
+			<register>
+				<identifier/>
+				<description>On Peak Usage</description>
+				<units/>
+				<priorreading/>
+				<presentreading/>
+				<factor/>
+				<total>91388</total>
+			</register>
+			<register>
+				<identifier/>
+				<description>Off Peak Usage</description>
+				<units/>
+				<priorreading/>
+				<presentreading/>
+				<factor/>
+				<total>138240</total>
+			</register>
+			<register>
+				<identifier/>
+				<description>On  Peak Demand</description>
+				<units/>
+				<priorreading/>
+				<presentreading/>
+				<factor/>
+				<total>436</total>
+			</register>
+			<register>
+				<identifier/>
+				<description>RKVA</description>
+				<units/>
+				<priorreading/>
+				<presentreading/>
+				<factor/>
+				<total>259</total>
+			</register>
+			<priorreaddate>
+				<month>April</month>
+				<day>01</day>
+				<year>2009</year>
+			</priorreaddate>
+			<presentreaddate>
+				<month>May</month>
+				<day>01</day>
+				<year>2009</year>
+			</presentreaddate>
+			<nextreaddate>
+				<month/>
+				<day/>
+				<year/>
+			</nextreaddate>
+		</electricmeter>
+	</meters>
+	<usagehistory>
+		<usage>
+			<date>
+				<month>May</month>
+				<day/>
+				<year>2008</year>
+			</date>
+			<days/>
+			<register>
+				<identifier>kWh</identifier>
+				<total units="kWh">192960</total>
+			</register>
+			<total units="kWh">192960</total>
+		</usage>
+		<usage>
+			<date>
+				<month>June</month>
+				<day/>
+				<year>2008</year>
+			</date>
+			<days/>
+			<register>
+				<identifier>kWh</identifier>
+				<total units="kWh">162240</total>
+			</register>
+			<total units="kWh">162240</total>
+		</usage>
+		<usage>
+			<date>
+				<month>July</month>
+				<day/>
+				<year>2008</year>
+			</date>
+			<days/>
+			<register>
+				<identifier>kWh</identifier>
+				<total units="kWh">197760</total>
+			</register>
+			<total units="kWh">197760</total>
+		</usage>
+		<usage>
+			<date>
+				<month>August</month>
+				<day/>
+				<year>2008</year>
+			</date>
+			<days/>
+			<register>
+				<identifier>kWh</identifier>
+				<total units="kWh">192000</total>
+			</register>
+			<total units="kWh">192000</total>
+		</usage>
+		<usage>
+			<date>
+				<month>September</month>
+				<day/>
+				<year>2008</year>
+			</date>
+			<days/>
+			<register>
+				<identifier>kWh</identifier>
+				<total units="kWh">197760</total>
+			</register>
+			<total units="kWh">197760</total>
+		</usage>
+		<usage>
+			<date>
+				<month>October</month>
+				<day/>
+				<year>2008</year>
+			</date>
+			<days/>
+			<register>
+				<identifier>kWh</identifier>
+				<total units="kWh">160320</total>
+			</register>
+			<total units="kWh">160320</total>
+		</usage>
+		<usage>
+			<date>
+				<month>November</month>
+				<day/>
+				<year>2008</year>
+			</date>
+			<days/>
+			<register>
+				<identifier>kWh</identifier>
+				<total units="kWh">158400</total>
+			</register>
+			<total units="kWh">158400</total>
+		</usage>
+		<usage>
+			<date>
+				<month>December</month>
+				<day/>
+				<year>2008</year>
+			</date>
+			<days/>
+			<register>
+				<identifier>kWh</identifier>
+				<total units="kWh">202560</total>
+			</register>
+			<total units="kWh">202560</total>
+		</usage>
+		<usage>
+			<date>
+				<month>January</month>
+				<day/>
+				<year>2009</year>
+			</date>
+			<days/>
+			<register>
+				<identifier>kWh</identifier>
+				<total units="kWh">214080</total>
+			</register>
+			<total units="kWh">214080</total>
+		</usage>
+		<usage>
+			<date>
+				<month>February</month>
+				<day/>
+				<year>2009</year>
+			</date>
+			<days/>
+			<register>
+				<identifier>kWh</identifier>
+				<total units="kWh">204480</total>
+			</register>
+			<total units="kWh">204480</total>
+		</usage>
+		<usage>
+			<date>
+				<month>March</month>
+				<day/>
+				<year>2009</year>
+			</date>
+			<days/>
+			<register>
+				<identifier>kWh</identifier>
+				<total units="kWh">176640</total>
+			</register>
+			<total units="kWh">176640</total>
+		</usage>
+		<usage>
+			<date>
+				<month>April</month>
+				<day/>
+				<year>2009</year>
+			</date>
+			<days/>
+			<register>
+				<identifier>kWh</identifier>
+				<total units="kWh">138240</total>
+			</register>
+			<total units="kWh">138240</total>
+		</usage>
+		<usage>
+			<date>
+				<month>May</month>
+				<day/>
+				<year units="kWh">2009</year>
+			</date>
+			<days/>
+			<register>
+				<identifier>kWh</identifier>
+				<total units="kWh">148800</total>
+			</register>
+			<total units="kWh">148800</total>
+		</usage>
+	</usagehistory>
+</utilitybill>

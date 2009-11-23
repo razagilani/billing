@@ -1,0 +1,436 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (self) -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:element name="utilitybill">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="car">
+					<xs:annotation>
+						<xs:documentation>Customer Account Record.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="accountnumber" type="xs:string">
+								<xs:annotation>
+									<xs:documentation>Customer account number used by the utility</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="serviceaddress" type="address">
+								<xs:annotation>
+									<xs:documentation>Location where utility service is received.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="billingaddress" type="address">
+								<xs:annotation>
+									<xs:documentation>Location where bills are sent</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="uar">
+					<xs:annotation>
+						<xs:documentation>Utility Account Record - contact information for the utility.  Payee of this bill.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="tin">
+								<xs:annotation>
+									<xs:documentation>Utility tax payer identification number</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="customerservice" type="address" minOccurs="0" maxOccurs="unbounded">
+								<xs:annotation>
+									<xs:documentation>Utility contact information including accessibility numbers, Spanish speaking representatives and other customer oriented care.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="paymentlocation" type="address" minOccurs="0" maxOccurs="unbounded">
+								<xs:annotation>
+									<xs:documentation>Physical locations where payment can be made.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="emergencycontact" type="address" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Contact information for emergency related to service location.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="utilitycommission" type="address" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Regulatory commission.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="writteninquiries" type="address" minOccurs="0"/>
+							<xs:element name="missutility" type="address" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Utility/contractor coordinate number.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="serviceoutage" type="address" minOccurs="0"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="unknownaddress" minOccurs="0" maxOccurs="unbounded">
+					<xs:annotation>
+						<xs:documentation>Address records not accounted for yet present in bill.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:complexContent>
+							<xs:extension base="address">
+								<xs:attribute name="description" use="required"/>
+							</xs:extension>
+						</xs:complexContent>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="summary">
+					<xs:annotation>
+						<xs:documentation>Bill summary.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="priorbalance">
+								<xs:annotation>
+									<xs:documentation>Balance from last bill.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="previouspayment" type="payment" maxOccurs="unbounded">
+								<xs:annotation>
+									<xs:documentation>Previous payments after last bill</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="adjustment" type="payment" maxOccurs="unbounded">
+								<xs:annotation>
+									<xs:documentation>Charges and credit for late fees as well as unknown reasons.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="balanceforward">
+								<xs:annotation>
+									<xs:documentation>Balance forward for this bill</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="billperiodbegin" type="date">
+								<xs:annotation>
+									<xs:documentation>Begin date for this bill.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="billperiodend" type="date">
+								<xs:annotation>
+									<xs:documentation>End date for this bill.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="issuedate" type="date">
+								<xs:annotation>
+									<xs:documentation>Date the bill is issued for customer.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="currentcharges">
+								<xs:annotation>
+									<xs:documentation>Total for this bill period including distribution and service lates fees, taxes and various other charges.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="totaldue">
+								<xs:annotation>
+									<xs:documentation>Total account balance (consider renaming it to) for entire bill including all payees, previous balance, late fees.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="duedate" type="date">
+								<xs:annotation>
+									<xs:documentation>Date bill is due payable.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="latepayment">
+								<xs:annotation>
+									<xs:documentation>Penalty if bill not paid by due date.</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="penalty">
+											<xs:annotation>
+												<xs:documentation>Percentage charge of total bill for missed due date</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="amount">
+											<xs:annotation>
+												<xs:documentation>Amount of late payment fee</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="currentcharges">
+					<xs:annotation>
+						<xs:documentation>Current charges summary breaks down amount paid and owed per payee.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="distributer">
+								<xs:annotation>
+									<xs:documentation>Charges from entity responsible for delivery.</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="priorbalance">
+											<xs:annotation>
+												<xs:documentation>When the supplier and distributer is the same, use distributor child elements for current charges.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="payment">
+											<xs:annotation>
+												<xs:documentation>Previous payment.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="currentcharges"/>
+										<xs:element name="balanceforward"/>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="supplier">
+								<xs:annotation>
+									<xs:documentation>Suppliers of energy (properly called wholesalers?)  Figure out how to reference supplier detail bill.</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="priorbalance"/>
+										<xs:element name="payment">
+											<xs:annotation>
+												<xs:documentation>Previous payment</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="currentcharges"/>
+										<xs:element name="balanceforward"/>
+									</xs:sequence>
+									<xs:attribute name="name" use="required"/>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="details">
+					<xs:annotation>
+						<xs:documentation>Details necessary for bill computation.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:all>
+							<xs:element name="rateschedule">
+								<xs:annotation>
+									<xs:documentation>Name of rate.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="distribution">
+								<xs:annotation>
+									<xs:documentation>Distribution details.</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="charges">
+											<xs:annotation>
+												<xs:documentation>Detail charges for distribution.</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="charge" type="charge" maxOccurs="unbounded"/>
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
+										<xs:element name="total">
+											<xs:simpleType>
+												<xs:restriction base="xs:decimal">
+													<xs:fractionDigits value="2"/>
+												</xs:restriction>
+											</xs:simpleType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="service">
+								<xs:annotation>
+									<xs:documentation>Service details.</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="charges">
+											<xs:annotation>
+												<xs:documentation>Detail charges for service.</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="charge" type="charge" maxOccurs="unbounded"/>
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
+										<xs:element name="total">
+											<xs:simpleType>
+												<xs:restriction base="xs:decimal">
+													<xs:fractionDigits value="2"/>
+												</xs:restriction>
+											</xs:simpleType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="tax">
+								<xs:annotation>
+									<xs:documentation>Tax details.</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="charges">
+											<xs:annotation>
+												<xs:documentation>Detail charges for tax.</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="charge" type="charge" maxOccurs="unbounded"/>
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
+										<xs:element name="total">
+											<xs:simpleType>
+												<xs:restriction base="xs:decimal">
+													<xs:fractionDigits value="2"/>
+												</xs:restriction>
+											</xs:simpleType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="total"/>
+						</xs:all>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="meters">
+					<xs:annotation>
+						<xs:documentation>Meters associated with service location.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:choice>
+							<xs:element name="electricmeter" type="meter" maxOccurs="unbounded"/>
+							<xs:element name="gasmeter" type="meter" maxOccurs="unbounded"/>
+						</xs:choice>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="usagehistory">
+					<xs:annotation>
+						<xs:documentation>Summary of prior usage by period.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="usage" maxOccurs="unbounded">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="date" type="date"/>
+										<xs:element name="days">
+											<xs:annotation>
+												<xs:documentation>Number of days in period.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="register">
+											<xs:annotation>
+												<xs:documentation>Net and submeter registers. May be identified by id or type/bucket.</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="identifier"/>
+													<xs:element name="total">
+														<xs:complexType>
+															<xs:simpleContent>
+																<xs:extension base="xs:integer">
+																	<xs:attribute name="units"/>
+																</xs:extension>
+															</xs:simpleContent>
+														</xs:complexType>
+													</xs:element>
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
+										<xs:element name="total">
+											<xs:complexType>
+												<xs:simpleContent>
+													<xs:extension base="xs:integer">
+														<xs:attribute name="units"/>
+													</xs:extension>
+												</xs:simpleContent>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:complexType name="address">
+		<xs:sequence>
+			<xs:element name="addressee"/>
+			<xs:element name="street"/>
+			<xs:element name="city"/>
+			<xs:element name="state"/>
+			<xs:element name="country"/>
+			<xs:element name="postalcode"/>
+			<xs:element name="telephonenumber"/>
+			<xs:element name="hours"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="meter">
+		<xs:sequence>
+			<xs:element name="identifier"/>
+			<xs:element name="estimated"/>
+			<xs:sequence>
+				<xs:element name="register" maxOccurs="unbounded">
+					<xs:annotation>
+						<xs:documentation>Net and submeter registers.  May be identified by id or type/bucket. (e.g. kWh)</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="identifier"/>
+							<xs:element name="description"/>
+							<xs:element name="units"/>
+							<xs:element name="priorreading"/>
+							<xs:element name="presentreading"/>
+							<xs:element name="factor"/>
+							<xs:element name="total"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+			<xs:element name="priorreaddate" type="date"/>
+			<xs:element name="presentreaddate" type="date"/>
+			<xs:element name="nextreaddate" type="date"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="date">
+		<xs:sequence>
+			<xs:element name="month"/>
+			<xs:element name="day"/>
+			<xs:element name="year"/>
+			<xs:element name="time" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="_amount"/>
+	<xs:complexType name="supplier"/>
+	<xs:complexType name="payment">
+		<xs:sequence>
+			<xs:element name="payee"/>
+			<xs:element name="amount" type="xs:decimal"/>
+			<xs:element name="date" type="date"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="charge">
+		<xs:all>
+			<xs:element name="description"/>
+			<xs:element name="quantity" minOccurs="0"/>
+			<xs:element name="rate" minOccurs="0"/>
+			<xs:element name="total">
+				<xs:simpleType>
+					<xs:restriction base="xs:decimal">
+						<xs:fractionDigits value="2"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:all>
+	</xs:complexType>
+</xs:schema>
