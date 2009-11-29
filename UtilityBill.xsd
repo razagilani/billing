@@ -181,8 +181,8 @@
 												<xs:documentation>Previous payment.</xs:documentation>
 											</xs:annotation>
 										</xs:element>
-										<xs:element name="currentcharges"/>
 										<xs:element name="balanceforward"/>
+										<xs:element name="currentcharges"/>
 									</xs:sequence>
 								</xs:complexType>
 							</xs:element>
@@ -192,14 +192,15 @@
 								</xs:annotation>
 								<xs:complexType>
 									<xs:sequence>
+										<xs:element name="ServiceBillReference"/>
 										<xs:element name="priorbalance"/>
 										<xs:element name="payment">
 											<xs:annotation>
 												<xs:documentation>Previous payment</xs:documentation>
 											</xs:annotation>
 										</xs:element>
-										<xs:element name="currentcharges"/>
 										<xs:element name="balanceforward"/>
+										<xs:element name="currentcharges"/>
 									</xs:sequence>
 									<xs:attribute name="name" use="required"/>
 								</xs:complexType>
@@ -217,6 +218,9 @@
 								<xs:annotation>
 									<xs:documentation>Name of rate.</xs:documentation>
 								</xs:annotation>
+								<xs:complexType>
+									<xs:attribute name="ratesineffect"/>
+								</xs:complexType>
 							</xs:element>
 							<xs:element name="distribution">
 								<xs:annotation>
@@ -410,7 +414,7 @@
 			<xs:element name="time" minOccurs="0"/>
 		</xs:sequence>
 	</xs:complexType>
-	<xs:complexType name="_amount"/>
+	<xs:complexType name="amount"/>
 	<xs:complexType name="supplier"/>
 	<xs:complexType name="payment">
 		<xs:sequence>
@@ -422,8 +426,16 @@
 	<xs:complexType name="charge">
 		<xs:all>
 			<xs:element name="description"/>
-			<xs:element name="quantity" minOccurs="0"/>
-			<xs:element name="rate" minOccurs="0"/>
+			<xs:element name="quantity" minOccurs="0">
+				<xs:complexType>
+					<xs:attribute name="units"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="rate" minOccurs="0">
+				<xs:complexType>
+					<xs:attribute name="units"/>
+				</xs:complexType>
+			</xs:element>
 			<xs:element name="total">
 				<xs:simpleType>
 					<xs:restriction base="xs:decimal">
