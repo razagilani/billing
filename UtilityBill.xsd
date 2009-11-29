@@ -2,6 +2,9 @@
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (self) -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
 	<xs:element name="utilitybill">
+		<xs:annotation>
+			<xs:documentation>Root element</xs:documentation>
+		</xs:annotation>
 		<xs:complexType>
 			<xs:sequence>
 				<xs:element name="car">
