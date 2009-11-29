@@ -90,7 +90,7 @@
 					</xs:annotation>
 					<xs:complexType>
 						<xs:sequence>
-							<xs:element name="priorbalance">
+							<xs:element name="priorbalance" type="xs:decimal">
 								<xs:annotation>
 									<xs:documentation>Balance from last bill.</xs:documentation>
 								</xs:annotation>
@@ -105,7 +105,7 @@
 									<xs:documentation>Charges and credit for late fees as well as unknown reasons.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="balanceforward">
+							<xs:element name="balanceforward" type="xs:decimal">
 								<xs:annotation>
 									<xs:documentation>Balance forward for this bill</xs:documentation>
 								</xs:annotation>
@@ -125,12 +125,12 @@
 									<xs:documentation>Date the bill is issued for customer.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="currentcharges">
+							<xs:element name="currentcharges" type="xs:decimal">
 								<xs:annotation>
 									<xs:documentation>Total for this bill period including distribution and service lates fees, taxes and various other charges.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="totaldue">
+							<xs:element name="totaldue" type="xs:decimal">
 								<xs:annotation>
 									<xs:documentation>Total account balance (consider renaming it to) for entire bill including all payees, previous balance, late fees.</xs:documentation>
 								</xs:annotation>
@@ -195,17 +195,21 @@
 								</xs:annotation>
 								<xs:complexType>
 									<xs:sequence>
-										<xs:element name="ServiceBillReference"/>
-										<xs:element name="priorbalance"/>
-										<xs:element name="payment">
+										<xs:element name="priorbalance" type="xs:decimal"/>
+										<xs:element name="payment" type="xs:decimal">
 											<xs:annotation>
 												<xs:documentation>Previous payment</xs:documentation>
 											</xs:annotation>
 										</xs:element>
-										<xs:element name="balanceforward"/>
-										<xs:element name="currentcharges"/>
+										<xs:element name="balanceforward" type="xs:decimal"/>
+										<xs:element name="currentcharges" type="xs:decimal"/>
 									</xs:sequence>
 									<xs:attribute name="name" use="required"/>
+									<xs:attribute name="reference">
+										<xs:annotation>
+											<xs:documentation>Refers to a bill detail from a supplier not included in this bill.  Refers to root element utilitybill id.</xs:documentation>
+										</xs:annotation>
+									</xs:attribute>
 								</xs:complexType>
 							</xs:element>
 						</xs:sequence>
@@ -222,7 +226,10 @@
 									<xs:documentation>Name of rate.</xs:documentation>
 								</xs:annotation>
 								<xs:complexType>
-									<xs:attribute name="ratesineffect"/>
+									<xs:sequence>
+										<xs:element name="name"/>
+										<xs:element name="rateineffect" minOccurs="0"/>
+									</xs:sequence>
 								</xs:complexType>
 							</xs:element>
 							<xs:element name="distribution">
@@ -303,7 +310,7 @@
 									</xs:sequence>
 								</xs:complexType>
 							</xs:element>
-							<xs:element name="total"/>
+							<xs:element name="total" type="xs:decimal"/>
 						</xs:all>
 					</xs:complexType>
 				</xs:element>
@@ -318,7 +325,7 @@
 						</xs:choice>
 					</xs:complexType>
 				</xs:element>
-				<xs:element name="usagehistory">
+				<xs:element name="usagehistory" minOccurs="0">
 					<xs:annotation>
 						<xs:documentation>Summary of prior usage by period.</xs:documentation>
 					</xs:annotation>
@@ -368,6 +375,11 @@
 					</xs:complexType>
 				</xs:element>
 			</xs:sequence>
+			<xs:attribute name="id" use="required">
+				<xs:annotation>
+					<xs:documentation>The unique SI identifier for this bill</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
 		</xs:complexType>
 	</xs:element>
 	<xs:complexType name="address">
@@ -430,20 +442,22 @@
 		<xs:all>
 			<xs:element name="description"/>
 			<xs:element name="quantity" minOccurs="0">
-				<xs:complexType>
+				<xs:complexType mixed="true">
 					<xs:attribute name="units"/>
 				</xs:complexType>
 			</xs:element>
 			<xs:element name="rate" minOccurs="0">
 				<xs:complexType>
-					<xs:attribute name="units"/>
+					<xs:simpleContent>
+						<xs:extension base="xs:decimal">
+							<xs:attribute name="units"/>
+						</xs:extension>
+					</xs:simpleContent>
 				</xs:complexType>
 			</xs:element>
-			<xs:element name="total">
+			<xs:element name="total" nillable="false">
 				<xs:simpleType>
-					<xs:restriction base="xs:decimal">
-						<xs:fractionDigits value="2"/>
-					</xs:restriction>
+					<xs:restriction base="xs:decimal"/>
 				</xs:simpleType>
 			</xs:element>
 		</xs:all>

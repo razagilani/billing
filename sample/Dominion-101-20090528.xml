@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (self) -->
-<utilitybill xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="..\billmodel\UtilityBill.xsd">
+<utilitybill id="2333912321312" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="..\UtilityBill.xsd">
 	<car>
 		<accountnumber>101</accountnumber>
 		<serviceaddress>
@@ -119,18 +119,18 @@
 		<distributer>
 			<priorbalance>12101.51</priorbalance>
 			<payment>12101.51</payment>
-			<currentcharges>13574.14</currentcharges>
 			<balanceforward>0.0</balanceforward>
+			<currentcharges>13574.14</currentcharges>
 		</distributer>
 		<supplier name="">
 			<priorbalance>0.0</priorbalance>
 			<payment>0.0</payment>
-			<currentcharges>0.0</currentcharges>
 			<balanceforward>0.0</balanceforward>
+			<currentcharges>0.0</currentcharges>
 		</supplier>
 	</currentcharges>
 	<details>
-		<rateschedule>Non Residential Service (Schedule GS-3)</rateschedule>
+		<rateschedule><name>Non Residential Service (Schedule GS-3)</name></rateschedule>
 		<distribution>
 			<charges>
 				<charge>

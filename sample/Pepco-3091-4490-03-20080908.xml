@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (self) -->
-<utilitybill xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="..\..\workspace-skyline\billing\UtilityBill.xsd">
+<utilitybill id="112937812397813" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="..\..\billing\UtilityBill.xsd">
 	<car>
 		<accountnumber>3091 4490 03</accountnumber>
 		<serviceaddress>
@@ -28,10 +28,10 @@
 		<tin>53-0127880</tin>
 	</uar>
 	<summary>
-		<priorbalance/>
+		<priorbalance>0.0</priorbalance>
 		<previouspayment>
 			<payee/>
-			<amount/>
+			<amount>0.0</amount>
 			<date>
 				<month/>
 				<day/>
@@ -40,14 +40,14 @@
 		</previouspayment>
 		<adjustment>
 			<payee/>
-			<amount/>
+			<amount>0.0</amount>
 			<date>
 				<month/>
 				<day/>
 				<year/>
 			</date>
 		</adjustment>
-		<balanceforward/>
+		<balanceforward>0.0</balanceforward>
 		<billperiodbegin>
 			<month>August</month>
 			<day>02</day>
@@ -63,7 +63,7 @@
 			<day>09</day>
 			<year>2008</year>
 		</issuedate>
-		<currentcharges/>
+		<currentcharges>0.0</currentcharges>
 		<totaldue>2691.75</totaldue>
 		<duedate>
 			<month>Sept</month>
@@ -79,18 +79,21 @@
 		<distributer>
 			<priorbalance>547.20</priorbalance>
 			<payment>547.20</payment>
-			<currentcharges>547.67</currentcharges>
 			<balanceforward>0</balanceforward>
+			<currentcharges>547.67</currentcharges>
 		</distributer>
 		<supplier name="WGES (consider putting reference here)">
 			<priorbalance>2133.14</priorbalance>
 			<payment>2133.14</payment>
-			<currentcharges>2144.08</currentcharges>
 			<balanceforward>0</balanceforward>
+			<currentcharges>2144.08</currentcharges>
 		</supplier>
 	</currentcharges>
 	<details>
-		<rateschedule>Non-Residential-MGT-LV IIB (summer rates in effect - update attribute)</rateschedule>
+		<rateschedule>
+			<name>Non-Residential-MGT-LV IIB</name>
+			<rateineffect>Summer</rateineffect>
+		</rateschedule>
 		<distribution>
 			<charges>
 				<charge>
@@ -118,13 +121,11 @@
 				<charge>
 					<description>On peak demand</description>
 					<quantity units="kWD">54.4</quantity>
-					<rate units=""></rate>
 					<total>135.83</total>
 				</charge>
 				<charge>
 					<description>Maximum demand</description>
 					<quantity units="kWD">54.4</quantity>
-					<rate units=""></rate>
 					<total>52.13</total>
 				</charge>
 				<charge>
@@ -135,8 +136,6 @@
 				</charge>
 				<charge>
 					<description>Universal service charge (make tax element)</description>
-					<quantity units=""></quantity>
-					<rate units=""></rate>
 					<total>20.59</total>
 				</charge>
 				<charge>
@@ -175,17 +174,23 @@
 		<service>
 			<charges>
 				<charge>
-					<description/>
-					<total/>
+					<description>Total Use</description>
+					<quantity units="kWh">15680</quantity>
+					<rate units="dollars">0.129</rate>
+					<total>2022.72</total>
+				</charge>
+				<charge>
+					<description>Sales Tax</description>
+					<total>121.36</total>
 				</charge>
 			</charges>
-			<total/>
+			<total>2144.08</total>
 		</service>
 		<tax>
 			<charges>
 				<charge>
 					<description>Sales Tax</description>
-					<quantity>This needs to be determined</quantity>
+					<quantity/>
 					<total>24.41</total>
 				</charge>
 			</charges>
@@ -223,19 +228,4 @@
 			</nextreaddate>
 		</electricmeter>
 	</meters>
-	<usagehistory>
-		<usage>
-			<date>
-				<month/>
-				<day/>
-				<year/>
-			</date>
-			<days/>
-			<register>
-				<identifier/>
-				<total/>
-			</register>
-			<total/>
-		</usage>
-	</usagehistory>
 </utilitybill>
