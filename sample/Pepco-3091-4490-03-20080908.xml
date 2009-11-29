@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (self) -->
+<utilitybill xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="..\..\workspace-skyline\billing\UtilityBill.xsd">
+	<car>
+		<accountnumber>3091 4490 03</accountnumber>
+		<serviceaddress>
+			<addressee>College Park Carwash Inc.</addressee>
+			<street>8616 Baltimore Ave</street>
+			<city/>
+			<state/>
+			<country/>
+			<postalcode/>
+			<telephonenumber/>
+			<hours/>
+		</serviceaddress>
+		<billingaddress>
+			<addressee>College Park Carwash</addressee>
+			<street>7106 Ridgewood Ave</street>
+			<city>Chevy Chase</city>
+			<state>MD</state>
+			<country/>
+			<postalcode>20815-5148</postalcode>
+			<telephonenumber/>
+			<hours/>
+		</billingaddress>
+	</car>
+	<uar>
+		<tin>53-0127880</tin>
+	</uar>
+	<summary>
+		<priorbalance/>
+		<previouspayment>
+			<payee/>
+			<amount/>
+			<date>
+				<month/>
+				<day/>
+				<year/>
+			</date>
+		</previouspayment>
+		<adjustment>
+			<payee/>
+			<amount/>
+			<date>
+				<month/>
+				<day/>
+				<year/>
+			</date>
+		</adjustment>
+		<balanceforward/>
+		<billperiodbegin>
+			<month>August</month>
+			<day>02</day>
+			<year>2008</year>
+		</billperiodbegin>
+		<billperiodend>
+			<month>September</month>
+			<day>03</day>
+			<year>2008</year>
+		</billperiodend>
+		<issuedate>
+			<month>Sept</month>
+			<day>09</day>
+			<year>2008</year>
+		</issuedate>
+		<currentcharges/>
+		<totaldue>2691.75</totaldue>
+		<duedate>
+			<month>Sept</month>
+			<day>30</day>
+			<year>2008</year>
+		</duedate>
+		<latepayment>
+			<penalty/>
+			<amount>6.14</amount>
+		</latepayment>
+	</summary>
+	<currentcharges>
+		<distributer>
+			<priorbalance>547.20</priorbalance>
+			<payment>547.20</payment>
+			<currentcharges>547.67</currentcharges>
+			<balanceforward>0</balanceforward>
+		</distributer>
+		<supplier name="WGES (consider putting reference here)">
+			<priorbalance>2133.14</priorbalance>
+			<payment>2133.14</payment>
+			<currentcharges>2144.08</currentcharges>
+			<balanceforward>0</balanceforward>
+		</supplier>
+	</currentcharges>
+	<details>
+		<rateschedule>Non-Residential-MGT-LV IIB (summer rates in effect - update attribute)</rateschedule>
+		<distribution>
+			<charges>
+				<charge>
+					<description>Customer Charge</description>
+					<total>36.26</total>
+				</charge>
+				<charge>
+					<description>On-Peak Energy</description>
+					<quantity units="kWh">3520</quantity>
+					<rate units="dollars">0.0102812</rate>
+					<total>36.19</total>
+				</charge>
+				<charge>
+					<description>Int-Peak Energy</description>
+					<quantity units="kWh">3680</quantity>
+					<rate units="dollars">0.0102798</rate>
+					<total>37.83</total>
+				</charge>
+				<charge>
+					<description>Off Peak Energy</description>
+					<quantity units="kWh">8480</quantity>
+					<rate units="dollars">0.0102806</rate>
+					<total>87.18</total>
+				</charge>
+				<charge>
+					<description>On peak demand</description>
+					<quantity units="kWD">54.4</quantity>
+					<rate units=""></rate>
+					<total>135.83</total>
+				</charge>
+				<charge>
+					<description>Maximum demand</description>
+					<quantity units="kWD">54.4</quantity>
+					<rate units=""></rate>
+					<total>52.13</total>
+				</charge>
+				<charge>
+					<description>Franchise tax (delivery) (make tax element)</description>
+					<quantity units="kWh">this is derived from all kWh</quantity>
+					<rate units="dollar">0.0006200</rate>
+					<total>9.72</total>
+				</charge>
+				<charge>
+					<description>Universal service charge (make tax element)</description>
+					<quantity units=""></quantity>
+					<rate units=""></rate>
+					<total>20.59</total>
+				</charge>
+				<charge>
+					<description>MD Environmental surcharge (make tax element)</description>
+					<quantity units="kWh">this is derived from all kWh</quantity>
+					<rate units="dollar">0.0001500</rate>
+					<total>2.35</total>
+				</charge>
+				<charge>
+					<description>Gross receipts tax (make tax element)</description>
+					<quantity units="">this is derived from all charges above</quantity>
+					<rate units="percentage">2.040800</rate>
+					<total>8.54</total>
+				</charge>
+				<charge>
+					<description>PG County Energy (make tax element)</description>
+					<quantity units="">this is derived from all kWh above</quantity>
+					<rate units="dollars">0.0072860</rate>
+					<total>114.25</total>
+				</charge>
+				<charge>
+					<description>Administrative credit</description>
+					<quantity units="">this is derived from all kWh above</quantity>
+					<rate units="dollars">0.0013080</rate>
+					<total>-20.50</total>
+				</charge>
+				<charge>
+					<description>Generation procurement credit/charge</description>
+					<quantity units="">this is derived from all kWh above</quantity>
+					<rate units="dollars">0.0001843</rate>
+					<total>2.89</total>
+				</charge>
+			</charges>
+			<total>523.26</total>
+		</distribution>
+		<service>
+			<charges>
+				<charge>
+					<description/>
+					<total/>
+				</charge>
+			</charges>
+			<total/>
+		</service>
+		<tax>
+			<charges>
+				<charge>
+					<description>Sales Tax</description>
+					<quantity>This needs to be determined</quantity>
+					<total>24.41</total>
+				</charge>
+			</charges>
+			<total>24.41</total>
+		</tax>
+		<total>547.67</total>
+	</details>
+	<meters>
+		<electricmeter>
+			<identifier/>
+			<estimated/>
+			<register>
+				<identifier/>
+				<description/>
+				<units/>
+				<priorreading/>
+				<presentreading/>
+				<factor/>
+				<total/>
+			</register>
+			<priorreaddate>
+				<month/>
+				<day/>
+				<year/>
+			</priorreaddate>
+			<presentreaddate>
+				<month/>
+				<day/>
+				<year/>
+			</presentreaddate>
+			<nextreaddate>
+				<month/>
+				<day/>
+				<year/>
+			</nextreaddate>
+		</electricmeter>
+	</meters>
+	<usagehistory>
+		<usage>
+			<date>
+				<month/>
+				<day/>
+				<year/>
+			</date>
+			<days/>
+			<register>
+				<identifier/>
+				<total/>
+			</register>
+			<total/>
+		</usage>
+	</usagehistory>
+</utilitybill>
