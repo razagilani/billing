@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (self) -->
-<utilitybill id="112937812397813" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="..\..\billing\UtilityBill.xsd">
+<utilitybill id="112937812397813" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="..\UtilityBill.xsd">
 	<car>
 		<accountnumber>3091 4490 03</accountnumber>
 		<serviceaddress>
@@ -32,44 +32,18 @@
 		<previouspayment>
 			<payee/>
 			<amount>0.0</amount>
-			<date>
-				<month/>
-				<day/>
-				<year/>
-			</date>
 		</previouspayment>
 		<adjustment>
 			<payee/>
 			<amount>0.0</amount>
-			<date>
-				<month/>
-				<day/>
-				<year/>
-			</date>
 		</adjustment>
 		<balanceforward>0.0</balanceforward>
-		<billperiodbegin>
-			<month>August</month>
-			<day>02</day>
-			<year>2008</year>
-		</billperiodbegin>
-		<billperiodend>
-			<month>September</month>
-			<day>03</day>
-			<year>2008</year>
-		</billperiodend>
-		<issuedate>
-			<month>Sept</month>
-			<day>09</day>
-			<year>2008</year>
-		</issuedate>
+		<billperiodbegin>2008-02-08</billperiodbegin>
+		<billperiodend>2008-09-03</billperiodend>
+		<issuedate>2008-09-09</issuedate>
 		<currentcharges>0.0</currentcharges>
 		<totaldue>2691.75</totaldue>
-		<duedate>
-			<month>Sept</month>
-			<day>30</day>
-			<year>2008</year>
-		</duedate>
+		<duedate>2008-09-30</duedate>
 		<latepayment>
 			<penalty/>
 			<amount>6.14</amount>
@@ -199,33 +173,43 @@
 		<total>547.67</total>
 	</details>
 	<meters>
-		<electricmeter>
-			<identifier/>
-			<estimated/>
+		<meter type="electric">
+			<estimated>true</estimated>
+			<nextreaddate>2008-10-03</nextreaddate>
+			<identifier>475T</identifier>
+			<description>Kilowatt Hour Meter</description>
+			<units>kWh</units>
+			<priorreading>17049</priorreading>
+			<presentreading>17247</presentreading>
+			<factor>80</factor>
 			<register>
-				<identifier/>
-				<description/>
-				<units/>
-				<priorreading/>
-				<presentreading/>
-				<factor/>
-				<total/>
+				<identifier>D11</identifier>
+				<description>Off Peak</description>
+				<units>kWh</units>
+				<priorreading>9276</priorreading>
+				<presentreading>9382</presentreading>
+				<factor>80</factor>
+				<total>8480</total>
 			</register>
-			<priorreaddate>
-				<month/>
-				<day/>
-				<year/>
-			</priorreaddate>
-			<presentreaddate>
-				<month/>
-				<day/>
-				<year/>
-			</presentreaddate>
-			<nextreaddate>
-				<month/>
-				<day/>
-				<year/>
-			</nextreaddate>
-		</electricmeter>
+			<register>
+				<identifier>D08</identifier>
+				<description>Interm Peak</description>
+				<units>kWh</units>
+				<priorreading>3627</priorreading>
+				<presentreading>3673</presentreading>
+				<factor>80</factor>
+				<total>3680</total>
+			</register>
+			<register>
+				<identifier>D05</identifier>
+				<description>On Peak</description>
+				<units>kWh</units>
+				<priorreading>4145</priorreading>
+				<presentreading>4189</presentreading>
+				<factor>80</factor>
+				<total>3520</total>
+			</register>
+			<total>15840</total>
+		</meter>
 	</meters>
 </utilitybill>
