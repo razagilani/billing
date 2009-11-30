@@ -110,17 +110,17 @@
 									<xs:documentation>Balance forward for this bill</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="billperiodbegin" type="date">
+							<xs:element name="billperiodbegin" type="xs:date">
 								<xs:annotation>
 									<xs:documentation>Begin date for this bill.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="billperiodend" type="date">
+							<xs:element name="billperiodend" type="xs:date">
 								<xs:annotation>
 									<xs:documentation>End date for this bill.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="issuedate" type="date">
+							<xs:element name="issuedate" type="xs:date">
 								<xs:annotation>
 									<xs:documentation>Date the bill is issued for customer.</xs:documentation>
 								</xs:annotation>
@@ -135,7 +135,7 @@
 									<xs:documentation>Total account balance (consider renaming it to) for entire bill including all payees, previous balance, late fees.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="duedate" type="date">
+							<xs:element name="duedate" type="xs:date">
 								<xs:annotation>
 									<xs:documentation>Date bill is due payable.</xs:documentation>
 								</xs:annotation>
@@ -319,10 +319,15 @@
 						<xs:documentation>Meters associated with service location.</xs:documentation>
 					</xs:annotation>
 					<xs:complexType>
-						<xs:choice>
-							<xs:element name="electricmeter" type="meter" maxOccurs="unbounded"/>
-							<xs:element name="gasmeter" type="meter" maxOccurs="unbounded"/>
-						</xs:choice>
+						<xs:sequence>
+							<xs:element name="meter" maxOccurs="unbounded">
+								<xs:complexType>
+									<xs:complexContent>
+										<xs:extension base="meter"/>
+									</xs:complexContent>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
 					</xs:complexType>
 				</xs:element>
 				<xs:element name="usagehistory" minOccurs="0">
@@ -334,8 +339,8 @@
 							<xs:element name="usage" maxOccurs="unbounded">
 								<xs:complexType>
 									<xs:sequence>
-										<xs:element name="date" type="date"/>
-										<xs:element name="days">
+										<xs:element name="date" type="xs:duration"/>
+										<xs:element name="days" type="xs:integer">
 											<xs:annotation>
 												<xs:documentation>Number of days in period.</xs:documentation>
 											</xs:annotation>
@@ -396,38 +401,43 @@
 	</xs:complexType>
 	<xs:complexType name="meter">
 		<xs:sequence>
-			<xs:element name="identifier"/>
-			<xs:element name="estimated"/>
-			<xs:sequence>
-				<xs:element name="register" maxOccurs="unbounded">
-					<xs:annotation>
-						<xs:documentation>Net and submeter registers.  May be identified by id or type/bucket. (e.g. kWh)</xs:documentation>
-					</xs:annotation>
-					<xs:complexType>
-						<xs:sequence>
-							<xs:element name="identifier"/>
-							<xs:element name="description"/>
-							<xs:element name="units"/>
-							<xs:element name="priorreading"/>
-							<xs:element name="presentreading"/>
-							<xs:element name="factor"/>
-							<xs:element name="total"/>
-						</xs:sequence>
-					</xs:complexType>
-				</xs:element>
-			</xs:sequence>
-			<xs:element name="priorreaddate" type="date"/>
-			<xs:element name="presentreaddate" type="date"/>
-			<xs:element name="nextreaddate" type="date"/>
+			<xs:element name="estimated" type="xs:boolean"/>
+			<xs:element name="priorreaddate" type="xs:date" minOccurs="0"/>
+			<xs:element name="presentreaddate" type="xs:date" minOccurs="0"/>
+			<xs:element name="nextreaddate" type="xs:date"/>
+			<xs:sequence/>
+			<xs:element name="identifier" type="xs:string"/>
+			<xs:element name="description" type="xs:string"/>
+			<xs:element name="units" type="xs:string"/>
+			<xs:element name="priorreading" type="xs:integer"/>
+			<xs:element name="presentreading" type="xs:integer"/>
+			<xs:element name="factor" type="xs:integer"/>
+			<xs:element name="register" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Registers.  May be identified by id or type/bucket. (e.g. kWh)</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="identifier"/>
+						<xs:element name="description"/>
+						<xs:element name="units" type="xs:string"/>
+						<xs:element name="priorreading" type="xs:integer"/>
+						<xs:element name="presentreading" type="xs:integer"/>
+						<xs:element name="factor" type="xs:integer"/>
+						<xs:element name="total" type="xs:integer"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="total" type="xs:integer"/>
 		</xs:sequence>
-	</xs:complexType>
-	<xs:complexType name="date">
-		<xs:sequence>
-			<xs:element name="month"/>
-			<xs:element name="day"/>
-			<xs:element name="year"/>
-			<xs:element name="time" minOccurs="0"/>
-		</xs:sequence>
+		<xs:attribute name="type" use="required">
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:enumeration value="gas"/>
+					<xs:enumeration value="electric"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
 	</xs:complexType>
 	<xs:complexType name="amount"/>
 	<xs:complexType name="supplier"/>
@@ -435,7 +445,7 @@
 		<xs:sequence>
 			<xs:element name="payee"/>
 			<xs:element name="amount" type="xs:decimal"/>
-			<xs:element name="date" type="date"/>
+			<xs:element name="date" type="xs:date" minOccurs="0"/>
 		</xs:sequence>
 	</xs:complexType>
 	<xs:complexType name="charge">
