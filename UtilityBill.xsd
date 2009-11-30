@@ -49,7 +49,7 @@
 							</xs:element>
 							<xs:element name="paymentlocation" type="address" minOccurs="0" maxOccurs="unbounded">
 								<xs:annotation>
-									<xs:documentation>Physical locations where payment can be made.</xs:documentation>
+									<xs:documentation>Physical locations where payment can be made or sent.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
 							<xs:element name="emergencycontact" type="address" minOccurs="0">
@@ -100,12 +100,12 @@
 									<xs:documentation>Previous payments after last bill</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="adjustment" type="payment" maxOccurs="unbounded">
+							<xs:element name="adjustment" type="payment" minOccurs="0" maxOccurs="unbounded">
 								<xs:annotation>
 									<xs:documentation>Charges and credit for late fees as well as unknown reasons.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="balanceforward" type="xs:decimal">
+							<xs:element name="balanceforward" type="xs:decimal" minOccurs="0">
 								<xs:annotation>
 									<xs:documentation>Balance forward for this bill</xs:documentation>
 								</xs:annotation>
@@ -168,7 +168,7 @@
 					</xs:annotation>
 					<xs:complexType>
 						<xs:sequence>
-							<xs:element name="distributer">
+							<xs:element name="distribution">
 								<xs:annotation>
 									<xs:documentation>Charges from entity responsible for delivery.</xs:documentation>
 								</xs:annotation>
@@ -189,7 +189,7 @@
 									</xs:sequence>
 								</xs:complexType>
 							</xs:element>
-							<xs:element name="supplier">
+							<xs:element name="supply">
 								<xs:annotation>
 									<xs:documentation>Suppliers of energy (properly called wholesalers?)  Figure out how to reference supplier detail bill.</xs:documentation>
 								</xs:annotation>
@@ -213,6 +213,14 @@
 								</xs:complexType>
 							</xs:element>
 						</xs:sequence>
+						<xs:attribute name="service" use="required">
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="gas"/>
+									<xs:enumeration value="electric"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:attribute>
 					</xs:complexType>
 				</xs:element>
 				<xs:element name="details">
@@ -258,7 +266,7 @@
 									</xs:sequence>
 								</xs:complexType>
 							</xs:element>
-							<xs:element name="service">
+							<xs:element name="supply">
 								<xs:annotation>
 									<xs:documentation>Service details.</xs:documentation>
 								</xs:annotation>
@@ -312,9 +320,48 @@
 							</xs:element>
 							<xs:element name="total" type="xs:decimal"/>
 						</xs:all>
+						<xs:attribute name="service" use="required">
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="gas"/>
+									<xs:enumeration value="electric"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:attribute>
 					</xs:complexType>
 				</xs:element>
-				<xs:element name="meters">
+				<xs:element name="billableusage">
+					<xs:annotation>
+						<xs:documentation>Billable usage which may differ from measured usage</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="rateschedule">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="name"/>
+										<xs:element name="rateineffect" minOccurs="0"/>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="usage" type="usage" minOccurs="0" maxOccurs="unbounded"/>
+							<xs:element name="total" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>total billable</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+						</xs:sequence>
+						<xs:attribute name="service" use="required">
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="gas"/>
+									<xs:enumeration value="electric"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:attribute>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="measuredusage">
 					<xs:annotation>
 						<xs:documentation>Meters associated with service location.</xs:documentation>
 					</xs:annotation>
@@ -327,7 +374,20 @@
 									</xs:complexContent>
 								</xs:complexType>
 							</xs:element>
+							<xs:element name="nextreaddate" type="xs:date" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>For premises wide next read date.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
 						</xs:sequence>
+						<xs:attribute name="service" use="required">
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="gas"/>
+									<xs:enumeration value="electric"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:attribute>
 					</xs:complexType>
 				</xs:element>
 				<xs:element name="usagehistory" minOccurs="0">
@@ -339,8 +399,12 @@
 							<xs:element name="usage" maxOccurs="unbounded">
 								<xs:complexType>
 									<xs:sequence>
-										<xs:element name="date" type="xs:duration"/>
-										<xs:element name="days" type="xs:integer">
+										<xs:element name="date" type="xs:date">
+											<xs:annotation>
+												<xs:documentation>usage period date, usually in the form of YYYY-MM use DD 01 if missing.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="days" type="xs:integer" minOccurs="0">
 											<xs:annotation>
 												<xs:documentation>Number of days in period.</xs:documentation>
 											</xs:annotation>
@@ -377,6 +441,14 @@
 								</xs:complexType>
 							</xs:element>
 						</xs:sequence>
+						<xs:attribute name="service" use="required">
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="gas"/>
+									<xs:enumeration value="electric"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:attribute>
 					</xs:complexType>
 				</xs:element>
 			</xs:sequence>
@@ -404,31 +476,32 @@
 			<xs:element name="estimated" type="xs:boolean"/>
 			<xs:element name="priorreaddate" type="xs:date" minOccurs="0"/>
 			<xs:element name="presentreaddate" type="xs:date" minOccurs="0"/>
-			<xs:element name="nextreaddate" type="xs:date"/>
-			<xs:sequence/>
-			<xs:element name="identifier" type="xs:string"/>
-			<xs:element name="description" type="xs:string"/>
-			<xs:element name="units" type="xs:string"/>
-			<xs:element name="priorreading" type="xs:integer"/>
-			<xs:element name="presentreading" type="xs:integer"/>
-			<xs:element name="factor" type="xs:integer"/>
+			<xs:element name="nextreaddate" type="xs:date" minOccurs="0"/>
+			<xs:element name="identifier">
+				<xs:annotation>
+					<xs:documentation>Identifier for the physical meter</xs:documentation>
+				</xs:annotation>
+			</xs:element>
 			<xs:element name="register" maxOccurs="unbounded">
 				<xs:annotation>
 					<xs:documentation>Registers.  May be identified by id or type/bucket. (e.g. kWh)</xs:documentation>
 				</xs:annotation>
 				<xs:complexType>
 					<xs:sequence>
-						<xs:element name="identifier"/>
+						<xs:element name="identifier">
+							<xs:annotation>
+								<xs:documentation>Identifier for register.  Use meter identifier if unavailable.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
 						<xs:element name="description"/>
-						<xs:element name="units" type="xs:string"/>
-						<xs:element name="priorreading" type="xs:integer"/>
-						<xs:element name="presentreading" type="xs:integer"/>
-						<xs:element name="factor" type="xs:integer"/>
+						<xs:element name="units" type="xs:string" minOccurs="0"/>
+						<xs:element name="priorreading" type="xs:integer" minOccurs="0"/>
+						<xs:element name="presentreading" type="xs:integer" minOccurs="0"/>
+						<xs:element name="factor" type="xs:integer" minOccurs="0"/>
 						<xs:element name="total" type="xs:integer"/>
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
-			<xs:element name="total" type="xs:integer"/>
 		</xs:sequence>
 		<xs:attribute name="type" use="required">
 			<xs:simpleType>
@@ -469,6 +542,26 @@
 				<xs:simpleType>
 					<xs:restriction base="xs:decimal"/>
 				</xs:simpleType>
+			</xs:element>
+		</xs:all>
+	</xs:complexType>
+	<xs:complexType name="usage">
+		<xs:all>
+			<xs:element name="description"/>
+			<xs:element name="quantity">
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="xs:decimal">
+							<xs:attribute name="units">
+								<xs:simpleType>
+									<xs:restriction base="xs:string">
+										<xs:enumeration value="kWh"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:attribute>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
 			</xs:element>
 		</xs:all>
 	</xs:complexType>

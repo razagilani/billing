@@ -172,16 +172,26 @@
 		</tax>
 		<total>547.67</total>
 	</details>
-	<meters>
+	<billableusage>
+		<rateschedule>
+			<name>Non-Residential-MGT-LV IIB</name>
+		</rateschedule>
+		<total>15680</total>
+	</billableusage>
+	<measuredusage>
 		<meter type="electric">
 			<estimated>true</estimated>
 			<nextreaddate>2008-10-03</nextreaddate>
-			<identifier>475T</identifier>
-			<description>Kilowatt Hour Meter</description>
-			<units>kWh</units>
-			<priorreading>17049</priorreading>
-			<presentreading>17247</presentreading>
-			<factor>80</factor>
+			<identifier></identifier>
+			<register>
+				<identifier>475T</identifier>
+				<description>Kilowatt Hour Meter</description>
+				<units>kWh</units>
+				<priorreading>17049</priorreading>
+				<presentreading>17247</presentreading>
+				<factor>80</factor>
+				<total>15840</total>
+			</register>
 			<register>
 				<identifier>D11</identifier>
 				<description>Off Peak</description>
@@ -209,7 +219,6 @@
 				<factor>80</factor>
 				<total>3520</total>
 			</register>
-			<total>15840</total>
 		</meter>
-	</meters>
+	</measuredusage>
 </utilitybill>

@@ -72,44 +72,19 @@
 		<previouspayment>
 			<payee>Dominion</payee>
 			<amount>12101.51</amount>
-			<date>
-				<month>May</month>
-				<day>05</day>
-				<year>2009</year>
-			</date>
+			<date>2009-05-05</date>
 		</previouspayment>
 		<adjustment>
 			<payee/>
 			<amount>0.0</amount>
-			<date>
-				<month/>
-				<day/>
-				<year/>
-			</date>
 		</adjustment>
 		<balanceforward>0.0</balanceforward>
-		<billperiodbegin>
-			<month/>
-			<day/>
-			<year/>
-		</billperiodbegin>
-		<billperiodend>
-			<month/>
-			<day/>
-			<year/>
-		</billperiodend>
-		<issuedate>
-			<month/>
-			<day/>
-			<year/>
-		</issuedate>
+		<billperiodbegin>2009-04-01</billperiodbegin>
+		<billperiodend>2009-05-01</billperiodend>
+		<issuedate>2009-05-02</issuedate>
 		<currentcharges>13574.14</currentcharges>
 		<totaldue>13574.14</totaldue>
-		<duedate>
-			<month>May</month>
-			<day>28</day>
-			<year>2009</year>
-		</duedate>
+		<duedate>2009-05-28</duedate>
 		<latepayment>
 			<penalty>1.5%</penalty>
 			<amount>181.52</amount>
@@ -211,12 +186,41 @@
 		</tax>
 		<total>13574.14</total>
 	</details>
-	<meters>
-		<electricmeter>
+	<billableusage>
+		<rateschedule>
+			<name>Schedule GS-3</name>
+			<rateineffect>04/01-05/01</rateineffect>
+		</rateschedule>
+		<usage>
+			<description>Off Pk Usage</description>
+			<quantity units="kWh">57412</quantity>
+		</usage>
+		<usage>
+			<description>On Pk Usage</description>
+			<quantity units="kWh">91388</quantity>
+		</usage>
+		<usage>
+			<description>Dist Demand</description>
+			<quantity>501</quantity>
+		</usage>
+		<usage>
+			<description>Off Pk Demand</description>
+			<quantity>0.0</quantity>
+		</usage>
+		<usage>
+			<description>RKVA</description>
+			<quantity>259</quantity>
+		</usage>
+		<total>148800</total>
+	</billableusage>
+	<measuredusage>
+		<meter type="electric">
+			<estimated>false</estimated>
+			<priorreaddate>2009-04-01</priorreaddate>
+			<presentreaddate>2009-05-01</presentreaddate>
 			<identifier>0005748089</identifier>
-			<estimated>no</estimated>
 			<register>
-				<identifier/>
+				<identifier>0005748089</identifier>
 				<description>kWh</description>
 				<units>kWh</units>
 				<priorreading>6185</priorreading>
@@ -225,7 +229,7 @@
 				<total>148800</total>
 			</register>
 			<register>
-				<identifier/>
+				<identifier>0005748089</identifier>
 				<description>KQH</description>
 				<units>KQH</units>
 				<priorreading>5708</priorreading>
@@ -233,86 +237,37 @@
 				<factor>960</factor>
 				<total>138240</total>
 			</register>
-			<priorreaddate>
-				<month>April</month>
-				<day>01</day>
-				<year>2009</year>
-			</priorreaddate>
-			<presentreaddate>
-				<month>May</month>
-				<day>01</day>
-				<year>2009</year>
-			</presentreaddate>
-			<nextreaddate>
-				<month/>
-				<day/>
-				<year/>
-			</nextreaddate>
-		</electricmeter>
-		<electricmeter>
+		</meter>
+		<meter type="electric">
+			<estimated>false</estimated>
+			<priorreaddate>2009-04-01</priorreaddate>
+			<presentreaddate>2009-05-01</presentreaddate>
 			<identifier>00RG002738</identifier>
-			<estimated>no</estimated>
 			<register>
 				<identifier/>
 				<description>On Peak Usage</description>
-				<units/>
-				<priorreading/>
-				<presentreading/>
-				<factor/>
 				<total>91388</total>
 			</register>
 			<register>
 				<identifier/>
 				<description>Off Peak Usage</description>
-				<units/>
-				<priorreading/>
-				<presentreading/>
-				<factor/>
 				<total>138240</total>
 			</register>
 			<register>
 				<identifier/>
 				<description>On  Peak Demand</description>
-				<units/>
-				<priorreading/>
-				<presentreading/>
-				<factor/>
 				<total>436</total>
 			</register>
 			<register>
 				<identifier/>
 				<description>RKVA</description>
-				<units/>
-				<priorreading/>
-				<presentreading/>
-				<factor/>
 				<total>259</total>
 			</register>
-			<priorreaddate>
-				<month>April</month>
-				<day>01</day>
-				<year>2009</year>
-			</priorreaddate>
-			<presentreaddate>
-				<month>May</month>
-				<day>01</day>
-				<year>2009</year>
-			</presentreaddate>
-			<nextreaddate>
-				<month/>
-				<day/>
-				<year/>
-			</nextreaddate>
-		</electricmeter>
-	</meters>
+		</meter>
+	</measuredusage>
 	<usagehistory>
 		<usage>
-			<date>
-				<month>May</month>
-				<day/>
-				<year>2008</year>
-			</date>
-			<days/>
+			<date>2008-05-01</date>
 			<register>
 				<identifier>kWh</identifier>
 				<total units="kWh">192960</total>
@@ -320,12 +275,7 @@
 			<total units="kWh">192960</total>
 		</usage>
 		<usage>
-			<date>
-				<month>June</month>
-				<day/>
-				<year>2008</year>
-			</date>
-			<days/>
+			<date>2008-06-01</date>
 			<register>
 				<identifier>kWh</identifier>
 				<total units="kWh">162240</total>
@@ -333,12 +283,7 @@
 			<total units="kWh">162240</total>
 		</usage>
 		<usage>
-			<date>
-				<month>July</month>
-				<day/>
-				<year>2008</year>
-			</date>
-			<days/>
+			<date>2008-07-01</date>
 			<register>
 				<identifier>kWh</identifier>
 				<total units="kWh">197760</total>
@@ -346,12 +291,7 @@
 			<total units="kWh">197760</total>
 		</usage>
 		<usage>
-			<date>
-				<month>August</month>
-				<day/>
-				<year>2008</year>
-			</date>
-			<days/>
+			<date>2008-08-01</date>
 			<register>
 				<identifier>kWh</identifier>
 				<total units="kWh">192000</total>
@@ -359,12 +299,7 @@
 			<total units="kWh">192000</total>
 		</usage>
 		<usage>
-			<date>
-				<month>September</month>
-				<day/>
-				<year>2008</year>
-			</date>
-			<days/>
+			<date>2008-09-01</date>
 			<register>
 				<identifier>kWh</identifier>
 				<total units="kWh">197760</total>
@@ -372,12 +307,7 @@
 			<total units="kWh">197760</total>
 		</usage>
 		<usage>
-			<date>
-				<month>October</month>
-				<day/>
-				<year>2008</year>
-			</date>
-			<days/>
+			<date>2008-10-01</date>
 			<register>
 				<identifier>kWh</identifier>
 				<total units="kWh">160320</total>
@@ -385,12 +315,7 @@
 			<total units="kWh">160320</total>
 		</usage>
 		<usage>
-			<date>
-				<month>November</month>
-				<day/>
-				<year>2008</year>
-			</date>
-			<days/>
+			<date>2008-11-01</date>
 			<register>
 				<identifier>kWh</identifier>
 				<total units="kWh">158400</total>
@@ -398,12 +323,7 @@
 			<total units="kWh">158400</total>
 		</usage>
 		<usage>
-			<date>
-				<month>December</month>
-				<day/>
-				<year>2008</year>
-			</date>
-			<days/>
+			<date>2008-12-01</date>
 			<register>
 				<identifier>kWh</identifier>
 				<total units="kWh">202560</total>
@@ -411,12 +331,7 @@
 			<total units="kWh">202560</total>
 		</usage>
 		<usage>
-			<date>
-				<month>January</month>
-				<day/>
-				<year>2009</year>
-			</date>
-			<days/>
+			<date>2009-01-01</date>
 			<register>
 				<identifier>kWh</identifier>
 				<total units="kWh">214080</total>
@@ -424,12 +339,7 @@
 			<total units="kWh">214080</total>
 		</usage>
 		<usage>
-			<date>
-				<month>February</month>
-				<day/>
-				<year>2009</year>
-			</date>
-			<days/>
+			<date>2009-02-01</date>
 			<register>
 				<identifier>kWh</identifier>
 				<total units="kWh">204480</total>
@@ -437,12 +347,7 @@
 			<total units="kWh">204480</total>
 		</usage>
 		<usage>
-			<date>
-				<month>March</month>
-				<day/>
-				<year>2009</year>
-			</date>
-			<days/>
+			<date>2009-03-01</date>
 			<register>
 				<identifier>kWh</identifier>
 				<total units="kWh">176640</total>
@@ -450,12 +355,7 @@
 			<total units="kWh">176640</total>
 		</usage>
 		<usage>
-			<date>
-				<month>April</month>
-				<day/>
-				<year>2009</year>
-			</date>
-			<days/>
+			<date>2009-04-01</date>
 			<register>
 				<identifier>kWh</identifier>
 				<total units="kWh">138240</total>
@@ -463,12 +363,7 @@
 			<total units="kWh">138240</total>
 		</usage>
 		<usage>
-			<date>
-				<month>May</month>
-				<day/>
-				<year units="kWh">2009</year>
-			</date>
-			<days/>
+			<date>2009-05-01</date>
 			<register>
 				<identifier>kWh</identifier>
 				<total units="kWh">148800</total>
