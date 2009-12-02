@@ -49,26 +49,12 @@
 			<amount>6.14</amount>
 		</latepayment>
 	</summary>
-	<currentcharges service="electric">
-		<distribution>
-			<priorbalance>547.20</priorbalance>
-			<payment>547.20</payment>
-			<balanceforward>0</balanceforward>
-			<currentcharges>547.67</currentcharges>
-		</distribution>
-		<supply name="WGES (consider putting reference here)">
-			<priorbalance>2133.14</priorbalance>
-			<payment>2133.14</payment>
-			<balanceforward>0</balanceforward>
-			<currentcharges>2144.08</currentcharges>
-		</supply>
-	</currentcharges>
 	<details service="electric">
 		<rateschedule>
 			<name>Non-Residential-MGT-LV IIB</name>
 			<rateineffect>Summer</rateineffect>
 		</rateschedule>
-		<distribution>
+		<chargegroup type="Distribution">
 			<charges>
 				<charge>
 					<description>Customer Charge</description>
@@ -143,9 +129,9 @@
 					<total>2.89</total>
 				</charge>
 			</charges>
-			<total>523.26</total>
-		</distribution>
-		<supply>
+			<subtotal>523.26</subtotal>
+		</chargegroup>
+		<chargegroup type="Generation/Supply">
 			<charges>
 				<charge>
 					<description>Total Use</description>
@@ -158,9 +144,9 @@
 					<total>121.36</total>
 				</charge>
 			</charges>
-			<total>2144.08</total>
-		</supply>
-		<tax>
+			<subtotal>2144.08</subtotal>
+		</chargegroup>
+		<chargegroup type="Tax">
 			<charges>
 				<charge>
 					<description>Sales Tax</description>
@@ -168,8 +154,8 @@
 					<total>24.41</total>
 				</charge>
 			</charges>
-			<total>24.41</total>
-		</tax>
+			<subtotal>24.41</subtotal>
+		</chargegroup>
 		<total>547.67</total>
 	</details>
 	<billableusage service="electric">
@@ -182,7 +168,7 @@
 		<meter type="electric">
 			<estimated>true</estimated>
 			<nextreaddate>2008-10-03</nextreaddate>
-			<identifier></identifier>
+			<identifier/>
 			<register>
 				<identifier>475T</identifier>
 				<description>Kilowatt Hour Meter</description>

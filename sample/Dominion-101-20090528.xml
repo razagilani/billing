@@ -57,7 +57,7 @@
 		<telephonenumber/>
 		<hours/>
 	</unknownaddress>
-		<unknownaddress description="test">
+	<unknownaddress description="test">
 		<addressee>EBill Pay Location</addressee>
 		<street>http://www.dom.com</street>
 		<city/>
@@ -90,23 +90,11 @@
 			<amount>181.52</amount>
 		</latepayment>
 	</summary>
-	<currentcharges service="electric">
-		<distribution>
-			<priorbalance>12101.51</priorbalance>
-			<payment>12101.51</payment>
-			<balanceforward>0.0</balanceforward>
-			<currentcharges>13574.14</currentcharges>
-		</distribution>
-		<supply name="">
-			<priorbalance>0.0</priorbalance>
-			<payment>0.0</payment>
-			<balanceforward>0.0</balanceforward>
-			<currentcharges>0.0</currentcharges>
-		</supply>
-	</currentcharges>
 	<details service="electric">
-		<rateschedule><name>Non Residential Service (Schedule GS-3)</name></rateschedule>
-		<distribution>
+		<rateschedule>
+			<name>Non Residential Service (Schedule GS-3)</name>
+		</rateschedule>
+		<chargegroup type="Distribution">
 			<charges>
 				<charge>
 					<description>Basic Customer Charge</description>
@@ -123,9 +111,8 @@
 					<total>1062.12</total>
 				</charge>
 			</charges>
-			<total>1220.77</total>
-		</distribution>
-		<supply>
+		</chargegroup>
+		<chargegroup type="Generation/Supply">
 			<charges>
 				<charge>
 					<description>ESS Adjustment</description>
@@ -169,9 +156,8 @@
 					<total>37.20</total>
 				</charge>
 			</charges>
-			<total>11547.93</total>
-		</supply>
-		<tax>
+		</chargegroup>
+		<chargegroup type="Tax">
 			<charges>
 				<charge>
 					<description>State/Local Consumption Tax</description>
@@ -182,8 +168,7 @@
 					<total>686.94</total>
 				</charge>
 			</charges>
-			<total>805.44</total>
-		</tax>
+		</chargegroup>
 		<total>13574.14</total>
 	</details>
 	<billableusage service="electric">

@@ -162,66 +162,12 @@
 						</xs:sequence>
 					</xs:complexType>
 				</xs:element>
-				<xs:element name="currentcharges" minOccurs="0">
-					<xs:annotation>
-						<xs:documentation>Current charges summary breaks down amount paid and owed per payee.</xs:documentation>
-					</xs:annotation>
-					<xs:complexType>
-						<xs:sequence>
-							<xs:element name="distribution">
-								<xs:annotation>
-									<xs:documentation>Charges from entity responsible for delivery.</xs:documentation>
-								</xs:annotation>
-								<xs:complexType>
-									<xs:sequence>
-										<xs:element name="priorbalance">
-											<xs:annotation>
-												<xs:documentation>When the supplier and distributer is the same, use distributor child elements for current charges.</xs:documentation>
-											</xs:annotation>
-										</xs:element>
-										<xs:element name="payment">
-											<xs:annotation>
-												<xs:documentation>Previous payment.</xs:documentation>
-											</xs:annotation>
-										</xs:element>
-										<xs:element name="balanceforward"/>
-										<xs:element name="currentcharges"/>
-									</xs:sequence>
-								</xs:complexType>
-							</xs:element>
-							<xs:element name="supply">
-								<xs:annotation>
-									<xs:documentation>Suppliers of energy (properly called wholesalers?)  Figure out how to reference supplier detail bill.</xs:documentation>
-								</xs:annotation>
-								<xs:complexType>
-									<xs:sequence>
-										<xs:element name="priorbalance" type="xs:decimal"/>
-										<xs:element name="payment" type="xs:decimal">
-											<xs:annotation>
-												<xs:documentation>Previous payment</xs:documentation>
-											</xs:annotation>
-										</xs:element>
-										<xs:element name="balanceforward" type="xs:decimal"/>
-										<xs:element name="currentcharges" type="xs:decimal"/>
-									</xs:sequence>
-									<xs:attribute name="name" use="required"/>
-									<xs:attribute name="reference">
-										<xs:annotation>
-											<xs:documentation>Refers to a bill detail from a supplier not included in this bill.  Refers to root element utilitybill id.</xs:documentation>
-										</xs:annotation>
-									</xs:attribute>
-								</xs:complexType>
-							</xs:element>
-						</xs:sequence>
-						<xs:attributeGroup ref="service"/>
-					</xs:complexType>
-				</xs:element>
 				<xs:element name="details" maxOccurs="2">
 					<xs:annotation>
 						<xs:documentation>Details necessary for bill computation.</xs:documentation>
 					</xs:annotation>
 					<xs:complexType>
-						<xs:all>
+						<xs:sequence>
 							<xs:element name="rateschedule">
 								<xs:annotation>
 									<xs:documentation>Name of rate.</xs:documentation>
@@ -233,9 +179,9 @@
 									</xs:sequence>
 								</xs:complexType>
 							</xs:element>
-							<xs:element name="distribution">
+							<xs:element name="chargegroup" maxOccurs="4">
 								<xs:annotation>
-									<xs:documentation>Distribution details.</xs:documentation>
+									<xs:documentation>Group of charges by generation/supply, transmission, distribution or taxation</xs:documentation>
 								</xs:annotation>
 								<xs:complexType>
 									<xs:sequence>
@@ -249,7 +195,7 @@
 												</xs:sequence>
 											</xs:complexType>
 										</xs:element>
-										<xs:element name="total" minOccurs="0">
+										<xs:element name="subtotal" minOccurs="0">
 											<xs:simpleType>
 												<xs:restriction base="xs:decimal">
 													<xs:fractionDigits value="2"/>
@@ -257,62 +203,20 @@
 											</xs:simpleType>
 										</xs:element>
 									</xs:sequence>
-								</xs:complexType>
-							</xs:element>
-							<xs:element name="supply">
-								<xs:annotation>
-									<xs:documentation>Service details.</xs:documentation>
-								</xs:annotation>
-								<xs:complexType>
-									<xs:sequence>
-										<xs:element name="charges">
-											<xs:annotation>
-												<xs:documentation>Detail charges for service.</xs:documentation>
-											</xs:annotation>
-											<xs:complexType>
-												<xs:sequence>
-													<xs:element name="charge" type="charge" maxOccurs="unbounded"/>
-												</xs:sequence>
-											</xs:complexType>
-										</xs:element>
-										<xs:element name="total" minOccurs="0">
-											<xs:simpleType>
-												<xs:restriction base="xs:decimal">
-													<xs:fractionDigits value="2"/>
-												</xs:restriction>
-											</xs:simpleType>
-										</xs:element>
-									</xs:sequence>
-								</xs:complexType>
-							</xs:element>
-							<xs:element name="tax">
-								<xs:annotation>
-									<xs:documentation>Tax details.</xs:documentation>
-								</xs:annotation>
-								<xs:complexType>
-									<xs:sequence>
-										<xs:element name="charges">
-											<xs:annotation>
-												<xs:documentation>Detail charges for tax.</xs:documentation>
-											</xs:annotation>
-											<xs:complexType>
-												<xs:sequence>
-													<xs:element name="charge" type="charge" maxOccurs="unbounded"/>
-												</xs:sequence>
-											</xs:complexType>
-										</xs:element>
-										<xs:element name="total" minOccurs="0">
-											<xs:simpleType>
-												<xs:restriction base="xs:decimal">
-													<xs:fractionDigits value="2"/>
-												</xs:restriction>
-											</xs:simpleType>
-										</xs:element>
-									</xs:sequence>
+									<xs:attribute name="type" use="required">
+										<xs:simpleType>
+											<xs:restriction base="xs:string">
+												<xs:enumeration value="Generation/Supply"/>
+												<xs:enumeration value="Transmission"/>
+												<xs:enumeration value="Distribution"/>
+												<xs:enumeration value="Tax"/>
+											</xs:restriction>
+										</xs:simpleType>
+									</xs:attribute>
 								</xs:complexType>
 							</xs:element>
 							<xs:element name="total" type="xs:decimal"/>
-						</xs:all>
+						</xs:sequence>
 						<xs:attributeGroup ref="service"/>
 					</xs:complexType>
 				</xs:element>
@@ -460,22 +364,14 @@
 						</xs:element>
 						<xs:element name="description"/>
 						<xs:element name="units" type="xs:string" minOccurs="0"/>
-						<xs:element name="priorreading" type="xs:integer" minOccurs="0"/>
-						<xs:element name="presentreading" type="xs:integer" minOccurs="0"/>
+						<xs:element name="priorreading" type="xs:decimal" minOccurs="0"/>
+						<xs:element name="presentreading" type="xs:decimal" minOccurs="0"/>
 						<xs:element name="factor" type="xs:integer" minOccurs="0"/>
-						<xs:element name="total" type="xs:integer"/>
+						<xs:element name="total" type="xs:decimal"/>
 					</xs:sequence>
 				</xs:complexType>
 			</xs:element>
 		</xs:sequence>
-		<xs:attribute name="type" use="required">
-			<xs:simpleType>
-				<xs:restriction base="xs:string">
-					<xs:enumeration value="gas"/>
-					<xs:enumeration value="electric"/>
-				</xs:restriction>
-			</xs:simpleType>
-		</xs:attribute>
 	</xs:complexType>
 	<xs:complexType name="amount"/>
 	<xs:complexType name="supplier"/>

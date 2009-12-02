@@ -98,7 +98,7 @@
 		<rateschedule>
 			<name>Commercial Service</name>
 		</rateschedule>
-		<distribution>
+		<chargegroup type="Distribution">
 			<charges>
 				<charge>
 					<description>Customer Charge</description>
@@ -123,8 +123,8 @@
 					<total>113.62</total>
 				</charge>
 			</charges>
-		</distribution>
-		<supply>
+		</chargegroup>
+		<chargegroup type="Generation/Supply">
 			<charges>
 				<charge>
 					<description>Natural Gas Supply Charge</description>
@@ -133,8 +133,8 @@
 					<total>793.88</total>
 				</charge>
 			</charges>
-		</supply>
-		<tax>
+		</chargegroup>
+		<chargegroup type="Tax">
 			<charges>
 				<charge>
 					<description>Sales Tax Adjustment</description>
@@ -145,38 +145,90 @@
 					<total>91.17</total>
 				</charge>
 			</charges>
-		</tax>
+		</chargegroup>
 		<total>1610.53</total>
 	</details>
 	<details service="electric">
 		<rateschedule>
 			<name>Commercial Service</name>
 		</rateschedule>
-		<distribution>
+		<chargegroup type="Generation/Supply">
 			<charges>
 				<charge>
-					<description/>
-					<total/>
+					<description>Generation Charges</description>
+					<quantity units="kWh">2120</quantity>
+					<rate units="">0.12710</rate>
+					<total>269.45</total>
+				</charge>
+				<charge>
+					<description>Generation Charges</description>
+					<quantity units="kWh">4080</quantity>
+					<rate units="dollars">0.05000</rate>
+					<total>204.00</total>
 				</charge>
 			</charges>
-		</distribution>
-		<supply>
+		</chargegroup>
+		<chargegroup type="Distribution">
 			<charges>
 				<charge>
-					<description/>
-					<total/>
+					<description>Customer Charge</description>
+					<total>23.94</total>
+				</charge>
+				<charge>
+					<description>Distribution Charge</description>
+					<quantity units="kWh">2120</quantity>
+					<rate units="dollars">0.03640</rate>
+					<total>77.17</total>
+				</charge>
+				<charge>
+					<description>Distribution Charge</description>
+					<quantity units="kWh">4080</quantity>
+					<rate units="dollars">0.01080</rate>
+					<total>44.06</total>
+				</charge>
+				<charge>
+					<description>Transition Charge</description>
+					<quantity units="kWh">2120</quantity>
+					<rate units="dollars">0.07270</rate>
+					<total>154.12</total>
+				</charge>
+				<charge>
+					<description>Transition Charge</description>
+					<quantity units="kWh">4080</quantity>
+					<rate units="dollars">0.02170</rate>
+					<total>88.54</total>
 				</charge>
 			</charges>
-		</supply>
-		<tax>
+		</chargegroup>
+		<chargegroup type="Transmission">
 			<charges>
 				<charge>
-					<description/>
-					<total/>
+					<description>Transmission Charge</description>
+					<quantity units="kWh">2120</quantity>
+					<rate units="dollars">0.01290</rate>
+					<total>27.35</total>
+				</charge>
+				<charge>
+					<description>Transmission Charge</description>
+					<quantity units="kWh">4080</quantity>
+					<rate units="dollars">0.00380</rate>
+					<total>15.50</total>
 				</charge>
 			</charges>
-		</tax>
-		<total/>
+		</chargegroup>
+		<chargegroup type="Tax">
+			<charges>
+				<charge>
+					<description>State Tax Adjustment</description>
+					<total>-2.33</total>
+				</charge>
+				<charge>
+					<description>Sales Tax</description>
+					<total>54.11</total>
+				</charge>
+			</charges>
+		</chargegroup>
+		<total>955.91</total>
 	</details>
 	<billableusage service="gas">
 		<rateschedule>
@@ -200,54 +252,58 @@
 			<quantity units="kWh">6200</quantity>
 		</usage>
 	</billableusage>
-	<measuredusage>
-		<meter type="">
-			<estimated/>
+	<measuredusage service="gas">
+		<meter>
+			<estimated>false</estimated>
 			<identifier>027870434</identifier>
 			<register>
-				<identifier/>
-				<description/>
-				<total/>
+				<identifier>027870434</identifier>
+				<description>Total CCF</description>
+				<units>CCF</units>
+				<priorreading>46654</priorreading>
+				<presentreading>47485</presentreading>
+				<factor>1</factor>
+				<total>831</total>
 			</register>
 		</meter>
-		<meter type="">
-			<estimated/>
+		<meter>
+			<estimated>false</estimated>
 			<identifier>028702956</identifier>
 			<register>
-				<identifier/>
-				<description/>
-				<total/>
+				<identifier>028702956</identifier>
+				<description>Total CCF</description>
+				<units>CCF</units>
+				<priorreading>49159</priorreading>
+				<presentreading>49702</presentreading>
+				<factor>1</factor>
+				<total>543</total>
 			</register>
 		</meter>
-		<meter type="">
-			<estimated/>
+		<meter>
+			<estimated>false</estimated>
 			<identifier>084010385</identifier>
 			<register>
-				<identifier/>
-				<description/>
-				<total/>
+				<identifier>084010385</identifier>
+				<description>Total kWh</description>
+				<units>kWh</units>
+				<priorreading>15421</priorreading>
+				<presentreading>15576</presentreading>
+				<factor>40</factor>
+				<total>6200</total>
+			</register>
+		</meter>
+		<meter>
+			<estimated>false</estimated>
+			<identifier>084010385</identifier>
+			<register>
+				<identifier>084010385</identifier>
+				<description>Peak kW</description>
+				<priorreading>0.00</priorreading>
+				<presentreading>0.66</presentreading>
+				<factor>40</factor>
+				<total>26.48</total>
 			</register>
 		</meter>
 		<nextreaddate>2009-11-04</nextreaddate>
 	</measuredusage>
-	<usagehistory service="">
-		<usage>
-			<date/>
-			<register>
-				<identifier/>
-				<total/>
-			</register>
-			<total/>
-		</usage>
-	</usagehistory>
-	< service="">
-		<usage>
-			<date/>
-			<register>
-				<identifier/>
-				<total/>
-			</register>
-			<total/>
-		</usage>
-	</>
 </utilitybill>
