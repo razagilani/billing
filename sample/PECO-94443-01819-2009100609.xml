@@ -56,7 +56,27 @@
 			<telephonenumber>1-877-432-9384</telephonenumber>
 			<hours>M-F 8:30-5PM</hours>
 		</paymentlocation>
+		<emergencycontact>
+			<addressee>Emergency and Repairs</addressee>
+			<street/>
+			<city/>
+			<state/>
+			<country/>
+			<postalcode/>
+			<telephonenumber>1-800-841-4141</telephonenumber>
+			<hours/>
+		</emergencycontact>
 	</uar>
+	<unknownaddress description="Business Inquiry">
+		<addressee/>
+		<street/>
+		<city/>
+		<state/>
+		<country/>
+		<postalcode/>
+		<telephonenumber>1-800-980-9655</telephonenumber>
+		<hours/>
+	</unknownaddress>
 	<summary>
 		<priorbalance>0.0</priorbalance>
 		<previouspayment>
@@ -74,23 +94,63 @@
 			<amount/>
 		</latepayment>
 	</summary>
-	<currentcharges>
-		<distributer>
-			<priorbalance/>
-			<payment/>
-			<balanceforward/>
-			<currentcharges/>
-		</distributer>
-		<supplier name="">
-			<priorbalance/>
-			<payment/>
-			<balanceforward/>
-			<currentcharges/>
-		</supplier>
-	</currentcharges>
-	<details>
+	<details service="gas">
 		<rateschedule>
-			<name/>
+			<name>Commercial Service</name>
+		</rateschedule>
+		<distribution>
+			<charges>
+				<charge>
+					<description>Customer Charge</description>
+					<total>25.00</total>
+				</charge>
+				<charge>
+					<description>Distribution Charges</description>
+					<quantity units="CCF">1374</quantity>
+					<rate units="dollars">0.37785</rate>
+					<total>519.17</total>
+				</charge>
+				<charge>
+					<description>Balancing Service Charges</description>
+					<quantity units="CCF">1374</quantity>
+					<rate units="dollars">0.04816</rate>
+					<total>66.17</total>
+				</charge>
+				<charge>
+					<description>Gas Cost Adjustment Charge</description>
+					<quantity units="CCF">1374</quantity>
+					<rate units="dollars">0.08269</rate>
+					<total>113.62</total>
+				</charge>
+			</charges>
+		</distribution>
+		<supply>
+			<charges>
+				<charge>
+					<description>Natural Gas Supply Charge</description>
+					<quantity units="CCF">1374</quantity>
+					<rate units="dollars">0.57779</rate>
+					<total>793.88</total>
+				</charge>
+			</charges>
+		</supply>
+		<tax>
+			<charges>
+				<charge>
+					<description>Sales Tax Adjustment</description>
+					<total>1.52</total>
+				</charge>
+				<charge>
+					<description>Sales Tax</description>
+					<total>91.17</total>
+				</charge>
+			</charges>
+		</tax>
+		<total>1610.53</total>
+	</details>
+	<details service="electric">
+		<rateschedule>
+			<name>Commercial Service</name>
 		</rateschedule>
 		<distribution>
 			<charges>
@@ -99,17 +159,15 @@
 					<total/>
 				</charge>
 			</charges>
-			<total/>
 		</distribution>
-		<service>
+		<supply>
 			<charges>
 				<charge>
 					<description/>
 					<total/>
 				</charge>
 			</charges>
-			<total/>
-		</service>
+		</supply>
 		<tax>
 			<charges>
 				<charge>
@@ -117,14 +175,30 @@
 					<total/>
 				</charge>
 			</charges>
-			<total/>
 		</tax>
 		<total/>
 	</details>
-	<billableusage>
+	<billableusage service="gas">
 		<rateschedule>
-			<name/>
+			<name>Commercial Service</name>
 		</rateschedule>
+		<usage>
+			<description>Total CCF Used</description>
+			<quantity units="CCF">1374</quantity>
+		</usage>
+	</billableusage>
+	<billableusage service="electric">
+		<rateschedule>
+			<name>Commercial Service</name>
+		</rateschedule>
+		<usage>
+			<description>Total kW Billed</description>
+			<quantity units="kW">26.5</quantity>
+		</usage>
+		<usage>
+			<description>Total kWh Used</description>
+			<quantity units="kWh">6200</quantity>
+		</usage>
 	</billableusage>
 	<measuredusage>
 		<meter type="">
@@ -156,4 +230,24 @@
 		</meter>
 		<nextreaddate>2009-11-04</nextreaddate>
 	</measuredusage>
+	<usagehistory service="">
+		<usage>
+			<date/>
+			<register>
+				<identifier/>
+				<total/>
+			</register>
+			<total/>
+		</usage>
+	</usagehistory>
+	< service="">
+		<usage>
+			<date/>
+			<register>
+				<identifier/>
+				<total/>
+			</register>
+			<total/>
+		</usage>
+	</>
 </utilitybill>

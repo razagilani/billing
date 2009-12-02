@@ -90,21 +90,21 @@
 			<amount>181.52</amount>
 		</latepayment>
 	</summary>
-	<currentcharges>
-		<distributer>
+	<currentcharges service="electric">
+		<distribution>
 			<priorbalance>12101.51</priorbalance>
 			<payment>12101.51</payment>
 			<balanceforward>0.0</balanceforward>
 			<currentcharges>13574.14</currentcharges>
-		</distributer>
-		<supplier name="">
+		</distribution>
+		<supply name="">
 			<priorbalance>0.0</priorbalance>
 			<payment>0.0</payment>
 			<balanceforward>0.0</balanceforward>
 			<currentcharges>0.0</currentcharges>
-		</supplier>
+		</supply>
 	</currentcharges>
-	<details>
+	<details service="electric">
 		<rateschedule><name>Non Residential Service (Schedule GS-3)</name></rateschedule>
 		<distribution>
 			<charges>
@@ -125,7 +125,7 @@
 			</charges>
 			<total>1220.77</total>
 		</distribution>
-		<service>
+		<supply>
 			<charges>
 				<charge>
 					<description>ESS Adjustment</description>
@@ -170,7 +170,7 @@
 				</charge>
 			</charges>
 			<total>11547.93</total>
-		</service>
+		</supply>
 		<tax>
 			<charges>
 				<charge>
@@ -186,7 +186,7 @@
 		</tax>
 		<total>13574.14</total>
 	</details>
-	<billableusage>
+	<billableusage service="electric">
 		<rateschedule>
 			<name>Schedule GS-3</name>
 			<rateineffect>04/01-05/01</rateineffect>
@@ -213,7 +213,7 @@
 		</usage>
 		<total>148800</total>
 	</billableusage>
-	<measuredusage>
+	<measuredusage service="electric">
 		<meter type="electric">
 			<estimated>false</estimated>
 			<priorreaddate>2009-04-01</priorreaddate>
@@ -265,7 +265,7 @@
 			</register>
 		</meter>
 	</measuredusage>
-	<usagehistory>
+	<usagehistory service="electric">
 		<usage>
 			<date>2008-05-01</date>
 			<register>

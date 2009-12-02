@@ -49,21 +49,21 @@
 			<amount>6.14</amount>
 		</latepayment>
 	</summary>
-	<currentcharges>
-		<distributer>
+	<currentcharges service="electric">
+		<distribution>
 			<priorbalance>547.20</priorbalance>
 			<payment>547.20</payment>
 			<balanceforward>0</balanceforward>
 			<currentcharges>547.67</currentcharges>
-		</distributer>
-		<supplier name="WGES (consider putting reference here)">
+		</distribution>
+		<supply name="WGES (consider putting reference here)">
 			<priorbalance>2133.14</priorbalance>
 			<payment>2133.14</payment>
 			<balanceforward>0</balanceforward>
 			<currentcharges>2144.08</currentcharges>
-		</supplier>
+		</supply>
 	</currentcharges>
-	<details>
+	<details service="electric">
 		<rateschedule>
 			<name>Non-Residential-MGT-LV IIB</name>
 			<rateineffect>Summer</rateineffect>
@@ -145,7 +145,7 @@
 			</charges>
 			<total>523.26</total>
 		</distribution>
-		<service>
+		<supply>
 			<charges>
 				<charge>
 					<description>Total Use</description>
@@ -159,7 +159,7 @@
 				</charge>
 			</charges>
 			<total>2144.08</total>
-		</service>
+		</supply>
 		<tax>
 			<charges>
 				<charge>
@@ -172,13 +172,13 @@
 		</tax>
 		<total>547.67</total>
 	</details>
-	<billableusage>
+	<billableusage service="electric">
 		<rateschedule>
 			<name>Non-Residential-MGT-LV IIB</name>
 		</rateschedule>
 		<total>15680</total>
 	</billableusage>
-	<measuredusage>
+	<measuredusage service="electric">
 		<meter type="electric">
 			<estimated>true</estimated>
 			<nextreaddate>2008-10-03</nextreaddate>

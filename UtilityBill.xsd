@@ -162,7 +162,7 @@
 						</xs:sequence>
 					</xs:complexType>
 				</xs:element>
-				<xs:element name="currentcharges">
+				<xs:element name="currentcharges" minOccurs="0">
 					<xs:annotation>
 						<xs:documentation>Current charges summary breaks down amount paid and owed per payee.</xs:documentation>
 					</xs:annotation>
@@ -213,17 +213,10 @@
 								</xs:complexType>
 							</xs:element>
 						</xs:sequence>
-						<xs:attribute name="service" use="required">
-							<xs:simpleType>
-								<xs:restriction base="xs:string">
-									<xs:enumeration value="gas"/>
-									<xs:enumeration value="electric"/>
-								</xs:restriction>
-							</xs:simpleType>
-						</xs:attribute>
+						<xs:attributeGroup ref="service"/>
 					</xs:complexType>
 				</xs:element>
-				<xs:element name="details">
+				<xs:element name="details" maxOccurs="2">
 					<xs:annotation>
 						<xs:documentation>Details necessary for bill computation.</xs:documentation>
 					</xs:annotation>
@@ -256,7 +249,7 @@
 												</xs:sequence>
 											</xs:complexType>
 										</xs:element>
-										<xs:element name="total">
+										<xs:element name="total" minOccurs="0">
 											<xs:simpleType>
 												<xs:restriction base="xs:decimal">
 													<xs:fractionDigits value="2"/>
@@ -282,7 +275,7 @@
 												</xs:sequence>
 											</xs:complexType>
 										</xs:element>
-										<xs:element name="total">
+										<xs:element name="total" minOccurs="0">
 											<xs:simpleType>
 												<xs:restriction base="xs:decimal">
 													<xs:fractionDigits value="2"/>
@@ -308,7 +301,7 @@
 												</xs:sequence>
 											</xs:complexType>
 										</xs:element>
-										<xs:element name="total">
+										<xs:element name="total" minOccurs="0">
 											<xs:simpleType>
 												<xs:restriction base="xs:decimal">
 													<xs:fractionDigits value="2"/>
@@ -320,17 +313,10 @@
 							</xs:element>
 							<xs:element name="total" type="xs:decimal"/>
 						</xs:all>
-						<xs:attribute name="service" use="required">
-							<xs:simpleType>
-								<xs:restriction base="xs:string">
-									<xs:enumeration value="gas"/>
-									<xs:enumeration value="electric"/>
-								</xs:restriction>
-							</xs:simpleType>
-						</xs:attribute>
+						<xs:attributeGroup ref="service"/>
 					</xs:complexType>
 				</xs:element>
-				<xs:element name="billableusage">
+				<xs:element name="billableusage" maxOccurs="2">
 					<xs:annotation>
 						<xs:documentation>Billable usage which may differ from measured usage</xs:documentation>
 					</xs:annotation>
@@ -351,17 +337,10 @@
 								</xs:annotation>
 							</xs:element>
 						</xs:sequence>
-						<xs:attribute name="service" use="required">
-							<xs:simpleType>
-								<xs:restriction base="xs:string">
-									<xs:enumeration value="gas"/>
-									<xs:enumeration value="electric"/>
-								</xs:restriction>
-							</xs:simpleType>
-						</xs:attribute>
+						<xs:attributeGroup ref="service"/>
 					</xs:complexType>
 				</xs:element>
-				<xs:element name="measuredusage">
+				<xs:element name="measuredusage" maxOccurs="2">
 					<xs:annotation>
 						<xs:documentation>Meters associated with service location.</xs:documentation>
 					</xs:annotation>
@@ -380,17 +359,10 @@
 								</xs:annotation>
 							</xs:element>
 						</xs:sequence>
-						<xs:attribute name="service" use="required">
-							<xs:simpleType>
-								<xs:restriction base="xs:string">
-									<xs:enumeration value="gas"/>
-									<xs:enumeration value="electric"/>
-								</xs:restriction>
-							</xs:simpleType>
-						</xs:attribute>
+						<xs:attributeGroup ref="service"/>
 					</xs:complexType>
 				</xs:element>
-				<xs:element name="usagehistory" minOccurs="0">
+				<xs:element name="usagehistory" minOccurs="0" maxOccurs="2">
 					<xs:annotation>
 						<xs:documentation>Summary of prior usage by period.</xs:documentation>
 					</xs:annotation>
@@ -441,14 +413,7 @@
 								</xs:complexType>
 							</xs:element>
 						</xs:sequence>
-						<xs:attribute name="service" use="required">
-							<xs:simpleType>
-								<xs:restriction base="xs:string">
-									<xs:enumeration value="gas"/>
-									<xs:enumeration value="electric"/>
-								</xs:restriction>
-							</xs:simpleType>
-						</xs:attribute>
+						<xs:attributeGroup ref="service"/>
 					</xs:complexType>
 				</xs:element>
 			</xs:sequence>
@@ -556,6 +521,8 @@
 								<xs:simpleType>
 									<xs:restriction base="xs:string">
 										<xs:enumeration value="kWh"/>
+										<xs:enumeration value="CCF"/>
+										<xs:enumeration value="kW"/>
 									</xs:restriction>
 								</xs:simpleType>
 							</xs:attribute>
@@ -565,4 +532,14 @@
 			</xs:element>
 		</xs:all>
 	</xs:complexType>
+	<xs:attributeGroup name="service">
+		<xs:attribute name="service" use="required">
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:enumeration value="gas"/>
+					<xs:enumeration value="electric"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+	</xs:attributeGroup>
 </xs:schema>
