@@ -26,6 +26,16 @@
 	</car>
 	<uar>
 		<tin>53-0127880</tin>
+		<suppliercontact>
+			<addressee>Washington Gas Energy Services, Inc.</addressee>
+			<street>13865 Sunrise Valley Dr.  Suite 200</street>
+			<city>Herndon</city>
+			<state>VA</state>
+			<country>USA</country>
+			<postalcode>20171</postalcode>
+			<telephonenumber>888-236-9437</telephonenumber>
+			<hours/>
+		</suppliercontact>
 	</uar>
 	<summary>
 		<priorbalance>0.0</priorbalance>
@@ -156,7 +166,7 @@
 			</charges>
 			<subtotal>24.41</subtotal>
 		</chargegroup>
-		<total>547.67</total>
+		<total>2691.75</total>
 	</details>
 	<billableusage service="electric">
 		<rateschedule>
@@ -165,7 +175,7 @@
 		<total>15680</total>
 	</billableusage>
 	<measuredusage service="electric">
-		<meter type="electric">
+		<meter>
 			<estimated>true</estimated>
 			<nextreaddate>2008-10-03</nextreaddate>
 			<identifier/>

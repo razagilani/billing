@@ -52,6 +52,7 @@
 									<xs:documentation>Physical locations where payment can be made or sent.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
+							<xs:element name="suppliercontact" type="address" minOccurs="0"/>
 							<xs:element name="emergencycontact" type="address" minOccurs="0">
 								<xs:annotation>
 									<xs:documentation>Contact information for emergency related to service location.</xs:documentation>
