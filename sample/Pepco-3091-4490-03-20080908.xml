@@ -51,7 +51,8 @@
 		<billperiodbegin>2008-02-08</billperiodbegin>
 		<billperiodend>2008-09-03</billperiodend>
 		<issuedate>2008-09-09</issuedate>
-		<currentcharges>0.0</currentcharges>
+		<currentcharges service="electric">547.67</currentcharges>
+		<currentcharges service="gas">2691.75</currentcharges>
 		<totaldue>2691.75</totaldue>
 		<duedate>2008-09-30</duedate>
 		<latepayment>

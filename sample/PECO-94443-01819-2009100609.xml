@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (self) -->
-<utilitybill id="" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="..\UtilityBill.xsd">
+<utilitybill id="2247634543" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="..\UtilityBill.xsd">
 	<car>
 		<accountnumber>94443-01819</accountnumber>
 		<serviceaddress>
@@ -86,7 +86,8 @@
 		<billperiodbegin>2009-09-03</billperiodbegin>
 		<billperiodend>2009-10-05</billperiodend>
 		<issuedate>2009-10-06</issuedate>
-		<currentcharges>955.91</currentcharges>
+		<currentcharges service="gas">1610.53</currentcharges>
+		<currentcharges service="electric">955.91</currentcharges>
 		<totaldue>2566.44</totaldue>
 		<duedate>2009-10-28</duedate>
 		<latepayment>
@@ -98,6 +99,16 @@
 		<rateschedule>
 			<name>Commercial Service</name>
 		</rateschedule>
+		<chargegroup type="Generation/Supply">
+			<charges>
+				<charge>
+					<description>Natural Gas Supply Charge</description>
+					<quantity units="CCF">1374</quantity>
+					<rate units="dollars">0.57779</rate>
+					<total>793.88</total>
+				</charge>
+			</charges>
+		</chargegroup>
 		<chargegroup type="Distribution">
 			<charges>
 				<charge>
@@ -121,16 +132,6 @@
 					<quantity units="CCF">1374</quantity>
 					<rate units="dollars">0.08269</rate>
 					<total>113.62</total>
-				</charge>
-			</charges>
-		</chargegroup>
-		<chargegroup type="Generation/Supply">
-			<charges>
-				<charge>
-					<description>Natural Gas Supply Charge</description>
-					<quantity units="CCF">1374</quantity>
-					<rate units="dollars">0.57779</rate>
-					<total>793.88</total>
 				</charge>
 			</charges>
 		</chargegroup>
@@ -279,6 +280,9 @@
 				<total>543</total>
 			</register>
 		</meter>
+		<nextreaddate>2009-11-04</nextreaddate>
+	</measuredusage>
+	<measuredusage service="electric">
 		<meter>
 			<estimated>false</estimated>
 			<identifier>084010385</identifier>
@@ -298,6 +302,7 @@
 			<register>
 				<identifier>084010385</identifier>
 				<description>Peak kW</description>
+				<units>kW</units>
 				<priorreading>0.00</priorreading>
 				<presentreading>0.66</presentreading>
 				<factor>40</factor>

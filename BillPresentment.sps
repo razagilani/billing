@@ -4,7 +4,7 @@
 	<schemasources>
 		<namespaces/>
 		<schemasources>
-			<xsdschemasource name="XML" main="1" schemafile="UtilityBill.xsd" workingxmlfile="sample\Pepco-3091-4490-03-20080908.xml">
+			<xsdschemasource name="XML" main="1" schemafile="UtilityBill.xsd" workingxmlfile="sample\PECO-94443-01819-2009100609.xml">
 				<xmltablesupport/>
 				<textstateicons/>
 			</xsdschemasource>
@@ -37,561 +37,41 @@
 									<text fixtext="Skyline Normalized Utility Bill (SNUB)"/>
 								</children>
 							</paragraph>
-							<text fixtext="Skyline Utility Bill Reference: "/>
-							<template subtype="element" match="utilitybill">
+							<paragraph>
+								<properties align="right"/>
 								<children>
-									<template subtype="attribute" match="id">
+									<text fixtext="SNUB  "/>
+									<template subtype="element" match="utilitybill">
 										<children>
-											<content/>
+											<template subtype="attribute" match="id">
+												<children>
+													<content/>
+												</children>
+												<variables/>
+											</template>
 										</children>
 										<variables/>
 									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<newline/>
-							<paragraph paragraphtag="h2">
-								<children>
-									<text fixtext="Customer Records"/>
 								</children>
 							</paragraph>
-							<text fixtext="Utility Account Number: "/>
-							<template subtype="element" match="utilitybill">
+							<line/>
+							<paragraph>
 								<children>
-									<template subtype="element" match="car">
+									<paragraph paragraphtag="h2">
 										<children>
-											<template subtype="element" match="accountnumber">
-												<children>
-													<content/>
-												</children>
-												<variables/>
-											</template>
+											<text fixtext="Customer Account Records"/>
 										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<newline/>
-							<text fixtext="Billing Address: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="car">
+									</paragraph>
+									<paragraph paragraphtag="p">
 										<children>
-											<template subtype="element" match="billingaddress">
-												<children>
-													<content/>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<text fixtext="Service Address: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="car">
-										<children>
-											<template subtype="element" match="serviceaddress">
-												<children>
-													<content/>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<newline/>
-							<paragraph paragraphtag="h2">
-								<children>
-									<text fixtext="Utility Records"/>
-								</children>
-							</paragraph>
-							<text fixtext="Customer Service: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="uar">
-										<children>
-											<template subtype="element" match="customerservice">
-												<children>
-													<content/>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<text fixtext="Utility Payment Location: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="uar">
-										<children>
-											<template subtype="element" match="paymentlocation">
-												<children>
-													<content/>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<text fixtext="Utility Emergency Contact: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="uar">
-										<children>
-											<template subtype="element" match="emergencycontact">
-												<children>
-													<content/>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<text fixtext="Utility Commission:"/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="uar">
-										<children>
-											<template subtype="element" match="utilitycommission">
-												<children>
-													<content/>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<text fixtext="Written Inquiries: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="uar">
-										<children>
-											<template subtype="element" match="writteninquiries">
-												<children>
-													<content/>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<text fixtext="Miss Utility: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="uar">
-										<children>
-											<template subtype="element" match="missutility">
-												<children>
-													<content/>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<text fixtext="Service Outage: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="uar">
-										<children>
-											<template subtype="element" match="serviceoutage">
-												<children>
-													<content/>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<newline/>
-							<text fixtext="Unknown Addresses Found"/>
-							<newline/>
-							<tgrid>
-								<properties border="1"/>
-								<children>
-									<tgridbody-cols>
-										<children>
-											<tgridcol/>
-											<tgridcol/>
-											<tgridcol/>
-											<tgridcol/>
-											<tgridcol/>
-											<tgridcol/>
-											<tgridcol/>
-											<tgridcol/>
-											<tgridcol/>
-										</children>
-									</tgridbody-cols>
-									<tgridheader-rows>
-										<children>
-											<tgridrow>
-												<children>
-													<tgridcell>
-														<children>
-															<text fixtext="description"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="addressee"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="street"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="city"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="state"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="country"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="postalcode"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="telephonenumber"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="hours"/>
-														</children>
-													</tgridcell>
-												</children>
-											</tgridrow>
-										</children>
-									</tgridheader-rows>
-									<tgridbody-rows>
-										<children>
+											<text fixtext="Customer Utility Account Number "/>
 											<template subtype="element" match="utilitybill">
 												<children>
-													<template subtype="element" match="unknownaddress">
+													<template subtype="element" match="car">
 														<children>
-															<tgridrow>
+															<template subtype="element" match="accountnumber">
 																<children>
-																	<tgridcell>
-																		<children>
-																			<template subtype="attribute" match="description">
-																				<children>
-																					<content/>
-																				</children>
-																				<variables/>
-																			</template>
-																		</children>
-																	</tgridcell>
-																	<tgridcell>
-																		<children>
-																			<template subtype="element" match="addressee">
-																				<children>
-																					<content/>
-																				</children>
-																				<variables/>
-																			</template>
-																		</children>
-																	</tgridcell>
-																	<tgridcell>
-																		<children>
-																			<template subtype="element" match="street">
-																				<children>
-																					<content/>
-																				</children>
-																				<variables/>
-																			</template>
-																		</children>
-																	</tgridcell>
-																	<tgridcell>
-																		<children>
-																			<template subtype="element" match="city">
-																				<children>
-																					<content/>
-																				</children>
-																				<variables/>
-																			</template>
-																		</children>
-																	</tgridcell>
-																	<tgridcell>
-																		<children>
-																			<template subtype="element" match="state">
-																				<children>
-																					<content/>
-																				</children>
-																				<variables/>
-																			</template>
-																		</children>
-																	</tgridcell>
-																	<tgridcell>
-																		<children>
-																			<template subtype="element" match="country">
-																				<children>
-																					<content/>
-																				</children>
-																				<variables/>
-																			</template>
-																		</children>
-																	</tgridcell>
-																	<tgridcell>
-																		<children>
-																			<template subtype="element" match="postalcode">
-																				<children>
-																					<content/>
-																				</children>
-																				<variables/>
-																			</template>
-																		</children>
-																	</tgridcell>
-																	<tgridcell>
-																		<children>
-																			<template subtype="element" match="telephonenumber">
-																				<children>
-																					<content/>
-																				</children>
-																				<variables/>
-																			</template>
-																		</children>
-																	</tgridcell>
-																	<tgridcell>
-																		<children>
-																			<template subtype="element" match="hours">
-																				<children>
-																					<content/>
-																				</children>
-																				<variables/>
-																			</template>
-																		</children>
-																	</tgridcell>
-																</children>
-															</tgridrow>
-														</children>
-														<variables/>
-													</template>
-												</children>
-												<variables/>
-											</template>
-										</children>
-									</tgridbody-rows>
-								</children>
-							</tgrid>
-							<newline/>
-							<newline/>
-							<paragraph paragraphtag="h2">
-								<children>
-									<text fixtext="Summary"/>
-								</children>
-							</paragraph>
-							<text fixtext="Issued: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="summary">
-										<children>
-											<template subtype="element" match="issuedate">
-												<children>
-													<content>
-														<format datatype="date"/>
-													</content>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<text fixtext="Period From: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="summary">
-										<children>
-											<template subtype="element" match="billperiodbegin">
-												<children>
-													<content>
-														<format datatype="date"/>
-													</content>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<text fixtext="  To:  "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="summary">
-										<children>
-											<template subtype="element" match="billperiodend">
-												<children>
-													<content>
-														<format datatype="date"/>
-													</content>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<text fixtext="Prior Balance: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="summary">
-										<children>
-											<template subtype="element" match="priorbalance">
-												<children>
-													<content>
-														<format datatype="decimal"/>
-													</content>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<text fixtext="Previous Payments"/>
-							<newline/>
-							<tgrid>
-								<properties border="1"/>
-								<children>
-									<tgridbody-cols>
-										<children>
-											<tgridcol/>
-											<tgridcol/>
-											<tgridcol/>
-										</children>
-									</tgridbody-cols>
-									<tgridheader-rows>
-										<children>
-											<tgridrow>
-												<children>
-													<tgridcell>
-														<children>
-															<text fixtext="date"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="payee"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="amount"/>
-														</children>
-													</tgridcell>
-												</children>
-											</tgridrow>
-										</children>
-									</tgridheader-rows>
-									<tgridbody-rows>
-										<children>
-											<template subtype="element" match="utilitybill">
-												<children>
-													<template subtype="element" match="summary">
-														<children>
-															<template subtype="element" match="previouspayment">
-																<children>
-																	<tgridrow>
-																		<children>
-																			<tgridcell>
-																				<children>
-																					<template subtype="element" match="date">
-																						<children>
-																							<content>
-																								<format datatype="date"/>
-																							</content>
-																						</children>
-																						<variables/>
-																					</template>
-																				</children>
-																			</tgridcell>
-																			<tgridcell>
-																				<children>
-																					<template subtype="element" match="payee">
-																						<children>
-																							<content/>
-																						</children>
-																						<variables/>
-																					</template>
-																				</children>
-																			</tgridcell>
-																			<tgridcell>
-																				<children>
-																					<template subtype="element" match="amount">
-																						<children>
-																							<content>
-																								<format datatype="decimal"/>
-																							</content>
-																						</children>
-																						<variables/>
-																					</template>
-																				</children>
-																			</tgridcell>
-																		</children>
-																	</tgridrow>
+																	<content/>
 																</children>
 																<variables/>
 															</template>
@@ -602,338 +82,848 @@
 												<variables/>
 											</template>
 										</children>
-									</tgridbody-rows>
-								</children>
-							</tgrid>
-							<text fixtext="Adjustments"/>
-							<newline/>
-							<tgrid>
-								<properties border="1"/>
-								<children>
-									<tgridbody-cols>
+									</paragraph>
+									<tgrid>
+										<properties border="0" width="100%"/>
 										<children>
-											<tgridcol/>
-											<tgridcol/>
-											<tgridcol/>
-										</children>
-									</tgridbody-cols>
-									<tgridheader-rows>
-										<children>
-											<tgridrow>
+											<tgridbody-cols>
 												<children>
-													<tgridcell>
-														<children>
-															<text fixtext="payee"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="amount"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="date"/>
-														</children>
-													</tgridcell>
+													<tgridcol/>
+													<tgridcol/>
 												</children>
-											</tgridrow>
-										</children>
-									</tgridheader-rows>
-									<tgridbody-rows>
-										<children>
-											<template subtype="element" match="utilitybill">
+											</tgridbody-cols>
+											<tgridbody-rows>
 												<children>
-													<template subtype="element" match="summary">
+													<tgridrow>
 														<children>
-															<template subtype="element" match="adjustment">
+															<tgridcell>
 																<children>
-																	<tgridrow>
+																	<paragraph paragraphtag="h3">
 																		<children>
-																			<tgridcell>
-																				<children>
-																					<template subtype="element" match="payee">
-																						<children>
-																							<content/>
-																						</children>
-																						<variables/>
-																					</template>
-																				</children>
-																			</tgridcell>
-																			<tgridcell>
-																				<children>
-																					<template subtype="element" match="amount">
-																						<children>
-																							<content>
-																								<format datatype="decimal"/>
-																							</content>
-																						</children>
-																						<variables/>
-																					</template>
-																				</children>
-																			</tgridcell>
-																			<tgridcell>
-																				<children>
-																					<template subtype="element" match="date">
-																						<children>
-																							<content>
-																								<format datatype="date"/>
-																							</content>
-																						</children>
-																						<variables/>
-																					</template>
-																				</children>
-																			</tgridcell>
+																			<text fixtext="Billing Address"/>
 																		</children>
-																	</tgridrow>
-																</children>
-																<variables/>
-															</template>
-														</children>
-														<variables/>
-													</template>
-												</children>
-												<variables/>
-											</template>
-										</children>
-									</tgridbody-rows>
-								</children>
-							</tgrid>
-							<text fixtext="Balance Forward: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="summary">
-										<children>
-											<template subtype="element" match="balanceforward">
-												<children>
-													<content>
-														<format datatype="decimal"/>
-													</content>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<text fixtext="Current Charges: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="summary">
-										<children>
-											<template subtype="element" match="currentcharges">
-												<children>
-													<content>
-														<format datatype="decimal"/>
-													</content>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<text fixtext="Total Due: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="summary">
-										<children>
-											<template subtype="element" match="totaldue">
-												<children>
-													<content>
-														<format datatype="decimal"/>
-													</content>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<text fixtext="Due: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="summary">
-										<children>
-											<template subtype="element" match="duedate">
-												<children>
-													<content>
-														<format datatype="date"/>
-													</content>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<text fixtext="  Late Payment Penalty: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="summary">
-										<children>
-											<template subtype="element" match="latepayment">
-												<children>
-													<template subtype="element" match="penalty">
-														<children>
-															<content/>
-														</children>
-														<variables/>
-													</template>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<text fixtext="Amount: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="summary">
-										<children>
-											<template subtype="element" match="latepayment">
-												<children>
-													<template subtype="element" match="amount">
-														<children>
-															<content/>
-														</children>
-														<variables/>
-													</template>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<newline/>
-							<paragraph paragraphtag="h2">
-								<children>
-									<text fixtext="Charge Details"/>
-								</children>
-							</paragraph>
-							<tgrid>
-								<properties border="0" width="100%"/>
-								<children>
-									<tgridbody-cols>
-										<children>
-											<tgridcol/>
-											<tgridcol/>
-											<tgridcol/>
-										</children>
-									</tgridbody-cols>
-									<tgridheader-rows>
-										<children>
-											<tgridrow>
-												<children>
-													<tgridcell>
-														<children>
-															<text fixtext="service"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="rateschedule"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="chargegroup"/>
-														</children>
-													</tgridcell>
-												</children>
-											</tgridrow>
-										</children>
-									</tgridheader-rows>
-									<tgridbody-rows>
-										<children>
-											<template subtype="element" match="utilitybill">
-												<children>
-													<template subtype="element" match="details">
-														<children>
-															<tgridrow>
-																<children>
-																	<tgridcell>
+																	</paragraph>
+																	<tgrid>
+																		<properties border="0"/>
 																		<children>
-																			<template subtype="attribute" match="service">
+																			<tgridbody-cols>
 																				<children>
-																					<content/>
-																				</children>
-																				<variables/>
-																			</template>
-																		</children>
-																	</tgridcell>
-																	<tgridcell>
-																		<children>
-																			<template subtype="element" match="rateschedule">
-																				<children>
-																					<content/>
-																				</children>
-																				<variables/>
-																			</template>
-																		</children>
-																	</tgridcell>
-																	<tgridcell>
-																		<children>
-																			<tgrid>
-																				<properties border="0" width="100%"/>
-																				<children>
-																					<tgridbody-cols>
+																					<template subtype="element" match="utilitybill">
 																						<children>
-																							<tgridcol/>
-																							<tgridcol/>
-																							<tgridcol/>
-																						</children>
-																					</tgridbody-cols>
-																					<tgridheader-rows>
-																						<children>
-																							<tgridrow>
+																							<template subtype="element" match="car">
 																								<children>
-																									<tgridcell>
+																									<template subtype="element" match="billingaddress">
 																										<children>
-																											<text fixtext="type"/>
+																											<tgridcol/>
 																										</children>
-																									</tgridcell>
-																									<tgridcell>
-																										<children>
-																											<text fixtext="charges"/>
-																										</children>
-																									</tgridcell>
-																									<tgridcell>
-																										<children>
-																											<text fixtext="subtotal"/>
-																										</children>
-																									</tgridcell>
+																										<variables/>
+																									</template>
 																								</children>
-																							</tgridrow>
+																								<variables/>
+																							</template>
 																						</children>
-																					</tgridheader-rows>
-																					<tgridbody-rows>
+																						<variables/>
+																					</template>
+																				</children>
+																			</tgridbody-cols>
+																			<tgridbody-rows>
+																				<children>
+																					<tgridrow>
 																						<children>
-																							<template subtype="element" match="chargegroup">
+																							<tgridcell>
+																								<children>
+																									<template subtype="element" match="addressee">
+																										<children>
+																											<content/>
+																										</children>
+																										<variables/>
+																									</template>
+																									<text fixtext="   "/>
+																									<template subtype="element" match="telephonenumber">
+																										<children>
+																											<content/>
+																										</children>
+																										<variables/>
+																									</template>
+																								</children>
+																							</tgridcell>
+																						</children>
+																					</tgridrow>
+																					<tgridrow>
+																						<children>
+																							<tgridcell>
+																								<children>
+																									<template subtype="element" match="street">
+																										<children>
+																											<content/>
+																										</children>
+																										<variables/>
+																									</template>
+																								</children>
+																							</tgridcell>
+																						</children>
+																					</tgridrow>
+																					<tgridrow>
+																						<children>
+																							<tgridcell>
+																								<children>
+																									<template subtype="element" match="city">
+																										<children>
+																											<content/>
+																										</children>
+																										<variables/>
+																									</template>
+																									<text fixtext="  "/>
+																									<template subtype="element" match="state">
+																										<children>
+																											<content/>
+																										</children>
+																										<variables/>
+																									</template>
+																									<text fixtext="  "/>
+																									<template subtype="element" match="country">
+																										<children>
+																											<content/>
+																										</children>
+																										<variables/>
+																									</template>
+																									<text fixtext="   "/>
+																									<template subtype="element" match="postalcode">
+																										<children>
+																											<content/>
+																										</children>
+																										<variables/>
+																									</template>
+																								</children>
+																							</tgridcell>
+																						</children>
+																					</tgridrow>
+																				</children>
+																			</tgridbody-rows>
+																		</children>
+																	</tgrid>
+																</children>
+															</tgridcell>
+															<tgridcell>
+																<children>
+																	<paragraph paragraphtag="h3">
+																		<children>
+																			<text fixtext="Service Address"/>
+																		</children>
+																	</paragraph>
+																	<tgrid>
+																		<properties border="0"/>
+																		<children>
+																			<tgridbody-cols>
+																				<children>
+																					<template subtype="element" match="utilitybill">
+																						<children>
+																							<template subtype="element" match="car">
+																								<children>
+																									<template subtype="element" match="serviceaddress">
+																										<children>
+																											<tgridcol/>
+																										</children>
+																										<variables/>
+																									</template>
+																								</children>
+																								<variables/>
+																							</template>
+																						</children>
+																						<variables/>
+																					</template>
+																				</children>
+																			</tgridbody-cols>
+																			<tgridbody-rows>
+																				<children>
+																					<tgridrow>
+																						<children>
+																							<tgridcell>
+																								<children>
+																									<template subtype="element" match="addressee">
+																										<children>
+																											<content/>
+																										</children>
+																										<variables/>
+																									</template>
+																									<text fixtext="   "/>
+																									<template subtype="element" match="telephonenumber">
+																										<children>
+																											<content/>
+																										</children>
+																										<variables/>
+																									</template>
+																								</children>
+																							</tgridcell>
+																						</children>
+																					</tgridrow>
+																					<tgridrow>
+																						<children>
+																							<tgridcell>
+																								<children>
+																									<template subtype="element" match="street">
+																										<children>
+																											<content/>
+																										</children>
+																										<variables/>
+																									</template>
+																								</children>
+																							</tgridcell>
+																						</children>
+																					</tgridrow>
+																					<tgridrow>
+																						<children>
+																							<tgridcell>
+																								<children>
+																									<template subtype="element" match="city">
+																										<children>
+																											<content/>
+																										</children>
+																										<variables/>
+																									</template>
+																									<text fixtext="   "/>
+																									<template subtype="element" match="state">
+																										<children>
+																											<content/>
+																										</children>
+																										<variables/>
+																									</template>
+																									<text fixtext="   "/>
+																									<template subtype="element" match="country">
+																										<children>
+																											<content/>
+																										</children>
+																										<variables/>
+																									</template>
+																									<text fixtext="   "/>
+																									<template subtype="element" match="postalcode">
+																										<children>
+																											<content/>
+																										</children>
+																										<variables/>
+																									</template>
+																								</children>
+																							</tgridcell>
+																						</children>
+																					</tgridrow>
+																				</children>
+																			</tgridbody-rows>
+																		</children>
+																	</tgrid>
+																</children>
+															</tgridcell>
+														</children>
+													</tgridrow>
+												</children>
+											</tgridbody-rows>
+										</children>
+									</tgrid>
+								</children>
+							</paragraph>
+							<newline/>
+							<line/>
+							<newline/>
+							<paragraph>
+								<children>
+									<paragraph paragraphtag="h2">
+										<children>
+											<text fixtext="Charge Summary"/>
+										</children>
+									</paragraph>
+									<paragraph paragraphtag="p">
+										<children>
+											<text fixtext="Period From "/>
+											<template subtype="element" match="utilitybill">
+												<children>
+													<template subtype="element" match="summary">
+														<children>
+															<template subtype="element" match="billperiodbegin">
+																<children>
+																	<content>
+																		<format datatype="date"/>
+																	</content>
+																</children>
+																<variables/>
+															</template>
+														</children>
+														<variables/>
+													</template>
+												</children>
+												<variables/>
+											</template>
+											<text fixtext=" To "/>
+											<template subtype="element" match="utilitybill">
+												<children>
+													<template subtype="element" match="summary">
+														<children>
+															<template subtype="element" match="billperiodend">
+																<children>
+																	<content>
+																		<format datatype="date"/>
+																	</content>
+																</children>
+																<variables/>
+															</template>
+														</children>
+														<variables/>
+													</template>
+												</children>
+												<variables/>
+											</template>
+											<text fixtext="  Bill Issued "/>
+											<template subtype="element" match="utilitybill">
+												<children>
+													<template subtype="element" match="summary">
+														<children>
+															<template subtype="element" match="issuedate">
+																<children>
+																	<content>
+																		<format datatype="date"/>
+																	</content>
+																</children>
+																<variables/>
+															</template>
+														</children>
+														<variables/>
+													</template>
+												</children>
+												<variables/>
+											</template>
+											<text fixtext="  Due: "/>
+											<template subtype="element" match="utilitybill">
+												<children>
+													<template subtype="element" match="summary">
+														<children>
+															<template subtype="element" match="duedate">
+																<children>
+																	<content>
+																		<format datatype="date"/>
+																	</content>
+																</children>
+																<variables/>
+															</template>
+														</children>
+														<variables/>
+													</template>
+												</children>
+												<variables/>
+											</template>
+										</children>
+									</paragraph>
+									<paragraph paragraphtag="h3">
+										<children>
+											<text fixtext="Charges"/>
+										</children>
+									</paragraph>
+									<tgrid>
+										<properties border="0" width="100%"/>
+										<children>
+											<tgridbody-cols>
+												<children>
+													<tgridcol/>
+													<tgridcol>
+														<properties align="right"/>
+													</tgridcol>
+												</children>
+											</tgridbody-cols>
+											<tgridbody-rows>
+												<children>
+													<tgridrow>
+														<children>
+															<tgridcell>
+																<children>
+																	<text fixtext="Prior Balance"/>
+																</children>
+															</tgridcell>
+															<tgridcell>
+																<children>
+																	<template subtype="element" match="utilitybill">
+																		<children>
+																			<template subtype="element" match="summary">
+																				<children>
+																					<template subtype="element" match="priorbalance">
+																						<children>
+																							<content>
+																								<format datatype="decimal"/>
+																							</content>
+																						</children>
+																						<variables/>
+																					</template>
+																				</children>
+																				<variables/>
+																			</template>
+																		</children>
+																		<variables/>
+																	</template>
+																</children>
+															</tgridcell>
+														</children>
+													</tgridrow>
+													<tgridrow>
+														<children>
+															<tgridcell>
+																<children>
+																	<text fixtext="Previous Payments"/>
+																</children>
+															</tgridcell>
+															<tgridcell>
+																<children>
+																	<tgrid>
+																		<properties border="0"/>
+																		<children>
+																			<tgridbody-cols>
+																				<children>
+																					<tgridcol/>
+																				</children>
+																			</tgridbody-cols>
+																			<tgridbody-rows>
+																				<children>
+																					<template subtype="element" match="utilitybill">
+																						<children>
+																							<template subtype="element" match="summary">
+																								<children>
+																									<template subtype="element" match="previouspayment">
+																										<children>
+																											<tgridrow>
+																												<children>
+																													<tgridcell>
+																														<children>
+																															<template subtype="element" match="amount">
+																																<children>
+																																	<content>
+																																		<format datatype="decimal"/>
+																																	</content>
+																																</children>
+																																<variables/>
+																															</template>
+																														</children>
+																													</tgridcell>
+																												</children>
+																											</tgridrow>
+																										</children>
+																										<variables/>
+																									</template>
+																								</children>
+																								<variables/>
+																							</template>
+																						</children>
+																						<variables/>
+																					</template>
+																				</children>
+																			</tgridbody-rows>
+																		</children>
+																	</tgrid>
+																</children>
+															</tgridcell>
+														</children>
+													</tgridrow>
+													<tgridrow>
+														<children>
+															<tgridcell>
+																<children>
+																	<text fixtext="Adjustments"/>
+																</children>
+															</tgridcell>
+															<tgridcell>
+																<children>
+																	<tgrid>
+																		<properties border="0"/>
+																		<children>
+																			<tgridbody-cols>
+																				<children>
+																					<tgridcol/>
+																				</children>
+																			</tgridbody-cols>
+																			<tgridbody-rows>
+																				<children>
+																					<template subtype="element" match="utilitybill">
+																						<children>
+																							<template subtype="element" match="summary">
+																								<children>
+																									<template subtype="element" match="adjustment">
+																										<children>
+																											<tgridrow>
+																												<children>
+																													<tgridcell>
+																														<children>
+																															<template subtype="element" match="amount">
+																																<children>
+																																	<content>
+																																		<format datatype="decimal"/>
+																																	</content>
+																																</children>
+																																<variables/>
+																															</template>
+																														</children>
+																													</tgridcell>
+																												</children>
+																											</tgridrow>
+																										</children>
+																										<variables/>
+																									</template>
+																								</children>
+																								<variables/>
+																							</template>
+																						</children>
+																						<variables/>
+																					</template>
+																				</children>
+																			</tgridbody-rows>
+																		</children>
+																	</tgrid>
+																</children>
+															</tgridcell>
+														</children>
+													</tgridrow>
+													<tgridrow>
+														<children>
+															<tgridcell>
+																<children>
+																	<text fixtext="Balance Forward"/>
+																</children>
+															</tgridcell>
+															<tgridcell>
+																<children>
+																	<template subtype="element" match="utilitybill">
+																		<children>
+																			<template subtype="element" match="summary">
+																				<children>
+																					<template subtype="element" match="balanceforward">
+																						<children>
+																							<content>
+																								<format datatype="decimal"/>
+																							</content>
+																						</children>
+																						<variables/>
+																					</template>
+																				</children>
+																				<variables/>
+																			</template>
+																		</children>
+																		<variables/>
+																	</template>
+																</children>
+															</tgridcell>
+														</children>
+													</tgridrow>
+													<tgridrow>
+														<children>
+															<tgridcell>
+																<children>
+																	<text fixtext="Current Charges"/>
+																</children>
+															</tgridcell>
+															<tgridcell>
+																<children>
+																	<tgrid>
+																		<properties border="0"/>
+																		<children>
+																			<tgridbody-cols>
+																				<children>
+																					<tgridcol/>
+																					<tgridcol/>
+																				</children>
+																			</tgridbody-cols>
+																			<tgridbody-rows>
+																				<children>
+																					<template subtype="element" match="utilitybill">
+																						<children>
+																							<template subtype="element" match="summary">
+																								<children>
+																									<template subtype="element" match="currentcharges">
+																										<children>
+																											<tgridrow>
+																												<children>
+																													<tgridcell>
+																														<children>
+																															<template subtype="attribute" match="service">
+																																<children>
+																																	<content/>
+																																</children>
+																																<variables/>
+																															</template>
+																														</children>
+																													</tgridcell>
+																													<tgridcell>
+																														<children>
+																															<content/>
+																														</children>
+																													</tgridcell>
+																												</children>
+																											</tgridrow>
+																										</children>
+																										<variables/>
+																									</template>
+																								</children>
+																								<variables/>
+																							</template>
+																						</children>
+																						<variables/>
+																					</template>
+																				</children>
+																			</tgridbody-rows>
+																		</children>
+																	</tgrid>
+																</children>
+															</tgridcell>
+														</children>
+													</tgridrow>
+													<tgridrow>
+														<children>
+															<tgridcell>
+																<children>
+																	<text fixtext="Total Due"/>
+																</children>
+															</tgridcell>
+															<tgridcell>
+																<children>
+																	<template subtype="element" match="utilitybill">
+																		<children>
+																			<template subtype="element" match="summary">
+																				<children>
+																					<template subtype="element" match="totaldue">
+																						<children>
+																							<content>
+																								<format datatype="decimal"/>
+																							</content>
+																						</children>
+																						<variables/>
+																					</template>
+																				</children>
+																				<variables/>
+																			</template>
+																		</children>
+																		<variables/>
+																	</template>
+																</children>
+															</tgridcell>
+														</children>
+													</tgridrow>
+												</children>
+											</tgridbody-rows>
+										</children>
+									</tgrid>
+									<newline/>
+									<text fixtext=" Late Payment Penalty: "/>
+									<template subtype="element" match="utilitybill">
+										<children>
+											<template subtype="element" match="summary">
+												<children>
+													<template subtype="element" match="latepayment">
+														<children>
+															<template subtype="element" match="penalty">
+																<children>
+																	<content/>
+																</children>
+																<variables/>
+															</template>
+														</children>
+														<variables/>
+													</template>
+												</children>
+												<variables/>
+											</template>
+										</children>
+										<variables/>
+									</template>
+									<text fixtext="Amount: "/>
+									<template subtype="element" match="utilitybill">
+										<children>
+											<template subtype="element" match="summary">
+												<children>
+													<template subtype="element" match="latepayment">
+														<children>
+															<template subtype="element" match="amount">
+																<children>
+																	<content/>
+																</children>
+																<variables/>
+															</template>
+														</children>
+														<variables/>
+													</template>
+												</children>
+												<variables/>
+											</template>
+										</children>
+										<variables/>
+									</template>
+									<newline/>
+								</children>
+							</paragraph>
+							<line/>
+							<paragraph>
+								<children>
+									<paragraph paragraphtag="h2">
+										<children>
+											<text fixtext="Charge Details"/>
+										</children>
+									</paragraph>
+									<tgrid>
+										<properties border="0" width="100%"/>
+										<children>
+											<tgridbody-cols>
+												<children>
+													<tgridcol>
+														<properties align="right"/>
+													</tgridcol>
+												</children>
+											</tgridbody-cols>
+											<tgridbody-rows>
+												<children>
+													<tgridrow>
+														<children>
+															<tgridcell>
+																<children>
+																	<tgrid>
+																		<properties border="0" width="100%"/>
+																		<children>
+																			<tgridbody-cols>
+																				<children>
+																					<tgridcol>
+																						<properties align="left"/>
+																					</tgridcol>
+																					<tgridcol>
+																						<properties align="left"/>
+																					</tgridcol>
+																					<tgridcol>
+																						<properties align="right"/>
+																					</tgridcol>
+																				</children>
+																			</tgridbody-cols>
+																			<tgridheader-rows>
+																				<children>
+																					<tgridrow>
+																						<children>
+																							<tgridcell>
+																								<children>
+																									<paragraph paragraphtag="h3">
+																										<children>
+																											<text fixtext="Service"/>
+																										</children>
+																									</paragraph>
+																								</children>
+																							</tgridcell>
+																							<tgridcell>
+																								<children>
+																									<paragraph paragraphtag="h3">
+																										<children>
+																											<text fixtext="Rate Schedule"/>
+																										</children>
+																									</paragraph>
+																								</children>
+																							</tgridcell>
+																							<tgridcell>
+																								<children>
+																									<tgrid>
+																										<properties border="0" width="100%"/>
+																										<children>
+																											<tgridbody-cols>
+																												<children>
+																													<tgridcol>
+																														<properties align="left" width="15%"/>
+																													</tgridcol>
+																													<tgridcol>
+																														<properties align="left" width="35%"/>
+																													</tgridcol>
+																													<tgridcol>
+																														<properties align="left" width="15%"/>
+																													</tgridcol>
+																													<tgridcol>
+																														<properties align="left" width="15%"/>
+																													</tgridcol>
+																													<tgridcol>
+																														<properties align="right" width="10%"/>
+																													</tgridcol>
+																													<tgridcol>
+																														<properties width="10%"/>
+																													</tgridcol>
+																												</children>
+																											</tgridbody-cols>
+																											<tgridbody-rows>
+																												<children>
+																													<tgridrow>
+																														<children>
+																															<tgridcell>
+																																<children>
+																																	<paragraph paragraphtag="h3">
+																																		<children>
+																																			<text fixtext="Charge"/>
+																																		</children>
+																																	</paragraph>
+																																</children>
+																															</tgridcell>
+																															<tgridcell>
+																																<children>
+																																	<paragraph paragraphtag="h3">
+																																		<children>
+																																			<text fixtext="Description"/>
+																																		</children>
+																																	</paragraph>
+																																</children>
+																															</tgridcell>
+																															<tgridcell>
+																																<children>
+																																	<paragraph paragraphtag="h3">
+																																		<children>
+																																			<text fixtext="Quantity"/>
+																																		</children>
+																																	</paragraph>
+																																</children>
+																															</tgridcell>
+																															<tgridcell>
+																																<children>
+																																	<paragraph paragraphtag="h3">
+																																		<children>
+																																			<text fixtext="Rate"/>
+																																		</children>
+																																	</paragraph>
+																																</children>
+																															</tgridcell>
+																															<tgridcell>
+																																<children>
+																																	<paragraph paragraphtag="h3">
+																																		<children>
+																																			<text fixtext="Amount"/>
+																																		</children>
+																																	</paragraph>
+																																</children>
+																															</tgridcell>
+																															<tgridcell/>
+																														</children>
+																													</tgridrow>
+																												</children>
+																											</tgridbody-rows>
+																										</children>
+																									</tgrid>
+																								</children>
+																							</tgridcell>
+																						</children>
+																					</tgridrow>
+																				</children>
+																			</tgridheader-rows>
+																			<tgridbody-rows>
+																				<children>
+																					<template subtype="element" match="utilitybill">
+																						<children>
+																							<template subtype="element" match="details">
 																								<children>
 																									<tgridrow>
+																										<properties valign="top"/>
 																										<children>
 																											<tgridcell>
 																												<children>
-																													<template subtype="attribute" match="type">
+																													<template subtype="attribute" match="service">
+																														<children>
+																															<content/>
+																														</children>
+																														<variables/>
+																													</template>
+																												</children>
+																											</tgridcell>
+																											<tgridcell>
+																												<children>
+																													<template subtype="element" match="rateschedule">
 																														<children>
 																															<content/>
 																														</children>
@@ -949,132 +939,197 @@
 																															<tgridbody-cols>
 																																<children>
 																																	<tgridcol/>
-																																	<tgridcol/>
-																																	<tgridcol/>
-																																	<tgridcol/>
 																																</children>
 																															</tgridbody-cols>
-																															<tgridheader-rows>
-																																<children>
-																																	<tgridrow>
-																																		<children>
-																																			<tgridcell>
-																																				<children>
-																																					<text fixtext="description"/>
-																																				</children>
-																																			</tgridcell>
-																																			<tgridcell>
-																																				<children>
-																																					<text fixtext="quantity"/>
-																																				</children>
-																																			</tgridcell>
-																																			<tgridcell>
-																																				<children>
-																																					<text fixtext="rate"/>
-																																				</children>
-																																			</tgridcell>
-																																			<tgridcell>
-																																				<children>
-																																					<text fixtext="total"/>
-																																				</children>
-																																			</tgridcell>
-																																		</children>
-																																	</tgridrow>
-																																</children>
-																															</tgridheader-rows>
 																															<tgridbody-rows>
 																																<children>
-																																	<template subtype="element" match="charges">
-																																		<children>
-																																			<template subtype="element" match="charge">
-																																				<children>
-																																					<tgridrow>
-																																						<children>
-																																							<tgridcell>
-																																								<children>
-																																									<template subtype="element" match="description">
-																																										<children>
-																																											<content/>
-																																										</children>
-																																										<variables/>
-																																									</template>
-																																								</children>
-																																							</tgridcell>
-																																							<tgridcell>
-																																								<children>
-																																									<template subtype="element" match="quantity">
-																																										<children>
-																																											<content/>
-																																										</children>
-																																										<variables/>
-																																									</template>
-																																								</children>
-																																							</tgridcell>
-																																							<tgridcell>
-																																								<children>
-																																									<template subtype="element" match="rate">
-																																										<children>
-																																											<content/>
-																																										</children>
-																																										<variables/>
-																																									</template>
-																																								</children>
-																																							</tgridcell>
-																																							<tgridcell>
-																																								<properties align="right"/>
-																																								<children>
-																																									<template subtype="element" match="total">
-																																										<children>
-																																											<content>
-																																												<format datatype="decimal"/>
-																																											</content>
-																																										</children>
-																																										<variables/>
-																																									</template>
-																																								</children>
-																																							</tgridcell>
-																																						</children>
-																																					</tgridrow>
-																																				</children>
-																																				<variables/>
-																																			</template>
-																																		</children>
-																																		<variables/>
-																																	</template>
-																																</children>
-																															</tgridbody-rows>
-																															<tgridfooter-rows>
-																																<children>
 																																	<tgridrow>
 																																		<children>
-																																			<tgridcell/>
-																																			<tgridcell/>
-																																			<tgridcell/>
 																																			<tgridcell>
-																																				<properties align="right"/>
 																																				<children>
-																																					<autocalc xpath="sum( charges/charge/total )"/>
+																																					<tgrid>
+																																						<properties border="0" width="100%"/>
+																																						<children>
+																																							<tgridbody-cols>
+																																								<children>
+																																									<tgridcol>
+																																										<properties align="left" valign="top" width="15%"/>
+																																									</tgridcol>
+																																									<tgridcol>
+																																										<properties align="right" width="85%"/>
+																																									</tgridcol>
+																																								</children>
+																																							</tgridbody-cols>
+																																							<tgridbody-rows>
+																																								<children>
+																																									<template subtype="element" match="chargegroup">
+																																										<children>
+																																											<tgridrow>
+																																												<children>
+																																													<tgridcell>
+																																														<children>
+																																															<template subtype="attribute" match="type">
+																																																<children>
+																																																	<content/>
+																																																</children>
+																																																<variables/>
+																																															</template>
+																																														</children>
+																																													</tgridcell>
+																																													<tgridcell>
+																																														<children>
+																																															<tgrid>
+																																																<properties border="0" width="100%"/>
+																																																<children>
+																																																	<tgridbody-cols>
+																																																		<children>
+																																																			<tgridcol/>
+																																																		</children>
+																																																	</tgridbody-cols>
+																																																	<tgridbody-rows>
+																																																		<children>
+																																																			<tgridrow>
+																																																				<children>
+																																																					<tgridcell>
+																																																						<children>
+																																																							<tgrid>
+																																																								<properties border="0" width="100%"/>
+																																																								<children>
+																																																									<tgridbody-cols>
+																																																										<children>
+																																																											<tgridcol>
+																																																												<properties align="left" width="40.7%"/>
+																																																											</tgridcol>
+																																																											<tgridcol>
+																																																												<properties align="left" width="17.70%"/>
+																																																											</tgridcol>
+																																																											<tgridcol>
+																																																												<properties align="left" width="17.70%"/>
+																																																											</tgridcol>
+																																																											<tgridcol>
+																																																												<properties align="right" width="11.95%"/>
+																																																											</tgridcol>
+																																																											<tgridcol>
+																																																												<properties width="11.95%"/>
+																																																											</tgridcol>
+																																																										</children>
+																																																									</tgridbody-cols>
+																																																									<tgridbody-rows>
+																																																										<children>
+																																																											<template subtype="element" match="charges">
+																																																												<children>
+																																																													<template subtype="element" match="charge">
+																																																														<children>
+																																																															<tgridrow>
+																																																																<children>
+																																																																	<tgridcell>
+																																																																		<children>
+																																																																			<template subtype="element" match="description">
+																																																																				<children>
+																																																																					<content/>
+																																																																				</children>
+																																																																				<variables/>
+																																																																			</template>
+																																																																		</children>
+																																																																	</tgridcell>
+																																																																	<tgridcell>
+																																																																		<children>
+																																																																			<template subtype="element" match="quantity">
+																																																																				<children>
+																																																																					<content/>
+																																																																				</children>
+																																																																				<variables/>
+																																																																			</template>
+																																																																		</children>
+																																																																	</tgridcell>
+																																																																	<tgridcell>
+																																																																		<children>
+																																																																			<template subtype="element" match="rate">
+																																																																				<children>
+																																																																					<content/>
+																																																																				</children>
+																																																																				<variables/>
+																																																																			</template>
+																																																																		</children>
+																																																																	</tgridcell>
+																																																																	<tgridcell>
+																																																																		<properties align="right"/>
+																																																																		<children>
+																																																																			<template subtype="element" match="total">
+																																																																				<children>
+																																																																					<content>
+																																																																						<format datatype="decimal"/>
+																																																																					</content>
+																																																																				</children>
+																																																																				<variables/>
+																																																																			</template>
+																																																																		</children>
+																																																																	</tgridcell>
+																																																																	<tgridcell/>
+																																																																</children>
+																																																															</tgridrow>
+																																																														</children>
+																																																														<variables/>
+																																																													</template>
+																																																												</children>
+																																																												<variables/>
+																																																											</template>
+																																																										</children>
+																																																									</tgridbody-rows>
+																																																								</children>
+																																																							</tgrid>
+																																																						</children>
+																																																					</tgridcell>
+																																																				</children>
+																																																			</tgridrow>
+																																																			<tgridrow>
+																																																				<children>
+																																																					<tgridcell>
+																																																						<children>
+																																																							<line/>
+																																																							<autocalc xpath="sum( charges/charge/total )">
+																																																								<styles font-style="italic"/>
+																																																							</autocalc>
+																																																						</children>
+																																																					</tgridcell>
+																																																				</children>
+																																																			</tgridrow>
+																																																		</children>
+																																																	</tgridbody-rows>
+																																																</children>
+																																															</tgrid>
+																																														</children>
+																																													</tgridcell>
+																																												</children>
+																																											</tgridrow>
+																																										</children>
+																																										<variables/>
+																																									</template>
+																																								</children>
+																																							</tgridbody-rows>
+																																						</children>
+																																					</tgrid>
+																																				</children>
+																																			</tgridcell>
+																																		</children>
+																																	</tgridrow>
+																																	<tgridrow>
+																																		<children>
+																																			<tgridcell>
+																																				<children>
+																																					<line/>
+																																					<text fixtext=" "/>
+																																					<autocalc xpath="sum( chargegroup/charges/charge/total )">
+																																						<styles font-style="normal" font-weight="bold"/>
+																																					</autocalc>
 																																				</children>
 																																			</tgridcell>
 																																		</children>
 																																	</tgridrow>
 																																</children>
-																															</tgridfooter-rows>
+																															</tgridbody-rows>
 																														</children>
 																													</tgrid>
-																												</children>
-																											</tgridcell>
-																											<tgridcell>
-																												<properties align="right"/>
-																												<children>
-																													<template subtype="element" match="subtotal">
-																														<children>
-																															<content>
-																																<format datatype="decimal"/>
-																															</content>
-																														</children>
-																														<variables/>
-																													</template>
 																												</children>
 																											</tgridcell>
 																										</children>
@@ -1083,172 +1138,154 @@
 																								<variables/>
 																							</template>
 																						</children>
-																					</tgridbody-rows>
-																					<tgridfooter-rows>
+																						<variables/>
+																					</template>
+																				</children>
+																			</tgridbody-rows>
+																		</children>
+																	</tgrid>
+																</children>
+															</tgridcell>
+														</children>
+													</tgridrow>
+												</children>
+											</tgridbody-rows>
+											<tgridfooter-rows>
+												<children>
+													<tgridrow>
+														<children>
+															<tgridcell>
+																<children>
+																	<text fixtext="Total charges "/>
+																	<autocalc xpath="sum( utilitybill/details/chargegroup/charges/charge/total )">
+																		<styles font-style="italic" font-weight="bold"/>
+																	</autocalc>
+																</children>
+															</tgridcell>
+														</children>
+													</tgridrow>
+												</children>
+											</tgridfooter-rows>
+										</children>
+									</tgrid>
+									<newline/>
+								</children>
+							</paragraph>
+							<line/>
+							<newline/>
+							<paragraph>
+								<children>
+									<paragraph paragraphtag="h2">
+										<children>
+											<text fixtext="Billable Usage"/>
+										</children>
+									</paragraph>
+									<tgrid>
+										<properties align="right" border="0" width="100%"/>
+										<children>
+											<tgridbody-cols>
+												<children>
+													<tgridcol/>
+													<tgridcol/>
+													<tgridcol/>
+													<tgridcol/>
+												</children>
+											</tgridbody-cols>
+											<tgridheader-rows>
+												<children>
+													<tgridrow>
+														<children>
+															<tgridcell>
+																<properties align="left"/>
+																<children>
+																	<paragraph paragraphtag="h3">
+																		<children>
+																			<text fixtext="Service"/>
+																		</children>
+																	</paragraph>
+																</children>
+															</tgridcell>
+															<tgridcell>
+																<properties align="left"/>
+																<children>
+																	<paragraph paragraphtag="h3">
+																		<children>
+																			<text fixtext="Rate Schedule"/>
+																		</children>
+																	</paragraph>
+																</children>
+															</tgridcell>
+															<tgridcell>
+																<children>
+																	<tgrid>
+																		<properties align="left" border="0" width="100%"/>
+																		<children>
+																			<tgridbody-cols>
+																				<children>
+																					<tgridcol/>
+																					<tgridcol/>
+																					<tgridcol/>
+																				</children>
+																			</tgridbody-cols>
+																			<tgridbody-rows>
+																				<children>
+																					<tgridrow>
 																						<children>
-																							<tgridrow>
+																							<tgridcell>
+																								<properties align="left"/>
 																								<children>
-																									<tgridcell/>
-																									<tgridcell>
-																										<properties align="right"/>
+																									<paragraph paragraphtag="h3">
 																										<children>
-																											<autocalc xpath="sum( chargegroup/charges/charge/total )"/>
+																											<text fixtext="Description"/>
 																										</children>
-																									</tgridcell>
-																									<tgridcell>
-																										<properties align="right"/>
-																										<children>
-																											<autocalc xpath="sum( chargegroup/subtotal )"/>
-																										</children>
-																									</tgridcell>
+																									</paragraph>
 																								</children>
-																							</tgridrow>
+																							</tgridcell>
+																							<tgridcell>
+																								<properties align="left"/>
+																								<children>
+																									<paragraph paragraphtag="h3">
+																										<children>
+																											<text fixtext="Quantity"/>
+																										</children>
+																									</paragraph>
+																								</children>
+																							</tgridcell>
+																							<tgridcell/>
 																						</children>
-																					</tgridfooter-rows>
+																					</tgridrow>
 																				</children>
-																			</tgrid>
+																			</tgridbody-rows>
 																		</children>
-																	</tgridcell>
+																	</tgrid>
 																</children>
-															</tgridrow>
-														</children>
-														<variables/>
-													</template>
-												</children>
-												<variables/>
-											</template>
-										</children>
-									</tgridbody-rows>
-									<tgridfooter-rows>
-										<children>
-											<tgridrow>
-												<children>
-													<tgridcell/>
-													<tgridcell/>
-													<tgridcell>
-														<properties align="right"/>
-														<children>
-															<template subtype="element" match="utilitybill">
+															</tgridcell>
+															<tgridcell>
+																<properties align="right"/>
 																<children>
-																	<template subtype="element" match="details">
+																	<paragraph paragraphtag="h3">
 																		<children>
-																			<template subtype="element" match="total">
-																				<children>
-																					<content>
-																						<format datatype="decimal"/>
-																					</content>
-																				</children>
-																				<variables/>
-																			</template>
+																			<text fixtext="Total"/>
 																		</children>
-																		<variables/>
-																	</template>
+																	</paragraph>
 																</children>
-																<variables/>
-															</template>
+															</tgridcell>
 														</children>
-													</tgridcell>
+													</tgridrow>
 												</children>
-											</tgridrow>
-										</children>
-									</tgridfooter-rows>
-								</children>
-							</tgrid>
-							<newline/>
-							<newline/>
-							<newline/>
-							<paragraph paragraphtag="h2">
-								<children>
-									<text fixtext="Billable Usage"/>
-								</children>
-							</paragraph>
-							<text fixtext="Rate schedule: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="billableusage">
-										<children>
-											<template subtype="element" match="rateschedule">
+											</tgridheader-rows>
+											<tgridbody-rows>
 												<children>
-													<template subtype="element" match="name">
+													<template subtype="element" match="utilitybill">
 														<children>
-															<content/>
-														</children>
-														<variables/>
-													</template>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<text fixtext="Rate in effect: "/>
-							<template subtype="element" match="utilitybill">
-								<children>
-									<template subtype="element" match="billableusage">
-										<children>
-											<template subtype="element" match="rateschedule">
-												<children>
-													<template subtype="element" match="rateineffect">
-														<children>
-															<content/>
-														</children>
-														<variables/>
-													</template>
-												</children>
-												<variables/>
-											</template>
-										</children>
-										<variables/>
-									</template>
-								</children>
-								<variables/>
-							</template>
-							<newline/>
-							<newline/>
-							<tgrid>
-								<properties border="1"/>
-								<children>
-									<tgridbody-cols>
-										<children>
-											<tgridcol/>
-											<tgridcol/>
-										</children>
-									</tgridbody-cols>
-									<tgridheader-rows>
-										<children>
-											<tgridrow>
-												<children>
-													<tgridcell>
-														<children>
-															<text fixtext="description"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="quantity"/>
-														</children>
-													</tgridcell>
-												</children>
-											</tgridrow>
-										</children>
-									</tgridheader-rows>
-									<tgridbody-rows>
-										<children>
-											<template subtype="element" match="utilitybill">
-												<children>
-													<template subtype="element" match="billableusage">
-														<children>
-															<template subtype="element" match="usage">
+															<template subtype="element" match="billableusage">
 																<children>
 																	<tgridrow>
 																		<children>
 																			<tgridcell>
+																				<properties valign="top"/>
 																				<children>
-																					<template subtype="element" match="description">
+																					<template subtype="attribute" match="service">
 																						<children>
 																							<content/>
 																						</children>
@@ -1257,144 +1294,9 @@
 																				</children>
 																			</tgridcell>
 																			<tgridcell>
+																				<properties valign="top"/>
 																				<children>
-																					<template subtype="element" match="quantity">
-																						<children>
-																							<content/>
-																						</children>
-																						<variables/>
-																					</template>
-																				</children>
-																			</tgridcell>
-																		</children>
-																	</tgridrow>
-																</children>
-																<variables/>
-															</template>
-														</children>
-														<variables/>
-													</template>
-												</children>
-												<variables/>
-											</template>
-										</children>
-									</tgridbody-rows>
-								</children>
-							</tgrid>
-							<newline/>
-							<newline/>
-							<paragraph paragraphtag="h2">
-								<children>
-									<text fixtext="Measured Usage"/>
-								</children>
-							</paragraph>
-							<tgrid>
-								<properties border="1"/>
-								<children>
-									<tgridbody-cols>
-										<children>
-											<tgridcol/>
-											<tgridcol/>
-											<tgridcol/>
-											<tgridcol/>
-											<tgridcol/>
-											<tgridcol/>
-										</children>
-									</tgridbody-cols>
-									<tgridheader-rows>
-										<children>
-											<tgridrow>
-												<styles height="0.19in"/>
-												<children>
-													<tgridcell>
-														<children>
-															<text fixtext="estimated"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="priorreaddate"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="presentreaddate"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="nextreaddate"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="identifier"/>
-														</children>
-													</tgridcell>
-													<tgridcell/>
-												</children>
-											</tgridrow>
-										</children>
-									</tgridheader-rows>
-									<tgridbody-rows>
-										<children>
-											<template subtype="element" match="utilitybill">
-												<children>
-													<template subtype="element" match="measuredusage">
-														<children>
-															<template subtype="element" match="meter">
-																<children>
-																	<tgridrow>
-																		<children>
-																			<tgridcell>
-																				<children>
-																					<template subtype="element" match="estimated">
-																						<children>
-																							<content/>
-																						</children>
-																						<variables/>
-																					</template>
-																				</children>
-																			</tgridcell>
-																			<tgridcell>
-																				<children>
-																					<template subtype="element" match="priorreaddate">
-																						<children>
-																							<content>
-																								<format datatype="date"/>
-																							</content>
-																						</children>
-																						<variables/>
-																					</template>
-																				</children>
-																			</tgridcell>
-																			<tgridcell>
-																				<children>
-																					<template subtype="element" match="presentreaddate">
-																						<children>
-																							<content>
-																								<format datatype="date"/>
-																							</content>
-																						</children>
-																						<variables/>
-																					</template>
-																				</children>
-																			</tgridcell>
-																			<tgridcell>
-																				<children>
-																					<template subtype="element" match="nextreaddate">
-																						<children>
-																							<content>
-																								<format datatype="date"/>
-																							</content>
-																						</children>
-																						<variables/>
-																					</template>
-																				</children>
-																			</tgridcell>
-																			<tgridcell>
-																				<children>
-																					<template subtype="element" match="identifier">
+																					<template subtype="element" match="rateschedule">
 																						<children>
 																							<content/>
 																						</children>
@@ -1405,78 +1307,21 @@
 																			<tgridcell>
 																				<children>
 																					<tgrid>
-																						<properties border="1"/>
+																						<properties align="right" border="0" width="100%"/>
 																						<children>
 																							<tgridbody-cols>
 																								<children>
 																									<tgridcol/>
 																									<tgridcol/>
 																									<tgridcol/>
-																									<tgridcol/>
-																									<tgridcol/>
-																									<tgridcol/>
-																									<tgridcol/>
 																								</children>
 																							</tgridbody-cols>
-																							<tgridheader-rows>
-																								<children>
-																									<tgridrow>
-																										<children>
-																											<tgridcell>
-																												<children>
-																													<text fixtext="identifier"/>
-																												</children>
-																											</tgridcell>
-																											<tgridcell>
-																												<children>
-																													<text fixtext="description"/>
-																												</children>
-																											</tgridcell>
-																											<tgridcell>
-																												<children>
-																													<text fixtext="units"/>
-																												</children>
-																											</tgridcell>
-																											<tgridcell>
-																												<children>
-																													<text fixtext="priorreading"/>
-																												</children>
-																											</tgridcell>
-																											<tgridcell>
-																												<children>
-																													<text fixtext="presentreading"/>
-																												</children>
-																											</tgridcell>
-																											<tgridcell>
-																												<children>
-																													<text fixtext="factor"/>
-																												</children>
-																											</tgridcell>
-																											<tgridcell>
-																												<children>
-																													<text fixtext="total"/>
-																												</children>
-																											</tgridcell>
-																										</children>
-																									</tgridrow>
-																								</children>
-																							</tgridheader-rows>
 																							<tgridbody-rows>
 																								<children>
-																									<template subtype="element" match="register">
+																									<template subtype="element" match="usage">
 																										<children>
 																											<tgridrow>
 																												<children>
-																													<tgridcell>
-																														<children>
-																															<template subtype="element" match="identifier">
-																																<children>
-																																	<content/>
-																																</children>
-																																<variables/>
-																															</template>
-																														</children>
-																													</tgridcell>
 																													<tgridcell>
 																														<children>
 																															<template subtype="element" match="description">
@@ -1488,8 +1333,9 @@
 																														</children>
 																													</tgridcell>
 																													<tgridcell>
+																														<properties align="right"/>
 																														<children>
-																															<template subtype="element" match="units">
+																															<template subtype="element" match="quantity">
 																																<children>
 																																	<content/>
 																																</children>
@@ -1498,48 +1344,16 @@
 																														</children>
 																													</tgridcell>
 																													<tgridcell>
+																														<properties align="left"/>
 																														<children>
-																															<template subtype="element" match="priorreading">
+																															<template subtype="element" match="quantity">
 																																<children>
-																																	<content>
-																																		<format datatype="decimal"/>
-																																	</content>
-																																</children>
-																																<variables/>
-																															</template>
-																														</children>
-																													</tgridcell>
-																													<tgridcell>
-																														<children>
-																															<template subtype="element" match="presentreading">
-																																<children>
-																																	<content>
-																																		<format datatype="decimal"/>
-																																	</content>
-																																</children>
-																																<variables/>
-																															</template>
-																														</children>
-																													</tgridcell>
-																													<tgridcell>
-																														<children>
-																															<template subtype="element" match="factor">
-																																<children>
-																																	<content>
-																																		<format datatype="integer"/>
-																																	</content>
-																																</children>
-																																<variables/>
-																															</template>
-																														</children>
-																													</tgridcell>
-																													<tgridcell>
-																														<children>
-																															<template subtype="element" match="total">
-																																<children>
-																																	<content>
-																																		<format datatype="decimal"/>
-																																	</content>
+																																	<template subtype="attribute" match="units">
+																																		<children>
+																																			<content/>
+																																		</children>
+																																		<variables/>
+																																	</template>
 																																</children>
 																																<variables/>
 																															</template>
@@ -1556,167 +1370,8 @@
 																					</tgrid>
 																				</children>
 																			</tgridcell>
-																		</children>
-																	</tgridrow>
-																</children>
-																<variables/>
-															</template>
-														</children>
-														<variables/>
-													</template>
-												</children>
-												<variables/>
-											</template>
-										</children>
-									</tgridbody-rows>
-								</children>
-							</tgrid>
-							<newline/>
-							<paragraph paragraphtag="h2">
-								<children>
-									<text fixtext="Usage History"/>
-								</children>
-							</paragraph>
-							<tgrid>
-								<properties border="1"/>
-								<children>
-									<tgridbody-cols>
-										<children>
-											<tgridcol/>
-											<tgridcol/>
-											<tgridcol/>
-											<tgridcol/>
-										</children>
-									</tgridbody-cols>
-									<tgridheader-rows>
-										<children>
-											<tgridrow>
-												<children>
-													<tgridcell>
-														<children>
-															<text fixtext="date"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="days"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="register"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="total"/>
-														</children>
-													</tgridcell>
-												</children>
-											</tgridrow>
-										</children>
-									</tgridheader-rows>
-									<tgridbody-rows>
-										<children>
-											<template subtype="element" match="utilitybill">
-												<children>
-													<template subtype="element" match="usagehistory">
-														<children>
-															<template subtype="element" match="usage">
-																<children>
-																	<tgridrow>
-																		<children>
 																			<tgridcell>
-																				<children>
-																					<template subtype="element" match="date">
-																						<children>
-																							<content>
-																								<format datatype="date"/>
-																							</content>
-																						</children>
-																						<variables/>
-																					</template>
-																				</children>
-																			</tgridcell>
-																			<tgridcell>
-																				<children>
-																					<template subtype="element" match="days">
-																						<children>
-																							<content>
-																								<format datatype="integer"/>
-																							</content>
-																						</children>
-																						<variables/>
-																					</template>
-																				</children>
-																			</tgridcell>
-																			<tgridcell>
-																				<children>
-																					<template subtype="element" match="register">
-																						<children>
-																							<tgrid>
-																								<properties border="1"/>
-																								<children>
-																									<tgridbody-cols>
-																										<children>
-																											<tgridcol/>
-																											<tgridcol/>
-																										</children>
-																									</tgridbody-cols>
-																									<tgridheader-rows>
-																										<children>
-																											<tgridrow>
-																												<children>
-																													<tgridcell>
-																														<children>
-																															<text fixtext="identifier"/>
-																														</children>
-																													</tgridcell>
-																													<tgridcell>
-																														<children>
-																															<text fixtext="total"/>
-																														</children>
-																													</tgridcell>
-																												</children>
-																											</tgridrow>
-																										</children>
-																									</tgridheader-rows>
-																									<tgridbody-rows>
-																										<children>
-																											<tgridrow>
-																												<children>
-																													<tgridcell>
-																														<children>
-																															<template subtype="element" match="identifier">
-																																<children>
-																																	<content/>
-																																</children>
-																																<variables/>
-																															</template>
-																														</children>
-																													</tgridcell>
-																													<tgridcell>
-																														<children>
-																															<template subtype="element" match="total">
-																																<children>
-																																	<content/>
-																																</children>
-																																<variables/>
-																															</template>
-																														</children>
-																													</tgridcell>
-																												</children>
-																											</tgridrow>
-																										</children>
-																									</tgridbody-rows>
-																								</children>
-																							</tgrid>
-																						</children>
-																						<variables/>
-																					</template>
-																				</children>
-																			</tgridcell>
-																			<tgridcell>
+																				<properties align="right"/>
 																				<children>
 																					<template subtype="element" match="total">
 																						<children>
@@ -1735,17 +1390,699 @@
 														<variables/>
 													</template>
 												</children>
-												<variables/>
-											</template>
+											</tgridbody-rows>
 										</children>
-									</tgridbody-rows>
+									</tgrid>
+									<newline/>
+									<newline/>
+									<newline/>
+									<newline/>
+									<newline/>
+									<newline/>
+									<newline/>
 								</children>
-							</tgrid>
+							</paragraph>
 							<newline/>
+							<line/>
 							<newline/>
-							<newline/>
-							<newline/>
-							<newline/>
+							<paragraph>
+								<children>
+									<paragraph paragraphtag="h2">
+										<children>
+											<text fixtext="Measured Usage"/>
+										</children>
+									</paragraph>
+									<tgrid>
+										<properties border="0" width="100%"/>
+										<children>
+											<tgridbody-cols>
+												<children>
+													<tgridcol>
+														<properties align="left" valign="top" width="5%"/>
+													</tgridcol>
+													<tgridcol>
+														<properties align="left" valign="top" width="7.5%"/>
+													</tgridcol>
+													<tgridcol>
+														<properties align="left" valign="top" width="7.5%"/>
+													</tgridcol>
+													<tgridcol>
+														<properties align="left" valign="top" width="7.5%"/>
+													</tgridcol>
+													<tgridcol>
+														<properties align="left" valign="top" width="12.5%"/>
+													</tgridcol>
+													<tgridcol>
+														<properties width="50%"/>
+													</tgridcol>
+													<tgridcol>
+														<properties width="10%"/>
+													</tgridcol>
+												</children>
+											</tgridbody-cols>
+											<tgridheader-rows>
+												<children>
+													<tgridrow>
+														<styles height="0.19in"/>
+														<children>
+															<tgridcell>
+																<children>
+																	<paragraph paragraphtag="h3">
+																		<children>
+																			<text fixtext="Est.?"/>
+																		</children>
+																	</paragraph>
+																</children>
+															</tgridcell>
+															<tgridcell>
+																<children>
+																	<paragraph paragraphtag="h3">
+																		<children>
+																			<text fixtext="Prior Read"/>
+																		</children>
+																	</paragraph>
+																</children>
+															</tgridcell>
+															<tgridcell>
+																<children>
+																	<paragraph paragraphtag="h3">
+																		<children>
+																			<text fixtext="Present Read"/>
+																		</children>
+																	</paragraph>
+																</children>
+															</tgridcell>
+															<tgridcell>
+																<children>
+																	<paragraph paragraphtag="h3">
+																		<children>
+																			<text fixtext="Next Read"/>
+																		</children>
+																	</paragraph>
+																</children>
+															</tgridcell>
+															<tgridcell>
+																<children>
+																	<paragraph paragraphtag="h3">
+																		<children>
+																			<text fixtext="Identifier"/>
+																		</children>
+																	</paragraph>
+																</children>
+															</tgridcell>
+															<tgridcell>
+																<children>
+																	<tgrid>
+																		<properties border="0" width="100%"/>
+																		<children>
+																			<tgridbody-cols>
+																				<children>
+																					<tgridcol>
+																						<properties align="left" valign="top" width="25%"/>
+																					</tgridcol>
+																					<tgridcol>
+																						<properties align="left" valign="top" width="25%"/>
+																					</tgridcol>
+																					<tgridcol>
+																						<properties align="left" valign="top" width="10%"/>
+																					</tgridcol>
+																					<tgridcol>
+																						<properties align="right" valign="top" width="12.5%"/>
+																					</tgridcol>
+																					<tgridcol>
+																						<properties align="right" valign="top" width="12.5%"/>
+																					</tgridcol>
+																					<tgridcol>
+																						<properties align="right" valign="top" width="5%"/>
+																					</tgridcol>
+																					<tgridcol>
+																						<properties align="right" valign="top" width="20%"/>
+																					</tgridcol>
+																				</children>
+																			</tgridbody-cols>
+																			<tgridbody-rows>
+																				<children>
+																					<tgridrow>
+																						<children>
+																							<tgridcell>
+																								<children>
+																									<paragraph paragraphtag="h3">
+																										<children>
+																											<text fixtext="Register"/>
+																										</children>
+																									</paragraph>
+																								</children>
+																							</tgridcell>
+																							<tgridcell>
+																								<children>
+																									<paragraph paragraphtag="h3">
+																										<children>
+																											<text fixtext="Description"/>
+																										</children>
+																									</paragraph>
+																								</children>
+																							</tgridcell>
+																							<tgridcell>
+																								<children>
+																									<paragraph paragraphtag="h3">
+																										<children>
+																											<text fixtext="Units"/>
+																										</children>
+																									</paragraph>
+																								</children>
+																							</tgridcell>
+																							<tgridcell>
+																								<children>
+																									<paragraph paragraphtag="h3">
+																										<children>
+																											<text fixtext="Prior"/>
+																										</children>
+																									</paragraph>
+																								</children>
+																							</tgridcell>
+																							<tgridcell>
+																								<children>
+																									<paragraph paragraphtag="h3">
+																										<children>
+																											<text fixtext="Present"/>
+																										</children>
+																									</paragraph>
+																								</children>
+																							</tgridcell>
+																							<tgridcell>
+																								<children>
+																									<paragraph paragraphtag="h3">
+																										<children>
+																											<text fixtext="Factor"/>
+																										</children>
+																									</paragraph>
+																								</children>
+																							</tgridcell>
+																							<tgridcell>
+																								<children>
+																									<paragraph paragraphtag="h3">
+																										<children>
+																											<text fixtext="Total"/>
+																										</children>
+																									</paragraph>
+																								</children>
+																							</tgridcell>
+																						</children>
+																					</tgridrow>
+																				</children>
+																			</tgridbody-rows>
+																		</children>
+																	</tgrid>
+																</children>
+															</tgridcell>
+															<tgridcell/>
+														</children>
+													</tgridrow>
+												</children>
+											</tgridheader-rows>
+											<tgridbody-rows>
+												<children>
+													<template subtype="element" match="utilitybill">
+														<children>
+															<template subtype="element" match="measuredusage">
+																<children>
+																	<template subtype="element" match="meter">
+																		<children>
+																			<tgridrow>
+																				<children>
+																					<tgridcell>
+																						<children>
+																							<template subtype="element" match="estimated">
+																								<children>
+																									<content/>
+																								</children>
+																								<variables/>
+																							</template>
+																						</children>
+																					</tgridcell>
+																					<tgridcell>
+																						<children>
+																							<template subtype="element" match="priorreaddate">
+																								<children>
+																									<content>
+																										<format datatype="date"/>
+																									</content>
+																								</children>
+																								<variables/>
+																							</template>
+																						</children>
+																					</tgridcell>
+																					<tgridcell>
+																						<children>
+																							<template subtype="element" match="presentreaddate">
+																								<children>
+																									<content>
+																										<format datatype="date"/>
+																									</content>
+																								</children>
+																								<variables/>
+																							</template>
+																						</children>
+																					</tgridcell>
+																					<tgridcell>
+																						<children>
+																							<template subtype="element" match="nextreaddate">
+																								<children>
+																									<content>
+																										<format datatype="date"/>
+																									</content>
+																								</children>
+																								<variables/>
+																							</template>
+																						</children>
+																					</tgridcell>
+																					<tgridcell>
+																						<children>
+																							<template subtype="element" match="identifier">
+																								<children>
+																									<content/>
+																								</children>
+																								<variables/>
+																							</template>
+																						</children>
+																					</tgridcell>
+																					<tgridcell>
+																						<children>
+																							<tgrid>
+																								<properties border="0" width="100%"/>
+																								<children>
+																									<tgridbody-cols>
+																										<children>
+																											<tgridcol>
+																												<properties align="right"/>
+																											</tgridcol>
+																										</children>
+																									</tgridbody-cols>
+																									<tgridbody-rows>
+																										<children>
+																											<tgridrow>
+																												<children>
+																													<tgridcell>
+																														<children>
+																															<tgrid>
+																																<properties border="0" width="100%"/>
+																																<children>
+																																	<tgridbody-cols>
+																																		<children>
+																																			<tgridcol>
+																																				<properties align="left" width="25%"/>
+																																			</tgridcol>
+																																			<tgridcol>
+																																				<properties align="left" width="25%"/>
+																																			</tgridcol>
+																																			<tgridcol>
+																																				<properties align="left" width="10%"/>
+																																			</tgridcol>
+																																			<tgridcol>
+																																				<properties align="right" width="12.5%"/>
+																																			</tgridcol>
+																																			<tgridcol>
+																																				<properties align="right" width="12.5%"/>
+																																			</tgridcol>
+																																			<tgridcol>
+																																				<properties align="right" width="5%"/>
+																																			</tgridcol>
+																																			<tgridcol>
+																																				<properties align="right" width="20%"/>
+																																			</tgridcol>
+																																		</children>
+																																	</tgridbody-cols>
+																																	<tgridbody-rows>
+																																		<children>
+																																			<template subtype="element" match="register">
+																																				<children>
+																																					<tgridrow>
+																																						<children>
+																																							<tgridcell>
+																																								<children>
+																																									<template subtype="element" match="identifier">
+																																										<children>
+																																											<content/>
+																																										</children>
+																																										<variables/>
+																																									</template>
+																																								</children>
+																																							</tgridcell>
+																																							<tgridcell>
+																																								<children>
+																																									<template subtype="element" match="description">
+																																										<children>
+																																											<content/>
+																																										</children>
+																																										<variables/>
+																																									</template>
+																																								</children>
+																																							</tgridcell>
+																																							<tgridcell>
+																																								<children>
+																																									<template subtype="element" match="units">
+																																										<children>
+																																											<content/>
+																																										</children>
+																																										<variables/>
+																																									</template>
+																																								</children>
+																																							</tgridcell>
+																																							<tgridcell>
+																																								<children>
+																																									<template subtype="element" match="priorreading">
+																																										<children>
+																																											<content>
+																																												<format datatype="decimal"/>
+																																											</content>
+																																										</children>
+																																										<variables/>
+																																									</template>
+																																								</children>
+																																							</tgridcell>
+																																							<tgridcell>
+																																								<children>
+																																									<template subtype="element" match="presentreading">
+																																										<children>
+																																											<content>
+																																												<format datatype="decimal"/>
+																																											</content>
+																																										</children>
+																																										<variables/>
+																																									</template>
+																																								</children>
+																																							</tgridcell>
+																																							<tgridcell>
+																																								<children>
+																																									<template subtype="element" match="factor">
+																																										<children>
+																																											<content>
+																																												<format datatype="integer"/>
+																																											</content>
+																																										</children>
+																																										<variables/>
+																																									</template>
+																																								</children>
+																																							</tgridcell>
+																																							<tgridcell>
+																																								<children>
+																																									<template subtype="element" match="total">
+																																										<children>
+																																											<content>
+																																												<format datatype="decimal"/>
+																																											</content>
+																																										</children>
+																																										<variables/>
+																																									</template>
+																																								</children>
+																																							</tgridcell>
+																																						</children>
+																																					</tgridrow>
+																																				</children>
+																																				<variables/>
+																																			</template>
+																																		</children>
+																																	</tgridbody-rows>
+																																</children>
+																															</tgrid>
+																														</children>
+																													</tgridcell>
+																												</children>
+																											</tgridrow>
+																										</children>
+																									</tgridbody-rows>
+																								</children>
+																							</tgrid>
+																						</children>
+																					</tgridcell>
+																					<tgridcell/>
+																				</children>
+																			</tgridrow>
+																		</children>
+																		<variables/>
+																	</template>
+																</children>
+																<variables/>
+															</template>
+														</children>
+														<variables/>
+													</template>
+												</children>
+											</tgridbody-rows>
+										</children>
+									</tgrid>
+									<newline/>
+								</children>
+							</paragraph>
+							<line/>
+							<paragraph>
+								<children>
+									<condition>
+										<children>
+											<conditionbranch xpath="child::utilitybill/usagehistory/usage">
+												<children>
+													<paragraph paragraphtag="h2">
+														<children>
+															<text fixtext="Usage History"/>
+														</children>
+													</paragraph>
+													<tgrid>
+														<properties align="left" border="0" width="100%"/>
+														<children>
+															<tgridbody-cols>
+																<children>
+																	<tgridcol>
+																		<properties align="left"/>
+																	</tgridcol>
+																	<tgridcol>
+																		<properties align="left"/>
+																	</tgridcol>
+																	<tgridcol/>
+																	<tgridcol>
+																		<properties align="left"/>
+																	</tgridcol>
+																</children>
+															</tgridbody-cols>
+															<tgridheader-rows>
+																<children>
+																	<tgridrow>
+																		<children>
+																			<tgridcell>
+																				<children>
+																					<paragraph paragraphtag="h3">
+																						<children>
+																							<text fixtext="Date"/>
+																						</children>
+																					</paragraph>
+																				</children>
+																			</tgridcell>
+																			<tgridcell>
+																				<children>
+																					<paragraph paragraphtag="h3">
+																						<children>
+																							<text fixtext="Days"/>
+																						</children>
+																					</paragraph>
+																				</children>
+																			</tgridcell>
+																			<tgridcell>
+																				<children>
+																					<tgrid>
+																						<properties border="0" width="100%"/>
+																						<children>
+																							<tgridbody-cols>
+																								<children>
+																									<tgridcol>
+																										<properties align="left"/>
+																									</tgridcol>
+																									<tgridcol>
+																										<properties align="left"/>
+																									</tgridcol>
+																									<tgridcol>
+																										<properties align="left"/>
+																									</tgridcol>
+																								</children>
+																							</tgridbody-cols>
+																							<tgridbody-rows>
+																								<children>
+																									<tgridrow>
+																										<children>
+																											<tgridcell>
+																												<children>
+																													<paragraph paragraphtag="h3">
+																														<children>
+																															<text fixtext="Identifier"/>
+																														</children>
+																													</paragraph>
+																												</children>
+																											</tgridcell>
+																											<tgridcell>
+																												<children>
+																													<paragraph paragraphtag="h3">
+																														<children>
+																															<text fixtext="Amount"/>
+																														</children>
+																													</paragraph>
+																												</children>
+																											</tgridcell>
+																											<tgridcell/>
+																										</children>
+																									</tgridrow>
+																								</children>
+																							</tgridbody-rows>
+																						</children>
+																					</tgrid>
+																				</children>
+																			</tgridcell>
+																			<tgridcell>
+																				<children>
+																					<paragraph paragraphtag="h3">
+																						<children>
+																							<text fixtext="Total"/>
+																						</children>
+																					</paragraph>
+																				</children>
+																			</tgridcell>
+																		</children>
+																	</tgridrow>
+																</children>
+															</tgridheader-rows>
+															<tgridbody-rows>
+																<children>
+																	<template subtype="element" match="utilitybill">
+																		<children>
+																			<template subtype="element" match="usagehistory">
+																				<children>
+																					<template subtype="element" match="usage">
+																						<children>
+																							<tgridrow>
+																								<children>
+																									<tgridcell>
+																										<children>
+																											<template subtype="element" match="date">
+																												<children>
+																													<content>
+																														<format datatype="date"/>
+																													</content>
+																												</children>
+																												<variables/>
+																											</template>
+																										</children>
+																									</tgridcell>
+																									<tgridcell>
+																										<children>
+																											<template subtype="element" match="days">
+																												<children>
+																													<content>
+																														<format datatype="integer"/>
+																													</content>
+																												</children>
+																												<variables/>
+																											</template>
+																										</children>
+																									</tgridcell>
+																									<tgridcell>
+																										<children>
+																											<template subtype="element" match="register">
+																												<children>
+																													<tgrid>
+																														<properties border="0" width="100%"/>
+																														<children>
+																															<tgridbody-cols>
+																																<children>
+																																	<tgridcol>
+																																		<properties align="left"/>
+																																	</tgridcol>
+																																	<tgridcol>
+																																		<properties align="right"/>
+																																	</tgridcol>
+																																	<tgridcol>
+																																		<properties align="left"/>
+																																	</tgridcol>
+																																</children>
+																															</tgridbody-cols>
+																															<tgridbody-rows>
+																																<children>
+																																	<tgridrow>
+																																		<children>
+																																			<tgridcell>
+																																				<children>
+																																					<template subtype="element" match="identifier">
+																																						<children>
+																																							<content/>
+																																						</children>
+																																						<variables/>
+																																					</template>
+																																				</children>
+																																			</tgridcell>
+																																			<tgridcell>
+																																				<children>
+																																					<template subtype="element" match="total">
+																																						<children>
+																																							<content/>
+																																						</children>
+																																						<variables/>
+																																					</template>
+																																				</children>
+																																			</tgridcell>
+																																			<tgridcell>
+																																				<children>
+																																					<template subtype="element" match="total">
+																																						<children>
+																																							<template subtype="attribute" match="units">
+																																								<children>
+																																									<content/>
+																																								</children>
+																																								<variables/>
+																																							</template>
+																																						</children>
+																																						<variables/>
+																																					</template>
+																																				</children>
+																																			</tgridcell>
+																																		</children>
+																																	</tgridrow>
+																																</children>
+																															</tgridbody-rows>
+																														</children>
+																													</tgrid>
+																												</children>
+																												<variables/>
+																											</template>
+																										</children>
+																									</tgridcell>
+																									<tgridcell>
+																										<children>
+																											<template subtype="element" match="total">
+																												<children>
+																													<content/>
+																												</children>
+																												<variables/>
+																											</template>
+																										</children>
+																									</tgridcell>
+																								</children>
+																							</tgridrow>
+																						</children>
+																						<variables/>
+																					</template>
+																				</children>
+																				<variables/>
+																			</template>
+																		</children>
+																		<variables/>
+																	</template>
+																</children>
+															</tgridbody-rows>
+														</children>
+													</tgrid>
+													<newline/>
+												</children>
+											</conditionbranch>
+										</children>
+									</condition>
+								</children>
+							</paragraph>
 						</children>
 						<variables/>
 					</template>

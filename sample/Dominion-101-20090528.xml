@@ -82,7 +82,7 @@
 		<billperiodbegin>2009-04-01</billperiodbegin>
 		<billperiodend>2009-05-01</billperiodend>
 		<issuedate>2009-05-02</issuedate>
-		<currentcharges>13574.14</currentcharges>
+		<currentcharges service="electric">13574.14</currentcharges>
 		<totaldue>13574.14</totaldue>
 		<duedate>2009-05-28</duedate>
 		<latepayment>
@@ -199,7 +199,7 @@
 		<total>148800</total>
 	</billableusage>
 	<measuredusage service="electric">
-		<meter type="electric">
+		<meter>
 			<estimated>false</estimated>
 			<priorreaddate>2009-04-01</priorreaddate>
 			<presentreaddate>2009-05-01</presentreaddate>
@@ -223,7 +223,7 @@
 				<total>138240</total>
 			</register>
 		</meter>
-		<meter type="electric">
+		<meter>
 			<estimated>false</estimated>
 			<priorreaddate>2009-04-01</priorreaddate>
 			<presentreaddate>2009-05-01</presentreaddate>

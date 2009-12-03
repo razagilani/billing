@@ -126,10 +126,17 @@
 									<xs:documentation>Date the bill is issued for customer.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="currentcharges" type="xs:decimal">
+							<xs:element name="currentcharges" maxOccurs="2">
 								<xs:annotation>
 									<xs:documentation>Total for this bill period including distribution and service lates fees, taxes and various other charges.</xs:documentation>
 								</xs:annotation>
+								<xs:complexType>
+									<xs:simpleContent>
+										<xs:extension base="xs:decimal">
+											<xs:attributeGroup ref="service"/>
+										</xs:extension>
+									</xs:simpleContent>
+								</xs:complexType>
 							</xs:element>
 							<xs:element name="totaldue" type="xs:decimal">
 								<xs:annotation>
