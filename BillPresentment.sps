@@ -827,10 +827,16 @@
 																														<properties align="left" width="35%"/>
 																													</tgridcol>
 																													<tgridcol>
-																														<properties align="left" width="15%"/>
+																														<properties align="right" width="10%"/>
 																													</tgridcol>
 																													<tgridcol>
-																														<properties align="left" width="15%"/>
+																														<properties align="left" width="5%"/>
+																													</tgridcol>
+																													<tgridcol>
+																														<properties align="left" width="10%"/>
+																													</tgridcol>
+																													<tgridcol>
+																														<properties align="left" width="5%"/>
 																													</tgridcol>
 																													<tgridcol>
 																														<properties align="right" width="10%"/>
@@ -871,6 +877,7 @@
 																																	</paragraph>
 																																</children>
 																															</tgridcell>
+																															<tgridcell/>
 																															<tgridcell>
 																																<children>
 																																	<paragraph paragraphtag="h3">
@@ -880,6 +887,7 @@
 																																	</paragraph>
 																																</children>
 																															</tgridcell>
+																															<tgridcell/>
 																															<tgridcell>
 																																<children>
 																																	<paragraph paragraphtag="h3">
@@ -998,19 +1006,25 @@
 																																																									<tgridbody-cols>
 																																																										<children>
 																																																											<tgridcol>
-																																																												<properties align="left" width="40.7%"/>
+																																																												<properties align="left" width="41.20%"/>
 																																																											</tgridcol>
 																																																											<tgridcol>
-																																																												<properties align="left" width="17.70%"/>
+																																																												<properties align="right" width="11.76%"/>
 																																																											</tgridcol>
 																																																											<tgridcol>
-																																																												<properties align="left" width="17.70%"/>
+																																																												<properties align="left" width="5.88%"/>
 																																																											</tgridcol>
 																																																											<tgridcol>
-																																																												<properties align="right" width="11.95%"/>
+																																																												<properties align="right" width="11.76%"/>
 																																																											</tgridcol>
 																																																											<tgridcol>
-																																																												<properties width="11.95%"/>
+																																																												<properties align="left" width="5.88%"/>
+																																																											</tgridcol>
+																																																											<tgridcol>
+																																																												<properties align="right" width="11.76%"/>
+																																																											</tgridcol>
+																																																											<tgridcol>
+																																																												<properties width="11.76%"/>
 																																																											</tgridcol>
 																																																										</children>
 																																																									</tgridbody-cols>
@@ -1044,9 +1058,39 @@
 																																																																	</tgridcell>
 																																																																	<tgridcell>
 																																																																		<children>
+																																																																			<template subtype="element" match="quantity">
+																																																																				<children>
+																																																																					<template subtype="attribute" match="units">
+																																																																						<children>
+																																																																							<content/>
+																																																																						</children>
+																																																																						<variables/>
+																																																																					</template>
+																																																																				</children>
+																																																																				<variables/>
+																																																																			</template>
+																																																																		</children>
+																																																																	</tgridcell>
+																																																																	<tgridcell>
+																																																																		<children>
 																																																																			<template subtype="element" match="rate">
 																																																																				<children>
 																																																																					<content/>
+																																																																				</children>
+																																																																				<variables/>
+																																																																			</template>
+																																																																		</children>
+																																																																	</tgridcell>
+																																																																	<tgridcell>
+																																																																		<children>
+																																																																			<template subtype="element" match="rate">
+																																																																				<children>
+																																																																					<template subtype="attribute" match="units">
+																																																																						<children>
+																																																																							<content/>
+																																																																						</children>
+																																																																						<variables/>
+																																																																					</template>
 																																																																				</children>
 																																																																				<variables/>
 																																																																			</template>
