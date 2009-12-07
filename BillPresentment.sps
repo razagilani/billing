@@ -2,9 +2,11 @@
 <structure version="9" htmlmode="strict" relativeto="*SPS" encodinghtml="UTF-8" encodingrtf="ISO-8859-1" encodingpdf="UTF-8" useimportschema="1" embed-images="1">
 	<parameters/>
 	<schemasources>
-		<namespaces/>
+		<namespaces>
+			<nspair prefix="ub" uri="skylinebill"/>
+		</namespaces>
 		<schemasources>
-			<xsdschemasource name="XML" main="1" schemafile="UtilityBill.xsd" workingxmlfile="sample\PECO-94443-01819-2009100609.xml">
+			<xsdschemasource name="XML" main="1" schemafile="UtilityBill.xsd" workingxmlfile="sample\Dominion-101-20090528.xml">
 				<xmltablesupport/>
 				<textstateicons/>
 			</xsdschemasource>
@@ -41,7 +43,7 @@
 								<properties align="right"/>
 								<children>
 									<text fixtext="SNUB  "/>
-									<template subtype="element" match="utilitybill">
+									<template subtype="element" match="ub:utilitybill">
 										<children>
 											<template subtype="attribute" match="id">
 												<children>
@@ -65,11 +67,11 @@
 									<paragraph paragraphtag="p">
 										<children>
 											<text fixtext="Customer Utility Account Number "/>
-											<template subtype="element" match="utilitybill">
+											<template subtype="element" match="ub:utilitybill">
 												<children>
-													<template subtype="element" match="car">
+													<template subtype="element" match="ub:car">
 														<children>
-															<template subtype="element" match="accountnumber">
+															<template subtype="element" match="ub:accountnumber">
 																<children>
 																	<content/>
 																</children>
@@ -108,11 +110,11 @@
 																		<children>
 																			<tgridbody-cols>
 																				<children>
-																					<template subtype="element" match="utilitybill">
+																					<template subtype="element" match="ub:utilitybill">
 																						<children>
-																							<template subtype="element" match="car">
+																							<template subtype="element" match="ub:car">
 																								<children>
-																									<template subtype="element" match="billingaddress">
+																									<template subtype="element" match="ub:billingaddress">
 																										<children>
 																											<tgridcol/>
 																										</children>
@@ -132,14 +134,14 @@
 																						<children>
 																							<tgridcell>
 																								<children>
-																									<template subtype="element" match="addressee">
+																									<template subtype="element" match="ub:addressee">
 																										<children>
 																											<content/>
 																										</children>
 																										<variables/>
 																									</template>
 																									<text fixtext="   "/>
-																									<template subtype="element" match="telephonenumber">
+																									<template subtype="element" match="ub:telephonenumber">
 																										<children>
 																											<content/>
 																										</children>
@@ -153,7 +155,7 @@
 																						<children>
 																							<tgridcell>
 																								<children>
-																									<template subtype="element" match="street">
+																									<template subtype="element" match="ub:street">
 																										<children>
 																											<content/>
 																										</children>
@@ -167,28 +169,28 @@
 																						<children>
 																							<tgridcell>
 																								<children>
-																									<template subtype="element" match="city">
+																									<template subtype="element" match="ub:city">
 																										<children>
 																											<content/>
 																										</children>
 																										<variables/>
 																									</template>
 																									<text fixtext="  "/>
-																									<template subtype="element" match="state">
+																									<template subtype="element" match="ub:state">
 																										<children>
 																											<content/>
 																										</children>
 																										<variables/>
 																									</template>
 																									<text fixtext="  "/>
-																									<template subtype="element" match="country">
+																									<template subtype="element" match="ub:country">
 																										<children>
 																											<content/>
 																										</children>
 																										<variables/>
 																									</template>
 																									<text fixtext="   "/>
-																									<template subtype="element" match="postalcode">
+																									<template subtype="element" match="ub:postalcode">
 																										<children>
 																											<content/>
 																										</children>
@@ -216,11 +218,11 @@
 																		<children>
 																			<tgridbody-cols>
 																				<children>
-																					<template subtype="element" match="utilitybill">
+																					<template subtype="element" match="ub:utilitybill">
 																						<children>
-																							<template subtype="element" match="car">
+																							<template subtype="element" match="ub:car">
 																								<children>
-																									<template subtype="element" match="serviceaddress">
+																									<template subtype="element" match="ub:serviceaddress">
 																										<children>
 																											<tgridcol/>
 																										</children>
@@ -240,14 +242,14 @@
 																						<children>
 																							<tgridcell>
 																								<children>
-																									<template subtype="element" match="addressee">
+																									<template subtype="element" match="ub:addressee">
 																										<children>
 																											<content/>
 																										</children>
 																										<variables/>
 																									</template>
 																									<text fixtext="   "/>
-																									<template subtype="element" match="telephonenumber">
+																									<template subtype="element" match="ub:telephonenumber">
 																										<children>
 																											<content/>
 																										</children>
@@ -261,7 +263,7 @@
 																						<children>
 																							<tgridcell>
 																								<children>
-																									<template subtype="element" match="street">
+																									<template subtype="element" match="ub:street">
 																										<children>
 																											<content/>
 																										</children>
@@ -275,28 +277,28 @@
 																						<children>
 																							<tgridcell>
 																								<children>
-																									<template subtype="element" match="city">
+																									<template subtype="element" match="ub:city">
 																										<children>
 																											<content/>
 																										</children>
 																										<variables/>
 																									</template>
 																									<text fixtext="   "/>
-																									<template subtype="element" match="state">
+																									<template subtype="element" match="ub:state">
 																										<children>
 																											<content/>
 																										</children>
 																										<variables/>
 																									</template>
 																									<text fixtext="   "/>
-																									<template subtype="element" match="country">
+																									<template subtype="element" match="ub:country">
 																										<children>
 																											<content/>
 																										</children>
 																										<variables/>
 																									</template>
 																									<text fixtext="   "/>
-																									<template subtype="element" match="postalcode">
+																									<template subtype="element" match="ub:postalcode">
 																										<children>
 																											<content/>
 																										</children>
@@ -333,11 +335,11 @@
 									<paragraph paragraphtag="p">
 										<children>
 											<text fixtext="Period From "/>
-											<template subtype="element" match="utilitybill">
+											<template subtype="element" match="ub:utilitybill">
 												<children>
-													<template subtype="element" match="summary">
+													<template subtype="element" match="ub:summary">
 														<children>
-															<template subtype="element" match="billperiodbegin">
+															<template subtype="element" match="ub:billperiodbegin">
 																<children>
 																	<content>
 																		<format datatype="date"/>
@@ -352,11 +354,11 @@
 												<variables/>
 											</template>
 											<text fixtext=" To "/>
-											<template subtype="element" match="utilitybill">
+											<template subtype="element" match="ub:utilitybill">
 												<children>
-													<template subtype="element" match="summary">
+													<template subtype="element" match="ub:summary">
 														<children>
-															<template subtype="element" match="billperiodend">
+															<template subtype="element" match="ub:billperiodend">
 																<children>
 																	<content>
 																		<format datatype="date"/>
@@ -371,11 +373,11 @@
 												<variables/>
 											</template>
 											<text fixtext="  Bill Issued "/>
-											<template subtype="element" match="utilitybill">
+											<template subtype="element" match="ub:utilitybill">
 												<children>
-													<template subtype="element" match="summary">
+													<template subtype="element" match="ub:summary">
 														<children>
-															<template subtype="element" match="issuedate">
+															<template subtype="element" match="ub:issuedate">
 																<children>
 																	<content>
 																		<format datatype="date"/>
@@ -390,11 +392,11 @@
 												<variables/>
 											</template>
 											<text fixtext="  Due: "/>
-											<template subtype="element" match="utilitybill">
+											<template subtype="element" match="ub:utilitybill">
 												<children>
-													<template subtype="element" match="summary">
+													<template subtype="element" match="ub:summary">
 														<children>
-															<template subtype="element" match="duedate">
+															<template subtype="element" match="ub:duedate">
 																<children>
 																	<content>
 																		<format datatype="date"/>
@@ -437,11 +439,11 @@
 															</tgridcell>
 															<tgridcell>
 																<children>
-																	<template subtype="element" match="utilitybill">
+																	<template subtype="element" match="ub:utilitybill">
 																		<children>
-																			<template subtype="element" match="summary">
+																			<template subtype="element" match="ub:summary">
 																				<children>
-																					<template subtype="element" match="priorbalance">
+																					<template subtype="element" match="ub:priorbalance">
 																						<children>
 																							<content>
 																								<format datatype="decimal"/>
@@ -478,17 +480,17 @@
 																			</tgridbody-cols>
 																			<tgridbody-rows>
 																				<children>
-																					<template subtype="element" match="utilitybill">
+																					<template subtype="element" match="ub:utilitybill">
 																						<children>
-																							<template subtype="element" match="summary">
+																							<template subtype="element" match="ub:summary">
 																								<children>
-																									<template subtype="element" match="previouspayment">
+																									<template subtype="element" match="ub:previouspayment">
 																										<children>
 																											<tgridrow>
 																												<children>
 																													<tgridcell>
 																														<children>
-																															<template subtype="element" match="amount">
+																															<template subtype="element" match="ub:amount">
 																																<children>
 																																	<content>
 																																		<format datatype="decimal"/>
@@ -536,17 +538,17 @@
 																			</tgridbody-cols>
 																			<tgridbody-rows>
 																				<children>
-																					<template subtype="element" match="utilitybill">
+																					<template subtype="element" match="ub:utilitybill">
 																						<children>
-																							<template subtype="element" match="summary">
+																							<template subtype="element" match="ub:summary">
 																								<children>
-																									<template subtype="element" match="adjustment">
+																									<template subtype="element" match="ub:adjustment">
 																										<children>
 																											<tgridrow>
 																												<children>
 																													<tgridcell>
 																														<children>
-																															<template subtype="element" match="amount">
+																															<template subtype="element" match="ub:amount">
 																																<children>
 																																	<content>
 																																		<format datatype="decimal"/>
@@ -584,11 +586,11 @@
 															</tgridcell>
 															<tgridcell>
 																<children>
-																	<template subtype="element" match="utilitybill">
+																	<template subtype="element" match="ub:utilitybill">
 																		<children>
-																			<template subtype="element" match="summary">
+																			<template subtype="element" match="ub:summary">
 																				<children>
-																					<template subtype="element" match="balanceforward">
+																					<template subtype="element" match="ub:balanceforward">
 																						<children>
 																							<content>
 																								<format datatype="decimal"/>
@@ -626,11 +628,11 @@
 																			</tgridbody-cols>
 																			<tgridbody-rows>
 																				<children>
-																					<template subtype="element" match="utilitybill">
+																					<template subtype="element" match="ub:utilitybill">
 																						<children>
-																							<template subtype="element" match="summary">
+																							<template subtype="element" match="ub:summary">
 																								<children>
-																									<template subtype="element" match="currentcharges">
+																									<template subtype="element" match="ub:currentcharges">
 																										<children>
 																											<tgridrow>
 																												<children>
@@ -677,11 +679,11 @@
 															</tgridcell>
 															<tgridcell>
 																<children>
-																	<template subtype="element" match="utilitybill">
+																	<template subtype="element" match="ub:utilitybill">
 																		<children>
-																			<template subtype="element" match="summary">
+																			<template subtype="element" match="ub:summary">
 																				<children>
-																					<template subtype="element" match="totaldue">
+																					<template subtype="element" match="ub:totaldue">
 																						<children>
 																							<content>
 																								<format datatype="decimal"/>
@@ -705,13 +707,13 @@
 									</tgrid>
 									<newline/>
 									<text fixtext=" Late Payment Penalty: "/>
-									<template subtype="element" match="utilitybill">
+									<template subtype="element" match="ub:utilitybill">
 										<children>
-											<template subtype="element" match="summary">
+											<template subtype="element" match="ub:summary">
 												<children>
-													<template subtype="element" match="latepayment">
+													<template subtype="element" match="ub:latepayment">
 														<children>
-															<template subtype="element" match="penalty">
+															<template subtype="element" match="ub:penalty">
 																<children>
 																	<content/>
 																</children>
@@ -727,13 +729,13 @@
 										<variables/>
 									</template>
 									<text fixtext="Amount: "/>
-									<template subtype="element" match="utilitybill">
+									<template subtype="element" match="ub:utilitybill">
 										<children>
-											<template subtype="element" match="summary">
+											<template subtype="element" match="ub:summary">
 												<children>
-													<template subtype="element" match="latepayment">
+													<template subtype="element" match="ub:latepayment">
 														<children>
-															<template subtype="element" match="amount">
+															<template subtype="element" match="ub:amount">
 																<children>
 																	<content/>
 																</children>
@@ -912,9 +914,9 @@
 																			</tgridheader-rows>
 																			<tgridbody-rows>
 																				<children>
-																					<template subtype="element" match="utilitybill">
+																					<template subtype="element" match="ub:utilitybill">
 																						<children>
-																							<template subtype="element" match="details">
+																							<template subtype="element" match="ub:details">
 																								<children>
 																									<tgridrow>
 																										<properties valign="top"/>
@@ -931,7 +933,7 @@
 																											</tgridcell>
 																											<tgridcell>
 																												<children>
-																													<template subtype="element" match="rateschedule">
+																													<template subtype="element" match="ub:rateschedule">
 																														<children>
 																															<content/>
 																														</children>
@@ -970,7 +972,7 @@
 																																							</tgridbody-cols>
 																																							<tgridbody-rows>
 																																								<children>
-																																									<template subtype="element" match="chargegroup">
+																																									<template subtype="element" match="ub:chargegroup">
 																																										<children>
 																																											<tgridrow>
 																																												<children>
@@ -1030,15 +1032,15 @@
 																																																									</tgridbody-cols>
 																																																									<tgridbody-rows>
 																																																										<children>
-																																																											<template subtype="element" match="charges">
+																																																											<template subtype="element" match="ub:charges">
 																																																												<children>
-																																																													<template subtype="element" match="charge">
+																																																													<template subtype="element" match="ub:charge">
 																																																														<children>
 																																																															<tgridrow>
 																																																																<children>
 																																																																	<tgridcell>
 																																																																		<children>
-																																																																			<template subtype="element" match="description">
+																																																																			<template subtype="element" match="ub:description">
 																																																																				<children>
 																																																																					<content/>
 																																																																				</children>
@@ -1048,7 +1050,7 @@
 																																																																	</tgridcell>
 																																																																	<tgridcell>
 																																																																		<children>
-																																																																			<template subtype="element" match="quantity">
+																																																																			<template subtype="element" match="ub:quantity">
 																																																																				<children>
 																																																																					<content/>
 																																																																				</children>
@@ -1058,7 +1060,7 @@
 																																																																	</tgridcell>
 																																																																	<tgridcell>
 																																																																		<children>
-																																																																			<template subtype="element" match="quantity">
+																																																																			<template subtype="element" match="ub:quantity">
 																																																																				<children>
 																																																																					<template subtype="attribute" match="units">
 																																																																						<children>
@@ -1073,7 +1075,7 @@
 																																																																	</tgridcell>
 																																																																	<tgridcell>
 																																																																		<children>
-																																																																			<template subtype="element" match="rate">
+																																																																			<template subtype="element" match="ub:rate">
 																																																																				<children>
 																																																																					<content/>
 																																																																				</children>
@@ -1083,7 +1085,7 @@
 																																																																	</tgridcell>
 																																																																	<tgridcell>
 																																																																		<children>
-																																																																			<template subtype="element" match="rate">
+																																																																			<template subtype="element" match="ub:rate">
 																																																																				<children>
 																																																																					<template subtype="attribute" match="units">
 																																																																						<children>
@@ -1099,7 +1101,7 @@
 																																																																	<tgridcell>
 																																																																		<properties align="right"/>
 																																																																		<children>
-																																																																			<template subtype="element" match="total">
+																																																																			<template subtype="element" match="ub:total">
 																																																																				<children>
 																																																																					<content>
 																																																																						<format datatype="decimal"/>
@@ -1320,9 +1322,9 @@
 											</tgridheader-rows>
 											<tgridbody-rows>
 												<children>
-													<template subtype="element" match="utilitybill">
+													<template subtype="element" match="ub:utilitybill">
 														<children>
-															<template subtype="element" match="billableusage">
+															<template subtype="element" match="ub:billableusage">
 																<children>
 																	<tgridrow>
 																		<children>
@@ -1340,7 +1342,7 @@
 																			<tgridcell>
 																				<properties valign="top"/>
 																				<children>
-																					<template subtype="element" match="rateschedule">
+																					<template subtype="element" match="ub:rateschedule">
 																						<children>
 																							<content/>
 																						</children>
@@ -1362,13 +1364,13 @@
 																							</tgridbody-cols>
 																							<tgridbody-rows>
 																								<children>
-																									<template subtype="element" match="usage">
+																									<template subtype="element" match="ub:usage">
 																										<children>
 																											<tgridrow>
 																												<children>
 																													<tgridcell>
 																														<children>
-																															<template subtype="element" match="description">
+																															<template subtype="element" match="ub:description">
 																																<children>
 																																	<content/>
 																																</children>
@@ -1379,7 +1381,7 @@
 																													<tgridcell>
 																														<properties align="right"/>
 																														<children>
-																															<template subtype="element" match="quantity">
+																															<template subtype="element" match="ub:quantity">
 																																<children>
 																																	<content/>
 																																</children>
@@ -1390,7 +1392,7 @@
 																													<tgridcell>
 																														<properties align="left"/>
 																														<children>
-																															<template subtype="element" match="quantity">
+																															<template subtype="element" match="ub:quantity">
 																																<children>
 																																	<template subtype="attribute" match="units">
 																																		<children>
@@ -1417,7 +1419,7 @@
 																			<tgridcell>
 																				<properties align="right"/>
 																				<children>
-																					<template subtype="element" match="total">
+																					<template subtype="element" match="ub:total">
 																						<children>
 																							<content/>
 																						</children>
@@ -1646,17 +1648,17 @@
 											</tgridheader-rows>
 											<tgridbody-rows>
 												<children>
-													<template subtype="element" match="utilitybill">
+													<template subtype="element" match="ub:utilitybill">
 														<children>
-															<template subtype="element" match="measuredusage">
+															<template subtype="element" match="ub:measuredusage">
 																<children>
-																	<template subtype="element" match="meter">
+																	<template subtype="element" match="ub:meter">
 																		<children>
 																			<tgridrow>
 																				<children>
 																					<tgridcell>
 																						<children>
-																							<template subtype="element" match="estimated">
+																							<template subtype="element" match="ub:estimated">
 																								<children>
 																									<content/>
 																								</children>
@@ -1666,7 +1668,7 @@
 																					</tgridcell>
 																					<tgridcell>
 																						<children>
-																							<template subtype="element" match="priorreaddate">
+																							<template subtype="element" match="ub:priorreaddate">
 																								<children>
 																									<content>
 																										<format datatype="date"/>
@@ -1678,7 +1680,7 @@
 																					</tgridcell>
 																					<tgridcell>
 																						<children>
-																							<template subtype="element" match="presentreaddate">
+																							<template subtype="element" match="ub:presentreaddate">
 																								<children>
 																									<content>
 																										<format datatype="date"/>
@@ -1690,7 +1692,7 @@
 																					</tgridcell>
 																					<tgridcell>
 																						<children>
-																							<template subtype="element" match="nextreaddate">
+																							<template subtype="element" match="ub:nextreaddate">
 																								<children>
 																									<content>
 																										<format datatype="date"/>
@@ -1702,7 +1704,7 @@
 																					</tgridcell>
 																					<tgridcell>
 																						<children>
-																							<template subtype="element" match="identifier">
+																							<template subtype="element" match="ub:identifier">
 																								<children>
 																									<content/>
 																								</children>
@@ -1758,13 +1760,13 @@
 																																	</tgridbody-cols>
 																																	<tgridbody-rows>
 																																		<children>
-																																			<template subtype="element" match="register">
+																																			<template subtype="element" match="ub:register">
 																																				<children>
 																																					<tgridrow>
 																																						<children>
 																																							<tgridcell>
 																																								<children>
-																																									<template subtype="element" match="identifier">
+																																									<template subtype="element" match="ub:identifier">
 																																										<children>
 																																											<content/>
 																																										</children>
@@ -1774,7 +1776,7 @@
 																																							</tgridcell>
 																																							<tgridcell>
 																																								<children>
-																																									<template subtype="element" match="description">
+																																									<template subtype="element" match="ub:description">
 																																										<children>
 																																											<content/>
 																																										</children>
@@ -1784,7 +1786,7 @@
 																																							</tgridcell>
 																																							<tgridcell>
 																																								<children>
-																																									<template subtype="element" match="units">
+																																									<template subtype="element" match="ub:units">
 																																										<children>
 																																											<content/>
 																																										</children>
@@ -1794,7 +1796,7 @@
 																																							</tgridcell>
 																																							<tgridcell>
 																																								<children>
-																																									<template subtype="element" match="priorreading">
+																																									<template subtype="element" match="ub:priorreading">
 																																										<children>
 																																											<content>
 																																												<format datatype="decimal"/>
@@ -1806,7 +1808,7 @@
 																																							</tgridcell>
 																																							<tgridcell>
 																																								<children>
-																																									<template subtype="element" match="presentreading">
+																																									<template subtype="element" match="ub:presentreading">
 																																										<children>
 																																											<content>
 																																												<format datatype="decimal"/>
@@ -1818,7 +1820,7 @@
 																																							</tgridcell>
 																																							<tgridcell>
 																																								<children>
-																																									<template subtype="element" match="factor">
+																																									<template subtype="element" match="ub:factor">
 																																										<children>
 																																											<content>
 																																												<format datatype="integer"/>
@@ -1830,7 +1832,7 @@
 																																							</tgridcell>
 																																							<tgridcell>
 																																								<children>
-																																									<template subtype="element" match="total">
+																																									<template subtype="element" match="ub:total">
 																																										<children>
 																																											<content>
 																																												<format datatype="decimal"/>
@@ -1993,17 +1995,17 @@
 															</tgridheader-rows>
 															<tgridbody-rows>
 																<children>
-																	<template subtype="element" match="utilitybill">
+																	<template subtype="element" match="ub:utilitybill">
 																		<children>
-																			<template subtype="element" match="usagehistory">
+																			<template subtype="element" match="ub:usagehistory">
 																				<children>
-																					<template subtype="element" match="usage">
+																					<template subtype="element" match="ub:usage">
 																						<children>
 																							<tgridrow>
 																								<children>
 																									<tgridcell>
 																										<children>
-																											<template subtype="element" match="date">
+																											<template subtype="element" match="ub:date">
 																												<children>
 																													<content>
 																														<format datatype="date"/>
@@ -2015,7 +2017,7 @@
 																									</tgridcell>
 																									<tgridcell>
 																										<children>
-																											<template subtype="element" match="days">
+																											<template subtype="element" match="ub:days">
 																												<children>
 																													<content>
 																														<format datatype="integer"/>
@@ -2027,7 +2029,7 @@
 																									</tgridcell>
 																									<tgridcell>
 																										<children>
-																											<template subtype="element" match="register">
+																											<template subtype="element" match="ub:register">
 																												<children>
 																													<tgrid>
 																														<properties border="0" width="100%"/>
@@ -2051,7 +2053,7 @@
 																																		<children>
 																																			<tgridcell>
 																																				<children>
-																																					<template subtype="element" match="identifier">
+																																					<template subtype="element" match="ub:identifier">
 																																						<children>
 																																							<content/>
 																																						</children>
@@ -2061,7 +2063,7 @@
 																																			</tgridcell>
 																																			<tgridcell>
 																																				<children>
-																																					<template subtype="element" match="total">
+																																					<template subtype="element" match="ub:total">
 																																						<children>
 																																							<content/>
 																																						</children>
@@ -2071,7 +2073,7 @@
 																																			</tgridcell>
 																																			<tgridcell>
 																																				<children>
-																																					<template subtype="element" match="total">
+																																					<template subtype="element" match="ub:total">
 																																						<children>
 																																							<template subtype="attribute" match="units">
 																																								<children>
@@ -2097,7 +2099,7 @@
 																									</tgridcell>
 																									<tgridcell>
 																										<children>
-																											<template subtype="element" match="total">
+																											<template subtype="element" match="ub:total">
 																												<children>
 																													<content/>
 																												</children>

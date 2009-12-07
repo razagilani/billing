@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (self) -->
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
+<xs:schema xmlns:ub="skylinebill" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="skylinebill" elementFormDefault="qualified" attributeFormDefault="unqualified">
 	<xs:element name="utilitybill">
 		<xs:annotation>
 			<xs:documentation>Root element</xs:documentation>
@@ -18,12 +18,12 @@
 									<xs:documentation>Customer account number used by the utility</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="serviceaddress" type="address">
+							<xs:element name="serviceaddress" type="ub:address">
 								<xs:annotation>
 									<xs:documentation>Location where utility service is received.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="billingaddress" type="address">
+							<xs:element name="billingaddress" type="ub:address">
 								<xs:annotation>
 									<xs:documentation>Location where bills are sent</xs:documentation>
 								</xs:annotation>
@@ -42,34 +42,34 @@
 									<xs:documentation>Utility tax payer identification number</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="customerservice" type="address" minOccurs="0" maxOccurs="unbounded">
+							<xs:element name="customerservice" type="ub:address" minOccurs="0" maxOccurs="unbounded">
 								<xs:annotation>
 									<xs:documentation>Utility contact information including accessibility numbers, Spanish speaking representatives and other customer oriented care.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="paymentlocation" type="address" minOccurs="0" maxOccurs="unbounded">
+							<xs:element name="paymentlocation" type="ub:address" minOccurs="0" maxOccurs="unbounded">
 								<xs:annotation>
 									<xs:documentation>Physical locations where payment can be made or sent.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="suppliercontact" type="address" minOccurs="0"/>
-							<xs:element name="emergencycontact" type="address" minOccurs="0">
+							<xs:element name="suppliercontact" type="ub:address" minOccurs="0"/>
+							<xs:element name="emergencycontact" type="ub:address" minOccurs="0">
 								<xs:annotation>
 									<xs:documentation>Contact information for emergency related to service location.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="utilitycommission" type="address" minOccurs="0">
+							<xs:element name="utilitycommission" type="ub:address" minOccurs="0">
 								<xs:annotation>
 									<xs:documentation>Regulatory commission.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="writteninquiries" type="address" minOccurs="0"/>
-							<xs:element name="missutility" type="address" minOccurs="0">
+							<xs:element name="writteninquiries" type="ub:address" minOccurs="0"/>
+							<xs:element name="missutility" type="ub:address" minOccurs="0">
 								<xs:annotation>
 									<xs:documentation>Utility/contractor coordinate number.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="serviceoutage" type="address" minOccurs="0"/>
+							<xs:element name="serviceoutage" type="ub:address" minOccurs="0"/>
 						</xs:sequence>
 					</xs:complexType>
 				</xs:element>
@@ -79,7 +79,7 @@
 					</xs:annotation>
 					<xs:complexType>
 						<xs:complexContent>
-							<xs:extension base="address">
+							<xs:extension base="ub:address">
 								<xs:attribute name="description" use="required"/>
 							</xs:extension>
 						</xs:complexContent>
@@ -96,12 +96,12 @@
 									<xs:documentation>Balance from last bill.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="previouspayment" type="payment" maxOccurs="unbounded">
+							<xs:element name="previouspayment" type="ub:payment" maxOccurs="unbounded">
 								<xs:annotation>
 									<xs:documentation>Previous payments after last bill</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="adjustment" type="payment" minOccurs="0" maxOccurs="unbounded">
+							<xs:element name="adjustment" type="ub:payment" minOccurs="0" maxOccurs="unbounded">
 								<xs:annotation>
 									<xs:documentation>Charges and credit for late fees as well as unknown reasons.</xs:documentation>
 								</xs:annotation>
@@ -133,7 +133,7 @@
 								<xs:complexType>
 									<xs:simpleContent>
 										<xs:extension base="xs:decimal">
-											<xs:attributeGroup ref="service"/>
+											<xs:attributeGroup ref="ub:service"/>
 										</xs:extension>
 									</xs:simpleContent>
 								</xs:complexType>
@@ -199,7 +199,7 @@
 											</xs:annotation>
 											<xs:complexType>
 												<xs:sequence>
-													<xs:element name="charge" type="charge" maxOccurs="unbounded"/>
+													<xs:element name="charge" type="ub:charge" maxOccurs="unbounded"/>
 												</xs:sequence>
 											</xs:complexType>
 										</xs:element>
@@ -225,7 +225,7 @@
 							</xs:element>
 							<xs:element name="total" type="xs:decimal"/>
 						</xs:sequence>
-						<xs:attributeGroup ref="service"/>
+						<xs:attributeGroup ref="ub:service"/>
 					</xs:complexType>
 				</xs:element>
 				<xs:element name="billableusage" maxOccurs="2">
@@ -242,14 +242,14 @@
 									</xs:sequence>
 								</xs:complexType>
 							</xs:element>
-							<xs:element name="usage" type="usage" minOccurs="0" maxOccurs="unbounded"/>
+							<xs:element name="usage" type="ub:usage" minOccurs="0" maxOccurs="unbounded"/>
 							<xs:element name="total" minOccurs="0">
 								<xs:annotation>
 									<xs:documentation>total billable</xs:documentation>
 								</xs:annotation>
 							</xs:element>
 						</xs:sequence>
-						<xs:attributeGroup ref="service"/>
+						<xs:attributeGroup ref="ub:service"/>
 					</xs:complexType>
 				</xs:element>
 				<xs:element name="measuredusage" maxOccurs="2">
@@ -261,7 +261,7 @@
 							<xs:element name="meter" maxOccurs="unbounded">
 								<xs:complexType>
 									<xs:complexContent>
-										<xs:extension base="meter"/>
+										<xs:extension base="ub:meter"/>
 									</xs:complexContent>
 								</xs:complexType>
 							</xs:element>
@@ -271,7 +271,7 @@
 								</xs:annotation>
 							</xs:element>
 						</xs:sequence>
-						<xs:attributeGroup ref="service"/>
+						<xs:attributeGroup ref="ub:service"/>
 					</xs:complexType>
 				</xs:element>
 				<xs:element name="usagehistory" minOccurs="0" maxOccurs="2">
@@ -325,7 +325,7 @@
 								</xs:complexType>
 							</xs:element>
 						</xs:sequence>
-						<xs:attributeGroup ref="service"/>
+						<xs:attributeGroup ref="ub:service"/>
 					</xs:complexType>
 				</xs:element>
 			</xs:sequence>
