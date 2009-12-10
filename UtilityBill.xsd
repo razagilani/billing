@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (self) -->
-<xs:schema xmlns:ub="skylinebill" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="skylinebill" elementFormDefault="qualified" attributeFormDefault="unqualified">
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
+<xs:schema xmlns:ub="utilitybill" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:sb="skylinebill" targetNamespace="utilitybill" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:import namespace="skylinebill" schemaLocation="SkylineBill.xsd"/>
 	<xs:element name="utilitybill">
 		<xs:annotation>
 			<xs:documentation>Root element</xs:documentation>
@@ -328,6 +329,7 @@
 						<xs:attributeGroup ref="ub:service"/>
 					</xs:complexType>
 				</xs:element>
+				<xs:element ref="sb:measuredusage" minOccurs="0" maxOccurs="2"/>
 			</xs:sequence>
 			<xs:attribute name="id" use="required">
 				<xs:annotation>
@@ -394,7 +396,7 @@
 		<xs:all>
 			<xs:element name="snubchargeid" minOccurs="0">
 				<xs:annotation>
-					<xs:documentation>Reference to normalized charge item</xs:documentation>
+					<xs:documentation>Reference to normalized rate</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 			<xs:element name="description"/>
