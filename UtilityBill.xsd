@@ -392,6 +392,11 @@
 	</xs:complexType>
 	<xs:complexType name="charge">
 		<xs:all>
+			<xs:element name="snubchargeid" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Reference to normalized charge item</xs:documentation>
+				</xs:annotation>
+			</xs:element>
 			<xs:element name="description"/>
 			<xs:element name="quantity" minOccurs="0">
 				<xs:complexType mixed="true">
