@@ -3,7 +3,7 @@
 <xs:schema xmlns:sb="skylinebill" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="skylinebill" elementFormDefault="qualified" attributeFormDefault="unqualified">
 	<xs:element name="measuredusage">
 		<xs:annotation>
-			<xs:documentation>Usage per service</xs:documentation>
+			<xs:documentation>Skyline usage. Shadows utility measured usage</xs:documentation>
 		</xs:annotation>
 		<xs:complexType>
 			<xs:sequence>

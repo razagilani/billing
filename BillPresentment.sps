@@ -3,10 +3,11 @@
 	<parameters/>
 	<schemasources>
 		<namespaces>
-			<nspair prefix="ub" uri="skylinebill"/>
+			<nspair prefix="sb" uri="skylinebill"/>
+			<nspair prefix="ub" uri="utilitybill"/>
 		</namespaces>
 		<schemasources>
-			<xsdschemasource name="XML" main="1" schemafile="UtilityBill.xsd" workingxmlfile="sample\Dominion-101-20090528.xml">
+			<xsdschemasource name="XML" main="1" schemafile="UtilityBill.xsd" workingxmlfile="sample\PECO-94443-01819-2009100609.xml">
 				<xmltablesupport/>
 				<textstateicons/>
 			</xsdschemasource>

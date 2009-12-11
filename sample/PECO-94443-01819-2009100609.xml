@@ -106,6 +106,7 @@
 					<ub:quantity units="CCF">1374</ub:quantity>
 					<ub:rate units="dollars">0.57779</ub:rate>
 					<ub:total>793.88</ub:total>
+					<ub:snubchargeid/>
 				</ub:charge>
 			</ub:charges>
 		</ub:chargegroup>
