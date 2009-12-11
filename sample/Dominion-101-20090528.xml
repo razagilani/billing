@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (self) -->
-<ub:utilitybill id="2333912321312" xsi:schemaLocation="skylinebill ../UtilityBill.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="skylinebill">
+<ub:utilitybill id="Asefasd2" xsi:schemaLocation="utilitybill ../UtilityBill.xsd skylinebill ../SkylineBill.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="utilitybill" xmlns:sb="skylinebill">
 	<ub:car>
 		<ub:accountnumber>101</ub:accountnumber>
 		<ub:serviceaddress>
