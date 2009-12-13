@@ -281,6 +281,24 @@
 				<ub:total>543</ub:total>
 			</ub:register>
 		</ub:meter>
+		<ub:meter shadow="true">
+			<ub:estimated>false</ub:estimated>
+			<ub:identifier>027870434</ub:identifier>
+			<ub:register>
+				<ub:identifier>027870434</ub:identifier>
+				<ub:description>CCF Offset</ub:description>
+				<ub:total>50</ub:total>
+			</ub:register>
+		</ub:meter>
+		<ub:meter shadow="true">
+			<ub:estimated>false</ub:estimated>
+			<ub:identifier>028702956</ub:identifier>
+			<ub:register>
+				<ub:identifier>028702956</ub:identifier>
+				<ub:description>CCF Offset</ub:description>
+				<ub:total>50</ub:total>
+			</ub:register>
+		</ub:meter>
 		<ub:nextreaddate>2009-11-04</ub:nextreaddate>
 	</ub:measuredusage>
 	<ub:measuredusage service="electric">
@@ -288,7 +306,7 @@
 			<ub:estimated>false</ub:estimated>
 			<ub:identifier>084010385</ub:identifier>
 			<ub:register>
-				<ub:identifier>084010385</ub:identifier>
+				<ub:identifier>084010385-totalkwh</ub:identifier>
 				<ub:description>Total kWh</ub:description>
 				<ub:units>kWh</ub:units>
 				<ub:priorreading>15421</ub:priorreading>
@@ -297,7 +315,7 @@
 				<ub:total>6200</ub:total>
 			</ub:register>
 			<ub:register>
-				<ub:identifier>084010385</ub:identifier>
+				<ub:identifier>084010385-peakkwh</ub:identifier>
 				<ub:description>Peak kW</ub:description>
 				<ub:units>kW</ub:units>
 				<ub:priorreading>0.00</ub:priorreading>
@@ -306,9 +324,23 @@
 				<ub:total>26.48</ub:total>
 			</ub:register>
 		</ub:meter>
+		<ub:meter shadow="true">
+			<ub:estimated>false</ub:estimated>
+			<ub:identifier>084010385</ub:identifier>
+			<ub:register>
+				<ub:identifier>084010385-totalkwh</ub:identifier>
+				<ub:description>Total kWh Offset</ub:description>
+				<ub:total>800</ub:total>
+			</ub:register>
+			<ub:register>
+				<ub:identifier>084010385-peakkwh</ub:identifier>
+				<ub:description>Peak kW Offset</ub:description>
+				<ub:total>4</ub:total>
+			</ub:register>
+		</ub:meter>
 		<ub:nextreaddate>2009-11-04</ub:nextreaddate>
 	</ub:measuredusage>
-	<sb:measuredusage service="gas">
+	<ub:skylinemeasuredusage service="gas">
 		<sb:meter>
 			<sb:identifier>027870434</sb:identifier>
 			<sb:register>
@@ -327,8 +359,8 @@
 				<sb:total>97</sb:total>
 			</sb:register>
 		</sb:meter>
-	</sb:measuredusage>
-	<sb:measuredusage service="electric">
+	</ub:skylinemeasuredusage>
+	<ub:skylinemeasuredusage service="electric">
 		<sb:meter>
 			<sb:identifier>084010385</sb:identifier>
 			<sb:register>
@@ -338,5 +370,5 @@
 				<sb:total>1200</sb:total>
 			</sb:register>
 		</sb:meter>
-	</sb:measuredusage>
+	</ub:skylinemeasuredusage>
 </ub:utilitybill>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sb:skylinebill xmlns:sb="skylinebill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="skylinebill ..\SkylineBill.xsd">
+	<sb:measuredusage service="gas">
+		<sb:meter>
+			<sb:identifier>027870434</sb:identifier>
+			<sb:register>
+				<sb:identifier>027870434</sb:identifier>
+				<sb:description>Total CCF</sb:description>
+				<sb:units>CCF</sb:units>
+				<sb:total>151</sb:total>
+			</sb:register>
+		</sb:meter>
+		<sb:meter>
+			<sb:identifier>028702956</sb:identifier>
+			<sb:register>
+				<sb:identifier>028702956</sb:identifier>
+				<sb:description>Total CCF</sb:description>
+				<sb:units>CCF</sb:units>
+				<sb:total>97</sb:total>
+			</sb:register>
+		</sb:meter>
+	</sb:measuredusage>
+	<sb:measuredusage service="electric">
+		<sb:meter>
+			<sb:identifier>084010385</sb:identifier>
+			<sb:register>
+				<sb:identifier>084010385</sb:identifier>
+				<sb:description>Total kWh</sb:description>
+				<sb:units>kWh</sb:units>
+				<sb:total>1200</sb:total>
+			</sb:register>
+		</sb:meter>
+	</sb:measuredusage>
+</sb:skylinebill>

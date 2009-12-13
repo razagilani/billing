@@ -262,7 +262,9 @@
 							<xs:element name="meter" maxOccurs="unbounded">
 								<xs:complexType>
 									<xs:complexContent>
-										<xs:extension base="ub:meter"/>
+										<xs:extension base="ub:meter">
+											<xs:attribute name="shadow" type="xs:boolean"/>
+										</xs:extension>
 									</xs:complexContent>
 								</xs:complexType>
 							</xs:element>
@@ -329,7 +331,7 @@
 						<xs:attributeGroup ref="ub:service"/>
 					</xs:complexType>
 				</xs:element>
-				<xs:element ref="sb:measuredusage" minOccurs="0" maxOccurs="2"/>
+				<xs:element name="skylinemeasuredusage" type="sb:measuredusageType" minOccurs="0" maxOccurs="2"/>
 			</xs:sequence>
 			<xs:attribute name="id" use="required">
 				<xs:annotation>
