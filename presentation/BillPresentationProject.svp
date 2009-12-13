@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project>
+	<Folder FolderName="SPS Files" ExtStr="sps">
+		<File FilePath="BillPresentment.sps"/>
+	</Folder>
+	<Folder FolderName="XML Files" ExtStr="xml"/>
+	<Folder FolderName="XML Schema/DTD Files" ExtStr="xsd;dtd"/>
+	<Folder FolderName="CSS Files" ExtStr="css"/>
+	<Folder FolderName="HTML Files" ExtStr="htm;html;shtm;shtml;xhtm;xhtml"/>
+	<Folder FolderName="Image Files" ExtStr="gif;jpg;png;bmp;tif;wmf;ras;tga;jff;jtf"/>
+</Project>
