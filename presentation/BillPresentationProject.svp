@@ -2,8 +2,12 @@
 <Project>
 	<Folder FolderName="SPS Files" ExtStr="sps">
 		<File FilePath="BillPresentment.sps"/>
+		<File FilePath="SkylineBill.sps"/>
 	</Folder>
-	<Folder FolderName="XML Files" ExtStr="xml"/>
+	<Folder FolderName="XML Files" ExtStr="xml">
+		<File FilePath="C:\workspace-skyline\billing\sample\PECO-94443-01819-2009100609.xml"/>
+		<File FilePath="C:\workspace-skyline\billing\sample\Skyline-PECO-9443-01819-2009100609.xml"/>
+	</Folder>
 	<Folder FolderName="XML Schema/DTD Files" ExtStr="xsd;dtd"/>
 	<Folder FolderName="CSS Files" ExtStr="css"/>
 	<Folder FolderName="HTML Files" ExtStr="htm;html;shtm;shtml;xhtm;xhtml"/>

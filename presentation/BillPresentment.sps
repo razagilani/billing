@@ -7,13 +7,16 @@
 			<nspair prefix="ub" uri="utilitybill"/>
 		</namespaces>
 		<schemasources>
-			<xsdschemasource name="XML" main="1" schemafile="UtilityBill.xsd" workingxmlfile="sample\PECO-94443-01819-2009100609.xml">
+			<xsdschemasource name="XML" main="1" schemafile="C:\workspace-skyline\billing\UtilityBill.xsd" workingxmlfile="C:\workspace-skyline\billing\sample\Dominion-101-20090528.xml">
 				<xmltablesupport/>
 				<textstateicons/>
 			</xsdschemasource>
 		</schemasources>
 	</schemasources>
-	<modules/>
+	<modules>
+		<module spsfile="BillPresentment.sps"/>
+		<module spsfile="SkylineBill.sps"/>
+	</modules>
 	<flags>
 		<scripts/>
 		<globalparts/>
@@ -1882,11 +1885,29 @@
 								</children>
 							</paragraph>
 							<line/>
-							<paragraph>
+							<condition>
 								<children>
-									<condition>
+									<conditionbranch xpath="child::ub:utilitybill/ub:skylinemeasuredusage">
 										<children>
-											<conditionbranch xpath="child::utilitybill/usagehistory/usage">
+											<paragraph>
+												<children>
+													<paragraph paragraphtag="h2">
+														<children>
+															<text fixtext="Skyline Measured Usage"/>
+														</children>
+													</paragraph>
+												</children>
+											</paragraph>
+											<line/>
+										</children>
+									</conditionbranch>
+								</children>
+							</condition>
+							<condition>
+								<children>
+									<conditionbranch xpath="child::utilitybill/usagehistory/usage">
+										<children>
+											<paragraph>
 												<children>
 													<paragraph paragraphtag="h2">
 														<children>
@@ -2125,11 +2146,11 @@
 													</tgrid>
 													<newline/>
 												</children>
-											</conditionbranch>
+											</paragraph>
 										</children>
-									</condition>
+									</conditionbranch>
 								</children>
-							</paragraph>
+							</condition>
 						</children>
 						<variables/>
 					</template>
