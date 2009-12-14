@@ -60,7 +60,7 @@
 			<ub:penalty/>
 			<ub:amount>6.14</ub:amount>
 		</ub:latepayment>
-	</ub:summary>
+	</ub:summary>	
 	<ub:details service="electric">
 		<ub:rateschedule>
 			<ub:name>Non-Residential-MGT-LV IIB</ub:name>
@@ -184,6 +184,19 @@
 			<ub:register shadow="false">
 				<ub:identifier>475T</ub:identifier>
 				<ub:description>Kilowatt Hour Meter</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:from>00:00:00</ub:from>
+						<ub:to>24:00:00</ub:to>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
 				<ub:units>kWh</ub:units>
 				<ub:priorreading>17049</ub:priorreading>
 				<ub:presentreading>17247</ub:presentreading>
@@ -199,6 +212,32 @@
 			<ub:register shadow="false">
 				<ub:identifier>D11</ub:identifier>
 				<ub:description>Off Peak</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:from>24:00:00</ub:from>
+						<ub:to>08:00:00</ub:to>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+					</ub:inclusions>
+					<ub:inclusions>
+						<ub:from>00:00:00</ub:from>
+						<ub:to>24:00:00</ub:to>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+						<ub:monthday description="New Year's Day">--01-01</ub:monthday>
+						<ub:monthday description="Martin Luther King Day is always observed on the third Monday of January.">--01-18</ub:monthday>
+						<ub:monthday description="Presidents Day is always celebrated on the third Monday of February. ">--02-15</ub:monthday>
+						<ub:monthday description="Memorial Day is always celebrated on the last Monday of May.">--05-31</ub:monthday>
+						<ub:monthday description="Labor Day is always celebrated on the first Monday in September.">--09-06</ub:monthday>
+						<ub:monthday description="Columbus Day is always celebrated on the second Monday in October.">--10-11</ub:monthday>
+						<ub:monthday description="Veterans Day is usually observed on November 11. However, if it occurs on a Sunday then the following Monday is designated for holiday leave, and if it occurs Saturday then either Saturday or Friday may be so designated.">--11-11</ub:monthday>
+						<ub:monthday description="Thanksgiving is always celebrated on the fourth Thursday of November. ">--11-25</ub:monthday>
+						<ub:monthday description="Christmas Day">--12-25</ub:monthday>
+					</ub:inclusions>
+				</ub:effective>
 				<ub:units>kWh</ub:units>
 				<ub:priorreading>9276</ub:priorreading>
 				<ub:presentreading>9382</ub:presentreading>
@@ -214,6 +253,37 @@
 			<ub:register shadow="false">
 				<ub:identifier>D08</ub:identifier>
 				<ub:description>Interim Peak</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:from>08:00:00</ub:from>
+						<ub:to>12:00:00</ub:to>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+					</ub:inclusions>
+					<ub:inclusions>
+						<ub:from>20:00:00</ub:from>
+						<ub:to>24:00:00</ub:to>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+					</ub:inclusions>
+					<ub:exclusions>
+						<ub:monthday description="New Year's Day">--01-01</ub:monthday>
+						<ub:monthday description="Martin Luther King Day is always observed on the third Monday of January.">--01-18</ub:monthday>
+						<ub:monthday description="Presidents Day is always celebrated on the third Monday of February. ">--02-15</ub:monthday>
+						<ub:monthday description="Memorial Day is always celebrated on the last Monday of May.">--05-31</ub:monthday>
+						<ub:monthday description="Labor Day is always celebrated on the first Monday in September.">--09-06</ub:monthday>
+						<ub:monthday description="Columbus Day is always celebrated on the second Monday in October.">--10-11</ub:monthday>
+						<ub:monthday description="Veterans Day is usually observed on November 11. However, if it occurs on a Sunday then the following Monday is designated for holiday leave, and if it occurs Saturday then either Saturday or Friday may be so designated.">--11-11</ub:monthday>
+						<ub:monthday description="Thanksgiving is always celebrated on the fourth Thursday of November. ">--11-25</ub:monthday>
+						<ub:monthday description="Christmas Day">--12-25</ub:monthday>
+					</ub:exclusions>
+				</ub:effective>
 				<ub:units>kWh</ub:units>
 				<ub:priorreading>3627</ub:priorreading>
 				<ub:presentreading>3673</ub:presentreading>
@@ -229,6 +299,29 @@
 			<ub:register shadow="false">
 				<ub:identifier>D05</ub:identifier>
 				<ub:description>On Peak</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:from>12:00:00</ub:from>
+						<ub:to>08:00:00</ub:to>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+					</ub:inclusions>
+					<ub:exclusions>
+						<ub:monthday description="New Year's Day">--01-01</ub:monthday>
+						<ub:monthday description="Martin Luther King Day is always observed on the third Monday of January.">--01-18</ub:monthday>
+						<ub:monthday description="Presidents Day is always celebrated on the third Monday of February. ">--02-15</ub:monthday>
+						<ub:monthday description="Memorial Day is always celebrated on the last Monday of May.">--05-31</ub:monthday>
+						<ub:monthday description="Labor Day is always celebrated on the first Monday in September.">--09-06</ub:monthday>
+						<ub:monthday description="Columbus Day is always celebrated on the second Monday in October.">--10-11</ub:monthday>
+						<ub:monthday description="Veterans Day is usually observed on November 11. However, if it occurs on a Sunday then the following Monday is designated for holiday leave, and if it occurs Saturday then either Saturday or Friday may be so designated.">--11-11</ub:monthday>
+						<ub:monthday description="Thanksgiving is always celebrated on the fourth Thursday of November. ">--11-25</ub:monthday>
+						<ub:monthday description="Christmas Day">--12-25</ub:monthday>
+					</ub:exclusions>
+					<ub:exclusions/>
+				</ub:effective>
 				<ub:units>kWh</ub:units>
 				<ub:priorreading>4145</ub:priorreading>
 				<ub:presentreading>4189</ub:presentreading>

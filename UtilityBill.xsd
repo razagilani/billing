@@ -396,6 +396,11 @@
 							</xs:annotation>
 						</xs:element>
 						<xs:element name="description"/>
+						<xs:element name="effective" type="ub:effective" minOccurs="0" maxOccurs="2">
+							<xs:annotation>
+								<xs:documentation>Multiple effectives can be added for registers with effective times that vary by day of week</xs:documentation>
+							</xs:annotation>
+						</xs:element>
 						<xs:element name="units" type="xs:string" minOccurs="0"/>
 						<xs:element name="priorreading" type="xs:decimal" minOccurs="0"/>
 						<xs:element name="presentreading" type="xs:decimal" minOccurs="0"/>
@@ -477,4 +482,44 @@
 			</xs:simpleType>
 		</xs:attribute>
 	</xs:attributeGroup>
+	<xs:complexType name="effective">
+		<xs:sequence>
+			<xs:element name="inclusions" type="ub:timerange" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="exclusions" type="ub:timerange" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="timerange">
+		<xs:sequence>
+			<xs:sequence minOccurs="0">
+				<xs:element name="from" type="xs:time"/>
+				<xs:element name="to" type="xs:time"/>
+			</xs:sequence>
+			<xs:element name="weekday" minOccurs="0" maxOccurs="7">
+				<xs:annotation>
+					<xs:documentation>1=Sunday...7=Saturday</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:unsignedInt">
+						<xs:totalDigits value="1"/>
+						<xs:fractionDigits value="0"/>
+						<xs:minInclusive value="1"/>
+						<xs:maxInclusive value="7"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="monthday" minOccurs="0" maxOccurs="365">
+				<xs:annotation>
+					<xs:documentation>Used to include/exclude rate based on holiday</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="xs:gMonthDay">
+							<xs:attribute name="description"/>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="description"/>
+	</xs:complexType>
 </xs:schema>
