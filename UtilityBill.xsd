@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
 <xs:schema xmlns:ub="utilitybill" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:sb="skylinebill" targetNamespace="utilitybill" elementFormDefault="qualified" attributeFormDefault="unqualified">
-	<xs:import namespace="skylinebill" schemaLocation="SkylineBill.xsd"/>
 	<xs:element name="utilitybill">
 		<xs:annotation>
 			<xs:documentation>Root element</xs:documentation>
@@ -129,7 +128,31 @@
 							</xs:element>
 							<xs:element name="currentcharges" maxOccurs="2">
 								<xs:annotation>
-									<xs:documentation>Total for this bill period including distribution and service lates fees, taxes and various other charges.</xs:documentation>
+									<xs:documentation>Total for this bill period including distribution and service lates fees, taxes and various other charges. (Change to utility charges)</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:simpleContent>
+										<xs:extension base="xs:decimal">
+											<xs:attributeGroup ref="ub:service"/>
+										</xs:extension>
+									</xs:simpleContent>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="hypotheticalcharges" minOccurs="0" maxOccurs="2">
+								<xs:annotation>
+									<xs:documentation>Charges in absence of Skyline</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:simpleContent>
+										<xs:extension base="xs:decimal">
+											<xs:attributeGroup ref="ub:service"/>
+										</xs:extension>
+									</xs:simpleContent>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="skylinecharges" minOccurs="0" maxOccurs="2">
+								<xs:annotation>
+									<xs:documentation>Discounted energy cost to customer</xs:documentation>
 								</xs:annotation>
 								<xs:complexType>
 									<xs:simpleContent>
@@ -262,9 +285,7 @@
 							<xs:element name="meter" maxOccurs="unbounded">
 								<xs:complexType>
 									<xs:complexContent>
-										<xs:extension base="ub:meter">
-											<xs:attribute name="shadow" type="xs:boolean"/>
-										</xs:extension>
+										<xs:extension base="ub:meter"/>
 									</xs:complexContent>
 								</xs:complexType>
 							</xs:element>
@@ -331,13 +352,13 @@
 						<xs:attributeGroup ref="ub:service"/>
 					</xs:complexType>
 				</xs:element>
-				<xs:element name="skylinemeasuredusage" type="sb:measuredusageType" minOccurs="0" maxOccurs="2"/>
 			</xs:sequence>
 			<xs:attribute name="id" use="required">
 				<xs:annotation>
 					<xs:documentation>The unique SI identifier for this bill</xs:documentation>
 				</xs:annotation>
 			</xs:attribute>
+			<xs:attribute name="account"/>
 		</xs:complexType>
 	</xs:element>
 	<xs:complexType name="address">
@@ -381,6 +402,7 @@
 						<xs:element name="factor" type="xs:integer" minOccurs="0"/>
 						<xs:element name="total" type="xs:decimal"/>
 					</xs:sequence>
+					<xs:attribute name="shadow" type="xs:boolean" use="required"/>
 				</xs:complexType>
 			</xs:element>
 		</xs:sequence>

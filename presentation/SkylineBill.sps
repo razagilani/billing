@@ -7,11 +7,7 @@
 			<nspair prefix="ub" uri="utilitybill"/>
 		</namespaces>
 		<schemasources>
-			<xsdschemasource name="XML" main="1" schemafile="C:\workspace-skyline\billing\SkylineBill.xsd" workingxmlfile="C:\workspace-skyline\billing\sample\Skyline-PECO-9443-01819-2009100609.xml">
-				<xmltablesupport/>
-				<textstateicons/>
-			</xsdschemasource>
-			<xsdschemasource name="XML2" schemafile="C:\workspace-skyline\billing\UtilityBill.xsd" workingxmlfile="C:\workspace-skyline\billing\sample\PECO-94443-01819-2009100609.xml">
+			<xsdschemasource name="XML" main="1" schemafile="C:\workspace-skyline\billing\UtilityBill.xsd" workingxmlfile="C:\workspace-skyline\billing\sample\PECO-94443-01819-2009100609.xml">
 				<xmltablesupport/>
 				<textstateicons/>
 			</xsdschemasource>
@@ -43,254 +39,54 @@
 									<text fixtext="Skyline Measurement"/>
 								</children>
 							</paragraph>
-							<tgrid>
-								<properties border="1"/>
-								<children>
-									<tgridbody-cols>
-										<children>
-											<tgridcol/>
-											<tgridcol/>
-										</children>
-									</tgridbody-cols>
-									<tgridheader-rows>
-										<children>
-											<tgridrow>
-												<children>
-													<tgridcell>
-														<children>
-															<text fixtext="service"/>
-														</children>
-													</tgridcell>
-													<tgridcell>
-														<children>
-															<text fixtext="meter"/>
-														</children>
-													</tgridcell>
-												</children>
-											</tgridrow>
-										</children>
-									</tgridheader-rows>
-									<tgridbody-rows>
-										<children>
-											<template subtype="element" match="sb:skylinebill">
-												<children>
-													<template subtype="element" match="sb:measuredusage">
-														<children>
-															<tgridrow>
-																<children>
-																	<tgridcell>
-																		<children>
-																			<template subtype="attribute" match="service">
-																				<children>
-																					<content/>
-																				</children>
-																				<variables/>
-																			</template>
-																		</children>
-																	</tgridcell>
-																	<tgridcell>
-																		<children>
-																			<tgrid>
-																				<properties border="1"/>
-																				<children>
-																					<tgridbody-cols>
-																						<children>
-																							<tgridcol/>
-																							<tgridcol/>
-																						</children>
-																					</tgridbody-cols>
-																					<tgridheader-rows>
-																						<children>
-																							<tgridrow>
-																								<children>
-																									<tgridcell>
-																										<children>
-																											<text fixtext="identifier"/>
-																										</children>
-																									</tgridcell>
-																									<tgridcell>
-																										<children>
-																											<text fixtext="register"/>
-																										</children>
-																									</tgridcell>
-																								</children>
-																							</tgridrow>
-																						</children>
-																					</tgridheader-rows>
-																					<tgridbody-rows>
-																						<children>
-																							<template subtype="element" match="sb:meter">
-																								<children>
-																									<tgridrow>
-																										<children>
-																											<tgridcell>
-																												<children>
-																													<template subtype="element" match="sb:identifier">
-																														<children>
-																															<content/>
-																														</children>
-																														<variables/>
-																													</template>
-																												</children>
-																											</tgridcell>
-																											<tgridcell>
-																												<children>
-																													<tgrid>
-																														<properties border="1"/>
-																														<children>
-																															<tgridbody-cols>
-																																<children>
-																																	<tgridcol/>
-																																	<tgridcol/>
-																																	<tgridcol/>
-																																	<tgridcol/>
-																																</children>
-																															</tgridbody-cols>
-																															<tgridheader-rows>
-																																<children>
-																																	<tgridrow>
-																																		<children>
-																																			<tgridcell>
-																																				<children>
-																																					<text fixtext="identifier"/>
-																																				</children>
-																																			</tgridcell>
-																																			<tgridcell>
-																																				<children>
-																																					<text fixtext="description"/>
-																																				</children>
-																																			</tgridcell>
-																																			<tgridcell>
-																																				<children>
-																																					<text fixtext="units"/>
-																																				</children>
-																																			</tgridcell>
-																																			<tgridcell>
-																																				<children>
-																																					<text fixtext="total"/>
-																																				</children>
-																																			</tgridcell>
-																																		</children>
-																																	</tgridrow>
-																																</children>
-																															</tgridheader-rows>
-																															<tgridbody-rows>
-																																<children>
-																																	<template subtype="element" match="sb:register">
-																																		<children>
-																																			<tgridrow>
-																																				<children>
-																																					<tgridcell>
-																																						<children>
-																																							<template subtype="element" match="sb:identifier">
-																																								<children>
-																																									<content/>
-																																								</children>
-																																								<variables/>
-																																							</template>
-																																						</children>
-																																					</tgridcell>
-																																					<tgridcell>
-																																						<children>
-																																							<template subtype="element" match="sb:description">
-																																								<children>
-																																									<content/>
-																																								</children>
-																																								<variables/>
-																																							</template>
-																																						</children>
-																																					</tgridcell>
-																																					<tgridcell>
-																																						<children>
-																																							<template subtype="element" match="sb:units">
-																																								<children>
-																																									<content/>
-																																								</children>
-																																								<variables/>
-																																							</template>
-																																						</children>
-																																					</tgridcell>
-																																					<tgridcell>
-																																						<children>
-																																							<template subtype="element" match="sb:total">
-																																								<children>
-																																									<content/>
-																																								</children>
-																																								<variables/>
-																																							</template>
-																																						</children>
-																																					</tgridcell>
-																																				</children>
-																																			</tgridrow>
-																																		</children>
-																																		<variables/>
-																																	</template>
-																																</children>
-																															</tgridbody-rows>
-																														</children>
-																													</tgrid>
-																												</children>
-																											</tgridcell>
-																										</children>
-																									</tgridrow>
-																								</children>
-																								<variables/>
-																							</template>
-																						</children>
-																					</tgridbody-rows>
-																				</children>
-																			</tgrid>
-																		</children>
-																	</tgridcell>
-																</children>
-															</tgridrow>
-														</children>
-														<variables/>
-													</template>
-												</children>
-												<variables/>
-											</template>
-										</children>
-									</tgridbody-rows>
-								</children>
-							</tgrid>
 							<paragraph paragraphtag="h2">
 								<children>
 									<text fixtext="Utility Measurement"/>
 								</children>
 							</paragraph>
-							<tgrid>
-								<properties border="1"/>
+							<newline/>
+							<paragraph paragraphtag="h2">
 								<children>
-									<tgridbody-cols>
+									<text fixtext="Aggregated Measurement"/>
+								</children>
+							</paragraph>
+							<template subtype="element" groupingtype="group-by" groupingmatch="ub:measuredusage/@service" match="ub:utilitybill">
+								<sort>
+									<key match="current-grouping-key()"/>
+								</sort>
+								<children>
+									<template subtype="userdefined" match="current-group()">
 										<children>
-											<tgridcol/>
-											<tgridcol/>
-										</children>
-									</tgridbody-cols>
-									<tgridheader-rows>
-										<children>
-											<tgridrow>
+											<tgrid>
+												<properties border="1"/>
 												<children>
-													<tgridcell>
+													<tgridbody-cols>
 														<children>
-															<text fixtext="service"/>
+															<tgridcol/>
+															<tgridcol/>
+															<tgridcol/>
 														</children>
-													</tgridcell>
-													<tgridcell>
+													</tgridbody-cols>
+													<tgridheader-rows>
 														<children>
-															<text fixtext="meter"/>
+															<tgridrow>
+																<children>
+																	<tgridcell>
+																		<children>
+																			<text fixtext="service"/>
+																		</children>
+																	</tgridcell>
+																	<tgridcell>
+																		<children>
+																			<text fixtext="meter"/>
+																		</children>
+																	</tgridcell>
+																	<tgridcell/>
+																</children>
+															</tgridrow>
 														</children>
-													</tgridcell>
-												</children>
-											</tgridrow>
-										</children>
-									</tgridheader-rows>
-									<tgridbody-rows>
-										<children>
-											<template subtype="source" match="XML2">
-												<children>
-													<template subtype="element" match="ub:utilitybill">
+													</tgridheader-rows>
+													<tgridbody-rows>
 														<children>
 															<template subtype="element" match="ub:measuredusage">
 																<children>
@@ -308,162 +104,54 @@
 																			</tgridcell>
 																			<tgridcell>
 																				<children>
-																					<tgrid>
-																						<properties border="1"/>
-																						<children>
-																							<tgridbody-cols>
-																								<children>
-																									<tgridcol/>
-																									<tgridcol/>
-																								</children>
-																							</tgridbody-cols>
-																							<tgridheader-rows>
-																								<children>
-																									<tgridrow>
-																										<children>
-																											<tgridcell>
-																												<children>
-																													<text fixtext="identifier"/>
-																												</children>
-																											</tgridcell>
-																											<tgridcell>
-																												<children>
-																													<text fixtext="register"/>
-																												</children>
-																											</tgridcell>
-																										</children>
-																									</tgridrow>
-																								</children>
-																							</tgridheader-rows>
-																							<tgridbody-rows>
-																								<children>
-																									<template subtype="element" match="ub:meter">
-																										<children>
-																											<tgridrow>
-																												<children>
-																													<tgridcell>
-																														<children>
-																															<template subtype="element" match="ub:identifier">
-																																<children>
-																																	<content/>
-																																</children>
-																																<variables/>
-																															</template>
-																														</children>
-																													</tgridcell>
-																													<tgridcell>
-																														<children>
-																															<tgrid>
-																																<properties border="1"/>
-																																<children>
-																																	<tgridbody-cols>
-																																		<children>
-																																			<tgridcol/>
-																																			<tgridcol/>
-																																			<tgridcol/>
-																																			<tgridcol/>
-																																		</children>
-																																	</tgridbody-cols>
-																																	<tgridheader-rows>
-																																		<children>
-																																			<tgridrow>
-																																				<children>
-																																					<tgridcell>
-																																						<children>
-																																							<text fixtext="identifier"/>
-																																						</children>
-																																					</tgridcell>
-																																					<tgridcell>
-																																						<children>
-																																							<text fixtext="description"/>
-																																						</children>
-																																					</tgridcell>
-																																					<tgridcell>
-																																						<children>
-																																							<text fixtext="units"/>
-																																						</children>
-																																					</tgridcell>
-																																					<tgridcell>
-																																						<children>
-																																							<text fixtext="total"/>
-																																						</children>
-																																					</tgridcell>
-																																				</children>
-																																			</tgridrow>
-																																		</children>
-																																	</tgridheader-rows>
-																																	<tgridbody-rows>
-																																		<children>
-																																			<template subtype="element" match="ub:register">
-																																				<children>
-																																					<tgridrow>
-																																						<children>
-																																							<tgridcell>
-																																								<children>
-																																									<template subtype="element" match="ub:identifier">
-																																										<children>
-																																											<content/>
-																																										</children>
-																																										<variables/>
-																																									</template>
-																																								</children>
-																																							</tgridcell>
-																																							<tgridcell>
-																																								<children>
-																																									<template subtype="element" match="ub:description">
-																																										<children>
-																																											<content/>
-																																										</children>
-																																										<variables/>
-																																									</template>
-																																								</children>
-																																							</tgridcell>
-																																							<tgridcell>
-																																								<children>
-																																									<template subtype="element" match="ub:units">
-																																										<children>
-																																											<content/>
-																																										</children>
-																																										<variables/>
-																																									</template>
-																																								</children>
-																																							</tgridcell>
-																																							<tgridcell>
-																																								<children>
-																																									<template subtype="element" match="ub:total">
-																																										<children>
-																																											<content>
-																																												<format datatype="decimal"/>
-																																											</content>
-																																										</children>
-																																										<variables/>
-																																									</template>
-																																								</children>
-																																							</tgridcell>
-																																						</children>
-																																					</tgridrow>
-																																				</children>
-																																				<variables/>
-																																			</template>
-																																		</children>
-																																	</tgridbody-rows>
-																																</children>
-																															</tgrid>
-																														</children>
-																													</tgridcell>
-																												</children>
-																											</tgridrow>
-																										</children>
-																										<variables/>
-																									</template>
-																								</children>
-																							</tgridbody-rows>
-																						</children>
-																					</tgrid>
+																					<template subtype="element" groupingtype="group-by" groupingmatch="@shadow" match="ub:meter">
+																						<sort>
+																							<key match="current-grouping-key()"/>
+																						</sort>
+																						<variables/>
+																					</template>
 																				</children>
 																			</tgridcell>
+																			<tgridcell/>
 																		</children>
 																	</tgridrow>
+																</children>
+																<variables/>
+															</template>
+														</children>
+													</tgridbody-rows>
+												</children>
+											</tgrid>
+										</children>
+										<variables/>
+									</template>
+								</children>
+								<variables/>
+							</template>
+							<newline/>
+							<newline/>
+							<newline/>
+							<template subtype="element" match="ub:utilitybill">
+								<children>
+									<template subtype="element" match="ub:measuredusage">
+										<children>
+											<template subtype="element" match="ub:meter">
+												<children>
+													<template subtype="element" match="ub:register">
+														<children>
+															<template subtype="element" groupingtype="group-by" groupingmatch="../ub:identifier" match="ub:total">
+																<sort>
+																	<key match="current-grouping-key()"/>
+																</sort>
+																<children>
+																	<template subtype="userdefined" match="current-group()">
+																		<children>
+																			<content>
+																				<format datatype="decimal"/>
+																			</content>
+																		</children>
+																		<variables/>
+																	</template>
 																</children>
 																<variables/>
 															</template>
@@ -474,48 +162,43 @@
 												<variables/>
 											</template>
 										</children>
-									</tgridbody-rows>
+										<variables/>
+									</template>
 								</children>
-							</tgrid>
-							<paragraph paragraphtag="h2">
+								<variables/>
+							</template>
+							<newline/>
+							<newline/>
+							<newline/>
+							<template subtype="element" match="ub:utilitybill">
 								<children>
-									<text fixtext="Skyline Measurement from Utility Bill"/>
-								</children>
-							</paragraph>
-							<tgrid>
-								<properties border="1"/>
-								<children>
-									<tgridbody-cols>
+									<template subtype="element" groupingtype="group-by" groupingmatch="@service" match="ub:measuredusage">
+										<sort>
+											<key match="current-grouping-key()"/>
+										</sort>
 										<children>
-											<tgridcol/>
-											<tgridcol/>
-										</children>
-									</tgridbody-cols>
-									<tgridheader-rows>
-										<children>
-											<tgridrow>
+											<tgrid>
+												<properties border="1"/>
 												<children>
-													<tgridcell>
+													<tgridbody-cols>
 														<children>
-															<text fixtext="service"/>
+															<tgridcol/>
+															<tgridcol/>
 														</children>
-													</tgridcell>
-													<tgridcell>
+													</tgridbody-cols>
+													<tgridheader-rows>
 														<children>
-															<text fixtext="meter"/>
+															<tgridrow>
+																<children>
+																	<tgridcell/>
+																	<tgridcell/>
+																</children>
+															</tgridrow>
 														</children>
-													</tgridcell>
-												</children>
-											</tgridrow>
-										</children>
-									</tgridheader-rows>
-									<tgridbody-rows>
-										<children>
-											<template subtype="source" match="XML2">
-												<children>
-													<template subtype="element" match="ub:utilitybill">
+													</tgridheader-rows>
+													<tgridbody-rows>
 														<children>
-															<template subtype="element" match="ub:skylinemeasuredusage">
+															<template subtype="userdefined" match="current-group()">
 																<children>
 																	<tgridrow>
 																		<children>
@@ -531,156 +214,224 @@
 																			</tgridcell>
 																			<tgridcell>
 																				<children>
-																					<tgrid>
-																						<properties border="1"/>
+																					<template subtype="element" groupingtype="group-by" groupingmatch="ub:identifier" match="ub:meter">
+																						<sort>
+																							<key match="current-grouping-key()"/>
+																						</sort>
 																						<children>
-																							<tgridbody-cols>
+																							<tgrid>
+																								<properties border="1"/>
 																								<children>
-																									<tgridcol/>
-																									<tgridcol/>
-																								</children>
-																							</tgridbody-cols>
-																							<tgridheader-rows>
-																								<children>
-																									<tgridrow>
+																									<tgridbody-cols>
 																										<children>
-																											<tgridcell>
-																												<children>
-																													<text fixtext="identifier"/>
-																												</children>
-																											</tgridcell>
-																											<tgridcell>
-																												<children>
-																													<text fixtext="register"/>
-																												</children>
-																											</tgridcell>
+																											<tgridcol/>
+																											<tgridcol/>
+																											<tgridcol/>
 																										</children>
-																									</tgridrow>
-																								</children>
-																							</tgridheader-rows>
-																							<tgridbody-rows>
-																								<children>
-																									<template subtype="element" match="sb:meter">
+																									</tgridbody-cols>
+																									<tgridheader-rows>
 																										<children>
 																											<tgridrow>
 																												<children>
-																													<tgridcell>
+																													<tgridcell/>
+																													<tgridcell/>
+																													<tgridcell/>
+																												</children>
+																											</tgridrow>
+																										</children>
+																									</tgridheader-rows>
+																									<tgridbody-rows>
+																										<children>
+																											<template subtype="userdefined" match="current-group()">
+																												<children>
+																													<tgridrow>
 																														<children>
-																															<template subtype="element" match="sb:identifier">
+																															<tgridcell>
 																																<children>
-																																	<content/>
+																																	<template subtype="element" match="ub:identifier">
+																																		<children>
+																																			<content/>
+																																		</children>
+																																		<variables/>
+																																	</template>
 																																</children>
-																																<variables/>
-																															</template>
-																														</children>
-																													</tgridcell>
-																													<tgridcell>
-																														<children>
-																															<tgrid>
-																																<properties border="1"/>
+																															</tgridcell>
+																															<tgridcell>
 																																<children>
-																																	<tgridbody-cols>
+																																	<template subtype="attribute" match="shadow">
 																																		<children>
-																																			<tgridcol/>
-																																			<tgridcol/>
-																																			<tgridcol/>
-																																			<tgridcol/>
+																																			<content/>
 																																		</children>
-																																	</tgridbody-cols>
-																																	<tgridheader-rows>
+																																		<variables/>
+																																	</template>
+																																</children>
+																															</tgridcell>
+																															<tgridcell>
+																																<children>
+																																	<tgrid>
+																																		<properties border="1"/>
 																																		<children>
-																																			<tgridrow>
+																																			<tgridbody-cols>
 																																				<children>
-																																					<tgridcell>
-																																						<children>
-																																							<text fixtext="identifier"/>
-																																						</children>
-																																					</tgridcell>
-																																					<tgridcell>
-																																						<children>
-																																							<text fixtext="description"/>
-																																						</children>
-																																					</tgridcell>
-																																					<tgridcell>
-																																						<children>
-																																							<text fixtext="units"/>
-																																						</children>
-																																					</tgridcell>
-																																					<tgridcell>
-																																						<children>
-																																							<text fixtext="total"/>
-																																						</children>
-																																					</tgridcell>
+																																					<tgridcol/>
+																																					<tgridcol/>
+																																					<tgridcol/>
+																																					<tgridcol/>
+																																					<tgridcol/>
+																																					<tgridcol/>
+																																					<tgridcol/>
 																																				</children>
-																																			</tgridrow>
-																																		</children>
-																																	</tgridheader-rows>
-																																	<tgridbody-rows>
-																																		<children>
-																																			<template subtype="element" match="sb:register">
+																																			</tgridbody-cols>
+																																			<tgridheader-rows>
 																																				<children>
 																																					<tgridrow>
 																																						<children>
 																																							<tgridcell>
 																																								<children>
-																																									<template subtype="element" match="sb:identifier">
-																																										<children>
-																																											<content/>
-																																										</children>
-																																										<variables/>
-																																									</template>
+																																									<text fixtext="identifier"/>
 																																								</children>
 																																							</tgridcell>
 																																							<tgridcell>
 																																								<children>
-																																									<template subtype="element" match="sb:description">
-																																										<children>
-																																											<content/>
-																																										</children>
-																																										<variables/>
-																																									</template>
+																																									<text fixtext="description"/>
 																																								</children>
 																																							</tgridcell>
 																																							<tgridcell>
 																																								<children>
-																																									<template subtype="element" match="sb:units">
-																																										<children>
-																																											<content/>
-																																										</children>
-																																										<variables/>
-																																									</template>
+																																									<text fixtext="units"/>
 																																								</children>
 																																							</tgridcell>
 																																							<tgridcell>
 																																								<children>
-																																									<template subtype="element" match="sb:total">
-																																										<children>
-																																											<content/>
-																																										</children>
-																																										<variables/>
-																																									</template>
+																																									<text fixtext="priorreading"/>
+																																								</children>
+																																							</tgridcell>
+																																							<tgridcell>
+																																								<children>
+																																									<text fixtext="presentreading"/>
+																																								</children>
+																																							</tgridcell>
+																																							<tgridcell>
+																																								<children>
+																																									<text fixtext="factor"/>
+																																								</children>
+																																							</tgridcell>
+																																							<tgridcell>
+																																								<children>
+																																									<text fixtext="total"/>
 																																								</children>
 																																							</tgridcell>
 																																						</children>
 																																					</tgridrow>
 																																				</children>
-																																				<variables/>
-																																			</template>
+																																			</tgridheader-rows>
+																																			<tgridbody-rows>
+																																				<children>
+																																					<template subtype="element" match="ub:register">
+																																						<children>
+																																							<tgridrow>
+																																								<children>
+																																									<tgridcell>
+																																										<children>
+																																											<template subtype="element" match="ub:identifier">
+																																												<children>
+																																													<content/>
+																																												</children>
+																																												<variables/>
+																																											</template>
+																																										</children>
+																																									</tgridcell>
+																																									<tgridcell>
+																																										<children>
+																																											<template subtype="element" match="ub:description">
+																																												<children>
+																																													<content/>
+																																												</children>
+																																												<variables/>
+																																											</template>
+																																										</children>
+																																									</tgridcell>
+																																									<tgridcell>
+																																										<children>
+																																											<template subtype="element" match="ub:units">
+																																												<children>
+																																													<content/>
+																																												</children>
+																																												<variables/>
+																																											</template>
+																																										</children>
+																																									</tgridcell>
+																																									<tgridcell>
+																																										<children>
+																																											<template subtype="element" match="ub:priorreading">
+																																												<children>
+																																													<content>
+																																														<format datatype="decimal"/>
+																																													</content>
+																																												</children>
+																																												<variables/>
+																																											</template>
+																																										</children>
+																																									</tgridcell>
+																																									<tgridcell>
+																																										<children>
+																																											<template subtype="element" match="ub:presentreading">
+																																												<children>
+																																													<content>
+																																														<format datatype="decimal"/>
+																																													</content>
+																																												</children>
+																																												<variables/>
+																																											</template>
+																																										</children>
+																																									</tgridcell>
+																																									<tgridcell>
+																																										<children>
+																																											<template subtype="element" match="ub:factor">
+																																												<children>
+																																													<content>
+																																														<format datatype="integer"/>
+																																													</content>
+																																												</children>
+																																												<variables/>
+																																											</template>
+																																										</children>
+																																									</tgridcell>
+																																									<tgridcell>
+																																										<children>
+																																											<template subtype="element" match="ub:total">
+																																												<children>
+																																													<content>
+																																														<format datatype="decimal"/>
+																																													</content>
+																																												</children>
+																																												<variables/>
+																																											</template>
+																																										</children>
+																																									</tgridcell>
+																																								</children>
+																																							</tgridrow>
+																																						</children>
+																																						<variables/>
+																																					</template>
+																																				</children>
+																																			</tgridbody-rows>
 																																		</children>
-																																	</tgridbody-rows>
+																																	</tgrid>
 																																</children>
-																															</tgrid>
+																															</tgridcell>
 																														</children>
-																													</tgridcell>
+																													</tgridrow>
 																												</children>
-																											</tgridrow>
+																												<variables/>
+																											</template>
 																										</children>
-																										<variables/>
-																									</template>
+																									</tgridbody-rows>
 																								</children>
-																							</tgridbody-rows>
+																							</tgrid>
 																						</children>
-																					</tgrid>
+																						<variables/>
+																					</template>
 																				</children>
 																			</tgridcell>
 																		</children>
@@ -689,149 +440,15 @@
 																<variables/>
 															</template>
 														</children>
-														<variables/>
-													</template>
+													</tgridbody-rows>
 												</children>
-												<variables/>
-											</template>
-										</children>
-									</tgridbody-rows>
-								</children>
-							</tgrid>
-							<newline/>
-							<paragraph paragraphtag="h2">
-								<children>
-									<text fixtext="Aggregated Measurement"/>
-								</children>
-							</paragraph>
-							<newline/>
-							<template subtype="source" match="XML2">
-								<children>
-									<template subtype="element" match="ub:utilitybill">
-										<children>
-											<template subtype="element" match="ub:measuredusage">
-												<children>
-													<template subtype="element" groupingtype="group-by" groupingmatch="ub:identifier" match="ub:meter">
-														<sort>
-															<key match="current-grouping-key()"/>
-														</sort>
-														<children>
-															<tgrid>
-																<properties border="1"/>
-																<children>
-																	<tgridbody-cols>
-																		<children>
-																			<tgridcol/>
-																			<tgridcol/>
-																		</children>
-																	</tgridbody-cols>
-																	<tgridheader-rows>
-																		<children>
-																			<tgridrow>
-																				<children>
-																					<tgridcell/>
-																					<tgridcell/>
-																				</children>
-																			</tgridrow>
-																		</children>
-																	</tgridheader-rows>
-																	<tgridbody-rows>
-																		<children>
-																			<template subtype="userdefined" match="current-group()">
-																				<children>
-																					<tgridrow>
-																						<children>
-																							<tgridcell>
-																								<children>
-																									<template subtype="element" match="ub:identifier">
-																										<children>
-																											<content/>
-																										</children>
-																										<variables/>
-																									</template>
-																								</children>
-																							</tgridcell>
-																							<tgridcell>
-																								<children>
-																									<template subtype="element" groupingtype="group-by" groupingmatch="ub:identifier" match="ub:register">
-																										<sort>
-																											<key match="current-grouping-key()"/>
-																										</sort>
-																										<children>
-																											<tgrid>
-																												<properties border="1"/>
-																												<children>
-																													<tgridbody-cols>
-																														<children>
-																															<tgridcol/>
-																															<tgridcol/>
-																														</children>
-																													</tgridbody-cols>
-																													<tgridbody-rows>
-																														<children>
-																															<template subtype="userdefined" match="current-group()">
-																																<children>
-																																	<tgridrow>
-																																		<children>
-																																			<tgridcell>
-																																				<children>
-																																					<template subtype="element" match="ub:identifier">
-																																						<children>
-																																							<content/>
-																																						</children>
-																																						<variables/>
-																																					</template>
-																																				</children>
-																																			</tgridcell>
-																																			<tgridcell>
-																																				<children>
-																																					<template subtype="element" match="ub:total">
-																																						<children>
-																																							<content>
-																																								<format datatype="decimal"/>
-																																							</content>
-																																						</children>
-																																						<variables/>
-																																					</template>
-																																				</children>
-																																			</tgridcell>
-																																		</children>
-																																	</tgridrow>
-																																</children>
-																																<variables/>
-																															</template>
-																														</children>
-																													</tgridbody-rows>
-																												</children>
-																											</tgrid>
-																										</children>
-																										<variables/>
-																									</template>
-																								</children>
-																							</tgridcell>
-																						</children>
-																					</tgridrow>
-																				</children>
-																				<variables/>
-																			</template>
-																		</children>
-																	</tgridbody-rows>
-																</children>
-															</tgrid>
-														</children>
-														<variables/>
-													</template>
-												</children>
-												<variables/>
-											</template>
+											</tgrid>
 										</children>
 										<variables/>
 									</template>
 								</children>
 								<variables/>
 							</template>
-							<newline/>
-							<newline/>
 							<newline/>
 							<newline/>
 						</children>

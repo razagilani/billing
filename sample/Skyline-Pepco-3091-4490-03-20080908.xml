@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (self) -->
-<ub:utilitybill id="112937812397813" xsi:schemaLocation="utilitybill ../UtilityBill.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="utilitybill">
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
+<ub:utilitybill id="112937812397813" account="100231" xsi:schemaLocation="utilitybill ../UtilityBill.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="utilitybill">
 	<ub:car>
 		<ub:accountnumber>3091 4490 03</ub:accountnumber>
 		<ub:serviceaddress>
@@ -51,9 +51,10 @@
 		<ub:billperiodbegin>2008-02-08</ub:billperiodbegin>
 		<ub:billperiodend>2008-09-03</ub:billperiodend>
 		<ub:issuedate>2008-09-09</ub:issuedate>
-		<ub:currentcharges service="electric">547.67</ub:currentcharges>
-		<ub:currentcharges service="gas">2691.75</ub:currentcharges>
-		<ub:totaldue>2691.75</ub:totaldue>
+		<ub:currentcharges service="electric">2691.75</ub:currentcharges>
+		<ub:hypotheticalcharges service="electric">2988.07</ub:hypotheticalcharges>
+		<ub:skylinecharges service="electric">251.87</ub:skylinecharges>
+		<ub:totaldue>251.87</ub:totaldue>
 		<ub:duedate>2008-09-30</ub:duedate>
 		<ub:latepayment>
 			<ub:penalty/>
@@ -73,21 +74,21 @@
 				</ub:charge>
 				<ub:charge>
 					<ub:description>On-Peak Energy</ub:description>
-					<ub:quantity units="kWh">3520</ub:quantity>
+					<ub:quantity units="kWh">4520</ub:quantity>
 					<ub:rate units="dollars">0.0102812</ub:rate>
-					<ub:total>36.19</ub:total>
+					<ub:total>46.47</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Int-Peak Energy</ub:description>
-					<ub:quantity units="kWh">3680</ub:quantity>
+					<ub:quantity units="kWh">4180</ub:quantity>
 					<ub:rate units="dollars">0.0102798</ub:rate>
-					<ub:total>37.83</ub:total>
+					<ub:total>42.97</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Off Peak Energy</ub:description>
-					<ub:quantity units="kWh">8480</ub:quantity>
+					<ub:quantity units="kWh">8730</ub:quantity>
 					<ub:rate units="dollars">0.0102806</ub:rate>
-					<ub:total>87.18</ub:total>
+					<ub:total>89.75</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>On peak demand</ub:description>
@@ -100,74 +101,74 @@
 					<ub:total>52.13</ub:total>
 				</ub:charge>
 				<ub:charge>
-					<ub:description>Franchise tax (delivery) (make tax element)</ub:description>
-					<ub:quantity units="kWh">this is derived from all kWh</ub:quantity>
+					<ub:description>Franchise tax (delivery) </ub:description>
+					<ub:quantity units="kWh">17590</ub:quantity>
 					<ub:rate units="dollar">0.0006200</ub:rate>
-					<ub:total>9.72</ub:total>
+					<ub:total>10.91</ub:total>
 				</ub:charge>
 				<ub:charge>
-					<ub:description>Universal service charge (make tax element)</ub:description>
+					<ub:description>Universal service charge</ub:description>
 					<ub:total>20.59</ub:total>
 				</ub:charge>
 				<ub:charge>
-					<ub:description>MD Environmental surcharge (make tax element)</ub:description>
-					<ub:quantity units="kWh">this is derived from all kWh</ub:quantity>
+					<ub:description>MD Environmental surcharge</ub:description>
+					<ub:quantity units="kWh">17590</ub:quantity>
 					<ub:rate units="dollar">0.0001500</ub:rate>
-					<ub:total>2.35</ub:total>
+					<ub:total>2.64</ub:total>
 				</ub:charge>
 				<ub:charge>
-					<ub:description>Gross receipts tax (make tax element)</ub:description>
-					<ub:quantity units="">this is derived from all charges above</ub:quantity>
+					<ub:description>Gross receipts tax</ub:description>
+					<ub:quantity units="kWh"/>
 					<ub:rate units="percentage">2.040800</ub:rate>
-					<ub:total>8.54</ub:total>
+					<ub:total>8.92</ub:total>
 				</ub:charge>
 				<ub:charge>
-					<ub:description>PG County Energy (make tax element)</ub:description>
-					<ub:quantity units="">this is derived from all kWh above</ub:quantity>
+					<ub:description>PG County Energy</ub:description>
+					<ub:quantity units="kWh">17590</ub:quantity>
 					<ub:rate units="dollars">0.0072860</ub:rate>
-					<ub:total>114.25</ub:total>
+					<ub:total>128.16</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Administrative credit</ub:description>
-					<ub:quantity units="">this is derived from all kWh above</ub:quantity>
+					<ub:quantity units="kWh">17590</ub:quantity>
 					<ub:rate units="dollars">0.0013080</ub:rate>
 					<ub:total>-20.50</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Generation procurement credit/charge</ub:description>
-					<ub:quantity units="">this is derived from all kWh above</ub:quantity>
+					<ub:quantity units="kWh">17590</ub:quantity>
 					<ub:rate units="dollars">0.0001843</ub:rate>
-					<ub:total>2.89</ub:total>
+					<ub:total>3.24</ub:total>
 				</ub:charge>
 			</ub:charges>
-			<ub:subtotal>523.26</ub:subtotal>
+			<ub:subtotal>557.37</ub:subtotal>
 		</ub:chargegroup>
 		<ub:chargegroup type="Generation/Supply">
 			<ub:charges>
 				<ub:charge>
 					<ub:description>Total Use</ub:description>
-					<ub:quantity units="kWh">15680</ub:quantity>
+					<ub:quantity units="kWh">17590</ub:quantity>
 					<ub:rate units="dollars">0.129</ub:rate>
-					<ub:total>2022.72</ub:total>
+					<ub:total>2269.11</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Sales Tax</ub:description>
-					<ub:total>121.36</ub:total>
+					<ub:total>136.15</ub:total>
 				</ub:charge>
 			</ub:charges>
-			<ub:subtotal>2144.08</ub:subtotal>
+			<ub:subtotal>2405.26</ub:subtotal>
 		</ub:chargegroup>
 		<ub:chargegroup type="Tax">
 			<ub:charges>
 				<ub:charge>
 					<ub:description>Sales Tax</ub:description>
 					<ub:quantity/>
-					<ub:total>24.41</ub:total>
+					<ub:total>25.44</ub:total>
 				</ub:charge>
 			</ub:charges>
-			<ub:subtotal>24.41</ub:subtotal>
+			<ub:subtotal>25.44</ub:subtotal>
 		</ub:chargegroup>
-		<ub:total>2691.75</ub:total>
+		<ub:total>2988.07</ub:total>
 	</ub:details>
 	<ub:billableusage service="electric">
 		<ub:rateschedule>
@@ -189,6 +190,12 @@
 				<ub:factor>80</ub:factor>
 				<ub:total>15840</ub:total>
 			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>475T</ub:identifier>
+				<ub:description>Kilowatt Hour Meter</ub:description>
+				<ub:units>kWh</ub:units>
+				<ub:total>1750</ub:total>
+			</ub:register>
 			<ub:register shadow="false">
 				<ub:identifier>D11</ub:identifier>
 				<ub:description>Off Peak</ub:description>
@@ -198,14 +205,26 @@
 				<ub:factor>80</ub:factor>
 				<ub:total>8480</ub:total>
 			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>D11</ub:identifier>
+				<ub:description>Off Peak Offset</ub:description>
+				<ub:units>kWh</ub:units>
+				<ub:total>250</ub:total>
+			</ub:register>
 			<ub:register shadow="false">
 				<ub:identifier>D08</ub:identifier>
-				<ub:description>Interm Peak</ub:description>
+				<ub:description>Interim Peak</ub:description>
 				<ub:units>kWh</ub:units>
 				<ub:priorreading>3627</ub:priorreading>
 				<ub:presentreading>3673</ub:presentreading>
 				<ub:factor>80</ub:factor>
 				<ub:total>3680</ub:total>
+			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>D08</ub:identifier>
+				<ub:description>Interim Peak Offset</ub:description>
+				<ub:units>kWh</ub:units>
+				<ub:total>500</ub:total>
 			</ub:register>
 			<ub:register shadow="false">
 				<ub:identifier>D05</ub:identifier>
@@ -215,6 +234,12 @@
 				<ub:presentreading>4189</ub:presentreading>
 				<ub:factor>80</ub:factor>
 				<ub:total>3520</ub:total>
+			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>D05</ub:identifier>
+				<ub:description>On Peak Offset</ub:description>
+				<ub:units>kWh</ub:units>
+				<ub:total>1000</ub:total>
 			</ub:register>
 		</ub:meter>
 	</ub:measuredusage>
