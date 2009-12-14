@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
-<ub:utilitybill id="2247634543" xsi:schemaLocation="utilitybill ../UtilityBill.xsd skylinebill ../SkylineBill.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="utilitybill" xmlns:sb="skylinebill">
+<ub:utilitybill id="2247634543" xsi:schemaLocation="utilitybill ../UtilityBill.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="utilitybill">
 	<ub:car>
 		<ub:accountnumber>94443-01819</ub:accountnumber>
 		<ub:serviceaddress>
@@ -258,7 +258,7 @@
 		<ub:meter>
 			<ub:estimated>false</ub:estimated>
 			<ub:identifier>027870434</ub:identifier>
-			<ub:register>
+			<ub:register shadow="false">
 				<ub:identifier>027870434</ub:identifier>
 				<ub:description>Total CCF</ub:description>
 				<ub:units>CCF</ub:units>
@@ -271,7 +271,7 @@
 		<ub:meter>
 			<ub:estimated>false</ub:estimated>
 			<ub:identifier>028702956</ub:identifier>
-			<ub:register>
+			<ub:register shadow="false">
 				<ub:identifier>028702956</ub:identifier>
 				<ub:description>Total CCF</ub:description>
 				<ub:units>CCF</ub:units>
@@ -281,31 +281,13 @@
 				<ub:total>543</ub:total>
 			</ub:register>
 		</ub:meter>
-		<ub:meter shadow="true">
-			<ub:estimated>false</ub:estimated>
-			<ub:identifier>027870434</ub:identifier>
-			<ub:register>
-				<ub:identifier>027870434</ub:identifier>
-				<ub:description>CCF Offset</ub:description>
-				<ub:total>50</ub:total>
-			</ub:register>
-		</ub:meter>
-		<ub:meter shadow="true">
-			<ub:estimated>false</ub:estimated>
-			<ub:identifier>028702956</ub:identifier>
-			<ub:register>
-				<ub:identifier>028702956</ub:identifier>
-				<ub:description>CCF Offset</ub:description>
-				<ub:total>50</ub:total>
-			</ub:register>
-		</ub:meter>
 		<ub:nextreaddate>2009-11-04</ub:nextreaddate>
 	</ub:measuredusage>
 	<ub:measuredusage service="electric">
 		<ub:meter>
 			<ub:estimated>false</ub:estimated>
 			<ub:identifier>084010385</ub:identifier>
-			<ub:register>
+			<ub:register shadow="false">
 				<ub:identifier>084010385-totalkwh</ub:identifier>
 				<ub:description>Total kWh</ub:description>
 				<ub:units>kWh</ub:units>
@@ -314,7 +296,7 @@
 				<ub:factor>40</ub:factor>
 				<ub:total>6200</ub:total>
 			</ub:register>
-			<ub:register>
+			<ub:register shadow="false">
 				<ub:identifier>084010385-peakkwh</ub:identifier>
 				<ub:description>Peak kW</ub:description>
 				<ub:units>kW</ub:units>
@@ -324,51 +306,6 @@
 				<ub:total>26.48</ub:total>
 			</ub:register>
 		</ub:meter>
-		<ub:meter shadow="true">
-			<ub:estimated>false</ub:estimated>
-			<ub:identifier>084010385</ub:identifier>
-			<ub:register>
-				<ub:identifier>084010385-totalkwh</ub:identifier>
-				<ub:description>Total kWh Offset</ub:description>
-				<ub:total>800</ub:total>
-			</ub:register>
-			<ub:register>
-				<ub:identifier>084010385-peakkwh</ub:identifier>
-				<ub:description>Peak kW Offset</ub:description>
-				<ub:total>4</ub:total>
-			</ub:register>
-		</ub:meter>
 		<ub:nextreaddate>2009-11-04</ub:nextreaddate>
 	</ub:measuredusage>
-	<ub:skylinemeasuredusage service="gas">
-		<sb:meter>
-			<sb:identifier>027870434</sb:identifier>
-			<sb:register>
-				<sb:identifier>027870434</sb:identifier>
-				<sb:description>Total CCF</sb:description>
-				<sb:units>CCF</sb:units>
-				<sb:total>151</sb:total>
-			</sb:register>
-		</sb:meter>
-		<sb:meter>
-			<sb:identifier>028702956</sb:identifier>
-			<sb:register>
-				<sb:identifier>028702956</sb:identifier>
-				<sb:description>Total CCF</sb:description>
-				<sb:units>CCF</sb:units>
-				<sb:total>97</sb:total>
-			</sb:register>
-		</sb:meter>
-	</ub:skylinemeasuredusage>
-	<ub:skylinemeasuredusage service="electric">
-		<sb:meter>
-			<sb:identifier>084010385</sb:identifier>
-			<sb:register>
-				<sb:identifier>084010385</sb:identifier>
-				<sb:description>Total kWh</sb:description>
-				<sb:units>kWh</sb:units>
-				<sb:total>1200</sb:total>
-			</sb:register>
-		</sb:meter>
-	</ub:skylinemeasuredusage>
 </ub:utilitybill>
