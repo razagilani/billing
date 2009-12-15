@@ -32,11 +32,11 @@
 					<documentsection>
 						<properties columncount="1" columngap="0.50in" headerfooterheight="fixed" pagemultiplepages="0" pagenumberingformat="1" pagenumberingstartat="auto" pagestart="next" paperheight="11in" papermarginbottom="0.79in" papermarginfooter="0.30in" papermarginheader="0.30in" papermarginleft="0.60in" papermarginright="0.60in" papermargintop="0.79in" paperwidth="8.50in"/>
 					</documentsection>
-					<layout-container locksize="1">
+					<layout-container locksize="1" blueprint-image-url="file:///C:/workspace-skyline/billing/presentation/images/EmeraldCity.png">
 						<styles height="5.19in" overflow="hidden" position="relative" width="7.71in"/>
 						<children>
 							<textbox autoresize="1" additional-width="0.92in" additional-height="0.72in">
-								<styles height="0.92in" left="0.40in" overflow="hidden" padding="2px" position="absolute" top="0.80in" width="3.08in"/>
+								<styles height="0.92in" left="0.40in" overflow="hidden" padding="2px" position="absolute" top="0.40in" width="3.08in"/>
 								<children>
 									<template subtype="source" match="XML">
 										<children>
@@ -53,6 +53,201 @@
 														</children>
 														<variables/>
 													</template>
+												</children>
+												<variables/>
+											</template>
+										</children>
+										<variables/>
+									</template>
+								</children>
+							</textbox>
+							<textbox autoresize="1" additional-width="20%" additional-height="10%">
+								<styles height="1.85in" left="0in" overflow="hidden" padding="2px" position="absolute" top="3.40in" width="6.24in"/>
+								<children>
+									<template subtype="element" match="ub:utilitybill">
+										<children>
+											<template subtype="element" match="ub:details">
+												<children>
+													<tgrid>
+														<properties border="1"/>
+														<styles font-size="xx-small"/>
+														<children>
+															<tgridbody-cols>
+																<children>
+																	<tgridcol/>
+																	<tgridcol/>
+																	<tgridcol/>
+																	<tgridcol/>
+																</children>
+															</tgridbody-cols>
+															<tgridheader-rows>
+																<children>
+																	<tgridrow>
+																		<children>
+																			<tgridcell>
+																				<children>
+																					<text fixtext="service">
+																						<styles font-size="small"/>
+																					</text>
+																				</children>
+																			</tgridcell>
+																			<tgridcell>
+																				<children>
+																					<text fixtext="rateschedule">
+																						<styles font-size="small"/>
+																					</text>
+																				</children>
+																			</tgridcell>
+																			<tgridcell>
+																				<children>
+																					<text fixtext="Charges">
+																						<styles font-size="small"/>
+																					</text>
+																				</children>
+																			</tgridcell>
+																			<tgridcell>
+																				<children>
+																					<text fixtext="total">
+																						<styles font-size="small"/>
+																					</text>
+																				</children>
+																			</tgridcell>
+																		</children>
+																	</tgridrow>
+																</children>
+															</tgridheader-rows>
+															<tgridbody-rows>
+																<children>
+																	<tgridrow>
+																		<children>
+																			<tgridcell>
+																				<children>
+																					<template subtype="attribute" match="service">
+																						<children>
+																							<content/>
+																						</children>
+																						<variables/>
+																					</template>
+																				</children>
+																			</tgridcell>
+																			<tgridcell>
+																				<children>
+																					<template subtype="element" match="ub:rateschedule">
+																						<children>
+																							<content/>
+																						</children>
+																						<variables/>
+																					</template>
+																				</children>
+																			</tgridcell>
+																			<tgridcell>
+																				<children>
+																					<template subtype="element" match="ub:chargegroup">
+																						<children>
+																							<tgrid>
+																								<properties border="1"/>
+																								<children>
+																									<tgridbody-cols>
+																										<children>
+																											<tgridcol/>
+																											<tgridcol/>
+																											<tgridcol/>
+																										</children>
+																									</tgridbody-cols>
+																									<tgridheader-rows>
+																										<children>
+																											<tgridrow>
+																												<children>
+																													<tgridcell>
+																														<children>
+																															<text fixtext="type">
+																																<styles font-size="small"/>
+																															</text>
+																														</children>
+																													</tgridcell>
+																													<tgridcell>
+																														<children>
+																															<text fixtext="charges">
+																																<styles font-size="small"/>
+																															</text>
+																														</children>
+																													</tgridcell>
+																													<tgridcell>
+																														<children>
+																															<text fixtext="subtotal">
+																																<styles font-size="small"/>
+																															</text>
+																														</children>
+																													</tgridcell>
+																												</children>
+																											</tgridrow>
+																										</children>
+																									</tgridheader-rows>
+																									<tgridbody-rows>
+																										<children>
+																											<tgridrow>
+																												<children>
+																													<tgridcell>
+																														<children>
+																															<template subtype="attribute" match="type">
+																																<children>
+																																	<content/>
+																																</children>
+																																<variables/>
+																															</template>
+																														</children>
+																													</tgridcell>
+																													<tgridcell>
+																														<children>
+																															<template subtype="element" match="ub:charges">
+																																<children>
+																																	<content/>
+																																</children>
+																																<variables/>
+																															</template>
+																														</children>
+																													</tgridcell>
+																													<tgridcell>
+																														<children>
+																															<template subtype="element" match="ub:subtotal">
+																																<children>
+																																	<content>
+																																		<format datatype="decimal"/>
+																																	</content>
+																																</children>
+																																<variables/>
+																															</template>
+																														</children>
+																													</tgridcell>
+																												</children>
+																											</tgridrow>
+																										</children>
+																									</tgridbody-rows>
+																								</children>
+																							</tgrid>
+																						</children>
+																						<variables/>
+																					</template>
+																				</children>
+																			</tgridcell>
+																			<tgridcell>
+																				<children>
+																					<template subtype="element" match="ub:total">
+																						<children>
+																							<content>
+																								<format datatype="decimal"/>
+																							</content>
+																						</children>
+																						<variables/>
+																					</template>
+																				</children>
+																			</tgridcell>
+																		</children>
+																	</tgridrow>
+																</children>
+															</tgridbody-rows>
+														</children>
+													</tgrid>
 												</children>
 												<variables/>
 											</template>
