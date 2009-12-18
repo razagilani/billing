@@ -7,7 +7,7 @@
 			<nspair prefix="ub" uri="utilitybill"/>
 		</namespaces>
 		<schemasources>
-			<xsdschemasource name="XML" main="1" schemafile="C:\workspace-skyline\billing\UtilityBill.xsd" workingxmlfile="C:\workspace-skyline\billing\sample\Skyline-Pepco-3091-4490-03-20080908.xml">
+			<xsdschemasource name="XML" main="1" schemafile="C:\workspace-skyline\billing\UtilityBill.xsd" workingxmlfile="C:\workspace-skyline\billing\bills\Skyline-1-1.xml">
 				<xmltablesupport/>
 				<textstateicons/>
 			</xsdschemasource>
@@ -648,6 +648,7 @@
 											<tgridcell/>
 											<tgridcell>
 												<children>
+													<line/>
 													<tgrid>
 														<properties border="0" width="100%"/>
 														<children>
@@ -812,124 +813,52 @@
 																													</text>
 																												</children>
 																											</tgridcell>
-																											<tgridcell/>
-																										</children>
-																									</tgridrow>
-																								</children>
-																							</tgridbody-rows>
-																						</children>
-																					</tgrid>
-																				</children>
-																			</tgridcell>
-																			<tgridcell>
-																				<children>
-																					<tgrid>
-																						<properties border="0" width="100%"/>
-																						<children>
-																							<tgridbody-cols>
-																								<children>
-																									<tgridcol>
-																										<properties width="40%"/>
-																									</tgridcol>
-																									<tgridcol>
-																										<properties width="60%"/>
-																									</tgridcol>
-																								</children>
-																							</tgridbody-cols>
-																							<tgridbody-rows>
-																								<children>
-																									<tgridrow>
-																										<children>
 																											<tgridcell>
 																												<children>
-																													<text fixtext="Utility Charges:">
-																														<styles font-weight="bold"/>
-																													</text>
-																												</children>
-																											</tgridcell>
-																											<tgridcell>
-																												<children>
-																													<autocalc xpath="sum( $XML/ub:utilitybill/ub:summary/ub:currentcharges )"/>
-																												</children>
-																											</tgridcell>
-																										</children>
-																									</tgridrow>
-																									<tgridrow>
-																										<children>
-																											<tgridcell>
-																												<children>
-																													<text fixtext="Bill without Skyline: ">
-																														<styles font-weight="bold"/>
-																													</text>
-																												</children>
-																											</tgridcell>
-																											<tgridcell>
-																												<children>
-																													<autocalc xpath="sum($XML/ub:utilitybill/ub:summary/ub:hypotheticalcharges)"/>
-																												</children>
-																											</tgridcell>
-																										</children>
-																									</tgridrow>
-																									<tgridrow>
-																										<children>
-																											<tgridcell>
-																												<children>
-																													<text fixtext="Skyline Charges:">
-																														<styles font-weight="bold"/>
-																													</text>
-																												</children>
-																											</tgridcell>
-																											<tgridcell>
-																												<children>
-																													<autocalc xpath="sum($XML/ub:utilitybill/ub:summary/ub:skylinecharges)"/>
-																												</children>
-																											</tgridcell>
-																										</children>
-																									</tgridrow>
-																									<tgridrow>
-																										<children>
-																											<tgridcell>
-																												<children>
-																													<text fixtext="Your Savings:">
-																														<styles font-weight="bold"/>
-																													</text>
-																												</children>
-																											</tgridcell>
-																											<tgridcell>
-																												<children>
-																													<autocalc xpath="sum($XML/ub:utilitybill/ub:summary/ub:hypotheticalcharges) - sum($XML/ub:utilitybill/ub:summary/ub:currentcharges) - sum($XML/ub:utilitybill/ub:summary/ub:skylinecharges)"/>
-																												</children>
-																											</tgridcell>
-																										</children>
-																									</tgridrow>
-																									<tgridrow>
-																										<children>
-																											<tgridcell/>
-																											<tgridcell/>
-																										</children>
-																									</tgridrow>
-																									<tgridrow>
-																										<children>
-																											<tgridcell>
-																												<children>
-																													<text fixtext="Total Due:">
-																														<styles font-weight="bold"/>
-																													</text>
-																												</children>
-																											</tgridcell>
-																											<tgridcell>
-																												<children>
+																													<text fixtext="$"/>
 																													<template subtype="source" match="XML">
 																														<children>
 																															<template subtype="element" match="ub:utilitybill">
 																																<children>
 																																	<template subtype="element" match="ub:summary">
 																																		<children>
-																																			<template subtype="element" match="ub:totaldue">
+																																			<template subtype="element" match="ub:latepayment">
+																																				<children>
+																																					<template subtype="element" match="ub:amount">
+																																						<children>
+																																							<content/>
+																																						</children>
+																																						<variables/>
+																																					</template>
+																																				</children>
+																																				<variables/>
+																																			</template>
+																																		</children>
+																																		<variables/>
+																																	</template>
+																																</children>
+																																<variables/>
+																															</template>
+																														</children>
+																														<variables/>
+																													</template>
+																													<text fixtext="  after  "/>
+																													<template subtype="source" match="XML">
+																														<children>
+																															<template subtype="element" match="ub:utilitybill">
+																																<children>
+																																	<template subtype="element" match="ub:summary">
+																																		<children>
+																																			<template subtype="element" match="ub:duedate">
 																																				<children>
 																																					<content>
-																																						<format datatype="decimal"/>
+																																						<format datatype="date"/>
 																																					</content>
+																																					<button>
+																																						<action>
+																																							<datepicker/>
+																																						</action>
+																																					</button>
 																																				</children>
 																																				<variables/>
 																																			</template>
@@ -952,29 +881,168 @@
 																					</tgrid>
 																				</children>
 																			</tgridcell>
+																			<tgridcell>
+																				<children>
+																					<tgrid>
+																						<properties border="0" width="100%"/>
+																						<children>
+																							<tgridbody-cols>
+																								<children>
+																									<tgridcol>
+																										<properties width="40%"/>
+																									</tgridcol>
+																									<tgridcol>
+																										<properties align="right" width="40%"/>
+																									</tgridcol>
+																									<tgridcol>
+																										<properties width="20%"/>
+																									</tgridcol>
+																								</children>
+																							</tgridbody-cols>
+																							<tgridbody-rows>
+																								<children>
+																									<tgridrow>
+																										<children>
+																											<tgridcell>
+																												<children>
+																													<text fixtext="Utility Charges:">
+																														<styles font-weight="bold"/>
+																													</text>
+																												</children>
+																											</tgridcell>
+																											<tgridcell>
+																												<children>
+																													<autocalc xpath="sum( $XML/ub:utilitybill/ub:summary/ub:currentcharges )"/>
+																												</children>
+																											</tgridcell>
+																											<tgridcell/>
+																										</children>
+																									</tgridrow>
+																									<tgridrow>
+																										<children>
+																											<tgridcell>
+																												<children>
+																													<text fixtext="Bill without Skyline: ">
+																														<styles font-weight="bold"/>
+																													</text>
+																												</children>
+																											</tgridcell>
+																											<tgridcell>
+																												<children>
+																													<autocalc xpath="sum($XML/ub:utilitybill/ub:summary/ub:hypotheticalcharges)"/>
+																												</children>
+																											</tgridcell>
+																											<tgridcell/>
+																										</children>
+																									</tgridrow>
+																									<tgridrow>
+																										<children>
+																											<tgridcell>
+																												<children>
+																													<text fixtext="Skyline Charges:">
+																														<styles font-weight="bold"/>
+																													</text>
+																												</children>
+																											</tgridcell>
+																											<tgridcell>
+																												<children>
+																													<autocalc xpath="sum($XML/ub:utilitybill/ub:summary/ub:skylinecharges)"/>
+																												</children>
+																											</tgridcell>
+																											<tgridcell/>
+																										</children>
+																									</tgridrow>
+																									<tgridrow>
+																										<children>
+																											<tgridcell>
+																												<children>
+																													<text fixtext="Your Savings:">
+																														<styles font-weight="bold"/>
+																													</text>
+																												</children>
+																											</tgridcell>
+																											<tgridcell>
+																												<children>
+																													<autocalc xpath="sum($XML/ub:utilitybill/ub:summary/ub:hypotheticalcharges) - sum($XML/ub:utilitybill/ub:summary/ub:currentcharges) - sum($XML/ub:utilitybill/ub:summary/ub:skylinecharges)"/>
+																												</children>
+																											</tgridcell>
+																											<tgridcell/>
+																										</children>
+																									</tgridrow>
+																									<tgridrow>
+																										<children>
+																											<tgridcell/>
+																											<tgridcell/>
+																											<tgridcell/>
+																										</children>
+																									</tgridrow>
+																									<tgridrow>
+																										<children>
+																											<tgridcell>
+																												<children>
+																													<text fixtext="Total Due:">
+																														<styles font-weight="bold"/>
+																													</text>
+																												</children>
+																											</tgridcell>
+																											<tgridcell>
+																												<children>
+																													<text fixtext="$"/>
+																													<template subtype="source" match="XML">
+																														<children>
+																															<template subtype="element" match="ub:utilitybill">
+																																<children>
+																																	<template subtype="element" match="ub:summary">
+																																		<children>
+																																			<template subtype="element" match="ub:totaldue">
+																																				<children>
+																																					<content>
+																																						<styles font-weight="bold"/>
+																																						<format datatype="decimal"/>
+																																					</content>
+																																				</children>
+																																				<variables/>
+																																			</template>
+																																		</children>
+																																		<variables/>
+																																	</template>
+																																</children>
+																																<variables/>
+																															</template>
+																														</children>
+																														<variables/>
+																													</template>
+																												</children>
+																											</tgridcell>
+																											<tgridcell/>
+																										</children>
+																									</tgridrow>
+																								</children>
+																							</tgridbody-rows>
+																						</children>
+																					</tgrid>
+																				</children>
+																			</tgridcell>
 																		</children>
 																	</tgridrow>
 																</children>
 															</tgridbody-rows>
 														</children>
 													</tgrid>
-													<newline/>
-													<newline/>
+													<line/>
 													<template subtype="source" match="XML">
 														<children>
 															<newline/>
-															<line/>
 															<paragraph>
 																<children>
-																	<paragraph paragraphtag="h2">
+																	<paragraph paragraphtag="h3">
 																		<children>
-																			<text fixtext="Bill Details">
-																				<styles text-decoration="underline"/>
-																			</text>
+																			<text fixtext="Bill Details"/>
 																		</children>
 																	</paragraph>
 																	<tgrid>
 																		<properties border="0" width="100%"/>
+																		<styles border-collapse="collapse"/>
 																		<children>
 																			<tgridbody-cols>
 																				<children>
@@ -991,72 +1059,53 @@
 																								<children>
 																									<tgrid>
 																										<properties border="0" width="100%"/>
+																										<styles border-collapse="collapse"/>
 																										<children>
 																											<tgridbody-cols>
 																												<children>
-																													<tgridcol>
-																														<properties align="left"/>
-																													</tgridcol>
-																													<tgridcol>
-																														<properties align="left"/>
-																													</tgridcol>
-																													<tgridcol>
-																														<properties align="right"/>
-																													</tgridcol>
+																													<tgridcol/>
 																												</children>
 																											</tgridbody-cols>
-																											<tgridheader-rows>
+																											<tgridbody-rows>
 																												<children>
 																													<tgridrow>
 																														<children>
 																															<tgridcell>
 																																<children>
-																																	<paragraph paragraphtag="h3">
-																																		<children>
-																																			<text fixtext="Service"/>
-																																		</children>
-																																	</paragraph>
-																																</children>
-																															</tgridcell>
-																															<tgridcell>
-																																<children>
-																																	<paragraph paragraphtag="h3">
-																																		<children>
-																																			<text fixtext="Rate Schedule"/>
-																																		</children>
-																																	</paragraph>
-																																</children>
-																															</tgridcell>
-																															<tgridcell>
-																																<children>
 																																	<tgrid>
-																																		<properties border="0" width="100%"/>
+																																		<properties border="0" cellspacing="0px" width="100%"/>
 																																		<children>
 																																			<tgridbody-cols>
 																																				<children>
 																																					<tgridcol>
-																																						<properties align="left" width="15%"/>
+																																						<properties align="left" width="8%"/>
 																																					</tgridcol>
 																																					<tgridcol>
-																																						<properties align="left" width="35%"/>
+																																						<properties align="left" width="12%"/>
 																																					</tgridcol>
 																																					<tgridcol>
-																																						<properties align="right" width="10%"/>
+																																						<properties align="left" width="12%"/>
 																																					</tgridcol>
 																																					<tgridcol>
-																																						<properties align="left" width="5%"/>
+																																						<properties align="left" width="28%"/>
 																																					</tgridcol>
 																																					<tgridcol>
-																																						<properties align="left" width="10%"/>
+																																						<properties width="8%"/>
 																																					</tgridcol>
 																																					<tgridcol>
-																																						<properties align="left" width="5%"/>
-																																					</tgridcol>
-																																					<tgridcol>
-																																						<properties align="right" width="10%"/>
+																																						<properties width="4%"/>
 																																					</tgridcol>
 																																					<tgridcol>
 																																						<properties width="10%"/>
+																																					</tgridcol>
+																																					<tgridcol>
+																																						<properties width="4%"/>
+																																					</tgridcol>
+																																					<tgridcol>
+																																						<properties width="8%"/>
+																																					</tgridcol>
+																																					<tgridcol>
+																																						<properties width="8%"/>
 																																					</tgridcol>
 																																				</children>
 																																			</tgridbody-cols>
@@ -1065,53 +1114,70 @@
 																																					<tgridrow>
 																																						<children>
 																																							<tgridcell>
+																																								<styles border-bottom="1px" border-bottom-color="black" border-bottom-style="solid"/>
 																																								<children>
-																																									<paragraph paragraphtag="h3">
-																																										<children>
-																																											<text fixtext="Charge"/>
-																																										</children>
-																																									</paragraph>
+																																									<text fixtext="Service">
+																																										<styles font-weight="bold"/>
+																																									</text>
 																																								</children>
 																																							</tgridcell>
 																																							<tgridcell>
+																																								<styles border-bottom="1px" border-bottom-color="black" border-bottom-style="solid"/>
 																																								<children>
-																																									<paragraph paragraphtag="h3">
-																																										<children>
-																																											<text fixtext="Description"/>
-																																										</children>
-																																									</paragraph>
+																																									<text fixtext="Rate">
+																																										<styles font-weight="bold"/>
+																																									</text>
 																																								</children>
 																																							</tgridcell>
 																																							<tgridcell>
+																																								<styles border-bottom="1px" border-bottom-color="black" border-bottom-style="solid"/>
 																																								<children>
-																																									<paragraph paragraphtag="h3">
-																																										<children>
-																																											<text fixtext="Quantity"/>
-																																										</children>
-																																									</paragraph>
+																																									<text fixtext="Charge">
+																																										<styles font-weight="bold"/>
+																																									</text>
 																																								</children>
 																																							</tgridcell>
-																																							<tgridcell/>
 																																							<tgridcell>
+																																								<styles border-bottom="1px" border-bottom-color="black" border-bottom-style="solid"/>
 																																								<children>
-																																									<paragraph paragraphtag="h3">
-																																										<children>
-																																											<text fixtext="Rate"/>
-																																										</children>
-																																									</paragraph>
+																																									<text fixtext="Description">
+																																										<styles font-weight="bold"/>
+																																									</text>
 																																								</children>
 																																							</tgridcell>
-																																							<tgridcell/>
 																																							<tgridcell>
+																																								<styles border-bottom="1px" border-bottom-color="black" border-bottom-style="solid"/>
 																																								<children>
-																																									<paragraph paragraphtag="h3">
-																																										<children>
-																																											<text fixtext="Amount"/>
-																																										</children>
-																																									</paragraph>
+																																									<text fixtext="Quantity">
+																																										<styles font-weight="bold"/>
+																																									</text>
 																																								</children>
 																																							</tgridcell>
-																																							<tgridcell/>
+																																							<tgridcell>
+																																								<styles border-bottom="1px" border-bottom-color="black" border-bottom-style="solid"/>
+																																							</tgridcell>
+																																							<tgridcell>
+																																								<styles border-bottom="1px" border-bottom-color="black" border-bottom-style="solid"/>
+																																								<children>
+																																									<text fixtext="Rate">
+																																										<styles font-weight="bold"/>
+																																									</text>
+																																								</children>
+																																							</tgridcell>
+																																							<tgridcell>
+																																								<styles border-bottom="1px" border-bottom-color="black" border-bottom-style="solid"/>
+																																							</tgridcell>
+																																							<tgridcell>
+																																								<styles border-bottom="1px" border-bottom-color="black" border-bottom-style="solid"/>
+																																								<children>
+																																									<text fixtext="Amount">
+																																										<styles font-weight="bold"/>
+																																									</text>
+																																								</children>
+																																							</tgridcell>
+																																							<tgridcell>
+																																								<styles border-bottom="1px" border-bottom-color="black" border-bottom-style="solid" border-right-color="black" border-right-style="solid" border-right-width="1px"/>
+																																							</tgridcell>
 																																						</children>
 																																					</tgridrow>
 																																				</children>
@@ -1122,161 +1188,234 @@
 																															</tgridcell>
 																														</children>
 																													</tgridrow>
-																												</children>
-																											</tgridheader-rows>
-																											<tgridbody-rows>
-																												<children>
-																													<template subtype="element" match="ub:utilitybill">
+																													<tgridrow>
 																														<children>
-																															<template subtype="element" match="ub:details">
+																															<tgridcell>
 																																<children>
-																																	<tgridrow>
-																																		<properties valign="top"/>
+																																	<tgrid>
+																																		<properties border="0" width="100%"/>
+																																		<styles border-collapse="collapse"/>
 																																		<children>
-																																			<tgridcell>
+																																			<tgridbody-cols>
 																																				<children>
-																																					<template subtype="attribute" match="service">
-																																						<children>
-																																							<content/>
-																																						</children>
-																																						<variables/>
-																																					</template>
+																																					<tgridcol>
+																																						<properties align="left" width="8%"/>
+																																					</tgridcol>
+																																					<tgridcol>
+																																						<properties align="left" width="12%"/>
+																																					</tgridcol>
+																																					<tgridcol>
+																																						<properties align="right" width="80%"/>
+																																					</tgridcol>
 																																				</children>
-																																			</tgridcell>
-																																			<tgridcell>
+																																			</tgridbody-cols>
+																																			<tgridbody-rows>
 																																				<children>
-																																					<template subtype="element" match="ub:rateschedule">
+																																					<template subtype="element" match="ub:utilitybill">
 																																						<children>
-																																							<content/>
-																																						</children>
-																																						<variables/>
-																																					</template>
-																																				</children>
-																																			</tgridcell>
-																																			<tgridcell>
-																																				<children>
-																																					<tgrid>
-																																						<properties border="0" width="100%"/>
-																																						<children>
-																																							<tgridbody-cols>
-																																								<children>
-																																									<tgridcol/>
-																																								</children>
-																																							</tgridbody-cols>
-																																							<tgridbody-rows>
+																																							<template subtype="element" match="ub:details">
 																																								<children>
 																																									<tgridrow>
+																																										<properties valign="top"/>
 																																										<children>
+																																											<tgridcell>
+																																												<children>
+																																													<template subtype="attribute" match="service">
+																																														<children>
+																																															<content/>
+																																														</children>
+																																														<variables/>
+																																													</template>
+																																												</children>
+																																											</tgridcell>
+																																											<tgridcell>
+																																												<children>
+																																													<template subtype="element" match="ub:rateschedule">
+																																														<children>
+																																															<content/>
+																																														</children>
+																																														<variables/>
+																																													</template>
+																																												</children>
+																																											</tgridcell>
 																																											<tgridcell>
 																																												<children>
 																																													<tgrid>
 																																														<properties border="0" width="100%"/>
+																																														<styles border-collapse="collapse"/>
 																																														<children>
 																																															<tgridbody-cols>
 																																																<children>
-																																																	<tgridcol>
-																																																		<properties align="left" valign="top" width="15%"/>
-																																																	</tgridcol>
-																																																	<tgridcol>
-																																																		<properties align="right" width="85%"/>
-																																																	</tgridcol>
+																																																	<tgridcol/>
 																																																</children>
 																																															</tgridbody-cols>
 																																															<tgridbody-rows>
 																																																<children>
-																																																	<template subtype="element" match="ub:chargegroup">
+																																																	<tgridrow>
 																																																		<children>
-																																																			<tgridrow>
+																																																			<tgridcell>
 																																																				<children>
-																																																					<tgridcell>
+																																																					<tgrid>
+																																																						<properties border="0" width="100%"/>
+																																																						<styles border-collapse="collapse" font-size="smaller"/>
 																																																						<children>
-																																																							<template subtype="attribute" match="type">
+																																																							<tgridbody-cols>
 																																																								<children>
-																																																									<content/>
+																																																									<tgridcol>
+																																																										<properties align="left" valign="top" width="15%"/>
+																																																									</tgridcol>
+																																																									<tgridcol>
+																																																										<properties align="right" width="85%"/>
+																																																									</tgridcol>
 																																																								</children>
-																																																								<variables/>
-																																																							</template>
-																																																						</children>
-																																																					</tgridcell>
-																																																					<tgridcell>
-																																																						<children>
-																																																							<tgrid>
-																																																								<properties border="0" width="100%"/>
+																																																							</tgridbody-cols>
+																																																							<tgridbody-rows>
 																																																								<children>
-																																																									<tgridbody-cols>
-																																																										<children>
-																																																											<tgridcol/>
-																																																										</children>
-																																																									</tgridbody-cols>
-																																																									<tgridbody-rows>
+																																																									<template subtype="element" match="ub:chargegroup">
 																																																										<children>
 																																																											<tgridrow>
 																																																												<children>
 																																																													<tgridcell>
 																																																														<children>
+																																																															<template subtype="attribute" match="type">
+																																																																<children>
+																																																																	<content/>
+																																																																</children>
+																																																																<variables/>
+																																																															</template>
+																																																														</children>
+																																																													</tgridcell>
+																																																													<tgridcell>
+																																																														<children>
 																																																															<tgrid>
 																																																																<properties border="0" width="100%"/>
+																																																																<styles border-collapse="collapse"/>
 																																																																<children>
 																																																																	<tgridbody-cols>
 																																																																		<children>
-																																																																			<tgridcol>
-																																																																				<properties align="left" width="41.20%"/>
-																																																																			</tgridcol>
-																																																																			<tgridcol>
-																																																																				<properties align="right" width="11.76%"/>
-																																																																			</tgridcol>
-																																																																			<tgridcol>
-																																																																				<properties align="left" width="5.88%"/>
-																																																																			</tgridcol>
-																																																																			<tgridcol>
-																																																																				<properties align="right" width="11.76%"/>
-																																																																			</tgridcol>
-																																																																			<tgridcol>
-																																																																				<properties align="left" width="5.88%"/>
-																																																																			</tgridcol>
-																																																																			<tgridcol>
-																																																																				<properties align="right" width="11.76%"/>
-																																																																			</tgridcol>
-																																																																			<tgridcol>
-																																																																				<properties width="11.76%"/>
-																																																																			</tgridcol>
+																																																																			<tgridcol/>
 																																																																		</children>
 																																																																	</tgridbody-cols>
 																																																																	<tgridbody-rows>
 																																																																		<children>
-																																																																			<template subtype="element" match="ub:charges">
+																																																																			<tgridrow>
 																																																																				<children>
-																																																																					<template subtype="element" match="ub:charge">
+																																																																					<tgridcell>
 																																																																						<children>
-																																																																							<tgridrow>
+																																																																							<tgrid>
+																																																																								<properties border="0" width="100%"/>
+																																																																								<styles border-collapse="collapse"/>
 																																																																								<children>
-																																																																									<tgridcell>
+																																																																									<tgridbody-cols>
 																																																																										<children>
-																																																																											<template subtype="element" match="ub:description">
-																																																																												<children>
-																																																																													<content/>
-																																																																												</children>
-																																																																												<variables/>
-																																																																											</template>
+																																																																											<tgridcol>
+																																																																												<properties align="left" width="40%"/>
+																																																																											</tgridcol>
+																																																																											<tgridcol>
+																																																																												<properties align="right" width="12%"/>
+																																																																											</tgridcol>
+																																																																											<tgridcol>
+																																																																												<properties align="left" width="8%"/>
+																																																																											</tgridcol>
+																																																																											<tgridcol>
+																																																																												<properties align="right" width="12%"/>
+																																																																											</tgridcol>
+																																																																											<tgridcol>
+																																																																												<properties align="left" width="8%"/>
+																																																																											</tgridcol>
+																																																																											<tgridcol>
+																																																																												<properties align="right" width="12%"/>
+																																																																											</tgridcol>
+																																																																											<tgridcol>
+																																																																												<properties width="8%"/>
+																																																																											</tgridcol>
 																																																																										</children>
-																																																																									</tgridcell>
-																																																																									<tgridcell>
+																																																																									</tgridbody-cols>
+																																																																									<tgridbody-rows>
 																																																																										<children>
-																																																																											<template subtype="element" match="ub:quantity">
+																																																																											<template subtype="element" match="ub:charges">
 																																																																												<children>
-																																																																													<content/>
-																																																																												</children>
-																																																																												<variables/>
-																																																																											</template>
-																																																																										</children>
-																																																																									</tgridcell>
-																																																																									<tgridcell>
-																																																																										<children>
-																																																																											<template subtype="element" match="ub:quantity">
-																																																																												<children>
-																																																																													<template subtype="attribute" match="units">
+																																																																													<template subtype="element" match="ub:charge">
 																																																																														<children>
-																																																																															<content/>
+																																																																															<tgridrow>
+																																																																																<children>
+																																																																																	<tgridcell>
+																																																																																		<children>
+																																																																																			<template subtype="element" match="ub:description">
+																																																																																				<children>
+																																																																																					<content/>
+																																																																																				</children>
+																																																																																				<variables/>
+																																																																																			</template>
+																																																																																		</children>
+																																																																																	</tgridcell>
+																																																																																	<tgridcell>
+																																																																																		<children>
+																																																																																			<template subtype="element" match="ub:quantity">
+																																																																																				<children>
+																																																																																					<content/>
+																																																																																				</children>
+																																																																																				<variables/>
+																																																																																			</template>
+																																																																																		</children>
+																																																																																	</tgridcell>
+																																																																																	<tgridcell>
+																																																																																		<children>
+																																																																																			<template subtype="element" match="ub:quantity">
+																																																																																				<children>
+																																																																																					<template subtype="attribute" match="units">
+																																																																																						<children>
+																																																																																							<content/>
+																																																																																						</children>
+																																																																																						<variables/>
+																																																																																					</template>
+																																																																																				</children>
+																																																																																				<variables/>
+																																																																																			</template>
+																																																																																		</children>
+																																																																																	</tgridcell>
+																																																																																	<tgridcell>
+																																																																																		<children>
+																																																																																			<text fixtext=" "/>
+																																																																																			<template subtype="element" match="ub:rate">
+																																																																																				<children>
+																																																																																					<content/>
+																																																																																				</children>
+																																																																																				<variables/>
+																																																																																			</template>
+																																																																																		</children>
+																																																																																	</tgridcell>
+																																																																																	<tgridcell>
+																																																																																		<children>
+																																																																																			<template subtype="element" match="ub:rate">
+																																																																																				<children>
+																																																																																					<template subtype="attribute" match="units">
+																																																																																						<children>
+																																																																																							<content/>
+																																																																																						</children>
+																																																																																						<variables/>
+																																																																																					</template>
+																																																																																				</children>
+																																																																																				<variables/>
+																																																																																			</template>
+																																																																																		</children>
+																																																																																	</tgridcell>
+																																																																																	<tgridcell>
+																																																																																		<properties align="right"/>
+																																																																																		<children>
+																																																																																			<template subtype="element" match="ub:total">
+																																																																																				<children>
+																																																																																					<content>
+																																																																																						<format datatype="decimal"/>
+																																																																																					</content>
+																																																																																				</children>
+																																																																																				<variables/>
+																																																																																			</template>
+																																																																																		</children>
+																																																																																	</tgridcell>
+																																																																																	<tgridcell/>
+																																																																																</children>
+																																																																															</tgridrow>
 																																																																														</children>
 																																																																														<variables/>
 																																																																													</template>
@@ -1284,54 +1423,25 @@
 																																																																												<variables/>
 																																																																											</template>
 																																																																										</children>
-																																																																									</tgridcell>
-																																																																									<tgridcell>
-																																																																										<children>
-																																																																											<template subtype="element" match="ub:rate">
-																																																																												<children>
-																																																																													<content/>
-																																																																												</children>
-																																																																												<variables/>
-																																																																											</template>
-																																																																										</children>
-																																																																									</tgridcell>
-																																																																									<tgridcell>
-																																																																										<children>
-																																																																											<template subtype="element" match="ub:rate">
-																																																																												<children>
-																																																																													<template subtype="attribute" match="units">
-																																																																														<children>
-																																																																															<content/>
-																																																																														</children>
-																																																																														<variables/>
-																																																																													</template>
-																																																																												</children>
-																																																																												<variables/>
-																																																																											</template>
-																																																																										</children>
-																																																																									</tgridcell>
-																																																																									<tgridcell>
-																																																																										<properties align="right"/>
-																																																																										<children>
-																																																																											<template subtype="element" match="ub:total">
-																																																																												<children>
-																																																																													<content>
-																																																																														<format datatype="decimal"/>
-																																																																													</content>
-																																																																												</children>
-																																																																												<variables/>
-																																																																											</template>
-																																																																										</children>
-																																																																									</tgridcell>
-																																																																									<tgridcell/>
+																																																																									</tgridbody-rows>
 																																																																								</children>
-																																																																							</tgridrow>
+																																																																							</tgrid>
 																																																																						</children>
-																																																																						<variables/>
-																																																																					</template>
+																																																																					</tgridcell>
 																																																																				</children>
-																																																																				<variables/>
-																																																																			</template>
+																																																																			</tgridrow>
+																																																																			<tgridrow>
+																																																																				<children>
+																																																																					<tgridcell>
+																																																																						<children>
+																																																																							<line/>
+																																																																							<autocalc xpath="sum(ub:charges/ub:charge/ub:total )">
+																																																																								<styles font-style="italic"/>
+																																																																							</autocalc>
+																																																																						</children>
+																																																																					</tgridcell>
+																																																																				</children>
+																																																																			</tgridrow>
 																																																																		</children>
 																																																																	</tgridbody-rows>
 																																																																</children>
@@ -1340,29 +1450,30 @@
 																																																													</tgridcell>
 																																																												</children>
 																																																											</tgridrow>
-																																																											<tgridrow>
-																																																												<children>
-																																																													<tgridcell>
-																																																														<children>
-																																																															<line/>
-																																																															<autocalc xpath="sum(ub:charges/ub:charge/ub:total )">
-																																																																<styles font-style="italic"/>
-																																																															</autocalc>
-																																																														</children>
-																																																													</tgridcell>
-																																																												</children>
-																																																											</tgridrow>
 																																																										</children>
-																																																									</tgridbody-rows>
+																																																										<variables/>
+																																																									</template>
 																																																								</children>
-																																																							</tgrid>
+																																																							</tgridbody-rows>
 																																																						</children>
-																																																					</tgridcell>
+																																																					</tgrid>
 																																																				</children>
-																																																			</tgridrow>
+																																																			</tgridcell>
 																																																		</children>
-																																																		<variables/>
-																																																	</template>
+																																																	</tgridrow>
+																																																	<tgridrow>
+																																																		<children>
+																																																			<tgridcell>
+																																																				<children>
+																																																					<line/>
+																																																					<text fixtext=" $"/>
+																																																					<autocalc xpath="sum( chargegroup/charges/charge/total )">
+																																																						<styles font-style="normal" font-weight="bold"/>
+																																																					</autocalc>
+																																																				</children>
+																																																			</tgridcell>
+																																																		</children>
+																																																	</tgridrow>
 																																																</children>
 																																															</tgridbody-rows>
 																																														</children>
@@ -1371,33 +1482,20 @@
 																																											</tgridcell>
 																																										</children>
 																																									</tgridrow>
-																																									<tgridrow>
-																																										<children>
-																																											<tgridcell>
-																																												<children>
-																																													<line/>
-																																													<text fixtext=" "/>
-																																													<autocalc xpath="sum( chargegroup/charges/charge/total )">
-																																														<styles font-style="normal" font-weight="bold"/>
-																																													</autocalc>
-																																												</children>
-																																											</tgridcell>
-																																										</children>
-																																									</tgridrow>
 																																								</children>
-																																							</tgridbody-rows>
+																																								<variables/>
+																																							</template>
 																																						</children>
-																																					</tgrid>
+																																						<variables/>
+																																					</template>
 																																				</children>
-																																			</tgridcell>
+																																			</tgridbody-rows>
 																																		</children>
-																																	</tgridrow>
+																																	</tgrid>
 																																</children>
-																																<variables/>
-																															</template>
+																															</tgridcell>
 																														</children>
-																														<variables/>
-																													</template>
+																													</tgridrow>
 																												</children>
 																											</tgridbody-rows>
 																										</children>
@@ -1414,7 +1512,7 @@
 																						<children>
 																							<tgridcell>
 																								<children>
-																									<text fixtext="Total charges "/>
+																									<text fixtext="Total charges $"/>
 																									<autocalc xpath="sum(ub:utilitybill/ub:details/ub:chargegroup/ub:charges/ub:charge/ub:total )">
 																										<styles font-style="italic" font-weight="bold"/>
 																									</autocalc>
@@ -1430,11 +1528,9 @@
 															</paragraph>
 															<paragraph>
 																<children>
-																	<paragraph paragraphtag="h2">
+																	<paragraph paragraphtag="h3">
 																		<children>
-																			<text fixtext="Measured Usage">
-																				<styles text-decoration="underline"/>
-																			</text>
+																			<text fixtext="Measured Usage"/>
 																		</children>
 																	</paragraph>
 																	<tgrid>
@@ -1443,16 +1539,7 @@
 																			<tgridbody-cols>
 																				<children>
 																					<tgridcol>
-																						<properties align="left" valign="top" width="5%"/>
-																					</tgridcol>
-																					<tgridcol>
-																						<properties align="left" valign="top" width="12.5%"/>
-																					</tgridcol>
-																					<tgridcol>
 																						<properties width="50%"/>
-																					</tgridcol>
-																					<tgridcol>
-																						<properties width="10%"/>
 																					</tgridcol>
 																				</children>
 																			</tgridbody-cols>
@@ -1463,49 +1550,22 @@
 																						<children>
 																							<tgridcell>
 																								<children>
-																									<paragraph paragraphtag="h3">
-																										<children>
-																											<text fixtext="Est.?"/>
-																										</children>
-																									</paragraph>
-																								</children>
-																							</tgridcell>
-																							<tgridcell>
-																								<children>
-																									<paragraph paragraphtag="h3">
-																										<children>
-																											<text fixtext="Identifier"/>
-																										</children>
-																									</paragraph>
-																								</children>
-																							</tgridcell>
-																							<tgridcell>
-																								<children>
 																									<tgrid>
-																										<properties border="0" width="100%"/>
+																										<properties border="0" cellspacing="0" width="100%"/>
 																										<children>
 																											<tgridbody-cols>
 																												<children>
 																													<tgridcol>
-																														<properties align="left" valign="top" width="25%"/>
+																														<properties align="left" width="25%"/>
 																													</tgridcol>
 																													<tgridcol>
-																														<properties align="left" valign="top" width="25%"/>
+																														<properties align="left" width="50%"/>
 																													</tgridcol>
 																													<tgridcol>
-																														<properties align="left" valign="top" width="10%"/>
+																														<properties align="right" width="15%"/>
 																													</tgridcol>
 																													<tgridcol>
-																														<properties align="right" valign="top" width="12.5%"/>
-																													</tgridcol>
-																													<tgridcol>
-																														<properties align="right" valign="top" width="12.5%"/>
-																													</tgridcol>
-																													<tgridcol>
-																														<properties align="right" valign="top" width="5%"/>
-																													</tgridcol>
-																													<tgridcol>
-																														<properties align="right" valign="top" width="20%"/>
+																														<properties align="left" width="10%"/>
 																													</tgridcol>
 																												</children>
 																											</tgridbody-cols>
@@ -1514,67 +1574,25 @@
 																													<tgridrow>
 																														<children>
 																															<tgridcell>
+																																<styles border-bottom="1px" border-bottom-color="black" border-bottom-style="solid"/>
 																																<children>
-																																	<paragraph paragraphtag="h3">
-																																		<children>
-																																			<text fixtext="Register"/>
-																																		</children>
-																																	</paragraph>
+																																	<text fixtext="Meter Register"/>
 																																</children>
 																															</tgridcell>
 																															<tgridcell>
+																																<styles border-bottom="1px" border-bottom-color="black" border-bottom-style="solid"/>
 																																<children>
-																																	<paragraph paragraphtag="h3">
-																																		<children>
-																																			<text fixtext="Description"/>
-																																		</children>
-																																	</paragraph>
+																																	<text fixtext="Description"/>
 																																</children>
 																															</tgridcell>
 																															<tgridcell>
+																																<styles border-bottom="1px" border-bottom-color="black" border-bottom-style="solid"/>
 																																<children>
-																																	<paragraph paragraphtag="h3">
-																																		<children>
-																																			<text fixtext="Units"/>
-																																		</children>
-																																	</paragraph>
+																																	<text fixtext="Total"/>
 																																</children>
 																															</tgridcell>
 																															<tgridcell>
-																																<children>
-																																	<paragraph paragraphtag="h3">
-																																		<children>
-																																			<text fixtext="Prior"/>
-																																		</children>
-																																	</paragraph>
-																																</children>
-																															</tgridcell>
-																															<tgridcell>
-																																<children>
-																																	<paragraph paragraphtag="h3">
-																																		<children>
-																																			<text fixtext="Present"/>
-																																		</children>
-																																	</paragraph>
-																																</children>
-																															</tgridcell>
-																															<tgridcell>
-																																<children>
-																																	<paragraph paragraphtag="h3">
-																																		<children>
-																																			<text fixtext="Factor"/>
-																																		</children>
-																																	</paragraph>
-																																</children>
-																															</tgridcell>
-																															<tgridcell>
-																																<children>
-																																	<paragraph paragraphtag="h3">
-																																		<children>
-																																			<text fixtext="Total"/>
-																																		</children>
-																																	</paragraph>
-																																</children>
+																																<styles border-bottom="1px" border-bottom-color="black" border-bottom-style="solid" border-right="1px" border-right-color="black" border-right-style="solid"/>
 																															</tgridcell>
 																														</children>
 																													</tgridrow>
@@ -1584,7 +1602,6 @@
 																									</tgrid>
 																								</children>
 																							</tgridcell>
-																							<tgridcell/>
 																						</children>
 																					</tgridrow>
 																				</children>
@@ -1601,28 +1618,9 @@
 																												<children>
 																													<tgridcell>
 																														<children>
-																															<template subtype="element" match="ub:estimated">
-																																<children>
-																																	<content/>
-																																</children>
-																																<variables/>
-																															</template>
-																														</children>
-																													</tgridcell>
-																													<tgridcell>
-																														<children>
-																															<template subtype="element" match="ub:identifier">
-																																<children>
-																																	<content/>
-																																</children>
-																																<variables/>
-																															</template>
-																														</children>
-																													</tgridcell>
-																													<tgridcell>
-																														<children>
 																															<tgrid>
 																																<properties border="0" width="100%"/>
+																																<styles font-size="smaller"/>
 																																<children>
 																																	<tgridbody-cols>
 																																		<children>
@@ -1646,22 +1644,13 @@
 																																												<properties align="left" width="25%"/>
 																																											</tgridcol>
 																																											<tgridcol>
-																																												<properties align="left" width="25%"/>
+																																												<properties align="left" width="50%"/>
+																																											</tgridcol>
+																																											<tgridcol>
+																																												<properties align="right" width="15%"/>
 																																											</tgridcol>
 																																											<tgridcol>
 																																												<properties align="left" width="10%"/>
-																																											</tgridcol>
-																																											<tgridcol>
-																																												<properties align="right" width="12.5%"/>
-																																											</tgridcol>
-																																											<tgridcol>
-																																												<properties align="right" width="12.5%"/>
-																																											</tgridcol>
-																																											<tgridcol>
-																																												<properties align="right" width="5%"/>
-																																											</tgridcol>
-																																											<tgridcol>
-																																												<properties align="right" width="20%"/>
 																																											</tgridcol>
 																																										</children>
 																																									</tgridbody-cols>
@@ -1693,57 +1682,21 @@
 																																															</tgridcell>
 																																															<tgridcell>
 																																																<children>
-																																																	<template subtype="element" match="ub:units">
-																																																		<children>
-																																																			<content/>
-																																																		</children>
-																																																		<variables/>
-																																																	</template>
-																																																</children>
-																																															</tgridcell>
-																																															<tgridcell>
-																																																<children>
-																																																	<template subtype="element" match="ub:priorreading">
-																																																		<children>
-																																																			<content>
-																																																				<format datatype="decimal"/>
-																																																			</content>
-																																																		</children>
-																																																		<variables/>
-																																																	</template>
-																																																</children>
-																																															</tgridcell>
-																																															<tgridcell>
-																																																<children>
-																																																	<template subtype="element" match="ub:presentreading">
-																																																		<children>
-																																																			<content>
-																																																				<format datatype="decimal"/>
-																																																			</content>
-																																																		</children>
-																																																		<variables/>
-																																																	</template>
-																																																</children>
-																																															</tgridcell>
-																																															<tgridcell>
-																																																<children>
-																																																	<template subtype="element" match="ub:factor">
-																																																		<children>
-																																																			<content>
-																																																				<format datatype="integer"/>
-																																																			</content>
-																																																		</children>
-																																																		<variables/>
-																																																	</template>
-																																																</children>
-																																															</tgridcell>
-																																															<tgridcell>
-																																																<children>
 																																																	<template subtype="element" match="ub:total">
 																																																		<children>
 																																																			<content>
 																																																				<format datatype="decimal"/>
 																																																			</content>
+																																																		</children>
+																																																		<variables/>
+																																																	</template>
+																																																</children>
+																																															</tgridcell>
+																																															<tgridcell>
+																																																<children>
+																																																	<template subtype="element" match="ub:units">
+																																																		<children>
+																																																			<content/>
 																																																		</children>
 																																																		<variables/>
 																																																	</template>
@@ -1768,7 +1721,6 @@
 																															</tgrid>
 																														</children>
 																													</tgridcell>
-																													<tgridcell/>
 																												</children>
 																											</tgridrow>
 																										</children>
@@ -1787,8 +1739,6 @@
 																	<newline/>
 																</children>
 															</paragraph>
-															<line/>
-															<newline/>
 														</children>
 														<variables/>
 													</template>
