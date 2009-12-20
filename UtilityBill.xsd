@@ -31,48 +31,6 @@
 						</xs:sequence>
 					</xs:complexType>
 				</xs:element>
-				<xs:element name="uar">
-					<xs:annotation>
-						<xs:documentation>Utility Account Record - contact information for the utility.  Payee of this bill.</xs:documentation>
-					</xs:annotation>
-					<xs:complexType>
-						<xs:sequence>
-							<xs:element name="tin">
-								<xs:annotation>
-									<xs:documentation>Utility tax payer identification number</xs:documentation>
-								</xs:annotation>
-							</xs:element>
-							<xs:element name="customerservice" type="ub:address" minOccurs="0" maxOccurs="unbounded">
-								<xs:annotation>
-									<xs:documentation>Utility contact information including accessibility numbers, Spanish speaking representatives and other customer oriented care.</xs:documentation>
-								</xs:annotation>
-							</xs:element>
-							<xs:element name="paymentlocation" type="ub:address" minOccurs="0" maxOccurs="unbounded">
-								<xs:annotation>
-									<xs:documentation>Physical locations where payment can be made or sent.</xs:documentation>
-								</xs:annotation>
-							</xs:element>
-							<xs:element name="suppliercontact" type="ub:address" minOccurs="0"/>
-							<xs:element name="emergencycontact" type="ub:address" minOccurs="0">
-								<xs:annotation>
-									<xs:documentation>Contact information for emergency related to service location.</xs:documentation>
-								</xs:annotation>
-							</xs:element>
-							<xs:element name="utilitycommission" type="ub:address" minOccurs="0">
-								<xs:annotation>
-									<xs:documentation>Regulatory commission.</xs:documentation>
-								</xs:annotation>
-							</xs:element>
-							<xs:element name="writteninquiries" type="ub:address" minOccurs="0"/>
-							<xs:element name="missutility" type="ub:address" minOccurs="0">
-								<xs:annotation>
-									<xs:documentation>Utility/contractor coordinate number.</xs:documentation>
-								</xs:annotation>
-							</xs:element>
-							<xs:element name="serviceoutage" type="ub:address" minOccurs="0"/>
-						</xs:sequence>
-					</xs:complexType>
-				</xs:element>
 				<xs:element name="unknownaddress" minOccurs="0" maxOccurs="unbounded">
 					<xs:annotation>
 						<xs:documentation>Address records not accounted for yet present in bill.</xs:documentation>
@@ -85,12 +43,54 @@
 						</xs:complexContent>
 					</xs:complexType>
 				</xs:element>
-				<xs:element name="summary">
+				<xs:element name="summary" maxOccurs="2">
 					<xs:annotation>
-						<xs:documentation>Bill summary.</xs:documentation>
+						<xs:documentation>Bill summary by service.</xs:documentation>
 					</xs:annotation>
 					<xs:complexType>
 						<xs:sequence>
+							<xs:element name="uar" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Utility Account Record - contact information for the utility.  Payee of this service</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="tin">
+											<xs:annotation>
+												<xs:documentation>Utility tax payer identification number</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="customerservice" type="ub:address" minOccurs="0" maxOccurs="unbounded">
+											<xs:annotation>
+												<xs:documentation>Utility contact information including accessibility numbers, Spanish speaking representatives and other customer oriented care.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="paymentlocation" type="ub:address" minOccurs="0" maxOccurs="unbounded">
+											<xs:annotation>
+												<xs:documentation>Physical locations where payment can be made or sent.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="suppliercontact" type="ub:address" minOccurs="0"/>
+										<xs:element name="emergencycontact" type="ub:address" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>Contact information for emergency related to service location.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="utilitycommission" type="ub:address" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>Regulatory commission.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="writteninquiries" type="ub:address" minOccurs="0"/>
+										<xs:element name="missutility" type="ub:address" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>Utility/contractor coordinate number.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="serviceoutage" type="ub:address" minOccurs="0"/>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
 							<xs:element name="priorbalance" type="xs:decimal">
 								<xs:annotation>
 									<xs:documentation>Balance from last bill.</xs:documentation>
@@ -126,41 +126,38 @@
 									<xs:documentation>Date the bill is issued for customer.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="currentcharges" maxOccurs="2">
+							<xs:element name="currentcharges">
 								<xs:annotation>
 									<xs:documentation>Total for this bill period including distribution and service lates fees, taxes and various other charges. (Change to utility charges)</xs:documentation>
 								</xs:annotation>
 								<xs:complexType>
 									<xs:simpleContent>
-										<xs:extension base="xs:decimal">
-											<xs:attributeGroup ref="ub:service"/>
-										</xs:extension>
+										<xs:extension base="xs:decimal"/>
 									</xs:simpleContent>
 								</xs:complexType>
 							</xs:element>
-							<xs:element name="hypotheticalcharges" minOccurs="0" maxOccurs="2">
+							<xs:element name="hypotheticalcharges" minOccurs="0">
 								<xs:annotation>
 									<xs:documentation>Charges in absence of Skyline</xs:documentation>
 								</xs:annotation>
 								<xs:complexType>
 									<xs:simpleContent>
-										<xs:extension base="xs:decimal">
-											<xs:attributeGroup ref="ub:service"/>
-										</xs:extension>
+										<xs:extension base="xs:decimal"/>
 									</xs:simpleContent>
 								</xs:complexType>
 							</xs:element>
-							<xs:element name="skylinecharges" minOccurs="0" maxOccurs="2">
+							<xs:element name="skylinecharges" minOccurs="0">
 								<xs:annotation>
 									<xs:documentation>Discounted energy cost to customer</xs:documentation>
 								</xs:annotation>
 								<xs:complexType>
 									<xs:simpleContent>
-										<xs:extension base="xs:decimal">
-											<xs:attributeGroup ref="ub:service"/>
-										</xs:extension>
+										<xs:extension base="xs:decimal"/>
 									</xs:simpleContent>
 								</xs:complexType>
+							</xs:element>
+							<xs:element name="skylinesavings" minOccurs="0">
+								<xs:complexType/>
 							</xs:element>
 							<xs:element name="totaldue" type="xs:decimal">
 								<xs:annotation>
@@ -192,6 +189,7 @@
 								</xs:complexType>
 							</xs:element>
 						</xs:sequence>
+						<xs:attributeGroup ref="ub:service"/>
 					</xs:complexType>
 				</xs:element>
 				<xs:element name="details" maxOccurs="2">
@@ -448,6 +446,7 @@
 					<xs:restriction base="xs:decimal"/>
 				</xs:simpleType>
 			</xs:element>
+			<xs:element name="processingnote" minOccurs="0"/>
 		</xs:all>
 	</xs:complexType>
 	<xs:complexType name="usage">
