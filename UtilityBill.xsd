@@ -43,6 +43,39 @@
 						</xs:complexContent>
 					</xs:complexType>
 				</xs:element>
+				<xs:element name="skylinebill" minOccurs="0">
+					<xs:annotation>
+						<xs:documentation>Summary for Skyline production benefit</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="billperiodbegin"/>
+							<xs:element name="billperiodend"/>
+							<xs:element name="actualservicecharges">
+								<xs:annotation>
+									<xs:documentation>Total charges from all services</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="hypotheticalservicecharges">
+								<xs:annotation>
+									<xs:documentation>Total charges in absence of skyline system</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="skylinecharges">
+								<xs:annotation>
+									<xs:documentation>85%</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="customersavings">
+								<xs:annotation>
+									<xs:documentation>15%</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="duedate"/>
+							<xs:element name="issued"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
 				<xs:element name="summary" maxOccurs="2">
 					<xs:annotation>
 						<xs:documentation>Bill summary by service.</xs:documentation>
@@ -215,22 +248,17 @@
 								</xs:annotation>
 								<xs:complexType>
 									<xs:sequence>
-										<xs:element name="charges">
+										<xs:element name="charges" maxOccurs="2">
 											<xs:annotation>
 												<xs:documentation>Detail charges for distribution.</xs:documentation>
 											</xs:annotation>
 											<xs:complexType>
 												<xs:sequence>
 													<xs:element name="charge" type="ub:charge" maxOccurs="unbounded"/>
+													<xs:element name="total" type="xs:decimal"/>
 												</xs:sequence>
+												<xs:attributeGroup ref="ub:billtype"/>
 											</xs:complexType>
-										</xs:element>
-										<xs:element name="subtotal" minOccurs="0">
-											<xs:simpleType>
-												<xs:restriction base="xs:decimal">
-													<xs:fractionDigits value="2"/>
-												</xs:restriction>
-											</xs:simpleType>
 										</xs:element>
 									</xs:sequence>
 									<xs:attribute name="type" use="required">
@@ -245,7 +273,15 @@
 									</xs:attribute>
 								</xs:complexType>
 							</xs:element>
-							<xs:element name="total" type="xs:decimal"/>
+							<xs:element name="total" maxOccurs="2">
+								<xs:complexType>
+									<xs:simpleContent>
+										<xs:extension base="xs:decimal">
+											<xs:attributeGroup ref="ub:billtype"/>
+										</xs:extension>
+									</xs:simpleContent>
+								</xs:complexType>
+							</xs:element>
 						</xs:sequence>
 						<xs:attributeGroup ref="ub:service"/>
 					</xs:complexType>
@@ -428,15 +464,19 @@
 			</xs:element>
 			<xs:element name="description"/>
 			<xs:element name="quantity" minOccurs="0">
-				<xs:complexType mixed="true">
-					<xs:attribute name="units"/>
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="xs:decimal">
+							<xs:attributeGroup ref="ub:quantityunits"/>
+						</xs:extension>
+					</xs:simpleContent>
 				</xs:complexType>
 			</xs:element>
 			<xs:element name="rate" minOccurs="0">
 				<xs:complexType>
 					<xs:simpleContent>
 						<xs:extension base="xs:decimal">
-							<xs:attribute name="units"/>
+							<xs:attributeGroup ref="ub:rateunits"/>
 						</xs:extension>
 					</xs:simpleContent>
 				</xs:complexType>
@@ -471,6 +511,31 @@
 			</xs:element>
 		</xs:all>
 	</xs:complexType>
+	<xs:attributeGroup name="rateunits">
+		<xs:attribute name="units" use="required">
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:enumeration value="dollars"/>
+					<xs:enumeration value="cents"/>
+					<xs:enumeration value="percent"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+	</xs:attributeGroup>
+	<xs:attributeGroup name="quantityunits">
+		<xs:attribute name="units" use="required">
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:enumeration value="kWh"/>
+					<xs:enumeration value="KWD"/>
+					<xs:enumeration value="KQH"/>
+					<xs:enumeration value="CCF"/>
+					<xs:enumeration value="Therms"/>
+					<xs:enumeration value="dollars"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+	</xs:attributeGroup>
 	<xs:attributeGroup name="service">
 		<xs:attribute name="service" use="required">
 			<xs:simpleType>
@@ -521,4 +586,14 @@
 		</xs:sequence>
 		<xs:attribute name="description"/>
 	</xs:complexType>
+	<xs:attributeGroup name="billtype">
+		<xs:attribute name="type" use="required">
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:enumeration value="actual"/>
+					<xs:enumeration value="hypothetical"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+	</xs:attributeGroup>
 </xs:schema>
