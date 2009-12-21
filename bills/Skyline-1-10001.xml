@@ -28,9 +28,9 @@
 		<ub:billperiodbegin>2009-10-30</ub:billperiodbegin>
 		<ub:billperiodend>2009-12-07</ub:billperiodend>
 		<ub:actualservicecharges>3189.60</ub:actualservicecharges>
-		<ub:hypotheticalservicecharges>3197.31</ub:hypotheticalservicecharges>
-		<ub:skylinecharges>6.55</ub:skylinecharges>
-		<ub:customersavings>1.16</ub:customersavings>
+		<ub:hypotheticalservicecharges>3199.16</ub:hypotheticalservicecharges>
+		<ub:skylinecharges>8.13</ub:skylinecharges>
+		<ub:customersavings>1.43</ub:customersavings>
 		<ub:duedate>2009-01-15</ub:duedate>
 		<ub:issued>2009-12-21</ub:issued>
 	</ub:skylinebill>
@@ -226,7 +226,7 @@
 				<ub:charge>
 					<ub:description>Off Peak Energy</ub:description>
 					<ub:quantity units="kWh">12000</ub:quantity>
-					<ub:rate units="dollars">0.011558</ub:rate>
+					<ub:rate units="dollars">0.0111558</ub:rate>
 					<ub:total>133.87</ub:total>
 				</ub:charge>
 				<ub:charge>
@@ -266,12 +266,12 @@
 				<ub:charge>
 					<ub:description>Administrative charge</ub:description>
 					<ub:quantity units="kWh">19600</ub:quantity>
-					<ub:rate units="dollars">0.0006920</ub:rate>
+					<ub:rate units="dollars">-0.0006920</ub:rate>
 					<ub:total>-13.56</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Sales Tax</ub:description>
-					<ub:quantity units="dollars">347.56</ub:quantity>
+					<ub:quantity units="dollars">353.83</ub:quantity>
 					<ub:rate units="percent">6.0</ub:rate>
 					<ub:total>21.23</ub:total>
 					<ub:processingnote>Computation Unknown; Minimally energy, demand and charges; 21.23/6% = 353.83</ub:processingnote>
@@ -285,21 +285,21 @@
 				</ub:charge>
 				<ub:charge>
 					<ub:description>On-Peak Energy</ub:description>
-					<ub:quantity units="kWh">4240</ub:quantity>
+					<ub:quantity units="kWh">4249.31</ub:quantity>
 					<ub:rate units="dollars">0.0111556</ub:rate>
-					<ub:total>47.30</ub:total>
+					<ub:total>47.40</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Int-Peak Energy</ub:description>
-					<ub:quantity units="kWh">3360</ub:quantity>
+					<ub:quantity units="kWh">3362.38</ub:quantity>
 					<ub:rate units="dollars">0.0111547</ub:rate>
-					<ub:total>37.48</ub:total>
+					<ub:total>37.51</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Off Peak Energy</ub:description>
-					<ub:quantity units="kWh">12000</ub:quantity>
-					<ub:rate units="dollars">0.011558</ub:rate>
-					<ub:total>133.87</ub:total>
+					<ub:quantity units="kWh">12003.35</ub:quantity>
+					<ub:rate units="dollars">0.0111558</ub:rate>
+					<ub:total>133.91</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Maximum Demand</ub:description>
@@ -308,47 +308,47 @@
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Franchise tax (delivery) </ub:description>
-					<ub:quantity units="kWh">19600</ub:quantity>
+					<ub:quantity units="kWh">19615.04</ub:quantity>
 					<ub:rate units="dollars">0.0006200</ub:rate>
-					<ub:total>12.15</ub:total>
+					<ub:total>12.16</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Universal Service Charge</ub:description>
 					<ub:total>20.59</ub:total>
 				</ub:charge>
 				<ub:charge>
-					<ub:description>MD Environmental surcharge</ub:description>
-					<ub:quantity units="kWh">19600</ub:quantity>
+					<ub:description>MD Environmental surcharge tax</ub:description>
+					<ub:quantity units="kWh">19615.04</ub:quantity>
 					<ub:rate units="dollars">0.0001550</ub:rate>
 					<ub:total>3.04</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Gross receipts tax</ub:description>
-					<ub:quantity units="dollars">362.75</ub:quantity>
+					<ub:quantity units="dollars">362.93</ub:quantity>
 					<ub:rate units="percent">2.040800</ub:rate>
-					<ub:total>7.40</ub:total>
-					<ub:processingnote>Tax on Customer charge; on, int, off peak; max demand; franchise tax; universale service charge; md env surcharge</ub:processingnote>
+					<ub:total>7.41</ub:total>
+					<ub:processingnote>Tax on Customer charge; on, int, off peak; max demand; franchise tax; universal service charge; md env surcharge</ub:processingnote>
 				</ub:charge>
 				<ub:charge>
-					<ub:description>PG County Energy</ub:description>
-					<ub:quantity units="kWh">19600</ub:quantity>
+					<ub:description>PG County Energy tax</ub:description>
+					<ub:quantity units="kWh">19615.04</ub:quantity>
 					<ub:rate units="dollars">0.0080900</ub:rate>
-					<ub:total>158.56</ub:total>
+					<ub:total>158.59</ub:total>
 				</ub:charge>
 				<ub:charge>
-					<ub:description>Administrative charge</ub:description>
-					<ub:quantity units="kWh">19600</ub:quantity>
-					<ub:rate units="dollars">0.0006920</ub:rate>
-					<ub:total>-13.56</ub:total>
+					<ub:description>Administrative credit</ub:description>
+					<ub:quantity units="kWh">19615.04</ub:quantity>
+					<ub:rate units="dollars">-0.0006920</ub:rate>
+					<ub:total>-13.57</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Sales Tax</ub:description>
-					<ub:quantity units="dollars">347.56</ub:quantity>
+					<ub:quantity units="dollars">353.83</ub:quantity>
 					<ub:rate units="percent">6.0</ub:rate>
 					<ub:total>21.23</ub:total>
 					<ub:processingnote>Computation Unknown; Minimally energy, demand and charges; 21.23/6% = 353.83</ub:processingnote>
 				</ub:charge>
-				<ub:total>536.38</ub:total>
+				<ub:total>536.59</ub:total>
 			</ub:charges>
 		</ub:chargegroup>
 		<ub:chargegroup type="Generation/Supply">
@@ -371,21 +371,21 @@
 			<ub:charges type="hypothetical">
 				<ub:charge>
 					<ub:description>Total Use</ub:description>
-					<ub:quantity units="kWh">19600</ub:quantity>
-					<ub:rate units="dollars">0.130</ub:rate>
-					<ub:total>2018.80</ub:total>
+					<ub:quantity units="kWh">19615.04</ub:quantity>
+					<ub:rate units="dollars">0.103</ub:rate>
+					<ub:total>2020.35</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Sales Tax</ub:description>
-					<ub:quantity units="dollars">2018.80</ub:quantity>
+					<ub:quantity units="dollars">2020.35</ub:quantity>
 					<ub:rate units="percent">6.0</ub:rate>
-					<ub:total>121.13</ub:total>
+					<ub:total>121.22</ub:total>
 					<ub:processingnote>Tax on Total Use</ub:processingnote>
 				</ub:charge>
-				<ub:total>2139.93</ub:total>
+				<ub:total>2141.57</ub:total>
 			</ub:charges>
 		</ub:chargegroup>
-		<ub:total type="hypothetical">2676.31</ub:total>
+		<ub:total type="hypothetical">2678.16</ub:total>
 		<ub:total type="actual">2676.31</ub:total>
 	</ub:details>
 	<ub:billableusage service="gas">
@@ -430,36 +430,36 @@
 				<ub:description>Kilowatt Hour Meter</ub:description>
 				<ub:units>kWh</ub:units>
 				<ub:priorreading>0</ub:priorreading>
-				<ub:presentreading>0</ub:presentreading>
+				<ub:presentreading>15.04</ub:presentreading>
 				<ub:factor>1</ub:factor>
-				<ub:total>0</ub:total>
+				<ub:total>15.04</ub:total>
 			</ub:register>
 			<ub:register shadow="true">
 				<ub:identifier>D11</ub:identifier>
 				<ub:description>Skyline Generated Off Peak</ub:description>
 				<ub:units>kWh</ub:units>
 				<ub:priorreading>0</ub:priorreading>
-				<ub:presentreading>0</ub:presentreading>
+				<ub:presentreading>3.35</ub:presentreading>
 				<ub:factor>1</ub:factor>
-				<ub:total>0</ub:total>
+				<ub:total>3.35</ub:total>
 			</ub:register>
 			<ub:register shadow="true">
 				<ub:identifier>D08</ub:identifier>
-				<ub:description>Skyline Generated Interim Peak</ub:description>
+				<ub:description>Skyline Generated Intermediate Peak</ub:description>
 				<ub:units>kWh</ub:units>
 				<ub:priorreading>0</ub:priorreading>
-				<ub:presentreading>0</ub:presentreading>
+				<ub:presentreading>2.38</ub:presentreading>
 				<ub:factor>1</ub:factor>
-				<ub:total>0</ub:total>
+				<ub:total>2.38</ub:total>
 			</ub:register>
 			<ub:register shadow="true">
 				<ub:identifier>D05</ub:identifier>
 				<ub:description>Skyline Generated On Peak</ub:description>
 				<ub:units>kWh</ub:units>
 				<ub:priorreading>0</ub:priorreading>
-				<ub:presentreading>0</ub:presentreading>
+				<ub:presentreading>9.31</ub:presentreading>
 				<ub:factor>1</ub:factor>
-				<ub:total>0</ub:total>
+				<ub:total>9.31</ub:total>
 			</ub:register>
 		</ub:meter>
 	</ub:measuredusage>
