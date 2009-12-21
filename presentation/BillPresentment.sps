@@ -194,64 +194,7 @@
 																					</tgrid>
 																				</children>
 																			</tgridcell>
-																			<tgridcell>
-																				<children>
-																					<paragraph paragraphtag="h3">
-																						<children>
-																							<text fixtext="Utility Account Number"/>
-																						</children>
-																					</paragraph>
-																					<tgrid>
-																						<properties border="0" width="100%"/>
-																						<children>
-																							<tgridbody-cols>
-																								<children>
-																									<tgridcol>
-																										<properties width="5%"/>
-																									</tgridcol>
-																									<tgridcol>
-																										<properties width="95%"/>
-																									</tgridcol>
-																								</children>
-																							</tgridbody-cols>
-																							<tgridbody-rows>
-																								<children>
-																									<tgridrow>
-																										<children>
-																											<tgridcell/>
-																											<tgridcell>
-																												<children>
-																													<template subtype="source" match="XML">
-																														<children>
-																															<template subtype="element" match="ub:utilitybill">
-																																<children>
-																																	<template subtype="element" match="ub:car">
-																																		<children>
-																																			<template subtype="element" match="ub:accountnumber">
-																																				<children>
-																																					<content/>
-																																				</children>
-																																				<variables/>
-																																			</template>
-																																		</children>
-																																		<variables/>
-																																	</template>
-																																</children>
-																																<variables/>
-																															</template>
-																														</children>
-																														<variables/>
-																													</template>
-																												</children>
-																											</tgridcell>
-																										</children>
-																									</tgridrow>
-																								</children>
-																							</tgridbody-rows>
-																						</children>
-																					</tgrid>
-																				</children>
-																			</tgridcell>
+																			<tgridcell/>
 																		</children>
 																	</tgridrow>
 																</children>
@@ -599,18 +542,11 @@
 																								<children>
 																									<template subtype="element" match="ub:utilitybill">
 																										<children>
-																											<template subtype="element" match="ub:summary">
+																											<template subtype="element" match="ub:skylinebill">
 																												<children>
 																													<template subtype="element" match="ub:duedate">
 																														<children>
-																															<content>
-																																<format datatype="date"/>
-																															</content>
-																															<button>
-																																<action>
-																																	<datepicker/>
-																																</action>
-																															</button>
+																															<content/>
 																														</children>
 																														<variables/>
 																													</template>
@@ -698,18 +634,11 @@
 																														<children>
 																															<template subtype="element" match="ub:utilitybill">
 																																<children>
-																																	<template subtype="element" match="ub:summary">
+																																	<template subtype="element" match="ub:skylinebill">
 																																		<children>
-																																			<template subtype="element" match="ub:issuedate">
+																																			<template subtype="element" match="ub:issued">
 																																				<children>
-																																					<content>
-																																						<format datatype="date"/>
-																																					</content>
-																																					<button>
-																																						<action>
-																																							<datepicker/>
-																																						</action>
-																																					</button>
+																																					<content/>
 																																				</children>
 																																				<variables/>
 																																			</template>
@@ -741,18 +670,11 @@
 																														<children>
 																															<template subtype="element" match="ub:utilitybill">
 																																<children>
-																																	<template subtype="element" match="ub:summary">
+																																	<template subtype="element" match="ub:skylinebill">
 																																		<children>
 																																			<template subtype="element" match="ub:billperiodbegin">
 																																				<children>
-																																					<content>
-																																						<format datatype="date"/>
-																																					</content>
-																																					<button>
-																																						<action>
-																																							<datepicker/>
-																																						</action>
-																																					</button>
+																																					<content/>
 																																				</children>
 																																				<variables/>
 																																			</template>
@@ -770,18 +692,11 @@
 																														<children>
 																															<template subtype="element" match="ub:utilitybill">
 																																<children>
-																																	<template subtype="element" match="ub:summary">
+																																	<template subtype="element" match="ub:skylinebill">
 																																		<children>
 																																			<template subtype="element" match="ub:billperiodend">
 																																				<children>
-																																					<content>
-																																						<format datatype="date"/>
-																																					</content>
-																																					<button>
-																																						<action>
-																																							<datepicker/>
-																																						</action>
-																																					</button>
+																																					<content/>
 																																				</children>
 																																				<variables/>
 																																			</template>
@@ -806,73 +721,8 @@
 																									</tgridrow>
 																									<tgridrow>
 																										<children>
-																											<tgridcell>
-																												<children>
-																													<text fixtext="Late Charge: ">
-																														<styles font-weight="bold"/>
-																													</text>
-																												</children>
-																											</tgridcell>
-																											<tgridcell>
-																												<children>
-																													<text fixtext="$"/>
-																													<template subtype="source" match="XML">
-																														<children>
-																															<template subtype="element" match="ub:utilitybill">
-																																<children>
-																																	<template subtype="element" match="ub:summary">
-																																		<children>
-																																			<template subtype="element" match="ub:latepayment">
-																																				<children>
-																																					<template subtype="element" match="ub:amount">
-																																						<children>
-																																							<content/>
-																																						</children>
-																																						<variables/>
-																																					</template>
-																																				</children>
-																																				<variables/>
-																																			</template>
-																																		</children>
-																																		<variables/>
-																																	</template>
-																																</children>
-																																<variables/>
-																															</template>
-																														</children>
-																														<variables/>
-																													</template>
-																													<text fixtext="  after  "/>
-																													<template subtype="source" match="XML">
-																														<children>
-																															<template subtype="element" match="ub:utilitybill">
-																																<children>
-																																	<template subtype="element" match="ub:summary">
-																																		<children>
-																																			<template subtype="element" match="ub:duedate">
-																																				<children>
-																																					<content>
-																																						<format datatype="date"/>
-																																					</content>
-																																					<button>
-																																						<action>
-																																							<datepicker/>
-																																						</action>
-																																					</button>
-																																				</children>
-																																				<variables/>
-																																			</template>
-																																		</children>
-																																		<variables/>
-																																	</template>
-																																</children>
-																																<variables/>
-																															</template>
-																														</children>
-																														<variables/>
-																													</template>
-																												</children>
-																											</tgridcell>
+																											<tgridcell/>
+																											<tgridcell/>
 																										</children>
 																									</tgridrow>
 																								</children>
@@ -912,7 +762,28 @@
 																											</tgridcell>
 																											<tgridcell>
 																												<children>
-																													<autocalc xpath="sum( $XML/ub:utilitybill/ub:summary/ub:currentcharges )"/>
+																													<text fixtext="$"/>
+																													<template subtype="source" match="XML">
+																														<children>
+																															<template subtype="element" match="ub:utilitybill">
+																																<children>
+																																	<template subtype="element" match="ub:skylinebill">
+																																		<children>
+																																			<template subtype="element" match="ub:actualservicecharges">
+																																				<children>
+																																					<content/>
+																																				</children>
+																																				<variables/>
+																																			</template>
+																																		</children>
+																																		<variables/>
+																																	</template>
+																																</children>
+																																<variables/>
+																															</template>
+																														</children>
+																														<variables/>
+																													</template>
 																												</children>
 																											</tgridcell>
 																											<tgridcell/>
@@ -929,7 +800,28 @@
 																											</tgridcell>
 																											<tgridcell>
 																												<children>
-																													<autocalc xpath="sum($XML/ub:utilitybill/ub:summary/ub:hypotheticalcharges)"/>
+																													<text fixtext="$"/>
+																													<template subtype="source" match="XML">
+																														<children>
+																															<template subtype="element" match="ub:utilitybill">
+																																<children>
+																																	<template subtype="element" match="ub:skylinebill">
+																																		<children>
+																																			<template subtype="element" match="ub:hypotheticalservicecharges">
+																																				<children>
+																																					<content/>
+																																				</children>
+																																				<variables/>
+																																			</template>
+																																		</children>
+																																		<variables/>
+																																	</template>
+																																</children>
+																																<variables/>
+																															</template>
+																														</children>
+																														<variables/>
+																													</template>
 																												</children>
 																											</tgridcell>
 																											<tgridcell/>
@@ -946,7 +838,28 @@
 																											</tgridcell>
 																											<tgridcell>
 																												<children>
-																													<autocalc xpath="sum($XML/ub:utilitybill/ub:summary/ub:skylinecharges)"/>
+																													<text fixtext="$"/>
+																													<template subtype="source" match="XML">
+																														<children>
+																															<template subtype="element" match="ub:utilitybill">
+																																<children>
+																																	<template subtype="element" match="ub:skylinebill">
+																																		<children>
+																																			<template subtype="element" match="ub:skylinecharges">
+																																				<children>
+																																					<content/>
+																																				</children>
+																																				<variables/>
+																																			</template>
+																																		</children>
+																																		<variables/>
+																																	</template>
+																																</children>
+																																<variables/>
+																															</template>
+																														</children>
+																														<variables/>
+																													</template>
 																												</children>
 																											</tgridcell>
 																											<tgridcell/>
@@ -963,7 +876,28 @@
 																											</tgridcell>
 																											<tgridcell>
 																												<children>
-																													<autocalc xpath="sum($XML/ub:utilitybill/ub:summary/ub:hypotheticalcharges) - sum($XML/ub:utilitybill/ub:summary/ub:currentcharges) - sum($XML/ub:utilitybill/ub:summary/ub:skylinecharges)"/>
+																													<text fixtext="$"/>
+																													<template subtype="source" match="XML">
+																														<children>
+																															<template subtype="element" match="ub:utilitybill">
+																																<children>
+																																	<template subtype="element" match="ub:skylinebill">
+																																		<children>
+																																			<template subtype="element" match="ub:customersavings">
+																																				<children>
+																																					<content/>
+																																				</children>
+																																				<variables/>
+																																			</template>
+																																		</children>
+																																		<variables/>
+																																	</template>
+																																</children>
+																																<variables/>
+																															</template>
+																														</children>
+																														<variables/>
+																													</template>
 																												</children>
 																											</tgridcell>
 																											<tgridcell/>
@@ -992,14 +926,11 @@
 																														<children>
 																															<template subtype="element" match="ub:utilitybill">
 																																<children>
-																																	<template subtype="element" match="ub:summary">
+																																	<template subtype="element" match="ub:skylinebill">
 																																		<children>
-																																			<template subtype="element" match="ub:totaldue">
+																																			<template subtype="element" match="ub:skylinecharges">
 																																				<children>
-																																					<content>
-																																						<styles font-weight="bold"/>
-																																						<format datatype="decimal"/>
-																																					</content>
+																																					<content/>
 																																				</children>
 																																				<variables/>
 																																			</template>
@@ -1333,7 +1264,7 @@
 																																																																									</tgridbody-cols>
 																																																																									<tgridbody-rows>
 																																																																										<children>
-																																																																											<template subtype="element" match="ub:charges">
+																																																																											<template subtype="element" filter="@type = &apos;hypothetical&apos;" match="ub:charges">
 																																																																												<children>
 																																																																													<template subtype="element" match="ub:charge">
 																																																																														<children>
@@ -1435,9 +1366,6 @@
 																																																																					<tgridcell>
 																																																																						<children>
 																																																																							<line/>
-																																																																							<autocalc xpath="sum(ub:charges/ub:charge/ub:total )">
-																																																																								<styles font-style="italic"/>
-																																																																							</autocalc>
 																																																																						</children>
 																																																																					</tgridcell>
 																																																																				</children>
@@ -1457,6 +1385,15 @@
 																																																							</tgridbody-rows>
 																																																						</children>
 																																																					</tgrid>
+																																																					<text fixtext="$"/>
+																																																					<template subtype="element" filter="@type=&apos;hypothetical&apos;" match="ub:total">
+																																																						<children>
+																																																							<content>
+																																																								<styles font-size="small"/>
+																																																							</content>
+																																																						</children>
+																																																						<variables/>
+																																																					</template>
 																																																				</children>
 																																																			</tgridcell>
 																																																		</children>
@@ -1466,10 +1403,7 @@
 																																																			<tgridcell>
 																																																				<children>
 																																																					<line/>
-																																																					<text fixtext=" $"/>
-																																																					<autocalc xpath="sum( chargegroup/charges/charge/total )">
-																																																						<styles font-style="normal" font-weight="bold"/>
-																																																					</autocalc>
+																																																					<text fixtext=" "/>
 																																																				</children>
 																																																			</tgridcell>
 																																																		</children>
@@ -1512,10 +1446,13 @@
 																						<children>
 																							<tgridcell>
 																								<children>
-																									<text fixtext="Total charges $"/>
-																									<autocalc xpath="sum(ub:utilitybill/ub:details/ub:chargegroup/ub:charges/ub:charge/ub:total )">
-																										<styles font-style="italic" font-weight="bold"/>
+																									<text fixtext="Total charges $">
+																										<styles font-size="small"/>
+																									</text>
+																									<autocalc xpath="sum(ub:utilitybill/ub:details/ub:total[@type=&apos;hypothetical&apos;])">
+																										<styles font-size="small"/>
 																									</autocalc>
+																									<text fixtext=" "/>
 																								</children>
 																							</tgridcell>
 																						</children>
