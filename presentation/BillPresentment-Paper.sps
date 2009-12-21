@@ -7,7 +7,7 @@
 			<nspair prefix="ub" uri="utilitybill"/>
 		</namespaces>
 		<schemasources>
-			<xsdschemasource name="XML" main="1" schemafile="C:\workspace-skyline\billing\UtilityBill.xsd" workingxmlfile="C:\workspace-skyline\billing\bills\Skyline-1-1.xml">
+			<xsdschemasource name="XML" main="1" schemafile="C:\workspace-skyline\billing\UtilityBill.xsd" workingxmlfile="C:\workspace-skyline\billing\bills\Skyline-1-10001.xml">
 				<xmltablesupport/>
 				<textstateicons/>
 			</xsdschemasource>
