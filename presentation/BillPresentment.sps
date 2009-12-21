@@ -192,6 +192,7 @@
 																														</children>
 																														<variables/>
 																													</template>
+																													<text fixtext=" "/>
 																												</children>
 																											</tgridcell>
 																										</children>
@@ -1185,7 +1186,7 @@
 																																				<properties align="left" width="12%"/>
 																																			</tgridcol>
 																																			<tgridcol>
-																																				<properties align="left" width="28%"/>
+																																				<properties align="left" width="36%"/>
 																																			</tgridcol>
 																																			<tgridcol>
 																																				<properties width="8%"/>
@@ -1202,9 +1203,7 @@
 																																			<tgridcol>
 																																				<properties width="8%"/>
 																																			</tgridcol>
-																																			<tgridcol>
-																																				<properties width="8%"/>
-																																			</tgridcol>
+																																			<tgridcol/>
 																																		</children>
 																																	</tgridbody-cols>
 																																	<tgridbody-rows>
@@ -1347,6 +1346,7 @@
 																																															<tgridrow>
 																																																<children>
 																																																	<tgridcell>
+																																																		<properties align="right"/>
 																																																		<styles font-size="x-small"/>
 																																																		<children>
 																																																			<tgrid>
@@ -1394,7 +1394,7 @@
 																																																																							<tgridbody-cols>
 																																																																								<children>
 																																																																									<tgridcol>
-																																																																										<properties align="left" width="40%"/>
+																																																																										<properties align="left" width="48%"/>
 																																																																									</tgridcol>
 																																																																									<tgridcol>
 																																																																										<properties align="right" width="12%"/>
@@ -1410,9 +1410,6 @@
 																																																																									</tgridcol>
 																																																																									<tgridcol>
 																																																																										<properties align="right" width="12%"/>
-																																																																									</tgridcol>
-																																																																									<tgridcol>
-																																																																										<properties width="8%"/>
 																																																																									</tgridcol>
 																																																																								</children>
 																																																																							</tgridbody-cols>
@@ -1498,7 +1495,6 @@
 																																																																																	</template>
 																																																																																</children>
 																																																																															</tgridcell>
-																																																																															<tgridcell/>
 																																																																														</children>
 																																																																													</tgridrow>
 																																																																												</children>
@@ -1513,11 +1509,6 @@
 																																																																					</tgrid>
 																																																																				</children>
 																																																																			</tgridcell>
-																																																																		</children>
-																																																																	</tgridrow>
-																																																																	<tgridrow>
-																																																																		<children>
-																																																																			<tgridcell/>
 																																																																		</children>
 																																																																	</tgridrow>
 																																																																</children>
@@ -1548,18 +1539,6 @@
 																																																	</tgridcell>
 																																																</children>
 																																															</tgridrow>
-																																															<tgridrow>
-																																																<children>
-																																																	<tgridcell>
-																																																		<children>
-																																																			<line>
-																																																				<properties color="black" size="1px"/>
-																																																			</line>
-																																																			<text fixtext=" "/>
-																																																		</children>
-																																																	</tgridcell>
-																																																</children>
-																																															</tgridrow>
 																																														</children>
 																																													</tgridbody-rows>
 																																												</children>
@@ -1576,6 +1555,23 @@
 																																			</template>
 																																		</children>
 																																	</tgridbody-rows>
+																																	<tgridfooter-rows>
+																																		<children>
+																																			<tgridrow>
+																																				<children>
+																																					<tgridcell/>
+																																					<tgridcell/>
+																																					<tgridcell>
+																																						<properties align="right"/>
+																																						<children>
+																																							<text fixtext="Total $"/>
+																																							<autocalc xpath="sum(ub:utilitybill/ub:details/ub:total[@type=&apos;hypothetical&apos;])"/>
+																																						</children>
+																																					</tgridcell>
+																																				</children>
+																																			</tgridrow>
+																																		</children>
+																																	</tgridfooter-rows>
 																																</children>
 																															</tgrid>
 																														</children>
@@ -1592,30 +1588,11 @@
 																			</tgridrow>
 																		</children>
 																	</tgridbody-rows>
-																	<tgridfooter-rows>
-																		<children>
-																			<tgridrow>
-																				<children>
-																					<tgridcell>
-																						<styles font-size="x-small"/>
-																						<children>
-																							<text fixtext="Total charges $"/>
-																							<autocalc xpath="sum(ub:utilitybill/ub:details/ub:total[@type=&apos;hypothetical&apos;])">
-																								<styles font-size="x-small"/>
-																							</autocalc>
-																							<text fixtext=" "/>
-																						</children>
-																					</tgridcell>
-																				</children>
-																			</tgridrow>
-																		</children>
-																	</tgridfooter-rows>
 																</children>
 															</tgrid>
 														</children>
 														<variables/>
 													</template>
-													<newline/>
 													<tgrid>
 														<properties border="0px" width="100%"/>
 														<children>

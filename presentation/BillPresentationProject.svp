@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Project>
 	<Folder FolderName="SPS Files" ExtStr="sps">
+		<File FilePath="BillPresentment-Paper.sps"/>
 		<File FilePath="BillPresentment.sps"/>
 		<File FilePath="scratch.sps"/>
 	</Folder>
