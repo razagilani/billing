@@ -51,6 +51,16 @@
 						<xs:sequence>
 							<xs:element name="billperiodbegin"/>
 							<xs:element name="billperiodend"/>
+							<xs:element name="paymentreceived" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>payment from prior bills</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="balanceforward" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>balance between prior payments and bills</xs:documentation>
+								</xs:annotation>
+							</xs:element>
 							<xs:element name="actualservicecharges">
 								<xs:annotation>
 									<xs:documentation>Total charges from all services</xs:documentation>
@@ -262,6 +272,9 @@
 										</xs:element>
 									</xs:sequence>
 									<xs:attribute name="type" use="required">
+										<xs:annotation>
+											<xs:documentation>type of charges e.g. supply or distribution</xs:documentation>
+										</xs:annotation>
 										<xs:simpleType>
 											<xs:restriction base="xs:string">
 												<xs:enumeration value="Generation/Supply"/>
@@ -481,6 +494,7 @@
 					</xs:simpleContent>
 				</xs:complexType>
 			</xs:element>
+			<xs:element name="flatrate" minOccurs="0"/>
 			<xs:element name="total" nillable="false">
 				<xs:simpleType>
 					<xs:restriction base="xs:decimal"/>
@@ -532,12 +546,16 @@
 					<xs:enumeration value="CCF"/>
 					<xs:enumeration value="Therms"/>
 					<xs:enumeration value="dollars"/>
+					<xs:enumeration value="rkVA"/>
 				</xs:restriction>
 			</xs:simpleType>
 		</xs:attribute>
 	</xs:attributeGroup>
 	<xs:attributeGroup name="service">
 		<xs:attribute name="service" use="required">
+			<xs:annotation>
+				<xs:documentation>Utility service type</xs:documentation>
+			</xs:annotation>
 			<xs:simpleType>
 				<xs:restriction base="xs:string">
 					<xs:enumeration value="gas"/>
@@ -587,6 +605,9 @@
 		<xs:attribute name="description"/>
 	</xs:complexType>
 	<xs:attributeGroup name="billtype">
+		<xs:annotation>
+			<xs:documentation>Actual or Hypothetical charge</xs:documentation>
+		</xs:annotation>
 		<xs:attribute name="type" use="required">
 			<xs:simpleType>
 				<xs:restriction base="xs:string">
