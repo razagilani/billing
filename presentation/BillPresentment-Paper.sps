@@ -7,7 +7,7 @@
 			<nspair prefix="ub" uri="utilitybill"/>
 		</namespaces>
 		<schemasources>
-			<xsdschemasource name="XML" main="1" schemafile="C:\workspace-skyline\billing\UtilityBill.xsd" workingxmlfile="C:\workspace-skyline\billing\bills\Skyline-1-10001.xml">
+			<xsdschemasource name="XML" main="1" schemafile="C:\workspace-skyline\billing\UtilityBill.xsd" workingxmlfile="C:\workspace-skyline\billing\sample\Dominion-101-20090528.xml">
 				<xmltablesupport/>
 				<textstateicons/>
 			</xsdschemasource>
@@ -1583,7 +1583,7 @@
 																													</tgridbody-cols>
 																													<tgridbody-rows>
 																														<children>
-																															<template subtype="element" match="ub:register">
+																															<template subtype="element" filter="@shadow =  true()" match="ub:register">
 																																<children>
 																																	<tgridrow>
 																																		<children>
