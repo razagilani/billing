@@ -4,8 +4,8 @@
 	<ub:car>
 		<ub:accountnumber>101</ub:accountnumber>
 		<ub:serviceaddress>
-			<ub:addressee>MPR, Inc.</ub:addressee>
-			<ub:street>1800 King street</ub:street>
+			<ub:addressee>Sample Customer Service Address</ub:addressee>
+			<ub:street>109 King street</ub:street>
 			<ub:city>Alexandria</ub:city>
 			<ub:state>Virginia</ub:state>
 			<ub:country>USA</ub:country>
@@ -14,8 +14,8 @@
 			<ub:hours>9-5 Mon-Fri</ub:hours>
 		</ub:serviceaddress>
 		<ub:billingaddress>
-			<ub:addressee>MPR, Inc.</ub:addressee>
-			<ub:street>1800 King street</ub:street>
+			<ub:addressee>Sample Customer Billing Address</ub:addressee>
+			<ub:street>109 King street  Ste #101</ub:street>
 			<ub:city>Alexandria</ub:city>
 			<ub:state>VA</ub:state>
 			<ub:country>USA</ub:country>
@@ -57,6 +57,7 @@
 	<ub:summary service="electric">
 		<ub:uar>
 			<ub:tin/>
+			<ub:customeraccount/>
 			<ub:customerservice>
 				<ub:addressee>Dominion Customer Service</ub:addressee>
 				<ub:street>888-667-3000</ub:street>

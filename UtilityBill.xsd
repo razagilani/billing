@@ -103,6 +103,11 @@
 												<xs:documentation>Utility tax payer identification number</xs:documentation>
 											</xs:annotation>
 										</xs:element>
+										<xs:element name="customeraccount">
+											<xs:annotation>
+												<xs:documentation>Utility account number for the customer</xs:documentation>
+											</xs:annotation>
+										</xs:element>
 										<xs:element name="customerservice" type="ub:address" minOccurs="0" maxOccurs="unbounded">
 											<xs:annotation>
 												<xs:documentation>Utility contact information including accessibility numbers, Spanish speaking representatives and other customer oriented care.</xs:documentation>
@@ -460,7 +465,6 @@
 		</xs:sequence>
 	</xs:complexType>
 	<xs:complexType name="amount"/>
-	<xs:complexType name="supplier"/>
 	<xs:complexType name="payment">
 		<xs:sequence>
 			<xs:element name="payee"/>
