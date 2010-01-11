@@ -1,0 +1,13 @@
+
+
+Components for PDF rendering
+
+python-2.6.4.msi
+(place python on executable path)
+
+http://www.reportlab.org/oss/rl-toolkit/download/
+reportlab-2.3.win32-py2.6.exe
+Get source dist for doc/examples
+
+http://www.pythonware.com/products/pil/
+PIL-1.1.6.win32-py2.6.exe
