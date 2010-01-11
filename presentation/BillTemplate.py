@@ -5,8 +5,10 @@ from reportlab.lib.styles import getSampleStyleSheet,ParagraphStyle
 from reportlab.rl_config import defaultPageSize
 from reportlab.lib.units import inch
 from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
+from pprint import pprint
 
+from reportlab.pdfgen import canvas
+from reportlab.pdfgen.pathobject import PDFPathObject
 
 class SIBillDocTemplate(BaseDocTemplate):
     """Structure Skyline Innovations Bill. """
@@ -41,39 +43,40 @@ class SIBillDocTemplate(BaseDocTemplate):
         #    self.pageTemplates[1].beforeDrawPage = self.onLaterPages
         BaseDocTemplate.build(self,flowables, canvasmaker=canvasmaker)
         
-    #def beforePage(self):
-    #    print "Before Page: ", self.pageTemplate.id
+    def beforePage(self):
+        print "Before Page: ", self.pageTemplate.id
         
-    #def afterPage(self):
-    #    print "After Page"
+    def afterPage(self):
+        print "After Page"
+	self.canv.line(0,0,100,100)
         
         
-    #def handle_pageBegin(self):
-    #    print "handle_pageBegin"
-    #    BaseDocTemplate.handle_pageBegin(self)
+    def handle_pageBegin(self):
+        print "handle_pageBegin"
+        BaseDocTemplate.handle_pageBegin(self)
 
 
 
 defaultPageSize = letter
 PAGE_HEIGHT=letter[1]; PAGE_WIDTH=letter[0]
-Title = "Hello world"
-pageinfo = "platypus example"
+Title = "Skyline Bill"
+pageinfo = "Skyline Bill"
 
 
-def myFirstPage(canvas, doc):
-   canvas.saveState()
-   canvas.setFont('Times-Bold',16)
-   canvas.drawCentredString(PAGE_WIDTH/2.0, PAGE_HEIGHT-108, Title)
-   canvas.setFont('Times-Roman',9)
-   canvas.drawString(inch, 0.75 * inch, "First Page / %s" % pageinfo)
-   canvas.restoreState()
+#def myFirstPage(canvas, doc):
+#   canvas.saveState()
+#   canvas.setFont('Times-Bold',16)
+#   canvas.drawCentredString(PAGE_WIDTH/2.0, PAGE_HEIGHT-108, Title)
+#   canvas.setFont('Times-Roman',9)
+#   canvas.drawString(inch, 0.75 * inch, "First Page / %s" % pageinfo)
+#   canvas.restoreState()
 
      
-def myLaterPages(canvas, doc):
-    canvas.saveState()
-    canvas.setFont('Times-Roman',9)
-    canvas.drawString(inch, 0.75 * inch, "Page %d %s" % (doc.page, pageinfo))
-    canvas.restoreState()
+#def myLaterPages(canvas, doc):
+#    canvas.saveState()
+#    canvas.setFont('Times-Roman',9)
+#    canvas.drawString(inch, 0.75 * inch, "Page %d %s" % (doc.page, pageinfo))
+#    canvas.restoreState()
      
 
 def progress(type,value):
@@ -86,21 +89,18 @@ def progress(type,value):
      
 def go():
 
-
     styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(name='BillLabel', 
-        fontName='Helvetica', 
-        fontSize=10, 
-        leading=0) 
-        )
-
+    styles.add(ParagraphStyle(name='BillLabel', fontName='Helvetica', fontSize=10, leading=1))
     style = styles["BillLabel"]
+    pprint(dir(style))
+    pprint(dir(styles["Normal"]))
 
 
     # 612 792
-    backgroundF = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, showBoundary=0)
-    billIssueDateF = Frame(75, 675, 150, 12, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, showBoundary=1)
-    billDueDateF = Frame(225, 675, 150, 12, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, showBoundary=1)
+    backgroundF = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id="background", showBoundary=0)
+
+    billIssueDateF = Frame(50, 700, 130, 6, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id="billIssueDate", showBoundary=1)
+    billDueDateF = Frame(180, 700, 140, 6, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id="billDueDate", showBoundary=1)
 
     contentFrame = Frame(100,100, 200,200, leftPadding=10, bottomPadding=10, rightPadding=10, topPadding=10, showBoundary=1)
     serviceAddrFrame = Frame(200,200, 300, 300, leftPadding=10, bottomPadding=10, rightPadding=10, topPadding=10, showBoundary=1)
@@ -113,7 +113,7 @@ def go():
 
     secondPage = PageTemplate(id="SecondPage",frames=[rbackgroundFrame, rcontentFrame])
 
-    doc = SIBillDocTemplate("bill.pdf", pagesize=letter, showBoundary=1, allowSplitting=0)
+    doc = SIBillDocTemplate("bill.pdf", pagesize=letter, showBoundary=0, allowSplitting=0)
     doc.addPageTemplates([firstPage, secondPage])
 
     Elements = []
@@ -122,13 +122,13 @@ def go():
     Elements.append(image)
 
     Elements.append(Paragraph("<b>Bill Issued:</b> MMM DD YYYY", style))
-    #Elements.append(UseUpSpace())
+    Elements.append(UseUpSpace())
 
     Elements.append(Paragraph("<b>Bill Due Date:</b> MMM DD YYYY", style))
     #Elements.append(UseUpSpace())
 
-
     Elements.append(NextPageTemplate("SecondPage"));
+    Elements.append(PageBreak());
 
     Elements.append(Paragraph("Content Frame", style))
     #Elements.append(UseUpSpace())
