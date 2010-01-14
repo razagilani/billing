@@ -12,12 +12,18 @@ from reportlab.pdfgen.pathobject import PDFPathObject
 
 
 
-
+# for font management
 import os  
 import reportlab  
 from reportlab.pdfbase import pdfmetrics  
 from reportlab.pdfbase.ttfonts import TTFont  
 from reportlab.pdfgen.canvas import Canvas  
+
+
+# for xml processing
+import amara
+from amara import bindery
+from amara import xml_print
 
 
 
@@ -79,21 +85,6 @@ Title = "Skyline Bill"
 pageinfo = "Skyline Bill"
 
 
-#def myFirstPage(canvas, doc):
-#   canvas.saveState()
-#   canvas.setFont('Times-Bold',16)
-#   canvas.drawCentredString(PAGE_WIDTH/2.0, PAGE_HEIGHT-108, Title)
-#   canvas.setFont('Times-Roman',9)
-#   canvas.drawString(inch, 0.75 * inch, "First Page / %s" % pageinfo)
-#   canvas.restoreState()
-
-     
-#def myLaterPages(canvas, doc):
-#    canvas.saveState()
-#    canvas.setFont('Times-Roman',9)
-#    canvas.drawString(inch, 0.75 * inch, "Page %d %s" % (doc.page, pageinfo))
-#    canvas.restoreState()
-     
 
 def progress(type,value):
     print type, value
@@ -105,6 +96,9 @@ def progress(type,value):
      
 def go():
 
+
+    dom = bindery.parse("../bills/Skyline-1-10001.xml")
+
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name='BillLabel', fontName='Vera', fontSize=10, leading=1))
     style = styles["BillLabel"]
@@ -112,13 +106,13 @@ def go():
     pprint(dir(styles["Normal"]))
 
 
-    showBoundaries = 1
+    showBoundaries = 0
 
     # 612w 792h
     backgroundF = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id="background", showBoundary=showBoundaries)
 
     # bill dates block
-    billIssueDateF = Frame(90, 690, 110, 6, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id="billIssueDate", showBoundary=showBoundaries)
+    billIssueDateF = Frame(90, 690, 120, 6, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id="billIssueDate", showBoundary=showBoundaries)
     billDueDateF = Frame(210, 690, 130, 6, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id="billDueDate", showBoundary=showBoundaries)
     billPeriodTableF = Frame(90, 640, 250, 40, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id="billDueDate", showBoundary=showBoundaries)
 
@@ -149,7 +143,9 @@ def go():
     image = Image("images/EmeraldCityBackground.png",letter[0], letter[1])
     Elements.append(image)
 
-    Elements.append(Paragraph("<b>Bill Issued</b> XX/XX/XX", style))
+    #print str(dom.xml_select(u'/ub:utilitybill/ub:skylinebill/ub:issued')[0])
+
+    Elements.append(Paragraph("<b>Bill Issued</b> " + str(dom.xml_select(u'/ub:utilitybill/ub:skylinebill/ub:issued')[0]), style))
     Elements.append(UseUpSpace())
 
     Elements.append(Paragraph("<b>Bill Due Date</b> XX/XX/XX", style))
@@ -197,16 +193,6 @@ def go():
     #image = Image("images/EmeraldCityBackground.png",letter[0], letter[1])
     #Elements.append(image)
      
-    '''
-    Elements.append(PageBreak());
-     
-    for i in range(4):
-         bogustext = ("This is Paragraph number %s. " % i) *20
-         p = Paragraph(bogustext, style)
-         Elements.append(p)
-         Elements.append(Spacer(1,0.2*inch))
-
-    '''
     doc.setProgressCallBack(progress)
     doc.build(Elements)
 
