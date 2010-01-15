@@ -562,8 +562,8 @@
 			</xs:annotation>
 			<xs:simpleType>
 				<xs:restriction base="xs:string">
-					<xs:enumeration value="gas"/>
-					<xs:enumeration value="electric"/>
+					<xs:enumeration value="Gas"/>
+					<xs:enumeration value="Electric"/>
 				</xs:restriction>
 			</xs:simpleType>
 		</xs:attribute>

@@ -34,7 +34,7 @@
 		<ub:duedate>2009-01-15</ub:duedate>
 		<ub:issued>2009-12-21</ub:issued>
 	</ub:skylinebill>
-	<ub:summary service="gas">
+	<ub:summary service="Gas">
 		<ub:priorbalance>0.0</ub:priorbalance>
 		<ub:previouspayment>
 			<ub:payee/>
@@ -54,7 +54,7 @@
 			<ub:amount>0.0</ub:amount>
 		</ub:latepayment>
 	</ub:summary>
-	<ub:summary service="electric">
+	<ub:summary service="Electric">
 		<ub:priorbalance>0.0</ub:priorbalance>
 		<ub:previouspayment>
 			<ub:payee/>
@@ -74,7 +74,7 @@
 			<ub:amount>0.00</ub:amount>
 		</ub:latepayment>
 	</ub:summary>
-	<ub:details service="gas">
+	<ub:details service="Gas">
 		<ub:rateschedule>
 			<ub:name>Commercial Heat/Cool</ub:name>
 		</ub:rateschedule>
@@ -200,7 +200,7 @@
 		<ub:total type="hypothetical">521.00</ub:total>
 		<ub:total type="actual">513.29</ub:total>
 	</ub:details>
-	<ub:details service="electric">
+	<ub:details service="Electric">
 		<ub:rateschedule>
 			<ub:name>Non-Residential-MGT-LV IIB</ub:name>
 			<ub:rateineffect>Winter</ub:rateineffect>
@@ -388,7 +388,7 @@
 		<ub:total type="hypothetical">2678.16</ub:total>
 		<ub:total type="actual">2676.31</ub:total>
 	</ub:details>
-	<ub:billableusage service="gas">
+	<ub:billableusage service="Gas">
 		<ub:rateschedule>
 			<ub:name>Commercial Heat/Cool</ub:name>
 		</ub:rateschedule>
@@ -398,7 +398,7 @@
 		</ub:usage>
 		<ub:total>324.8</ub:total>
 	</ub:billableusage>
-	<ub:billableusage service="electric">
+	<ub:billableusage service="Electric">
 		<ub:rateschedule>
 			<ub:name>Non-Residential-MGT-LV IIB</ub:name>
 		</ub:rateschedule>
@@ -408,7 +408,7 @@
 		</ub:usage>
 		<ub:total>19600</ub:total>
 	</ub:billableusage>
-	<ub:measuredusage service="gas">
+	<ub:measuredusage service="Gas">
 		<ub:meter>
 			<ub:estimated>false</ub:estimated>
 			<ub:identifier>T37110</ub:identifier>
@@ -420,7 +420,7 @@
 			</ub:register>
 		</ub:meter>
 	</ub:measuredusage>
-	<ub:measuredusage service="electric">
+	<ub:measuredusage service="Electric">
 		<ub:meter>
 			<ub:estimated>false</ub:estimated>
 			<ub:nextreaddate>2010-01-08</ub:nextreaddate>
