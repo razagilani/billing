@@ -27,6 +27,9 @@
 	<ub:skylinebill>
 		<ub:billperiodbegin>2009-10-30</ub:billperiodbegin>
 		<ub:billperiodend>2009-12-07</ub:billperiodend>
+		<ub:priorbalance>0.0</ub:priorbalance>
+		<ub:paymentreceived>0.0</ub:paymentreceived>
+		<ub:balanceforward>0.0</ub:balanceforward>
 		<ub:actualservicecharges>3189.60</ub:actualservicecharges>
 		<ub:hypotheticalservicecharges>3199.16</ub:hypotheticalservicecharges>
 		<ub:skylinecharges>8.13</ub:skylinecharges>
@@ -45,8 +48,8 @@
 		<ub:billperiodend>2009-12-03</ub:billperiodend>
 		<ub:issuedate>2009-12-08</ub:issuedate>
 		<ub:currentcharges>513.29</ub:currentcharges>
-		<ub:hypotheticalcharges>0.0</ub:hypotheticalcharges>
-		<ub:skylinecharges>0.0</ub:skylinecharges>
+		<ub:hypotheticalcharges>521.00</ub:hypotheticalcharges>
+		<ub:skylinecharges>6.55</ub:skylinecharges>
 		<ub:totaldue>0.0</ub:totaldue>
 		<ub:duedate>2009-12-29</ub:duedate>
 		<ub:latepayment>
@@ -65,8 +68,8 @@
 		<ub:billperiodend>2009-12-07</ub:billperiodend>
 		<ub:issuedate>2009-12-09</ub:issuedate>
 		<ub:currentcharges>2676.31</ub:currentcharges>
-		<ub:hypotheticalcharges>0.0</ub:hypotheticalcharges>
-		<ub:skylinecharges>0.0</ub:skylinecharges>
+		<ub:hypotheticalcharges>2678.16</ub:hypotheticalcharges>
+		<ub:skylinecharges>1.58</ub:skylinecharges>
 		<ub:totaldue>0.0</ub:totaldue>
 		<ub:duedate>2009-12-31</ub:duedate>
 		<ub:latepayment>

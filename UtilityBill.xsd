@@ -51,6 +51,11 @@
 						<xs:sequence>
 							<xs:element name="billperiodbegin"/>
 							<xs:element name="billperiodend"/>
+							<xs:element name="priorbalance" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Balance from last bill</xs:documentation>
+								</xs:annotation>
+							</xs:element>
 							<xs:element name="paymentreceived" minOccurs="0">
 								<xs:annotation>
 									<xs:documentation>payment from prior bills</xs:documentation>
