@@ -91,11 +91,11 @@ class SIBillDocTemplate(BaseDocTemplate):
         print "After Page"
         if self.pageTemplate.id == firstPageName:
             self.canv.saveState()
-            self.canv.setStrokeColorRGB(255.0,255.0,255.0)
+            self.canv.setStrokeColorRGB(0,255,128)
             self.canv.setLineWidth(.2)
             self.canv.setDash(1,3)
-            self.canv.line(0,265,612,265)
-            self.canv.line(0,550,612,550)
+            self.canv.line(0,264,612,264)
+            self.canv.line(0,528,612,528)
             self.canv.restoreState()
         
         
@@ -114,7 +114,6 @@ def progress(type,value):
 def go():
 
 
-    dom = bindery.parse('../bills/Skyline-1-10001.xml')
 
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name='BillLabel', fontName='Verdana', fontSize=10, leading=10))
@@ -124,6 +123,7 @@ def go():
     styles.add(ParagraphStyle(name='BillField', fontName='Courier', fontSize=10, leading=10, alignment=TA_LEFT))
     styles.add(ParagraphStyle(name='BillFieldRight', fontName='Courier', fontSize=10, leading=10, alignment=TA_RIGHT))
     styles.add(ParagraphStyle(name='BillFieldLeft', fontName='Courier', fontSize=10, leading=10, alignment=TA_LEFT))
+    styles.add(ParagraphStyle(name='BillFieldSm', fontName='Courier', fontSize=8, leading=10, alignment=TA_LEFT))
     style = styles['BillLabel']
 
     _showBoundaries = 0
@@ -134,31 +134,31 @@ def go():
     backgroundF = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background', showBoundary=_showBoundaries)
 
     # bill dates block
-    billIssueDateF = Frame(78, 684, 120, 12, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billIssueDate', showBoundary=_showBoundaries)
-    billDueDateF = Frame(203, 684, 140, 12, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billDueDate', showBoundary=_showBoundaries)
-    billPeriodTableF = Frame(78, 638, 265, 38, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=1, id='billPeriod', showBoundary=_showBoundaries)
+    billIssueDateF = Frame(78, 680, 120, 12, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billIssueDate', showBoundary=_showBoundaries)
+    billDueDateF = Frame(203, 680, 140, 12, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billDueDate', showBoundary=_showBoundaries)
+    billPeriodTableF = Frame(78, 627, 265, 38, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=1, id='billPeriod', showBoundary=_showBoundaries)
 
     # summary charges block
-    summaryChargesTableF = Frame(353, 638, 220, 62, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=6, id='summaryCharges', showBoundary=_showBoundaries)
+    summaryChargesTableF = Frame(353, 627, 220, 62, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=7, id='summaryCharges', showBoundary=_showBoundaries)
 
     # balance block
-    balanceF = Frame(78, 570, 265, 60, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='balance', showBoundary=_showBoundaries)
+    balanceF = Frame(78, 556, 265, 60, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='balance', showBoundary=_showBoundaries)
 
     # current charges block
-    currentChargesF = Frame(353, 570, 220, 60, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='currentCharges', showBoundary=_showBoundaries)
+    currentChargesF = Frame(353, 556, 220, 60, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='currentCharges', showBoundary=_showBoundaries)
 
 
     # graph one frame
-    graphOne = Frame(30, 412, 270, 135, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphOne', showBoundary=_showBoundaries)
+    graphOne = Frame(30, 400, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphOne', showBoundary=_showBoundaries)
     
     # graph two frame
-    graphTwo = Frame(310, 412, 270, 135, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphTwo', showBoundary=_showBoundaries)
+    graphTwo = Frame(310, 400, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphTwo', showBoundary=_showBoundaries)
     
     # graph three frame
-    graphThree = Frame(30, 267, 270, 135, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphThree', showBoundary=_showBoundaries)
+    graphThree = Frame(30, 264, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphThree', showBoundary=_showBoundaries)
     
     # graph four frame
-    graphFour = Frame(310, 267, 270, 135, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphOne', showBoundary=_showBoundaries)
+    graphFour = Frame(310, 264, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphOne', showBoundary=_showBoundaries)
 
 
     firstPage = PageTemplate(id=firstPageName,frames=[backgroundF, billIssueDateF, billDueDateF, billPeriodTableF, summaryChargesTableF, balanceF, currentChargesF, graphOne, graphTwo, graphThree, graphFour])
@@ -173,6 +173,9 @@ def go():
 
     doc = SIBillDocTemplate('bill.pdf', pagesize=letter, showBoundary=0, allowSplitting=0)
     doc.addPageTemplates([firstPage, secondPage])
+
+    # Bind to XML bill
+    dom = bindery.parse('../bills/Skyline-1-10001.xml')
 
     Elements = []
 
@@ -247,25 +250,74 @@ def go():
     Elements.append(UseUpSpace())
 
 
-    data = [30, 28, 40, 55, 75, 68, 54, 60, 50, 62, 75, 65, 75, 91, 60, 55, 53, 35, 50,66, 56, 48, 52, 65, 62]
-    labels = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24"]
-    c = XYChart(260,125)
-    c.setPlotArea(40, 20, 200, 55)
-    c.addLineLayer(data)
-    c.xAxis().setLabels(labels)
-    c.xAxis().setLabelStep(3)
-    c.makeChart("images/SampleGraph1.gif")    
+    # populate graph one
+
+    # Construct period consumption/production ratio graph
+    data = [40, 60]
+    labels = ["Renewable", "Grid"]
+    c = PieChart(10*270, 10*127)
+    c.addTitle2(TopLeft, "<*underline=8*>Utilization This Period", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
+
+    c.setColors2(DataColor, [0x007437,0x5a8f47]) 
+    c.setPieSize((10*270)/1.9, (10*127)/1.9, ((10*127)/2.5))
+    c.setData(data, labels)
+    c.setLabelStyle('verdana.ttf', 64)
+    c.makeChart("images/SampleGraph1.png")
+   
+    Elements.append(Image('images/SampleGraph1.png', 270*.9, 127*.9))
+    Elements.append(UseUpSpace())
+
+
+    # populate graph two 
     
-    Elements.append(Image('images/SampleGraph1.gif', 168.74, 86.75))
+    # construct period environmental benefit
+
+
+    environmentalBenefit = [
+        [Paragraph("<b><u>Environmental Benefit This Period</u></b>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
+        [Paragraph("<b>Pounds Carbon Offset</b>", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])]
+    ]
+
+    t = Table(environmentalBenefit, [180,90])
+    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
+
+    Elements.append(t)
     Elements.append(UseUpSpace())
 
-    Elements.append(Image('images/SampleGraph.png',200,100))
+
+    # populate graph four 
+    
+    # construct annual production graph
+    data = [30, 28, 40, 55, 75, 68, 54, 60, 50, 62, 75, 65]
+    labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    c = XYChart(10*270, 10*127)
+    c.setPlotArea((10*270)/12, (10*127)/6.5, (10*270)*.9, (10*127)*.70)
+    c.setColors2(DataColor, [0x9bbb59]) 
+    c.addBarLayer(data)
+    c.addTitle2(TopLeft, "<*underline=8*>Annual Production", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
+    c.yAxis().setLabelStyle('verdana.ttf', 64)
+    c.yAxis().setTickDensity(100)
+    c.xAxis().setLabels(labels)
+    c.xAxis().setLabelStyle('verdana.ttf', 64)
+    c.makeChart("images/SampleGraph3.png")    
+
+    Elements.append(Image('images/SampleGraph3.png', 270*.9, 127*.9))
     Elements.append(UseUpSpace())
 
-    Elements.append(Image('images/SampleGraph.png',200,100))
-    Elements.append(UseUpSpace())
 
-    Elements.append(Image('images/SampleGraph.png',200,100))
+    # populate graph four 
+    
+    # construct system life cumulative numbers table
+
+    systemLife = [
+        [Paragraph("<b><u>Total System Life</u></b>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
+        [Paragraph("<b>Pounds Carbon Offset</b>", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])]
+    ]
+
+    t = Table(systemLife, [180,90])
+    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
+
+    Elements.append(t)
     Elements.append(UseUpSpace())
 
 
