@@ -31,6 +31,10 @@ from amara import bindery
 from amara import xml_print
 
 
+#
+# for graphics
+#
+from pychartdir import *
 
 #
 #  Load Fonts
@@ -242,7 +246,17 @@ def go():
     Elements.append(t)
     Elements.append(UseUpSpace())
 
-    Elements.append(Image('images/SampleGraph.png',200,100))
+
+    data = [30, 28, 40, 55, 75, 68, 54, 60, 50, 62, 75, 65, 75, 91, 60, 55, 53, 35, 50,66, 56, 48, 52, 65, 62]
+    labels = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24"]
+    c = XYChart(260,125)
+    c.setPlotArea(40, 20, 200, 55)
+    c.addLineLayer(data)
+    c.xAxis().setLabels(labels)
+    c.xAxis().setLabelStep(3)
+    c.makeChart("images/SampleGraph1.gif")    
+    
+    Elements.append(Image('images/SampleGraph1.gif', 168.74, 86.75))
     Elements.append(UseUpSpace())
 
     Elements.append(Image('images/SampleGraph.png',200,100))
