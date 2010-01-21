@@ -143,7 +143,21 @@ def go():
     # current charges block
     currentChargesF = Frame(353, 570, 220, 60, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='currentCharges', showBoundary=_showBoundaries)
 
-    firstPage = PageTemplate(id=firstPageName,frames=[backgroundF, billIssueDateF, billDueDateF, billPeriodTableF, summaryChargesTableF, balanceF, currentChargesF])
+
+    # graph one frame
+    graphOne = Frame(30, 412, 270, 135, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphOne', showBoundary=_showBoundaries)
+    
+    # graph two frame
+    graphTwo = Frame(310, 412, 270, 135, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphTwo', showBoundary=_showBoundaries)
+    
+    # graph three frame
+    graphThree = Frame(30, 267, 270, 135, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphThree', showBoundary=_showBoundaries)
+    
+    # graph four frame
+    graphFour = Frame(310, 267, 270, 135, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphOne', showBoundary=_showBoundaries)
+
+
+    firstPage = PageTemplate(id=firstPageName,frames=[backgroundF, billIssueDateF, billDueDateF, billPeriodTableF, summaryChargesTableF, balanceF, currentChargesF, graphOne, graphTwo, graphThree, graphFour])
 
 
     # page two frames
@@ -227,8 +241,18 @@ def go():
     t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black)]))
     Elements.append(t)
     Elements.append(UseUpSpace())
-    
 
+    Elements.append(Image('images/SampleGraph.png',200,100))
+    Elements.append(UseUpSpace())
+
+    Elements.append(Image('images/SampleGraph.png',200,100))
+    Elements.append(UseUpSpace())
+
+    Elements.append(Image('images/SampleGraph.png',200,100))
+    Elements.append(UseUpSpace())
+
+    Elements.append(Image('images/SampleGraph.png',200,100))
+    Elements.append(UseUpSpace())
 
 
     #
