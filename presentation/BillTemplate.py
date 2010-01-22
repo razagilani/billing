@@ -104,10 +104,6 @@ class SIBillDocTemplate(BaseDocTemplate):
         BaseDocTemplate.handle_pageBegin(self)
 
 
-
-
-
-
 def progress(type,value):
     print type, value
      
@@ -131,7 +127,7 @@ def go():
     # 612w 792h
 
     #page one frames
-    backgroundF = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background', showBoundary=_showBoundaries)
+    backgroundF1 = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background1', showBoundary=_showBoundaries)
 
     # bill dates block
     billIssueDateF = Frame(78, 680, 120, 12, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billIssueDate', showBoundary=_showBoundaries)
@@ -149,27 +145,42 @@ def go():
 
 
     # graph one frame
-    graphOne = Frame(30, 400, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphOne', showBoundary=_showBoundaries)
+    graphOneF = Frame(30, 400, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphOne', showBoundary=_showBoundaries)
     
     # graph two frame
-    graphTwo = Frame(310, 400, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphTwo', showBoundary=_showBoundaries)
+    graphTwoF = Frame(310, 400, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphTwo', showBoundary=_showBoundaries)
     
     # graph three frame
-    graphThree = Frame(30, 264, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphThree', showBoundary=_showBoundaries)
+    graphThreeF = Frame(30, 264, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphThree', showBoundary=_showBoundaries)
     
     # graph four frame
-    graphFour = Frame(310, 264, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphOne', showBoundary=_showBoundaries)
+    graphFourF = Frame(310, 264, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphFour', showBoundary=_showBoundaries)
+
+    # Skyline Account number frame
+    accountNumberF = Frame(30, 238, 227, 18, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='accountNumber', showBoundary=_showBoundaries)
+    
+    # Due date and Amount frame
+    amountDueF = Frame(353, 200, 227, 56, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='amountDue', showBoundary=_showBoundaries)
+    
+    # Customer service address Frame
+    serviceAddressF = Frame(30, 147, 306, 80, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='serviceAddress', showBoundary=_showBoundaries)
+    
+    # Special instructions frame
+    specialInstructionsF = Frame(353, 50, 227, 140, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='specialInstructions', showBoundary=_showBoundaries)
+    
+    # Customer billing address frame
+    billingAddressF = Frame(30, 50, 306, 80, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
 
 
-    firstPage = PageTemplate(id=firstPageName,frames=[backgroundF, billIssueDateF, billDueDateF, billPeriodTableF, summaryChargesTableF, balanceF, currentChargesF, graphOne, graphTwo, graphThree, graphFour])
+    firstPage = PageTemplate(id=firstPageName,frames=[backgroundF1, billIssueDateF, billDueDateF, billPeriodTableF, summaryChargesTableF, balanceF, currentChargesF, graphOneF, graphTwoF, graphThreeF, graphFourF, accountNumberF, amountDueF, serviceAddressF, specialInstructionsF, billingAddressF])
 
-
+ 
     # page two frames
+    backgroundF2 = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background2', showBoundary=_showBoundaries)
 
-    rbackgroundFrame = Frame(400,400, 100, 100, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, showBoundary=_showBoundaries)
-    rcontentFrame = Frame(600,600, 100,100, leftPadding=10, bottomPadding=10, rightPadding=10, topPadding=10, showBoundary=_showBoundaries)
+    secondPage = PageTemplate(id=secondPageName,frames=[backgroundF2])
 
-    secondPage = PageTemplate(id=secondPageName,frames=[backgroundF])
+
 
     doc = SIBillDocTemplate('bill.pdf', pagesize=letter, showBoundary=0, allowSplitting=0)
     doc.addPageTemplates([firstPage, secondPage])
@@ -183,9 +194,9 @@ def go():
     # First Page
     #
 
-    # populate backgroundF
-    image = Image('images/EmeraldCityBackground.png',letter[0], letter[1])
-    Elements.append(image)
+    # populate backgroundF1
+    pageOneBackground = Image('images/EmeraldCityBackground.png',letter[0], letter[1])
+    Elements.append(pageOneBackground)
 
 
     # populate billIssueDateF
@@ -272,7 +283,6 @@ def go():
     
     # construct period environmental benefit
 
-
     environmentalBenefit = [
         [Paragraph("<b><u>Environmental Benefit This Period</u></b>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
         [Paragraph("<b>Pounds Carbon Offset</b>", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])]
@@ -321,6 +331,50 @@ def go():
     Elements.append(UseUpSpace())
 
 
+    # populate account number
+
+    accountNumber = [
+        [Paragraph("<b>Account Number</b>", styles['BillLabel']), Paragraph(str(dom.utilitybill.account), styles['BillField'])], 
+    ]
+    
+    t = Table(accountNumber, [135,85])
+    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black)]))
+    Elements.append(t)
+    #fits perfectly
+    #Elements.append(UseUpSpace())
+
+    # populate due date and amount
+    dueDateAndAmount = [
+        [Paragraph("<b>Due Date</b>", styles['BillLabel']), Paragraph(str(dom.utilitybill.skylinebill.duedate), styles['BillField'])], 
+        [Paragraph("<b>Total Amount</b>", styles['BillLabel']), Paragraph("not yet", styles['BillField'])]
+    ]
+    
+    t = Table(dueDateAndAmount, [135,85])
+    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black)]))
+    Elements.append(t)
+    Elements.append(UseUpSpace())
+    
+    # populate service address
+    Elements.append(Spacer(100,20))
+    Elements.append(Paragraph(str(dom.utilitybill.car.serviceaddress.addressee), styles['BillField']))
+    Elements.append(Paragraph(str(dom.utilitybill.car.serviceaddress.street), styles['BillField']))
+    Elements.append(Paragraph(str(dom.utilitybill.car.serviceaddress.city) + " " + str(dom.utilitybill.car.serviceaddress.state) + " " + str(dom.utilitybill.car.serviceaddress.postalcode), styles['BillField']))
+    Elements.append(UseUpSpace())
+
+    # populate special instructions
+    Elements.append(Paragraph("There are no special instructions", styles['BillField']))
+    Elements.append(UseUpSpace())
+    
+    # populate billing address
+    Elements.append(Spacer(100,20))
+    Elements.append(Paragraph(str(dom.utilitybill.car.billingaddress.addressee), styles['BillField']))
+    Elements.append(Paragraph(str(dom.utilitybill.car.billingaddress.street), styles['BillField']))
+    Elements.append(Paragraph(str(dom.utilitybill.car.billingaddress.city) + " " + str(dom.utilitybill.car.billingaddress.state) + " " + str(dom.utilitybill.car.billingaddress.postalcode), styles['BillField']))
+    Elements.append(UseUpSpace())
+    
+    
+    
+
     #
     # Second Page
     #
@@ -328,9 +382,11 @@ def go():
     Elements.append(NextPageTemplate("SecondPage"));
     Elements.append(PageBreak());
 
-    Elements.append(image)
 
-    Elements.append(Paragraph("Content Frame  asdasd asdas asd as asd asd asd asd asd asd asd asd", styles['Normal']))
+    pageTwoBackground = Image('images/EmeraldCityBackground2.png',letter[0], letter[1])
+    Elements.append(pageTwoBackground)
+
+    #Elements.append(Paragraph("Content Frame  asdasd asdas asd as asd asd asd asd asd asd asd asd", styles['Normal']))
     #Elements.append(UseUpSpace())
      
     doc.setProgressCallBack(progress)
