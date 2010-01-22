@@ -1,3 +1,12 @@
+#!/usr/bin/python
+'''
+File: BillTemplate.py
+Author: Rich Andrews
+Description: A template for our awesome bill engine
+Usage:  Rich!  Fill me out!
+'''
+
+
 from reportlab.platypus import BaseDocTemplate, Paragraph, Table, TableStyle, Spacer, Image, PageTemplate, Frame, PageBreak, NextPageTemplate
 from reportlab.platypus.flowables import UseUpSpace
 
@@ -6,14 +15,12 @@ from reportlab.rl_config import defaultPageSize
 from reportlab.lib.units import inch
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
-from reportlab.lib import colors
-
+from reportlab.lib import colors 
 
 from pprint import pprint
 
 from reportlab.pdfgen import canvas
-from reportlab.pdfgen.pathobject import PDFPathObject
-
+from reportlab.pdfgen.pathobject import PDFPathObject 
 
 
 # for font management
@@ -34,34 +41,43 @@ from amara import xml_print
 #
 # for graphics
 #
-from pychartdir import *
+from pychartdir import TopLeft, DataColor, XYChart, PieChart
 
 #
 #  Load Fonts
 #
 # add your font directories to the T1SearchPath in reportlab/rl_config.py as an alternative.
-folder = os.path.dirname(reportlab.__file__) + os.sep + 'fonts'  
-
+rptlab_folder = os.path.join(os.path.dirname(reportlab.__file__), 'fonts')
+our_fonts = os.path.join(os.path.dirname(__file__), 'fonts/')
 
 # register Vera (Included in reportlab)
-pdfmetrics.registerFont(TTFont('Vera', os.path.join(folder, 'Vera.ttf')))
-pdfmetrics.registerFont(TTFont('VeraBd', os.path.join(folder, 'VeraBd.ttf')))
-pdfmetrics.registerFont(TTFont('VeraIt', os.path.join(folder, 'VeraIt.ttf')))
-pdfmetrics.registerFont(TTFont('VeraBI', os.path.join(folder, 'VeraBI.ttf')))
+pdfmetrics.registerFont(TTFont('Vera', os.path.join(rptlab_folder, 'Vera.ttf')))
+pdfmetrics.registerFont(TTFont('VeraBd', os.path.join(rptlab_folder, 'VeraBd.ttf')))
+pdfmetrics.registerFont(TTFont('VeraIt', os.path.join(rptlab_folder, 'VeraIt.ttf')))
+pdfmetrics.registerFont(TTFont('VeraBI', os.path.join(our_fonts, 'VeraBI.ttf')))
 registerFontFamily('Vera',normal='Vera',bold='VeraBd',italic='VeraIt',boldItalic='VeraBI')
 
+
 # register Verdana (MS Licensed CoreFonts http://sourceforge.net/projects/corefonts/files/)
-pdfmetrics.registerFont(TTFont("Verdana", 'fonts/verdana.ttf'))  
-pdfmetrics.registerFont(TTFont("VerdanaB", 'fonts/verdanab.ttf'))  
-pdfmetrics.registerFont(TTFont("VerdanaI", 'fonts/verdanai.ttf'))  
+pdfmetrics.registerFont(TTFont("Verdana", os.path.join(our_fonts, 'verdana.ttf')))
+pdfmetrics.registerFont(TTFont("VerdanaB", os.path.join(our_fonts, 'verdanab.ttf')))
+pdfmetrics.registerFont(TTFont("VerdanaI", os.path.join(our_fonts, 'verdanai.ttf')))
 registerFontFamily('Verdana',normal='Verdana',bold='VerdanaB',italic='VerdanaI')
 
 # register Calibri (MS Licensed CoreFonts http://sourceforge.net/projects/corefonts/files/)
-pdfmetrics.registerFont(TTFont("Courier", 'fonts/cour.ttf'))  
-pdfmetrics.registerFont(TTFont("CourierB", 'fonts/courbd.ttf'))  
-pdfmetrics.registerFont(TTFont("CourieI", 'fonts/couri.ttf'))  
-pdfmetrics.registerFont(TTFont("CourieBI", 'fonts/courbi.ttf'))  
+pdfmetrics.registerFont(TTFont("Courier", os.path.join(our_fonts, 'cour.ttf')))
+pdfmetrics.registerFont(TTFont("CourierB", os.path.join(our_fonts, 'courbd.ttf')))
+pdfmetrics.registerFont(TTFont("CourieI", os.path.join(our_fonts, 'couri.ttf')))
+pdfmetrics.registerFont(TTFont("CourieBI", os.path.join(our_fonts, 'courbi.ttf')))
 registerFontFamily('Courier',normal='Courier',bold='CourierB',italic='CourierBI')
+
+
+#register Inconsolata (TODO address here)
+pdfmetrics.registerFont(TTFont("Inconsolata", 'fonts/Inconsolata.ttf'))
+registerFontFamily('Inconsolata', 
+                    normal = 'Inconsolata', 
+                    bold = 'Inconsolata',
+                    italic = 'Inconsolata')
 
 
 #
@@ -108,18 +124,17 @@ def progress(type,value):
     print type, value
      
 def go():
-
-
+    '''docstring goes here?'''
 
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name='BillLabel', fontName='Verdana', fontSize=10, leading=10))
     styles.add(ParagraphStyle(name='BillLabelRight', fontName='Verdana', fontSize=10, leading=10, alignment=TA_RIGHT))
     styles.add(ParagraphStyle(name='BillLabelRight1', fontName='Verdana', fontSize=10, leading=10, alignment=TA_RIGHT))
     styles.add(ParagraphStyle(name='BillLabelSm', fontName='Verdana', fontSize=8, leading=8))
-    styles.add(ParagraphStyle(name='BillField', fontName='Courier', fontSize=10, leading=10, alignment=TA_LEFT))
-    styles.add(ParagraphStyle(name='BillFieldRight', fontName='Courier', fontSize=10, leading=10, alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='BillFieldLeft', fontName='Courier', fontSize=10, leading=10, alignment=TA_LEFT))
-    styles.add(ParagraphStyle(name='BillFieldSm', fontName='Courier', fontSize=8, leading=10, alignment=TA_LEFT))
+    styles.add(ParagraphStyle(name='BillField', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_LEFT))
+    styles.add(ParagraphStyle(name='BillFieldRight', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='BillFieldLeft', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_LEFT))
+    styles.add(ParagraphStyle(name='BillFieldSm', fontName='Inconsolata', fontSize=8, leading=10, alignment=TA_LEFT))
     style = styles['BillLabel']
 
     _showBoundaries = 0
@@ -200,11 +215,11 @@ def go():
 
 
     # populate billIssueDateF
-    Elements.append(Paragraph("<b>Issued</b> <font name='Courier'> " + str(dom.utilitybill.skylinebill.issued) + "</font>", styles['BillLabelRight']))
+    Elements.append(Paragraph("<b>Issued</b> <font name='Inconsolata'> " + str(dom.utilitybill.skylinebill.issued) + "</font>", styles['BillLabelRight']))
     Elements.append(UseUpSpace())
 
     # populate billDueDateF
-    Elements.append(Paragraph("<b>Due Date</b> <font name='Courier'> " + str(dom.utilitybill.skylinebill.duedate) + "</font>", styles['BillLabelRight']))
+    Elements.append(Paragraph("<b>Due Date</b> <font name='Inconsolata'> " + str(dom.utilitybill.skylinebill.duedate) + "</font>", styles['BillLabelRight']))
     Elements.append(UseUpSpace())
 
 
@@ -252,7 +267,7 @@ def go():
     currentCharges = [
         [Paragraph("<b>Renewable Energy</b>", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.skylinecharges), styles['BillFieldRight'])], 
         [Paragraph("<b>Current Charges</b>", styles['BillLabelRight']), Paragraph("8.13", styles['BillFieldRight'])],
-        [Paragraph("<b>Total Due</b>", styles['BillLabelRight']), Paragraph("8.13", styles['BillFieldRight'])]
+        [Paragraph("<b>Total Due</b>", styles['BillLabelRight']), Paragraph("$8.13", styles['BillFieldRight'])]
     ]
 
     t = Table(currentCharges, [135,85])
