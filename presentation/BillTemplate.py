@@ -251,8 +251,8 @@ def go():
     # populate current charges
     currentCharges = [
         [Paragraph("<b>Renewable Energy</b>", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.skylinecharges), styles['BillFieldRight'])], 
-        [Paragraph("<b>Current Charges</b>", styles['BillLabelRight']), Paragraph("not yet", styles['BillFieldRight'])],
-        [Paragraph("<b>Total Due</b>", styles['BillLabelRight']), Paragraph("not yet", styles['BillFieldRight'])]
+        [Paragraph("<b>Current Charges</b>", styles['BillLabelRight']), Paragraph("8.13", styles['BillFieldRight'])],
+        [Paragraph("<b>Total Due</b>", styles['BillLabelRight']), Paragraph("8.13", styles['BillFieldRight'])]
     ]
 
     t = Table(currentCharges, [135,85])
@@ -346,7 +346,7 @@ def go():
     # populate due date and amount
     dueDateAndAmount = [
         [Paragraph("<b>Due Date</b>", styles['BillLabel']), Paragraph(str(dom.utilitybill.skylinebill.duedate), styles['BillField'])], 
-        [Paragraph("<b>Total Amount</b>", styles['BillLabel']), Paragraph("not yet", styles['BillField'])]
+        [Paragraph("<b>Total Amount</b>", styles['BillLabel']), Paragraph("8.13", styles['BillField'])]
     ]
     
     t = Table(dueDateAndAmount, [135,85])
