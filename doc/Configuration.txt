@@ -1,0 +1,28 @@
+
+
+Components for PDF rendering
+
+python-2.6.4.msi
+(place python on executable path)
+
+http://www.reportlab.org/oss/rl-toolkit/download/
+reportlab-2.3.win32-py2.6.exe
+Get source dist for doc/examples
+
+http://www.pythonware.com/products/pil/
+PIL-1.1.6.win32-py2.6.exe
+
+
+
+Amara
+http://livingpyxml.python-hosting.com/wiki/AmaraWinInstallers
+http://platea.pntic.mec.es/~jmorilla/amara/distros/Amara-1.2.0.2.win32-py2.5.exe
+For python 2.6?  http://www.xml3k.org/Amara/Install?action=AttachFile&do=view&target=Amara-1.2.0.2.win32.exe
+
+
+Used Amara2
+
+http://wiki.xml3k.org/Amara2/Windows?action=AttachFile&do=view&target=Amara-2.0a3.win32-py2.6.msi
+
+
+
