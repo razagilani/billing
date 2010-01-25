@@ -193,8 +193,9 @@ def go():
  
     # page two frames
     backgroundF2 = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background2', showBoundary=_showBoundaries)
+    chargeDetailsF = Frame(30,300, 550, 455, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetails', showBoundary=_showBoundaries)
 
-    secondPage = PageTemplate(id=secondPageName,frames=[backgroundF2])
+    secondPage = PageTemplate(id=secondPageName,frames=[backgroundF2, chargeDetailsF])
 
 
 
@@ -394,7 +395,6 @@ def go():
     #
     # Second Page
     #
-    
     Elements.append(NextPageTemplate("SecondPage"));
     Elements.append(PageBreak());
 
@@ -403,8 +403,65 @@ def go():
     Elements.append(pageTwoBackground)
 
     #Elements.append(Paragraph("Content Frame  asdasd asdas asd as asd asd asd asd asd asd asd asd", styles['Normal']))
-    #Elements.append(UseUpSpace())
-     
+    #chargeDetails = [
+    #    ["Label", str(charge.description), str(charge.quantity), str(charge.rate), str(charge.total)]     
+    #    for details in (dom.utilitybill.details)
+    #    for chargegroup in (details.chargegroup)
+    #    for charges in (chargegroup.charges) if charges.type == 'hypothetical'
+    #    for charge in (charges.charge)
+    #]
+
+
+
+    # list of the rows
+    chargeDetails = [["Utility Service", "Charge Description", "Quantity","", "Rate","", "Total"]]
+    # sentinal for not printing service string each iteration
+    service = None
+    
+    for details in (dom.utilitybill.details):
+        for chargegroup in (details.chargegroup):
+            for charges in (chargegroup.charges):
+                if charges.type == 'hypothetical':
+                    for charge in (charges.charge):
+                        # populate service cell once for each group of services
+                        if(service != details.service):
+                            # if service completed, insert total from it if it exists before moving on to next service
+                            #if (service != None):
+                            #    chargeDetails.append([None, None,, None, None, None, None, str(charges.total)])
+                            serviceStr = str(details.service)
+                            service = details.service
+                        chargeDetails.append([serviceStr, str(charge.description), str(charge.quantity), "", str(charge.rate), "", str(charge.total)])                    
+                        # clear string so that it gets set on next service type
+                        serviceStr = None
+        for total in iter(details.total):
+            if(total.type == u'hypothetical'):
+                chargeDetails.append([None, None, None, None, None, None, str(total)])
+        # spacer
+        chargeDetails.append([None, None, None, None, None, None, None])
+
+
+    t = Table(chargeDetails, [90, 210, 70, 20, 70, 20, 70])
+
+    #('BOX', (0,0), (-1,-1), 0.25, colors.black), 
+    t.setStyle(TableStyle([
+        ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), 
+        ('TOPPADDING', (0,0), (-1,-1), 0), 
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+        ('FONT', (0,0),(-1,-1), 'Inconsolata'),
+        ('FONTSIZE', (0,0), (-1,0), 9),
+        ('FONTSIZE', (0,1), (-1,-1), 7),
+        ('LEADING', (0,1), (-1,-1), 9),
+        ('ALIGN',(2,0),(2,-1),'RIGHT'),
+        ('ALIGN',(4,0),(4,-1),'RIGHT'),
+        ('ALIGN',(6,0),(6,-1),'RIGHT'),
+    ]))
+
+    Elements.append(t)
+    Elements.append(UseUpSpace())
+
+
+
+    # render the document	
     doc.setProgressCallBack(progress)
     doc.build(Elements)
 
