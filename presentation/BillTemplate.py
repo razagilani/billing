@@ -48,13 +48,14 @@ from pychartdir import TopLeft, DataColor, XYChart, PieChart
 #
 # add your font directories to the T1SearchPath in reportlab/rl_config.py as an alternative.
 rptlab_folder = os.path.join(os.path.dirname(reportlab.__file__), 'fonts')
+
 our_fonts = os.path.join(os.path.dirname(__file__), 'fonts/')
 
 # register Vera (Included in reportlab)
 pdfmetrics.registerFont(TTFont('Vera', os.path.join(rptlab_folder, 'Vera.ttf')))
 pdfmetrics.registerFont(TTFont('VeraBd', os.path.join(rptlab_folder, 'VeraBd.ttf')))
 pdfmetrics.registerFont(TTFont('VeraIt', os.path.join(rptlab_folder, 'VeraIt.ttf')))
-pdfmetrics.registerFont(TTFont('VeraBI', os.path.join(our_fonts, 'VeraBI.ttf')))
+pdfmetrics.registerFont(TTFont('VeraBI', os.path.join(rptlab_folder, 'VeraBI.ttf')))
 registerFontFamily('Vera',normal='Vera',bold='VeraBd',italic='VeraIt',boldItalic='VeraBI')
 
 
