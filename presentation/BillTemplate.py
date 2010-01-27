@@ -6,6 +6,14 @@ Description: A template for our awesome bill engine
 Usage:  Rich!  Fill me out!
 '''
 
+#
+# runtime environment
+#
+import sys
+import os  
+from pprint import pprint
+from types import NoneType
+
 
 from reportlab.platypus import BaseDocTemplate, Paragraph, Table, TableStyle, Spacer, Image, PageTemplate, Frame, PageBreak, NextPageTemplate
 from reportlab.platypus.flowables import UseUpSpace
@@ -17,14 +25,12 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
 from reportlab.lib import colors 
 
-from pprint import pprint
 
 from reportlab.pdfgen import canvas
 from reportlab.pdfgen.pathobject import PDFPathObject 
 
 
 # for font management
-import os  
 import reportlab  
 from reportlab.pdfbase import pdfmetrics  
 from reportlab.pdfbase.ttfonts import TTFont  
@@ -101,11 +107,11 @@ class SIBillDocTemplate(BaseDocTemplate):
  
         BaseDocTemplate.build(self,flowables, canvasmaker=canvasmaker)
         
-    def beforePage(self):
-        print "Before Page: ", self.pageTemplate.id
+    #def beforePage(self):
+        #print "Before Page: ", self.pageTemplate.id
         
     def afterPage(self):
-        print "After Page"
+        #print "After Page"
         if self.pageTemplate.id == firstPageName:
             self.canv.saveState()
             self.canv.setStrokeColorRGB(0,255,128)
@@ -117,21 +123,21 @@ class SIBillDocTemplate(BaseDocTemplate):
         
         
     def handle_pageBegin(self):
-        print "handle_pageBegin"
+        #print "handle_pageBegin"
         BaseDocTemplate.handle_pageBegin(self)
 
 
 def progress(type,value):
-    print type, value
+    sys.stdout.write('.')
      
 def go():
     '''docstring goes here?'''
 
     styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(name='BillLabel', fontName='Verdana', fontSize=10, leading=10))
-    styles.add(ParagraphStyle(name='BillLabelRight', fontName='Verdana', fontSize=10, leading=10, alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='BillLabelRight1', fontName='Verdana', fontSize=10, leading=10, alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='BillLabelSm', fontName='Verdana', fontSize=8, leading=8))
+    styles.add(ParagraphStyle(name='BillLabel', fontName='VerdanaB', fontSize=10, leading=10))
+    styles.add(ParagraphStyle(name='BillLabelRight', fontName='VerdanaB', fontSize=10, leading=10, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='BillLabelRight1', fontName='VerdanaB', fontSize=10, leading=10, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='BillLabelSm', fontName='VerdanaB', fontSize=8, leading=8))
     styles.add(ParagraphStyle(name='BillField', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_LEFT))
     styles.add(ParagraphStyle(name='BillFieldRight', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_RIGHT))
     styles.add(ParagraphStyle(name='BillFieldLeft', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_LEFT))
@@ -193,9 +199,10 @@ def go():
  
     # page two frames
     backgroundF2 = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background2', showBoundary=_showBoundaries)
-    chargeDetailsF = Frame(30,300, 550, 455, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetails', showBoundary=_showBoundaries)
+    chargeDetailsHeaderF = Frame(30,735, 550, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetails', showBoundary=_showBoundaries)
+    chargeDetailsF = Frame(30,375, 550, 350, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetails', showBoundary=_showBoundaries)
 
-    secondPage = PageTemplate(id=secondPageName,frames=[backgroundF2, chargeDetailsF])
+    secondPage = PageTemplate(id=secondPageName,frames=[backgroundF2, chargeDetailsHeaderF, chargeDetailsF])
 
 
 
@@ -217,11 +224,11 @@ def go():
 
 
     # populate billIssueDateF
-    Elements.append(Paragraph("<b>Issued</b> <font name='Inconsolata'> " + str(dom.utilitybill.skylinebill.issued) + "</font>", styles['BillLabelRight']))
+    Elements.append(Paragraph("Issued  <font name='Inconsolata'> " + str(dom.utilitybill.skylinebill.issued) + "</font>", styles['BillLabelRight']))
     Elements.append(UseUpSpace())
 
     # populate billDueDateF
-    Elements.append(Paragraph("<b>Due Date</b> <font name='Inconsolata'> " + str(dom.utilitybill.skylinebill.duedate) + "</font>", styles['BillLabelRight']))
+    Elements.append(Paragraph("Due Date  <font name='Inconsolata'> " + str(dom.utilitybill.skylinebill.duedate) + "</font>", styles['BillLabelRight']))
     Elements.append(UseUpSpace())
 
 
@@ -242,7 +249,7 @@ def go():
 
     # populate summaryChargesTableF
     utilitycharges = [
-        [Paragraph("<b>Before Skyline</b>", styles['BillLabelRight']),Paragraph("<b>After Skyline</b>", styles['BillLabelRight'])]
+        [Paragraph("Before Skyline", styles['BillLabelRight']),Paragraph("After Skyline", styles['BillLabelRight'])]
     ]+[
         [Paragraph(str(summary.hypotheticalcharges),styles['BillFieldRight']), Paragraph(str(summary.currentcharges),styles['BillFieldRight'])]
         for summary in iter(dom.utilitybill.summary)
@@ -255,9 +262,9 @@ def go():
 
     # populate balances
     balances = [
-        [Paragraph("<b>Prior Balance</b>", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.priorbalance),styles['BillFieldRight'])],
-        [Paragraph("<b>Payment Received</b>", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.paymentreceived), styles['BillFieldRight'])],
-        [Paragraph("<b>Balance Forward</b>", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.balanceforward), styles['BillFieldRight'])]
+        [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.priorbalance),styles['BillFieldRight'])],
+        [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.paymentreceived), styles['BillFieldRight'])],
+        [Paragraph("Balance Forward", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.balanceforward), styles['BillFieldRight'])]
     ]
 
     t = Table(balances, [180,85])
@@ -267,9 +274,9 @@ def go():
 
     # populate current charges
     currentCharges = [
-        [Paragraph("<b>Renewable Energy</b>", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.skylinecharges), styles['BillFieldRight'])], 
-        [Paragraph("<b>Current Charges</b>", styles['BillLabelRight']), Paragraph("8.13", styles['BillFieldRight'])],
-        [Paragraph("<b>Total Due</b>", styles['BillLabelRight']), Paragraph("$8.13", styles['BillFieldRight'])]
+        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.customersavings), styles['BillFieldRight'])],
+        [Paragraph("Renewable Energy", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.energycharges), styles['BillFieldRight'])], 
+        [Paragraph("Current Charges", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.currentcharges), styles['BillFieldRight'])]
     ]
 
     t = Table(currentCharges, [135,85])
@@ -301,11 +308,28 @@ def go():
     # construct period environmental benefit
 
     environmentalBenefit = [
-        [Paragraph("<b><u>Environmental Benefit This Period</u></b>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("<b>Pounds Carbon Offset</b>", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])]
+        [Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
+        [Paragraph("Pounds Carbon Offset", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])]
     ]
 
     t = Table(environmentalBenefit, [180,90])
+    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
+
+    Elements.append(t)
+    Elements.append(UseUpSpace())
+
+
+    # populate graph three 
+    
+    # construct system life cumulative numbers table
+
+    systemLife = [
+        [Paragraph("<u>Total System Life</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
+        [Paragraph("Pounds Carbon Offset", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
+        [Paragraph("Cars Removed from Road", styles['BillLabelSm']), Paragraph("5", styles['BillFieldSm'])]
+    ]
+
+    t = Table(systemLife, [180,90])
     t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
 
     Elements.append(t)
@@ -326,32 +350,15 @@ def go():
     c.yAxis().setTickDensity(100)
     c.xAxis().setLabels(labels)
     c.xAxis().setLabelStyle('verdana.ttf', 64)
-    c.makeChart("images/SampleGraph3.png")    
+    c.makeChart("images/SampleGraph4.png")    
 
-    Elements.append(Image('images/SampleGraph3.png', 270*.9, 127*.9))
+    Elements.append(Image('images/SampleGraph4.png', 270*.9, 127*.9))
     Elements.append(UseUpSpace())
-
-
-    # populate graph four 
-    
-    # construct system life cumulative numbers table
-
-    systemLife = [
-        [Paragraph("<b><u>Total System Life</u></b>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("<b>Pounds Carbon Offset</b>", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])]
-    ]
-
-    t = Table(systemLife, [180,90])
-    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
-
-    Elements.append(t)
-    Elements.append(UseUpSpace())
-
 
     # populate account number
 
     accountNumber = [
-        [Paragraph("<b>Account Number</b>", styles['BillLabel']), Paragraph(str(dom.utilitybill.account), styles['BillField'])], 
+        [Paragraph("Account Number", styles['BillLabel']), Paragraph(str(dom.utilitybill.account), styles['BillField'])], 
     ]
     
     t = Table(accountNumber, [135,85])
@@ -362,8 +369,8 @@ def go():
 
     # populate due date and amount
     dueDateAndAmount = [
-        [Paragraph("<b>Due Date</b>", styles['BillLabel']), Paragraph(str(dom.utilitybill.skylinebill.duedate), styles['BillField'])], 
-        [Paragraph("<b>Total Amount</b>", styles['BillLabel']), Paragraph("8.13", styles['BillField'])]
+        [Paragraph("Due Date", styles['BillLabel']), Paragraph(str(dom.utilitybill.skylinebill.duedate), styles['BillFieldRight'])], 
+        [Paragraph("Total Amount", styles['BillLabel']), Paragraph(str(dom.utilitybill.skylinebill.totaldue), styles['BillFieldRight'])]
     ]
     
     t = Table(dueDateAndAmount, [135,85])
@@ -402,35 +409,34 @@ def go():
     pageTwoBackground = Image('images/EmeraldCityBackground2.png',letter[0], letter[1])
     Elements.append(pageTwoBackground)
 
-    #Elements.append(Paragraph("Content Frame  asdasd asdas asd as asd asd asd asd asd asd asd asd", styles['Normal']))
-    #chargeDetails = [
-    #    ["Label", str(charge.description), str(charge.quantity), str(charge.rate), str(charge.total)]     
-    #    for details in (dom.utilitybill.details)
-    #    for chargegroup in (details.chargegroup)
-    #    for charges in (chargegroup.charges) if charges.type == 'hypothetical'
-    #    for charge in (charges.charge)
-    #]
-
-
+    Elements.append(Paragraph("Your utility bill without Skyline.  Consult actual utility bill to see savings.", styles['BillLabel']))
+    Elements.append(UseUpSpace())
 
     # list of the rows
-    chargeDetails = [["Utility Service", "Charge Description", "Quantity","", "Rate","", "Total"]]
+    chargeDetails = [
+        ["Service", "Charge Description", "Quantity","", "Rate","", "Total"],
+        [None, None, None, None, None, None, None],
+        [None, None, None, None, None, None, None]
+    ]
     # sentinal for not printing service string each iteration
     service = None
-    
+
     for details in (dom.utilitybill.details):
         for chargegroup in (details.chargegroup):
             for charges in (chargegroup.charges):
-                if charges.type == 'hypothetical':
+                if charges.type == u'hypothetical':
                     for charge in (charges.charge):
                         # populate service cell once for each group of services
                         if(service != details.service):
-                            # if service completed, insert total from it if it exists before moving on to next service
-                            #if (service != None):
-                            #    chargeDetails.append([None, None,, None, None, None, None, str(charges.total)])
                             serviceStr = str(details.service)
                             service = details.service
-                        chargeDetails.append([serviceStr, str(charge.description), str(charge.quantity), "", str(charge.rate), "", str(charge.total)])                    
+                        description = charge.description if (charge.description is not None) else ""
+                        quantity = charge.quantity if (charge.quantity is not None) else ""
+                        quantityUnits = charge.quantity.units if (charge.quantity is not None) else ""
+                        rate = charge.rate  if (charge.rate is not None) else ""
+                        rateUnits = charge.rate.units if (charge.rate is not None) else ""
+                        total = charge.total
+                        chargeDetails.append([serviceStr, str(description), str(quantity), str(quantityUnits), str(rate), str(rateUnits), str(total)])
                         # clear string so that it gets set on next service type
                         serviceStr = None
         for total in iter(details.total):
@@ -439,18 +445,25 @@ def go():
         # spacer
         chargeDetails.append([None, None, None, None, None, None, None])
 
-
-    t = Table(chargeDetails, [90, 210, 70, 20, 70, 20, 70])
+    t = Table(chargeDetails, [50, 210, 70, 40, 70, 40, 70])
 
     #('BOX', (0,0), (-1,-1), 0.25, colors.black), 
     t.setStyle(TableStyle([
-        ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), 
+        #('INNERGRID', (1,0), (-1,1), 0.25, colors.black), 
+        ('BOX', (0,2), (0,-1), 0.25, colors.black), 
+        ('BOX', (1,2), (1,-1), 0.25, colors.black), 
+        ('BOX', (2,2), (3,-1), 0.25, colors.black), 
+        ('BOX', (4,2), (5,-1), 0.25, colors.black), 
+        ('BOX', (6,2), (6,-1), 0.25, colors.black), 
         ('TOPPADDING', (0,0), (-1,-1), 0), 
         ('BOTTOMPADDING', (0,0), (-1,-1), 0),
-        ('FONT', (0,0),(-1,-1), 'Inconsolata'),
-        ('FONTSIZE', (0,0), (-1,0), 9),
+        ('FONT', (0,0),(-1,0), 'VerdanaB'), # Bill Label Style
+        ('FONTSIZE', (0,0), (-1,0), 10),
+        ('FONT', (0,1),(-1,-1), 'Inconsolata'),
         ('FONTSIZE', (0,1), (-1,-1), 7),
         ('LEADING', (0,1), (-1,-1), 9),
+        ('ALIGN',(0,0),(0,0),'LEFT'),
+        ('ALIGN',(1,0),(1,0),'CENTER'),
         ('ALIGN',(2,0),(2,-1),'RIGHT'),
         ('ALIGN',(4,0),(4,-1),'RIGHT'),
         ('ALIGN',(6,0),(6,-1),'RIGHT'),
