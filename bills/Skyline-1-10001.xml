@@ -32,8 +32,10 @@
 		<ub:balanceforward>0.0</ub:balanceforward>
 		<ub:actualservicecharges>3189.60</ub:actualservicecharges>
 		<ub:hypotheticalservicecharges>3199.16</ub:hypotheticalservicecharges>
-		<ub:skylinecharges>8.13</ub:skylinecharges>
+		<ub:energycharges>8.13</ub:energycharges>
 		<ub:customersavings>1.43</ub:customersavings>
+		<ub:currentcharges>8.13</ub:currentcharges>
+		<ub:totaldue>8.13</ub:totaldue>
 		<ub:duedate>2009-01-15</ub:duedate>
 		<ub:issued>2009-12-21</ub:issued>
 	</ub:skylinebill>
