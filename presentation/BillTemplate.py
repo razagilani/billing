@@ -14,7 +14,9 @@ import os
 from pprint import pprint
 from types import NoneType
 
-
+#
+# Types for ReportLab
+#
 from reportlab.platypus import BaseDocTemplate, Paragraph, Table, TableStyle, Spacer, Image, PageTemplate, Frame, PageBreak, NextPageTemplate
 from reportlab.platypus.flowables import UseUpSpace
 
@@ -24,7 +26,6 @@ from reportlab.lib.units import inch
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
 from reportlab.lib import colors 
-
 
 from reportlab.pdfgen import canvas
 from reportlab.pdfgen.pathobject import PDFPathObject 
@@ -45,9 +46,14 @@ from amara import xml_print
 
 
 #
-# for graphics
+# for chart graphics
 #
-from pychartdir import TopLeft, DataColor, XYChart, PieChart
+import pychartdir
+#  Activate ChartDirector License
+pychartdir.setLicenseCode('DEVP-2HYW-CAU5-4YTR-6EA6-57AC')
+
+from pychartdir import Center, Left, TopLeft, DataColor, XYChart, PieChart
+
 
 #
 #  Load Fonts
@@ -211,7 +217,7 @@ def go():
     backgroundF2 = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background2', showBoundary=_showBoundaries)
     
     # Charge details header frame
-    chargeDetailsHeaderF = Frame(30,735, 550, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetailsHeader', showBoundary=_showBoundaries)
+    chargeDetailsHeaderF = Frame(30,725, 550, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetailsHeader', showBoundary=_showBoundaries)
 
     # charge details frame
     chargeDetailsF = Frame(30,375, 550, 350, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetails', showBoundary=_showBoundaries)
@@ -338,6 +344,7 @@ def go():
     environmentalBenefit = [
         [Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
         [Paragraph("Pounds Carbon Offset", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
+        [Paragraph("Renewable Energy Produced", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
         [Paragraph("Equivalent Trees", styles['BillLabelSm']), Paragraph("", styles['BillFieldSm'])]
     ]
 
@@ -347,7 +354,7 @@ def go():
     Elements.append(t)
 
     Elements.append(Spacer(100,20))
-    Elements.append(Paragraph("               <img width=\"20\" height=\"25\" src=\"images/TempTree.png\"/><img width=\"20\" height=\"25\" src=\"images/TempTree.png\"/><img width=\"20\" height=\"25\" src=\"images/TempTree.png\"/>", styles['BillLabel']))
+    Elements.append(Paragraph("<img width=\"20\" height=\"25\" src=\"images/TempTree.png\"/>  <img width=\"20\" height=\"25\" src=\"images/TempTree.png\"/>  <img width=\"20\" height=\"25\" src=\"images/TempTree.png\"/>", styles['BillLabel']))
 
     Elements.append(UseUpSpace())
 
@@ -360,7 +367,8 @@ def go():
         [Paragraph("<u>Total System Life</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
         [Paragraph("Dollar Savings", styles['BillLabelSm']), Paragraph("1.43", styles['BillFieldSm'])],
         [Paragraph("Pounds Carbon Offset", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
-        [Paragraph("Total Energy Saved", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
+        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
+        [Paragraph("Total Renewable Energy Produced", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
         [Paragraph("Equivalent Trees", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])]
     ]
 
@@ -377,12 +385,13 @@ def go():
     data = [30, 28, 40, 55, 75, 68, 54, 60, 50, 62, 75, 65]
     labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     c = XYChart(10*270, 10*127)
-    c.setPlotArea((10*270)/12, (10*127)/6.5, (10*270)*.9, (10*127)*.70)
+    c.setPlotArea((10*270)/6, (10*127)/6.5, (10*270)*.8, (10*127)*.70)
     c.setColors2(DataColor, [0x9bbb59]) 
     c.addBarLayer(data)
-    c.addTitle2(TopLeft, "<*underline=8*>Annual Production", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
+    c.addTitle2(TopLeft, "<*underline=8*>Monthly Production", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
     c.yAxis().setLabelStyle('verdana.ttf', 64)
     c.yAxis().setTickDensity(100)
+    c.yAxis().setTitle("BTUs", 'verdana.ttf', 64)
     c.xAxis().setLabels(labels)
     c.xAxis().setLabelStyle('verdana.ttf', 64)
     c.makeChart("images/SampleGraph4.png")    
@@ -421,7 +430,7 @@ def go():
     Elements.append(UseUpSpace())
 
     # populate special instructions
-    Elements.append(Paragraph("There are no special instructions", styles['BillField']))
+    Elements.append(Spacer(50,50))
     Elements.append(UseUpSpace())
     
     # populate billing address
