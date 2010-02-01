@@ -467,7 +467,7 @@
 						<xs:element name="units" type="xs:string" minOccurs="0"/>
 						<xs:element name="priorreading" type="xs:decimal" minOccurs="0"/>
 						<xs:element name="presentreading" type="xs:decimal" minOccurs="0"/>
-						<xs:element name="factor" type="xs:integer" minOccurs="0"/>
+						<xs:element name="factor" type="xs:decimal" minOccurs="0"/>
 						<xs:element name="total" type="xs:decimal"/>
 					</xs:sequence>
 					<xs:attribute name="shadow" type="xs:boolean" use="required"/>
