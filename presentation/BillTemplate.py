@@ -453,7 +453,7 @@ def go():
     pageTwoBackground = Image('images/EmeraldCityBackground2.png',letter[0], letter[1])
     Elements.append(pageTwoBackground)
 
-    Elements.append(Paragraph("Your utility's charges before Guaranteed Savings through Green Energy.", styles['BillLabel']))
+    Elements.append(Paragraph("Original utility charges prior to renewable energy.", styles['BillLabel']))
     Elements.append(UseUpSpace())
 
     # list of the rows
