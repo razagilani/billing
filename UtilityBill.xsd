@@ -587,7 +587,7 @@
 	</xs:complexType>
 	<xs:complexType name="timerange">
 		<xs:sequence>
-			<xs:sequence minOccurs="0">
+			<xs:sequence>
 				<xs:element name="from" type="xs:time"/>
 				<xs:element name="to" type="xs:time"/>
 			</xs:sequence>
