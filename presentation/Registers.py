@@ -13,7 +13,8 @@ import sys
 import os  
 from pprint import pprint
 from types import NoneType
-from datetime import date
+from datetime import date, datetime,timedelta, time
+import random
 
 # for xml processing
 import amara
@@ -28,25 +29,47 @@ from amara import xml_print
 
 class Register():
     """"""
+    
+    def __init__(self):
+        self.__totalEnergy = 0
+
     def validHours(self, theDate):
         validHours = []
         for inclusion in self.inclusions:
-            print self.identifier
-            print inclusion
+            #print self.identifier
+            #print inclusion
             # if holiday, meter is on the entire day
             if ((theDate in inclusion[3])):
-                print "Matched Holidays"
+                #print "Matched Holidays"
                 return validHours.append((0, 23))
 
             if (theDate.isoweekday() in inclusion[2]):
-                print ("Matched Weekdays")
+                #print ("Matched Weekdays")
                 validHours.append((inclusion[0], inclusion[1]))
 
         return validHours
 
     def accumulate(self, energy):
-        self.totalEnergy += energy
+        self.__totalEnergy += energy
         
+    def totalEnergy(self):
+        return self.__totalEnergy
+
+
+
+def dateGenerator(from_date=date.today(), to_date=None):
+    while to_date is None or from_date <= to_date:
+        yield from_date
+        from_date = from_date + timedelta(days = 1)
+    return
+
+# get pythonic with filter()
+#def elecFuel(register):
+#    return register.service == u'electric'
+#
+#def gasFuel(register):
+#    return register.service == u'gas'
+
 
 
 def go():
@@ -97,11 +120,18 @@ def go():
                         # here is the bug:  exclusion.fromhour.  Fails here, not up there.  Why?????
                         r.exclusions.append((None, None, None, holidays))
 
-    print "----"
-    theDate = date(2010, 5, 27)
-    print registers[3].validHours(theDate)
-
-
+    # service date range
+    for theDate in dateGenerator(date(2010,2,5), date(2010, 2, 10)):
+        for register in registers:
+            #print register.service
+            #print register.identifier
+            hours = []
+            hours = register.validHours(theDate)
+            for hour in hours:
+                #energy = an_obj.get_energy_consumed(theDate, hours, register.service)
+                energy = random.uniform(1,50)
+                register.accumulate(energy)
+            print str(theDate) + "," + str(register.service) + "," + str(register.identifier) + "," + str(register.totalEnergy())
 
 
      
