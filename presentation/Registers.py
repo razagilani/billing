@@ -22,20 +22,26 @@ from amara import bindery
 from amara import xml_print
 
 
-
-#
 import sky_objects
-
-
 #
 # Register
 #
 
 
 class Register():
-    """"""
-    
-    def __init__(self):
+    """Register
+    a class representing an old-school hardware register on an electrical meter
+    the individual registers accumulate energy for different periods of the day
+
+    These registers turn on or off according to a set of rules: some registers
+    accumulate energy only if the day is not a holiday, or not a weekend, etc.
+    """
+    def __init__(self, identifier = "Unidentified Register", inclusions = None,
+                       exclusions = None):
+        """initialize our register's energy to 0"""
+        self.identifier = identifier
+        self.inclusions = inclusions
+        self.exclusions = exclusions
         self.__totalEnergy = 0
 
     def validHours(self, theDate):
@@ -56,7 +62,7 @@ class Register():
 
     def accumulate(self, energy):
         self.__totalEnergy += energy
-        
+
     def totalEnergy(self):
         return self.__totalEnergy
         
@@ -157,6 +163,5 @@ def go():
                 if (len(energy) > 0):
                     register.accumulate(energy[0])
             print str(theDate) + ", " + register.service +  ", " + str(register.identifier) + ", " + str(register.validHours(theDate)) + ", " + str(register.totalEnergy())
-
 if __name__ == "__main__":  
     go()
