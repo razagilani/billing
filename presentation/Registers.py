@@ -22,6 +22,11 @@ from amara import bindery
 from amara import xml_print
 
 
+
+#
+import sky_objects
+
+
 #
 # Register
 #
@@ -54,6 +59,12 @@ class Register():
         
     def totalEnergy(self):
         return self.__totalEnergy
+        
+    def serviceType(self):
+        if self.service == u'Electric':
+            return 'elec'
+        if self.service == u'Gas':
+            return 'gas'
 
 
 
@@ -76,7 +87,7 @@ def go():
     '''docstring goes here?'''
 
     # Bind to XML bill
-    dom = bindery.parse('../sample/RegTest.xml')
+    dom = bindery.parse('../billing/sample/RegTest.xml')
 
     registers = []
     for measuredUsage in dom.utilitybill.measuredusage: 
@@ -120,20 +131,32 @@ def go():
                         # here is the bug:  exclusion.fromhour.  Fails here, not up there.  Why?????
                         r.exclusions.append((None, None, None, holidays))
 
+
+
+    an_obj = sky_objects.STProject("daves")
+    a_conf = sky_objects.NRG_DeltaConfigurator("Electric", 1, 15, 10)
+    a_conf.fueltype = 'elec'
+    an_obj.add_consumed_nrg_config(a_conf)
+
+
     # service date range
-    for theDate in dateGenerator(date(2010,2,5), date(2010, 2, 10)):
+    for theDate in dateGenerator(date(2009,12,7), date(2009, 12, 7)):
         for register in registers:
-            #print register.service
-            #print register.identifier
             hours = []
             hours = register.validHours(theDate)
-            for hour in hours:
-                #energy = an_obj.get_energy_consumed(theDate, hours, register.service)
-                energy = random.uniform(1,50)
-                register.accumulate(energy)
-            print str(theDate) + "," + str(register.service) + "," + str(register.identifier) + "," + str(register.totalEnergy())
+            for hourrange in hours:
+                #print hourrange
+                #print register.serviceType()
+                #print str(hours) + " " + str(theDate)
+                #print datetime(theDate.year, theDate.month, theDate.day)
+                #print hourrange
+                #print register.serviceType()
+                energy = an_obj.get_energy_consumed(datetime(theDate.year, theDate.month, theDate.day), hourrange, register.serviceType())
+                #print energy
+                #energy = random.uniform(1,50)
+                if (len(energy) > 0):
+                    register.accumulate(energy[0])
+            print str(theDate) + ", " + register.service +  ", " + str(register.identifier) + ", " + str(register.validHours(theDate)) + ", " + str(register.totalEnergy())
 
-
-     
 if __name__ == "__main__":  
     go()

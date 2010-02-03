@@ -518,7 +518,7 @@
 				<ub:effective>
 					<ub:inclusions>
 						<ub:fromhour>00:00:00</ub:fromhour>
-						<ub:tohour>08:00:00</ub:tohour>
+						<ub:tohour>07:00:00</ub:tohour>
 						<ub:weekday>1</ub:weekday>
 						<ub:weekday>2</ub:weekday>
 						<ub:weekday>3</ub:weekday>
@@ -554,8 +554,8 @@
 				<ub:description>Skyline Generated Off Peak</ub:description>
 				<ub:effective>
 					<ub:inclusions>
-						<ub:fromhour>08:00:00</ub:fromhour>
-						<ub:tohour>12:00:00</ub:tohour>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>07:00:00</ub:tohour>
 						<ub:weekday>1</ub:weekday>
 						<ub:weekday>2</ub:weekday>
 						<ub:weekday>3</ub:weekday>
@@ -592,7 +592,7 @@
 				<ub:effective>
 					<ub:inclusions>
 						<ub:fromhour>08:00:00</ub:fromhour>
-						<ub:tohour>12:00:00</ub:tohour>
+						<ub:tohour>11:00:00</ub:tohour>
 						<ub:weekday>1</ub:weekday>
 						<ub:weekday>2</ub:weekday>
 						<ub:weekday>3</ub:weekday>
@@ -632,7 +632,7 @@
 				<ub:effective>
 					<ub:inclusions>
 						<ub:fromhour>08:00:00</ub:fromhour>
-						<ub:tohour>12:00:00</ub:tohour>
+						<ub:tohour>11:00:00</ub:tohour>
 						<ub:weekday>1</ub:weekday>
 						<ub:weekday>2</ub:weekday>
 						<ub:weekday>3</ub:weekday>
@@ -672,7 +672,7 @@
 				<ub:effective>
 					<ub:inclusions>
 						<ub:fromhour>12:00:00</ub:fromhour>
-						<ub:tohour>20:00:00</ub:tohour>
+						<ub:tohour>19:00:00</ub:tohour>
 						<ub:weekday>1</ub:weekday>
 						<ub:weekday>2</ub:weekday>
 						<ub:weekday>3</ub:weekday>
@@ -703,7 +703,7 @@
 				<ub:effective>
 					<ub:inclusions>
 						<ub:fromhour>12:00:00</ub:fromhour>
-						<ub:tohour>20:00:00</ub:tohour>
+						<ub:tohour>19:00:00</ub:tohour>
 						<ub:weekday>1</ub:weekday>
 						<ub:weekday>2</ub:weekday>
 						<ub:weekday>3</ub:weekday>
