@@ -146,7 +146,7 @@ def go():
 
 
     # service date range
-    for theDate in dateGenerator(date(2009,12,7), date(2009, 12, 7)):
+    for theDate in dateGenerator(date(2009,12,1), date(2009, 12, 31)):
         for register in registers:
             hours = []
             hours = register.validHours(theDate)
