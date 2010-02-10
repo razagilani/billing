@@ -582,7 +582,11 @@
 	<xs:complexType name="effective">
 		<xs:sequence>
 			<xs:element name="inclusions" type="ub:timerange" minOccurs="0" maxOccurs="unbounded"/>
-			<xs:element name="exclusions" type="ub:timerange" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="exclusions" type="ub:timerange" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Exclusions can only contain holidays</xs:documentation>
+				</xs:annotation>
+			</xs:element>
 		</xs:sequence>
 	</xs:complexType>
 	<xs:complexType name="timerange">
