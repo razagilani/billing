@@ -13,7 +13,7 @@ import sys
 import os  
 from pprint import pprint
 from types import NoneType
-
+import math
 #
 # Types for ReportLab
 #
@@ -152,6 +152,7 @@ def go():
     styles.add(ParagraphStyle(name='BillLabelRight1', fontName='VerdanaB', fontSize=10, leading=10, alignment=TA_RIGHT))
     styles.add(ParagraphStyle(name='BillLabelLg', fontName='VerdanaB', fontSize=12, leading=14))
     styles.add(ParagraphStyle(name='BillLabelSm', fontName='VerdanaB', fontSize=8, leading=8))
+    styles.add(ParagraphStyle(name='GraphLabel', fontName='Verdana', fontSize=6, leading=6))
     styles.add(ParagraphStyle(name='BillField', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_LEFT))
     styles.add(ParagraphStyle(name='BillFieldLg', fontName='Inconsolata', fontSize=12, leading=12, alignment=TA_LEFT))
     styles.add(ParagraphStyle(name='BillFieldRight', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_RIGHT))
@@ -240,7 +241,7 @@ def go():
     doc.addPageTemplates([firstPage, secondPage])
 
     # Bind to XML bill
-    dom = bindery.parse('../bills/Skyline-1-10001.xml')
+    dom = bindery.parse('../bills/Skyline-2-10001.xml')
 
     Elements = []
 
@@ -318,17 +319,17 @@ def go():
     # populate graph one
 
     # Construct period consumption/production ratio graph
-    data = [40, 60]
+    data = [80, 30982]
     labels = ["Renewable", "Conventional"]
     c = PieChart(10*270, 10*127)
-    c.addTitle2(TopLeft, "<*underline=8*>Utilization This Period", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
+    c.addTitle2(TopLeft, "<*underline=8*>Energy Utilization This Period", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
 
     # Configure the labels using CDML to include the icon images
-    c.setLabelFormat("{label} {percent|0}%")
+    c.setLabelFormat("{label} {percent|3}%")
 
 
     c.setColors2(DataColor, [0x007437,0x5a8f47]) 
-    c.setPieSize((10*270)/1.9, (10*127)/1.9, ((10*127)/2.5))
+    c.setPieSize((10*270)/2.2, (10*127)/1.65, ((10*127)/3.5))
     c.setData(data, labels)
     c.setLabelStyle('verdana.ttf', 64)
     c.makeChart("images/SampleGraph1.png")
@@ -343,9 +344,8 @@ def go():
 
     environmentalBenefit = [
         [Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Pounds Carbon Offset", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
-        [Paragraph("Renewable Energy Produced", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
-        [Paragraph("Equivalent Trees", styles['BillLabelSm']), Paragraph("", styles['BillFieldSm'])]
+        [Paragraph("Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("1,666,175 BTUs", styles['BillFieldSm'])],
+        [Paragraph("Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph("339.5", styles['BillFieldSm'])],
     ]
 
     t = Table(environmentalBenefit, [180,90])
@@ -353,8 +353,6 @@ def go():
 
     Elements.append(t)
 
-    Elements.append(Spacer(100,20))
-    Elements.append(Paragraph("<img width=\"20\" height=\"25\" src=\"images/TempTree.png\"/>  <img width=\"20\" height=\"25\" src=\"images/TempTree.png\"/>  <img width=\"20\" height=\"25\" src=\"images/TempTree.png\"/>", styles['BillLabel']))
 
     Elements.append(UseUpSpace())
 
@@ -364,25 +362,44 @@ def go():
     # construct system life cumulative numbers table
 
     systemLife = [
-        [Paragraph("<u>Total System Life</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Dollar Savings", styles['BillLabelSm']), Paragraph("1.43", styles['BillFieldSm'])],
-        [Paragraph("Pounds Carbon Offset", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
-        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
-        [Paragraph("Total Renewable Energy Produced", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
-        [Paragraph("Equivalent Trees", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])]
+        [Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
+        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph("7.13", styles['BillFieldSm'])],
+        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("2,282,494 BTUs", styles['BillFieldSm'])],
+        # for next bill period
+        #[Paragraph("Total Renewable Energy Produced", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
+        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph("435.05", styles['BillFieldSm'])],
+        [Paragraph("Equivalent Trees to Date", styles['BillLabelSm']), Paragraph("0.33", styles['BillFieldSm'])]
     ]
 
     t = Table(systemLife, [180,90])
     t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
 
     Elements.append(t)
+
+    Elements.append(Spacer(100,20))
+    
+    # build string for trees
+    numTrees = math.modf(435.05/1400.0)[1]
+    fracTree = str(math.modf(435.05/1400)[0])[2:3]
+    
+    treeString = ""
+    while (numTrees) > 0:
+        treeString += "<img width=\"20\" height=\"25\" src=\"images/tree3.png\"/>"
+        numTrees -= 1
+
+    if (fracTree != 0): treeString += "<img width=\"20\" height=\"25\" src=\"images/tree3-" + fracTree + ".png\"/>"
+
+    Elements.append(Paragraph("<para leftIndent=\"6\">"+treeString+"</para>", styles['BillLabel']))
+    Elements.append(Spacer(100,5))
+    #Elements.append(Paragraph("<para leftIndent=\"50\">Ten's of Trees</para>", styles['GraphLabel']))
+
     Elements.append(UseUpSpace())
 
 
     # populate graph four 
     
     # construct annual production graph
-    data = [30, 28, 40, 55, 75, 68, 54, 60, 50, 62, 75, 65]
+    data = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6.2, 16.7]
     labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     c = XYChart(10*270, 10*127)
     c.setPlotArea((10*270)/6, (10*127)/6.5, (10*270)*.8, (10*127)*.70)
@@ -391,7 +408,7 @@ def go():
     c.addTitle2(TopLeft, "<*underline=8*>Monthly Production", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
     c.yAxis().setLabelStyle('verdana.ttf', 64)
     c.yAxis().setTickDensity(100)
-    c.yAxis().setTitle("BTUs", 'verdana.ttf', 64)
+    c.yAxis().setTitle("100 Thousand BTUs", 'verdana.ttf', 52)
     c.xAxis().setLabels(labels)
     c.xAxis().setLabelStyle('verdana.ttf', 64)
     c.makeChart("images/SampleGraph4.png")    
@@ -577,6 +594,23 @@ def go():
     doc.setProgressCallBack(progress)
     doc.build(Elements)
 
-     
+def poundsCarbonFromGas(therms = 0):
+    """http://www.carbonfund.org/site/pages/carbon_calculators/category/Assumptions
+    There are 12.0593 pounds CO2 per CCF of natural gas. We multiply 12.0593 by the number of CCF consumed annually and divide by 2,205 to get metric tons of CO2.
+    13.46lbs per therm
+    In the United States and Canada[2] however a ton is defined to be 2000 pounds [about 907 kg] (wikipedia)"""
+    return int(therms) * 13.46
+
+def poundsCarbonFromElectric(kWh = 0):
+    """http://www.carbonfund.org/site/pages/carbon_calculators/category/Assumptions
+    On average, electricity sources emit 1.297 lbs CO2 per kWh (0.0005883 metric tons CO2 per kWh)
+    In the United States and Canada[2] however a ton is defined to be 2000 pounds [about 907 kg] (wikipedia)"""
+    return int(kWh) * 1.297
+
+def equivalentTrees(poundsCarbonAvoided = 0):
+    """One ton per tree over the lifetime, ~13 lbs a year.
+    Assume 1.08 pounds per bill period"""
+    return int(poundsCarbon) * 1.08
+
 if __name__ == "__main__":  
     go()
