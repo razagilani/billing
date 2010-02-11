@@ -319,7 +319,7 @@ def go():
     # populate graph one
 
     # Construct period consumption/production ratio graph
-    data = [80, 30982]
+    data = [76.45, 30982]
     labels = ["Renewable", "Conventional"]
     c = PieChart(10*270, 10*127)
     c.addTitle2(TopLeft, "<*underline=8*>Energy Utilization This Period", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
@@ -332,9 +332,9 @@ def go():
     c.setPieSize((10*270)/2.2, (10*127)/1.65, ((10*127)/3.5))
     c.setData(data, labels)
     c.setLabelStyle('verdana.ttf', 64)
-    c.makeChart("images/SampleGraph1.png")
+    c.makeChart("images/utilization.png")
    
-    Elements.append(Image('images/SampleGraph1.png', 270*.9, 127*.9))
+    Elements.append(Image('images/utilization.png', 270*.9, 127*.9))
     Elements.append(UseUpSpace())
 
 
@@ -344,8 +344,8 @@ def go():
 
     environmentalBenefit = [
         [Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("1,666,175 BTUs", styles['BillFieldSm'])],
-        [Paragraph("Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph("339.5", styles['BillFieldSm'])],
+        [Paragraph("Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("1,944,350 BTUs", styles['BillFieldSm'])],
+        [Paragraph("Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph("311.15", styles['BillFieldSm'])],
     ]
 
     t = Table(environmentalBenefit, [180,90])
@@ -363,12 +363,12 @@ def go():
 
     systemLife = [
         [Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph("7.13", styles['BillFieldSm'])],
-        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("2,282,494 BTUs", styles['BillFieldSm'])],
+        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph("6.14", styles['BillFieldSm'])],
+        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("2,560,669 BTUs", styles['BillFieldSm'])],
         # for next bill period
         #[Paragraph("Total Renewable Energy Produced", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
-        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph("435.05", styles['BillFieldSm'])],
-        [Paragraph("Equivalent Trees to Date", styles['BillLabelSm']), Paragraph("0.33", styles['BillFieldSm'])]
+        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph("406.7", styles['BillFieldSm'])],
+        [Paragraph("Equivalent Trees to Date", styles['BillLabelSm']), Paragraph("0.3", styles['BillFieldSm'])]
     ]
 
     t = Table(systemLife, [180,90])
@@ -399,13 +399,13 @@ def go():
     # populate graph four 
     
     # construct annual production graph
-    data = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6.2, 16.7]
+    data = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6.2, 19.4]
     labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     c = XYChart(10*270, 10*127)
     c.setPlotArea((10*270)/6, (10*127)/6.5, (10*270)*.8, (10*127)*.70)
     c.setColors2(DataColor, [0x9bbb59]) 
     c.addBarLayer(data)
-    c.addTitle2(TopLeft, "<*underline=8*>Monthly Production", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
+    c.addTitle2(TopLeft, "<*underline=8*>Period Production", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
     c.yAxis().setLabelStyle('verdana.ttf', 64)
     c.yAxis().setTickDensity(100)
     c.yAxis().setTitle("100 Thousand BTUs", 'verdana.ttf', 52)

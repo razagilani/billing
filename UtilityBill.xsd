@@ -593,8 +593,16 @@
 		<xs:choice>
 			<xs:sequence>
 				<xs:sequence>
-					<xs:element name="fromhour" type="xs:time"/>
-					<xs:element name="tohour" type="xs:time"/>
+					<xs:element name="fromhour" type="xs:time">
+						<xs:annotation>
+							<xs:documentation>Beginning on hour</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="tohour" type="xs:time">
+						<xs:annotation>
+							<xs:documentation>Ending including this entire</xs:documentation>
+						</xs:annotation>
+					</xs:element>
 				</xs:sequence>
 				<xs:element name="weekday" maxOccurs="7">
 					<xs:annotation>
