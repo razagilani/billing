@@ -241,7 +241,7 @@ def go():
     doc.addPageTemplates([firstPage, secondPage])
 
     # Bind to XML bill
-    dom = bindery.parse('../bills/Skyline-2-10001.xml')
+    dom = bindery.parse('../sample/DealerSample.xml')
 
     Elements = []
 
@@ -319,13 +319,13 @@ def go():
     # populate graph one
 
     # Construct period consumption/production ratio graph
-    data = [76.45, 30982]
+    data = [23, 77]
     labels = ["Renewable", "Conventional"]
     c = PieChart(10*270, 10*127)
     c.addTitle2(TopLeft, "<*underline=8*>Energy Utilization This Period", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
 
     # Configure the labels using CDML to include the icon images
-    c.setLabelFormat("{label} {percent|3}%")
+    c.setLabelFormat("{label} {percent|1}%")
 
 
     c.setColors2(DataColor, [0x007437,0x5a8f47]) 
@@ -344,8 +344,8 @@ def go():
 
     environmentalBenefit = [
         [Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("1,944,350 BTUs", styles['BillFieldSm'])],
-        [Paragraph("Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph("311.15", styles['BillFieldSm'])],
+        [Paragraph("Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("19,056,230 BTUs", styles['BillFieldSm'])],
+        [Paragraph("Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph("2,655.25", styles['BillFieldSm'])],
     ]
 
     t = Table(environmentalBenefit, [180,90])
@@ -363,12 +363,12 @@ def go():
 
     systemLife = [
         [Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph("6.14", styles['BillFieldSm'])],
-        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("2,560,669 BTUs", styles['BillFieldSm'])],
+        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph("684.17", styles['BillFieldSm'])],
+        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("228,674,760 BTUs", styles['BillFieldSm'])],
         # for next bill period
         #[Paragraph("Total Renewable Energy Produced", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
-        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph("406.7", styles['BillFieldSm'])],
-        [Paragraph("Equivalent Trees to Date", styles['BillLabelSm']), Paragraph("0.3", styles['BillFieldSm'])]
+        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph("31,860", styles['BillFieldSm'])],
+        [Paragraph("Trees to Date (1 tree represents 10)", styles['BillLabelSm']), Paragraph("2.6", styles['BillFieldSm'])]
     ]
 
     t = Table(systemLife, [180,90])
@@ -379,8 +379,8 @@ def go():
     Elements.append(Spacer(100,20))
     
     # build string for trees
-    numTrees = math.modf(435.05/1400.0)[1]
-    fracTree = str(math.modf(435.05/1400)[0])[2:3]
+    numTrees = 2 #math.modf(435.05/1400.0)[1]
+    fracTree = str(6) #str(math.modf(435.05/1400)[0])[2:3]
     
     treeString = ""
     while (numTrees) > 0:
@@ -398,8 +398,8 @@ def go():
 
     # populate graph four 
     
-    # construct annual production graph
-    data = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6.2, 19.4]
+    # construct annual production graph  229
+    data = [16.5, 14, 14.5, 16.5, 21, 27, 26, 20, 19, 17.5, 17, 19]
     labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     c = XYChart(10*270, 10*127)
     c.setPlotArea((10*270)/6, (10*127)/6.5, (10*270)*.8, (10*127)*.70)
