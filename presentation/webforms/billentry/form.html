@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<title></title>
+
+	<script type="text/javascript" src="jquery-1.4.2.js"></script>
+	<script type="text/javascript">
+	//<![CDATA[
+
+		var httpObject = null;
+		var xmlDoc = "foo";
+		var appAvailable = false;
+
+
+		$(document).ready(function()
+		{
+			// using low level API since high level API does not support PUT
+			jQuery.ajax({
+				url: "http://skyline/exist/rest/db/test/test.xml", //http://skyline/exist/rest/db/10001/Skyline-1-10001.xml
+				type: "GET",
+				processData: false,
+				data: xmlDoc,
+				dataType: "xml",
+				success: handleXML_GET,
+				error: handleXML_GET_error
+			});
+
+		})
+
+		function handleXML_GET(data)
+		{
+			xmlDoc = data;
+			//alert(data);
+			try
+			{
+				//$("#xmlDoc").append(data);//data;
+
+$("#path").append(get_XPath(document.getElementsByName('head')));
+
+alert (get_XPath($(data).find("Category")));
+
+				// surprise! ns prefix colons must be quoted when passed into jquery.
+				$(data).find("Category").each(function()
+				{
+					//$("#xmlForm").append($(this).text() + "<br/>");
+					$("#xmlForm").prepend(
+						"<input type=\"textfield\" name=\"xpathdata\" value=\"" +
+						$(this).text() +
+						"\"/><br/>");
+				});
+				appAvailable = true;
+			} catch (e) {
+				alert(e);
+			}
+
+			jQuery.ajax({
+				url: "http://skyline/exist/rest/Test10001/Skyline-1-10001.xml",
+				type: "PUT",
+				processData: false,
+				contentType: "text/xml",
+				data: xmlDoc,
+				success: handleXML_PUT,
+				error: handleXML_PUT_error
+			});
+		}
+
+		function handleXML_GET_error(xhr, status, error)
+		{
+			// ToDo: put into document body
+			alert(status);
+			alert("readyState: "+xhr.readyState+"\nstatus: "+xhr.status);
+			alert("responseText: "+xhr.responseText);
+		}
+
+		function handleXML_PUT(data, status, req)
+		{
+			// never make it here due to a bug(?) in JQuery and the way its xmlparser handles server return values
+			alert("PUT " + data);
+		}
+
+		function handleXML_PUT_error(xhr, status, error)
+		{
+			if (status == "parsererror")
+			{
+				// http://james.revillini.com/2006/10/27/no-element-found-in-firebug-or-firefox-javascript-console/
+				// probably need to determine how to check that PUT completed successfully (which if it does, the server return data still causes a failure in jquery)
+			} else {
+				alert(status);
+				alert("readyState: "+xhr.readyState+"\nstatus: "+xhr.status);
+				alert("responseText: "+xhr.responseText);
+			}
+		}
+
+		function submitXML()
+		{
+			alert("submit");
+		}
+
+function get_XPath(elt)
+         {var path = '';
+          for (; elt && elt.nodeType==1; elt=elt.parentNode)
+              {var idx=$(elt.parentNode).children(elt.tagName).index(elt)+1;
+               idx>1 ? (idx='['+idx+']') : (idx='');
+               path='/'+elt.tagName.toLowerCase()+idx+path;
+              }
+          return path;
+         }
+
+
+
+	//]]>
+	</script>
+</head>
+<body>
+
+XXX<p id="path"></p>XXX
+<form id="xmlForm" action="javascript:submitXML()">
+<input type="submit" value="Submit" />
+</form>
+
+
+
+	<!--form name="testForm">
+		Input text: <input type="text" onkeyup="doWork();" name="inputText" id="inputText" />
+		Output text: <input type="text" name="outputText" id="outputText" />
+	</form-->
+</body>
+</html>
