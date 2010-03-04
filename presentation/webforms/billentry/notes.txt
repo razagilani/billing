@@ -1,0 +1,35 @@
+
+Getting client javascript working with eXist
+
+Apache:
+
+<VirtualHost *:80>
+	ServerName skyline
+	DocumentRoot "C:/workspace-skyline/billing/presentation/webforms/billentry"
+	ErrorLog "logs/skyline-error.log"
+	CustomLog "logs/skyline-access.log" common
+
+	ProxyRequests Off
+
+	<Proxy *>
+	Order deny,allow
+	Allow from all
+	</Proxy>
+
+	ProxyPass /exist/ http://localhost:8080/exist/
+	ProxyPassReverse /exist http://localhost:8080/exist/
+
+</VirtualHost>
+
+<Directory "C:/workspace-skyline/billing/presentation/webforms/billentry">
+	Order Deny,Allow
+	Allow from all
+</Directory>
+
+
+local host:
+
+c:\windows\system32\drivers\etc\hosts
+
+127.0.0.1	skyline
+
