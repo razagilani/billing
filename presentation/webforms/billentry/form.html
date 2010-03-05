@@ -11,13 +11,13 @@
 		var httpObject = null;
 		var xmlDoc = "foo";
 		var appAvailable = false;
-
+var description;
 
 		$(document).ready(function()
 		{
 			// using low level API since high level API does not support PUT
 			jQuery.ajax({
-				url: "http://skyline/exist/rest/db/test/test.xml", //http://skyline/exist/rest/db/10001/Skyline-1-10001.xml
+				url: "http://skyline/exist/rest/db/10001/Skyline-1-10001.xml", //  http://skyline/exist/rest/db/test/test.xml http://skyline/exist/rest/db/10001/Skyline-1-10001.xml
 				type: "GET",
 				processData: false,
 				data: xmlDoc,
@@ -30,27 +30,96 @@
 		function handleXML_GET(data)
 		{
 			xmlDoc = data;
-			alert(data.getElementsByTagName("Category")[0]);
-			try
+
+			var charges = xmlDoc.getElementsByTagName("ub:charge");
+			alert("Charges " + charges);
+			alert("Charges[0] " + charges[0].nodeName);
+			for(i = 0; i < charges.length; i++)
+			{
+//				alert("nodeType "+charges[i].nodeType);
+//				alert("nodeName "+charges[i].nodeName);
+//				alert("xpath "+ getElementXPath(charges[i]));
+
+try
+{
+				var description = charges[i].getElementsByTagName("ub:description")
+				var descriptionText = description[0].childNodes[0].nodeValue;
+
+				var quantity = charges[i].getElementsByTagName("ub:quantity")
+				var quantityText = quantity[0].childNodes[0].nodeValue;
+
+				var rate = charges[i].getElementsByTagName("ub:rate");
+				var rateText = rate[0].childNodes[0].nodeValue;
+
+				var total = charges[i].getElementsByTagName("ub:total");
+				var totalText = total[0].childNodes[0].nodeValue;
+
+} catch (e) { alert(e)}
+
+				$("#textContent").append("<br/>" + getElementXPath(description[0]) + "<br/>" + descriptionText);
+				$("#textContent").append("<br/>" + getElementXPath(quantity[0]) + "<br/>" + quantityText);
+				$("#textContent").append("<br/>" + getElementXPath(rate[0]) + "<br/>" + rateText);
+				$("#textContent").append("<br/>" + getElementXPath(total[0]) + "<br/>" + totalText);
+
+/*				for (ii = 0; ii < charges[i].childNodes.length; ii++)
+				{
+					var childNode = charges[i].childNodes[ii];
+					alert("child node name " + childNode.nodeName);
+					alert("child node type " + childNode.nodeType);
+					alert("child node value " + childNode.nodeValue);
+					alert("child node text " + childNode.firstChild);
+
+
+					if (childNode.nodeType != 1) continue;
+					alert("child childNodes  " + childNode.childNodes);
+					xpath = getElementXPath(childNode);
+					$("xmlForm").append
+					(
+						"<p>"+xpathdata+"</p>"+
+						"<p>"+charge.text()+"</p>"+
+						"<input type=\"textfield\" name=\""+xpath+"\" value=\"" +
+						childNode.text +
+						"\"/><br/>"
+					)
+
+				}
+
+*/
+
+			}
+
+
+/*			try
 			{
 				//$("#xmlDoc").append(data);//data;
 
 
+
 				// surprise! ns prefix colons must be quoted when passed into jquery.
-				$(data).find("Category").each(function()
+				$(data).find("ub\\:charge").each(function()
 				{
-					//$("#xmlForm").append($(this).text() + "<br/>");
-					xpathdata = getElementXPath(this)
-					$("#xmlForm").prepend("<p>"+xpathdata+"</p>"+
+					var charge = $(this);
+
+
+
+					var description = $(this).find("ub\\:description");
+					alert(getElementXPath(description));
+
+					alert (description.text());
+
+					xpathdata = getElementXPath(charge);
+					$("#xmlForm").append(
+						"<p>"+xpathdata+"</p>"+
+						"<p>"+charge.text()+"</p>"+
 						"<input type=\"textfield\" name=\""+xpathdata+"\" value=\"" +
-						$(this).text() +
+						charge.text() +
 						"\"/><br/>");
 				});
 				appAvailable = true;
 			} catch (e) {
 				alert(e);
 			}
-
+*/
 			jQuery.ajax({
 				url: "http://skyline/exist/rest/Test10001/Skyline-1-10001.xml",
 				type: "PUT",
@@ -131,6 +200,9 @@ function getElementIdx(elt)
 <body>
 
 XXX<p id="path"></p>XXX
+
+<p id="textContent"></p>
+
 <form id="xmlForm" action="javascript:submitXML()">
 <input type="submit" value="Submit" />
 </form>
