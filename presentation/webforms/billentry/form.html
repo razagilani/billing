@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
 <head>
 	<title></title>
 
@@ -11,7 +11,6 @@
 		var httpObject = null;
 		var xmlDoc = "foo";
 		var appAvailable = false;
-var description;
 
 		$(document).ready(function()
 		{
@@ -31,95 +30,43 @@ var description;
 		{
 			xmlDoc = data;
 
-			var charges = xmlDoc.getElementsByTagName("ub:charge");
-			alert("Charges " + charges);
-			alert("Charges[0] " + charges[0].nodeName);
-			for(i = 0; i < charges.length; i++)
+			var chargegroup = xmlDoc.getElementsByTagName("ub:chargegroup");
+
+			for (cg = 0; cg < chargegroup.length; cg++)
 			{
-//				alert("nodeType "+charges[i].nodeType);
-//				alert("nodeName "+charges[i].nodeName);
-//				alert("xpath "+ getElementXPath(charges[i]));
-
-try
-{
-				var description = charges[i].getElementsByTagName("ub:description")
-				var descriptionText = description[0].childNodes[0].nodeValue;
-
-				var quantity = charges[i].getElementsByTagName("ub:quantity")
-				var quantityText = quantity[0].childNodes[0].nodeValue;
-
-				var rate = charges[i].getElementsByTagName("ub:rate");
-				var rateText = rate[0].childNodes[0].nodeValue;
-
-				var total = charges[i].getElementsByTagName("ub:total");
-				var totalText = total[0].childNodes[0].nodeValue;
-
-} catch (e) { alert(e)}
-
-				$("#textContent").append("<br/>" + getElementXPath(description[0]) + "<br/>" + descriptionText);
-				$("#textContent").append("<br/>" + getElementXPath(quantity[0]) + "<br/>" + quantityText);
-				$("#textContent").append("<br/>" + getElementXPath(rate[0]) + "<br/>" + rateText);
-				$("#textContent").append("<br/>" + getElementXPath(total[0]) + "<br/>" + totalText);
-
-/*				for (ii = 0; ii < charges[i].childNodes.length; ii++)
+				var charges = chargegroup[cg].getElementsByTagName("ub:charges");
+				if (charges[0].attributes[0].nodeValue == "actual")
 				{
-					var childNode = charges[i].childNodes[ii];
-					alert("child node name " + childNode.nodeName);
-					alert("child node type " + childNode.nodeType);
-					alert("child node value " + childNode.nodeValue);
-					alert("child node text " + childNode.firstChild);
 
+					$("#xmlForm").append("<fieldset id=\"fieldset"+cg+"\">");
+					$("#fieldset"+cg).append("<legend>Chargegroup "+cg+"</legend>");
 
-					if (childNode.nodeType != 1) continue;
-					alert("child childNodes  " + childNode.childNodes);
-					xpath = getElementXPath(childNode);
-					$("xmlForm").append
-					(
-						"<p>"+xpathdata+"</p>"+
-						"<p>"+charge.text()+"</p>"+
-						"<input type=\"textfield\" name=\""+xpath+"\" value=\"" +
-						childNode.text +
-						"\"/><br/>"
-					)
+					var charge = charges[0].getElementsByTagName("ub:charge");
+					for(i = 0; i < charge.length; i++)
+					{
+						var description = charge[i].getElementsByTagName("ub:description")
+						var descriptionText = (description.length  == 1) ? description[0].childNodes[0].nodeValue : "";
 
+						var quantity = charge[i].getElementsByTagName("ub:quantity")
+						var quantityText = (quantity.length == 1) ? quantity[0].childNodes[0].nodeValue : "";
+
+						var rate = charge[i].getElementsByTagName("ub:rate");
+						var rateText = (rate.length == 1) ? rate[0].childNodes[0].nodeValue : "";
+
+						var total = charge[i].getElementsByTagName("ub:total");
+						var totalText = (total.length == 1) ? total[0].childNodes[0].nodeValue : "";
+
+						$("#fieldset"+cg).append("<a href=\"javascript:insert(\""+getElementXPath(description[0])+"\");\">Insert</a>");
+						$("#fieldset"+cg).append("<span>"+getElementXPath(description[0])+"</span><input type=\"textfield\" id=\"cg"+cg+"-"+i+"\" name=\"" + getElementXPath(description[0]) + "\" value=\"" + descriptionText + "\">");
+						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(quantity[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + quantityText + "\">");
+						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(rate[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + rateText + "\">");
+						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(total[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + totalText + "\">");
+						$("#fieldset"+cg).append("<br/>");
+					}
 				}
-
-*/
-
 			}
 
 
-/*			try
-			{
-				//$("#xmlDoc").append(data);//data;
-
-
-
-				// surprise! ns prefix colons must be quoted when passed into jquery.
-				$(data).find("ub\\:charge").each(function()
-				{
-					var charge = $(this);
-
-
-
-					var description = $(this).find("ub\\:description");
-					alert(getElementXPath(description));
-
-					alert (description.text());
-
-					xpathdata = getElementXPath(charge);
-					$("#xmlForm").append(
-						"<p>"+xpathdata+"</p>"+
-						"<p>"+charge.text()+"</p>"+
-						"<input type=\"textfield\" name=\""+xpathdata+"\" value=\"" +
-						charge.text() +
-						"\"/><br/>");
-				});
-				appAvailable = true;
-			} catch (e) {
-				alert(e);
-			}
-*/
 			jQuery.ajax({
 				url: "http://skyline/exist/rest/Test10001/Skyline-1-10001.xml",
 				type: "PUT",
@@ -161,9 +108,31 @@ try
 		function submitXML()
 		{
 			alert("submit");
+
+			// grab form and enumerate values
+
+			var fields = $("input[id*=\"cg\"]");
+
+			var asdasd = fields.map(function() {
+  				return this.value;
+			}).get().join(',');
+
+
+			// ensure that posts can be handled
+			$("#values").append(asdasd);
+
+
+
+
+			// ensure that nodes can be added and deleted
+
+
 		}
 
-
+		function insert(xpath)
+		{
+			alert("Will insert");
+		}
 
 function getElementXPath(elt)
 {
@@ -199,19 +168,19 @@ function getElementIdx(elt)
 </head>
 <body>
 
-XXX<p id="path"></p>XXX
 
-<p id="textContent"></p>
 
-<form id="xmlForm" action="javascript:submitXML()">
+<p>Form</p>
+<form id="xmlForm" action="javascript:submitXML();">
 <input type="submit" value="Submit" />
 </form>
+<p>Form</p>
 
 
+<p>Values</p>
+<p id="values"></p>
+<p>Values</p>
 
-	<!--form name="testForm">
-		Input text: <input type="text" onkeyup="doWork();" name="inputText" id="inputText" />
-		Output text: <input type="text" name="outputText" id="outputText" />
-	</form-->
+
 </body>
 </html>
