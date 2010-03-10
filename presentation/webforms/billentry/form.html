@@ -32,7 +32,6 @@
 			xmlDoc = data;
 			bindXML();
 
-
 			jQuery.ajax({
 				url: "http://skyline/exist/rest/Test10001/Skyline-1-10001.xml",
 				type: "PUT",
@@ -107,8 +106,9 @@
 						var total = charge[i].getElementsByTagName("ub:total");
 						var totalText = (total.length == 1 && total[0].hasChildNodes()) ? total[0].childNodes[0].nodeValue : "";
 
-						$("#fieldset"+cg).append("<a href=\"javascript:insertBefore('"+getElementXPath(charge[i])+"');\">Insert Above</a>&nbsp;");
-						$("#fieldset"+cg).append("<a href=\"javascript:insertAfter('"+getElementXPath(charge[i])+"');\">Insert Below</a>");
+						$("#fieldset"+cg).append("<a href=\"javascript:insertChargeAbove('"+getElementXPath(charge[i])+"');\">Insert Above</a>&nbsp;");
+						$("#fieldset"+cg).append("<a href=\"javascript:deleteCharge('"+getElementXPath(charge[i])+"');\">Delete</a>&nbsp;");
+						$("#fieldset"+cg).append("<a href=\"javascript:insertChargeBelow('"+getElementXPath(charge[i])+"');\">Insert Below</a>");
 						$("#fieldset"+cg).append("<input type=\"textfield\" id=\"cg"+cg+"-"+i+"\" name=\"" + getElementXPath(description[0]) + "\" value=\"" + descriptionText + "\">");
 						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(quantity[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + quantityText + "\">");
 						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(rate[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + rateText + "\">");
@@ -138,7 +138,7 @@
 		}
 
 
-		function insertBefore(xpath)
+		function insertChargeAbove(xpath)
 		{
 
  			var node = evaluateXPath(xmlDoc, xpath);
@@ -152,7 +152,7 @@
 
 		}
 
-		function insertAfter(xpath)
+		function insertChargeBelow(xpath)
 		{
 
  			var node = evaluateXPath(xmlDoc, xpath);
@@ -165,6 +165,20 @@
 			bindXML();
 
 		}
+
+		function deleteCharge(xpath)
+		{
+
+ 			var node = evaluateXPath(xmlDoc, xpath);
+			// check to ensure path pointed to a node
+
+			node[0].parentNode.removeChild(node[0]);
+
+			bindXML();
+
+		}
+
+
 
 
 
