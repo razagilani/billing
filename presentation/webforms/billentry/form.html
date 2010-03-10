@@ -9,7 +9,7 @@
 	//<![CDATA[
 
 		var httpObject = null;
-		var xmlDoc = "foo";
+		var xmlDoc = null;
 		var appAvailable = false;
 
 		$(document).ready(function()
@@ -28,43 +28,9 @@
 
 		function handleXML_GET(data)
 		{
+
 			xmlDoc = data;
-
-			var chargegroup = xmlDoc.getElementsByTagName("ub:chargegroup");
-
-			for (cg = 0; cg < chargegroup.length; cg++)
-			{
-				var charges = chargegroup[cg].getElementsByTagName("ub:charges");
-				if (charges[0].attributes[0].nodeValue == "actual")
-				{
-
-					$("#xmlForm").append("<fieldset id=\"fieldset"+cg+"\">");
-					$("#fieldset"+cg).append("<legend>Chargegroup "+cg+"</legend>");
-
-					var charge = charges[0].getElementsByTagName("ub:charge");
-					for(i = 0; i < charge.length; i++)
-					{
-						var description = charge[i].getElementsByTagName("ub:description")
-						var descriptionText = (description.length  == 1) ? description[0].childNodes[0].nodeValue : "";
-
-						var quantity = charge[i].getElementsByTagName("ub:quantity")
-						var quantityText = (quantity.length == 1) ? quantity[0].childNodes[0].nodeValue : "";
-
-						var rate = charge[i].getElementsByTagName("ub:rate");
-						var rateText = (rate.length == 1) ? rate[0].childNodes[0].nodeValue : "";
-
-						var total = charge[i].getElementsByTagName("ub:total");
-						var totalText = (total.length == 1) ? total[0].childNodes[0].nodeValue : "";
-
-						$("#fieldset"+cg).append("<a href=\"javascript:insert(\""+getElementXPath(description[0])+"\");\">Insert</a>");
-						$("#fieldset"+cg).append("<span>"+getElementXPath(description[0])+"</span><input type=\"textfield\" id=\"cg"+cg+"-"+i+"\" name=\"" + getElementXPath(description[0]) + "\" value=\"" + descriptionText + "\">");
-						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(quantity[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + quantityText + "\">");
-						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(rate[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + rateText + "\">");
-						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(total[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + totalText + "\">");
-						$("#fieldset"+cg).append("<br/>");
-					}
-				}
-			}
+			bindXML();
 
 
 			jQuery.ajax({
@@ -129,9 +95,74 @@
 
 		}
 
-		function insert(xpath)
+
+		// given xml, bind it to the form
+		function bindXML()
 		{
-			alert("Will insert");
+
+			// remove previously created form
+			$("#xmlForm").empty();
+
+			var chargegroup = xmlDoc.getElementsByTagName("ub:chargegroup");
+
+			for (cg = 0; cg < chargegroup.length; cg++)
+			{
+				var charges = chargegroup[cg].getElementsByTagName("ub:charges");
+				if (charges[0].attributes[0].nodeValue == "actual")
+				{
+
+					$("#xmlForm").append("<fieldset id=\"fieldset"+cg+"\">");
+					$("#fieldset"+cg).append("<legend>Chargegroup "+cg+"</legend>");
+
+					var charge = charges[0].getElementsByTagName("ub:charge");
+					for(i = 0; i < charge.length; i++)
+					{
+						var description = charge[i].getElementsByTagName("ub:description")
+						var descriptionText = (description.length == 1 && description[0].hasChildNodes()) ? description[0].childNodes[0].nodeValue : "";
+
+						var quantity = charge[i].getElementsByTagName("ub:quantity")
+						var quantityText = (quantity.length == 1 && quantity[0].hasChildNodes()) ? quantity[0].childNodes[0].nodeValue : "";
+
+						var rate = charge[i].getElementsByTagName("ub:rate");
+						var rateText = (rate.length == 1 && rate[0].hasChildNodes()) ? rate[0].childNodes[0].nodeValue : "";
+
+						var total = charge[i].getElementsByTagName("ub:total");
+						var totalText = (total.length == 1 && total[0].hasChildNodes()) ? total[0].childNodes[0].nodeValue : "";
+
+						$("#fieldset"+cg).append("<a href=\"javascript:insertBefore('"+getElementXPath(charge[i])+"');\">Insert Above</a>");
+						$("#fieldset"+cg).append("<span>"+getElementXPath(description[0])+"</span><input type=\"textfield\" id=\"cg"+cg+"-"+i+"\" name=\"" + getElementXPath(description[0]) + "\" value=\"" + descriptionText + "\">");
+						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(quantity[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + quantityText + "\">");
+						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(rate[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + rateText + "\">");
+						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(total[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + totalText + "\">");
+						$("#fieldset"+cg).append("<br/>");
+					}
+				}
+			}
+		}
+
+		function insertBefore(xpath)
+		{
+ 			var node = evaluateXPath(xmlDoc, xpath);
+			alert("Will insert before " + node[0].nodeName + " " + getElementXPath(node[0]));
+			// check to ensure path pointed to a node
+
+			var charge = xmlDoc.createElement("ub:charge");
+			var chargeDescription = xmlDoc.createElement("ub:description")
+			var chargeDescriptionText = xmlDoc.createTextNode("Description text goes here");
+			chargeDescription.appendChild(chargeDescriptionText);
+			charge.appendChild(chargeDescription);
+			var chargeQuantity = xmlDoc.createElement("ub:quantity");
+			charge.appendChild(chargeQuantity);
+			var chargeRate = xmlDoc.createElement("ub:rate");
+			charge.appendChild(chargeRate);
+			var chargeTotal = xmlDoc.createElement("ub:total");
+			charge.appendChild(chargeTotal);
+
+
+			node[0].parentNode.insertBefore(charge, node[0]);
+
+			bindXML();
+
 		}
 
 function getElementXPath(elt)
@@ -141,7 +172,9 @@ function getElementXPath(elt)
 	{
 		idx = getElementIdx(elt);
 		xname = elt.tagName;
-		if (idx > 1) xname += "[" + idx + "]";
+		// all nodes must be indexed otherwise path node matches all
+		// ToDo:  terminal node does not need an index
+		if (idx > 0) xname += "[" + idx + "]";
 		path = "/" + xname + path;
 	}
 
@@ -159,6 +192,48 @@ function getElementIdx(elt)
 	return count;
 }
 
+
+function getXPathForElement(el, xml)
+{
+	var xpath = '';
+	var pos, tempitem2;
+
+	while(el !== xml.documentElement)
+	{
+		pos = 0;
+		tempitem2 = el;
+		while(tempitem2)
+		{
+			if (tempitem2.nodeType === 1 && tempitem2.nodeName === el.nodeName)
+			{ // If it is ELEMENT_NODE of the same name
+				pos += 1;
+			}
+			tempitem2 = tempitem2.previousSibling;
+		}
+
+		xpath = "*[name()='"+el.nodeName+"' and namespace-uri()='"+(el.namespaceURI===null?'':el.namespaceURI)+"']["+pos+']'+'/'+xpath;
+
+		el = el.parentNode;
+	}
+
+	xpath = '/*'+"[name()='"+xml.documentElement.nodeName+"' and namespace-uri()='"+(el.namespaceURI===null?'':el.namespaceURI)+"']"+'/'+xpath;
+	xpath = xpath.replace(/\/$/, '');
+	return xpath;
+}
+
+
+function evaluateXPath(aNode, aExpr)
+{
+	var xpe = new XPathEvaluator();
+	var nsResolver = xpe.createNSResolver(aNode.ownerDocument == null ?
+	aNode.documentElement : aNode.ownerDocument.documentElement);
+	var result = xpe.evaluate(aExpr, aNode, nsResolver, 0, null);
+	var found = [];
+	var res;
+	while (res = result.iterateNext())
+		found.push(res);
+	return found;
+}
 
 
 
