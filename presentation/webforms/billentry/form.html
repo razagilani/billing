@@ -71,30 +71,6 @@
 			}
 		}
 
-		function submitXML()
-		{
-			alert("submit");
-
-			// grab form and enumerate values
-
-			var fields = $("input[id*=\"cg\"]");
-
-			var asdasd = fields.map(function() {
-  				return this.value;
-			}).get().join(',');
-
-
-			// ensure that posts can be handled
-			$("#values").append(asdasd);
-
-
-
-
-			// ensure that nodes can be added and deleted
-
-
-		}
-
 
 		// given xml, bind it to the form
 		function bindXML()
@@ -102,6 +78,8 @@
 
 			// remove previously created form
 			$("#xmlForm").empty();
+
+			$("#xmlForm").append("<input type=\"submit\" action=\"submit\"></input>");
 
 			var chargegroup = xmlDoc.getElementsByTagName("ub:chargegroup");
 
@@ -129,8 +107,9 @@
 						var total = charge[i].getElementsByTagName("ub:total");
 						var totalText = (total.length == 1 && total[0].hasChildNodes()) ? total[0].childNodes[0].nodeValue : "";
 
-						$("#fieldset"+cg).append("<a href=\"javascript:insertBefore('"+getElementXPath(charge[i])+"');\">Insert Above</a>");
-						$("#fieldset"+cg).append("<span>"+getElementXPath(description[0])+"</span><input type=\"textfield\" id=\"cg"+cg+"-"+i+"\" name=\"" + getElementXPath(description[0]) + "\" value=\"" + descriptionText + "\">");
+						$("#fieldset"+cg).append("<a href=\"javascript:insertBefore('"+getElementXPath(charge[i])+"');\">Insert Above</a>&nbsp;");
+						$("#fieldset"+cg).append("<a href=\"javascript:insertAfter('"+getElementXPath(charge[i])+"');\">Insert Below</a>");
+						$("#fieldset"+cg).append("<input type=\"textfield\" id=\"cg"+cg+"-"+i+"\" name=\"" + getElementXPath(description[0]) + "\" value=\"" + descriptionText + "\">");
 						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(quantity[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + quantityText + "\">");
 						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(rate[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + rateText + "\">");
 						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(total[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + totalText + "\">");
@@ -140,30 +119,72 @@
 			}
 		}
 
+		function submitXML(form)
+		{
+			// grab form and enumerate values
+			// find a better way to bind to form
+
+			var fields = $("input[id*=\"cg\"]");
+
+			var asdasd = fields.map(function() {
+  				return this.value;
+			}).get().join(',');
+
+			// ensure that posts can be handled
+			$("#values").append(asdasd);
+
+			// ensure that nodes can be added and deleted
+
+		}
+
+
 		function insertBefore(xpath)
 		{
+
  			var node = evaluateXPath(xmlDoc, xpath);
-			alert("Will insert before " + node[0].nodeName + " " + getElementXPath(node[0]));
 			// check to ensure path pointed to a node
 
-			var charge = xmlDoc.createElement("ub:charge");
-			var chargeDescription = xmlDoc.createElement("ub:description")
-			var chargeDescriptionText = xmlDoc.createTextNode("Description text goes here");
-			chargeDescription.appendChild(chargeDescriptionText);
-			charge.appendChild(chargeDescription);
-			var chargeQuantity = xmlDoc.createElement("ub:quantity");
-			charge.appendChild(chargeQuantity);
-			var chargeRate = xmlDoc.createElement("ub:rate");
-			charge.appendChild(chargeRate);
-			var chargeTotal = xmlDoc.createElement("ub:total");
-			charge.appendChild(chargeTotal);
-
+			var charge = makeChargeGrove();
 
 			node[0].parentNode.insertBefore(charge, node[0]);
 
 			bindXML();
 
 		}
+
+		function insertAfter(xpath)
+		{
+
+ 			var node = evaluateXPath(xmlDoc, xpath);
+			// check to ensure path pointed to a node
+
+			var charge = makeChargeGrove();
+
+			node[0].parentNode.insertBefore(charge, node[0].nextSibling);
+
+			bindXML();
+
+		}
+
+
+
+		function makeChargeGrove()
+		{
+			var charge = xmlDoc.createElementNS("utilitybill","ub:charge");
+			var chargeDescription = xmlDoc.createElementNS("utilitybill", "ub:description")
+			var chargeDescriptionText = xmlDoc.createTextNode("Description text goes here");
+			chargeDescription.appendChild(chargeDescriptionText);
+			charge.appendChild(chargeDescription);
+			var chargeQuantity = xmlDoc.createElementNS("utilitybill", "ub:quantity");
+			charge.appendChild(chargeQuantity);
+			var chargeRate = xmlDoc.createElementNS("utilitybill", "ub:rate");
+			charge.appendChild(chargeRate);
+			var chargeTotal = xmlDoc.createElementNS("utilitybill", "ub:total");
+			charge.appendChild(chargeTotal);
+
+			return charge;
+		}
+
 
 function getElementXPath(elt)
 {
@@ -193,40 +214,10 @@ function getElementIdx(elt)
 }
 
 
-function getXPathForElement(el, xml)
-{
-	var xpath = '';
-	var pos, tempitem2;
-
-	while(el !== xml.documentElement)
-	{
-		pos = 0;
-		tempitem2 = el;
-		while(tempitem2)
-		{
-			if (tempitem2.nodeType === 1 && tempitem2.nodeName === el.nodeName)
-			{ // If it is ELEMENT_NODE of the same name
-				pos += 1;
-			}
-			tempitem2 = tempitem2.previousSibling;
-		}
-
-		xpath = "*[name()='"+el.nodeName+"' and namespace-uri()='"+(el.namespaceURI===null?'':el.namespaceURI)+"']["+pos+']'+'/'+xpath;
-
-		el = el.parentNode;
-	}
-
-	xpath = '/*'+"[name()='"+xml.documentElement.nodeName+"' and namespace-uri()='"+(el.namespaceURI===null?'':el.namespaceURI)+"']"+'/'+xpath;
-	xpath = xpath.replace(/\/$/, '');
-	return xpath;
-}
-
-
 function evaluateXPath(aNode, aExpr)
 {
 	var xpe = new XPathEvaluator();
-	var nsResolver = xpe.createNSResolver(aNode.ownerDocument == null ?
-	aNode.documentElement : aNode.ownerDocument.documentElement);
+	var nsResolver = xpe.createNSResolver(aNode.ownerDocument == null ? aNode.documentElement : aNode.ownerDocument.documentElement);
 	var result = xpe.evaluate(aExpr, aNode, nsResolver, 0, null);
 	var found = [];
 	var res;
@@ -246,8 +237,7 @@ function evaluateXPath(aNode, aExpr)
 
 
 <p>Form</p>
-<form id="xmlForm" action="javascript:submitXML();">
-<input type="submit" value="Submit" />
+<form id="xmlForm" action="javascript:submitXML(this);">
 </form>
 <p>Form</p>
 
