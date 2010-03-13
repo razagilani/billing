@@ -25,3 +25,8 @@ ChartDirector
 Install manually - no installer?
 PYTHONPATH must point to C:\Python26\Lib\site-packages\ChartDirector\lib
 
+
+inconsolata must be added to system fonts for chart director.  Figure out way for CD to depend on fonts directory.
+
+
+

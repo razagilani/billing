@@ -149,9 +149,9 @@ def go():
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name='BillLabel', fontName='VerdanaB', fontSize=10, leading=10))
     styles.add(ParagraphStyle(name='BillLabelRight', fontName='VerdanaB', fontSize=10, leading=10, alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='BillLabelRight1', fontName='VerdanaB', fontSize=10, leading=10, alignment=TA_RIGHT))
     styles.add(ParagraphStyle(name='BillLabelLg', fontName='VerdanaB', fontSize=12, leading=14))
     styles.add(ParagraphStyle(name='BillLabelSm', fontName='VerdanaB', fontSize=8, leading=8))
+    styles.add(ParagraphStyle(name='BillLabelSmRight', fontName='VerdanaB', fontSize=8, leading=8, alignment=TA_RIGHT))
     styles.add(ParagraphStyle(name='GraphLabel', fontName='Verdana', fontSize=6, leading=6))
     styles.add(ParagraphStyle(name='BillField', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_LEFT))
     styles.add(ParagraphStyle(name='BillFieldLg', fontName='Inconsolata', fontSize=12, leading=12, alignment=TA_LEFT))
@@ -171,6 +171,9 @@ def go():
     billIssueDateF = Frame(78, 680, 120, 12, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billIssueDate', showBoundary=_showBoundaries)
     billDueDateF = Frame(203, 680, 140, 12, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billDueDate', showBoundary=_showBoundaries)
     billPeriodTableF = Frame(78, 627, 265, 38, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=1, id='billPeriod', showBoundary=_showBoundaries)
+
+    # summary charges label block
+    summaryChargesTableLabelF = Frame(417, 675, 150, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=7, id='summaryChargesLabel', showBoundary=_showBoundaries)
 
     # summary charges block
     summaryChargesTableF = Frame(353, 627, 220, 62, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=7, id='summaryCharges', showBoundary=_showBoundaries)
@@ -210,7 +213,7 @@ def go():
     billingAddressF = Frame(30, 50, 306, 80, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
 
     # build page container for flowables to populate
-    firstPage = PageTemplate(id=firstPageName,frames=[backgroundF1, billIssueDateF, billDueDateF, billPeriodTableF, summaryChargesTableF, balanceF, currentChargesF, graphOneF, graphTwoF, graphThreeF, graphFourF, accountNumberF, amountDueF, serviceAddressF, specialInstructionsF, billingAddressF])
+    firstPage = PageTemplate(id=firstPageName,frames=[backgroundF1, billIssueDateF, billDueDateF, billPeriodTableF, summaryChargesTableLabelF, summaryChargesTableF, balanceF, currentChargesF, graphOneF, graphTwoF, graphThreeF, graphFourF, accountNumberF, amountDueF, serviceAddressF, specialInstructionsF, billingAddressF])
 
     # page two frames
 
@@ -241,7 +244,7 @@ def go():
     doc.addPageTemplates([firstPage, secondPage])
 
     # Bind to XML bill
-    dom = bindery.parse('../sample/DealerSample.xml')
+    dom = bindery.parse('../bills/Skyline-3-10001.xml')
 
     Elements = []
 
@@ -276,6 +279,11 @@ def go():
     t = Table(serviceperiod, [115,75,75])
     t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'CENTER'), ('ALIGN',(2,0),(2,-1),'CENTER'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black) ]))
     Elements.append(t)
+    Elements.append(UseUpSpace())
+
+
+    # populate summaryChargeLabelTableF
+    Elements.append(Paragraph("Current Utility Charges", styles['BillLabel']))
     Elements.append(UseUpSpace())
 
     # populate summaryChargesTableF
@@ -319,7 +327,7 @@ def go():
     # populate graph one
 
     # Construct period consumption/production ratio graph
-    data = [23, 77]
+    data = [0.8, 99.2]
     labels = ["Renewable", "Conventional"]
     c = PieChart(10*270, 10*127)
     c.addTitle2(TopLeft, "<*underline=8*>Energy Utilization This Period", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
@@ -331,7 +339,7 @@ def go():
     c.setColors2(DataColor, [0x007437,0x5a8f47]) 
     c.setPieSize((10*270)/2.2, (10*127)/1.65, ((10*127)/3.5))
     c.setData(data, labels)
-    c.setLabelStyle('verdana.ttf', 64)
+    c.setLabelStyle('Inconsolata.ttf', 64)
     c.makeChart("images/utilization.png")
    
     Elements.append(Image('images/utilization.png', 270*.9, 127*.9))
@@ -344,8 +352,8 @@ def go():
 
     environmentalBenefit = [
         [Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("19,056,230 BTUs", styles['BillFieldSm'])],
-        [Paragraph("Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph("2,655.25", styles['BillFieldSm'])],
+        [Paragraph("Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("2,119,260  BTUs", styles['BillFieldSm'])],
+        [Paragraph("Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph("325.58", styles['BillFieldSm'])],
     ]
 
     t = Table(environmentalBenefit, [180,90])
@@ -363,12 +371,12 @@ def go():
 
     systemLife = [
         [Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph("684.17", styles['BillFieldSm'])],
-        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("228,674,760 BTUs", styles['BillFieldSm'])],
+        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph("11.13", styles['BillFieldSm'])],
+        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("4,679,928 BTUs", styles['BillFieldSm'])],
         # for next bill period
         #[Paragraph("Total Renewable Energy Produced", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
-        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph("31,860", styles['BillFieldSm'])],
-        [Paragraph("Trees to Date (1 tree represents 10)", styles['BillLabelSm']), Paragraph("2.6", styles['BillFieldSm'])]
+        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph("732.22", styles['BillFieldSm'])],
+        [Paragraph("Trees to Date", styles['BillLabelSm']), Paragraph(".56", styles['BillFieldSm'])]
     ]
 
     t = Table(systemLife, [180,90])
@@ -379,8 +387,8 @@ def go():
     Elements.append(Spacer(100,20))
     
     # build string for trees
-    numTrees = 2 #math.modf(435.05/1400.0)[1]
-    fracTree = str(6) #str(math.modf(435.05/1400)[0])[2:3]
+    numTrees = math.modf(732.22/1300.0)[1]
+    fracTree = str(math.modf(732.22/1300)[0])[2:3]
     
     treeString = ""
     while (numTrees) > 0:
@@ -399,18 +407,18 @@ def go():
     # populate graph four 
     
     # construct annual production graph  229
-    data = [16.5, 14, 14.5, 16.5, 21, 27, 26, 20, 19, 17.5, 17, 19]
-    labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    data = [6.2, 19.4, 21.2, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    labels = ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"]
     c = XYChart(10*270, 10*127)
     c.setPlotArea((10*270)/6, (10*127)/6.5, (10*270)*.8, (10*127)*.70)
     c.setColors2(DataColor, [0x9bbb59]) 
     c.addBarLayer(data)
     c.addTitle2(TopLeft, "<*underline=8*>Period Production", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
-    c.yAxis().setLabelStyle('verdana.ttf', 64)
+    c.yAxis().setLabelStyle('Inconsolata.ttf', 64)
     c.yAxis().setTickDensity(100)
-    c.yAxis().setTitle("100 Thousand BTUs", 'verdana.ttf', 52)
+    c.yAxis().setTitle("100 Thousand BTUs", 'Inconsolata.ttf', 52)
     c.xAxis().setLabels(labels)
-    c.xAxis().setLabelStyle('verdana.ttf', 64)
+    c.xAxis().setLabelStyle('Inconsolata.ttf', 64)
     c.makeChart("images/SampleGraph4.png")    
 
     Elements.append(Image('images/SampleGraph4.png', 270*.9, 127*.9))
