@@ -16,7 +16,7 @@
 		{
 			// using low level API since high level API does not support PUT
 			jQuery.ajax({
-				url: "http://skyline/exist/rest/db/10001/Skyline-1-10001.xml", //  http://skyline/exist/rest/db/test/test.xml http://skyline/exist/rest/db/10001/Skyline-1-10001.xml
+				url: "http://skyline/exist/rest/Test10001/Skyline-1-10001.xml", //  http://skyline/exist/rest/db/test/test.xml http://skyline/exist/rest/db/10001/Skyline-1-10001.xml
 				type: "GET",
 				processData: false,
 				data: xmlDoc,
@@ -32,15 +32,6 @@
 			xmlDoc = data;
 			bindXML();
 
-			jQuery.ajax({
-				url: "http://skyline/exist/rest/Test10001/Skyline-1-10001.xml",
-				type: "PUT",
-				processData: false,
-				contentType: "text/xml",
-				data: xmlDoc,
-				success: handleXML_PUT,
-				error: handleXML_PUT_error
-			});
 		}
 
 		function handleXML_GET_error(xhr, status, error)
@@ -63,6 +54,7 @@
 			{
 				// http://james.revillini.com/2006/10/27/no-element-found-in-firebug-or-firefox-javascript-console/
 				// probably need to determine how to check that PUT completed successfully (which if it does, the server return data still causes a failure in jquery)
+				alert(status);
 			} else {
 				alert(status);
 				alert("readyState: "+xhr.readyState+"\nstatus: "+xhr.status);
@@ -99,6 +91,16 @@
 
 						var quantity = charge[i].getElementsByTagName("ub:quantity")
 						var quantityText = (quantity.length == 1 && quantity[0].hasChildNodes()) ? quantity[0].childNodes[0].nodeValue : "";
+						var quantityUnits = (quantity.length == 1 && quantity[0].hasAttribute("units")) ? quantity[0].getAttribute("units") : "";
+
+/*if (quantity.length == 1 && quantity[0].hasAttribute("units"))
+{
+	var attrs = quantity[0].attributes;
+	alert ("Got attrs " + attrs);
+	var unitEl = attrs[0];
+
+	var path = getElementXPath(unitEl);
+}*/
 
 						var rate = charge[i].getElementsByTagName("ub:rate");
 						var rateText = (rate.length == 1 && rate[0].hasChildNodes()) ? rate[0].childNodes[0].nodeValue : "";
@@ -106,13 +108,17 @@
 						var total = charge[i].getElementsByTagName("ub:total");
 						var totalText = (total.length == 1 && total[0].hasChildNodes()) ? total[0].childNodes[0].nodeValue : "";
 
-						$("#fieldset"+cg).append("<a href=\"javascript:insertChargeAbove('"+getElementXPath(charge[i])+"');\">Insert Above</a>&nbsp;");
+						$("#fieldset"+cg).append("<a href=\"javascript:insertChargeAbove('"+getElementXPath(charge[i])+"'); \">Insert Above</a>&nbsp;");
 						$("#fieldset"+cg).append("<a href=\"javascript:deleteCharge('"+getElementXPath(charge[i])+"');\">Delete</a>&nbsp;");
 						$("#fieldset"+cg).append("<a href=\"javascript:insertChargeBelow('"+getElementXPath(charge[i])+"');\">Insert Below</a>");
-						$("#fieldset"+cg).append("<input type=\"textfield\" id=\"cg"+cg+"-"+i+"\" name=\"" + getElementXPath(description[0]) + "\" value=\"" + descriptionText + "\">");
-						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(quantity[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + quantityText + "\">");
-						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(rate[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + rateText + "\">");
-						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(total[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + totalText + "\">");
+
+						$("#fieldset"+cg).append("<input type=\"textfield\" id=\"cg"+cg+"-"+i+"\" name=\"" + getElementXPath(description[0]) + "\" value=\"" + descriptionText + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
+						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(quantity[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + quantityText +  "\" onChange=\"javascript:storeData(this.name, this.value);\">");
+						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(quantity[0]) + "/@units\" id=\"cg"+cg+"-"+i+"\" value=\"" + quantityUnits +  "\" onChange=\"javascript:storeData(this.name, this.value);\">");
+
+
+						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(rate[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + rateText + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
+						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(total[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + totalText + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
 						$("#fieldset"+cg).append("<br/>");
 					}
 				}
@@ -121,22 +127,36 @@
 
 		function submitXML(form)
 		{
-			// grab form and enumerate values
-			// find a better way to bind to form
-
-			var fields = $("input[id*=\"cg\"]");
-
-			var asdasd = fields.map(function() {
-  				return this.value;
-			}).get().join(',');
-
-			// ensure that posts can be handled
-			$("#values").append(asdasd);
-
-			// ensure that nodes can be added and deleted
+			jQuery.ajax({
+				url: "http://skyline/exist/rest/Test10001/Skyline-1-10001.xml",
+				type: "PUT",
+				processData: false,
+				contentType: "text/xml",
+				data: xmlDoc,
+				success: handleXML_PUT,
+				error: handleXML_PUT_error
+			});
 
 		}
 
+
+		function storeData(xpath, value)
+		{
+			//alert(xpath + " " + value);
+
+try
+{
+ 			var node = evaluateXPath(xmlDoc, xpath);
+ } catch (e) {
+ alert (e);
+ }
+ 			//alert ("node is "+ node[0].childNodes[0].nodeValue);
+
+STOPPED HERE - FIND OUT WHY THIS IS NOT SETTING ATTRIBUTE VALUE HERE
+
+			node[0].childNodes[0].nodeValue = value;
+
+		}
 
 		function insertChargeAbove(xpath)
 		{
@@ -186,14 +206,19 @@
 		{
 			var charge = xmlDoc.createElementNS("utilitybill","ub:charge");
 			var chargeDescription = xmlDoc.createElementNS("utilitybill", "ub:description")
-			var chargeDescriptionText = xmlDoc.createTextNode("Description text goes here");
-			chargeDescription.appendChild(chargeDescriptionText);
+			chargeDescription.appendChild(xmlDoc.createTextNode("Enter description"));
 			charge.appendChild(chargeDescription);
+
 			var chargeQuantity = xmlDoc.createElementNS("utilitybill", "ub:quantity");
+			chargeQuantity.appendChild(xmlDoc.createTextNode("Quantity"));
 			charge.appendChild(chargeQuantity);
+
 			var chargeRate = xmlDoc.createElementNS("utilitybill", "ub:rate");
+			chargeRate.appendChild(xmlDoc.createTextNode("Rate"));
 			charge.appendChild(chargeRate);
+
 			var chargeTotal = xmlDoc.createElementNS("utilitybill", "ub:total");
+			chargeTotal.appendChild(xmlDoc.createTextNode("Enter description"));
 			charge.appendChild(chargeTotal);
 
 			return charge;
