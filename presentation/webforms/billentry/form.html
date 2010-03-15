@@ -86,77 +86,126 @@
 					var charge = charges[0].getElementsByTagName("ub:charge");
 					for(i = 0; i < charge.length; i++)
 					{
-						var description = charge[i].getElementsByTagName("ub:description")
-						var descriptionText = (description.length == 1 && description[0].hasChildNodes()) ? description[0].childNodes[0].nodeValue : "";
-
-						var quantity = charge[i].getElementsByTagName("ub:quantity")
-						var quantityText = (quantity.length == 1 && quantity[0].hasChildNodes()) ? quantity[0].childNodes[0].nodeValue : "";
-						var quantityUnits = (quantity.length == 1 && quantity[0].hasAttribute("units")) ? quantity[0].getAttribute("units") : "";
-
-/*if (quantity.length == 1 && quantity[0].hasAttribute("units"))
-{
-	var attrs = quantity[0].attributes;
-	alert ("Got attrs " + attrs);
-	var unitEl = attrs[0];
-
-	var path = getElementXPath(unitEl);
-}*/
-
-						var rate = charge[i].getElementsByTagName("ub:rate");
-						var rateText = (rate.length == 1 && rate[0].hasChildNodes()) ? rate[0].childNodes[0].nodeValue : "";
-
-						var total = charge[i].getElementsByTagName("ub:total");
-						var totalText = (total.length == 1 && total[0].hasChildNodes()) ? total[0].childNodes[0].nodeValue : "";
 
 						$("#fieldset"+cg).append("<a href=\"javascript:insertChargeAbove('"+getElementXPath(charge[i])+"'); \">Insert Above</a>&nbsp;");
 						$("#fieldset"+cg).append("<a href=\"javascript:deleteCharge('"+getElementXPath(charge[i])+"');\">Delete</a>&nbsp;");
 						$("#fieldset"+cg).append("<a href=\"javascript:insertChargeBelow('"+getElementXPath(charge[i])+"');\">Insert Below</a>");
 
-						$("#fieldset"+cg).append("<input type=\"textfield\" id=\"cg"+cg+"-"+i+"\" name=\"" + getElementXPath(description[0]) + "\" value=\"" + descriptionText + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
-						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(quantity[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + quantityText +  "\" onChange=\"javascript:storeData(this.name, this.value);\">");
-						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(quantity[0]) + "/@units\" id=\"cg"+cg+"-"+i+"\" value=\"" + quantityUnits +  "\" onChange=\"javascript:storeData(this.name, this.value);\">");
+						var description = (charge[i].getElementsByTagName("ub:description"))[0];
+						if (description)
+						{
+							var descriptionText = description.childNodes[0].nodeValue;
+							$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(description) + "\" value=\"" + descriptionText + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
+						}
+
+						var quantityElem = (charge[i].getElementsByTagName("ub:quantity"))[0];
+						if (quantityElem)
+						{
+							var quantityText = quantityElem.childNodes[0].nodeValue;
+							var quantityUnitsAttr = quantityElem.attributes["units"];
+							var quantityUnitsText = quantityElem.getAttribute("units");
+
+							$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(quantityElem) + "\" value=\"" + quantityText +  "\" onChange=\"javascript:storeData(this.name, this.value);\">");
+
+							// handle quantity units attribute
+							var opts = ["none", "kWh","Therms", "cents", "dollars", "KWD"];	// ToDo: pull from db
+							$("#fieldset"+cg).append("<select id=\"select-1-"+cg+"-"+i+"\" name=\"" + getElementXPath(quantityUnitsAttr) + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
+							opts.forEach(
+								function(opt)
+								{
+									$("#select-1-"+cg+"-"+i).append("<option "+((quantityUnitsText == opt)?"selected":"")+">"+opt+"</option>");
+								}
+							);
+						} else {
+							// print link to add quantity Element
+							$("#fieldset"+cg).append("<a href=\"javascript:insertQuantity('"+getElementXPath(charge[i])+"');\">Add Quantity</a>");
+						}
 
 
-						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(rate[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + rateText + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
-						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(total[0]) + "\" id=\"cg"+cg+"-"+i+"\" value=\"" + totalText + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
+						var rateElem = (charge[i].getElementsByTagName("ub:rate"))[0];
+						if (rateElem)
+						{
+							var rateText = rateElem.childNodes[0].nodeValue;
+							var rateUnitsAttr = rateElem.attributes["units"];
+							var rateUnitsText = rateElem.getAttribute("units");
+
+							$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(rateElem) + "\" value=\"" + rateText + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
+
+							// handle quantity units attribute
+							var opts = ["none", "dollars", "cents", "percentage"];	// ToDo: pull from db
+							$("#fieldset"+cg).append("<select id=\"select-2-"+cg+"-"+i+"\" name=\"" + getElementXPath(rateUnitsAttr) + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
+							opts.forEach(
+								function(opt)
+								{
+									$("#select-2-"+cg+"-"+i).append("<option "+((rateUnitsText == opt)?"selected":"")+">"+opt+"</option>");
+								}
+							);
+						} else {
+							$("#fieldset"+cg).append("<a href=\"javascript:insertRate('"+getElementXPath(charge[i])+"');\">Add rate</a>");
+						}
+
+						var totalElem = (charge[i].getElementsByTagName("ub:total"))[0];
+						if (totalElem)
+						{
+							var totalText = totalElem.childNodes[0].nodeValue;
+							$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(totalElem) + "\" value=\"" + totalText + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
+						} else {
+							// print link to add quantity Element
+						}
+
 						$("#fieldset"+cg).append("<br/>");
 					}
 				}
 			}
 		}
 
-		function submitXML(form)
-		{
-			jQuery.ajax({
-				url: "http://skyline/exist/rest/Test10001/Skyline-1-10001.xml",
-				type: "PUT",
-				processData: false,
-				contentType: "text/xml",
-				data: xmlDoc,
-				success: handleXML_PUT,
-				error: handleXML_PUT_error
-			});
 
+		function insertQuantity(xpath)
+		{
+			var node = evaluateXPath(xmlDoc, xpath);
+			// find the sibling quantity gets inserted before
+			var quantity = xmlDoc.createElementNS("utilitybill","ub:quantity");
+			quantity.appendChild(xmlDoc.createTextNode("0"));
+
+			var units = xmlDoc.createAttribute("units");
+
+			quantity.setAttributeNode(units);
+			var rateSibling = evaluateXPath(xmlDoc, xpath+"/ub:rate");
+			if (rateSibling.length == 1)
+			{
+				rateSibling[0].parentNode.insertBefore(quantity, rateSibling[0]);
+				bindXML();
+				return;
+			}
+			var totalSibling = evaluateXPath(xmlDoc, xpath+"/ub:total");
+			if (totalSibling.length == 1)
+			{
+				totalSibling[0].parentNode.insertBefore(quantity, totalSibling[0]);
+				bindXML();
+				return;
+			}
 		}
 
-
-		function storeData(xpath, value)
+		function insertRate(xpath)
 		{
-			//alert(xpath + " " + value);
+			var node = evaluateXPath(xmlDoc, xpath);
 
-try
-{
- 			var node = evaluateXPath(xmlDoc, xpath);
- } catch (e) {
- alert (e);
- }
- 			//alert ("node is "+ node[0].childNodes[0].nodeValue);
+			// find the sibling quantity gets inserted before
+			var rate = xmlDoc.createElementNS("utilitybill","ub:rate");
+			rate.appendChild(xmlDoc.createTextNode("0"));
 
-STOPPED HERE - FIND OUT WHY THIS IS NOT SETTING ATTRIBUTE VALUE HERE
+			var units = xmlDoc.createAttribute("units");
 
-			node[0].childNodes[0].nodeValue = value;
-
+			rate.setAttributeNode(units);
+			var totalSibling = evaluateXPath(xmlDoc, xpath+"/ub:total");
+			if (totalSibling.length == 1)
+			{
+				totalSibling[0].parentNode.insertBefore(rate, totalSibling[0]);
+				bindXML();
+				return;
+			}
 		}
+
 
 		function insertChargeAbove(xpath)
 		{
@@ -186,6 +235,28 @@ STOPPED HERE - FIND OUT WHY THIS IS NOT SETTING ATTRIBUTE VALUE HERE
 
 		}
 
+		function makeChargeGrove()
+		{
+			var charge = xmlDoc.createElementNS("utilitybill","ub:charge");
+			var chargeDescription = xmlDoc.createElementNS("utilitybill", "ub:description")
+			chargeDescription.appendChild(xmlDoc.createTextNode("Enter description"));
+			charge.appendChild(chargeDescription);
+
+			//var chargeQuantity = xmlDoc.createElementNS("utilitybill", "ub:quantity");
+			//chargeQuantity.appendChild(xmlDoc.createTextNode("Quantity"));
+			//charge.appendChild(chargeQuantity);
+
+			//var chargeRate = xmlDoc.createElementNS("utilitybill", "ub:rate");
+			//chargeRate.appendChild(xmlDoc.createTextNode("Rate"));
+			//charge.appendChild(chargeRate);
+
+			var chargeTotal = xmlDoc.createElementNS("utilitybill", "ub:total");
+			chargeTotal.appendChild(xmlDoc.createTextNode("Enter Total"));
+			charge.appendChild(chargeTotal);
+
+			return charge;
+		}
+
 		function deleteCharge(xpath)
 		{
 
@@ -199,41 +270,60 @@ STOPPED HERE - FIND OUT WHY THIS IS NOT SETTING ATTRIBUTE VALUE HERE
 		}
 
 
-
-
-
-		function makeChargeGrove()
+		function submitXML(form)
 		{
-			var charge = xmlDoc.createElementNS("utilitybill","ub:charge");
-			var chargeDescription = xmlDoc.createElementNS("utilitybill", "ub:description")
-			chargeDescription.appendChild(xmlDoc.createTextNode("Enter description"));
-			charge.appendChild(chargeDescription);
+			jQuery.ajax({
+				url: "http://skyline/exist/rest/Test10001/Skyline-1-10001.xml",
+				type: "PUT",
+				processData: false,
+				contentType: "text/xml",
+				data: xmlDoc,
+				success: handleXML_PUT,
+				error: handleXML_PUT_error
+			});
 
-			var chargeQuantity = xmlDoc.createElementNS("utilitybill", "ub:quantity");
-			chargeQuantity.appendChild(xmlDoc.createTextNode("Quantity"));
-			charge.appendChild(chargeQuantity);
-
-			var chargeRate = xmlDoc.createElementNS("utilitybill", "ub:rate");
-			chargeRate.appendChild(xmlDoc.createTextNode("Rate"));
-			charge.appendChild(chargeRate);
-
-			var chargeTotal = xmlDoc.createElementNS("utilitybill", "ub:total");
-			chargeTotal.appendChild(xmlDoc.createTextNode("Enter description"));
-			charge.appendChild(chargeTotal);
-
-			return charge;
 		}
 
 
-function getElementXPath(elt)
+		function storeData(xpath, value)
+		{
+
+
+			var node = evaluateXPath(xmlDoc, xpath);
+
+ 			if (node[0].nodeType == 1) // element
+ 			{
+				node[0].childNodes[0].nodeValue = value;
+ 			} else if (node[0].nodeType == 2) { // attribute
+
+ 				var parent = node[0].ownerElement;
+ 				parent.setAttribute(node[0].nodeName, value);
+ 			}
+ 		}
+
+
+
+
+
+// return xpath for a given node
+function getElementXPath(node)
 {
+	if (node == null) return null;
+
 	var path = "";
-	for (; elt && elt.nodeType == 1; elt = elt.parentNode)
+
+	if (node.nodeType == 2) // an atribute node was passed in
 	{
-		idx = getElementIdx(elt);
-		xname = elt.tagName;
+		path = "/@" + node.nodeName;
+		node = node.ownerElement;
+	}
+
+	for (; node && node.nodeType == 1; node = node.parentNode)
+	{
+		idx = getElementIdx(node);
+		xname = node.tagName;
 		// all nodes must be indexed otherwise path node matches all
-		// ToDo:  terminal node does not need an index
+		// ToDo:  terminal node does not need an index?
 		if (idx > 0) xname += "[" + idx + "]";
 		path = "/" + xname + path;
 	}
@@ -265,6 +355,13 @@ function evaluateXPath(aNode, aExpr)
 	return found;
 }
 
+// xpath must be unambiguous and math only one node
+function evaluateFullyQualifiedXPath(xpath)
+{
+	var nsResolver = xmlDoc.createNSResolver( xmlDoc.ownerDocument == null ? xmlDoc.documentElement : xmlDoc.ownerDocument.documentElement);
+	var result = xmlDoc.evaluate(xpath, xmlDoc, nsResolver, XPathResult.FIRST_ORDERED_NODE_TYPE, null );
+	return result;
+}
 
 
 
@@ -272,19 +369,7 @@ function evaluateXPath(aNode, aExpr)
 	</script>
 </head>
 <body>
-
-
-
-<p>Form</p>
 <form id="xmlForm" action="javascript:submitXML(this);">
 </form>
-<p>Form</p>
-
-
-<p>Values</p>
-<p id="values"></p>
-<p>Values</p>
-
-
 </body>
 </html>
