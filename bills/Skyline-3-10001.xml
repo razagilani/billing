@@ -30,12 +30,12 @@
 		<ub:priorbalance>26.66</ub:priorbalance>
 		<ub:paymentreceived>26.66</ub:paymentreceived>
 		<ub:balanceforward>0.00</ub:balanceforward>
-		<ub:actualservicecharges>5751.28</ub:actualservicecharges>
+		<ub:actualservicecharges>5751.34</ub:actualservicecharges>
 		<ub:hypotheticalservicecharges>5784.53</ub:hypotheticalservicecharges>
-		<ub:energycharges>28.26</ub:energycharges>
-		<ub:customersavings>4.99</ub:customersavings>
-		<ub:currentcharges>28.26</ub:currentcharges>
-		<ub:totaldue>28.26</ub:totaldue>
+		<ub:energycharges>28.21</ub:energycharges>
+		<ub:customersavings>4.98</ub:customersavings>
+		<ub:currentcharges>28.21</ub:currentcharges>
+		<ub:totaldue>28.21</ub:totaldue>
 		<ub:duedate>2010-03-31</ub:duedate>
 		<ub:issued>2010-03-15</ub:issued>
 	</ub:skylinebill>
