@@ -5,6 +5,8 @@
 	<title></title>
 
 	<script type="text/javascript" src="jquery-1.4.2.js"></script>
+	<script type="text/javascript" src="jquery-jtemplates_0.7.8.js"></script>
+
 	<script type="text/javascript">
 	//<![CDATA[
 
@@ -76,14 +78,14 @@
 
 			for (cg = 0; cg < chargegroup.length; cg++)
 			{
-				var charges = chargegroup[cg].getElementsByTagName("ub:charges");
-				if (charges[0].attributes[0].nodeValue == "actual")
+				var charges = chargegroup[cg].getElementsByTagName("ub:charges")[0];
+				if (charges.attributes[0].nodeValue == "actual")
 				{
 
 					$("#xmlForm").append("<fieldset id=\"fieldset"+cg+"\">");
 					$("#fieldset"+cg).append("<legend>Chargegroup "+cg+"</legend>");
 
-					var charge = charges[0].getElementsByTagName("ub:charge");
+					var charge = charges.getElementsByTagName("ub:charge");
 					for(i = 0; i < charge.length; i++)
 					{
 
@@ -153,8 +155,30 @@
 							// print link to add quantity Element
 						}
 
+						// all preceding charges plus this charge
+						var runningChargesXPath = getElementXPath(charge[i]) + "/preceding-sibling::*/ub:total | " + getElementXPath(charge[i]) + "/ub:total";
+						var runningChargesTotal = evaluateXPath(xmlDoc, "round(sum("+runningChargesXPath+")*100) div 100");
+
+						$("#fieldset"+cg).append("<span>" + runningChargesTotal + "</span>");
+
 						$("#fieldset"+cg).append("<br/>");
+
 					}
+
+
+					var chargesTotalElem = evaluateXPath(xmlDoc, getElementXPath(charges)+"/ub:total")[0];
+
+					if (chargesTotalElem)
+					{
+						var chargesTotalText = chargesTotalElem.childNodes[0].nodeValue;
+						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(chargesTotalElem) + "\" value=\"" + chargesTotalText + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
+					}
+
+
+					// bind to charge totals and show subtotal
+					var chargesXPath = getElementXPath(charges) + "/ub:charge/ub:total";
+					var subtotal = evaluateXPath(xmlDoc, "round(sum("+chargesXPath+")*100) div 100");
+					$("#fieldset"+cg).append("<p>"+subtotal+"</p>");
 				}
 			}
 		}
@@ -251,7 +275,7 @@
 			//charge.appendChild(chargeRate);
 
 			var chargeTotal = xmlDoc.createElementNS("utilitybill", "ub:total");
-			chargeTotal.appendChild(xmlDoc.createTextNode("Enter Total"));
+			chargeTotal.appendChild(xmlDoc.createTextNode("0.0"));
 			charge.appendChild(chargeTotal);
 
 			return charge;
@@ -299,6 +323,8 @@
  				var parent = node[0].ownerElement;
  				parent.setAttribute(node[0].nodeName, value);
  			}
+
+ 			bindXML();
  		}
 
 
@@ -350,9 +376,24 @@ function evaluateXPath(aNode, aExpr)
 	var result = xpe.evaluate(aExpr, aNode, nsResolver, 0, null);
 	var found = [];
 	var res;
-	while (res = result.iterateNext())
-		found.push(res);
-	return found;
+
+	switch(result.resultType)
+	{
+	case XPathResult.NUMBER_TYPE:
+		return result.numberValue;
+		break;
+	// ToDo add other result types as we need to
+	default:
+		try
+		{
+			while (res = result.iterateNext())
+				found.push(res);
+		} catch (e) {
+			alert(e);
+		}
+		return found;
+	}
+
 }
 
 // xpath must be unambiguous and math only one node
@@ -369,7 +410,15 @@ function evaluateFullyQualifiedXPath(xpath)
 	</script>
 </head>
 <body>
-<form id="xmlForm" action="javascript:submitXML(this);">
-</form>
+
+<div  id="result"></div>
+<script type="text/javascript">
+ $("#result").setTemplate("Template by {$T.bold()} version <em>{$Q.version}</em>.");
+ $("#result").processTemplate("jTemplates");
+</script>
+
+	<form id="xmlForm" action="javascript:submitXML(this);">
+	</form>
+
 </body>
 </html>
