@@ -371,7 +371,7 @@ def go():
 
     systemLife = [
         [Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph("11.13", styles['BillFieldSm'])],
+        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph("11.12", styles['BillFieldSm'])],
         [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("4,679,928 BTUs", styles['BillFieldSm'])],
         # for next bill period
         #[Paragraph("Total Renewable Energy Produced", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
