@@ -68,126 +68,6 @@
 		// given xml, bind it to the form
 		function bindXML()
 		{
-
-			// remove previously created form
-			$("#xmlForm").empty();
-
-			$("#xmlForm").append("<input type=\"submit\" action=\"submit\"></input>");
-
-			var chargegroup = xmlDoc.getElementsByTagName("ub:chargegroup");
-
-			for (cg = 0; cg < chargegroup.length; cg++)
-			{
-				var charges = chargegroup[cg].getElementsByTagName("ub:charges")[0];
-				if (charges.attributes[0].nodeValue == "actual")
-				{
-
-					$("#xmlForm").append("<fieldset id=\"fieldset"+cg+"\">");
-					$("#fieldset"+cg).append("<legend>Chargegroup "+cg+"</legend>");
-
-					var charge = charges.getElementsByTagName("ub:charge");
-					for(i = 0; i < charge.length; i++)
-					{
-						$("#fieldset"+cg).append("<a href=\"javascript:insertChargeAbove('"+getElementXPath(charge[i])+"'); \">Insert Above</a>&nbsp;");
-						$("#fieldset"+cg).append("<a href=\"javascript:deleteCharge('"+getElementXPath(charge[i])+"');\">Delete</a>&nbsp;");
-						$("#fieldset"+cg).append("<a href=\"javascript:insertChargeBelow('"+getElementXPath(charge[i])+"');\">Insert Below</a>");
-
-						var description = (charge[i].getElementsByTagName("ub:description"))[0];
-						if (description)
-						{
-							var descriptionText = description.childNodes[0].nodeValue;
-							$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(description) + "\" value=\"" + descriptionText + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
-						}
-
-						var quantityElem = (charge[i].getElementsByTagName("ub:quantity"))[0];
-						if (quantityElem)
-						{
-							var quantityText = quantityElem.childNodes[0].nodeValue;
-							var quantityUnitsAttr = quantityElem.attributes["units"];
-							var quantityUnitsText = quantityElem.getAttribute("units");
-
-							$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(quantityElem) + "\" value=\"" + quantityText +  "\" onChange=\"javascript:storeData(this.name, this.value);\">");
-
-							// handle quantity units attribute
-							var opts = ["none", "kWh","Therms", "cents", "dollars", "KWD"];	// ToDo: pull from db
-							$("#fieldset"+cg).append("<select id=\"select-1-"+cg+"-"+i+"\" name=\"" + getElementXPath(quantityUnitsAttr) + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
-							opts.forEach(
-								function(opt)
-								{
-									$("#select-1-"+cg+"-"+i).append("<option "+((quantityUnitsText == opt)?"selected":"")+">"+opt+"</option>");
-								}
-							);
-						} else {
-							// print link to add quantity Element
-							$("#fieldset"+cg).append("<a href=\"javascript:insertQuantity('"+getElementXPath(charge[i])+"');\">Add Quantity</a>");
-						}
-
-
-						var rateElem = (charge[i].getElementsByTagName("ub:rate"))[0];
-						if (rateElem)
-						{
-							var rateText = rateElem.childNodes[0].nodeValue;
-							var rateUnitsAttr = rateElem.attributes["units"];
-							var rateUnitsText = rateElem.getAttribute("units");
-
-							$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(rateElem) + "\" value=\"" + rateText + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
-
-							// handle quantity units attribute
-							var opts = ["none", "dollars", "cents", "percentage"];	// ToDo: pull from db
-							$("#fieldset"+cg).append("<select id=\"select-2-"+cg+"-"+i+"\" name=\"" + getElementXPath(rateUnitsAttr) + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
-							opts.forEach(
-								function(opt)
-								{
-									$("#select-2-"+cg+"-"+i).append("<option "+((rateUnitsText == opt)?"selected":"")+">"+opt+"</option>");
-								}
-							);
-						} else {
-							$("#fieldset"+cg).append("<a href=\"javascript:insertRate('"+getElementXPath(charge[i])+"');\">Add rate</a>");
-						}
-
-						var totalElem = (charge[i].getElementsByTagName("ub:total"))[0];
-						if (totalElem)
-						{
-							var totalText = totalElem.childNodes[0].nodeValue;
-							$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(totalElem) + "\" value=\"" + totalText + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
-						} else {
-							// print link to add quantity Element
-						}
-
-						// all preceding charges plus this charge
-						var runningChargesXPath = getElementXPath(charge[i]) + "/preceding-sibling::*/ub:total | " + getElementXPath(charge[i]) + "/ub:total";
-						var runningChargesTotal = evaluateXPath(xmlDoc, "round(sum("+runningChargesXPath+")*100) div 100");
-
-						$("#fieldset"+cg).append("<span>" + runningChargesTotal + "</span>");
-
-						$("#fieldset"+cg).append("<br/>");
-
-					}
-
-
-					var chargesTotalElem = evaluateXPath(xmlDoc, getElementXPath(charges)+"/ub:total")[0];
-
-					if (chargesTotalElem)
-					{
-						var chargesTotalText = chargesTotalElem.childNodes[0].nodeValue;
-						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(chargesTotalElem) + "\" value=\"" + chargesTotalText + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
-					}
-
-
-					// bind to charge totals and show subtotal
-					var chargesXPath = getElementXPath(charges) + "/ub:charge/ub:total";
-					var subtotal = evaluateXPath(xmlDoc, "round(sum("+chargesXPath+")*100) div 100");
-					$("#fieldset"+cg).append("<p>"+subtotal+"</p>");
-				}
-			}
-
-		}
-
-
-
-		function bindXML()
-		{
-
 			// remove previously created form
 			$("#newXmlForm").empty();
 
@@ -287,27 +167,23 @@
 						var runningChargesXPath = getElementXPath(charge[i]) + "/preceding-sibling::*/ub:total | " + getElementXPath(charge[i]) + "/ub:total";
 						var runningChargesTotal = evaluateXPath(xmlDoc, "round(sum("+runningChargesXPath+")*100) div 100");
 
-						$("#fieldset"+cg).append("<span>" + runningChargesTotal + "</span>");
-
-						$("#fieldset"+cg).append("<br/>");
+						chargeFields.slice(9,10).append(runningChargesTotal);
 
 					}
 
+					// chargegroup subtotal
+					var formCharge = $("#formCharge-template").clone().attr("id", "formCharge-"+cg+"-subtotal");
+					$("#formChargegroup-"+cg).append(formCharge);
 
 					var chargesTotalElem = evaluateXPath(xmlDoc, getElementXPath(charges)+"/ub:total")[0];
 
 					if (chargesTotalElem)
 					{
 						var chargesTotalText = chargesTotalElem.childNodes[0].nodeValue;
-						$("#fieldset"+cg).append("<input type=\"textfield\" name=\"" + getElementXPath(chargesTotalElem) + "\" value=\"" + chargesTotalText + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
+						$("#formCharge-"+cg+"-subtotal td").slice(8,9).append("<input type=\"textfield\" name=\"" + getElementXPath(chargesTotalElem) + "\" value=\"" + chargesTotalText + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
 					}
-
-
-					// bind to charge totals and show subtotal
-					var chargesXPath = getElementXPath(charges) + "/ub:charge/ub:total";
-					var subtotal = evaluateXPath(xmlDoc, "round(sum("+chargesXPath+")*100) div 100");
-					$("#fieldset"+cg).append("<p>"+subtotal+"</p>");
 				}
+				// Next: clean up form template rows and add submit to form
 			}
 		}
 
@@ -558,12 +434,26 @@ function evaluateFullyQualifiedXPath(xpath)
 					<th>Rate</th>
 					<th>Units</th>
 					<th>Sum</th>
+					<th>Running Total</th>
 				</tr>
 			</thead>
 			<tfoot>
+				<tr>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+				</tr>
 			</tfoot>
 			<tbody id="formChargegroup-template">
 				<tr id="formCharge-template">
+					<td></td>
 					<td></td>
 					<td></td>
 					<td></td>
