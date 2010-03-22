@@ -2,37 +2,72 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
-	<title></title>
+	<title>Bill charge detail entry form</title>
 
+	<script type="text/javascript" src="xml-support.js"></script>
 	<script type="text/javascript" src="jquery-1.4.2.js"></script>
-	<script type="text/javascript" src="jquery-jtemplates_0.7.8.js"></script>
+
+	<link href="layout.css" rel="stylesheet" type="text/css">
+
+
 
 	<script type="text/javascript">
 	//<![CDATA[
 
+		var accountsUrl = "http://skyline/exist/rest/db/";
+		var accountsDoc = null;
+
+		var billUrl = "http://skyline/exist/rest/Test10001/Skyline-1-10001.xml";
+		var billDoc = null;
+
+		//var billDoc = "http://skyline/exist/rest/db/10001/Skyline-1-10001.xml";
+
 		var httpObject = null;
-		var xmlDoc = null;
 		var appAvailable = false;
 
 		$(document).ready(function()
-		{
-			// using low level API since high level API does not support PUT
-			jQuery.ajax({
-				url: "http://skyline/exist/rest/Test10001/Skyline-1-10001.xml", //  http://skyline/exist/rest/db/test/test.xml http://skyline/exist/rest/db/10001/Skyline-1-10001.xml
-				type: "GET",
-				processData: false,
-				data: xmlDoc,
-				dataType: "xml",
-				success: handleXML_GET,
-				error: handleXML_GET_error
-			});
-		})
+			{
 
-		function handleXML_GET(data)
+				// using low level API since high level API does not support PUT
+				jQuery.ajax({
+					url: accountsUrl,
+					type: "GET",
+					processData: false,
+					data: accountsDoc,
+					dataType: "xml",
+					success: handleAccountsDoc_GET,
+					error: handleXML_GET_error
+				});
+
+				// using low level API since high level API does not support PUT
+				// ToDo: rename xml_get to bill oriented function name
+				jQuery.ajax({
+					url: billUrl,
+					type: "GET",
+					processData: false,
+					data: billDoc,
+					dataType: "xml",
+					success: handleBillDoc_GET,
+					error: handleXML_GET_error
+				});
+
+			}
+		)
+
+		function handleBillDoc_GET(data)
 		{
 
-			xmlDoc = data;
-			bindXML();
+			billDoc = data;
+			bindBillDocStatic();
+			bindBillDocForms();
+
+
+		}
+
+		function handleAccountsDoc_GET(data)
+		{
+			accountsDoc = data;
+			bindAccountsDocStatic();
 
 		}
 
@@ -43,6 +78,7 @@
 			alert("readyState: "+xhr.readyState+"\nstatus: "+xhr.status);
 			alert("responseText: "+xhr.responseText);
 		}
+
 
 		function handleXML_PUT(data, status, req)
 		{
@@ -65,20 +101,32 @@
 		}
 
 
-		// given xml, bind it to the form
-		function bindXML()
+		// list available accounts
+		function bindAccountsDocStatic()
+		{
+			// Stopped here
+			alert("bind the accounts and determine way to keep local selection state w/o roundtripping xml to the server");
+
+		}
+
+		// given bill xml, bind it to the forms
+		function bindBillDocForms()
+		{
+			bindDetails();
+		}
+
+
+		function bindDetails()
 		{
 			// remove previously created form
-			$("#newXmlForm").empty();
+			$("#billForm").empty();
 
 			// copy template table into form for population
-			$("#newXmlForm").append($("#formDetails-template").clone().attr("id", "formDetails"));
-
-			//$("#newXmlForm").append("<input type=\"submit\" action=\"submit\"></input>");
+			$("#billForm").append($("#formDetails-template").clone().attr("id", "formDetails"));
 
 
-			var chargegroup = xmlDoc.getElementsByTagName("ub:chargegroup");
-
+			// bind to chargegroups
+			var chargegroup = billDoc.getElementsByTagName("ub:chargegroup");
 			for (cg = 0; cg < chargegroup.length; cg++)
 			{
 				var formChargegroup = $("#formChargegroup-template").clone().attr("id", "formChargegroup-"+cg);
@@ -97,6 +145,7 @@
 
 						var chargeFields = $("#formCharge-"+cg+"-"+i+" td");
 
+						// ToDo: it would be nice to be able to refer to the columns symbolically
 						chargeFields.slice(0,1).append("<a href=\"javascript:insertChargeAbove('"+getElementXPath(charge[i])+"'); \">Insert Above</a>&nbsp;");
 						chargeFields.slice(1,2).append("<a href=\"javascript:deleteCharge('"+getElementXPath(charge[i])+"');\">Delete</a>&nbsp;");
 						chargeFields.slice(2,3).append("<a href=\"javascript:insertChargeBelow('"+getElementXPath(charge[i])+"');\">Insert Below</a>");
@@ -115,6 +164,7 @@
 							var quantityUnitsAttr = quantityElem.attributes["units"];
 							var quantityUnitsText = quantityElem.getAttribute("units");
 
+							// ToDo: it would be nice to be able to refer to the columns symbolically
 							chargeFields.slice(4,5).append("<input type=\"textfield\" name=\"" + getElementXPath(quantityElem) + "\" value=\"" + quantityText +  "\" onChange=\"javascript:storeData(this.name, this.value);\">");
 
 							// handle quantity units attribute
@@ -127,7 +177,7 @@
 								}
 							);
 						} else {
-							// print link to add quantity Element
+							// ToDo: it would be nice to be able to refer to the columns symbolically
 							chargeFields.slice(4,5).append("<a href=\"javascript:insertQuantity('"+getElementXPath(charge[i])+"');\">Add Quantity</a>");
 						}
 
@@ -151,6 +201,7 @@
 								}
 							);
 						} else {
+							// ToDo: it would be nice to be able to refer to the columns symbolically
 							chargeFields.slice(6,7).append("<a href=\"javascript:insertRate('"+getElementXPath(charge[i])+"');\">Add rate</a>");
 						}
 
@@ -165,7 +216,7 @@
 
 						// all preceding charges plus this charge
 						var runningChargesXPath = getElementXPath(charge[i]) + "/preceding-sibling::*/ub:total | " + getElementXPath(charge[i]) + "/ub:total";
-						var runningChargesTotal = evaluateXPath(xmlDoc, "round(sum("+runningChargesXPath+")*100) div 100");
+						var runningChargesTotal = evaluateXPath(billDoc, "round(sum("+runningChargesXPath+")*100) div 100");
 
 						chargeFields.slice(9,10).append(runningChargesTotal);
 
@@ -175,7 +226,7 @@
 					var formCharge = $("#formCharge-template").clone().attr("id", "formCharge-"+cg+"-subtotal");
 					$("#formChargegroup-"+cg).append(formCharge);
 
-					var chargesTotalElem = evaluateXPath(xmlDoc, getElementXPath(charges)+"/ub:total")[0];
+					var chargesTotalElem = evaluateXPath(billDoc, getElementXPath(charges)+"/ub:total")[0];
 
 					if (chargesTotalElem)
 					{
@@ -183,54 +234,74 @@
 						$("#formCharge-"+cg+"-subtotal td").slice(8,9).append("<input type=\"textfield\" name=\"" + getElementXPath(chargesTotalElem) + "\" value=\"" + chargesTotalText + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
 					}
 				}
-				// Next: clean up form template rows and add submit to form
 			}
+			$("#billForm").append("<input type=\"submit\" action=\"submit\"></input>");
+			$("#billForm").prepend("<input type=\"submit\" action=\"submit\"></input>");
 		}
 
+		// uneditable bill fields
+		function bindBillDocStatic()
+		{
+			var utilityBill = billDoc.getElementsByTagName("ub:utilitybill");
+			if (utilityBill)
+			{
+				var id = utilityBill[0].getAttribute("id");
+				$("#billId").append(id);
+			}
+			$("#billPath").append(billUrl);
+
+			var car = billDoc.getElementsByTagName("ub:billingaddress");
+			if (car)
+			{
+				var addressee = car[0].getElementsByTagName("ub:addressee");
+				$("#addressee").append(addressee[0].childNodes[0].nodeValue);
+			}
+
+		}
 
 
 		function insertQuantity(xpath)
 		{
-			var node = evaluateXPath(xmlDoc, xpath);
+			var node = evaluateXPath(billDoc, xpath);
 			// find the sibling quantity gets inserted before
-			var quantity = xmlDoc.createElementNS("utilitybill","ub:quantity");
-			quantity.appendChild(xmlDoc.createTextNode("0"));
+			var quantity = billDoc.createElementNS("utilitybill","ub:quantity");
+			quantity.appendChild(billDoc.createTextNode("0"));
 
-			var units = xmlDoc.createAttribute("units");
+			var units = billDoc.createAttribute("units");
 
 			quantity.setAttributeNode(units);
-			var rateSibling = evaluateXPath(xmlDoc, xpath+"/ub:rate");
+			var rateSibling = evaluateXPath(billDoc, xpath+"/ub:rate");
 			if (rateSibling.length == 1)
 			{
 				rateSibling[0].parentNode.insertBefore(quantity, rateSibling[0]);
-				bindXML();
+				bindDetails();
 				return;
 			}
-			var totalSibling = evaluateXPath(xmlDoc, xpath+"/ub:total");
+			var totalSibling = evaluateXPath(billDoc, xpath+"/ub:total");
 			if (totalSibling.length == 1)
 			{
 				totalSibling[0].parentNode.insertBefore(quantity, totalSibling[0]);
-				bindXML();
+				bindDetails();
 				return;
 			}
 		}
 
 		function insertRate(xpath)
 		{
-			var node = evaluateXPath(xmlDoc, xpath);
+			var node = evaluateXPath(billDoc, xpath);
 
 			// find the sibling quantity gets inserted before
-			var rate = xmlDoc.createElementNS("utilitybill","ub:rate");
-			rate.appendChild(xmlDoc.createTextNode("0"));
+			var rate = billDoc.createElementNS("utilitybill","ub:rate");
+			rate.appendChild(billDoc.createTextNode("0"));
 
-			var units = xmlDoc.createAttribute("units");
+			var units = billDoc.createAttribute("units");
 
 			rate.setAttributeNode(units);
-			var totalSibling = evaluateXPath(xmlDoc, xpath+"/ub:total");
+			var totalSibling = evaluateXPath(billDoc, xpath+"/ub:total");
 			if (totalSibling.length == 1)
 			{
 				totalSibling[0].parentNode.insertBefore(rate, totalSibling[0]);
-				bindXML();
+				bindDetails();
 				return;
 			}
 		}
@@ -239,48 +310,48 @@
 		function insertChargeAbove(xpath)
 		{
 
- 			var node = evaluateXPath(xmlDoc, xpath);
+ 			var node = evaluateXPath(billDoc, xpath);
 			// check to ensure path pointed to a node
 
 			var charge = makeChargeGrove();
 
 			node[0].parentNode.insertBefore(charge, node[0]);
 
-			bindXML();
+			bindDetails();
 
 		}
 
 		function insertChargeBelow(xpath)
 		{
 
- 			var node = evaluateXPath(xmlDoc, xpath);
+ 			var node = evaluateXPath(billDoc, xpath);
 			// check to ensure path pointed to a node
 
 			var charge = makeChargeGrove();
 
 			node[0].parentNode.insertBefore(charge, node[0].nextSibling);
 
-			bindXML();
+			bindDetails();
 
 		}
 
 		function makeChargeGrove()
 		{
-			var charge = xmlDoc.createElementNS("utilitybill","ub:charge");
-			var chargeDescription = xmlDoc.createElementNS("utilitybill", "ub:description")
-			chargeDescription.appendChild(xmlDoc.createTextNode("Enter description"));
+			var charge = billDoc.createElementNS("utilitybill","ub:charge");
+			var chargeDescription = billDoc.createElementNS("utilitybill", "ub:description")
+			chargeDescription.appendChild(billDoc.createTextNode("Enter description"));
 			charge.appendChild(chargeDescription);
 
-			//var chargeQuantity = xmlDoc.createElementNS("utilitybill", "ub:quantity");
-			//chargeQuantity.appendChild(xmlDoc.createTextNode("Quantity"));
+			//var chargeQuantity = billDoc.createElementNS("utilitybill", "ub:quantity");
+			//chargeQuantity.appendChild(billDoc.createTextNode("Quantity"));
 			//charge.appendChild(chargeQuantity);
 
-			//var chargeRate = xmlDoc.createElementNS("utilitybill", "ub:rate");
-			//chargeRate.appendChild(xmlDoc.createTextNode("Rate"));
+			//var chargeRate = billDoc.createElementNS("utilitybill", "ub:rate");
+			//chargeRate.appendChild(billDoc.createTextNode("Rate"));
 			//charge.appendChild(chargeRate);
 
-			var chargeTotal = xmlDoc.createElementNS("utilitybill", "ub:total");
-			chargeTotal.appendChild(xmlDoc.createTextNode("0.0"));
+			var chargeTotal = billDoc.createElementNS("utilitybill", "ub:total");
+			chargeTotal.appendChild(billDoc.createTextNode("0.0"));
 			charge.appendChild(chargeTotal);
 
 			return charge;
@@ -289,12 +360,12 @@
 		function deleteCharge(xpath)
 		{
 
- 			var node = evaluateXPath(xmlDoc, xpath);
+ 			var node = evaluateXPath(billDoc, xpath);
 			// check to ensure path pointed to a node
 
 			node[0].parentNode.removeChild(node[0]);
 
-			bindXML();
+			bindDetails();
 
 		}
 
@@ -302,11 +373,11 @@
 		function submitXML(form)
 		{
 			jQuery.ajax({
-				url: "http://skyline/exist/rest/Test10001/Skyline-1-10001.xml",
+				url: billUrl,
 				type: "PUT",
 				processData: false,
 				contentType: "text/xml",
-				data: xmlDoc,
+				data: billDoc,
 				success: handleXML_PUT,
 				error: handleXML_PUT_error
 			});
@@ -314,11 +385,12 @@
 		}
 
 
+		// pass in an xml doc to make this generic?  would need to pass in the doc and callback to bind data
 		function storeData(xpath, value)
 		{
 
 
-			var node = evaluateXPath(xmlDoc, xpath);
+			var node = evaluateXPath(billDoc, xpath);
 
  			if (node[0].nodeType == 1) // element
  			{
@@ -329,86 +401,8 @@
  				parent.setAttribute(node[0].nodeName, value);
  			}
 
- 			bindXML();
+ 			bindBillDocForms();
  		}
-
-
-
-
-
-// return xpath for a given node
-function getElementXPath(node)
-{
-	if (node == null) return null;
-
-	var path = "";
-
-	if (node.nodeType == 2) // an atribute node was passed in
-	{
-		path = "/@" + node.nodeName;
-		node = node.ownerElement;
-	}
-
-	for (; node && node.nodeType == 1; node = node.parentNode)
-	{
-		idx = getElementIdx(node);
-		xname = node.tagName;
-		// all nodes must be indexed otherwise path node matches all
-		// ToDo:  terminal node does not need an index?
-		if (idx > 0) xname += "[" + idx + "]";
-		path = "/" + xname + path;
-	}
-
-	return path;
-}
-
-function getElementIdx(elt)
-{
-	var count = 1;
-	for (var sib = elt.previousSibling; sib ; sib = sib.previousSibling)
-	{
-		if(sib.nodeType == 1 && sib.tagName == elt.tagName)	count++
-	}
-
-	return count;
-}
-
-
-function evaluateXPath(aNode, aExpr)
-{
-	var xpe = new XPathEvaluator();
-	var nsResolver = xpe.createNSResolver(aNode.ownerDocument == null ? aNode.documentElement : aNode.ownerDocument.documentElement);
-	var result = xpe.evaluate(aExpr, aNode, nsResolver, 0, null);
-	var found = [];
-	var res;
-
-	switch(result.resultType)
-	{
-	case XPathResult.NUMBER_TYPE:
-		return result.numberValue;
-		break;
-	// ToDo add other result types as we need to
-	default:
-		try
-		{
-			while (res = result.iterateNext())
-				found.push(res);
-		} catch (e) {
-			alert(e);
-		}
-		return found;
-	}
-
-}
-
-// xpath must be unambiguous and math only one node
-function evaluateFullyQualifiedXPath(xpath)
-{
-	var nsResolver = xmlDoc.createNSResolver( xmlDoc.ownerDocument == null ? xmlDoc.documentElement : xmlDoc.ownerDocument.documentElement);
-	var result = xmlDoc.evaluate(xpath, xmlDoc, nsResolver, XPathResult.FIRST_ORDERED_NODE_TYPE, null );
-	return result;
-}
-
 
 
 	//]]>
@@ -416,13 +410,9 @@ function evaluateFullyQualifiedXPath(xpath)
 </head>
 <body>
 
-
-	<form id="xmlForm" action="javascript:submitXML(this);">
-	</form>
-
+	<!-- template for bill charge details -->
 	<div style="display: none;">
-		<!-- template for newXmlForm -->
-		<table id="formDetails-template" border="1">
+		<table id="formDetails-template" class="gridTable">
 			<thead>
 				<tr>
 					<th>Insert Above</th>
@@ -439,16 +429,7 @@ function evaluateFullyQualifiedXPath(xpath)
 			</thead>
 			<tfoot>
 				<tr>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td></td>
+					<td colspan="10">Footer</td>
 				</tr>
 			</tfoot>
 			<tbody id="formChargegroup-template">
@@ -461,14 +442,21 @@ function evaluateFullyQualifiedXPath(xpath)
 					<td></td>
 					<td></td>
 					<td></td>
-					<td></td>
-					<td></td>
+					<td class="money"></td>
+					<td class="money runningTotal"></td>
 				</tr>
 			</tbody>
 		</table>
 	</div>
 
-	<form id="newXmlForm" action="javascript:submitXML(this);">
+	<div>Bill Path:<span id="billPath"></span></div>
+	<div>Bill Id:<span id="billId"></span></div>
+	<div>CAR:<span id="addressee"></span></div>
+
+	<form id="accountForm" action="javascipt:submitAccount(this);">
+	</form>
+
+	<form id="billForm" action="javascript:submitXML(this);">
 	</form>
 
 </body>
