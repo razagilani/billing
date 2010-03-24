@@ -9,25 +9,36 @@
 
 	<link href="layout.css" rel="stylesheet" type="text/css">
 
-
-
 	<script type="text/javascript">
 	//<![CDATA[
 
-		var accountsUrl = "http://skyline/exist/rest/db/";
+		var xmlDBBaseUrl = "http://skyline/exist/rest/db"
+		// make this the base url for exist and then have each fetch create url
+
+
+		// consider putting accounts under accounts/ not db/
+		var accountsUrl = xmlDBBaseUrl+"";
+
+		// try and make this a local
+		// an in memory xml document that represents all available accounts
 		var accountsDoc = null;
+		var accountSelected = null;
 
-		var billUrl = "http://skyline/exist/rest/Test10001/Skyline-1-10001.xml";
+		// an in memory xml document that represents all available bills for a given account
+		var billsDoc = null;
+
+		//var billUrl = null;
+		// an in memory xml document that represents the entire bill
 		var billDoc = null;
+		var billSelected = null;
 
-		//var billDoc = "http://skyline/exist/rest/db/10001/Skyline-1-10001.xml";
 
 		var httpObject = null;
 		var appAvailable = false;
 
-		$(document).ready(function()
+		$(document).ready(
+			function()
 			{
-
 				// using low level API since high level API does not support PUT
 				jQuery.ajax({
 					url: accountsUrl,
@@ -39,35 +50,24 @@
 					error: handleXML_GET_error
 				});
 
-				// using low level API since high level API does not support PUT
-				// ToDo: rename xml_get to bill oriented function name
-				jQuery.ajax({
-					url: billUrl,
-					type: "GET",
-					processData: false,
-					data: billDoc,
-					dataType: "xml",
-					success: handleBillDoc_GET,
-					error: handleXML_GET_error
-				});
 
 			}
 		)
 
-		function handleBillDoc_GET(data)
-		{
-
-			billDoc = data;
-			bindBillDocStatic();
-			bindBillDocForms();
-
-
-		}
 
 		function handleAccountsDoc_GET(data)
 		{
 			accountsDoc = data;
-			bindAccountsDocStatic();
+			// bind to returned accounts (from exist)
+			// one collection named /db is expected with the children being the accounts
+			var accounts = evaluateXPath(accountsDoc, "/exist:result/exist:collection[@name=\"/db\"]/exist:collection");
+
+			$("#accountsForm").empty();
+			$("#accountsForm").append("<select id=\"accountsFormSelect\" onChange=\"javascript:fetchBills(accountSelected = this.value);\"")
+			for (var i = 0; i < accounts.length; i++)
+			{
+				$("#accountsFormSelect").append("<option >"+accounts[i].getAttribute("name")+"</option>");
+			}
 
 		}
 
@@ -100,18 +100,69 @@
 			}
 		}
 
-
-		// list available accounts
-		function bindAccountsDocStatic()
+		function fetchBills(account)
 		{
-			// Stopped here
-			alert("bind the accounts and determine way to keep local selection state w/o roundtripping xml to the server");
+			// when account is selected, update available bills
+			var billsUrl = accountsUrl + "/" + account;
+			// using low level API since high level API does not support PUT
+			jQuery.ajax({
+				url: billsUrl,
+				type: "GET",
+				processData: false,
+				data: billsDoc,
+				dataType: "xml",
+				success: handleBillsDoc_GET,
+				error: handleXML_GET_error
+			});
+		}
+		function handleBillsDoc_GET(data)
+		{
+			billsDoc = data;
+			// bind to returned bills (from exist)
+			var bills = evaluateXPath(billsDoc, "/exist:result/exist:collection/exist:resource");
+
+			$("#billsForm").empty();
+			$("#billsForm").append("<select id=\"billsFormSelect\" onChange=\"javascript:fetchBill(billSelected = this.value);\"")
+			$("#billsFormSelect").append("<option>---------</option>");
+			for (var i = 0; i < bills.length; i++)
+			{
+				$("#billsFormSelect").append("<option >"+bills[i].getAttribute("name")+"</option>");
+			}
+		}
+
+
+		// retrieve the bill xml document and store it as an in memory xml document.
+		function fetchBill(bill)
+		{
+
+			billUrl = xmlDBBaseUrl + "/" + accountSelected + "/" + billSelected;
+			// using low level API since high level API does not support PUT
+			// ToDo: rename xml_get to bill oriented function name
+			jQuery.ajax({
+				url: billUrl,
+				type: "GET",
+				processData: false,
+				data: billDoc,
+				dataType: "xml",
+				success: handleBillDoc_GET,
+				error: handleXML_GET_error
+			});
 
 		}
+
+		function handleBillDoc_GET(data)
+		{
+			billDoc = data;
+			bindBillDocStatic();
+			bindBillDocForms();
+		}
+
+
 
 		// given bill xml, bind it to the forms
 		function bindBillDocForms()
 		{
+			// there will be more than one form eventually
 			bindDetails();
 		}
 
@@ -242,6 +293,9 @@
 		// uneditable bill fields
 		function bindBillDocStatic()
 		{
+			$("#billId").empty();
+			$("#billPath").empty();
+			$("#addressee").empty();
 			var utilityBill = billDoc.getElementsByTagName("ub:utilitybill");
 			if (utilityBill)
 			{
@@ -370,7 +424,7 @@
 		}
 
 
-		function submitXML(form)
+		function submitBill(form)
 		{
 			jQuery.ajax({
 				url: billUrl,
@@ -388,7 +442,6 @@
 		// pass in an xml doc to make this generic?  would need to pass in the doc and callback to bind data
 		function storeData(xpath, value)
 		{
-
 
 			var node = evaluateXPath(billDoc, xpath);
 
@@ -449,14 +502,25 @@
 		</table>
 	</div>
 
+
+
+	<table>
+		<tr>
+			<td>
+				<form id="accountsForm" action="javascipt:selectAccount(this);"></form>
+			</td>
+			<td>
+				<form id="billsForm" action="javascipt:selectBill(this);"></form>
+			</td>
+		</tr>
+	</table>
+
+
 	<div>Bill Path:<span id="billPath"></span></div>
 	<div>Bill Id:<span id="billId"></span></div>
 	<div>CAR:<span id="addressee"></span></div>
 
-	<form id="accountForm" action="javascipt:submitAccount(this);">
-	</form>
-
-	<form id="billForm" action="javascript:submitXML(this);">
+	<form id="billForm" action="javascript:submitBill(this);">
 	</form>
 
 </body>
