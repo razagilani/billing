@@ -327,7 +327,9 @@ def go():
     # populate graph one
 
     # Construct period consumption/production ratio graph
-    data = [0.8, 99.2]
+    renewableUtilization= str(dom.utilitybill.statistics.renewableutilization)
+    conventionalUtilization= str(dom.utilitybill.statistics.conventionalutilization)
+    data = [renewableUtilization, conventionalUtilization]
     labels = ["Renewable", "Conventional"]
     c = PieChart(10*270, 10*127)
     c.addTitle2(TopLeft, "<*underline=8*>Energy Utilization This Period", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
@@ -350,10 +352,13 @@ def go():
     
     # construct period environmental benefit
 
+    periodRenewableConsumed = str(dom.utilitybill.statistics.renewableconsumed)
+    periodPoundsCO2Offset = str(dom.utilitybill.statistics.co2offset)
+    
     environmentalBenefit = [
         [Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("2,119,260  BTUs", styles['BillFieldSm'])],
-        [Paragraph("Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph("325.58", styles['BillFieldSm'])],
+        [Paragraph("Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(periodRenewableConsumed + " BTUs", styles['BillFieldSm'])],
+        [Paragraph("Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(periodPoundsCO2Offset, styles['BillFieldSm'])],
     ]
 
     t = Table(environmentalBenefit, [180,90])
@@ -369,14 +374,19 @@ def go():
     
     # construct system life cumulative numbers table
 
+    totalDollarSavings = str(dom.utilitybill.statistics.totalsavings)
+    totalRenewableEnergyConsumed = str(dom.utilitybill.statistics.totalrenewableconsumed)
+    totalco2offset = str(dom.utilitybill.statistics.totalco2offset)
+    totalTrees = str(dom.utilitybill.statistics.totaltrees)
+
     systemLife = [
         [Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph("11.12", styles['BillFieldSm'])],
-        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("4,679,928 BTUs", styles['BillFieldSm'])],
+        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph(totalDollarSavings, styles['BillFieldSm'])],
+        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(totalRenewableEnergyConsumed + " BTUs", styles['BillFieldSm'])],
         # for next bill period
         #[Paragraph("Total Renewable Energy Produced", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
-        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph("732.22", styles['BillFieldSm'])],
-        [Paragraph("Trees to Date", styles['BillLabelSm']), Paragraph(".56", styles['BillFieldSm'])]
+        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(totalco2offset, styles['BillFieldSm'])],
+        [Paragraph("Trees to Date", styles['BillLabelSm']), Paragraph(totalTrees, styles['BillFieldSm'])]
     ]
 
     t = Table(systemLife, [180,90])
@@ -387,8 +397,8 @@ def go():
     Elements.append(Spacer(100,20))
     
     # build string for trees
-    numTrees = math.modf(732.22/1300.0)[1]
-    fracTree = str(math.modf(732.22/1300)[0])[2:3]
+    numTrees = math.modf(float(totalTrees))[1]
+    fracTree = str(math.modf(float(totalTrees))[0])[2:3]
     
     treeString = ""
     while (numTrees) > 0:
@@ -406,9 +416,13 @@ def go():
 
     # populate graph four 
     
-    # construct annual production graph  229
-    data = [6.2, 19.4, 21.2, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    labels = ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"]
+    # construct annual production graph
+    data = []
+    labels = []
+    for period in (dom.utilitybill.statistics.productiontrend.period):
+        labels.append(str(period.month))
+        data.append(float(period.quantity))
+
     c = XYChart(10*270, 10*127)
     c.setPlotArea((10*270)/6, (10*127)/6.5, (10*270)*.8, (10*127)*.70)
     c.setColors2(DataColor, [0x9bbb59]) 
@@ -602,6 +616,8 @@ def go():
     doc.setProgressCallBack(progress)
     doc.build(Elements)
 
+
+# remove all calculations to helpers
 def poundsCarbonFromGas(therms = 0):
     """http://www.carbonfund.org/site/pages/carbon_calculators/category/Assumptions
     There are 12.0593 pounds CO2 per CCF of natural gas. We multiply 12.0593 by the number of CCF consumed annually and divide by 2,205 to get metric tons of CO2.

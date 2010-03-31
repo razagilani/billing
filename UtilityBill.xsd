@@ -415,6 +415,79 @@
 						<xs:attributeGroup ref="ub:service"/>
 					</xs:complexType>
 				</xs:element>
+				<xs:element name="statistics" minOccurs="0">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="conventionalconsumed" type="xs:integer">
+								<xs:annotation>
+									<xs:documentation>BTUs conventional energy used</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="renewableconsumed" type="xs:integer">
+								<xs:annotation>
+									<xs:documentation>BTUs consumed from step</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="renewableutilization" type="xs:decimal">
+								<xs:annotation>
+									<xs:documentation>renewable consumed over (conventional + renewable)</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="conventionalutilization" type="xs:decimal">
+								<xs:annotation>
+									<xs:documentation>conventional consumed over (conventional + renewable)</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="renewableproduced" type="xs:integer">
+								<xs:annotation>
+									<xs:documentation>BTUs produced from step</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="co2offset" type="xs:decimal">
+								<xs:annotation>
+									<xs:documentation>Pounds CO2 offset by renewables</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="totalsavings" type="xs:decimal">
+								<xs:annotation>
+									<xs:documentation>total dollar savings to date</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="totalrenewableconsumed" type="xs:integer">
+								<xs:annotation>
+									<xs:documentation>BTUs consumed over system life</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="totalrenewableproduced" type="xs:integer">
+								<xs:annotation>
+									<xs:documentation>BTUs produced over system life</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="totaltrees" type="xs:decimal">
+								<xs:annotation>
+									<xs:documentation>Trees sequestering CO2 (pounds CO2  * 1300 pounds per tree)</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="totalco2offset" type="xs:decimal"/>
+							<xs:element name="productiontrend">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="period" minOccurs="6" maxOccurs="12">
+											<xs:complexType>
+												<xs:attribute name="month" type="xs:string" use="required"/>
+												<xs:attribute name="quantity" type="xs:decimal" use="required">
+													<xs:annotation>
+														<xs:documentation>100k's of BTUs</xs:documentation>
+													</xs:annotation>
+												</xs:attribute>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
 			</xs:sequence>
 			<xs:attribute name="id" use="required">
 				<xs:annotation>
@@ -422,6 +495,11 @@
 				</xs:annotation>
 			</xs:attribute>
 			<xs:attribute name="account"/>
+			<xs:attribute name="version">
+				<xs:annotation>
+					<xs:documentation>Model version</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
 		</xs:complexType>
 	</xs:element>
 	<xs:complexType name="address">

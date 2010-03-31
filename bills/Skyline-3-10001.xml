@@ -580,4 +580,31 @@
 			</ub:register>
 		</ub:meter>
 	</ub:measuredusage>
+	<ub:statistics>
+		<ub:conventionalconsumed>274407360</ub:conventionalconsumed>
+		<ub:renewableconsumed>2119260</ub:renewableconsumed>
+		<ub:renewableutilization>0.8</ub:renewableutilization>
+		<ub:conventionalutilization>99.2</ub:conventionalutilization>
+		<ub:renewableproduced>0</ub:renewableproduced>
+		<ub:co2offset>325.58</ub:co2offset>
+		<ub:totalsavings>11.12</ub:totalsavings>
+		<ub:totalrenewableconsumed>4679928</ub:totalrenewableconsumed>
+		<ub:totalrenewableproduced>0</ub:totalrenewableproduced>
+		<ub:totaltrees>0.56</ub:totaltrees>
+		<ub:totalco2offset>732.22</ub:totalco2offset>
+		<ub:productiontrend>
+			<ub:period month="Nov" quantity="6.2"/>
+			<ub:period month="Dec" quantity="19.4"/>
+			<ub:period month="Jan" quantity="21.2"/>
+			<ub:period month="Feb" quantity="0"/>
+			<ub:period month="Mar" quantity="0"/>
+			<ub:period month="Apr" quantity="0"/>
+			<ub:period month="May" quantity="0"/>
+			<ub:period month="Jun" quantity="0"/>
+			<ub:period month="Jul" quantity="0"/>
+			<ub:period month="Aug" quantity="0"/>
+			<ub:period month="Sep" quantity="0"/>
+			<ub:period month="Oct" quantity="0"/>
+		</ub:productiontrend>
+	</ub:statistics>
 </ub:utilitybill>
