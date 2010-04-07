@@ -66,6 +66,11 @@
 									<xs:documentation>balance between prior payments and bills</xs:documentation>
 								</xs:annotation>
 							</xs:element>
+							<xs:element name="totaladjustment" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Any adjustments made by Skyline (e.g. estimated bill credit)</xs:documentation>
+								</xs:annotation>
+							</xs:element>
 							<xs:element name="actualservicecharges">
 								<xs:annotation>
 									<xs:documentation>Total charges from all services</xs:documentation>
@@ -162,7 +167,7 @@
 							</xs:element>
 							<xs:element name="adjustment" type="ub:payment" minOccurs="0" maxOccurs="unbounded">
 								<xs:annotation>
-									<xs:documentation>Charges and credit for late fees as well as unknown reasons.</xs:documentation>
+									<xs:documentation>Charges and credit for late fees and estimated billing.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
 							<xs:element name="balanceforward" type="xs:decimal" minOccurs="0">
