@@ -12,12 +12,11 @@
 	<script type="text/javascript">
 	//<![CDATA[
 
-		var xmlDBBaseUrl = "http://skyline/exist/rest/db"
+		var xmlDBBaseUrl = "http://tyrell/exist/rest/db"
 		// make this the base url for exist and then have each fetch create url
 
 
-		// consider putting accounts under accounts/ not db/
-		var accountsUrl = xmlDBBaseUrl+"";
+		var accountsUrl = xmlDBBaseUrl+"/skyline/bills";
 
 		// try and make this a local
 		// an in memory xml document that represents all available accounts
@@ -60,10 +59,11 @@
 			accountsDoc = data;
 			// bind to returned accounts (from exist)
 			// one collection named /db is expected with the children being the accounts
-			var accounts = evaluateXPath(accountsDoc, "/exist:result/exist:collection[@name=\"/db\"]/exist:collection");
+			var accounts = evaluateXPath(accountsDoc, "/exist:result/exist:collection[@name=\"/db/skyline/bills\"]/exist:collection");
 
 			$("#accountsForm").empty();
 			$("#accountsForm").append("<select id=\"accountsFormSelect\" onChange=\"javascript:fetchBills(accountSelected = this.value);\"")
+			$("#accountsFormSelect").append("<option>---------</option>");
 			for (var i = 0; i < accounts.length; i++)
 			{
 				$("#accountsFormSelect").append("<option >"+accounts[i].getAttribute("name")+"</option>");
@@ -135,7 +135,7 @@
 		function fetchBill(bill)
 		{
 
-			billUrl = xmlDBBaseUrl + "/" + accountSelected + "/" + billSelected;
+			billUrl = accountsUrl + "/" + accountSelected + "/" + billSelected;
 			// using low level API since high level API does not support PUT
 			// ToDo: rename xml_get to bill oriented function name
 			jQuery.ajax({
