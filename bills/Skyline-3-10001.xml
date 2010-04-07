@@ -451,7 +451,7 @@
 	</ub:measuredusage>
 	<ub:measuredusage service="Electric">
 		<ub:meter>
-			<ub:estimated>false</ub:estimated>
+			<ub:estimated>true</ub:estimated>
 			<ub:identifier>475T</ub:identifier>
 			<ub:register shadow="true">
 				<ub:identifier>475T</ub:identifier>
