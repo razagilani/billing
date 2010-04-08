@@ -162,28 +162,31 @@ def go():
 
     _showBoundaries = 0
 
-    # 612w 792h
+    # canvas: x,y,612w,792h w/ origin bottom left
+    # frame (x,y,w,h)
 
-    #page one frames
+    #page one frames; divided into three sections:  Summary, graphs, Charge Details
+
     backgroundF1 = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background1', showBoundary=_showBoundaries)
 
-    # bill dates block
-    billIssueDateF = Frame(78, 680, 120, 12, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billIssueDate', showBoundary=_showBoundaries)
-    billDueDateF = Frame(203, 680, 140, 12, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billDueDate', showBoundary=_showBoundaries)
-    billPeriodTableF = Frame(78, 627, 265, 38, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=1, id='billPeriod', showBoundary=_showBoundaries)
+    # 1/3
 
-    # summary charges label block
-    summaryChargesTableLabelF = Frame(417, 675, 150, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=7, id='summaryChargesLabel', showBoundary=_showBoundaries)
+    # Skyline Account number frame
+    accountNumberF = Frame(30, 678, 227, 18, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='accountNumber', showBoundary=_showBoundaries)
 
-    # summary charges block
-    summaryChargesTableF = Frame(353, 627, 220, 62, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=7, id='summaryCharges', showBoundary=_showBoundaries)
+    # Due date and Amount frame
+    amountDueF = Frame(353, 640, 227, 56, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='amountDue', showBoundary=_showBoundaries)
 
-    # balance block
-    balanceF = Frame(78, 556, 265, 60, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='balance', showBoundary=_showBoundaries)
+    # Customer service address Frame
+    serviceAddressF = Frame(30, 587, 306, 80, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='serviceAddress', showBoundary=_showBoundaries)
 
-    # current charges block
-    currentChargesF = Frame(353, 556, 220, 60, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='currentCharges', showBoundary=_showBoundaries)
+    # Special instructions frame
+    specialInstructionsF = Frame(353, 490, 227, 140, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='specialInstructions', showBoundary=_showBoundaries)
 
+    # Customer billing address frame
+    billingAddressF = Frame(30, 490, 306, 80, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
+
+    # 2/3
 
     # graph one frame
     graphOneF = Frame(30, 400, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphOne', showBoundary=_showBoundaries)
@@ -197,23 +200,29 @@ def go():
     # graph four frame
     graphFourF = Frame(310, 264, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphFour', showBoundary=_showBoundaries)
 
-    # Skyline Account number frame
-    accountNumberF = Frame(30, 238, 227, 18, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='accountNumber', showBoundary=_showBoundaries)
+    # 3/3
 
-    # Due date and Amount frame
-    amountDueF = Frame(353, 200, 227, 56, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='amountDue', showBoundary=_showBoundaries)
+    # bill dates block
+    billIssueDateF = Frame(78, 240, 120, 12, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billIssueDate', showBoundary=_showBoundaries)
+    billDueDateF = Frame(203, 240, 140, 12, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billDueDate', showBoundary=_showBoundaries)
+    billPeriodTableF = Frame(78, 187, 265, 38, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=1, id='billPeriod', showBoundary=_showBoundaries)
 
-    # Customer service address Frame
-    serviceAddressF = Frame(30, 147, 306, 80, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='serviceAddress', showBoundary=_showBoundaries)
+    # summary charges label block
+    summaryChargesTableLabelF = Frame(417, 235, 150, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=7, id='summaryChargesLabel', showBoundary=_showBoundaries)
 
-    # Special instructions frame
-    specialInstructionsF = Frame(353, 50, 227, 140, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='specialInstructions', showBoundary=_showBoundaries)
+    # summary charges block
+    summaryChargesTableF = Frame(353, 187, 220, 62, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=7, id='summaryCharges', showBoundary=_showBoundaries)
 
-    # Customer billing address frame
-    billingAddressF = Frame(30, 50, 306, 80, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
+    # balance block
+    balanceF = Frame(78, 116, 265, 60, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='balance', showBoundary=_showBoundaries)
+
+    # current charges block
+    currentChargesF = Frame(353, 116, 220, 60, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='currentCharges', showBoundary=_showBoundaries)
+
+    #
 
     # build page container for flowables to populate
-    firstPage = PageTemplate(id=firstPageName,frames=[backgroundF1, billIssueDateF, billDueDateF, billPeriodTableF, summaryChargesTableLabelF, summaryChargesTableF, balanceF, currentChargesF, graphOneF, graphTwoF, graphThreeF, graphFourF, accountNumberF, amountDueF, serviceAddressF, specialInstructionsF, billingAddressF])
+    firstPage = PageTemplate(id=firstPageName,frames=[backgroundF1, accountNumberF, amountDueF, serviceAddressF, specialInstructionsF, billingAddressF, graphOneF, graphTwoF, graphThreeF, graphFourF, billIssueDateF, billDueDateF, billPeriodTableF, summaryChargesTableLabelF, summaryChargesTableF, balanceF, currentChargesF])
 
     # page two frames
 
@@ -256,72 +265,48 @@ def go():
     pageOneBackground = Image('images/EmeraldCityBackground.png',letter[0], letter[1])
     Elements.append(pageOneBackground)
 
+    # populate account number
 
-    # populate billIssueDateF
-    Elements.append(Paragraph("Issued  <font name='Inconsolata'> " + str(dom.utilitybill.skylinebill.issued) + "</font>", styles['BillLabelRight']))
-    Elements.append(UseUpSpace())
-
-    # populate billDueDateF
-    Elements.append(Paragraph("Due Date  <font name='Inconsolata'> " + str(dom.utilitybill.skylinebill.duedate) + "</font>", styles['BillLabelRight']))
-    Elements.append(UseUpSpace())
-
-
-    # populate billPeriodTableF
-    serviceperiod = [
-        [
-            Paragraph(str(summary.service) + u' service period',styles['BillLabelSm']), 
-            Paragraph(str(summary.billperiodbegin), styles['BillField']), 
-            Paragraph(str(summary.billperiodend), styles['BillField'])
-        ] 
-        for summary in iter(dom.utilitybill.summary)
+    accountNumber = [
+        [Paragraph("Account Number", styles['BillLabel']), Paragraph(str(dom.utilitybill.account), styles['BillField'])], 
     ]
-
-    t = Table(serviceperiod, [115,75,75])
-    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'CENTER'), ('ALIGN',(2,0),(2,-1),'CENTER'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black) ]))
+    
+    t = Table(accountNumber, [135,85])
+    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black)]))
     Elements.append(t)
-    Elements.append(UseUpSpace())
+    #fits perfectly
+    #Elements.append(UseUpSpace())
 
-
-    # populate summaryChargeLabelTableF
-    Elements.append(Paragraph("Current Utility Charges", styles['BillLabel']))
-    Elements.append(UseUpSpace())
-
-    # populate summaryChargesTableF
-    utilitycharges = [
-        [Paragraph("Before Skyline", styles['BillLabelRight']),Paragraph("After Skyline", styles['BillLabelRight'])]
-    ]+[
-        [Paragraph(str(summary.hypotheticalcharges),styles['BillFieldRight']), Paragraph(str(summary.currentcharges),styles['BillFieldRight'])]
-        for summary in iter(dom.utilitybill.summary)
+    # populate due date and amount
+    dueDateAndAmount = [
+        [Paragraph("Due Date", styles['BillLabel']), Paragraph(str(dom.utilitybill.skylinebill.duedate), styles['BillFieldRight'])], 
+        [Paragraph("Total Amount", styles['BillLabel']), Paragraph(str(dom.utilitybill.skylinebill.totaldue), styles['BillFieldRight'])]
     ]
-
-    t = Table(utilitycharges, [125,95])
-    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (0,1), (-1,-1), 0.25, colors.black), ('BOX', (0,1), (-1,-1), 0.25, colors.black)]))
-    Elements.append(t)
-    Elements.append(UseUpSpace())
-
-    # populate balances
-    balances = [
-        [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.priorbalance),styles['BillFieldRight'])],
-        [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.paymentreceived), styles['BillFieldRight'])],
-        [Paragraph("Balance Forward", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.balanceforward), styles['BillFieldRight'])]
-    ]
-
-    t = Table(balances, [180,85])
+    
+    t = Table(dueDateAndAmount, [135,85])
     t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black)]))
     Elements.append(t)
     Elements.append(UseUpSpace())
-
-    # populate current charges
-    currentCharges = [
-        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.customersavings), styles['BillFieldRight'])],
-        [Paragraph("Renewable Energy", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.energycharges), styles['BillFieldRight'])], 
-        [Paragraph("Current Charges", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.currentcharges), styles['BillFieldRight'])]
-    ]
-
-    t = Table(currentCharges, [135,85])
-    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black)]))
-    Elements.append(t)
+    
+    # populate service address
+    Elements.append(Spacer(100,20))
+    Elements.append(Paragraph(str(dom.utilitybill.car.serviceaddress.addressee), styles['BillField']))
+    Elements.append(Paragraph(str(dom.utilitybill.car.serviceaddress.street), styles['BillField']))
+    Elements.append(Paragraph(str(dom.utilitybill.car.serviceaddress.city) + " " + str(dom.utilitybill.car.serviceaddress.state) + " " + str(dom.utilitybill.car.serviceaddress.postalcode), styles['BillField']))
     Elements.append(UseUpSpace())
+
+    # populate special instructions
+    Elements.append(Spacer(50,50))
+    Elements.append(UseUpSpace())
+    
+    # populate billing address
+    Elements.append(Spacer(100,20))
+    Elements.append(Paragraph(str(dom.utilitybill.car.billingaddress.addressee), styles['BillField']))
+    Elements.append(Paragraph(str(dom.utilitybill.car.billingaddress.street), styles['BillField']))
+    Elements.append(Paragraph(str(dom.utilitybill.car.billingaddress.city) + " " + str(dom.utilitybill.car.billingaddress.state) + " " + str(dom.utilitybill.car.billingaddress.postalcode), styles['BillField']))
+    Elements.append(UseUpSpace())
+
+
 
 
     # populate graph one
@@ -438,49 +423,73 @@ def go():
     Elements.append(Image('images/SampleGraph4.png', 270*.9, 127*.9))
     Elements.append(UseUpSpace())
 
-    # populate account number
 
-    accountNumber = [
-        [Paragraph("Account Number", styles['BillLabel']), Paragraph(str(dom.utilitybill.account), styles['BillField'])], 
+    # populate billIssueDateF
+    Elements.append(Paragraph("Issued  <font name='Inconsolata'> " + str(dom.utilitybill.skylinebill.issued) + "</font>", styles['BillLabelRight']))
+    Elements.append(UseUpSpace())
+
+    # populate billDueDateF
+    Elements.append(Paragraph("Due Date  <font name='Inconsolata'> " + str(dom.utilitybill.skylinebill.duedate) + "</font>", styles['BillLabelRight']))
+    Elements.append(UseUpSpace())
+
+
+    # populate billPeriodTableF
+    serviceperiod = [
+        [
+            Paragraph(str(summary.service) + u' service period',styles['BillLabelSm']), 
+            Paragraph(str(summary.billperiodbegin), styles['BillField']), 
+            Paragraph(str(summary.billperiodend), styles['BillField'])
+        ] 
+        for summary in iter(dom.utilitybill.summary)
     ]
-    
-    t = Table(accountNumber, [135,85])
+
+    t = Table(serviceperiod, [115,75,75])
+    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'CENTER'), ('ALIGN',(2,0),(2,-1),'CENTER'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black) ]))
+    Elements.append(t)
+    Elements.append(UseUpSpace())
+
+
+    # populate summaryChargeLabelTableF
+    Elements.append(Paragraph("Current Utility Charges", styles['BillLabel']))
+    Elements.append(UseUpSpace())
+
+    # populate summaryChargesTableF
+    utilitycharges = [
+        [Paragraph("Before Skyline", styles['BillLabelRight']),Paragraph("After Skyline", styles['BillLabelRight'])]
+    ]+[
+        [Paragraph(str(summary.hypotheticalcharges),styles['BillFieldRight']), Paragraph(str(summary.currentcharges),styles['BillFieldRight'])]
+        for summary in iter(dom.utilitybill.summary)
+    ]
+
+    t = Table(utilitycharges, [125,95])
+    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (0,1), (-1,-1), 0.25, colors.black), ('BOX', (0,1), (-1,-1), 0.25, colors.black)]))
+    Elements.append(t)
+    Elements.append(UseUpSpace())
+
+    # populate balances
+    balances = [
+        [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.priorbalance),styles['BillFieldRight'])],
+        [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.paymentreceived), styles['BillFieldRight'])],
+        [Paragraph("Balance Forward", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.balanceforward), styles['BillFieldRight'])]
+    ]
+
+    t = Table(balances, [180,85])
     t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black)]))
     Elements.append(t)
-    #fits perfectly
-    #Elements.append(UseUpSpace())
+    Elements.append(UseUpSpace())
 
-    # populate due date and amount
-    dueDateAndAmount = [
-        [Paragraph("Due Date", styles['BillLabel']), Paragraph(str(dom.utilitybill.skylinebill.duedate), styles['BillFieldRight'])], 
-        [Paragraph("Total Amount", styles['BillLabel']), Paragraph(str(dom.utilitybill.skylinebill.totaldue), styles['BillFieldRight'])]
+    # populate current charges
+    currentCharges = [
+        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.customersavings), styles['BillFieldRight'])],
+        [Paragraph("Renewable Energy", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.energycharges), styles['BillFieldRight'])], 
+        [Paragraph("Current Charges", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.currentcharges), styles['BillFieldRight'])]
     ]
-    
-    t = Table(dueDateAndAmount, [135,85])
+
+    t = Table(currentCharges, [135,85])
     t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black)]))
     Elements.append(t)
     Elements.append(UseUpSpace())
-    
-    # populate service address
-    Elements.append(Spacer(100,20))
-    Elements.append(Paragraph(str(dom.utilitybill.car.serviceaddress.addressee), styles['BillField']))
-    Elements.append(Paragraph(str(dom.utilitybill.car.serviceaddress.street), styles['BillField']))
-    Elements.append(Paragraph(str(dom.utilitybill.car.serviceaddress.city) + " " + str(dom.utilitybill.car.serviceaddress.state) + " " + str(dom.utilitybill.car.serviceaddress.postalcode), styles['BillField']))
-    Elements.append(UseUpSpace())
 
-    # populate special instructions
-    Elements.append(Spacer(50,50))
-    Elements.append(UseUpSpace())
-    
-    # populate billing address
-    Elements.append(Spacer(100,20))
-    Elements.append(Paragraph(str(dom.utilitybill.car.billingaddress.addressee), styles['BillField']))
-    Elements.append(Paragraph(str(dom.utilitybill.car.billingaddress.street), styles['BillField']))
-    Elements.append(Paragraph(str(dom.utilitybill.car.billingaddress.city) + " " + str(dom.utilitybill.car.billingaddress.state) + " " + str(dom.utilitybill.car.billingaddress.postalcode), styles['BillField']))
-    Elements.append(UseUpSpace())
-    
-    
-    
 
     #
     # Second Page
