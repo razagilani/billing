@@ -1224,72 +1224,6 @@
            x="118.03942"
            y="-692.64301"
            style="font-size:10;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Utility Service Three</tspan></text>
-      <rect
-         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-         id="rect5179"
-         width="53.220379"
-         height="12.006146"
-         x="226.16116"
-         y="-729.73889"
-         transform="scale(1,-1)"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87" />
-      <rect
-         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-         id="rect5200"
-         width="53.220379"
-         height="12.006146"
-         x="226.16116"
-         y="-715.89978"
-         transform="scale(1,-1)"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87" />
-      <rect
-         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-         id="rect5208"
-         width="53.220379"
-         height="12.006146"
-         x="226.16116"
-         y="-702.06067"
-         transform="scale(1,-1)"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87" />
-      <rect
-         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-         id="rect5240"
-         width="53.220379"
-         height="12.006146"
-         x="283.13376"
-         y="-729.73889"
-         transform="scale(1,-1)"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87" />
-      <rect
-         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-         id="rect5248"
-         width="53.220379"
-         height="12.006146"
-         x="283.13376"
-         y="-715.89978"
-         transform="scale(1,-1)"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87" />
-      <rect
-         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-         id="rect5256"
-         width="53.220379"
-         height="12.006146"
-         x="283.13376"
-         y="-702.06067"
-         transform="scale(1,-1)"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87" />
       <text
          xml:space="preserve"
          style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -1376,33 +1310,37 @@
            x="357.47086"
            y="-706.59912"
            style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">$4,921.50</tspan></text>
-      <rect
-         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-         id="rect5318"
-         width="66.910225"
-         height="11.991554"
-         x="355.88501"
-         y="-702.07019"
-         transform="scale(1,-1)"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87" />
-      <text
-         xml:space="preserve"
-         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
-         x="357.47086"
-         y="-692.76001"
-         id="text5320"
-         transform="scale(1,-1)"
-         sodipodi:linespacing="125%"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87"><tspan
-           sodipodi:role="line"
-           id="tspan5322"
-           x="357.47086"
+      <g
+         id="g2806"
+         transform="translate(6.4,1.6)">
+        <rect
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           transform="scale(1,-1)"
+           y="-702.07019"
+           x="355.88501"
+           height="11.991554"
+           width="66.910225"
+           id="rect5318"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5320"
            y="-692.76001"
-           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">   $10.25</tspan></text>
+           x="357.47086"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-692.76001"
+             x="357.47086"
+             id="tspan5322"
+             sodipodi:role="line">   $10.25</tspan></text>
+      </g>
       <rect
          style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
          id="rect5354"
@@ -1469,33 +1407,37 @@
            x="430.68713"
            y="-706.59912"
            style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">$1,332.75</tspan></text>
-      <rect
-         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-         id="rect5370"
-         width="66.910225"
-         height="11.991554"
-         x="429.10129"
-         y="-702.07013"
-         transform="scale(1,-1)"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87" />
-      <text
-         xml:space="preserve"
-         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
-         x="430.68713"
-         y="-692.75995"
-         id="text5372"
-         transform="scale(1,-1)"
-         sodipodi:linespacing="125%"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87"><tspan
-           sodipodi:role="line"
-           id="tspan5374"
-           x="430.68713"
+      <g
+         id="g2811"
+         transform="translate(0,1.6)">
+        <rect
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           transform="scale(1,-1)"
+           y="-702.07013"
+           x="429.10129"
+           height="11.991554"
+           width="66.910225"
+           id="rect5370"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5372"
            y="-692.75995"
-           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">    $1.09</tspan></text>
+           x="430.68713"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-692.75995"
+             x="430.68713"
+             id="tspan5374"
+             sodipodi:role="line">    $1.09</tspan></text>
+      </g>
       <rect
          style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
          id="rect5380"
@@ -1550,33 +1492,37 @@
            x="502.36838"
            y="-706.61536"
            style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">$3,588.75</tspan></text>
-      <rect
-         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-         id="rect5396"
-         width="71.152863"
-         height="11.991554"
-         x="500.78253"
-         y="-702.08643"
-         transform="scale(1,-1)"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87" />
-      <text
-         xml:space="preserve"
-         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
-         x="502.36838"
-         y="-692.77625"
-         id="text5398"
-         transform="scale(1,-1)"
-         sodipodi:linespacing="125%"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87"><tspan
-           sodipodi:role="line"
-           id="tspan5400"
-           x="502.36838"
+      <g
+         id="g2816"
+         transform="translate(-4.8,1.6)">
+        <rect
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           transform="scale(1,-1)"
+           y="-702.08643"
+           x="500.78253"
+           height="11.991554"
+           width="71.152863"
+           id="rect5396"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5398"
            y="-692.77625"
-           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">    $9.16</tspan></text>
+           x="502.36838"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-692.77625"
+             x="502.36838"
+             id="tspan5400"
+             sodipodi:role="line">    $9.16</tspan></text>
+      </g>
       <text
          xml:space="preserve"
          style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -2099,102 +2045,194 @@
              y="-623.52618"
              style="font-size:8px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Arial;-inkscape-font-specification:Arial Bold">Late Fee</tspan></text>
       </g>
-      <text
-         xml:space="preserve"
-         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
-         x="227.7711"
-         y="-720.43823"
-         id="text5185"
-         transform="scale(1,-1)"
-         sodipodi:linespacing="125%"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87"><tspan
-           sodipodi:role="line"
-           id="tspan5187"
-           x="227.7711"
+      <g
+         id="g2826"
+         transform="translate(3.2,-1.6)">
+        <rect
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           transform="scale(1,-1)"
+           y="-729.73889"
+           x="226.16116"
+           height="12.006146"
+           width="53.220379"
+           id="rect5179"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5185"
            y="-720.43823"
-           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">12/12/12</tspan></text>
-      <text
-         xml:space="preserve"
-         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
-         x="227.7711"
-         y="-706.59912"
-         id="text5202"
-         transform="scale(1,-1)"
-         sodipodi:linespacing="125%"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87"><tspan
-           sodipodi:role="line"
-           id="tspan5204"
            x="227.7711"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-720.43823"
+             x="227.7711"
+             id="tspan5187"
+             sodipodi:role="line">12/12/12</tspan></text>
+      </g>
+      <g
+         id="g2821"
+         transform="translate(3.2,0)">
+        <rect
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           transform="scale(1,-1)"
+           y="-715.89978"
+           x="226.16116"
+           height="12.006146"
+           width="53.220379"
+           id="rect5200"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5202"
            y="-706.59912"
-           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">12/12/12</tspan></text>
-      <text
-         xml:space="preserve"
-         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
-         x="227.7711"
-         y="-692.76001"
-         id="text5210"
-         transform="scale(1,-1)"
-         sodipodi:linespacing="125%"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87"><tspan
-           sodipodi:role="line"
-           id="tspan5212"
            x="227.7711"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-706.59912"
+             x="227.7711"
+             id="tspan5204"
+             sodipodi:role="line">12/12/12</tspan></text>
+      </g>
+      <g
+         id="g2796"
+         transform="translate(3.2,1.6)">
+        <rect
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           transform="scale(1,-1)"
+           y="-702.06067"
+           x="226.16116"
+           height="12.006146"
+           width="53.220379"
+           id="rect5208"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5210"
            y="-692.76001"
-           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">12/12/12</tspan></text>
-      <text
-         xml:space="preserve"
-         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
-         x="284.74368"
-         y="-692.76001"
-         id="text5258"
-         transform="scale(1,-1)"
-         sodipodi:linespacing="125%"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87"><tspan
-           sodipodi:role="line"
-           id="tspan5260"
-           x="284.74368"
-           y="-692.76001"
-           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">12/12/12</tspan></text>
-      <text
-         xml:space="preserve"
-         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
-         x="284.74368"
-         y="-706.59912"
-         id="text5250"
-         transform="scale(1,-1)"
-         sodipodi:linespacing="125%"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87"><tspan
-           sodipodi:role="line"
-           id="tspan5252"
-           x="284.74368"
+           x="227.7711"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-692.76001"
+             x="227.7711"
+             id="tspan5212"
+             sodipodi:role="line">12/12/12</tspan></text>
+      </g>
+      <g
+         id="g2801"
+         transform="translate(0,1.6)">
+        <g
+           id="g2841">
+          <rect
+             style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+             id="rect5256"
+             width="53.220379"
+             height="12.006146"
+             x="283.13376"
+             y="-702.06067"
+             transform="scale(1,-1)"
+             inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+             inkscape:export-xdpi="205.87"
+             inkscape:export-ydpi="205.87" />
+          <text
+             xml:space="preserve"
+             style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+             x="284.74368"
+             y="-692.76001"
+             id="text5258"
+             transform="scale(1,-1)"
+             sodipodi:linespacing="125%"
+             inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+             inkscape:export-xdpi="205.87"
+             inkscape:export-ydpi="205.87"><tspan
+               sodipodi:role="line"
+               id="tspan5260"
+               x="284.74368"
+               y="-692.76001"
+               style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">12/12/12</tspan></text>
+        </g>
+      </g>
+      <g
+         id="g2836">
+        <rect
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           transform="scale(1,-1)"
+           y="-715.89978"
+           x="283.13376"
+           height="12.006146"
+           width="53.220379"
+           id="rect5248"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5250"
            y="-706.59912"
-           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">12/12/12</tspan></text>
-      <text
-         xml:space="preserve"
-         style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
-         x="284.74368"
-         y="-720.43823"
-         id="text5242"
-         transform="scale(1,-1)"
-         sodipodi:linespacing="125%"
-         inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
-         inkscape:export-xdpi="205.87"
-         inkscape:export-ydpi="205.87"><tspan
-           sodipodi:role="line"
-           id="tspan5244"
            x="284.74368"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-706.59912"
+             x="284.74368"
+             id="tspan5252"
+             sodipodi:role="line">12/12/12</tspan></text>
+      </g>
+      <g
+         id="g2831"
+         transform="translate(0,-1.6)">
+        <rect
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           transform="scale(1,-1)"
+           y="-729.73889"
+           x="283.13376"
+           height="12.006146"
+           width="53.220379"
+           id="rect5240"
+           style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.40000001;stroke-linecap:butt;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+        <text
+           inkscape:export-ydpi="205.87"
+           inkscape:export-xdpi="205.87"
+           inkscape:export-filename="C:\Documents and Settings\Rich Andrews\Desktop\tmp\BillSummary.png"
+           sodipodi:linespacing="125%"
+           transform="scale(1,-1)"
+           id="text5242"
            y="-720.43823"
-           style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New">12/12/12</tspan></text>
+           x="284.74368"
+           style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           xml:space="preserve"><tspan
+             style="font-size:10.39999962px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Courier New;-inkscape-font-specification:Courier New"
+             y="-720.43823"
+             x="284.74368"
+             id="tspan5244"
+             sodipodi:role="line">12/12/12</tspan></text>
+      </g>
       <text
          xml:space="preserve"
          style="font-size:12.80000019px;font-style:normal;font-weight:normal;line-height:125%;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Bitstream Vera Sans"
