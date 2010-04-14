@@ -182,7 +182,7 @@ def go():
     amountDueF = Frame(353, 662, 227, 37, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='amountDue', showBoundary=_showBoundaries)
 
     # Customer service address Frame
-    serviceAddressF = Frame(353, 600, 227, 60, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='serviceAddress', showBoundary=_showBoundaries)
+    serviceAddressF = Frame(371, 570, 227, 70, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='serviceAddress', showBoundary=_showBoundaries)
 
     # Special instructions frame
     specialInstructionsF = Frame(353, 530, 227, 70, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='specialInstructions', showBoundary=_showBoundaries)
@@ -245,7 +245,7 @@ def go():
     backgroundF2 = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background2', showBoundary=_showBoundaries)
 
     # address must show frame
-    showAddressF = Frame(170, 735, 350, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
+    #showAddressF = Frame(170, 735, 350, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
 
     # Staples envelope (for bill return)
     # #9 standard invoice (3-7/8" (279pt) x 8-7/8" (639pt))
@@ -254,19 +254,19 @@ def go():
     # Window placement: 7/8" (63pt) from left and 1/2" (36pt) from bottom
 
     # Skyline remit address frame
-    skylineAddressF = Frame(78, 600, 306, 60, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
+    #skylineAddressF = Frame(78, 600, 306, 60, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
 
     # measured usage meter summaries
-    measuredUsageF = Frame(30, 435, 550, 90, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billabeUsage', showBoundary=_showBoundaries)
+    measuredUsageF = Frame(30, 675, 550, 90, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billabeUsage', showBoundary=_showBoundaries)
 
     # Charge details header frame
-    chargeDetailsHeaderF = Frame(30, 385, 550, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetailsHeader', showBoundary=_showBoundaries)
+    chargeDetailsHeaderF = Frame(30, 625, 550, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetailsHeader', showBoundary=_showBoundaries)
 
     # charge details frame
-    chargeDetailsF = Frame(30, 35, 550, 350, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetails', showBoundary=_showBoundaries)
+    chargeDetailsF = Frame(30, 275, 550, 350, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetails', showBoundary=_showBoundaries)
 
     # build page container for flowables to populate
-    secondPage = PageTemplate(id=secondPageName,frames=[backgroundF2, skylineAddressF, showAddressF, measuredUsageF, chargeDetailsHeaderF, chargeDetailsF])
+    secondPage = PageTemplate(id=secondPageName,frames=[backgroundF2, measuredUsageF, chargeDetailsHeaderF, chargeDetailsF])
     #
 
     doc = SIBillDocTemplate('bill.pdf', pagesize=letter, showBoundary=0, allowSplitting=0)
@@ -291,8 +291,8 @@ def go():
 
     # populate account number, bill id & issue date
     accountNumber = [
-        [Paragraph("Account Number", styles['BillLabel']),Paragraph(str(dom.utilitybill.account) + " " + str(dom.utilitybill.id),styles['BillField'])], 
-        [Paragraph("Issue Date", styles['BillLabel']), Paragraph(str(dom.utilitybill.skylinebill.issued), styles['BillField'])]
+        [Paragraph("Account Number", styles['BillLabelRight']),Paragraph(str(dom.utilitybill.account) + " " + str(dom.utilitybill.id),styles['BillField'])], 
+        [Paragraph("Issue Date", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.issued), styles['BillField'])]
     ]
     
     t = Table(accountNumber, [135,85])
@@ -303,8 +303,8 @@ def go():
 
     # populate due date and amount
     dueDateAndAmount = [
-        [Paragraph("Due Date", styles['BillLabel']), Paragraph(str(dom.utilitybill.skylinebill.duedate), styles['BillFieldRight'])], 
-        [Paragraph("Total Amount", styles['BillLabel']), Paragraph(str(dom.utilitybill.skylinebill.totaldue), styles['BillFieldRight'])]
+        [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.duedate), styles['BillFieldRight'])], 
+        [Paragraph("Total Amount", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.totaldue), styles['BillFieldRight'])]
     ]
     
     t = Table(dueDateAndAmount, [135,85])
@@ -313,7 +313,8 @@ def go():
     Elements.append(UseUpSpace())
     
     # populate service address
-    Elements.append(Spacer(100,20))
+    Elements.append(Spacer(100,10))
+    Elements.append(Paragraph("Service Location", styles['BillLabel']))
     Elements.append(Paragraph(str(dom.utilitybill.car.serviceaddress.addressee), styles['BillField']))
     Elements.append(Paragraph(str(dom.utilitybill.car.serviceaddress.street), styles['BillField']))
     Elements.append(Paragraph(str(dom.utilitybill.car.serviceaddress.city) + " " + str(dom.utilitybill.car.serviceaddress.state) + " " + str(dom.utilitybill.car.serviceaddress.postalcode), styles['BillField']))
@@ -541,15 +542,15 @@ def go():
     Elements.append(pageTwoBackground)
 
     # populate service address
-    Elements.append(Spacer(100,20))
-    Elements.append(Paragraph("Skyline Innovations", styles['BillFieldLg']))
-    Elements.append(Paragraph("2451 18<super>th</super> Street, Second Floor", styles['BillFieldLg']))
-    Elements.append(Paragraph("Washington, DC  20009", styles['BillFieldLg']))
-    Elements.append(UseUpSpace())
+    #Elements.append(Spacer(100,20))
+    #Elements.append(Paragraph("Skyline Innovations", styles['BillFieldLg']))
+    #Elements.append(Paragraph("2451 18<super>th</super> Street, Second Floor", styles['BillFieldLg']))
+    #Elements.append(Paragraph("Washington, DC  20009", styles['BillFieldLg']))
+    #Elements.append(UseUpSpace())
 
 
-    Elements.append(Paragraph("Address must show through envelope window", styles['BillLabelLg']))
-    Elements.append(UseUpSpace())
+    #Elements.append(Paragraph("Address must show through envelope window", styles['BillLabelLg']))
+    #Elements.append(UseUpSpace())
 
     # list of the rows
     measuredUsage = [
