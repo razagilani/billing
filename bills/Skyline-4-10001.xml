@@ -24,19 +24,19 @@
 		</ub:billingaddress>
 	</ub:car>
 	<ub:skylinebill>
-		<ub:billperiodbegin>2009-01-06</ub:billperiodbegin>
-		<ub:billperiodend>2010-02-04</ub:billperiodend>
-		<ub:priorbalance>26.66</ub:priorbalance>
-		<ub:paymentreceived>26.66</ub:paymentreceived>
+		<ub:billperiodbegin>2010-01-11</ub:billperiodbegin>
+		<ub:billperiodend>2010-03-04</ub:billperiodend>
+		<ub:priorbalance>28.21</ub:priorbalance>
+		<ub:paymentreceived>28.21</ub:paymentreceived>
 		<ub:balanceforward>0.00</ub:balanceforward>
-		<ub:actualservicecharges>5751.34</ub:actualservicecharges>
-		<ub:hypotheticalservicecharges>5784.53</ub:hypotheticalservicecharges>
-		<ub:energycharges>28.21</ub:energycharges>
-		<ub:customersavings>4.98</ub:customersavings>
-		<ub:currentcharges>28.21</ub:currentcharges>
-		<ub:totaldue>28.21</ub:totaldue>
-		<ub:duedate>2010-03-31</ub:duedate>
-		<ub:issued>2010-03-15</ub:issued>
+		<ub:actualservicecharges>6728.24</ub:actualservicecharges>
+		<ub:hypotheticalservicecharges>0.00</ub:hypotheticalservicecharges>
+		<ub:energycharges>0.00</ub:energycharges>
+		<ub:customersavings>0.00</ub:customersavings>
+		<ub:currentcharges>0.00</ub:currentcharges>
+		<ub:totaldue>0.00</ub:totaldue>
+		<ub:duedate>2010-04-16</ub:duedate>
+		<ub:issued>2010-05-01</ub:issued>
 	</ub:skylinebill>
 	<ub:summary service="Electric">
 		<ub:priorbalance>0.0</ub:priorbalance>
@@ -48,9 +48,9 @@
 		<ub:billperiodbegin>2010-01-11</ub:billperiodbegin>
 		<ub:billperiodend>2010-02-04</ub:billperiodend>
 		<ub:issuedate>2010-02-09</ub:issuedate>
-		<ub:currentcharges>2892.96</ub:currentcharges>
 		<ub:hypotheticalcharges>2899.16</ub:hypotheticalcharges>
-		<ub:skylinecharges>0.0</ub:skylinecharges>
+		<ub:currentcharges>2892.96</ub:currentcharges>
+		<ub:skylinevalue>0.0</ub:skylinevalue>
 		<ub:totaldue>0.0</ub:totaldue>
 		<ub:duedate>2010-03-02</ub:duedate>
 		<ub:latepayment>
@@ -65,12 +65,11 @@
 			<ub:amount>0.0</ub:amount>
 		</ub:previouspayment>
 		<ub:balanceforward>0.0</ub:balanceforward>
-		<ub:billperiodbegin>2010-01-06</ub:billperiodbegin>
-		<ub:billperiodend>2010-02-03</ub:billperiodend>
+		<ub:billperiodbegin>2010-02-04</ub:billperiodbegin>
+		<ub:billperiodend>2010-03-04</ub:billperiodend>
 		<ub:issuedate>2010-02-08</ub:issuedate>
-		<ub:currentcharges>2858.38</ub:currentcharges>
 		<ub:hypotheticalcharges>2885.37</ub:hypotheticalcharges>
-		<ub:skylinecharges>0.0</ub:skylinecharges>
+		<ub:currentcharges>2858.38</ub:currentcharges>
 		<ub:totaldue>0.0</ub:totaldue>
 		<ub:duedate>2010-03-01</ub:duedate>
 		<ub:latepayment>
