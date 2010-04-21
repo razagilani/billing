@@ -1,3 +1,4 @@
+Windows:
 
 Components for PDF rendering
 
@@ -27,6 +28,27 @@ PYTHONPATH must point to C:\Python26\Lib\site-packages\ChartDirector\lib
 
 
 inconsolata must be added to system fonts for chart director.  Figure out way for CD to depend on fonts directory.
+
+
+Linux ubunu (9.10 Karmic Koala):
+
+(install python, headers and setuptools)
+
+easy_install PIL
+
+Amara2 (2.0a4)
+easy_install amara
+
+Chart Director:
+http://download2.advsofteng.com/chartdir_python_linux.tar.gz
+doc is at file:///home/[user]/Downloads/ChartDirector/doc/cdpython.htm
+sudo cp -r ChartDirector/lib /usr/lib/python2.6/dist-packages/chartdirector
+
+
+ReportLab: 
+
+http://www.reportlab.com/ftp/ReportLab_2_4.tar.gz
+
 
 
 
