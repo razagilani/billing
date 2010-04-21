@@ -48,6 +48,10 @@ sudo cp -r ChartDirector/lib /usr/lib/python2.6/dist-packages/chartdirector
 ReportLab: 
 
 http://www.reportlab.com/ftp/ReportLab_2_4.tar.gz
+Set pythonpath so pychartdir module can be found:
+PYTHONPATH=/usr/local/lib/python2.6/site-packages/chartdirector
+export PYTHONPATH
+
 
 
 
