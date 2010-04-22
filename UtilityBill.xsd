@@ -61,14 +61,14 @@
 									<xs:documentation>payment from prior bills</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="balanceforward" minOccurs="0">
-								<xs:annotation>
-									<xs:documentation>balance between prior payments and bills</xs:documentation>
-								</xs:annotation>
-							</xs:element>
 							<xs:element name="totaladjustment" minOccurs="0">
 								<xs:annotation>
 									<xs:documentation>Any adjustments made by Skyline (e.g. estimated bill credit)</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="balanceforward" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>balance between prior payments and bills</xs:documentation>
 								</xs:annotation>
 							</xs:element>
 							<xs:element name="actualservicecharges">
@@ -220,11 +220,10 @@
 									</xs:simpleContent>
 								</xs:complexType>
 							</xs:element>
-							<xs:element name="skylinesavings" minOccurs="0">
+							<xs:element name="skylinesavings" type="xs:decimal" minOccurs="0">
 								<xs:annotation>
-									<xs:documentation>delme</xs:documentation>
+									<xs:documentation>itemized savings by fuel type</xs:documentation>
 								</xs:annotation>
-								<xs:complexType/>
 							</xs:element>
 							<xs:element name="totaldue" type="xs:decimal">
 								<xs:annotation>
