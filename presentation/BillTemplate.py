@@ -271,7 +271,8 @@ def go():
     doc.addPageTemplates([firstPage, secondPage])
 
     # Bind to XML bill
-    dom = bindery.parse('../sample/SkylineTest-0-0.xml')
+    # ../sample/SkylineTest-0-0.xml
+    dom = bindery.parse('../bills/Skyline-4-10001.xml')
 
     Elements = []
 
