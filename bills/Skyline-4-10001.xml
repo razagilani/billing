@@ -28,8 +28,8 @@
 		<ub:billperiodend>2010-03-04</ub:billperiodend>
 		<ub:priorbalance>28.21</ub:priorbalance>
 		<ub:paymentreceived>28.21</ub:paymentreceived>
-		<ub:totaladjustment>-5.21</ub:totaladjustment>
-		<ub:balanceforward>-5.21</ub:balanceforward>
+		<ub:totaladjustment>-5.27</ub:totaladjustment>
+		<ub:balanceforward>-5.27</ub:balanceforward>
 		<ub:actualservicecharges>6158.63</ub:actualservicecharges>
 		<ub:hypotheticalservicecharges>6188.00</ub:hypotheticalservicecharges>
 		<ub:energycharges>29.37</ub:energycharges>
@@ -759,22 +759,22 @@
 		</ub:meter>
 	</ub:measuredusage>
 	<ub:statistics>
-		<ub:conventionalconsumed>274407360</ub:conventionalconsumed>
-		<ub:renewableconsumed>2119260</ub:renewableconsumed>
-		<ub:renewableutilization>0.8</ub:renewableutilization>
-		<ub:conventionalutilization>99.2</ub:conventionalutilization>
+		<ub:conventionalconsumed>351532209</ub:conventionalconsumed>
+		<ub:renewableconsumed>4679928</ub:renewableconsumed>
+		<ub:renewableutilization>1.32</ub:renewableutilization>
+		<ub:conventionalutilization>98.68</ub:conventionalutilization>
 		<ub:renewableproduced>0</ub:renewableproduced>
-		<ub:co2offset>325.58</ub:co2offset>
-		<ub:totalsavings>11.12</ub:totalsavings>
-		<ub:totalrenewableconsumed>4679928</ub:totalrenewableconsumed>
+		<ub:co2offset>170.11</ub:co2offset>
+		<ub:totalsavings>14.60</ub:totalsavings>
+		<ub:totalrenewableconsumed>6799188</ub:totalrenewableconsumed>
 		<ub:totalrenewableproduced>0</ub:totalrenewableproduced>
-		<ub:totaltrees>0.56</ub:totaltrees>
-		<ub:totalco2offset>732.22</ub:totalco2offset>
-		<ub:productiontrend>
+		<ub:totaltrees>0.69</ub:totaltrees>
+		<ub:totalco2offset>902.33</ub:totalco2offset>
+		<ub:consumptiontrend>
 			<ub:period month="Nov" quantity="6.2"/>
 			<ub:period month="Dec" quantity="19.4"/>
 			<ub:period month="Jan" quantity="21.2"/>
-			<ub:period month="Feb" quantity="0"/>
+			<ub:period month="Feb" quantity="11.26"/>
 			<ub:period month="Mar" quantity="0"/>
 			<ub:period month="Apr" quantity="0"/>
 			<ub:period month="May" quantity="0"/>
@@ -783,6 +783,6 @@
 			<ub:period month="Aug" quantity="0"/>
 			<ub:period month="Sep" quantity="0"/>
 			<ub:period month="Oct" quantity="0"/>
-		</ub:productiontrend>
+		</ub:consumptiontrend>
 	</ub:statistics>
 </ub:utilitybill>

@@ -424,7 +424,7 @@ def go():
     # construct annual production graph
     data = []
     labels = []
-    for period in (dom.utilitybill.statistics.productiontrend.period):
+    for period in (dom.utilitybill.statistics.consumptiontrend.period):
         labels.append(str(period.month))
         data.append(float(period.quantity))
 
@@ -454,7 +454,7 @@ def go():
             [Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
         ] + [
             [
-                Paragraph(str(summary.service) + u' company',styles['BillLabelSmRight']), 
+                Paragraph(str(summary.service) + u' service',styles['BillLabelSmRight']), 
                 Paragraph(str(summary.billperiodbegin), styles['BillFieldRight']), 
                 Paragraph(str(summary.billperiodend), styles['BillFieldRight'])
             ] 
