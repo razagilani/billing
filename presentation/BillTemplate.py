@@ -14,6 +14,10 @@ import os
 from pprint import pprint
 from types import NoneType
 import math
+
+# handle command line options
+from optparse import OptionParser
+
 #
 # Types for ReportLab
 #
@@ -144,7 +148,7 @@ class SIBillDocTemplate(BaseDocTemplate):
 def progress(type,value):
     sys.stdout.write('.')
      
-def go():
+def main(options):
     '''docstring goes here?'''
 
     styles = getSampleStyleSheet()
@@ -272,7 +276,7 @@ def go():
 
     # Bind to XML bill
     # ../sample/SkylineTest-0-0.xml
-    dom = bindery.parse('../bills/Skyline-4-10001.xml')
+    dom = bindery.parse(options.snob)
 
     Elements = []
 
@@ -391,7 +395,7 @@ def go():
         # for next bill period
         #[Paragraph("Total Renewable Energy Produced", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
         [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(totalco2offset, styles['BillFieldSm'])],
-        [Paragraph("Trees to Date", styles['BillLabelSm']), Paragraph(totalTrees, styles['BillFieldSm'])]
+        [Paragraph("Tens of Trees to Date", styles['BillLabelSm']), Paragraph(totalTrees, styles['BillFieldSm'])]
     ]
 
     t = Table(systemLife, [180,90])
@@ -690,5 +694,15 @@ def equivalentTrees(poundsCarbonAvoided = 0):
     Assume 1.08 pounds per bill period"""
     return int(poundsCarbon) * 1.08
 
-if __name__ == "__main__":  
-    go()
+if __name__ == "__main__":
+    parser = OptionParser()
+    parser.add_option("-s", "--snob", dest="snob", help="Convert bill to PDF", metavar="FILE")
+    parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="Print progress to stdout.")
+
+    (options, args) = parser.parse_args()
+
+    if (options.snob == None):
+        print "SNOB must be specified."
+        exit()
+
+    main(options)
