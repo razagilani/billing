@@ -47,7 +47,7 @@ from reportlab.pdfbase.pdfmetrics import registerFontFamily
 # for xml processing
 import amara
 from amara import bindery
-from amara import xml_print
+#from amara import xml_print
 
 
 #
@@ -146,7 +146,8 @@ class SIBillDocTemplate(BaseDocTemplate):
 
 
 def progress(type,value):
-    sys.stdout.write('.')
+    if (options.verbose):
+        sys.stdout.write('.')
      
 def main(options):
     '''docstring goes here?'''
@@ -271,7 +272,7 @@ def main(options):
     secondPage = PageTemplate(id=secondPageName,frames=[backgroundF2, measuredUsageHeaderF, measuredUsageF, chargeDetailsHeaderF, chargeDetailsF])
     #
 
-    doc = SIBillDocTemplate('bill.pdf', pagesize=letter, showBoundary=0, allowSplitting=0)
+    doc = SIBillDocTemplate(options.output, pagesize=letter, showBoundary=0, allowSplitting=0)
     doc.addPageTemplates([firstPage, secondPage])
 
     # Bind to XML bill
@@ -697,12 +698,17 @@ def equivalentTrees(poundsCarbonAvoided = 0):
 if __name__ == "__main__":
     parser = OptionParser()
     parser.add_option("-s", "--snob", dest="snob", help="Convert bill to PDF", metavar="FILE")
+    parser.add_option("-o", "--output", dest="output", help="PDF output file", metavar="FILE")
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="Print progress to stdout.")
 
     (options, args) = parser.parse_args()
 
     if (options.snob == None):
         print "SNOB must be specified."
+        exit()
+
+    if (options.output == None):
+        print "Output file must be specified."
         exit()
 
     main(options)
