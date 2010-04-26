@@ -476,7 +476,7 @@
 								</xs:annotation>
 							</xs:element>
 							<xs:element name="totalco2offset" type="xs:decimal"/>
-							<xs:element name="productiontrend">
+							<xs:element name="consumptiontrend">
 								<xs:complexType>
 									<xs:sequence>
 										<xs:element name="period" minOccurs="6" maxOccurs="12">
