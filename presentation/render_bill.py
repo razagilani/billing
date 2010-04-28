@@ -190,11 +190,6 @@ def main(options):
     # Customer service address Frame
     serviceAddressF = Frame(371, 570, 227, 70, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='serviceAddress', showBoundary=_showBoundaries)
 
-    # Special instructions frame
-    #specialInstructionsF = Frame(353, 530, 227, 70, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='specialInstructions', showBoundary=_showBoundaries)
-
-
-
     # Staples envelope (for bill send)
     # #10 (4-1/8" (297pt)  x 9-1/2")
     # Left window position fits standard formats
@@ -240,9 +235,12 @@ def main(options):
     # balance due block
     balanceDueF = Frame(360, 41, 220, 25, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balanceDue', showBoundary=_showBoundaries)
 
+    # Special instructions frame
+    motdF = Frame(30, 41, 220, 50, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='motd', showBoundary=_showBoundaries)
+
 
     # build page container for flowables to populate
-    firstPage = PageTemplate(id=firstPageName,frames=[backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, graphOneF, graphTwoF, graphThreeF, graphFourF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, currentChargesF, balanceForwardF, balanceDueF])
+    firstPage = PageTemplate(id=firstPageName,frames=[backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, graphOneF, graphTwoF, graphThreeF, graphFourF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, currentChargesF, balanceForwardF, balanceDueF, motdF])
     #
 
     # page two frames
@@ -530,6 +528,12 @@ def main(options):
     t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(0,0),(-1,-1),colors.white)]))
     Elements.append(t)
     Elements.append(UseUpSpace())
+
+    # populate motd
+    motd = Paragraph(str(dom.utilitybill.skylinebill.message), styles['BillFieldSm'])
+    Elements.append(motd)
+    Elements.append(UseUpSpace())
+
 
     #
     # Second Page
