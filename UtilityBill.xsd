@@ -99,6 +99,7 @@
 							<xs:element name="totaldue"/>
 							<xs:element name="duedate"/>
 							<xs:element name="issued"/>
+							<xs:element name="message"/>
 						</xs:sequence>
 					</xs:complexType>
 				</xs:element>
