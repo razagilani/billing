@@ -32,12 +32,13 @@
 		<ub:balanceforward>-5.27</ub:balanceforward>
 		<ub:actualservicecharges>6158.63</ub:actualservicecharges>
 		<ub:hypotheticalservicecharges>6188.00</ub:hypotheticalservicecharges>
-		<ub:energycharges>29.37</ub:energycharges>
+		<ub:energycharges>24.96</ub:energycharges>
 		<ub:customersavings>4.41</ub:customersavings>
 		<ub:currentcharges>24.96</ub:currentcharges>
-		<ub:totaldue>19.75</ub:totaldue>
-		<ub:duedate>2010-04-16</ub:duedate>
-		<ub:issued>2010-05-01</ub:issued>
+		<ub:totaldue>19.69</ub:totaldue>
+		<ub:duedate>2010-05-15</ub:duedate>
+		<ub:issued>2010-04-28</ub:issued>
+		<ub:message>Electric service 2010-01-11 to 2010-02-04 was estimated and Skyline charges cancelled. Actual usage billed this period.</ub:message>
 	</ub:skylinebill>
 	<ub:summary service="Electric">
 		<ub:priorbalance>0.0</ub:priorbalance>
@@ -47,7 +48,7 @@
 		</ub:previouspayment>
 		<ub:balanceforward>0.0</ub:balanceforward>
 		<ub:billperiodbegin>2010-01-11</ub:billperiodbegin>
-		<ub:billperiodend>2010-02-04</ub:billperiodend>
+		<ub:billperiodend>2010-03-04</ub:billperiodend>
 		<ub:issuedate>2010-02-09</ub:issuedate>
 		<ub:hypotheticalcharges>3441.77</ub:hypotheticalcharges>
 		<ub:currentcharges>3432.18</ub:currentcharges>
@@ -760,13 +761,13 @@
 	</ub:measuredusage>
 	<ub:statistics>
 		<ub:conventionalconsumed>351532209</ub:conventionalconsumed>
-		<ub:renewableconsumed>4679928</ub:renewableconsumed>
+		<ub:renewableconsumed>1126374</ub:renewableconsumed>
 		<ub:renewableutilization>1.32</ub:renewableutilization>
 		<ub:conventionalutilization>98.68</ub:conventionalutilization>
 		<ub:renewableproduced>0</ub:renewableproduced>
 		<ub:co2offset>170.11</ub:co2offset>
 		<ub:totalsavings>14.60</ub:totalsavings>
-		<ub:totalrenewableconsumed>6799188</ub:totalrenewableconsumed>
+		<ub:totalrenewableconsumed>5806302</ub:totalrenewableconsumed>
 		<ub:totalrenewableproduced>0</ub:totalrenewableproduced>
 		<ub:totaltrees>0.69</ub:totaltrees>
 		<ub:totalco2offset>902.33</ub:totalco2offset>
