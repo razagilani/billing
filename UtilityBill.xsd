@@ -99,7 +99,7 @@
 							<xs:element name="totaldue"/>
 							<xs:element name="duedate"/>
 							<xs:element name="issued"/>
-							<xs:element name="message"/>
+							<xs:element name="message" minOccurs="0"/>
 						</xs:sequence>
 					</xs:complexType>
 				</xs:element>
