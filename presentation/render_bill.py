@@ -279,12 +279,16 @@ def main(options):
 
     Elements = []
 
+    # grab the backgrounds that were passed in
+    backgrounds = options.background.split(",")
+
+
     #
     # First Page
     #
 
     # populate backgroundF1
-    pageOneBackground = Image('images/EmeraldCityBackground.png',letter[0], letter[1])
+    pageOneBackground = Image('images/' + backgrounds.pop(0),letter[0], letter[1])
     Elements.append(pageOneBackground)
 
     # populate account number, bill id & issue date
@@ -530,8 +534,9 @@ def main(options):
     Elements.append(UseUpSpace())
 
     # populate motd
-    motd = Paragraph(str(dom.utilitybill.skylinebill.message), styles['BillFieldSm'])
-    Elements.append(motd)
+    if bool(dom.xml_select(u"/ub:utilitybill/ub:skylinebill/ub:message")):
+        motd = Paragraph(str(dom.utilitybill.skylinebill.message), styles['BillFieldSm'])
+        Elements.append(motd)
     Elements.append(UseUpSpace())
 
 
@@ -542,7 +547,7 @@ def main(options):
     Elements.append(PageBreak());
 
 
-    pageTwoBackground = Image('images/EmeraldCityBackground2.png',letter[0], letter[1])
+    pageTwoBackground = Image('images/' + backgrounds.pop(0),letter[0], letter[1])
     Elements.append(pageTwoBackground)
 
     #populate measured usage header frame
@@ -704,6 +709,7 @@ if __name__ == "__main__":
     parser.add_option("-s", "--snob", dest="snob", help="Convert bill to PDF", metavar="FILE")
     parser.add_option("-o", "--output", dest="output", help="PDF output file", metavar="FILE")
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="Print progress to stdout.")
+    parser.add_option("-b", "--background", dest="background", default="EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png", help="Background file names in comma separated page order. E.g. -b foo-page1.png,foo-page2.png")
 
     (options, args) = parser.parse_args()
 
