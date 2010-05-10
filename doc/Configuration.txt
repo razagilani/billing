@@ -34,33 +34,43 @@ inconsolata must be added to system fonts for chart director.  Figure out way fo
 
 (install python, headers and setuptools)
 
-easy_install PIL
+
+PIL
+
+	(Make sure Ubuntu server has properly graphics libs)
+	sudo aptitude install libjpeg-dev
+	sudo aptitude install libfreetype6
+	easy_install PIL
+
+
 
 Amara2 (2.0a4)
 easy_install amara
 
 Chart Director:
 
-http://download2.advsofteng.com/chartdir_python_linux.tar.gz
-doc is at file:///home/[user]/Downloads/ChartDirector/doc/cdpython.htm
-sudo cp -r ChartDirector/lib /usr/local/lib/python2.6/site-packages/chartdirector
-Set pythonpath so pychartdir module can be found:
-PYTHONPATH=/usr/local/lib/python2.6/site-packages/chartdirector
-export PYTHONPATH
+	http://download2.advsofteng.com/chartdir_python_linux.tar.gz
+	doc is at file:///home/[user]/Downloads/ChartDirector/doc/cdpython.htm
+	sudo cp -r ChartDirector/lib /usr/local/lib/python2.6/site-packages/chartdirector
+
+	(BASH VARIABLE - USER SPECIFIC - until we find a better way to set this globally)
+	Set pythonpath so pychartdir module can be found:
+	PYTHONPATH=/usr/local/lib/python2.6/site-packages/chartdirector
+	export PYTHONPATH
 
 ReportLab: 
 
-dowbload reportlab: http://www.reportlab.com/ftp/ReportLab_2_4.tar.gz
-download the pdf fonts: http://www.reportlab.com/ftp/fonts/pfbfer.zip
+	dowbload reportlab: http://www.reportlab.com/ftp/ReportLab_2_4.tar.gz
+	download the pdf fonts: http://www.reportlab.com/ftp/fonts/pfbfer.zip
 
-sudo python setup.py install
-installs in:  /usr/local/lib/python2.6/dist-packages/reportlab/
+	sudo python setup.py install
+	installs in:  /usr/local/lib/python2.6/dist-packages/reportlab/
 
-copy fonts into /usr/local/lib/python2.6/dist-packages/reportlab/fonts
-unzip pfbfer.zip /usr/local/lib/python2.6/dist-packages/reportlab/fonts/
+	copy fonts into /usr/local/lib/python2.6/dist-packages/reportlab/fonts
+	unzip pfbfer.zip /usr/local/lib/python2.6/dist-packages/reportlab/fonts/
 
-To test install:
-python setup.py tests
+	To test install:
+		python setup.py tests
 
 
 
