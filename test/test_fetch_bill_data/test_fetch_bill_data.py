@@ -4,6 +4,7 @@
 import unittest
 import minimock
 from datetime import date
+from amara import bindery
 
 
 # test target
@@ -24,12 +25,19 @@ class TestFetchBillData(unittest.TestCase):
         # 2000 is a leap year
         self.assertEqual(i, 366) 
 
-    def testUsageDataToVirtualRegisters(self):
-        results = fbd.usageDataToVirtualRegister(None, "daves", "test/test_fetch_bill_data/RegTest.xml", None, None, False)    
+    def testUsageDataToVirtualRegisters2(self):
+        dom = bindery.parse("test/test_fetch_bill_data/TestBill.xml")
+        results = fbd.usageDataToVirtualRegister("daves", dom, "test/test_fetch_bill_data/RegTest.xml", date(2010, 3 , 1), date(2010, 3, 5), True)
+        # ToDo: Mock energy data access and Test results
+        results.xml_write()
+        self.assertEqual(1,2)
 
-        
-    def testTwo(self):
-        pass
+    def testUsageDataToVirtualRegisters1(self):
+        dom = bindery.parse("test/test_fetch_bill_data/TestBill.xml")
+        results = fbd.usageDataToVirtualRegister("daves", dom, "test/test_fetch_bill_data/RegTest.xml", None, None, True)
+        # ToDo: Mock energy data access and Test results
+        results.xml_write()
+        self.assertEqual(1,2)
 
 if __name__ == '__main__':
     unittest.main()
