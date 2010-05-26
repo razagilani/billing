@@ -1,9 +1,9 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 	<head>
-		<link rel="stylesheet" type="text/css" href="./marquee/marker.css" />
-		<script type="text/javascript" src="./marquee/prototype_reduced.js"></script>
-		<script type="text/javascript" src="./marquee/rectmarquee.js"></script>
+		<link rel="stylesheet" type="text/css" href="/static/marquee/marker.css" />
+		<script type="text/javascript" src="/static/marquee/prototype-1.6.1.js"></script>
+		<script type="text/javascript" src="/static/marquee/rectmarquee.js"></script>
 
 		<script type="text/javascript">
 			var marquee;
@@ -18,7 +18,7 @@
 				marquee.setOnUpdateCallback(onMarqueeUpdate);
 
 				billThumbnail = new Image();
-				billThumbnail.src = "./images/test0.png";
+				billThumbnail.src = "/static/workingimages/test0.png";
 				billThumbnail.onload =
 					function ()
 					{
@@ -49,26 +49,60 @@
 					document.getElementById('imHeight').innerHTML = imGeometry.height;
 					document.getElementById('imX').innerHTML = imGeometry.xoffset;
 					document.getElementById('imY').innerHTML = imGeometry.yoffset;
+
+					pilGeom = translateToPILGeometry();
+					document.getElementById('ulX').innerHTML = pilGeom.ulX;
+					document.getElementById('ulY').innerHTML = pilGeom.ulY;
+					document.getElementById('lrX').innerHTML = pilGeom.lrX;
+					document.getElementById('lrY').innerHTML = pilGeom.lrY;
 				}
 			}
 
-			function saveMarquee(id)
+			function cropImage(id)
 			{
 				var coords = marquee.getCoords();
 				var coordStr = coords.width+"x"+coords.height+"+"+coords.x1+"+"+coords.y1;
 
-				var imGeom = translateToIMGeometry();
-				imGeomStr = imGeom.width + "x" + imGeom.height + "+" + imGeom.xoffset + "+" + imGeom.yoffset;
+				var pilGeom = translateToPILGeometry();
+				var pilGeomStr = "(" + pilGeom.ulX + ", " + pilGeom.ulY + ", " + pilGeom.lrX + ", " + pilGeom.lrY + ")";
 
-				document.getElementById('regionsDebug').innerHTML = $('regionsDebug').innerHTML + "<p>"+coordStr+"</p>";
-				document.getElementById('regionsDebug').innerHTML = $('regionsDebug').innerHTML + "<p>"+imGeomStr+"</p>";
-
-				var input = document.createElement('input');
-				input.setAttribute("name", "marquee"+id);
-				input.setAttribute("value", imGeomStr);
+				// create the name of the image that will be sent to, and returned from, the server.
+				// ToDo: isolate image name, and directory, to authenticated session
+				var imgName = "cropimg-"+pilGeom.ulX + "-" + pilGeom.ulY + "-" + pilGeom.lrX + "-" + pilGeom.lrY+".png"
 
 
-				document.getElementById("selectedRegions").appendChild(input);
+				// make containers for results
+				var resultDiv = new Element("div", {"id":"div-"+imgName});
+				Element.insert($("croprequests"), {'after':resultDiv});
+				// create a temporary busy element whose ID matches the image name which will be replaced when the ajax call returns.
+				var resultImg = new Element("img", {"id": imgName, "src":"/static/images/ajax-loader.gif"})
+				resultDiv.appendChild(resultImg);
+
+				// can't use an updater because the busy element must be replaced which prototype cannot do
+				new Ajax.Request('/crop',
+					{method:'get', parameters: {imgId: imgName, ulX: pilGeom.ulX, ulY: pilGeom.ulY, lrX:pilGeom.lrX, lrY:pilGeom.lrY},
+					onSuccess: cropSuccess,
+					onFailure: cropFail}
+				)
+			}
+
+			function cropSuccess(transport)
+			{
+
+				var result;
+				try {
+					// json response needs to be evaluated wrapped as an object otherwise curly's in response text look like a block
+					result = eval("("+transport.responseText+")");
+				} catch (e) {
+					alert(e)
+				}
+
+				$(result.imgId).replace("<img style=\"height: 80px;\" src=\"/static/workingimages/"+result.imgId+"\"/><pre>" + result.text + "</pre");
+			}
+
+			function cropFail(transport)
+			{
+				$(transport.responseText).replace("<span>Image failed to load</span>");
 			}
 
 
@@ -93,6 +127,30 @@
 
 				return imGeometry;
 			}
+
+			// the loaded image is a browser supported thumbnail of a tiff which may be smaller (or theoretically larger) than the tif
+			function translateToPILGeometry()
+			{
+				// ToDo: obtain original image size if the loaded thumbnail is not the original tiff size
+				// for now, assume that the loadedthumbnail is the same size as the tiff
+				// the loaded thumbnail is further reduced in size by the billThumbnailView html element
+				var bill = {width: billThumbnail.width, height: billThumbnail.height};
+
+				var thumbnailView = {width: document.getElementById('billThumbnailView').width, height:
+				document.getElementById('billThumbnailView').height};
+
+				var coords = marquee.getCoords();
+				var pilGeometry =
+				{
+					ulX: Math.round((bill.width/(document.getElementById('billThumbnailView').width)) * coords.x1),
+					ulY: Math.round((bill.height/(document.getElementById('billThumbnailView').height)) * coords.y1),
+					lrX: Math.round((bill.width/(document.getElementById('billThumbnailView').width)) * coords.width) + Math.round((bill.width/(document.getElementById('billThumbnailView').width)) * coords.x1),
+					lrY: Math.round((bill.height/(document.getElementById('billThumbnailView').height)) * coords.height)  + Math.round((bill.height/(document.getElementById('billThumbnailView').height)) * coords.y1)
+				};
+
+				return pilGeometry;
+			}
+
 
 		</script>
 
@@ -127,20 +185,26 @@
 				<td>x: <span id="imX">0</span>px</td>
 				<td>y: <span id="imY">0</span>px</td>
 			</tr>
+			<tr>
+				<td>pil geometry</td>
+				<td>w: <span id="ulX">0</span>px</td>
+				<td>h: <span id="ulY">0</span>px</td>
+				<td>x: <span id="lrX">0</span>px</td>
+				<td>y: <span id="lrY">0</span>px</td>
+			</tr>
 		</table>
 		<table>
 			<tr>
-				<td><img id="billThumbnailView" style="width:400px;" src="./images/loading.png"/></td>
-				<td>
-					<div id="regionsDebug"></div>
-					<form id="selectedRegions">
-					</form>
-				</td>
+				<td><img id="billThumbnailView" style="width:400px;" src="/static/images/loading.png"/></td>
 			</tr>
 		</table>
 
 
-		<button style="width:80px; height:30px;" onclick="saveMarquee(marqueeId++);">Save</button>
+		<button style="width:80px; height:30px;" onclick="cropImage(marqueeId++);">Save</button>
 		<button style="width:80px; height:30px;" onclick="translateToIMGeometry();">Geom</button>
+
+		<div id="croprequests"></div>
+
+
 	</body>
 </html>
