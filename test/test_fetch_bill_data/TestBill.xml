@@ -462,8 +462,8 @@
 	<ub:measuredusage service="Gas">
 		<ub:meter>
 			<ub:estimated>false</ub:estimated>
-			<ub:priorreaddate>2010-01-06</ub:priorreaddate>
-			<ub:presentreaddate>2010-02-03</ub:presentreaddate>
+			<ub:priorreaddate>2010-02-04</ub:priorreaddate>
+			<ub:presentreaddate>2010-03-04</ub:presentreaddate>
 			<ub:identifier>T37110</ub:identifier>
 			<ub:register shadow="false">
 				<ub:identifier>T37110</ub:identifier>
