@@ -305,6 +305,7 @@
 												<xs:enumeration value="Transmission"/>
 												<xs:enumeration value="Distribution"/>
 												<xs:enumeration value="Tax"/>
+												<xs:enumeration value="All Charges"/>
 											</xs:restriction>
 										</xs:simpleType>
 									</xs:attribute>
