@@ -223,7 +223,7 @@
 							chargeFields.slice(4,5).append("<input type=\"textfield\" name=\"" + getElementXPath(quantityElem) + "\" value=\"" + quantityText +  "\" onChange=\"javascript:storeData(this.name, this.value);\">");
 
 							// handle quantity units attribute
-							var opts = ["none", "kWh","Therms", "cents", "dollars", "KWD"];	// ToDo: pull from db
+							var opts = ["none", "kWh","Therms", "cents", "dollars", "KWD", "Ccf"];	// ToDo: pull from db
 							chargeFields.slice(5,6).append("<select id=\"select-1-"+cg+"-"+i+"\" name=\"" + getElementXPath(quantityUnitsAttr) + "\" onChange=\"javascript:storeData(this.name, this.value);\">");
 							opts.forEach(
 								function(opt)
