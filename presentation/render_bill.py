@@ -439,7 +439,7 @@ def main(options):
     c.setPlotArea((10*270)/6, (10*127)/6.5, (10*270)*.8, (10*127)*.70)
     c.setColors2(DataColor, [0x9bbb59]) 
     c.addBarLayer(data)
-    c.addTitle2(TopLeft, "<*underline=8*>Period Production", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
+    c.addTitle2(TopLeft, "<*underline=8*>Period Consumption", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
     c.yAxis().setLabelStyle('Inconsolata.ttf', 64)
     c.yAxis().setTickDensity(100)
     c.yAxis().setTitle("100 Thousand BTUs", 'Inconsolata.ttf', 52)
