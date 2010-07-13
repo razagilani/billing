@@ -3,8 +3,10 @@
 
 import unittest
 import minimock
+from skyliner import splinter
 from datetime import date, datetime
 from amara import bindery
+from IPython.Debugger import Tracer; debug_here = Tracer()
 
 
 # test target
@@ -18,6 +20,7 @@ class TestFetchBillData(unittest.TestCase):
 
     def setUp(self):
         # do setup here as necessary
+        minimock.mock('splinter.Splinter', mock_obj=SplinterMock)
         pass
 
 
@@ -28,19 +31,44 @@ class TestFetchBillData(unittest.TestCase):
         # 2000 is a leap year
         self.assertEqual(i, 366) 
 
-    def testUsageDataToVirtualRegisters2(self):
-        dom = bindery.parse("test/test_fetch_bill_data/TestBill.xml")
-        results = fbd.usageDataToVirtualRegister("daves-1", dom, "http://duino-drop.appspot.com/", datetime(2010, 5 , 1), datetime(2010, 5, 2), True)
-        # ToDo: Mock energy data access and Test results
-        results.xml_write()
-        self.assertEqual(1,2)
-
     def testUsageDataToVirtualRegisters1(self):
-        dom = bindery.parse("test/test_fetch_bill_data/TestBill.xml")
-        results = fbd.usageDataToVirtualRegister("daves-1", dom, "http://duino-drop.appspot.com/", None, None, True)
-        # ToDo: Mock energy data access and Test results
-        results.xml_write()
-        self.assertEqual(1,2)
+        dom = bindery.parse("test/test_fetch_bill_data/bill_reg_test_1_pre.xml")
+
+        # test the weekend
+        results = fbd.usageDataToVirtualRegister(
+                "fictitious install", 
+                dom, 
+                "http://no.whe.re", 
+                datetime(2010, 5, 1), 
+                datetime(2010, 5, 2), 
+                True
+            )
+        # save intermediate results for debugging
+        open("test/test_fetch_bill_data/bill_reg_test_1_in.xml", 'w').write(results.xml_encode())
+        self.assertEquals(results.xml_encode(), 
+            open("test/test_fetch_bill_data/bill_reg_test_1_post.xml").read(), "Virtual registers did not populate as expected.")
+
+        #for register in results.xml_select(u'//ub:register[@shadow=\'true\']/ub:identifier | //ub:register[@shadow=\'true\']/ub:total'):
+            #register.xml_write()
+
+    def testUsageDataToVirtualRegisters2(self):
+        dom = bindery.parse("test/test_fetch_bill_data/bill_reg_test_2_pre.xml")
+
+        # Test a Monday with peak/int/shoulder TOU in electric
+        results = fbd.usageDataToVirtualRegister(
+                "fictitious install", 
+                dom, 
+                "http://no.whe.re", 
+                datetime(2010, 5, 3), 
+                datetime(2010, 5, 3), 
+                True
+            )
+        # save intermediate results for debugging
+        open("test/test_fetch_bill_data/bill_reg_test_2_in.xml", 'w').write(results.xml_encode())
+        self.assertEquals(results.xml_encode(),
+            open("test/test_fetch_bill_data/bill_reg_test_2_post.xml").read(), "Virtual registers did not populate as expected.")
+
+
 
     def testBindRegister(self):
         dom = bindery.parse("test/test_fetch_bill_data/RegTest.xml")
@@ -98,6 +126,26 @@ class TestFetchBillData(unittest.TestCase):
             self.assertEqual([(8, 11),(20,23)], register.validHours(aDate))
             
 
+class SplinterMock():
+    """Mock object for Splinter only doesn't do much"""
+    def __init__(self, server_root):
+        """Thanks for the server root, not gonna do anything with it"""
+
+    def get_install_obj_for(self, install_name):
+        """Thanks for the name, here is another mock"""
+        return SkyInstallMock()
+
+class SkyInstallMock():
+    """Mock object to cover a single call to a SkyInstall"""
+    def get_energy_consumed_by_service(self, 
+                                       day, 
+                                       service_type,
+                                       hour_range=(0, 24)):
+        """Return a verifiable amount of energy in BTUs: 100K BTU's per hour"""
+        x = 0
+        for hour in range(hour_range[0], hour_range[1]):
+            x = x + 100000
+        return x
 
 
 if __name__ == '__main__':
