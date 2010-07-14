@@ -24,13 +24,35 @@
         </ub:billingaddress>
     </ub:car>
     <ub:skylinebill>
+    <ub:car>
+        <ub:serviceaddress>
+            <ub:addressee>College Park Car Wash Inc.</ub:addressee>
+            <ub:street>8616 Baltimore Ave</ub:street>
+            <ub:city>College Park</ub:city>
+            <ub:state>MD</ub:state>
+            <ub:country/>
+            <ub:postalcode/>
+            <ub:telephonenumber/>
+            <ub:hours/>
+        </ub:serviceaddress>
+        <ub:billingaddress>
+            <ub:addressee>College Park Car Wash</ub:addressee>
+            <ub:street>7106 Ridgewood Ave</ub:street>
+            <ub:city>Chevy Chase</ub:city>
+            <ub:state>MD</ub:state>
+            <ub:country/>
+            <ub:postalcode>20815-5148</ub:postalcode>
+            <ub:telephonenumber/>
+            <ub:hours/>
+        </ub:billingaddress>
+    </ub:car>
         <ub:billperiodbegin>2009-12-04</ub:billperiodbegin>
         <ub:billperiodend>2010-01-10</ub:billperiodend>
         <ub:priorbalance>8.13</ub:priorbalance>
         <ub:paymentreceived>8.13</ub:paymentreceived>
         <ub:balanceforward>0.00</ub:balanceforward>
-        <ub:actualservicecharges>6445.15</ub:actualservicecharges>
         <ub:hypotheticalservicecharges>6476.52</ub:hypotheticalservicecharges>
+        <ub:actualservicecharges>6445.15</ub:actualservicecharges>
         <ub:energycharges>26.66</ub:energycharges>
         <ub:customersavings>4.71</ub:customersavings>
         <ub:currentcharges>26.66</ub:currentcharges>
@@ -48,9 +70,9 @@
         <ub:billperiodbegin>2009-12-04</ub:billperiodbegin>
         <ub:billperiodend>2010-01-06</ub:billperiodend>
         <ub:issuedate>2010-01-08</ub:issuedate>
-        <ub:currentcharges>2499.85</ub:currentcharges>
         <ub:hypotheticalcharges>2523.60</ub:hypotheticalcharges>
-        <ub:skylinecharges>0.0</ub:skylinecharges>
+        <ub:currentcharges>2499.85</ub:currentcharges>
+        <ub:skylineenergycharges>0.0</ub:skylineenergycharges>
         <ub:totaldue>0.0</ub:totaldue>
         <ub:duedate>2010-01-29</ub:duedate>
         <ub:latepayment>
@@ -68,9 +90,9 @@
         <ub:billperiodbegin>2009-12-07</ub:billperiodbegin>
         <ub:billperiodend>2010-01-11</ub:billperiodend>
         <ub:issuedate>2010-01-13</ub:issuedate>
-        <ub:currentcharges>3945.30</ub:currentcharges>
         <ub:hypotheticalcharges>3952.92</ub:hypotheticalcharges>
-        <ub:skylinecharges>0.0</ub:skylinecharges>
+        <ub:currentcharges>3945.30</ub:currentcharges>
+        <ub:skylineenergycharges>0.0</ub:skylineenergycharges>
         <ub:totaldue>0.0</ub:totaldue>
         <ub:duedate>2010-02-04</ub:duedate>
         <ub:latepayment>
