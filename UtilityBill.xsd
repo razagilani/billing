@@ -31,24 +31,31 @@
 						</xs:sequence>
 					</xs:complexType>
 				</xs:element>
-				<xs:element name="unknownaddress" minOccurs="0" maxOccurs="unbounded">
-					<xs:annotation>
-						<xs:documentation>Address records not accounted for yet present in bill.</xs:documentation>
-					</xs:annotation>
-					<xs:complexType>
-						<xs:complexContent>
-							<xs:extension base="ub:address">
-								<xs:attribute name="description" use="required"/>
-							</xs:extension>
-						</xs:complexContent>
-					</xs:complexType>
-				</xs:element>
 				<xs:element name="skylinebill" minOccurs="0">
 					<xs:annotation>
 						<xs:documentation>Summary for Skyline production benefit that rolls up all services</xs:documentation>
 					</xs:annotation>
 					<xs:complexType>
 						<xs:sequence>
+							<xs:element name="car">
+								<xs:annotation>
+									<xs:documentation>Customer Account Record.</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="serviceaddress" type="ub:address">
+											<xs:annotation>
+												<xs:documentation>Location where utility service is received.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="billingaddress" type="ub:address">
+											<xs:annotation>
+												<xs:documentation>Location where bills are sent</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
 							<xs:element name="billperiodbegin"/>
 							<xs:element name="billperiodend"/>
 							<xs:element name="priorbalance" minOccurs="0">
@@ -122,11 +129,6 @@
 										<xs:element name="tin">
 											<xs:annotation>
 												<xs:documentation>Utility tax payer identification number</xs:documentation>
-											</xs:annotation>
-										</xs:element>
-										<xs:element name="customeraccount">
-											<xs:annotation>
-												<xs:documentation>Utility account number for the customer</xs:documentation>
 											</xs:annotation>
 										</xs:element>
 										<xs:element name="customerservice" type="ub:address" minOccurs="0" maxOccurs="unbounded">
