@@ -293,8 +293,8 @@ def main(options):
 
     # populate account number, bill id & issue date
     accountNumber = [
-        [Paragraph("Account Number", styles['BillLabelRight']),Paragraph(str(dom.utilitybill.account) + " " + str(dom.utilitybill.id),styles['BillField'])], 
-        [Paragraph("Issue Date", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.issued), styles['BillField'])]
+        [Paragraph("Account Number", styles['BillLabelRight']),Paragraph(str(dom.bill.account) + " " + str(dom.bill.id),styles['BillField'])], 
+        [Paragraph("Issue Date", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.issued), styles['BillField'])]
     ]
     
     t = Table(accountNumber, [135,85])
@@ -305,8 +305,8 @@ def main(options):
 
     # populate due date and amount
     dueDateAndAmount = [
-        [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.duedate), styles['BillFieldRight'])], 
-        [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.totaldue), styles['BillFieldRight'])]
+        [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.duedate), styles['BillFieldRight'])], 
+        [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.totaldue), styles['BillFieldRight'])]
     ]
     
     t = Table(dueDateAndAmount, [135,85])
@@ -317,9 +317,9 @@ def main(options):
     # populate service address
     Elements.append(Spacer(100,10))
     Elements.append(Paragraph("Service Location", styles['BillLabel']))
-    Elements.append(Paragraph(str(dom.utilitybill.car.serviceaddress.addressee), styles['BillField']))
-    Elements.append(Paragraph(str(dom.utilitybill.car.serviceaddress.street), styles['BillField']))
-    Elements.append(Paragraph(str(dom.utilitybill.car.serviceaddress.city) + " " + str(dom.utilitybill.car.serviceaddress.state) + " " + str(dom.utilitybill.car.serviceaddress.postalcode), styles['BillField']))
+    Elements.append(Paragraph(str(dom.bill.rebill.car.serviceaddress.addressee), styles['BillField']))
+    Elements.append(Paragraph(str(dom.bill.rebill.car.serviceaddress.street), styles['BillField']))
+    Elements.append(Paragraph(str(dom.bill.rebill.car.serviceaddress.city) + " " + str(dom.bill.rebill.car.serviceaddress.state) + " " + str(dom.bill.rebill.car.serviceaddress.postalcode), styles['BillField']))
     Elements.append(UseUpSpace())
 
     # populate special instructions
@@ -328,9 +328,9 @@ def main(options):
     
     # populate billing address
     Elements.append(Spacer(100,20))
-    Elements.append(Paragraph(str(dom.utilitybill.car.billingaddress.addressee), styles['BillFieldLg']))
-    Elements.append(Paragraph(str(dom.utilitybill.car.billingaddress.street), styles['BillFieldLg']))
-    Elements.append(Paragraph(str(dom.utilitybill.car.billingaddress.city) + " " + str(dom.utilitybill.car.billingaddress.state) + " " + str(dom.utilitybill.car.billingaddress.postalcode), styles['BillFieldLg']))
+    Elements.append(Paragraph(str(dom.bill.rebill.car.billingaddress.addressee), styles['BillFieldLg']))
+    Elements.append(Paragraph(str(dom.bill.rebill.car.billingaddress.street), styles['BillFieldLg']))
+    Elements.append(Paragraph(str(dom.bill.rebill.car.billingaddress.city) + " " + str(dom.bill.rebill.car.billingaddress.state) + " " + str(dom.bill.rebill.car.billingaddress.postalcode), styles['BillFieldLg']))
     Elements.append(UseUpSpace())
 
 
@@ -339,8 +339,8 @@ def main(options):
     # populate graph one
 
     # Construct period consumption/production ratio graph
-    renewableUtilization= str(dom.utilitybill.statistics.renewableutilization)
-    conventionalUtilization= str(dom.utilitybill.statistics.conventionalutilization)
+    renewableUtilization= str(dom.bill.statistics.renewableutilization)
+    conventionalUtilization= str(dom.bill.statistics.conventionalutilization)
     data = [renewableUtilization, conventionalUtilization]
     labels = ["Renewable", "Conventional"]
     c = PieChart(10*270, 10*127)
@@ -364,8 +364,8 @@ def main(options):
     
     # construct period environmental benefit
 
-    periodRenewableConsumed = str(dom.utilitybill.statistics.renewableconsumed)
-    periodPoundsCO2Offset = str(dom.utilitybill.statistics.co2offset)
+    periodRenewableConsumed = str(dom.bill.statistics.renewableconsumed)
+    periodPoundsCO2Offset = str(dom.bill.statistics.co2offset)
     
     environmentalBenefit = [
         [Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
@@ -386,10 +386,10 @@ def main(options):
     
     # construct system life cumulative numbers table
 
-    totalDollarSavings = str(dom.utilitybill.statistics.totalsavings)
-    totalRenewableEnergyConsumed = str(dom.utilitybill.statistics.totalrenewableconsumed)
-    totalco2offset = str(dom.utilitybill.statistics.totalco2offset)
-    totalTrees = str(dom.utilitybill.statistics.totaltrees)
+    totalDollarSavings = str(dom.bill.statistics.totalsavings)
+    totalRenewableEnergyConsumed = str(dom.bill.statistics.totalrenewableconsumed)
+    totalco2offset = str(dom.bill.statistics.totalco2offset)
+    totalTrees = str(dom.bill.statistics.totaltrees)
 
     systemLife = [
         [Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
@@ -431,7 +431,7 @@ def main(options):
     # construct annual production graph
     data = []
     labels = []
-    for period in (dom.utilitybill.statistics.consumptiontrend.period):
+    for period in (dom.bill.statistics.consumptiontrend.period):
         labels.append(str(period.month))
         data.append(float(period.quantity))
 
@@ -461,11 +461,11 @@ def main(options):
             [Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
         ] + [
             [
-                Paragraph(str(summary.service) + u' service',styles['BillLabelSmRight']), 
-                Paragraph(str(summary.billperiodbegin), styles['BillFieldRight']), 
-                Paragraph(str(summary.billperiodend), styles['BillFieldRight'])
+                Paragraph(str(utilbill.service) + u' service',styles['BillLabelSmRight']), 
+                Paragraph(str(utilbill.billperiodbegin), styles['BillFieldRight']), 
+                Paragraph(str(utilbill.billperiodend), styles['BillFieldRight'])
             ] 
-            for summary in iter(dom.utilitybill.summary)
+            for utilbill in iter(dom.bill.utilbill)
         ]
 
     t = Table(serviceperiod, colWidths=[115,63,63])
@@ -479,8 +479,8 @@ def main(options):
         [Paragraph("Your Utility Charges", styles['BillLabelSmCenter']),Paragraph("", styles['BillLabelSm']),Paragraph("Green Energy", styles['BillLabelSmCenter'])],
         [Paragraph("Without Skyline", styles['BillLabelSmCenter']),Paragraph("With Skyline", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
     ]+[
-        [Paragraph(str(summary.hypotheticalcharges),styles['BillFieldRight']), Paragraph(str(summary.currentcharges),styles['BillFieldRight']), Paragraph(str(summary.skylinevalue),styles['BillFieldRight'])]
-        for summary in iter(dom.utilitybill.summary)
+        [Paragraph(str(utilbill.hypotheticalcharges),styles['BillFieldRight']), Paragraph(str(utilbill.currentcharges),styles['BillFieldRight']), Paragraph(str(utilbill.skylinevalue),styles['BillFieldRight'])]
+        for utilbill in iter(dom.bill.utilbill)
     ]
 
     t = Table(utilitycharges, colWidths=[84,84,84])
@@ -491,9 +491,9 @@ def main(options):
 
     # populate balances
     balances = [
-        [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.priorbalance),styles['BillFieldRight'])],
-        [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.paymentreceived), styles['BillFieldRight'])],
-        [Paragraph("Adjustments", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.totaladjustment), styles['BillFieldRight'])],
+        [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.priorbalance),styles['BillFieldRight'])],
+        [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.paymentreceived), styles['BillFieldRight'])],
+        [Paragraph("Adjustments", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.totaladjustment), styles['BillFieldRight'])],
     ]
 
     t = Table(balances, [180,85])
@@ -503,8 +503,8 @@ def main(options):
 
     # populate current charges
     currentCharges = [
-        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.customersavings), styles['BillFieldRight'])],
-        [Paragraph("Skyline Charges", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.energycharges), styles['BillFieldRight'])]
+        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.customersavings), styles['BillFieldRight'])],
+        [Paragraph("Skyline Charges", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.energycharges), styles['BillFieldRight'])]
     ]
 
     t = Table(currentCharges, [135,85])
@@ -514,7 +514,7 @@ def main(options):
 
     # populate balanceForward
     balanceForward = [
-        [Paragraph("Balance Forward", styles['BillLabelRight']), Paragraph(str(dom.utilitybill.skylinebill.balanceforward), styles['BillFieldRight'])]
+        [Paragraph("Balance Forward", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.balanceforward), styles['BillFieldRight'])]
     ]
 
     t = Table(balanceForward, [135,85])
@@ -525,7 +525,7 @@ def main(options):
 
     # populate balanceDueFrame
     balanceDue = [
-        [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph(str(dom.utilitybill.skylinebill.totaldue), styles['BillFieldRight'])]
+        [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph(str(dom.bill.rebill.totaldue), styles['BillFieldRight'])]
     ]
 
     t = Table(balanceDue, [135,85])
@@ -534,8 +534,8 @@ def main(options):
     Elements.append(UseUpSpace())
 
     # populate motd
-    if bool(dom.xml_select(u"/ub:utilitybill/ub:skylinebill/ub:message")):
-        motd = Paragraph(str(dom.utilitybill.skylinebill.message), styles['BillFieldSm'])
+    if bool(dom.xml_select(u"/ub:bill/ub:rebill/ub:message")):
+        motd = Paragraph(str(dom.bill.rebill.message), styles['BillFieldSm'])
         Elements.append(motd)
     Elements.append(UseUpSpace())
 
@@ -562,7 +562,7 @@ def main(options):
         [None, None, None, None,  None, None,]
     ]
 
-    for measuredusage in (dom.utilitybill.measuredusage):
+    for measuredusage in (dom.bill.measuredusage):
         for meter in (measuredusage.meter):
             for register in (meter.register):
                 if (register.shadow == u'true'):
@@ -625,7 +625,7 @@ def main(options):
     # sentinal for not printing service string each iteration
     service = None
 
-    for details in (dom.utilitybill.details):
+    for details in (dom.bill.details):
         for chargegroup in (details.chargegroup):
             for charges in (chargegroup.charges):
                 if charges.type == u'hypothetical':
