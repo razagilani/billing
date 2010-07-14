@@ -1,6 +1,6 @@
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
-<ub:utilitybill xmlns:ub="utilitybill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="1" account="10003" xsi:schemaLocation="utilitybill ../UtilityBill.xsd">
-	<ub:skylinebill>
+<ub:bill xmlns:ub="utilitybill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="1" account="10003" xsi:schemaLocation="utilitybill ../UtilityBill.xsd">
+	<ub:rebill>
 	<ub:car>
 		<ub:serviceaddress>
 			<ub:addressee/>
@@ -38,8 +38,8 @@
 		<ub:duedate/>
 		<ub:issued/>
 		<ub:message>Welcome to Skyline Innovations!</ub:message>
-	</ub:skylinebill>
-	<ub:summary service="Gas">
+	</ub:rebill>
+	<ub:utilbill service="Gas">
 	<ub:car>
 		<ub:accountnumber>0628177925</ub:accountnumber>
 		<ub:serviceaddress>
@@ -82,7 +82,7 @@
 			<ub:penalty/>
 			<ub:amount>0.00</ub:amount>
 		</ub:latepayment>
-	</ub:summary>
+	</ub:utilbill>
 	<ub:details service="Gas">
 		<ub:rateschedule>
 			<ub:name/>
@@ -213,4 +213,4 @@
 			<ub:period month="Oct" quantity=""/>
 		</ub:consumptiontrend>
 	</ub:statistics>
-</ub:utilitybill>
+</ub:bill>

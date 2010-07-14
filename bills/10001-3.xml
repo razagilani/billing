@@ -1,6 +1,6 @@
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
-<ub:utilitybill xmlns:ub="utilitybill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="3" account="10001" xsi:schemaLocation="utilitybill ../UtilityBill.xsd">
-    <ub:skylinebill>
+<ub:bill xmlns:ub="utilitybill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="3" account="10001" xsi:schemaLocation="utilitybill ../UtilityBill.xsd">
+    <ub:rebill>
     <ub:car>
         <ub:serviceaddress>
             <ub:addressee>College Park Car Wash Inc.</ub:addressee>
@@ -36,8 +36,8 @@
         <ub:totaldue>28.21</ub:totaldue>
         <ub:duedate>2010-03-31</ub:duedate>
         <ub:issued>2010-03-15</ub:issued>
-    </ub:skylinebill>
-    <ub:summary service="Electric">
+    </ub:rebill>
+    <ub:utilbill service="Electric">
     <ub:car>
         <ub:accountnumber>3091 4490 03</ub:accountnumber>
         <ub:serviceaddress>
@@ -79,8 +79,8 @@
             <ub:penalty/>
             <ub:amount>0.00</ub:amount>
         </ub:latepayment>
-    </ub:summary>
-    <ub:summary service="Gas">
+    </ub:utilbill>
+    <ub:utilbill service="Gas">
     <ub:car>
         <ub:accountnumber>2051065106</ub:accountnumber>
         <ub:serviceaddress>
@@ -122,7 +122,7 @@
             <ub:penalty/>
             <ub:amount>0.00</ub:amount>
         </ub:latepayment>
-    </ub:summary>
+    </ub:utilbill>
     <ub:details service="Gas">
         <ub:rateschedule>
             <ub:name>Commercial Heat/Cool</ub:name>
@@ -651,4 +651,4 @@
             <ub:period month="Oct" quantity="0"/>
         </ub:consumptiontrend>
     </ub:statistics>
-</ub:utilitybill>
+</ub:bill>

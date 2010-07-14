@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
 <xs:schema xmlns:ub="utilitybill" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:sb="skylinebill" targetNamespace="utilitybill" elementFormDefault="qualified" attributeFormDefault="unqualified">
-	<xs:element name="utilitybill">
+	<xs:element name="bill">
 		<xs:annotation>
 			<xs:documentation>Root element</xs:documentation>
 		</xs:annotation>
 		<xs:complexType>
 			<xs:sequence>
-				<xs:element name="skylinebill" minOccurs="0">
+				<xs:element name="rebill" minOccurs="0">
 					<xs:annotation>
-						<xs:documentation>Summary for Skyline production benefit that rolls up all services</xs:documentation>
+						<xs:documentation>Summary for renewable energy benefit that rolls up all services</xs:documentation>
 					</xs:annotation>
 					<xs:complexType>
 						<xs:sequence>
@@ -90,7 +90,7 @@
 						</xs:sequence>
 					</xs:complexType>
 				</xs:element>
-				<xs:element name="summary" maxOccurs="3">
+				<xs:element name="utilbill" maxOccurs="3">
 					<xs:annotation>
 						<xs:documentation>Bill summary by service.</xs:documentation>
 					</xs:annotation>
