@@ -1,5 +1,5 @@
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
-<ub:bill xmlns:ub="utilitybill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="2" account="10001" xsi:schemaLocation="utilitybill ../UtilityBill.xsd">
+<ub:bill xmlns:ub="bill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="2" account="10001" xsi:schemaLocation="bill ../UtilityBill.xsd">
 	<ub:rebill>
 		<ub:car>
 			<ub:serviceaddress>
@@ -38,29 +38,29 @@
 		<ub:issued>2010-02-12</ub:issued>
 	</ub:rebill>
 	<ub:utilbill service="Gas">
-	<ub:car>
-		<ub:accountnumber>2051065106</ub:accountnumber>
-		<ub:serviceaddress>
-			<ub:addressee>College Park Car Wash Inc.</ub:addressee>
-			<ub:street>8616 Baltimore Ave</ub:street>
-			<ub:city>College Park</ub:city>
-			<ub:state>MD</ub:state>
-			<ub:country/>
-			<ub:postalcode>20740</ub:postalcode>
-			<ub:telephonenumber/>
-			<ub:hours/>
-		</ub:serviceaddress>
-		<ub:billingaddress>
-			<ub:addressee>College Park Car Wash</ub:addressee>
-			<ub:street>7106 Ridgewood Ave</ub:street>
-			<ub:city>Chevy Chase</ub:city>
-			<ub:state>MD</ub:state>
-			<ub:country/>
-			<ub:postalcode>20815-5148</ub:postalcode>
-			<ub:telephonenumber/>
-			<ub:hours/>
-		</ub:billingaddress>
-	</ub:car>
+		<ub:car>
+			<ub:accountnumber>2051065106</ub:accountnumber>
+			<ub:serviceaddress>
+				<ub:addressee>College Park Car Wash Inc.</ub:addressee>
+				<ub:street>8616 Baltimore Ave</ub:street>
+				<ub:city>College Park</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode>20740</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>College Park Car Wash</ub:addressee>
+				<ub:street>7106 Ridgewood Ave</ub:street>
+				<ub:city>Chevy Chase</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode>20815-5148</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
 		<ub:priorbalance>0.0</ub:priorbalance>
 		<ub:previouspayment>
 			<ub:payee/>
@@ -81,29 +81,29 @@
 		</ub:latepayment>
 	</ub:utilbill>
 	<ub:utilbill service="Electric">
-	<ub:car>
-		<ub:accountnumber>3091 4490 03</ub:accountnumber>
-		<ub:serviceaddress>
-			<ub:addressee>College Park Car Wash Inc.</ub:addressee>
-			<ub:street>8616 Baltimore Ave</ub:street>
-			<ub:city>College Park</ub:city>
-			<ub:state>MD</ub:state>
-			<ub:country/>
-			<ub:postalcode>20740</ub:postalcode>
-			<ub:telephonenumber/>
-			<ub:hours/>
-		</ub:serviceaddress>
-		<ub:billingaddress>
-			<ub:addressee>College Park Car Wash</ub:addressee>
-			<ub:street>7106 Ridgewood Ave</ub:street>
-			<ub:city>Chevy Chase</ub:city>
-			<ub:state>MD</ub:state>
-			<ub:country/>
-			<ub:postalcode>20815-5148</ub:postalcode>
-			<ub:telephonenumber/>
-			<ub:hours/>
-		</ub:billingaddress>
-	</ub:car>
+		<ub:car>
+			<ub:accountnumber>3091 4490 03</ub:accountnumber>
+			<ub:serviceaddress>
+				<ub:addressee>College Park Car Wash Inc.</ub:addressee>
+				<ub:street>8616 Baltimore Ave</ub:street>
+				<ub:city>College Park</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode>20740</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>College Park Car Wash</ub:addressee>
+				<ub:street>7106 Ridgewood Ave</ub:street>
+				<ub:city>Chevy Chase</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode>20815-5148</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
 		<ub:priorbalance>0.0</ub:priorbalance>
 		<ub:previouspayment>
 			<ub:payee/>

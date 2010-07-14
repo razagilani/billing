@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
-<xs:schema xmlns:ub="utilitybill" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:sb="skylinebill" targetNamespace="utilitybill" elementFormDefault="qualified" attributeFormDefault="unqualified">
+<xs:schema xmlns:ub="bill" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="bill" elementFormDefault="qualified" attributeFormDefault="unqualified">
 	<xs:element name="bill">
 		<xs:annotation>
 			<xs:documentation>Root element</xs:documentation>
