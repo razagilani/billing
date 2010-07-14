@@ -1,28 +1,5 @@
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
 <ub:utilitybill xmlns:ub="utilitybill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" account="10001" xsi:schemaLocation="utilitybill ../UtilityBill.xsd" id="6">
-    <ub:car>
-        <ub:accountnumber>2051065106</ub:accountnumber>
-        <ub:serviceaddress>
-            <ub:addressee>College Park Car Wash Inc.</ub:addressee>
-            <ub:street>8616 Baltimore Ave</ub:street>
-            <ub:city>College Park</ub:city>
-            <ub:state>MD</ub:state>
-            <ub:country/>
-            <ub:postalcode>20740</ub:postalcode>
-            <ub:telephonenumber/>
-            <ub:hours/>
-        </ub:serviceaddress>
-        <ub:billingaddress>
-            <ub:addressee>College Park Car Wash</ub:addressee>
-            <ub:street>7106 Ridgewood Ave</ub:street>
-            <ub:city>Chevy Chase</ub:city>
-            <ub:state>MD</ub:state>
-            <ub:country/>
-            <ub:postalcode>20815-5148</ub:postalcode>
-            <ub:telephonenumber/>
-            <ub:hours/>
-        </ub:billingaddress>
-    </ub:car>
     <ub:skylinebill>
     <ub:car>
         <ub:serviceaddress>
@@ -63,6 +40,29 @@
         <ub:message/>
     </ub:skylinebill>
     <ub:summary service="Gas">
+    <ub:car>
+        <ub:accountnumber>2051065106</ub:accountnumber>
+        <ub:serviceaddress>
+            <ub:addressee>College Park Car Wash Inc.</ub:addressee>
+            <ub:street>8616 Baltimore Ave</ub:street>
+            <ub:city>College Park</ub:city>
+            <ub:state>MD</ub:state>
+            <ub:country/>
+            <ub:postalcode>20740</ub:postalcode>
+            <ub:telephonenumber/>
+            <ub:hours/>
+        </ub:serviceaddress>
+        <ub:billingaddress>
+            <ub:addressee>College Park Car Wash</ub:addressee>
+            <ub:street>7106 Ridgewood Ave</ub:street>
+            <ub:city>Chevy Chase</ub:city>
+            <ub:state>MD</ub:state>
+            <ub:country/>
+            <ub:postalcode>20815-5148</ub:postalcode>
+            <ub:telephonenumber/>
+            <ub:hours/>
+        </ub:billingaddress>
+    </ub:car>
         <ub:priorbalance>0.00</ub:priorbalance>
         <ub:previouspayment>
             <ub:payee/>

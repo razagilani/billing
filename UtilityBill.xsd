@@ -7,30 +7,6 @@
 		</xs:annotation>
 		<xs:complexType>
 			<xs:sequence>
-				<xs:element name="car">
-					<xs:annotation>
-						<xs:documentation>Customer Account Record.</xs:documentation>
-					</xs:annotation>
-					<xs:complexType>
-						<xs:sequence>
-							<xs:element name="accountnumber" type="xs:string">
-								<xs:annotation>
-									<xs:documentation>Customer account number used by the utility</xs:documentation>
-								</xs:annotation>
-							</xs:element>
-							<xs:element name="serviceaddress" type="ub:address">
-								<xs:annotation>
-									<xs:documentation>Location where utility service is received.</xs:documentation>
-								</xs:annotation>
-							</xs:element>
-							<xs:element name="billingaddress" type="ub:address">
-								<xs:annotation>
-									<xs:documentation>Location where bills are sent</xs:documentation>
-								</xs:annotation>
-							</xs:element>
-						</xs:sequence>
-					</xs:complexType>
-				</xs:element>
 				<xs:element name="skylinebill" minOccurs="0">
 					<xs:annotation>
 						<xs:documentation>Summary for Skyline production benefit that rolls up all services</xs:documentation>
@@ -159,6 +135,30 @@
 											</xs:annotation>
 										</xs:element>
 										<xs:element name="serviceoutage" type="ub:address" minOccurs="0"/>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="car">
+								<xs:annotation>
+									<xs:documentation>Customer Account Record.</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="accountnumber" type="xs:string">
+											<xs:annotation>
+												<xs:documentation>Customer account number used by the utility</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="serviceaddress" type="ub:address">
+											<xs:annotation>
+												<xs:documentation>Location where utility service is received.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="billingaddress" type="ub:address">
+											<xs:annotation>
+												<xs:documentation>Location where bills are sent</xs:documentation>
+											</xs:annotation>
+										</xs:element>
 									</xs:sequence>
 								</xs:complexType>
 							</xs:element>

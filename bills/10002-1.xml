@@ -1,28 +1,5 @@
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
 <ub:utilitybill xmlns:ub="utilitybill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" account="10002" xsi:schemaLocation="utilitybill ../UtilityBill.xsd" id="1">
-    <ub:car>
-        <ub:accountnumber>0003020641001</ub:accountnumber>
-        <ub:serviceaddress>
-            <ub:addressee>PENICK VILLAGE</ub:addressee>
-            <ub:street>100 E RHODE ISLAND AVE</ub:street>
-            <ub:city>SOUTHERN PINES</ub:city>
-            <ub:state>NC</ub:state>
-            <ub:country/>
-            <ub:postalcode>28387</ub:postalcode>
-            <ub:telephonenumber/>
-            <ub:hours/>
-        </ub:serviceaddress>
-        <ub:billingaddress>
-            <ub:addressee>PENICK VILLAGE  </ub:addressee>
-            <ub:street>100 E RHODE ISLAND AVE</ub:street>
-            <ub:city>SOUTHERN PINES</ub:city>
-            <ub:state>NC </ub:state>
-            <ub:country/>
-            <ub:postalcode>28387-4935</ub:postalcode>
-            <ub:telephonenumber/>
-            <ub:hours/>
-        </ub:billingaddress>
-    </ub:car>
     <ub:skylinebill>
     <ub:car>
         <ub:serviceaddress>
@@ -63,6 +40,29 @@
         <ub:message>Welcome to Skyline Innovations!</ub:message>
     </ub:skylinebill>
     <ub:summary service="Gas">
+    <ub:car>
+        <ub:accountnumber>0003020641001</ub:accountnumber>
+        <ub:serviceaddress>
+            <ub:addressee>PENICK VILLAGE</ub:addressee>
+            <ub:street>100 E RHODE ISLAND AVE</ub:street>
+            <ub:city>SOUTHERN PINES</ub:city>
+            <ub:state>NC</ub:state>
+            <ub:country/>
+            <ub:postalcode>28387</ub:postalcode>
+            <ub:telephonenumber/>
+            <ub:hours/>
+        </ub:serviceaddress>
+        <ub:billingaddress>
+            <ub:addressee>PENICK VILLAGE  </ub:addressee>
+            <ub:street>100 E RHODE ISLAND AVE</ub:street>
+            <ub:city>SOUTHERN PINES</ub:city>
+            <ub:state>NC </ub:state>
+            <ub:country/>
+            <ub:postalcode>28387-4935</ub:postalcode>
+            <ub:telephonenumber/>
+            <ub:hours/>
+        </ub:billingaddress>
+    </ub:car>
         <ub:priorbalance>0.0</ub:priorbalance>
         <ub:previouspayment>
             <ub:payee/>
