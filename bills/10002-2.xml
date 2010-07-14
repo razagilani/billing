@@ -1,6 +1,6 @@
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
-<ub:utilitybill xmlns:ub="utilitybill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" account="10002" xsi:schemaLocation="utilitybill ../UtilityBill.xsd" id="2">
-    <ub:skylinebill>
+<ub:bill xmlns:ub="utilitybill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" account="10002" xsi:schemaLocation="utilitybill ../UtilityBill.xsd" id="2">
+    <ub:rebill>
     <ub:car>
         <ub:serviceaddress>
             <ub:addressee>PENICK VILLAGE</ub:addressee>
@@ -38,8 +38,8 @@
         <ub:duedate>2010-07-15</ub:duedate>
         <ub:issued>2010-06-15</ub:issued>
         <ub:message/>
-    </ub:skylinebill>
-    <ub:summary service="Gas">
+    </ub:rebill>
+    <ub:utilbill service="Gas">
     <ub:car>
         <ub:accountnumber>0003020641001</ub:accountnumber>
         <ub:serviceaddress>
@@ -81,7 +81,7 @@
             <ub:penalty/>
             <ub:amount>0.00</ub:amount>
         </ub:latepayment>
-    </ub:summary>
+    </ub:utilbill>
     <ub:details service="Gas">
         <ub:rateschedule>
             <ub:name/>
@@ -211,4 +211,4 @@
             <ub:period quantity="0" month="Feb"/>
         </ub:consumptiontrend>
     </ub:statistics>
-</ub:utilitybill>
+</ub:bill>
