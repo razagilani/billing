@@ -24,13 +24,35 @@
         </ub:billingaddress>
     </ub:car>
     <ub:skylinebill>
+    <ub:car>
+        <ub:serviceaddress>
+            <ub:addressee>College Park Car Wash Inc.</ub:addressee>
+            <ub:street>8616 Baltimore Ave</ub:street>
+            <ub:city>College Park</ub:city>
+            <ub:state>MD</ub:state>
+            <ub:country/>
+            <ub:postalcode/>
+            <ub:telephonenumber/>
+            <ub:hours/>
+        </ub:serviceaddress>
+        <ub:billingaddress>
+            <ub:addressee>College Park Car Wash</ub:addressee>
+            <ub:street>7106 Ridgewood Ave</ub:street>
+            <ub:city>Chevy Chase</ub:city>
+            <ub:state>MD</ub:state>
+            <ub:country/>
+            <ub:postalcode>20815-5148</ub:postalcode>
+            <ub:telephonenumber/>
+            <ub:hours/>
+        </ub:billingaddress>
+    </ub:car>
         <ub:billperiodbegin>2009-01-06</ub:billperiodbegin>
         <ub:billperiodend>2010-02-04</ub:billperiodend>
         <ub:priorbalance>26.66</ub:priorbalance>
         <ub:paymentreceived>26.66</ub:paymentreceived>
         <ub:balanceforward>0.00</ub:balanceforward>
-        <ub:actualservicecharges>5751.34</ub:actualservicecharges>
         <ub:hypotheticalservicecharges>5784.53</ub:hypotheticalservicecharges>
+        <ub:actualservicecharges>5751.34</ub:actualservicecharges>
         <ub:energycharges>28.21</ub:energycharges>
         <ub:customersavings>4.98</ub:customersavings>
         <ub:currentcharges>28.21</ub:currentcharges>
@@ -48,9 +70,9 @@
         <ub:billperiodbegin>2010-01-11</ub:billperiodbegin>
         <ub:billperiodend>2010-02-04</ub:billperiodend>
         <ub:issuedate>2010-02-09</ub:issuedate>
-        <ub:currentcharges>2892.96</ub:currentcharges>
         <ub:hypotheticalcharges>2899.16</ub:hypotheticalcharges>
-        <ub:skylinecharges>0.0</ub:skylinecharges>
+        <ub:currentcharges>2892.96</ub:currentcharges>
+        <ub:skylineenergycharges>0.0</ub:skylineenergycharges>
         <ub:totaldue>0.0</ub:totaldue>
         <ub:duedate>2010-03-02</ub:duedate>
         <ub:latepayment>
@@ -68,9 +90,9 @@
         <ub:billperiodbegin>2010-01-06</ub:billperiodbegin>
         <ub:billperiodend>2010-02-03</ub:billperiodend>
         <ub:issuedate>2010-02-08</ub:issuedate>
-        <ub:currentcharges>2858.38</ub:currentcharges>
         <ub:hypotheticalcharges>2885.37</ub:hypotheticalcharges>
-        <ub:skylinecharges>0.0</ub:skylinecharges>
+        <ub:currentcharges>2858.38</ub:currentcharges>
+        <ub:skylineenergycharges>0.0</ub:skylineenergycharges>
         <ub:totaldue>0.0</ub:totaldue>
         <ub:duedate>2010-03-01</ub:duedate>
         <ub:latepayment>
@@ -591,7 +613,7 @@
         <ub:totalrenewableproduced>0</ub:totalrenewableproduced>
         <ub:totaltrees>0.56</ub:totaltrees>
         <ub:totalco2offset>732.22</ub:totalco2offset>
-        <ub:productiontrend>
+        <ub:consumptiontrend>
             <ub:period month="Nov" quantity="6.2"/>
             <ub:period month="Dec" quantity="19.4"/>
             <ub:period month="Jan" quantity="21.2"/>
@@ -604,6 +626,6 @@
             <ub:period month="Aug" quantity="0"/>
             <ub:period month="Sep" quantity="0"/>
             <ub:period month="Oct" quantity="0"/>
-        </ub:productiontrend>
+        </ub:consumptiontrend>
     </ub:statistics>
 </ub:utilitybill>

@@ -24,14 +24,36 @@
         </ub:billingaddress>
     </ub:car>
     <ub:skylinebill>
+    <ub:car>
+        <ub:serviceaddress>
+            <ub:addressee>PENICK VILLAGE</ub:addressee>
+            <ub:street>100 E RHODE ISLAND AVE</ub:street>
+            <ub:city>SOUTHERN PINES</ub:city>
+            <ub:state>NC</ub:state>
+            <ub:country/>
+            <ub:postalcode>28387</ub:postalcode>
+            <ub:telephonenumber/>
+            <ub:hours/>
+        </ub:serviceaddress>
+        <ub:billingaddress>
+            <ub:addressee>PENICK VILLAGE  </ub:addressee>
+            <ub:street>100 E RHODE ISLAND AVE</ub:street>
+            <ub:city>SOUTHERN PINES</ub:city>
+            <ub:state>NC </ub:state>
+            <ub:country/>
+            <ub:postalcode>28387-4935</ub:postalcode>
+            <ub:telephonenumber/>
+            <ub:hours/>
+        </ub:billingaddress>
+    </ub:car>
         <ub:billperiodbegin>2010-02-22</ub:billperiodbegin>
         <ub:billperiodend>2010-03-11</ub:billperiodend>
         <ub:priorbalance>0.00</ub:priorbalance>
         <ub:paymentreceived>0.00</ub:paymentreceived>
         <ub:totaladjustment>0.00</ub:totaladjustment>
         <ub:balanceforward>0.00</ub:balanceforward>
-        <ub:actualservicecharges>12.43</ub:actualservicecharges>
         <ub:hypotheticalservicecharges>12.43</ub:hypotheticalservicecharges>
+        <ub:actualservicecharges>12.43</ub:actualservicecharges>
         <ub:energycharges>0.00</ub:energycharges>
         <ub:customersavings>0.00</ub:customersavings>
         <ub:currentcharges>0.00</ub:currentcharges>

@@ -24,6 +24,28 @@
 		</ub:billingaddress>
 	</ub:car>
 	<ub:skylinebill>
+	<ub:car>
+		<ub:serviceaddress>
+			<ub:addressee/>
+			<ub:street>3025 Porter St NW</ub:street>
+			<ub:city/>
+			<ub:state/>
+			<ub:country/>
+			<ub:postalcode/>
+			<ub:telephonenumber/>
+			<ub:hours/>
+		</ub:serviceaddress>
+		<ub:billingaddress>
+			<ub:addressee> Watassa Management</ub:addressee>
+			<ub:street>PO Box 53242</ub:street>
+			<ub:city>Washington</ub:city>
+			<ub:state>DC</ub:state>
+			<ub:country/>
+			<ub:postalcode>20009</ub:postalcode>
+			<ub:telephonenumber>14109787703</ub:telephonenumber>
+			<ub:hours/>
+		</ub:billingaddress>
+	</ub:car>
 		<ub:billperiodbegin/>
 		<ub:billperiodend/>
 		<ub:priorbalance/>

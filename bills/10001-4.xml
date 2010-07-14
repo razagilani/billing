@@ -24,14 +24,36 @@
         </ub:billingaddress>
     </ub:car>
     <ub:skylinebill>
+    <ub:car>
+        <ub:serviceaddress>
+            <ub:addressee>College Park Car Wash Inc.</ub:addressee>
+            <ub:street>8616 Baltimore Ave</ub:street>
+            <ub:city>College Park</ub:city>
+            <ub:state>MD</ub:state>
+            <ub:country/>
+            <ub:postalcode/>
+            <ub:telephonenumber/>
+            <ub:hours/>
+        </ub:serviceaddress>
+        <ub:billingaddress>
+            <ub:addressee>College Park Car Wash</ub:addressee>
+            <ub:street>7106 Ridgewood Ave</ub:street>
+            <ub:city>Chevy Chase</ub:city>
+            <ub:state>MD</ub:state>
+            <ub:country/>
+            <ub:postalcode>20815-5148</ub:postalcode>
+            <ub:telephonenumber/>
+            <ub:hours/>
+        </ub:billingaddress>
+    </ub:car>
         <ub:billperiodbegin>2010-01-11</ub:billperiodbegin>
         <ub:billperiodend>2010-03-04</ub:billperiodend>
         <ub:priorbalance>28.21</ub:priorbalance>
         <ub:paymentreceived>28.21</ub:paymentreceived>
         <ub:totaladjustment>-5.27</ub:totaladjustment>
         <ub:balanceforward>-5.27</ub:balanceforward>
-        <ub:actualservicecharges>6158.63</ub:actualservicecharges>
         <ub:hypotheticalservicecharges>6188.00</ub:hypotheticalservicecharges>
+        <ub:actualservicecharges>6158.63</ub:actualservicecharges>
         <ub:energycharges>24.96</ub:energycharges>
         <ub:customersavings>4.41</ub:customersavings>
         <ub:currentcharges>24.96</ub:currentcharges>

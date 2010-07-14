@@ -24,6 +24,28 @@
         </ub:billingaddress>
     </ub:car>
     <ub:skylinebill>
+    <ub:car>
+        <ub:serviceaddress>
+            <ub:addressee/>
+            <ub:street>1103 WEST CHESTER PI, ST-12-A</ub:street>
+            <ub:city>WEST CHESTER</ub:city>
+            <ub:state/>
+            <ub:country/>
+            <ub:postalcode/>
+            <ub:telephonenumber>610-688-8985</ub:telephonenumber>
+            <ub:hours/>
+        </ub:serviceaddress>
+        <ub:billingaddress>
+            <ub:addressee> T C COMMONS C/O FAMILY LAUNDRY MAT</ub:addressee>
+            <ub:street>1107 W CHESTER PIKE</ub:street>
+            <ub:city>WEST CHESTER</ub:city>
+            <ub:state>PA</ub:state>
+            <ub:country/>
+            <ub:postalcode>19382-5004</ub:postalcode>
+            <ub:telephonenumber/>
+            <ub:hours/>
+        </ub:billingaddress>
+    </ub:car>
         <ub:billperiodbegin>2010-04-06</ub:billperiodbegin>
         <ub:billperiodend>2010-05-05</ub:billperiodend>
         <ub:priorbalance>0.00</ub:priorbalance>
