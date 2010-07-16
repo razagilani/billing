@@ -74,8 +74,8 @@
 		<ub:issuedate/>
 		<ub:hypotheticalcharges/>
 		<ub:currentcharges/>
-		<ub:skylinevalue/>
-		<ub:skylinesavings/>
+		<ub:revalue/>
+		<ub:resavings/>
 		<ub:totaldue/>
 		<ub:duedate/>
 		<ub:latepayment>

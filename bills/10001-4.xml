@@ -74,8 +74,8 @@
 		<ub:issuedate>2010-02-09</ub:issuedate>
 		<ub:hypotheticalcharges>3441.77</ub:hypotheticalcharges>
 		<ub:currentcharges>3432.18</ub:currentcharges>
-		<ub:skylinevalue>9.59</ub:skylinevalue>
-		<ub:skylinesavings>1.44</ub:skylinesavings>
+		<ub:revalue>9.59</ub:revalue>
+		<ub:resavings>1.44</ub:resavings>
 		<ub:totaldue>8.15</ub:totaldue>
 		<ub:duedate>2010-04-05</ub:duedate>
 		<ub:latepayment>
@@ -118,8 +118,8 @@
 		<ub:issuedate>2010-02-08</ub:issuedate>
 		<ub:hypotheticalcharges>2746.23</ub:hypotheticalcharges>
 		<ub:currentcharges>2726.45</ub:currentcharges>
-		<ub:skylinevalue>19.78</ub:skylinevalue>
-		<ub:skylinesavings>2.97</ub:skylinesavings>
+		<ub:revalue>19.78</ub:revalue>
+		<ub:resavings>2.97</ub:resavings>
 		<ub:totaldue>16.81</ub:totaldue>
 		<ub:duedate>2010-03-30</ub:duedate>
 		<ub:latepayment>

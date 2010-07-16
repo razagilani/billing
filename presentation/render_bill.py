@@ -479,7 +479,7 @@ def main(options):
         [Paragraph("Your Utility Charges", styles['BillLabelSmCenter']),Paragraph("", styles['BillLabelSm']),Paragraph("Green Energy", styles['BillLabelSmCenter'])],
         [Paragraph("Without Skyline", styles['BillLabelSmCenter']),Paragraph("With Skyline", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
     ]+[
-        [Paragraph(str(utilbill.hypotheticalcharges),styles['BillFieldRight']), Paragraph(str(utilbill.currentcharges),styles['BillFieldRight']), Paragraph(str(utilbill.skylinevalue),styles['BillFieldRight'])]
+        [Paragraph(str(utilbill.hypotheticalcharges),styles['BillFieldRight']), Paragraph(str(utilbill.currentcharges),styles['BillFieldRight']), Paragraph(str(utilbill.revalue),styles['BillFieldRight'])]
         for utilbill in iter(dom.bill.utilbill)
     ]
 

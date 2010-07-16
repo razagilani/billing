@@ -67,9 +67,9 @@
 		<ub:billperiodend>2010-05-05</ub:billperiodend>
 		<ub:hypotheticalcharges>1660.23</ub:hypotheticalcharges>
 		<ub:currentcharges>1639.82</ub:currentcharges>
-		<ub:skylinevalue>20.41</ub:skylinevalue>
-		<ub:skylineenergycharges>17.35</ub:skylineenergycharges>
-		<ub:skylinesavings>3.06</ub:skylinesavings>
+		<ub:revalue>20.41</ub:revalue>
+		<ub:recharges>17.35</ub:recharges>
+		<ub:resavings>3.06</ub:resavings>
 	</ub:utilbill>
 	<ub:details service="Gas">
 		<ub:rateschedule>
