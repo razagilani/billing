@@ -47,8 +47,8 @@ class TestFetchBillData(unittest.TestCase):
         # save intermediate results
         open("test/test_fetch_bill_data/bill_reg_test_1_in.xml", 'w').write(results.xml_encode())
 
-        self.assertEquals(open("test/test_fetch_bill_data/bill_reg_test_1_in.xml", "r").read(), 
-            open("test/test_fetch_bill_data/bill_reg_test_1_post.xml", "r").read(), "Virtual registers did not populate as expected.")
+        self.assertEquals(open("test/test_fetch_bill_data/bill_reg_test_1_in.xml", "rU").read(), 
+            open("test/test_fetch_bill_data/bill_reg_test_1_post.xml", "rU").read(), "Virtual registers did not populate as expected.")
 
         # clean up intermediate results
         os.remove("test/test_fetch_bill_data/bill_reg_test_1_in.xml")
@@ -70,8 +70,8 @@ class TestFetchBillData(unittest.TestCase):
             )
         # save intermediate results for debugging
         open("test/test_fetch_bill_data/bill_reg_test_2_in.xml", 'w').write(results.xml_encode())
-        self.assertEquals(open("test/test_fetch_bill_data/bill_reg_test_2_in.xml", "r").read(),
-            open("test/test_fetch_bill_data/bill_reg_test_2_post.xml", "r").read(), "Virtual registers did not populate as expected.")
+        self.assertEquals(open("test/test_fetch_bill_data/bill_reg_test_2_in.xml", "rU").read(),
+            open("test/test_fetch_bill_data/bill_reg_test_2_post.xml", "rU").read(), "Virtual registers did not populate as expected.")
 
         # clean up intermediate results
         os.remove("test/test_fetch_bill_data/bill_reg_test_2_in.xml")
