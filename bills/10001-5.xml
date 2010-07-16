@@ -74,9 +74,9 @@
 		<ub:issuedate>2012-01-01</ub:issuedate>
 		<ub:hypotheticalcharges>548.24</ub:hypotheticalcharges>
 		<ub:currentcharges>519.60</ub:currentcharges>
-		<ub:skylinevalue>28.64</ub:skylinevalue>
-		<ub:skylineenergycharges>24.34</ub:skylineenergycharges>
-		<ub:skylinesavings>4.30</ub:skylinesavings>
+		<ub:revalue>28.64</ub:revalue>
+		<ub:recharges>24.34</ub:recharges>
+		<ub:resavings>4.30</ub:resavings>
 		<ub:totaldue>0.00</ub:totaldue>
 		<ub:duedate>2012-01-01</ub:duedate>
 		<ub:latepayment>

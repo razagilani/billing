@@ -74,8 +74,8 @@
 		<ub:issuedate>2010-06-15</ub:issuedate>
 		<ub:hypotheticalcharges>12.43</ub:hypotheticalcharges>
 		<ub:currentcharges>12.43</ub:currentcharges>
-		<ub:skylinevalue>0.00</ub:skylinevalue>
-		<ub:skylinesavings>0.00</ub:skylinesavings>
+		<ub:revalue>0.00</ub:revalue>
+		<ub:resavings>0.00</ub:resavings>
 		<ub:totaldue>0.00</ub:totaldue>
 		<ub:duedate>2010-06-15</ub:duedate>
 		<ub:latepayment>
