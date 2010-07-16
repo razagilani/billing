@@ -29,10 +29,10 @@
 		<ub:paymentreceived>24.34</ub:paymentreceived>
 		<ub:totaladjustment>0.00</ub:totaladjustment>
 		<ub:balanceforward>0.00</ub:balanceforward>
-		<ub:hypotheticalservicecharges>428.29</ub:hypotheticalservicecharges>
-		<ub:actualservicecharges>344.87</ub:actualservicecharges>
-		<ub:energycharges>70.91</ub:energycharges>
-		<ub:customersavings>12.51</ub:customersavings>
+		<ub:hypotheticalecharges>428.29</ub:hypotheticalecharges>
+		<ub:actualecharges>344.87</ub:actualecharges>
+		<ub:recharges>70.91</ub:recharges>
+		<ub:resavings>12.51</ub:resavings>
 		<ub:currentcharges/>
 		<ub:totaldue>70.91</ub:totaldue>
 		<ub:duedate>2010-07-31</ub:duedate>
@@ -63,26 +63,14 @@
 				<ub:hours/>
 			</ub:billingaddress>
 		</ub:car>
-		<ub:priorbalance>0.00</ub:priorbalance>
-		<ub:previouspayment>
-			<ub:payee/>
-			<ub:amount>0.0</ub:amount>
-		</ub:previouspayment>
-		<ub:balanceforward>0.00</ub:balanceforward>
 		<ub:billperiodbegin>2010-04-03</ub:billperiodbegin>
 		<ub:billperiodend>2010-05-03</ub:billperiodend>
 		<ub:issuedate>2012-01-01</ub:issuedate>
-		<ub:hypotheticalcharges>428.29</ub:hypotheticalcharges>
-		<ub:currentcharges>344.87</ub:currentcharges>
+		<ub:hypotheticalecharges>428.29</ub:hypotheticalecharges>
+		<ub:actualecharges>344.87</ub:actualecharges>
 		<ub:revalue>83.42</ub:revalue>
 		<ub:recharges>70.91</ub:recharges>
 		<ub:resavings>12.51</ub:resavings>
-		<ub:totaldue>0.00</ub:totaldue>
-		<ub:duedate>2012-01-01</ub:duedate>
-		<ub:latepayment>
-			<ub:penalty/>
-			<ub:amount>0.00</ub:amount>
-		</ub:latepayment>
 	</ub:utilbill>
 	<ub:details service="Gas">
 		<ub:rateschedule>

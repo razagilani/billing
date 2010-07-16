@@ -479,7 +479,7 @@ def main(options):
         [Paragraph("Your Utility Charges", styles['BillLabelSmCenter']),Paragraph("", styles['BillLabelSm']),Paragraph("Green Energy", styles['BillLabelSmCenter'])],
         [Paragraph("Without Skyline", styles['BillLabelSmCenter']),Paragraph("With Skyline", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
     ]+[
-        [Paragraph(str(utilbill.hypotheticalcharges),styles['BillFieldRight']), Paragraph(str(utilbill.currentcharges),styles['BillFieldRight']), Paragraph(str(utilbill.revalue),styles['BillFieldRight'])]
+        [Paragraph(str(utilbill.hypotheticalecharges),styles['BillFieldRight']), Paragraph(str(utilbill.actualecharges),styles['BillFieldRight']), Paragraph(str(utilbill.revalue),styles['BillFieldRight'])]
         for utilbill in iter(dom.bill.utilbill)
     ]
 
@@ -503,8 +503,8 @@ def main(options):
 
     # populate current charges
     currentCharges = [
-        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.customersavings), styles['BillFieldRight'])],
-        [Paragraph("Skyline Charges", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.energycharges), styles['BillFieldRight'])]
+        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.resavings), styles['BillFieldRight'])],
+        [Paragraph("Skyline Charges", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.recharges), styles['BillFieldRight'])]
     ]
 
     t = Table(currentCharges, [135,85])

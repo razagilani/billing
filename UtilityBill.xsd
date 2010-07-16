@@ -54,34 +54,34 @@
 									<xs:documentation>balance between prior payments and bills</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="hypotheticalservicecharges">
+							<xs:element name="hypotheticalecharges">
 								<xs:annotation>
-									<xs:documentation>Total charges in absence of skyline system</xs:documentation>
+									<xs:documentation>Total energy charges in absence of skyline system</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="actualservicecharges">
+							<xs:element name="actualecharges">
 								<xs:annotation>
-									<xs:documentation>Total charges from all services (change to utility service charges)</xs:documentation>
+									<xs:documentation>Total energy charges from all services</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="energycharges">
+							<xs:element name="recharges">
 								<xs:annotation>
 									<xs:documentation>85% hypothetical-actual due by customer this bill period</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="customersavings">
+							<xs:element name="resavings">
 								<xs:annotation>
 									<xs:documentation>15% hypothetical-actual amount saved by customer</xs:documentation>
 								</xs:annotation>
 							</xs:element>
 							<xs:element name="currentcharges">
 								<xs:annotation>
-									<xs:documentation>Sum total charges this bill period. BalanceForward + energycharges  **appears unused**</xs:documentation>
+									<xs:documentation>Sum total charges this bill period. BalanceForward + energycharges + nonenergy charges</xs:documentation>
 								</xs:annotation>
 							</xs:element>
 							<xs:element name="totaldue">
 								<xs:annotation>
-									<xs:documentation>Sum total charges this bill period. BalanceForward + energycharges</xs:documentation>
+									<xs:documentation>Sum total charges this bill period. BalanceForward + current charges</xs:documentation>
 								</xs:annotation>
 							</xs:element>
 							<xs:element name="duedate"/>
@@ -162,26 +162,6 @@
 									</xs:sequence>
 								</xs:complexType>
 							</xs:element>
-							<xs:element name="priorbalance" type="xs:decimal" minOccurs="0">
-								<xs:annotation>
-									<xs:documentation>Delme: Balance from last bill.</xs:documentation>
-								</xs:annotation>
-							</xs:element>
-							<xs:element name="previouspayment" type="ub:payment" minOccurs="0" maxOccurs="unbounded">
-								<xs:annotation>
-									<xs:documentation>Delme: Previous payments after last bill</xs:documentation>
-								</xs:annotation>
-							</xs:element>
-							<xs:element name="adjustment" type="ub:payment" minOccurs="0" maxOccurs="unbounded">
-								<xs:annotation>
-									<xs:documentation>Delme: Charges and credit for late fees and estimated billing.</xs:documentation>
-								</xs:annotation>
-							</xs:element>
-							<xs:element name="balanceforward" type="xs:decimal" minOccurs="0">
-								<xs:annotation>
-									<xs:documentation>Delme: Balance forward for this bill</xs:documentation>
-								</xs:annotation>
-							</xs:element>
 							<xs:element name="billperiodbegin" type="xs:date">
 								<xs:annotation>
 									<xs:documentation>Begin date for this bill.</xs:documentation>
@@ -197,9 +177,9 @@
 									<xs:documentation>Date the bill is issued for customer.</xs:documentation>
 								</xs:annotation>
 							</xs:element>
-							<xs:element name="hypotheticalcharges" minOccurs="0">
+							<xs:element name="hypotheticalecharges" minOccurs="0">
 								<xs:annotation>
-									<xs:documentation>Charges in absence of Skyline</xs:documentation>
+									<xs:documentation>Energy charges in absence of Skyline</xs:documentation>
 								</xs:annotation>
 								<xs:complexType>
 									<xs:simpleContent>
@@ -207,9 +187,9 @@
 									</xs:simpleContent>
 								</xs:complexType>
 							</xs:element>
-							<xs:element name="currentcharges">
+							<xs:element name="actualecharges">
 								<xs:annotation>
-									<xs:documentation>Total for this bill period including distribution and service lates fees, taxes and various other charges. (Change to utility service charges)</xs:documentation>
+									<xs:documentation>Total for this bill period including distribution and  taxes and various other energy charges.</xs:documentation>
 								</xs:annotation>
 								<xs:complexType>
 									<xs:simpleContent>
@@ -227,7 +207,7 @@
 									</xs:simpleContent>
 								</xs:complexType>
 							</xs:element>
-							<xs:element name="renergycharges" minOccurs="0">
+							<xs:element name="recharges" minOccurs="0">
 								<xs:annotation>
 									<xs:documentation>85% (hypothetical - actual)</xs:documentation>
 								</xs:annotation>
@@ -236,35 +216,6 @@
 								<xs:annotation>
 									<xs:documentation>15% hypothetical - actual   itemized savings by fuel type</xs:documentation>
 								</xs:annotation>
-							</xs:element>
-							<xs:element name="totaldue" type="xs:decimal" minOccurs="0">
-								<xs:annotation>
-									<xs:documentation>delme: Total account balance (consider renaming it to) for entire bill including all payees, previous balance, late fees.</xs:documentation>
-								</xs:annotation>
-							</xs:element>
-							<xs:element name="duedate" type="xs:date" minOccurs="0">
-								<xs:annotation>
-									<xs:documentation>delme: Date bill is due payable.</xs:documentation>
-								</xs:annotation>
-							</xs:element>
-							<xs:element name="latepayment" minOccurs="0">
-								<xs:annotation>
-									<xs:documentation>delme: Penalty if bill not paid by due date.</xs:documentation>
-								</xs:annotation>
-								<xs:complexType>
-									<xs:sequence>
-										<xs:element name="penalty">
-											<xs:annotation>
-												<xs:documentation>Percentage charge of total bill for missed due date</xs:documentation>
-											</xs:annotation>
-										</xs:element>
-										<xs:element name="amount">
-											<xs:annotation>
-												<xs:documentation>Amount of late payment fee</xs:documentation>
-											</xs:annotation>
-										</xs:element>
-									</xs:sequence>
-								</xs:complexType>
 							</xs:element>
 						</xs:sequence>
 						<xs:attributeGroup ref="ub:service"/>

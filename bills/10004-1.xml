@@ -29,10 +29,10 @@
 		<ub:paymentreceived>0.00</ub:paymentreceived>
 		<ub:totaladjustment>0.00</ub:totaladjustment>
 		<ub:balanceforward>0.00</ub:balanceforward>
-		<ub:hypotheticalservicecharges>1660.23</ub:hypotheticalservicecharges>
-		<ub:actualservicecharges>1639.82</ub:actualservicecharges>
-		<ub:energycharges>17.35</ub:energycharges>
-		<ub:customersavings>3.06</ub:customersavings>
+		<ub:hypotheticalecharges>1660.23</ub:hypotheticalecharges>
+		<ub:actualecharges>1639.82</ub:actualecharges>
+		<ub:recharges>17.35</ub:recharges>
+		<ub:resavings>3.06</ub:resavings>
 		<ub:currentcharges/>
 		<ub:totaldue>17.35</ub:totaldue>
 		<ub:duedate>2010-07-01</ub:duedate>
@@ -65,8 +65,8 @@
 		</ub:car>
 		<ub:billperiodbegin>2010-04-06</ub:billperiodbegin>
 		<ub:billperiodend>2010-05-05</ub:billperiodend>
-		<ub:hypotheticalcharges>1660.23</ub:hypotheticalcharges>
-		<ub:currentcharges>1639.82</ub:currentcharges>
+		<ub:hypotheticalecharges>1660.23</ub:hypotheticalecharges>
+		<ub:actualecharges>1639.82</ub:actualecharges>
 		<ub:revalue>20.41</ub:revalue>
 		<ub:recharges>17.35</ub:recharges>
 		<ub:resavings>3.06</ub:resavings>
