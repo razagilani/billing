@@ -1,5 +1,5 @@
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
-<ub:bill xmlns:ub="bill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" account="10001" xsi:schemaLocation="bill ../UtilityBill.xsd" id="6">
+<ub:bill xmlns:ub="bill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" account="10001" xsi:schemaLocation="bill ../UtilityBill.xsd" id="7">
 	<ub:rebill>
 		<ub:car>
 			<ub:serviceaddress>
