@@ -65,10 +65,10 @@
 		</ub:car>
 		<ub:billperiodbegin>2010-01-11</ub:billperiodbegin>
 		<ub:billperiodend>2010-03-04</ub:billperiodend>
-		<ub:issuedate>2010-02-09</ub:issuedate>
 		<ub:hypotheticalecharges>3441.77</ub:hypotheticalecharges>
 		<ub:actualecharges>3432.18</ub:actualecharges>
 		<ub:revalue>9.59</ub:revalue>
+		<ub:recharges>8.15</ub:recharges>
 		<ub:resavings>1.44</ub:resavings>
 	</ub:utilbill>
 	<ub:utilbill service="Gas">
@@ -97,10 +97,10 @@
 		</ub:car>
 		<ub:billperiodbegin>2010-02-04</ub:billperiodbegin>
 		<ub:billperiodend>2010-03-04</ub:billperiodend>
-		<ub:issuedate>2010-02-08</ub:issuedate>
 		<ub:hypotheticalecharges>2746.23</ub:hypotheticalecharges>
 		<ub:actualecharges>2726.45</ub:actualecharges>
 		<ub:revalue>19.78</ub:revalue>
+		<ub:recharges>16.81</ub:recharges>
 		<ub:resavings>2.97</ub:resavings>
 	</ub:utilbill>
 	<ub:details service="Gas">
