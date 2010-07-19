@@ -65,10 +65,10 @@
 		</ub:car>
 		<ub:billperiodbegin>2010-02-22</ub:billperiodbegin>
 		<ub:billperiodend>2010-03-11</ub:billperiodend>
-		<ub:issuedate>2010-06-15</ub:issuedate>
 		<ub:hypotheticalecharges>12.43</ub:hypotheticalecharges>
 		<ub:actualecharges>12.43</ub:actualecharges>
 		<ub:revalue>0.00</ub:revalue>
+		<ub:recharges>0.00</ub:recharges>
 		<ub:resavings>0.00</ub:resavings>
 	</ub:utilbill>
 	<ub:details service="Gas">

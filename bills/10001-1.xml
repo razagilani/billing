@@ -27,6 +27,7 @@
 		<ub:billperiodend>2009-12-07</ub:billperiodend>
 		<ub:priorbalance>0.0</ub:priorbalance>
 		<ub:paymentreceived>0.0</ub:paymentreceived>
+		<ub:totaladjustment>0.00</ub:totaladjustment>
 		<ub:balanceforward>0.0</ub:balanceforward>
 		<ub:hypotheticalecharges>3199.16</ub:hypotheticalecharges>
 		<ub:actualecharges>3189.60</ub:actualecharges>
@@ -63,10 +64,11 @@
 		</ub:car>
 		<ub:billperiodbegin>2009-10-30</ub:billperiodbegin>
 		<ub:billperiodend>2009-12-03</ub:billperiodend>
-		<ub:issuedate>2009-12-08</ub:issuedate>
 		<ub:hypotheticalecharges>521.00</ub:hypotheticalecharges>
 		<ub:actualecharges>513.29</ub:actualecharges>
+		<ub:revalue>7.71</ub:revalue>
 		<ub:recharges>6.55</ub:recharges>
+		<ub:resavings>1.16</ub:resavings>
 	</ub:utilbill>
 	<ub:utilbill service="Electric">
 		<ub:car>
@@ -94,10 +96,11 @@
 		</ub:car>
 		<ub:billperiodbegin>2009-11-06</ub:billperiodbegin>
 		<ub:billperiodend>2009-12-07</ub:billperiodend>
-		<ub:issuedate>2009-12-09</ub:issuedate>
 		<ub:hypotheticalecharges>2678.16</ub:hypotheticalecharges>
 		<ub:actualecharges>2676.31</ub:actualecharges>
+		<ub:revalue>1.85</ub:revalue>
 		<ub:recharges>1.58</ub:recharges>
+		<ub:resavings>0.28</ub:resavings>
 	</ub:utilbill>
 	<ub:details service="Gas">
 		<ub:rateschedule>
