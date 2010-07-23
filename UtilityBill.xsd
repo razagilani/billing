@@ -64,6 +64,11 @@
 									<xs:documentation>Total energy charges from all services</xs:documentation>
 								</xs:annotation>
 							</xs:element>
+							<xs:element name="revalue">
+								<xs:annotation>
+									<xs:documentation>Total value of renewable energy</xs:documentation>
+								</xs:annotation>
+							</xs:element>
 							<xs:element name="recharges">
 								<xs:annotation>
 									<xs:documentation>85% hypothetical-actual due by customer this bill period</xs:documentation>
@@ -483,8 +488,8 @@
 	<xs:complexType name="meter">
 		<xs:sequence>
 			<xs:element name="estimated" type="xs:boolean"/>
-			<xs:element name="priorreaddate" type="xs:date" minOccurs="0"/>
-			<xs:element name="presentreaddate" type="xs:date" minOccurs="0"/>
+			<xs:element name="priorreaddate" type="xs:date"/>
+			<xs:element name="presentreaddate" type="xs:date"/>
 			<xs:element name="nextreaddate" type="xs:date" minOccurs="0"/>
 			<xs:element name="identifier">
 				<xs:annotation>

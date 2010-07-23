@@ -1,5 +1,5 @@
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
-<ub:bill xmlns:ub="bill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="3" account="10001" xsi:schemaLocation="bill ../UtilityBill.xsd">
+<ub:bill xmlns:ub="bill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="3" account="10001" xsi:schemaLocation="bill ../../billing/UtilityBill.xsd">
 	<ub:rebill>
 		<ub:car>
 			<ub:serviceaddress>
@@ -23,20 +23,19 @@
 				<ub:hours/>
 			</ub:billingaddress>
 		</ub:car>
-		<ub:billperiodbegin>2010-01-11</ub:billperiodbegin>
-		<ub:billperiodend/>
-		<ub:priorbalance>26.66</ub:priorbalance>
+		<ub:billperiodbegin>2010-01-10</ub:billperiodbegin>
+		<ub:billperiodend/><ub:priorbalance>26.66</ub:priorbalance>
 		<ub:paymentreceived>19.99</ub:paymentreceived>
+		<ub:totaladjustment>0.00</ub:totaladjustment>
 		<ub:balanceforward>6.67</ub:balanceforward>
-		<ub:hypotheticalecharges/>
-		<ub:actualecharges/>
-		<ub:recharges/>
-		<ub:resavings/>
-		<ub:currentcharges/>
-		<ub:totaldue/>
-		<ub:duedate/>
-		<ub:issued/>
-	</ub:rebill>
+		<ub:hypotheticalecharges>0.00</ub:hypotheticalecharges>
+		<ub:actualecharges>0.00</ub:actualecharges>
+		<ub:revalue>0.00</ub:revalue>
+		<ub:recharges>0.00</ub:recharges>
+		<ub:resavings>0.00</ub:resavings>
+		<ub:currentcharges>0.00</ub:currentcharges>
+		<ub:totaldue>0.00</ub:totaldue>
+		<ub:duedate/><ub:issued/></ub:rebill>
 	<ub:utilbill service="Gas">
 		<ub:car>
 			<ub:accountnumber>2051065106</ub:accountnumber>
@@ -61,14 +60,13 @@
 				<ub:hours/>
 			</ub:billingaddress>
 		</ub:car>
-		<ub:billperiodbegin>2010-01-07</ub:billperiodbegin>
+		<ub:billperiodbegin>2010-01-06</ub:billperiodbegin>
 		<ub:billperiodend/>
-		<ub:issuedate/>
-		<ub:hypotheticalecharges/>
-		<ub:actualecharges/>
-		<ub:revalue/>
-		<ub:recharges/>
-		<ub:resavings/>
+		<ub:hypotheticalecharges>0.00</ub:hypotheticalecharges>
+		<ub:actualecharges>0.00</ub:actualecharges>
+		<ub:revalue>0.00</ub:revalue>
+		<ub:recharges>0.00</ub:recharges>
+		<ub:resavings>0.00</ub:resavings>
 	</ub:utilbill>
 	<ub:utilbill service="Electric">
 		<ub:car>
@@ -94,12 +92,11 @@
 				<ub:hours/>
 			</ub:billingaddress>
 		</ub:car>
-		<ub:billperiodbegin>2010-01-12</ub:billperiodbegin>
+		<ub:billperiodbegin>2010-01-11</ub:billperiodbegin>
 		<ub:billperiodend/>
-		<ub:issuedate/>
-		<ub:hypotheticalecharges/>
-		<ub:actualecharges/>
-		<ub:recharges/>
+		<ub:hypotheticalecharges>0.00</ub:hypotheticalecharges>
+		<ub:actualecharges>0.00</ub:actualecharges>
+		<ub:recharges>0.00</ub:recharges>
 	</ub:utilbill>
 	<ub:details service="Gas">
 		<ub:rateschedule>
@@ -111,38 +108,38 @@
 					<ub:description>Usage</ub:description>
 					<ub:quantity units="Therms"></ub:quantity>
 					<ub:rate units="dollars"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Usage</ub:description>
 					<ub:quantity units="Therms"></ub:quantity>
 					<ub:rate units="dollars"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>System Charge</ub:description>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>MD Sales Tax - Distribution</ub:description>
 					<ub:quantity units="dollars"></ub:quantity>
 					<ub:rate units="percent"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 					<ub:processingnote>Sales tax on Usage and  System Charge.  0.01 rounding error - actual: 25.40.  Units on bill incorrect, rate shown as $, not %</ub:processingnote>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>MD Gross Receipts Surcharge</ub:description>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 					<ub:processingnote>Computation unknown</ub:processingnote>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>PG County Energy Tax</ub:description>
 					<ub:quantity units="Therms"></ub:quantity>
 					<ub:rate units="dollars"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 					<ub:processingnote>Total Therms * Rate ($/therm)</ub:processingnote>
 				</ub:charge>
-				<ub:total/>
+				<ub:total>0.00</ub:total>
 			</ub:charges>
 		</ub:chargegroup>
 		<ub:chargegroup type="Generation/Supply">
@@ -151,26 +148,26 @@
 					<ub:description>Supply Service</ub:description>
 					<ub:quantity units="Therms"></ub:quantity>
 					<ub:rate units="dollars"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Balancing</ub:description>
 					<ub:quantity units="Therms"></ub:quantity>
 					<ub:rate units="dollars"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>MD Sales Tax</ub:description>
 					<ub:quantity units="dollars"></ub:quantity>
 					<ub:rate units="percent"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 					<ub:processingnote>Tax on Supply Service, Balancing. Rate units on bill incorrect, shown as $, not %</ub:processingnote>
 				</ub:charge>
-				<ub:total/>
+				<ub:total>0.00</ub:total>
 			</ub:charges>
 		</ub:chargegroup>
-		<ub:total type="actual"></ub:total>
-		<ub:total type="hypothetical"></ub:total>
+		<ub:total type="actual">0.00</ub:total>
+		<ub:total type="hypothetical">0.00</ub:total>
 	</ub:details>
 	<ub:details service="Electric">
 		<ub:rateschedule>
@@ -181,77 +178,77 @@
 			<ub:charges type="actual">
 				<ub:charge>
 					<ub:description>Customer Charge</ub:description>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>On-Peak Energy</ub:description>
 					<ub:quantity units="kWh"></ub:quantity>
 					<ub:rate units="dollars"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Int-Peak Energy</ub:description>
 					<ub:quantity units="kWh"></ub:quantity>
 					<ub:rate units="dollars"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Off Peak Energy</ub:description>
 					<ub:quantity units="kWh"></ub:quantity>
 					<ub:rate units="dollars"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Maximum Demand</ub:description>
 					<ub:quantity units="KWD"></ub:quantity>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Franchise tax (delivery) </ub:description>
 					<ub:quantity units="kWh"></ub:quantity>
 					<ub:rate units="dollars"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 					<ub:processingnote>Rate * Total kWh</ub:processingnote>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Universal Service Charge</ub:description>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>MD Environmental surcharge</ub:description>
 					<ub:quantity units="kWh"></ub:quantity>
 					<ub:rate units="dollars"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 					<ub:processingnote>Rate * Total kWh</ub:processingnote>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Gross receipts tax</ub:description>
 					<ub:quantity units="dollars"></ub:quantity>
 					<ub:rate units="percent"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 					<ub:processingnote>Tax on Customer charge; on, int, off peak; max demand; franchise tax; universale service charge; md env surcharge</ub:processingnote>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>PG County Energy</ub:description>
 					<ub:quantity units="kWh"></ub:quantity>
 					<ub:rate units="dollars"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 					<ub:processingnote>Rate * Total kWh; Utility Billing error - actual 236.23</ub:processingnote>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Administrative credit</ub:description>
 					<ub:quantity units="kWh"></ub:quantity>
 					<ub:rate units="dollars"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Sales Tax</ub:description>
 					<ub:quantity units="dollars"></ub:quantity>
 					<ub:rate units="percent"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 					<ub:processingnote>Computation Unknown; Minimally energy, demand and charges; 29.24/6% = 487.33</ub:processingnote>
 				</ub:charge>
-				<ub:total/>
+				<ub:total>0.00</ub:total>
 			</ub:charges>
 		</ub:chargegroup>
 		<ub:chargegroup type="Generation/Supply">
@@ -260,37 +257,20 @@
 					<ub:description>Total Use</ub:description>
 					<ub:quantity units="kWh"></ub:quantity>
 					<ub:rate units="dollars"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Sales Tax</ub:description>
 					<ub:quantity units="dollars"></ub:quantity>
 					<ub:rate units="percent"></ub:rate>
-					<ub:total/>
+					<ub:total>0.00</ub:total>
 					<ub:processingnote>Tax on Total Use</ub:processingnote>
 				</ub:charge>
-				<ub:total/>
-			</ub:charges>
-			<ub:charges type="hypothetical">
-				<ub:charge>
-					<ub:description>Total Use</ub:description>
-					<ub:quantity units="kWh"></ub:quantity>
-					<ub:rate units="dollars"></ub:rate>
-					<ub:total/>
-					<ub:processingnote>29200 + 59.02</ub:processingnote>
-				</ub:charge>
-				<ub:charge>
-					<ub:description>Sales Tax</ub:description>
-					<ub:quantity units="dollars"></ub:quantity>
-					<ub:rate units="percent"></ub:rate>
-					<ub:total/>
-					<ub:processingnote>Tax on Total Use</ub:processingnote>
-				</ub:charge>
-				<ub:total/>
+				<ub:total>0.00</ub:total>
 			</ub:charges>
 		</ub:chargegroup>
-		<ub:total type="actual"></ub:total>
-		<ub:total type="hypothetical"></ub:total>
+		<ub:total type="actual">0.00</ub:total>
+		<ub:total type="hypothetical">0.00</ub:total>
 	</ub:details>
 	<ub:billableusage service="Gas">
 		<ub:rateschedule>
@@ -315,6 +295,8 @@
 	<ub:measuredusage service="Gas">
 		<ub:meter>
 			<ub:estimated>false</ub:estimated>
+			<ub:priorreaddate>2010-01-05</ub:priorreaddate>
+			<ub:presentreaddate/>
 			<ub:identifier>T37110</ub:identifier>
 			<ub:register shadow="true">
 				<ub:identifier>T37110</ub:identifier>
@@ -333,13 +315,15 @@
 					</ub:inclusions>
 				</ub:effective>
 				<ub:units>therms</ub:units>
-				<ub:total>17.43</ub:total>
+				<ub:total>0</ub:total>
 			</ub:register>
 		</ub:meter>
 	</ub:measuredusage>
 	<ub:measuredusage service="Electric">
 		<ub:meter>
 			<ub:estimated>false</ub:estimated>
+			<ub:priorreaddate>2010-01-10</ub:priorreaddate>
+			<ub:presentreaddate/>
 			<ub:identifier>475T</ub:identifier>
 			<ub:register shadow="true">
 				<ub:identifier>475T</ub:identifier>
@@ -358,8 +342,8 @@
 					</ub:inclusions>
 				</ub:effective>
 				<ub:units>kWh</ub:units>
-				<ub:presentreading/>
-				<ub:total/>
+				<ub:presentreading>59.02</ub:presentreading>
+				<ub:total>0</ub:total>
 			</ub:register>
 			<ub:register shadow="true">
 				<ub:identifier>D11</ub:identifier>
@@ -394,8 +378,8 @@
 					</ub:inclusions>
 				</ub:effective>
 				<ub:units>kWh</ub:units>
-				<ub:presentreading/>
-				<ub:total/>
+				<ub:presentreading>19.36</ub:presentreading>
+				<ub:total>0</ub:total>
 			</ub:register>
 			<ub:register shadow="true">
 				<ub:identifier>D08</ub:identifier>
@@ -434,7 +418,7 @@
 				</ub:effective>
 				<ub:units>kWh</ub:units>
 				<ub:presentreading>9.76</ub:presentreading>
-				<ub:total>9.76</ub:total>
+				<ub:total>0</ub:total>
 			</ub:register>
 			<ub:register shadow="true">
 				<ub:identifier>D05</ub:identifier>
@@ -464,7 +448,7 @@
 				</ub:effective>
 				<ub:units>kWh</ub:units>
 				<ub:presentreading>29.90</ub:presentreading>
-				<ub:total>29.90</ub:total>
+				<ub:total>0</ub:total>
 			</ub:register>
 		</ub:meter>
 	</ub:measuredusage>
