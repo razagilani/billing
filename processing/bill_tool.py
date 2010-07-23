@@ -44,11 +44,12 @@ class BillTool():
         # process /ub:bill/ub:rebill
 
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaladjustment")[0].text = "0.00"
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:hypotheticalecharges")[0].clear()
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:actualecharges")[0].clear()
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:revalue")[0].clear()
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:recharges")[0].clear()
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:resavings")[0].clear()
+        self.get_elem(tree, "/ub:bill/ub:rebill/ub:hypotheticalecharges")[0].text = "0.00"
+        self.get_elem(tree, "/ub:bill/ub:rebill/ub:actualecharges")[0].text = "0.00"
+        self.get_elem(tree, "/ub:bill/ub:rebill/ub:revalue")[0].text = "0.00"
+        self.get_elem(tree, "/ub:bill/ub:rebill/ub:recharges")[0].text = "0.00"
+        self.get_elem(tree, "/ub:bill/ub:rebill/ub:resavings")[0].text = "0.00"
+        self.get_elem(tree, "/ub:bill/ub:rebill/ub:currentcharges")[0].text = "0.00"
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:duedate")[0].clear()
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:issued")[0].clear()
 
@@ -64,37 +65,33 @@ class BillTool():
 
         # compute payments 
         totalDue = self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaldue")[0].text
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaldue")[0].clear()
+        self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaldue")[0].text = "0.00"
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:priorbalance")[0].text = totalDue
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:paymentreceived")[0].text = str(amountPaid)
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:balanceforward")[0].text = str(float(totalDue) - amountPaid)
 
 
         # process /ub:bill/ub:utilbill
-
-        # utility billing periods are likely utility specific
-        self.get_elem(tree, "/ub:bill/ub:utilbill/ub:billperiodbegin")[0].text = \
-        self.get_elem(tree, "/ub:bill/ub:utilbill/ub:billperiodend")[0].text
-        self.get_elem(tree, "/ub:bill/ub:utilbill/ub:billperiodend")[0].clear()
-
-        services = self.get_elem(tree, "/ub:bill/ub:utilbill")
+        utilbills = self.get_elem(tree, "/ub:bill/ub:utilbill")
 
         # process each utility service and clear values
-        for service in services:
-            self.get_elem(service, "ub:billperiodbegin")[0].clear()
-            self.get_elem(service, "ub:billperiodend")[0].clear()
-            self.get_elem(service, "ub:hypotheticalecharges")[0].clear()
-            self.get_elem(service, "ub:actualecharges")[0].clear()
-            self.get_elem(service, "ub:revalue")[0].clear()
-            self.get_elem(service, "ub:recharges")[0].clear()
-            self.get_elem(service, "ub:resavings")[0].clear()
+        for utilbill in utilbills:
+            # utility billing periods are utility specific
+            # ToDo business logic specific dates are selected here
+            self.get_elem(utilbill, "ub:billperiodbegin")[0].text = self.get_elem(utilbill, "ub:billperiodend")[0].text
+            self.get_elem(utilbill, "ub:billperiodend")[0].clear()
+            self.get_elem(utilbill, "ub:hypotheticalecharges")[0].text = "0.00"
+            self.get_elem(utilbill, "ub:actualecharges")[0].text = "0.00"
+            self.get_elem(utilbill, "ub:revalue")[0].text = "0.00"
+            self.get_elem(utilbill, "ub:recharges")[0].text = "0.00"
+            self.get_elem(utilbill, "ub:resavings")[0].text = "0.00"
 
         # process /ub:bill/ub:details/
 
         subtotals = self.get_elem(tree, "/ub:bill/ub:details/ub:total")
         for subtotal in subtotals:
             # set text to "" since we don't want to clobber the element attributes
-            subtotal.text = ""
+            subtotal.text = "0.00"
 
 
         # remove cdata but preserve unit attributes (.clear() clears attrs) -  last period actual charge values 
@@ -108,11 +105,11 @@ class BillTool():
                 rate.text = ""
             totals = self.get_elem(actualCharge, "ub:charge/ub:total")
             for total in totals: 
-                total.text = ""
+                total.text = "0.00"
             # clear chargegroup totals
             totals = self.get_elem(actualCharge, "ub:total")
             for total in totals:
-                total.clear()
+                total.text = "0.00"
 
         # remove the hypothetical charges since they will be recreated from the actual charges
         hypotheticalCharges = self.get_elem(tree, "/ub:bill/ub:details/ub:chargegroup/ub:charges[@type='hypothetical']")
@@ -125,19 +122,20 @@ class BillTool():
 
         # set meter read date
         # ToDo: utility specific behavior
-        self.get_elem(tree, "/ub:bill/ub:measuredusage/ub:meter/ub:priorreaddate")[0].text = \
-        self.get_elem(tree, "/ub:bill/ub:measuredusage/ub:meter/ub:presentreaddate")[0].text
-        self.get_elem(tree, "/ub:bill/ub:measuredusage/ub:meter/ub:presentreaddate")[0].clear()
+        meters = self.get_elem(tree, "/ub:bill/ub:measuredusage/ub:meter")
+        print meters
+        for meter in meters:
+            self.get_elem(meter, "ub:priorreaddate")[0].text = self.get_elem(meter, "ub:presentreaddate")[0].text
+            self.get_elem(meter, "ub:presentreaddate")[0].clear()
 
         registerTotals = self.get_elem(tree, "/ub:bill/ub:measuredusage/ub:meter/ub:register/ub:total")
-        for registerTotal in registersTotals:
-            registerTotal.clear()
+        for registerTotal in registerTotals:
+            registerTotal.text = "0"
 
-        print etree.tostring(tree, pretty_print=True)
+        #print etree.tostring(tree, pretty_print=True)
 
         
         # roll the bill
-
 
         # determine URI scheme
         parts = urlparse(nextbill)
