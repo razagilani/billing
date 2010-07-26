@@ -61,8 +61,7 @@
 			</ub:billingaddress>
 		</ub:car>
 		<ub:billperiodbegin>2010-01-06</ub:billperiodbegin>
-		<ub:billperiodend/>
-		<ub:hypotheticalecharges>0.00</ub:hypotheticalecharges>
+		<ub:billperiodend/><ub:hypotheticalecharges>0.00</ub:hypotheticalecharges>
 		<ub:actualecharges>0.00</ub:actualecharges>
 		<ub:revalue>0.00</ub:revalue>
 		<ub:recharges>0.00</ub:recharges>
@@ -93,10 +92,11 @@
 			</ub:billingaddress>
 		</ub:car>
 		<ub:billperiodbegin>2010-01-11</ub:billperiodbegin>
-		<ub:billperiodend/>
-		<ub:hypotheticalecharges>0.00</ub:hypotheticalecharges>
+		<ub:billperiodend/><ub:hypotheticalecharges>0.00</ub:hypotheticalecharges>
 		<ub:actualecharges>0.00</ub:actualecharges>
+		<ub:revalue>0.00</ub:revalue>
 		<ub:recharges>0.00</ub:recharges>
+		<ub:resavings>0.00</ub:resavings>
 	</ub:utilbill>
 	<ub:details service="Gas">
 		<ub:rateschedule>

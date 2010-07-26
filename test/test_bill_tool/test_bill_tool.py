@@ -33,11 +33,12 @@ class TestBillTool(unittest.TestCase):
 
         (result, reason) = XMLUtils().compare_xml(etree_in, etree_post)
 
+        print result
+        print reason
+
         self.assertEquals(result, True, "Bill roll failed because " + nextBill + " does not match " + correctBill)
         
-
         os.remove(nextBill)
-        
 
 if __name__ == '__main__':
     unittest.main()

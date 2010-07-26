@@ -123,7 +123,7 @@ class BillTool():
         # set meter read date
         # ToDo: utility specific behavior
         meters = self.get_elem(tree, "/ub:bill/ub:measuredusage/ub:meter")
-        print meters
+
         for meter in meters:
             self.get_elem(meter, "ub:priorreaddate")[0].text = self.get_elem(meter, "ub:presentreaddate")[0].text
             self.get_elem(meter, "ub:presentreaddate")[0].clear()
