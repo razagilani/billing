@@ -31,6 +31,7 @@
 		<ub:balanceforward/>
 		<ub:hypotheticalecharges/>
 		<ub:actualecharges/>
+		<ub:revalue/>
 		<ub:recharges/>
 		<ub:resavings/>
 		<ub:currentcharges/>

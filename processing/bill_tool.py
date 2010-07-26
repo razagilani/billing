@@ -17,9 +17,13 @@ from urlparse import urlparse
 # for xml processing
 from lxml import etree
 
+import httplib
+
+import string
+import base64
 
 # for testing
-import StringIO
+#import StringIO
 
 class BillTool():
     """ Class with a variety of utility procedures for processing bills """
@@ -55,7 +59,7 @@ class BillTool():
 
         message = self.get_elem(tree, "/ub:bill/ub:rebill/ub:message")
         if(len(message)):
-            message.clear()
+            message[0].clear()
 
         # next period begin is prev period end
         # ToDo business logic specific dates are selected here
@@ -68,7 +72,7 @@ class BillTool():
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaldue")[0].text = "0.00"
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:priorbalance")[0].text = totalDue
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:paymentreceived")[0].text = str(amountPaid)
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:balanceforward")[0].text = str(float(totalDue) - amountPaid)
+        self.get_elem(tree, "/ub:bill/ub:rebill/ub:balanceforward")[0].text = str(float(totalDue) - float(amountPaid))
 
 
         # process /ub:bill/ub:utilbill
@@ -146,7 +150,7 @@ class BillTool():
         if (parts.scheme == 'http'): 
             # http scheme URL, PUT to eXistDB
 
-            con = httplib.HTTP(parts.netloc)
+            con = httplib.HTTPConnection(parts.netloc)
             con.putrequest('PUT', '%s' % nextbill)
             con.putheader('Content-Type', 'text/xml')
 
@@ -158,6 +162,8 @@ class BillTool():
             con.putheader('Content-Length', `clen`)
             con.endheaders() 
             con.send(xml)
+            print "http status " + str(con.getresponse().status)
+
         else:
             # if not http specifier, assume just a plain filename was passed in.
             billFile = open(nextbill, "w")
@@ -173,8 +179,9 @@ if __name__ == "__main__":
 
     # configure optparse
     parser = OptionParser()
-    parser.add_option("-p", "--prevbill", dest="prevbill", help="Previous bill to be rolled", metavar="FILE")
+    parser.add_option("-b", "--prevbill", dest="prevbill", help="Previous bill to be rolled", metavar="FILE")
     parser.add_option("-n", "--nextbill", dest="nextbill", help="Next bill to be targeted", metavar="FILE")
+    parser.add_option("-a", "--amountpaid", dest="amountpaid", help="Amount paid on previous bill")
     parser.add_option("-u", "--user", dest="user", default='prod', help="Bill database user account name.")
     parser.add_option("-p", "--password", dest="password", help="Bill database user account name.")
 
@@ -188,4 +195,4 @@ if __name__ == "__main__":
         print "Next bill must be specified"
         exit()
 
-    roll_bill(options.prevbill, options.nextbill, options.amountpaid, options.user, options.password,)
+    BillTool().roll_bill(options.prevbill, options.nextbill, options.amountpaid, options.user, options.password,)
