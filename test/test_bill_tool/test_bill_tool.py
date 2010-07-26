@@ -24,17 +24,20 @@ class TestBillTool(unittest.TestCase):
         """ Test rolling a previous bill into the next bill"""
         prevBill = "test/test_bill_tool/roll_bill_1_pre.xml"
         nextBill = "test/test_bill_tool/roll_bill_1_in.xml"
-        correctBill = "test/test_bill_tool/roll_bill_1_post.xml"
+        #correctBill = "test/test_bill_tool/roll_bill_1_post.xml"
         correctBill = "test/test_bill_tool/compareXML-complete.xml"
 
         BillTool().roll_bill(prevBill, nextBill, 19.99)
 
         etree_in = etree.parse(nextBill)
         etree_post = etree.parse(correctBill)
-        #etree_post = etree.parse(open(correctBill, "r").read())
 
         (result, reason) = XMLUtils().compare_xml(etree_in, etree_post)
 
+        print result
+        print reason
+
+        #`Stopped here - need namespace support in compare_xml
 
         self.assertEquals(result, True, "Bill roll failed because bill roll logic is not implemented!")
         
