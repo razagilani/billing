@@ -6,7 +6,8 @@ import minimock
 from skyliner import splinter
 from datetime import date, datetime
 from amara import bindery
-from IPython.Debugger import Tracer; debug_here = Tracer()
+#TODO find out why this isn't working under linux
+#from IPython.Debugger import Tracer; debug_here = Tracer()
 import os
 
 
