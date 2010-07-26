@@ -31,6 +31,7 @@
 		<ub:balanceforward>0.0</ub:balanceforward>
 		<ub:hypotheticalecharges>3199.16</ub:hypotheticalecharges>
 		<ub:actualecharges>3189.60</ub:actualecharges>
+		<ub:revalue>9.56</ub:revalue>
 		<ub:recharges>8.13</ub:recharges>
 		<ub:resavings>1.43</ub:resavings>
 		<ub:currentcharges>8.13</ub:currentcharges>
@@ -439,6 +440,8 @@
 	<ub:measuredusage service="Gas">
 		<ub:meter>
 			<ub:estimated>false</ub:estimated>
+			<ub:priorreaddate>1970-01-01</ub:priorreaddate>
+			<ub:presentreaddate>2010-01-08</ub:presentreaddate>
 			<ub:identifier>T37110</ub:identifier>
 			<ub:register shadow="true">
 				<ub:identifier>T37110</ub:identifier>
@@ -451,7 +454,8 @@
 	<ub:measuredusage service="Electric">
 		<ub:meter>
 			<ub:estimated>false</ub:estimated>
-			<ub:nextreaddate>2010-01-08</ub:nextreaddate>
+			<ub:priorreaddate>1970-01-01</ub:priorreaddate>
+			<ub:presentreaddate>2010-01-08</ub:presentreaddate>
 			<ub:identifier>475T</ub:identifier>
 			<ub:register shadow="true">
 				<ub:identifier>475T</ub:identifier>
