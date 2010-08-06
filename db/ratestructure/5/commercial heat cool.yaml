@@ -1,0 +1,12 @@
+name: Commercial Heat/Cool
+effective: 2010-01-20
+expires: 2011-01-21
+
+stopped here - figure out how to get rate_structure_items into a class so that programmatic behavior may be applied
+to the values that yaml loads. E.g. binding to the bill RSIDescriptor, BLOCK_ONE
+
+rate_structure_items:
+- descriptor: BLOCK_ONE
+  description: First block gas
+  quantity: REG_TOTAL_CCF
+  rate: 25.00
