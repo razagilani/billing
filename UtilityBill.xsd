@@ -240,17 +240,29 @@
 							</xs:element>
 							<xs:element name="chargegroup" maxOccurs="4">
 								<xs:annotation>
-									<xs:documentation>Group of charges by generation/supply, transmission, distribution or taxation</xs:documentation>
+									<xs:documentation>Group of charges by industry segment, company or other type of category on bill</xs:documentation>
 								</xs:annotation>
 								<xs:complexType>
 									<xs:sequence>
 										<xs:element name="charges" maxOccurs="2">
 											<xs:annotation>
-												<xs:documentation>Detail charges for distribution.</xs:documentation>
+												<xs:documentation>Actual or Hypothetical Detail charges</xs:documentation>
 											</xs:annotation>
 											<xs:complexType>
 												<xs:sequence>
-													<xs:element name="charge" type="ub:charge" maxOccurs="unbounded"/>
+													<xs:element name="charge" maxOccurs="unbounded">
+														<xs:complexType>
+															<xs:complexContent>
+																<xs:extension base="ub:charge">
+																	<xs:attribute name="id">
+																		<xs:annotation>
+																			<xs:documentation>Binding for charge item specific logic such as tax on total energy, or tax on a subset of charge elements.</xs:documentation>
+																		</xs:annotation>
+																	</xs:attribute>
+																</xs:extension>
+															</xs:complexContent>
+														</xs:complexType>
+													</xs:element>
 													<xs:element name="total" type="xs:decimal"/>
 												</xs:sequence>
 												<xs:attributeGroup ref="ub:billtype"/>
@@ -542,11 +554,6 @@
 	</xs:complexType>
 	<xs:complexType name="charge">
 		<xs:all>
-			<xs:element name="snubchargeid" minOccurs="0">
-				<xs:annotation>
-					<xs:documentation>Reference to normalized rate</xs:documentation>
-				</xs:annotation>
-			</xs:element>
 			<xs:element name="description"/>
 			<xs:element name="quantity" minOccurs="0">
 				<xs:complexType>
