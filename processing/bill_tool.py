@@ -12,15 +12,10 @@ import sys
 import os  
 from optparse import OptionParser
 
-from urlparse import urlparse
-
 # for xml processing
 from lxml import etree
 
-import httplib
-
-import string
-import base64
+from skyliner.xml_utils import XMLUtils
 
 # for testing
 #import StringIO
@@ -33,6 +28,25 @@ class BillTool():
 
     def get_elem(self, tree, xpath):
         return tree.xpath(xpath, namespaces={"ub":"bill"})
+
+
+    def sum_hypothetical_charges(self, unprocessedBill, targetBill, user=None, password=None):
+        """ Sums up all hypothetical charges.  For each set of hypothetical charges, """
+        """ /ub:bill/ub:details/ub:chargegroup/ub:charges[@type="hypothetical"]/ub:total = """
+        """ sum(/ub:bill/ub:details/ub:chargegroup/ub:charges[@type="hypothetical"]/ub:charge/ub:total """
+        """ For each set of services, /ub:bill/ub:details/ub:total[@type="hypothetical"] = """
+        """ sum(/ub:bill/ub:details/ub:chargegroup/ub:charges[@type="hypothetical"]/ub:total) """
+        """ Each /ub:bill/ub:utilbill/ub:hypotheticalecharges = /ub:bill/ub:details[1]/ub:total """
+        """ /ub:bill/ub:rebill/ub:hypotheticalecharges = sum(/ub:bill/ub:utilbill/ub:hypotheticalecharges) """
+
+        tree = etree.parse(unprocessedBill)
+
+        xml = etree.tostring(tree, pretty_print=True)
+
+        XMLUtils().save_xml_file(xml, targetBill, user, password)
+
+        return (False, "Unimplemented")
+
 
     def roll_bill(self, prevbill, nextbill, amountPaid, user=None, password=None):
 
@@ -136,39 +150,11 @@ class BillTool():
         for registerTotal in registerTotals:
             registerTotal.text = "0"
 
-        #print etree.tostring(tree, pretty_print=True)
-
         
-        # roll the bill
-
-        # determine URI scheme
-        parts = urlparse(nextbill)
-
         xml = etree.tostring(tree, pretty_print=True)
 
-        # nice then to factor out and put into a common lib
-        if (parts.scheme == 'http'): 
-            # http scheme URL, PUT to eXistDB
+        XMLUtils().save_xml_file(xml, nextbill, user, password)
 
-            con = httplib.HTTPConnection(parts.netloc)
-            con.putrequest('PUT', '%s' % nextbill)
-            con.putheader('Content-Type', 'text/xml')
-
-            if (user and password):
-                auth = 'Basic ' + string.strip(base64.encodestring(user + ':' + password))
-                con.putheader('Authorization', auth )
-
-            clen = len(xml) 
-            con.putheader('Content-Length', `clen`)
-            con.endheaders() 
-            con.send(xml)
-            print "http status " + str(con.getresponse().status)
-
-        else:
-            # if not http specifier, assume just a plain filename was passed in.
-            billFile = open(nextbill, "w")
-            billFile.write(xml)
-            billFile.close()
 
 def main(options):
     """
