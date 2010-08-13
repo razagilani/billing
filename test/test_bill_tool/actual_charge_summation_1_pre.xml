@@ -30,7 +30,7 @@
 		<ub:totaladjustment/>
 		<ub:balanceforward>0.00</ub:balanceforward>
 		<ub:hypotheticalecharges>6476.52</ub:hypotheticalecharges>
-		<ub:actualecharges>6445.15</ub:actualecharges>
+		<ub:actualecharges>0.00</ub:actualecharges>
 		<ub:revalue>31.37</ub:revalue>
 		<ub:recharges>26.66</ub:recharges>
 		<ub:resavings>4.71</ub:resavings>
@@ -66,7 +66,7 @@
 		<ub:billperiodbegin>2009-12-04</ub:billperiodbegin>
 		<ub:billperiodend>2010-01-06</ub:billperiodend>
 		<ub:hypotheticalecharges>2523.60</ub:hypotheticalecharges>
-		<ub:actualecharges>2499.85</ub:actualecharges>
+		<ub:actualecharges>0.00</ub:actualecharges>
 		<ub:revalue>23.75</ub:revalue>
 		<ub:recharges>20.19</ub:recharges>
 		<ub:resavings>3.56</ub:resavings>
@@ -98,7 +98,7 @@
 		<ub:billperiodbegin>2009-12-07</ub:billperiodbegin>
 		<ub:billperiodend>2010-01-11</ub:billperiodend>
 		<ub:hypotheticalecharges>3952.92</ub:hypotheticalecharges>
-		<ub:actualecharges>3945.30</ub:actualecharges>
+		<ub:actualecharges>0.00</ub:actualecharges>
 		<ub:revalue>7.62</ub:revalue>
 		<ub:recharges>6.48</ub:recharges>
 		<ub:resavings>1.14</ub:resavings>
@@ -144,7 +144,7 @@
 					<ub:total>147.70</ub:total>
 					<ub:processingnote>Total Therms * Rate ($/therm)</ub:processingnote>
 				</ub:charge>
-				<ub:total>596.54</ub:total>
+				<ub:total>0.00</ub:total>
 			</ub:charges>
 			<ub:charges type="hypothetical">
 				<ub:charge>
@@ -207,7 +207,7 @@
 					<ub:total>107.73</ub:total>
 					<ub:processingnote>Tax on Supply Service, Balancing. Rate units on bill incorrect, shown as $, not %</ub:processingnote>
 				</ub:charge>
-				<ub:total>1903.31</ub:total>
+				<ub:total>0.00</ub:total>
 			</ub:charges>
 			<ub:charges type="hypothetical">
 				<ub:charge>
@@ -234,7 +234,7 @@
 				<ub:total>1921.93</ub:total>
 			</ub:charges>
 		</ub:chargegroup>
-		<ub:total type="actual">2499.85</ub:total>
+		<ub:total type="actual">0.00</ub:total>
 		<ub:total type="hypothetical">2523.60</ub:total>
 	</ub:details>
 	<ub:details service="Electric">
@@ -316,7 +316,7 @@
 					<ub:total>29.24</ub:total>
 					<ub:processingnote>Computation Unknown; Minimally energy, demand and charges; 29.24/6% = 487.33</ub:processingnote>
 				</ub:charge>
-				<ub:total>757.24</ub:total>
+				<ub:total>0.00</ub:total>
 			</ub:charges>
 			<ub:charges type="hypothetical">
 				<ub:charge>
@@ -412,7 +412,7 @@
 					<ub:total>180.46</ub:total>
 					<ub:processingnote>Tax on Total Use</ub:processingnote>
 				</ub:charge>
-				<ub:total>3188.06</ub:total>
+				<ub:total>0.00</ub:total>
 			</ub:charges>
 			<ub:charges type="hypothetical">
 				<ub:charge>
@@ -432,7 +432,7 @@
 				<ub:total>3194.50</ub:total>
 			</ub:charges>
 		</ub:chargegroup>
-		<ub:total type="actual">3945.30</ub:total>
+		<ub:total type="actual">0.00</ub:total>
 		<ub:total type="hypothetical">3952.92</ub:total>
 	</ub:details>
 	<ub:billableusage service="Gas">

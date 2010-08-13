@@ -53,9 +53,30 @@ class TestBillTool(unittest.TestCase):
         (result, reason) = XMLUtils().compare_xml(etree_in, etree_post)
 
         self.assertEquals(result, True, "Hypothetical charges did not totalize properly because " + 
-            resultantBill + " does not match " + correctBill)
+            resultantBill + " does not match " + correctBill + "\n" + reason)
 
         os.remove(resultantBill)
+
+    def test_actual_charge_summation(self):
+        """ For all of the actual charges in <ub:details/>, test that they properly roll up into """
+        """ <ub:utilbill/> and <ub:rebill/>"""
+
+        unprocessedBill = os.path.join("test", "test_bill_tool", "actual_charge_summation_1_pre.xml")
+        resultantBill = os.path.join("test", "test_bill_tool", "actual_charge_summation_1_in.xml")
+        correctBill = os.path.join("test", "test_bill_tool", "actual_charge_summation_1_post.xml")
+
+        BillTool().sum_actual_charges(unprocessedBill, resultantBill)
+
+        etree_in = etree.parse(resultantBill)
+        etree_post = etree.parse(correctBill)
+
+        (result, reason) = XMLUtils().compare_xml(etree_in, etree_post)
+
+        self.assertEquals(result, True, "Actual charges did not totalize properly because " + 
+            resultantBill + " does not match " + correctBill + "\n" + reason)
+
+        os.remove(resultantBill)
+
 
 if __name__ == '__main__':
     unittest.main()
