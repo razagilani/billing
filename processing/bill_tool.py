@@ -26,6 +26,7 @@ class BillTool():
     def __init__(self):
         pass
 
+    #TODO better function name to reflect the return types of XPath - not just elements, but sums, etc...
     def get_elem(self, tree, xpath):
         return tree.xpath(xpath, namespaces={"ub":"bill"})
 
@@ -36,22 +37,80 @@ class BillTool():
         """ sum(/ub:bill/ub:details/ub:chargegroup/ub:charges[@type="hypothetical"]/ub:charge/ub:total """
         """ For each set of services, /ub:bill/ub:details/ub:total[@type="hypothetical"] = """
         """ sum(/ub:bill/ub:details/ub:chargegroup/ub:charges[@type="hypothetical"]/ub:total) """
-        """ Each /ub:bill/ub:utilbill/ub:hypotheticalecharges = /ub:bill/ub:details[1]/ub:total """
+        """ Each /ub:bill/ub:utilbill/ub:hypotheticalecharges = /ub:bill/ub:details/ub:total """
         """ /ub:bill/ub:rebill/ub:hypotheticalecharges = sum(/ub:bill/ub:utilbill/ub:hypotheticalecharges) """
 
         tree = etree.parse(unprocessedBill)
+
+
+        # get the child groves for each set of hypothetical charges and total them up
+        all_hypothetical_charges = self.get_elem(tree, "/ub:bill/ub:details/ub:chargegroup/ub:charges[@type=\"hypothetical\"]")
+        for hypothetical_charges in all_hypothetical_charges:
+            # and set the subtotal for for each hypothetical set of charges
+            self.get_elem(hypothetical_charges, "ub:total")[0].text = \
+            "{0:.2f}".format(self.get_elem(hypothetical_charges, "sum(ub:charge/ub:total)"))
+
+        # for each utility details, sum up the hypothetical charges totals 
+        details = self.get_elem(tree, "/ub:bill/ub:details")
+        for detail in details:
+            total = "{0:.2f}".format(self.get_elem(detail, "sum(ub:chargegroup/ub:charges[@type=\"hypothetical\"]/ub:total)"))
+            self.get_elem(detail, "ub:total[@type=\"hypothetical\"]")[0].text = total 
+            # now that the utility details are totalized, hypothetical values are put into the utilibill summary
+            service_type = detail.attrib["service"]
+            self.get_elem(tree, "/ub:bill/ub:utilbill[@service=\""+service_type+"\"]/ub:hypotheticalecharges")[0].text = total
+        
+        # finally, these hypothetical energy charges get rolled up into rebill
+
+        self.get_elem(tree, "/ub:bill/ub:rebill/ub:hypotheticalecharges")[0].text = \
+        "{0:.2f}".format(self.get_elem(tree, "sum(/ub:bill/ub:utilbill/ub:hypotheticalecharges)"))
 
         xml = etree.tostring(tree, pretty_print=True)
 
         XMLUtils().save_xml_file(xml, targetBill, user, password)
 
-        return (False, "Unimplemented")
+    def sum_actual_charges(self, unprocessedBill, targetBill, user=None, password=None):
+        """ Sums up all actual charges.  For each set of actual charges, """
+        """ /ub:bill/ub:details/ub:chargegroup/ub:charges[@type="actual"]/ub:total = """
+        """ sum(/ub:bill/ub:details/ub:chargegroup/ub:charges[@type="actual"]/ub:charge/ub:total """
+        """ For each set of services, /ub:bill/ub:details/ub:total[@type="actual"] = """
+        """ sum(/ub:bill/ub:details/ub:chargegroup/ub:charges[@type="actual"]/ub:total) """
+        """ Each /ub:bill/ub:utilbill/ub:actualecharges = /ub:bill/ub:details/ub:total """
+        """ /ub:bill/ub:rebill/ub:actualecharges = sum(/ub:bill/ub:utilbill/ub:actualecharges) """
+
+        tree = etree.parse(unprocessedBill)
 
 
-    def roll_bill(self, prevbill, nextbill, amountPaid, user=None, password=None):
+        # get the child groves for each set of actual charges and total them up
+        all_actual_charges = self.get_elem(tree, "/ub:bill/ub:details/ub:chargegroup/ub:charges[@type=\"actual\"]")
+        for actual_charges in all_actual_charges:
+            # and set the subtotal for for each actual set of charges
+            self.get_elem(actual_charges, "ub:total")[0].text = \
+            "{0:.2f}".format(self.get_elem(actual_charges, "sum(ub:charge/ub:total)"))
+
+        # for each utility details, sum up the actual charges totals 
+        details = self.get_elem(tree, "/ub:bill/ub:details")
+        for detail in details:
+            total = "{0:.2f}".format(self.get_elem(detail, "sum(ub:chargegroup/ub:charges[@type=\"actual\"]/ub:total)"))
+            self.get_elem(detail, "ub:total[@type=\"actual\"]")[0].text = total 
+            # now that the utility details are totalized, actual values are put into the utilibill summary
+            service_type = detail.attrib["service"]
+            self.get_elem(tree, "/ub:bill/ub:utilbill[@service=\""+service_type+"\"]/ub:actualecharges")[0].text = total
+        
+        # finally, these actual energy charges get rolled up into rebill
+
+        self.get_elem(tree, "/ub:bill/ub:rebill/ub:actualecharges")[0].text = \
+        "{0:.2f}".format(self.get_elem(tree, "sum(/ub:bill/ub:utilbill/ub:actualecharges)"))
+
+        xml = etree.tostring(tree, pretty_print=True)
+
+        XMLUtils().save_xml_file(xml, targetBill, user, password)
+
+
+
+    def roll_bill(self, inputbill, outputbill, amountPaid, user=None, password=None):
 
         # Bind to XML bill
-        tree = etree.parse(prevbill)
+        tree = etree.parse(inputbill)
         #print etree.tostring(tree, pretty_print=True)
 
         # increment bill id
@@ -153,7 +212,7 @@ class BillTool():
         
         xml = etree.tostring(tree, pretty_print=True)
 
-        XMLUtils().save_xml_file(xml, nextbill, user, password)
+        XMLUtils().save_xml_file(xml, outputbill, user, password)
 
 
 def main(options):
@@ -165,20 +224,33 @@ if __name__ == "__main__":
 
     # configure optparse
     parser = OptionParser()
-    parser.add_option("-b", "--prevbill", dest="prevbill", help="Previous bill to be rolled", metavar="FILE")
-    parser.add_option("-n", "--nextbill", dest="nextbill", help="Next bill to be targeted", metavar="FILE")
+    parser.add_option("-i", "--inputbill", dest="inputbill", help="Previous bill to acted on", metavar="FILE")
+    parser.add_option("-o", "--outputbill", dest="outputbill", help="Next bill to be targeted", metavar="FILE")
     parser.add_option("-a", "--amountpaid", dest="amountpaid", help="Amount paid on previous bill")
     parser.add_option("-u", "--user", dest="user", default='prod', help="Bill database user account name.")
     parser.add_option("-p", "--password", dest="password", help="Bill database user account name.")
+    parser.add_option("--roll", dest="roll", action="store_true", help="Roll the bill to the next period.")
+    parser.add_option("--sumhypothetical", action="store_true", dest="sumhypothetical", help="Summarize hypothetical charges.")
+    parser.add_option("--sumactual", action="store_true", dest="sumactual", help="Summarize actual charges.")
 
     (options, args) = parser.parse_args()
 
-    if (options.prevbill == None):
-        print "Previous bill must be specified."
+    if (options.inputbill == None):
+        print "Input bill must be specified."
         exit()
 
-    if (options.nextbill == None):
-        print "Next bill must be specified"
+    if (options.outputbill == None):
+        print "Output bill must be specified"
         exit()
+    
+    if (options.roll):
+        if (amountpaid == None):
+            print "Specify --amountpaid"
+        else:
+            BillTool().roll_bill(options.inputbill, options.outputbill, options.amountpaid, options.user, options.password)
 
-    BillTool().roll_bill(options.prevbill, options.nextbill, options.amountpaid, options.user, options.password,)
+    if (options.sumhypothetical):
+            BillTool().sum_hypothetical_charges(options.inputbill, options.outputbill, options.user, options.password)
+
+    if (options.sumactual):
+            BillTool().sum_actual_charges(options.inputbill, options.outputbill, options.user, options.password)
