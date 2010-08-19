@@ -35,7 +35,7 @@
 		<ub:energycharges/>
 		<ub:customersavings/>
 		<ub:currentcharges/>
-		<ub:totaldue/>
+		<ub:totaldue>0.00</ub:totaldue>
 		<ub:duedate/>
 		<ub:issued/>
 		<ub:message>Welcome to Skyline Innovations!</ub:message>

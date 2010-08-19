@@ -109,6 +109,7 @@ class BillTool():
 
     def roll_bill(self, inputbill, outputbill, amountPaid, user=None, password=None):
 
+
         # Bind to XML bill
         tree = etree.parse(inputbill)
         #print etree.tostring(tree, pretty_print=True)
@@ -141,11 +142,12 @@ class BillTool():
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:billperiodend")[0].clear()
 
         # compute payments 
+        # TODO if ub:totalDue element does not exist, or has no value, raise exception
         totalDue = self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaldue")[0].text
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaldue")[0].text = "0.00"
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:priorbalance")[0].text = totalDue
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:paymentreceived")[0].text = str(amountPaid)
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:balanceforward")[0].text = str(float(totalDue) - float(amountPaid))
+        self.get_elem(tree, "/ub:bill/ub:rebill/ub:balanceforward")[0].text = "{0:.2f}".format(float(totalDue) - float(amountPaid))
 
 
         # process /ub:bill/ub:utilbill
@@ -244,7 +246,7 @@ if __name__ == "__main__":
         exit()
     
     if (options.roll):
-        if (amountpaid == None):
+        if (options.amountpaid == None):
             print "Specify --amountpaid"
         else:
             BillTool().roll_bill(options.inputbill, options.outputbill, options.amountpaid, options.user, options.password)
