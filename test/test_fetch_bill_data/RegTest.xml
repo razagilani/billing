@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
+<ub:utilitybill id="10000" account="10001" xsi:schemaLocation="utilitybill ../UtilityBill.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="utilitybill">
+	<ub:measuredusage service="Gas">
+		<ub:meter>
+			<ub:estimated>false</ub:estimated>
+			<ub:priorreaddate>2010-03-01</ub:priorreaddate>
+			<ub:presentreaddate>2010-03-02</ub:presentreaddate>
+			<ub:identifier>T37110</ub:identifier>
+			<ub:register shadow="false">
+				<ub:identifier>T37110</ub:identifier>
+				<ub:description>Therms</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>therms</ub:units>
+				<ub:priorreading>14868</ub:priorreading>
+				<ub:presentreading>15188</ub:presentreading>
+				<ub:factor>1.015</ub:factor>
+				<ub:total>324.8</ub:total>
+			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>T37110</ub:identifier>
+				<ub:description>Skyline Generated Therms</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>therms</ub:units>
+				<ub:priorreading>0</ub:priorreading>
+				<ub:presentreading>5.65</ub:presentreading>
+				<ub:factor>1</ub:factor>
+				<ub:total>5.65</ub:total>
+			</ub:register>
+		</ub:meter>
+	</ub:measuredusage>
+	<ub:measuredusage service="Electric">
+		<ub:meter>
+			<ub:estimated>false</ub:estimated>
+			<ub:priorreaddate>2010-03-01</ub:priorreaddate>
+			<ub:presentreaddate>2010-03-02</ub:presentreaddate>
+			<ub:nextreaddate>2010-01-08</ub:nextreaddate>
+			<ub:identifier>475T</ub:identifier>
+			<ub:register shadow="false">
+				<ub:identifier>475T</ub:identifier>
+				<ub:description>Kilowatt Hour Meter</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:priorreading>20672</ub:priorreading>
+				<ub:presentreading>20916</ub:presentreading>
+				<ub:factor>80</ub:factor>
+				<ub:total>19520</ub:total>
+			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>475T</ub:identifier>
+				<ub:description>Kilowatt Hour Meter</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:priorreading>0</ub:priorreading>
+				<ub:presentreading>15.04</ub:presentreading>
+				<ub:factor>1</ub:factor>
+				<ub:total>15.04</ub:total>
+			</ub:register>
+			<ub:register shadow="false">
+				<ub:identifier>D11</ub:identifier>
+				<ub:description>Off Peak</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>07:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+					</ub:inclusions>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+					<ub:inclusions>
+						<ub:holiday description="New Year's Day">2010-01-01</ub:holiday>
+						<ub:holiday description="Martin Luther King Day is always observed on the third Monday of January.">2010-01-18</ub:holiday>
+						<ub:holiday description="Presidents Day is always celebrated on the third Monday of February. ">2010-02-15</ub:holiday>
+						<ub:holiday description="Memorial Day is always celebrated on the last Monday of May.">2010-05-31</ub:holiday>
+						<ub:holiday description="Labor Day is always celebrated on the first Monday in September.">2010-09-06</ub:holiday>
+						<ub:holiday description="Columbus Day is always celebrated on the second Monday in October.">2010-10-11</ub:holiday>
+						<ub:holiday description="Veterans Day is usually observed on November 11. However, if it occurs on a Sunday then the following Monday is designated for holiday leave, and if it occurs Saturday then either Saturday or Friday may be so designated.">2010-11-11</ub:holiday>
+						<ub:holiday description="Thanksgiving is always celebrated on the fourth Thursday of November. ">2010-11-25</ub:holiday>
+						<ub:holiday description="Christmas Day">2009-12-25</ub:holiday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:priorreading>11251</ub:priorreading>
+				<ub:presentreading>11401</ub:presentreading>
+				<ub:factor>80</ub:factor>
+				<ub:total>12000</ub:total>
+			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>D11</ub:identifier>
+				<ub:description>Skyline Generated Off Peak</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>07:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+					</ub:inclusions>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+					<ub:inclusions>
+						<ub:holiday description="New Year's Day">2010-01-01</ub:holiday>
+						<ub:holiday description="Martin Luther King Day is always observed on the third Monday of January.">2010-01-18</ub:holiday>
+						<ub:holiday description="Presidents Day is always celebrated on the third Monday of February. ">2010-02-15</ub:holiday>
+						<ub:holiday description="Memorial Day is always celebrated on the last Monday of May.">2010-05-31</ub:holiday>
+						<ub:holiday description="Labor Day is always celebrated on the first Monday in September.">2010-09-06</ub:holiday>
+						<ub:holiday description="Columbus Day is always celebrated on the second Monday in October.">2010-10-11</ub:holiday>
+						<ub:holiday description="Veterans Day is usually observed on November 11. However, if it occurs on a Sunday then the following Monday is designated for holiday leave, and if it occurs Saturday then either Saturday or Friday may be so designated.">2010-11-11</ub:holiday>
+						<ub:holiday description="Thanksgiving is always celebrated on the fourth Thursday of November. ">2010-11-25</ub:holiday>
+						<ub:holiday description="Christmas Day">2009-12-25</ub:holiday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:priorreading>0</ub:priorreading>
+				<ub:presentreading>3.35</ub:presentreading>
+				<ub:factor>1</ub:factor>
+				<ub:total>3.35</ub:total>
+			</ub:register>
+			<ub:register shadow="false">
+				<ub:identifier>D08</ub:identifier>
+				<ub:description>Intermediate Peak</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>08:00:00</ub:fromhour>
+						<ub:tohour>11:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+					</ub:inclusions>
+					<ub:inclusions>
+						<ub:fromhour>20:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+					</ub:inclusions>
+					<ub:exclusions>
+						<ub:holiday description="Martin Luther King Day is always observed on the third Monday of January.">2010-01-18</ub:holiday>
+						<ub:holiday description="Presidents Day is always celebrated on the third Monday of February. ">2010-02-15</ub:holiday>
+						<ub:holiday description="Memorial Day is always celebrated on the last Monday of May.">2010-05-31</ub:holiday>
+						<ub:holiday description="Labor Day is always celebrated on the first Monday in September.">2010-09-06</ub:holiday>
+						<ub:holiday description="Columbus Day is always celebrated on the second Monday in October.">2010-10-11</ub:holiday>
+						<ub:holiday description="Veterans Day is usually observed on November 11. However, if it occurs on a Sunday then the following Monday is designated for holiday leave, and if it occurs Saturday then either Saturday or Friday may be so designated.">2010-11-11</ub:holiday>
+						<ub:holiday description="Thanksgiving is always celebrated on the fourth Thursday of November. ">2010-11-25</ub:holiday>
+						<ub:holiday description="Christmas Day">2010-12-25</ub:holiday>
+						<ub:holiday description="New Year's Day">2011-01-01</ub:holiday>
+					</ub:exclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:priorreading>4396</ub:priorreading>
+				<ub:presentreading>4438</ub:presentreading>
+				<ub:factor>80</ub:factor>
+				<ub:total>3360</ub:total>
+			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>D08</ub:identifier>
+				<ub:description>Skyline Generated Intermediate Peak</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>08:00:00</ub:fromhour>
+						<ub:tohour>11:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+					</ub:inclusions>
+					<ub:inclusions>
+						<ub:fromhour>20:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+					</ub:inclusions>
+					<ub:exclusions>
+						<ub:holiday description="Martin Luther King Day is always observed on the third Monday of January.">2010-01-18</ub:holiday>
+						<ub:holiday description="Presidents Day is always celebrated on the third Monday of February. ">2010-02-15</ub:holiday>
+						<ub:holiday description="Memorial Day is always celebrated on the last Monday of May.">2010-05-31</ub:holiday>
+						<ub:holiday description="Labor Day is always celebrated on the first Monday in September.">2010-09-06</ub:holiday>
+						<ub:holiday description="Columbus Day is always celebrated on the second Monday in October.">2010-10-11</ub:holiday>
+						<ub:holiday description="Veterans Day is usually observed on November 11. However, if it occurs on a Sunday then the following Monday is designated for holiday leave, and if it occurs Saturday then either Saturday or Friday may be so designated.">2010-11-11</ub:holiday>
+						<ub:holiday description="Thanksgiving is always celebrated on the fourth Thursday of November. ">2010-11-25</ub:holiday>
+						<ub:holiday description="Christmas Day">2010-12-25</ub:holiday>
+						<ub:holiday description="New Year's Day">2011-01-01</ub:holiday>
+					</ub:exclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:priorreading>0</ub:priorreading>
+				<ub:presentreading>2.38</ub:presentreading>
+				<ub:factor>1</ub:factor>
+				<ub:total>2.38</ub:total>
+			</ub:register>
+			<ub:register shadow="false">
+				<ub:identifier>D05</ub:identifier>
+				<ub:description>On Peak</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>12:00:00</ub:fromhour>
+						<ub:tohour>19:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+					</ub:inclusions>
+					<ub:exclusions>
+						<ub:holiday description="New Year's Day">2010-01-01</ub:holiday>
+						<ub:holiday description="Martin Luther King Day is always observed on the third Monday of January.">2010-01-18</ub:holiday>
+						<ub:holiday description="Presidents Day is always celebrated on the third Monday of February. ">2010-02-15</ub:holiday>
+						<ub:holiday description="Memorial Day is always celebrated on the last Monday of May.">2010-05-31</ub:holiday>
+						<ub:holiday description="Labor Day is always celebrated on the first Monday in September.">2010-09-06</ub:holiday>
+						<ub:holiday description="Columbus Day is always celebrated on the second Monday in October.">2010-10-11</ub:holiday>
+						<ub:holiday description="Veterans Day is usually observed on November 11. However, if it occurs on a Sunday then the following Monday is designated for holiday leave, and if it occurs Saturday then either Saturday or Friday may be so designated.">2010-11-11</ub:holiday>
+						<ub:holiday description="Thanksgiving is always celebrated on the fourth Thursday of November. ">2010-11-25</ub:holiday>
+						<ub:holiday description="Christmas Day">2009-12-25</ub:holiday>
+					</ub:exclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:priorreading>5024</ub:priorreading>
+				<ub:presentreading>5077</ub:presentreading>
+				<ub:factor>80</ub:factor>
+				<ub:total>4240</ub:total>
+			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>D05</ub:identifier>
+				<ub:description>Skyline Generated On Peak</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>12:00:00</ub:fromhour>
+						<ub:tohour>19:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+					</ub:inclusions>
+					<ub:exclusions>
+						<ub:holiday description="New Year's Day">2010-01-01</ub:holiday>
+						<ub:holiday description="Martin Luther King Day is always observed on the third Monday of January.">2010-01-18</ub:holiday>
+						<ub:holiday description="Presidents Day is always celebrated on the third Monday of February. ">2010-02-15</ub:holiday>
+						<ub:holiday description="Memorial Day is always celebrated on the last Monday of May.">2010-05-31</ub:holiday>
+						<ub:holiday description="Labor Day is always celebrated on the first Monday in September.">2010-09-06</ub:holiday>
+						<ub:holiday description="Columbus Day is always celebrated on the second Monday in October.">2010-10-11</ub:holiday>
+						<ub:holiday description="Veterans Day is usually observed on November 11. However, if it occurs on a Sunday then the following Monday is designated for holiday leave, and if it occurs Saturday then either Saturday or Friday may be so designated.">2010-11-11</ub:holiday>
+						<ub:holiday description="Thanksgiving is always celebrated on the fourth Thursday of November. ">2010-11-25</ub:holiday>
+						<ub:holiday description="Christmas Day">2009-12-25</ub:holiday>
+					</ub:exclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:priorreading>0</ub:priorreading>
+				<ub:presentreading>9.31</ub:presentreading>
+				<ub:factor>1</ub:factor>
+				<ub:total>9.31</ub:total>
+			</ub:register>
+		</ub:meter>
+	</ub:measuredusage>
+</ub:utilitybill>
