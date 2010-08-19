@@ -1,5 +1,5 @@
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
-<ub:bill xmlns:ub="bill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="1" account="10005" xsi:schemaLocation="bill ../UtilityBill.xsd">
+<ub:bill xmlns:ub="bill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" account="10005" xsi:schemaLocation="bill ../UtilityBill.xsd" id="1">
 	<ub:rebill>
 		<ub:car>
 			<ub:serviceaddress>
@@ -79,12 +79,93 @@
 		<ub:chargegroup type="All Charges">
 			<ub:charges type="actual">
 				<ub:charge>
-					<ub:description>Usage</ub:description>
-					<ub:quantity units="Therms"/>
-					<ub:rate units="dollars"/>
-					<ub:total>0.00</ub:total>
+					<ub:description>Distribution Charge</ub:description>
+					<ub:quantity units="Therms">1105.7</ub:quantity>
+					<ub:rate units="dollars">.2939</ub:rate>
+					<ub:total>324.97</ub:total>
 				</ub:charge>
-				<ub:total>0.00</ub:total>
+				<ub:charge>
+					<ub:description>Customer Charge</ub:description>
+					<ub:total>13.15</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Peak Usage Charge</ub:description>
+					<ub:total>56.05</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Purchased Gas Charge</ub:description>
+					<ub:quantity units="Therms">1105.7</ub:quantity>
+					<ub:rate units="dollars">0.8105</ub:rate>
+					<ub:total>896.17</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>DC rights-of-way fee</ub:description>
+					<ub:total>31.62</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Sustainable Energy Trust Fund</ub:description>
+					<ub:quantity units="Therms">1105.7</ub:quantity>
+					<ub:rate units="dollars">0.012</ub:rate>
+					<ub:total>13.27</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Energy Assistance Trust Fund</ub:description>
+					<ub:quantity units="Therms">1105.7</ub:quantity>
+					<ub:rate units="dollars">0.006</ub:rate>
+					<ub:total>6.63</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Delivery Tax</ub:description>
+					<ub:quantity units="Therms">1105.7</ub:quantity>
+					<ub:rate units="dollars">.070700</ub:rate>
+					<ub:total>78.17</ub:total>
+				</ub:charge>
+				<ub:total>1420.03</ub:total>
+			</ub:charges>
+			<ub:charges type="hypothetical">
+				<ub:charge>
+					<ub:description>Distribution Charge</ub:description>
+					<ub:quantity units="Therms">1126.1</ub:quantity>
+					<ub:rate units="dollars">.2939</ub:rate>
+					<ub:total>330.96</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Customer Charge</ub:description>
+					<ub:total>13.15</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Peak Usage Charge</ub:description>
+					<ub:total>56.05</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Purchased Gas Charge</ub:description>
+					<ub:quantity units="Therms">1126.1</ub:quantity>
+					<ub:rate units="dollars">0.8105</ub:rate>
+					<ub:total>912.70</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>DC rights-of-way fee</ub:description>
+					<ub:total>31.62</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Sustainable Energy Trust Fund</ub:description>
+					<ub:quantity units="Therms">1126.1</ub:quantity>
+					<ub:rate units="dollars">0.012</ub:rate>
+					<ub:total>13.51</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Energy Assistance Trust Fund</ub:description>
+					<ub:quantity units="Therms">1126.1</ub:quantity>
+					<ub:rate units="dollars">0.006</ub:rate>
+					<ub:total>6.76</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Delivery Tax</ub:description>
+					<ub:quantity units="Therms">1126.1</ub:quantity>
+					<ub:rate units="dollars">.070700</ub:rate>
+					<ub:total>79.62</ub:total>
+				</ub:charge>
+				<ub:total>1420.03</ub:total>
 			</ub:charges>
 		</ub:chargegroup>
 		<ub:total type="actual">0.00</ub:total>
@@ -112,7 +193,7 @@
 				<ub:effective>
 					<ub:inclusions>
 						<ub:fromhour>00:00:00</ub:fromhour>
-						<ub:tohour>23:00:00</ub:tohour>
+						<ub:tohour>24:00:00</ub:tohour>
 						<ub:weekday>1</ub:weekday>
 						<ub:weekday>2</ub:weekday>
 						<ub:weekday>3</ub:weekday>
@@ -123,7 +204,7 @@
 					</ub:inclusions>
 				</ub:effective>
 				<ub:units>therms</ub:units>
-				<ub:total>0</ub:total>
+				<ub:total>1105.7</ub:total>
 			</ub:register>
 			<ub:register shadow="true">
 				<ub:identifier>N15438</ub:identifier>
@@ -131,7 +212,7 @@
 				<ub:effective>
 					<ub:inclusions>
 						<ub:fromhour>00:00:00</ub:fromhour>
-						<ub:tohour>23:00:00</ub:tohour>
+						<ub:tohour>24:00:00</ub:tohour>
 						<ub:weekday>1</ub:weekday>
 						<ub:weekday>2</ub:weekday>
 						<ub:weekday>3</ub:weekday>
@@ -140,9 +221,12 @@
 						<ub:weekday>6</ub:weekday>
 						<ub:weekday>7</ub:weekday>
 					</ub:inclusions>
+					<ub:exclusions>
+						<ub:holiday description="Renewable energy holiday due to site work.">2010-03-18</ub:holiday>
+					</ub:exclusions>
 				</ub:effective>
 				<ub:units>therms</ub:units>
-				<ub:total>0</ub:total>
+				<ub:total>20.4</ub:total>
 			</ub:register>
 		</ub:meter>
 	</ub:measuredusage>
@@ -159,18 +243,18 @@
 		<ub:totaltrees/>
 		<ub:totalco2offset/>
 		<ub:consumptiontrend>
-			<ub:period month="Nov" quantity=""/>
-			<ub:period month="Dec" quantity=""/>
-			<ub:period month="Jan" quantity=""/>
-			<ub:period month="Feb" quantity=""/>
-			<ub:period month="Mar" quantity=""/>
-			<ub:period month="Apr" quantity=""/>
-			<ub:period month="May" quantity=""/>
-			<ub:period month="Jun" quantity=""/>
-			<ub:period month="Jul" quantity=""/>
-			<ub:period month="Aug" quantity=""/>
-			<ub:period month="Sep" quantity=""/>
-			<ub:period month="Oct" quantity=""/>
+			<ub:period quantity="" month="Nov"/>
+			<ub:period quantity="" month="Dec"/>
+			<ub:period quantity="" month="Jan"/>
+			<ub:period quantity="" month="Feb"/>
+			<ub:period quantity="" month="Mar"/>
+			<ub:period quantity="" month="Apr"/>
+			<ub:period quantity="" month="May"/>
+			<ub:period quantity="" month="Jun"/>
+			<ub:period quantity="" month="Jul"/>
+			<ub:period quantity="" month="Aug"/>
+			<ub:period quantity="" month="Sep"/>
+			<ub:period quantity="" month="Oct"/>
 		</ub:consumptiontrend>
 	</ub:statistics>
 </ub:bill>
