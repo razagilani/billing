@@ -46,7 +46,7 @@
 							</xs:element>
 							<xs:element name="totaladjustment">
 								<xs:annotation>
-									<xs:documentation>Any adjustments made by Skyline (e.g. estimated bill credit)</xs:documentation>
+									<xs:documentation>Any adjustments made by Skyline for this bill period.  May be a result of a change from last bill. (e.g. estimated bill credit)</xs:documentation>
 								</xs:annotation>
 							</xs:element>
 							<xs:element name="balanceforward">

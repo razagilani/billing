@@ -1,5 +1,5 @@
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
-<ub:bill xmlns:ub="bill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="1" account="10003" xsi:schemaLocation="bill ../UtilityBill.xsd">
+<ub:bill xmlns:ub="bill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="0" account="10005" xsi:schemaLocation="bill ../UtilityBill.xsd">
 	<ub:rebill>
 		<ub:car>
 			<ub:serviceaddress>
@@ -13,7 +13,7 @@
 				<ub:hours/>
 			</ub:serviceaddress>
 			<ub:billingaddress>
-				<ub:addressee> Watassa Management</ub:addressee>
+				<ub:addressee> RENEAU REAL ESTATE LLC C/O WATACCA MGMT</ub:addressee>
 				<ub:street>PO Box 53242</ub:street>
 				<ub:city>Washington</ub:city>
 				<ub:state>DC</ub:state>
@@ -35,7 +35,7 @@
 		<ub:recharges/>
 		<ub:resavings/>
 		<ub:currentcharges/>
-		<ub:totaldue/>
+		<ub:totaldue>0.00</ub:totaldue>
 		<ub:duedate/>
 		<ub:issued/>
 		<ub:message>Welcome to Skyline Innovations!</ub:message>
@@ -54,7 +54,7 @@
 				<ub:hours/>
 			</ub:serviceaddress>
 			<ub:billingaddress>
-				<ub:addressee> Watassa Management</ub:addressee>
+				<ub:addressee> RENEAU REAL ESTATE LLC C/O WATACCA MGMT</ub:addressee>
 				<ub:street>PO Box 53242</ub:street>
 				<ub:city>Washington</ub:city>
 				<ub:state>DC</ub:state>
@@ -64,11 +64,12 @@
 				<ub:hours/>
 			</ub:billingaddress>
 		</ub:car>
-		<ub:billperiodbegin>2010-02-22</ub:billperiodbegin>
-		<ub:billperiodend>2010-03-11</ub:billperiodend>
+		<ub:billperiodbegin/>
+		<ub:billperiodend>2010-02-24</ub:billperiodend>
 		<ub:hypotheticalecharges/>
 		<ub:actualecharges/>
 		<ub:revalue/>
+		<ub:recharges/>
 		<ub:resavings/>
 	</ub:utilbill>
 	<ub:details service="Gas">
@@ -133,7 +134,7 @@
 			<ub:estimated>false</ub:estimated>
 			<ub:priorreaddate/>
 			<ub:presentreaddate/>
-			<ub:identifier/>
+			<ub:identifier>N15438</ub:identifier>
 			<ub:register shadow="false">
 				<ub:identifier>N15438</ub:identifier>
 				<ub:description>Therms</ub:description>
