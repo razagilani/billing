@@ -197,7 +197,7 @@ def main(options):
     # Window placement: 7/8" (63pt) from left and 1/2" (36pt) from bottom
 
     # Customer billing address frame
-    billingAddressF = Frame(78, 600, 227, 60, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
+    billingAddressF = Frame(78, 600, 250, 60, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
 
     # 2/3
 
