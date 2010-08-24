@@ -13,7 +13,7 @@
 				<ub:hours/>
 			</ub:serviceaddress>
 			<ub:billingaddress>
-				<ub:addressee>RENEAU REAL ESTATE LLC C/O WATACCA MGMT</ub:addressee>
+				<ub:addressee> RENEAU REAL ESTATE LLC C/O WATACCA MGMT</ub:addressee>
 				<ub:street>PO Box 53242</ub:street>
 				<ub:city>Washington</ub:city>
 				<ub:state>DC</ub:state>
@@ -29,13 +29,13 @@
 		<ub:paymentreceived>0.00</ub:paymentreceived>
 		<ub:totaladjustment>0.00</ub:totaladjustment>
 		<ub:balanceforward>0.00</ub:balanceforward>
-		<ub:hypotheticalecharges>1442.70</ub:hypotheticalecharges>
+		<ub:hypotheticalecharges>1443.24</ub:hypotheticalecharges>
 		<ub:actualecharges>1420.03</ub:actualecharges>
-		<ub:revalue>22.67</ub:revalue>
-		<ub:recharges>19.27</ub:recharges>
-		<ub:resavings>3.40</ub:resavings>
+		<ub:revalue>23.21</ub:revalue>
+		<ub:recharges>19.73</ub:recharges>
+		<ub:resavings>3.48</ub:resavings>
 		<ub:currentcharges>0.00</ub:currentcharges>
-		<ub:totaldue>19.27</ub:totaldue>
+		<ub:totaldue>23.21</ub:totaldue>
 		<ub:duedate>2010-09-15</ub:duedate>
 		<ub:issued>2010-08-21</ub:issued>
 		<ub:message>Welcome to Skyline Innovations!</ub:message>
@@ -66,11 +66,11 @@
 		</ub:car>
 		<ub:billperiodbegin>2010-02-24</ub:billperiodbegin>
 		<ub:billperiodend>2010-03-25</ub:billperiodend>
-		<ub:hypotheticalecharges>1442.70</ub:hypotheticalecharges>
+		<ub:hypotheticalecharges>1443.24</ub:hypotheticalecharges>
 		<ub:actualecharges>1420.03</ub:actualecharges>
-		<ub:revalue>22.67</ub:revalue>
-		<ub:recharges>19.27</ub:recharges>
-		<ub:resavings>3.40</ub:resavings>
+		<ub:revalue>23.21</ub:revalue>
+		<ub:recharges>19.73</ub:recharges>
+		<ub:resavings>3.48</ub:resavings>
 	</ub:utilbill>
 	<ub:details service="Gas">
 		<ub:rateschedule>
@@ -100,6 +100,8 @@
 				</ub:charge>
 				<ub:charge>
 					<ub:description>DC rights-of-way fee</ub:description>
+					<ub:quantity units="Therms">1105.7</ub:quantity>
+					<ub:rate units="dollars">0.0286</ub:rate>
 					<ub:total>31.62</ub:total>
 				</ub:charge>
 				<ub:charge>
@@ -145,7 +147,9 @@
 				</ub:charge>
 				<ub:charge>
 					<ub:description>DC rights-of-way fee</ub:description>
-					<ub:total>31.62</ub:total>
+					<ub:quantity units="Therms">1124.69</ub:quantity>
+					<ub:rate units="dollars">0.0286</ub:rate>
+					<ub:total>32.16</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Sustainable Energy Trust Fund</ub:description>
@@ -165,11 +169,11 @@
 					<ub:rate units="dollars">.070700</ub:rate>
 					<ub:total>79.52</ub:total>
 				</ub:charge>
-				<ub:total>1442.70</ub:total>
+				<ub:total>1443.24</ub:total>
 			</ub:charges>
 		</ub:chargegroup>
 		<ub:total type="actual">1420.03</ub:total>
-		<ub:total type="hypothetical">1442.70</ub:total>
+		<ub:total type="hypothetical">1443.24</ub:total>
 	</ub:details>
 	<ub:billableusage service="Gas">
 		<ub:rateschedule>
@@ -237,7 +241,7 @@
 		<ub:conventionalutilization>74</ub:conventionalutilization>
 		<ub:renewableproduced>0</ub:renewableproduced>
 		<ub:co2offset>256.3</ub:co2offset>
-		<ub:totalsavings>3.40</ub:totalsavings>
+		<ub:totalsavings>3.48</ub:totalsavings>
 		<ub:totalrenewableconsumed>1904129</ub:totalrenewableconsumed>
 		<ub:totalrenewableproduced>0</ub:totalrenewableproduced>
 		<ub:totaltrees>.2</ub:totaltrees>
