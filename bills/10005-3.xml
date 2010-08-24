@@ -1,0 +1,253 @@
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
+<ub:bill xmlns:ub="bill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" account="10005" xsi:schemaLocation="bill ../UtilityBill.xsd" id="3">
+	<ub:rebill>
+		<ub:car>
+			<ub:serviceaddress>
+				<ub:addressee/>
+				<ub:street>3025 Porter St NW</ub:street>
+				<ub:city/>
+				<ub:state/>
+				<ub:country/>
+				<ub:postalcode/>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>RENEAU REAL ESTATE LLC C/O WATACCA MGMT</ub:addressee>
+				<ub:street>PO Box 53242</ub:street>
+				<ub:city>Washington</ub:city>
+				<ub:state>DC</ub:state>
+				<ub:country/>
+				<ub:postalcode>20009</ub:postalcode>
+				<ub:telephonenumber>14109787703</ub:telephonenumber>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
+		<ub:billperiodbegin>2010-04-23</ub:billperiodbegin>
+		<ub:billperiodend>2010-05-24</ub:billperiodend>
+		<ub:priorbalance>61.33</ub:priorbalance>
+		<ub:paymentreceived>0.00</ub:paymentreceived>
+		<ub:totaladjustment>0.00</ub:totaladjustment>
+		<ub:balanceforward>61.33</ub:balanceforward>
+		<ub:hypotheticalecharges>201.03</ub:hypotheticalecharges>
+		<ub:actualecharges>158.13</ub:actualecharges>
+		<ub:revalue>42.90</ub:revalue>
+		<ub:recharges>36.46</ub:recharges>
+		<ub:resavings>6.44</ub:resavings>
+		<ub:currentcharges>0.00</ub:currentcharges>
+		<ub:totaldue>97.79</ub:totaldue>
+		<ub:duedate>2010-09-15</ub:duedate>
+		<ub:issued>2010-08-23</ub:issued>
+		<ub:message>Balance carried forward, disregard past bill.</ub:message>
+	</ub:rebill>
+	<ub:utilbill service="Gas">
+		<ub:car>
+			<ub:accountnumber>0628177925</ub:accountnumber>
+			<ub:serviceaddress>
+				<ub:addressee/>
+				<ub:street>3025 Porter St NW</ub:street>
+				<ub:city/>
+				<ub:state/>
+				<ub:country/>
+				<ub:postalcode/>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee> RENEAU REAL ESTATE LLC C/O WATACCA MGMT</ub:addressee>
+				<ub:street>PO Box 53242</ub:street>
+				<ub:city>Washington</ub:city>
+				<ub:state>DC</ub:state>
+				<ub:country/>
+				<ub:postalcode>20009</ub:postalcode>
+				<ub:telephonenumber>14109787703</ub:telephonenumber>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
+		<ub:billperiodbegin>2010-04-23</ub:billperiodbegin>
+		<ub:billperiodend>2010-05-24</ub:billperiodend>
+		<ub:hypotheticalecharges>201.03</ub:hypotheticalecharges>
+		<ub:actualecharges>158.13</ub:actualecharges>
+		<ub:revalue>42.90</ub:revalue>
+		<ub:recharges>36.46</ub:recharges>
+		<ub:resavings>6.44</ub:resavings>
+	</ub:utilbill>
+	<ub:details service="Gas">
+		<ub:rateschedule>
+			<ub:name/>
+		</ub:rateschedule>
+		<ub:chargegroup type="All Charges">
+			<ub:charges type="actual">
+				<ub:charge>
+					<ub:description>Distribution Charge</ub:description>
+					<ub:quantity units="Therms">125.9</ub:quantity>
+					<ub:rate units="dollars">0.2939</ub:rate>
+					<ub:total>37.00</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Customer Charge</ub:description>
+					<ub:total>13.15</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Purchased Gas Charge</ub:description>
+					<ub:quantity units="Therms">125.9</ub:quantity>
+					<ub:rate units="dollars">0.7391</ub:rate>
+					<ub:total>93.05</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>DC rights-of-way fee</ub:description>
+					<ub:quantity units="Therms">125.9</ub:quantity>
+					<ub:rate units="dollars">0.0299</ub:rate>
+					<ub:total>3.76</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Sustainable Energy Trust Fund</ub:description>
+					<ub:quantity units="Therms">125.9</ub:quantity>
+					<ub:rate units="dollars">0.012</ub:rate>
+					<ub:total>1.51</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Energy Assistance Trust Fund</ub:description>
+					<ub:quantity units="Therms">125.9</ub:quantity>
+					<ub:rate units="dollars">0.006</ub:rate>
+					<ub:total>0.76</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Delivery Tax</ub:description>
+					<ub:quantity units="Therms">125.9</ub:quantity>
+					<ub:rate units="dollars">0.0707</ub:rate>
+					<ub:total>8.90</ub:total>
+				</ub:charge>
+				<ub:total>158.13</ub:total>
+			</ub:charges>
+			<ub:charges type="hypothetical">
+				<ub:charge>
+					<ub:description>Distribution Charge</ub:description>
+					<ub:quantity units="Therms">163.14</ub:quantity>
+					<ub:rate units="dollars">0.2939</ub:rate>
+					<ub:total>47.95</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Customer Charge</ub:description>
+					<ub:total>13.15</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Purchased Gas Charge</ub:description>
+					<ub:quantity units="Therms">163.14</ub:quantity>
+					<ub:rate units="dollars">0.7391</ub:rate>
+					<ub:total>120.58</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>DC rights-of-way fee</ub:description>
+					<ub:quantity units="Therms">163.14</ub:quantity>
+					<ub:rate units="dollars">0.0299</ub:rate>
+					<ub:total>4.88</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Sustainable Energy Trust Fund</ub:description>
+					<ub:quantity units="Therms">163.14</ub:quantity>
+					<ub:rate units="dollars">0.012</ub:rate>
+					<ub:total>1.96</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Energy Assistance Trust Fund</ub:description>
+					<ub:quantity units="Therms">163.14</ub:quantity>
+					<ub:rate units="dollars">0.006</ub:rate>
+					<ub:total>0.98</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Delivery Tax</ub:description>
+					<ub:quantity units="Therms">163.14</ub:quantity>
+					<ub:rate units="dollars">0.0707</ub:rate>
+					<ub:total>11.53</ub:total>
+				</ub:charge>
+				<ub:total>201.03</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:total type="actual">158.13</ub:total>
+		<ub:total type="hypothetical">201.03</ub:total>
+	</ub:details>
+	<ub:billableusage service="Gas">
+		<ub:rateschedule>
+			<ub:name/>
+		</ub:rateschedule>
+		<ub:usage>
+			<ub:description>Therms Used</ub:description>
+			<ub:quantity>0</ub:quantity>
+		</ub:usage>
+		<ub:total>0</ub:total>
+	</ub:billableusage>
+	<ub:measuredusage service="Gas">
+		<ub:meter>
+			<ub:estimated>false</ub:estimated>
+			<ub:priorreaddate>2010-04-23</ub:priorreaddate>
+			<ub:presentreaddate>2010-05-24</ub:presentreaddate>
+			<ub:identifier>N15438</ub:identifier>
+			<ub:register shadow="false">
+				<ub:identifier>N15438</ub:identifier>
+				<ub:description>Therms</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>therms</ub:units>
+				<ub:total>125.9</ub:total>
+			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>N15438</ub:identifier>
+				<ub:description>Therms</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>therms</ub:units>
+				<ub:total>37.24</ub:total>
+			</ub:register>
+		</ub:meter>
+	</ub:measuredusage>
+	<ub:statistics>
+		<ub:conventionalconsumed>784711</ub:conventionalconsumed>
+		<ub:renewableconsumed>3723512</ub:renewableconsumed>
+		<ub:renewableutilization>0.826</ub:renewableutilization>
+		<ub:conventionalutilization>.174</ub:conventionalutilization>
+		<ub:renewableproduced>0</ub:renewableproduced>
+		<ub:co2offset>501.25</ub:co2offset>
+		<ub:totalsavings>16.65</ub:totalsavings>
+		<ub:totalrenewableconsumed>9619447</ub:totalrenewableconsumed>
+		<ub:totalrenewableproduced>0</ub:totalrenewableproduced>
+		<ub:totaltrees>.6</ub:totaltrees>
+		<ub:totalco2offset>1294.85</ub:totalco2offset>
+		<ub:consumptiontrend>
+			<ub:period quantity="0" month="Nov"/>
+			<ub:period quantity="0" month="Dec"/>
+			<ub:period quantity="0" month="Jan"/>
+			<ub:period quantity="73" month="Feb"/>
+			<ub:period quantity="42" month="Mar"/>
+			<ub:period quantity="37" month="Apr"/>
+			<ub:period quantity="0" month="May"/>
+			<ub:period quantity="0" month="Jun"/>
+			<ub:period quantity="0" month="Jul"/>
+			<ub:period quantity="0" month="Aug"/>
+			<ub:period quantity="0" month="Sep"/>
+			<ub:period quantity="0" month="Oct"/>
+		</ub:consumptiontrend>
+	</ub:statistics>
+</ub:bill>
