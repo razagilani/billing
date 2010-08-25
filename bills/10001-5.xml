@@ -77,6 +77,44 @@
 			<ub:name>Commercial Heat/Cool</ub:name>
 		</ub:rateschedule>
 		<ub:chargegroup type="Distribution">
+			<ub:charges type="actual">
+				<ub:charge>
+					<ub:description>Usage</ub:description>
+					<ub:quantity units="Therms">300</ub:quantity>
+					<ub:rate units="dollars">0.3347</ub:rate>
+					<ub:total>100.41</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Usage</ub:description>
+					<ub:quantity units="Therms">56</ub:quantity>
+					<ub:rate units="dollars">0.2341</ub:rate>
+					<ub:total>13.11</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>System Charge</ub:description>
+					<ub:total>36.25</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Sales Tax - Distribution</ub:description>
+					<ub:quantity units="dollars">149.77</ub:quantity>
+					<ub:rate units="percent">6.0</ub:rate>
+					<ub:total>8.99</ub:total>
+					<ub:processingnote>sales Tax on sum(usage + sys charge)  0.02 rounding error - actual: 30.30.  Units on bill incorrect, rate shown as $, not %</ub:processingnote>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Gross Receipts Surcharge</ub:description>
+					<ub:total>0.05</ub:total>
+					<ub:processingnote>Computation unknown</ub:processingnote>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>PG County Energy Tax</ub:description>
+					<ub:quantity units="Therms">356</ub:quantity>
+					<ub:rate units="dollars">0.0829060</ub:rate>
+					<ub:total>29.51</ub:total>
+					<ub:processingnote>Total Therms * Rate ($/therm).  Web version does not show rate.</ub:processingnote>
+				</ub:charge>
+				<ub:total>188.32</ub:total>
+			</ub:charges>
 			<ub:charges type="hypothetical">
 				<ub:charge>
 					<ub:description>Usage</ub:description>
@@ -116,70 +154,6 @@
 				<ub:total>195.83</ub:total>
 			</ub:charges>
 		</ub:chargegroup>
-		<ub:chargegroup type="Distribution">
-			<ub:charges type="actual">
-				<ub:charge>
-					<ub:description>Usage</ub:description>
-					<ub:quantity units="Therms">300</ub:quantity>
-					<ub:rate units="dollars">0.3347</ub:rate>
-					<ub:total>100.41</ub:total>
-				</ub:charge>
-				<ub:charge>
-					<ub:description>Usage</ub:description>
-					<ub:quantity units="Therms">56</ub:quantity>
-					<ub:rate units="dollars">0.2341</ub:rate>
-					<ub:total>13.11</ub:total>
-				</ub:charge>
-				<ub:charge>
-					<ub:description>System Charge</ub:description>
-					<ub:total>36.25</ub:total>
-				</ub:charge>
-				<ub:charge>
-					<ub:description>MD Sales Tax - Distribution</ub:description>
-					<ub:quantity units="dollars">149.77</ub:quantity>
-					<ub:rate units="percent">6.0</ub:rate>
-					<ub:total>8.99</ub:total>
-					<ub:processingnote>sales Tax on sum(usage + sys charge)  0.02 rounding error - actual: 30.30.  Units on bill incorrect, rate shown as $, not %</ub:processingnote>
-				</ub:charge>
-				<ub:charge>
-					<ub:description>MD Gross Receipts Surcharge</ub:description>
-					<ub:total>0.05</ub:total>
-					<ub:processingnote>Computation unknown</ub:processingnote>
-				</ub:charge>
-				<ub:charge>
-					<ub:description>PG County Energy Tax</ub:description>
-					<ub:quantity units="Therms">356</ub:quantity>
-					<ub:rate units="dollars">0.0829060</ub:rate>
-					<ub:total>29.51</ub:total>
-					<ub:processingnote>Total Therms * Rate ($/therm).  Web version does not show rate.</ub:processingnote>
-				</ub:charge>
-				<ub:total>188.32</ub:total>
-			</ub:charges>
-		</ub:chargegroup>
-		<ub:chargegroup type="Generation/Supply">
-			<ub:charges type="hypothetical">
-				<ub:charge>
-					<ub:description>Supply Service</ub:description>
-					<ub:quantity units="Therms">378.7</ub:quantity>
-					<ub:rate units="dollars">0.86</ub:rate>
-					<ub:total>325.68</ub:total>
-				</ub:charge>
-				<ub:charge>
-					<ub:description>Balancing</ub:description>
-					<ub:quantity units="Therms">378.7</ub:quantity>
-					<ub:rate units="dollars">0.0179</ub:rate>
-					<ub:total>6.78</ub:total>
-				</ub:charge>
-				<ub:charge>
-					<ub:description>MD Sales Tax</ub:description>
-					<ub:quantity units="dollars">332.46</ub:quantity>
-					<ub:rate units="percent">6.0</ub:rate>
-					<ub:total>19.95</ub:total>
-					<ub:processingnote>Tax on Supply Service, Balancing. Rate units on bill incorrect, shown as $, not %</ub:processingnote>
-				</ub:charge>
-				<ub:total>352.41</ub:total>
-			</ub:charges>
-		</ub:chargegroup>
 		<ub:chargegroup type="Generation/Supply">
 			<ub:charges type="actual">
 				<ub:charge>
@@ -202,6 +176,28 @@
 					<ub:processingnote>Tax on Supply Service, Balancing. Rate units on bill incorrect, shown as $, not %</ub:processingnote>
 				</ub:charge>
 				<ub:total>331.28</ub:total>
+			</ub:charges>
+			<ub:charges type="hypothetical">
+				<ub:charge>
+					<ub:description>Supply Service</ub:description>
+					<ub:quantity units="Therms">378.7</ub:quantity>
+					<ub:rate units="dollars">0.86</ub:rate>
+					<ub:total>325.68</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Balancing</ub:description>
+					<ub:quantity units="Therms">378.7</ub:quantity>
+					<ub:rate units="dollars">0.0179</ub:rate>
+					<ub:total>6.78</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Sales Tax</ub:description>
+					<ub:quantity units="dollars">332.46</ub:quantity>
+					<ub:rate units="percent">6.0</ub:rate>
+					<ub:total>19.95</ub:total>
+					<ub:processingnote>Tax on Supply Service, Balancing. Rate units on bill incorrect, shown as $, not %</ub:processingnote>
+				</ub:charge>
+				<ub:total>352.41</ub:total>
 			</ub:charges>
 		</ub:chargegroup>
 		<ub:total type="actual">519.60</ub:total>
