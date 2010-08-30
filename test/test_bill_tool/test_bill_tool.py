@@ -77,6 +77,25 @@ class TestBillTool(unittest.TestCase):
 
         os.remove(resultantBill)
 
+    def test_utilbill_rebill_summation(self):
+        """ for all utilbills, the revalue, charges and savings need to be calculated.  Then they must be """
+        """ summed up for the same elements in rebill """
+
+        unprocessedBill = os.path.join("test", "test_bill_tool", "rebill_summation_1_pre.xml")
+        resultantBill = os.path.join("test", "test_bill_tool", "rebill_summation_1_in.xml")
+        correctBill = os.path.join("test", "test_bill_tool", "rebill_summation_1_post.xml")
+        
+        BillTool().sum_utilbill_rebill(unprocessedBill, resultantBill, 0.15)
+
+        etree_in = etree.parse(resultantBill)
+        etree_post = etree.parse(correctBill)
+
+        (result, reason) = XMLUtils().compare_xml(etree_in, etree_post)
+
+        self.assertEquals(result, True, "Dollar amounts did not sum up correctly " + 
+            resultantBill + " does not match " + correctBill + "\n" + reason)
+
+        os.remove(resultantBill)
 
 if __name__ == '__main__':
     unittest.main()

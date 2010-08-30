@@ -30,6 +30,27 @@ class BillTool():
     def get_elem(self, tree, xpath):
         return tree.xpath(xpath, namespaces={"ub":"bill"})
 
+    def sum_utilbill_rebill(self, unprocessedBill, targetBill, discount_rate = None, user=None, password=None):
+
+        tree = etree.parse(unprocessedBill)
+
+        # obtain all of the utilbill groves 
+        utilbills = self.get_elem(tree, "/ub:bill/ub:utilbill")
+        for utilbill in utilbills:
+
+            # determine the difference between the hypothetical and actual energy charges to determine revalue
+            self.get_elem(utilbill, "ub:revalue")[0].text = \
+            str(self.get_elem(utilbill, "ub:hypotheticalecharges - ub:actualecharges"))
+
+            self.get_elem(utilbill, "ub:recharges")[0].text = \
+            str(float(self.get_elem(utilbill, "ub:revalue")[0].text) * (1.0 - discount_rate))
+
+            self.get_elem(utilbill, "ub:resavings")[0].text = \
+            str(float(self.get_elem(utilbill, "ub:revalue")[0].text) * discount_rate)
+
+        # write bill back out
+        xml = etree.tostring(tree, pretty_print=True)
+        XMLUtils().save_xml_file(xml, targetBill, user, password)
 
     def sum_hypothetical_charges(self, unprocessedBill, targetBill, user=None, password=None):
         """ Sums up all hypothetical charges.  For each set of hypothetical charges, """
@@ -244,7 +265,10 @@ if __name__ == "__main__":
     if (options.outputbill == None):
         print "Output bill must be specified"
         exit()
-    
+
+    if (options.roll == None and options.sumhypothetical == None and options.sumactual == None):
+        print "Specify operation"
+
     if (options.roll):
         if (options.amountpaid == None):
             print "Specify --amountpaid"

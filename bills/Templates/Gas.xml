@@ -1,5 +1,5 @@
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
-<ub:utilitybill xmlns:ub="utilitybill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="1" account="" xsi:schemaLocation="utilitybill ../UtilityBill.xsd">
+<ub:utilitybill xmlns:ub="utilitybill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="0" account="[customer id here]" xsi:schemaLocation="utilitybill ../UtilityBill.xsd">
 	<ub:car>
 		<ub:accountnumber/>
 		<ub:serviceaddress>
@@ -26,7 +26,7 @@
 	<ub:skylinebill>
 		<ub:billperiodbegin/>
 		<ub:billperiodend/>
-		<ub:priorbalance/>
+		<ub:priorbalance>0.00</ub:priorbalance>
 		<ub:paymentreceived/>
 		<ub:totaladjustment/>
 		<ub:balanceforward/>
@@ -35,7 +35,7 @@
 		<ub:energycharges/>
 		<ub:customersavings/>
 		<ub:currentcharges/>
-		<ub:totaldue>0.00</ub:totaldue>
+		<ub:totaldue/>
 		<ub:duedate/>
 		<ub:issued/>
 		<ub:message>Welcome to Skyline Innovations!</ub:message>
