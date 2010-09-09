@@ -1,0 +1,14 @@
+xquery version "1.0";
+
+declare namespace ub='bill';
+
+declare function local:main() as node()*
+{
+    for $child in xmldb:get-child-collections('/db/skyline/bills/')
+    order by $child
+    return
+            <account>{$child}</account>
+};
+<accounts>
+	{ local:main() }
+</accounts>

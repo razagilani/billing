@@ -1,24 +1,43 @@
-/*!
- * Ext JS Library 3.2.1
- * Copyright(c) 2006-2010 Ext JS, Inc.
- * licensing@extjs.com
- * http://www.extjs.com/license
- */
-var myData = "";
+function renderWidgets()
+{
 
-//stopped here - figure out how to save store
-var store;
-Ext.onReady(function(){
-
-    // NOTE: This is an example showing simple state management. During development,
-    // it is generally best to disable state management as dynamically-generated ids
-    // can change across page loads, leading to unpredictable results.  The developer
-    // should ensure that stable state ids are set for stateful components in real apps.    
     //Ext.state.Manager.setProvider(new Ext.state.CookieProvider());
+
+    // set up combo boxes
+
+    var customerAccountRecordType = Ext.data.Record.create([
+        {name: 'account', mapping: ""}
+    ]);
+
+    var customerAccountXMLReader = new Ext.data.XmlReader({
+        record: 'account',
+    }, customerAccountRecordType);
+
+    var customerAccountStore = new Ext.data.Store({
+        //url: 'http://skyline/exist/rest/db/skyline/bills',
+        url: 'http://skyline/exist/rest/db/skyline/ListAccounts.xql',
+        reader: customerAccountXMLReader
+    });
+
+    var customerAccountCombo = new Ext.form.ComboBox({
+        store: customerAccountStore,
+        displayField:'account',
+        typeAhead: true,
+        triggerAction: 'all',
+        emptyText:'Select...',
+        selectOnFocus:true,
+        applyTo: 'customer-accounts',
+    });
+
+    customerAccountCombo.on('select', function(combobox, record, index) {
+        alert(record.data.account);
+    });
+
+
 
 
     // flatten xml representation to an array
-    myData = [
+    var myData = [
         ['Charge Group 1', '1 Charge Description',500,'ccf', 10,'dollars',1000],
         ['Charge Group 3', '3 Charge Description',100,'kWh', 10,'percent',1000],
         ['Charge Group 1', '1 Charge Description',100,'kWh', 10,'dollars',1000],
@@ -33,7 +52,6 @@ Ext.onReady(function(){
         ['Charge Group 3', '3 Charge Description',100,'qty units', 10,'rate units',1000],
     ];
 
-
     var reader = new Ext.data.ArrayReader({}, [
        {name: 'chargegroup'},
        {name: 'description'},
@@ -45,38 +63,13 @@ Ext.onReady(function(){
        {name: 'autototal', type: 'float'}
     ]);
 
-    store = new Ext.data.GroupingStore({
+    var store = new Ext.data.GroupingStore({
             reader: reader,
             data: myData,
             sortInfo:{field: 'chargegroup', direction: "ASC"},
             groupField:'chargegroup'
         });
 
-    /**
-     * Custom function used for column renderer
-     * @param {Object} val
-     */
-    function change(val){
-        if(val > 0){
-            return '<span style="color:green;">' + val + '</span>';
-        }else if(val < 0){
-            return '<span style="color:red;">' + val + '</span>';
-        }
-        return val;
-    }
-
-    /**
-     * Custom function used for column renderer
-     * @param {Object} val
-     */
-    function pctChange(val){
-        if(val > 0){
-            return '<span style="color:green;">' + val + '%</span>';
-        }else if(val < 0){
-            return '<span style="color:red;">' + val + '%</span>';
-        }
-        return val;
-    }
 
 	// utilize custom extension for Group Summary
     var summary = new Ext.ux.grid.GroupSummary();
@@ -107,7 +100,7 @@ Ext.onReady(function(){
                 editor: new Ext.form.NumberField({allowBlank: false})
             },
             {
-                header: 'Quantity Units',
+                header: 'Units',
                 width: 75,
                 sortable: true,
                 dataIndex: 'quantityunits',
@@ -139,7 +132,7 @@ Ext.onReady(function(){
                 editor: new Ext.form.NumberField({allowBlank: false})
             },
             {
-                header: 'Rate Units',
+                header: 'Units',
                 width: 75,
                 sortable: true,
                 dataIndex: 'rateunits',
@@ -200,7 +193,58 @@ Ext.onReady(function(){
 
     // create the Grid
     var grid = new Ext.grid.EditorGridPanel({
+        tbar: [{
+            iconCls: 'icon-user-add',
+            text: 'Insert',
+            handler: function()
+            {
+                var defaultData = 
+                {
+                    chargegroup: 'Charge Group 1',
+                    description: 'description',
+                    quantity: 15.5,
+                    quantityunits: 'kWh',
+                    rate: 15.5,
+                    rateunits: 'dollars',
+                    total: 1500.1,
+                    //autototal: 0
+                };
+                var ChargeItemType = grid.getStore().recordType;
+                var c = new ChargeItemType(defaultData);
+
+                grid.stopEditing();
+                // grab the current selection - only one row may be selected per singlselect configuration
+                var selection = grid.getSelectionModel().getSelected();
+                var insertionPoint = store.indexOf(selection);
+                store.insert(insertionPoint + 1, c);
+                grid.getView().refresh();
+                grid.getSelectionModel().selectRow(insertionPoint);
+                grid.startEditing(0);
+            }
+        },{
+            ref: '../removeBtn',
+            iconCls: 'icon-user-delete',
+            text: 'Remove',
+            disabled: true,
+            handler: function()
+            {
+                grid.stopEditing();
+                var s = grid.getSelectionModel().getSelections();
+                for(var i = 0, r; r = s[i]; i++)
+                {
+                    store.remove(r);
+                }
+            }
+        },{
+            text: 'Save',
+            handler: function()
+            {
+                store.commitChanges();
+                saveToXML(store.getRange());
+            }
+        }],
         colModel: colModel,
+        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
         store: store,
         enableColumnMove: false,
         view: new Ext.grid.GroupingView({
@@ -216,13 +260,57 @@ Ext.onReady(function(){
         height: 350,
         width: 600,
         title: 'Actual Charges',
-        clicksToEdit: 1
+        clicksToEdit: 2
         // config options for stateful behavior
         //stateful: true,
         //stateId: 'grid' 
     });
+
+    // selection callbacks
+    grid.getSelectionModel().on('selectionchange', function(sm){
+        sm.getCount();
+        grid.removeBtn.setDisabled(sm.getCount() < 1);
+    });
+    
     
     // render the grid to the specified div in the page
     grid.render('grid-example');
 
-});
+
+}
+
+    function saveToXML(records)
+    {
+       alert(records[0].data.description);
+    }
+
+
+
+
+/**
+ * Custom function used for column renderer
+ * @param {Object} val
+ */
+function change(val){
+    if(val > 0){
+        return '<span style="color:green;">' + val + '</span>';
+    }else if(val < 0){
+        return '<span style="color:red;">' + val + '</span>';
+    }
+    return val;
+}
+
+/**
+ * Custom function used for column renderer
+ * @param {Object} val
+ */
+function pctChange(val){
+    if(val > 0){
+        return '<span style="color:green;">' + val + '%</span>';
+    }else if(val < 0){
+        return '<span style="color:red;">' + val + '%</span>';
+    }
+    return val;
+}
+
+
