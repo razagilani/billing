@@ -1,18 +1,18 @@
  
 // make this the base url for exist and then have each fetch create url
 //var xmlDBBaseUrl = "http://tyrell/exist/rest/db"
-var xmlDBBaseUrl = "http://skyline/exist/rest/db"
+//var xmlDBBaseUrl = "http://skyline/exist/rest/db"
 
 
-var accountsUrl = xmlDBBaseUrl+"/skyline/bills";
+//var accountsUrl = xmlDBBaseUrl+"/skyline/bills";
 
 // try and make this a local
 // an in memory xml document that represents all available accounts
-var accountsDoc = null;
-var accountSelected = null;
+//var accountsDoc = null;
+//var accountSelected = null;
 
 // an in memory xml document that represents all available bills for a given account
-var billsDoc = null;
+//var billsDoc = null;
 
 //var billUrl = null;
 // an in memory xml document that represents the entire bill
@@ -23,7 +23,67 @@ var billSelected = null;
 var httpObject = null;
 var appAvailable = false;
 
- function bindXML()
+
+
+
+// Lots of manual lifting here.  This is due to the fact that JS Frameworks do not do
+// a good job of handling XML Namespaces. 
+function billXML2Array(billDoc)
+{
+
+    // build an array based on the bill xml hypothetical charges
+    var hc = new Array();
+    
+    // bind to chargegroups
+    var chargegroup = billDoc.getElementsByTagName("ub:chargegroup");
+    for (cg = 0; cg < chargegroup.length; cg++)
+    {
+
+        var charges = chargegroup[cg].getElementsByTagName("ub:charges")[0];
+        if (charges.attributes[0].nodeValue == "actual")
+        {
+
+            var charge = charges.getElementsByTagName("ub:charge");
+            for(c = 0; c < charge.length; c++)
+            {
+
+                hc[c] = new Array();
+
+                hc[c][0] = chargegroup[cg].attributes[0].nodeValue;
+
+                var descriptionElem = (charge[c].getElementsByTagName("ub:description"))[0];
+                hc[c][1] = descriptionElem && descriptionElem.childNodes[0].nodeValue ? descriptionElem.childNodes[0].nodeValue : null;
+
+                var quantityElem = (charge[c].getElementsByTagName("ub:quantity"))[0];
+                hc[c][2] = quantityElem && quantityElem.childNodes[0] ? quantityElem.childNodes[0].nodeValue : null;
+                hc[c][3] = quantityElem && quantityElem.attributes[0] ? quantityElem.attributes[0].nodeValue : null;
+
+                var rateElem = (charge[c].getElementsByTagName("ub:rate"))[0];
+                hc[c][4] = rateElem && rateElem.childNodes[0] ? rateElem.childNodes[0].nodeValue : null;
+                hc[c][5] = rateElem && rateElem.attributes[0] ? rateElem.attributes[0].nodeValue : null;
+
+                var totalElem = (charge[c].getElementsByTagName("ub:total"))[0];
+                hc[c][6] = totalElem && totalElem.childNodes[0].nodeValue ? totalElem.childNodes[0].nodeValue : null;
+
+            }
+        }
+    }
+
+    return hc;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+ /*function bindXML()
  {
 
 
@@ -38,7 +98,9 @@ var appAvailable = false;
       error: handleXML_GET_error
     });
 }
+*/
 
+/*
 function handleAccountsDoc_GET(data)
 {
   accountsDoc = data;
@@ -55,6 +117,7 @@ function handleAccountsDoc_GET(data)
   }
 
 }
+*/
 
 function handleXML_GET_error(xhr, status, error)
 {
@@ -121,7 +184,8 @@ function handleBillsDoc_GET(data)
 function fetchBill(bill)
 {
 
-  billUrl = accountsUrl + "/" + accountSelected + "/" + billSelected;
+  //billUrl = accountsUrl + "/" + accountSelected + "/" + billSelected;
+  billUrl = bill;
   // using low level API since high level API does not support PUT
   // ToDo: rename xml_get to bill oriented function name
   jQuery.ajax({

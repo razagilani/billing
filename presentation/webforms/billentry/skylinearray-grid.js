@@ -29,16 +29,62 @@ function renderWidgets()
         applyTo: 'customer-accounts',
     });
 
-    customerAccountCombo.on('select', function(combobox, record, index) {
-        alert(record.data.account);
+    var customerBillRecordType = Ext.data.Record.create([
+        {name: 'bill', mapping: ""}
+    ]);
+
+    var customerBillXMLReader = new Ext.data.XmlReader({
+        record: 'bill',
+    }, customerBillRecordType);
+
+    var customerBillStore = new Ext.data.Store({
+        //url: 'http://skyline/exist/rest/db/skyline/bills',
+        url: 'http://skyline/exist/rest/db/skyline/ListBills.xql',
+        reader: customerBillXMLReader
     });
 
+    var customerBillCombo = new Ext.form.ComboBox({
+        store: customerBillStore,
+        displayField:'bill',
+        typeAhead: true,
+        triggerAction: 'all',
+        emptyText:'Select...',
+        selectOnFocus:true,
+        applyTo: 'customer-bills',
+    });
 
+    // events to link the account and bill combo boxes with eachother and the bill view
+    customerAccountCombo.on('select', function(combobox, record, index) {
+        customerBillStore.setBaseParam('id', record.data.account);
+        customerBillStore.load();
+    });
 
+    customerBillCombo.on('select', function(combobox, record, index) {
+
+        Ext.Ajax.request({
+           url: 'http://skyline/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() + '/' + record.data.bill,
+           success: bindBill,
+           failure: bindBillFail,
+           //headers: {
+               //'my-header': 'foo'
+           //},
+           //params: { foo: 'bar' }
+        });
+            
+    });
+
+    function bindBill(data) {
+        hypoCharges = billXML2Array(data.responseXML);
+        store.loadData(hypoCharges);
+    }
+
+    function bindBillFail(data) {
+        alert(data);
+    }
 
     // flatten xml representation to an array
     var myData = [
-        ['Charge Group 1', '1 Charge Description',500,'ccf', 10,'dollars',1000],
+        ['Charge Group 1', null,500,'ccf', 10,'dollars',1000],
         ['Charge Group 3', '3 Charge Description',100,'kWh', 10,'percent',1000],
         ['Charge Group 1', '1 Charge Description',100,'kWh', 10,'dollars',1000],
         ['Charge Group 1', '1 Charge Description',100,'kWh', 10,'cents',1000],
@@ -55,9 +101,9 @@ function renderWidgets()
     var reader = new Ext.data.ArrayReader({}, [
        {name: 'chargegroup'},
        {name: 'description'},
-       {name: 'quantity', type: 'float'},
+       {name: 'quantity'},
        {name: 'quantityunits'},
-       {name: 'rate', type: 'float'},
+       {name: 'rate'},
        {name: 'rateunits'},
        {name: 'total', type: 'float'},
        {name: 'autototal', type: 'float'}
@@ -97,7 +143,7 @@ function renderWidgets()
                 width: 75,
                 sortable: true,
                 dataIndex: 'quantity',
-                editor: new Ext.form.NumberField({allowBlank: false})
+                editor: new Ext.form.NumberField({decimalPrecision: 5, allowBlank: true})
             },
             {
                 header: 'Units',
@@ -129,7 +175,7 @@ function renderWidgets()
                 width: 75,
                 sortable: true,
                 dataIndex: 'rate',
-                editor: new Ext.form.NumberField({allowBlank: false})
+                editor: new Ext.form.NumberField({decimalPrecision: 5, allowBlank: true})
             },
             {
                 header: 'Units',
@@ -176,8 +222,21 @@ function renderWidgets()
                 summaryType: 'sum',
                 renderer: function(v, params, record)
                 {
-                    record.data.autototal = record.data.quantity * record.data.rate;
-                    //return Ext.util.Format.usMoney(record.data.quantity * record.data.rate);
+                    var q = record.data.quantity;
+                    var r = record.data.rate;
+
+                    if (r && record.data.quantityunits && record.data.rateunits == 'percent')
+                        r /= 100;
+
+                    if (q && r)
+                        record.data.autototal = q * r;
+                    else if (q && !r)
+                        record.data.autototal = record.data.total;
+                    else if (!q && r)
+                        record.data.autototal = record.data.total;
+                    else
+                        record.data.autototal = record.data.total;
+
                     return Ext.util.Format.usMoney(record.data.autototal);
                 },
                 // figure out how to sum column based on a renderer
@@ -257,8 +316,8 @@ function renderWidgets()
         animCollapse: false,
         stripeRows: true,
         autoExpandColumn: 'chargegroup',
-        height: 350,
-        width: 600,
+        height: 550,
+        width: 800,
         title: 'Actual Charges',
         clicksToEdit: 2
         // config options for stateful behavior
