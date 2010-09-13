@@ -6,6 +6,8 @@ import minimock
 from skyliner import splinter
 from datetime import date, datetime
 from amara import bindery
+from lxml import etree
+from skyliner.xml_utils import XMLUtils
 #TODO find out why this isn't working under linux
 #from IPython.Debugger import Tracer; debug_here = Tracer()
 import os
@@ -26,14 +28,34 @@ class TestFetchBillData(unittest.TestCase):
         pass
 
 
+    """ Verify that date generator returns a range of dates with the last not date being inclusive. """
     def testDateGenerator(self):
         i = 0
         for aDate in fbd.dateGenerator(date(2000, 01, 01), date(2000, 12, 31)):
             i = i + 1
         # 2000 is a leap year
-        self.assertEqual(i, 366) 
+        self.assertEqual(i, 365) 
+
+        i = 0
+        for aDate in fbd.dateGenerator(date(2001, 01, 01), date(2001, 01, 31)):
+            i = i + 1
+        self.assertEqual(i, 30)
+
+        i = 0
+        for aDate in fbd.dateGenerator(date(2010, 12, 30), date(2011, 01, 02)):
+            i = i + 1
+        self.assertEqual(i, 3)
+
+        i = 0
+        for aDate in fbd.dateGenerator(date(2010, 12, 30), date(2010, 01, 02)):
+            i = i + 1
+        self.assertEqual(i, 0)
+
+        
+
 
     def testUsageDataToVirtualRegisters1(self):
+        # ToDo: port to lxml
         dom = bindery.parse("test/test_fetch_bill_data/bill_reg_test_1_pre.xml")
 
         # test the weekend
@@ -42,23 +64,27 @@ class TestFetchBillData(unittest.TestCase):
                 dom, 
                 "http://no.whe.re", 
                 datetime(2010, 5, 1), 
-                datetime(2010, 5, 2), 
+                datetime(2010, 5, 3), 
                 True
             )
         # save intermediate results
-        open("test/test_fetch_bill_data/bill_reg_test_1_in.xml", 'w').write(results.xml_encode())
+        open(os.path.join("test", "test_fetch_bill_data", "bill_reg_test_1_in.xml"), 'w').write(results.xml_encode())
 
-        self.assertEquals(open("test/test_fetch_bill_data/bill_reg_test_1_in.xml", "rU").read(), 
-            open("test/test_fetch_bill_data/bill_reg_test_1_post.xml", "rU").read(), "Virtual registers did not populate as expected.")
+        resultantXML = etree.parse(os.path.join("test", "test_fetch_bill_data", "bill_reg_test_1_in.xml"))
+        expectedXML = etree.parse(os.path.join("test", "test_fetch_bill_data", "bill_reg_test_1_post.xml"))
+        (result, reason) = XMLUtils().compare_xml(resultantXML, expectedXML)
+
+
+        self.assertEquals(result, True, "Virtual registers did not populate as expected. " + reason)
 
         # clean up intermediate results
-        os.remove("test/test_fetch_bill_data/bill_reg_test_1_in.xml")
+        os.remove(os.path.join("test", "test_fetch_bill_data", "bill_reg_test_1_in.xml"))
         
         #for register in results.xml_select(u'//ub:register[@shadow=\'true\']/ub:identifier | //ub:register[@shadow=\'true\']/ub:total'):
             #register.xml_write()
 
     def testUsageDataToVirtualRegisters2(self):
-        dom = bindery.parse("test/test_fetch_bill_data/bill_reg_test_2_pre.xml")
+        dom = bindery.parse(os.path.join("test", "test_fetch_bill_data", "bill_reg_test_2_pre.xml"))
 
         # Test a Monday with peak/int/shoulder TOU in electric
         results = fbd.usageDataToVirtualRegister(
@@ -66,20 +92,24 @@ class TestFetchBillData(unittest.TestCase):
                 dom, 
                 "http://no.whe.re", 
                 datetime(2010, 5, 3), 
-                datetime(2010, 5, 3), 
+                datetime(2010, 5, 4), 
                 True
             )
         # save intermediate results for debugging
-        open("test/test_fetch_bill_data/bill_reg_test_2_in.xml", 'w').write(results.xml_encode())
-        self.assertEquals(open("test/test_fetch_bill_data/bill_reg_test_2_in.xml", "rU").read(),
-            open("test/test_fetch_bill_data/bill_reg_test_2_post.xml", "rU").read(), "Virtual registers did not populate as expected.")
+        open(os.path.join("test", "test_fetch_bill_data", "bill_reg_test_2_in.xml"), 'w').write(results.xml_encode())
+
+        resultantXML = etree.parse(os.path.join("test", "test_fetch_bill_data", "bill_reg_test_2_in.xml"))
+        expectedXML = etree.parse(os.path.join("test", "test_fetch_bill_data", "bill_reg_test_2_post.xml"))
+        (result, reason) = XMLUtils().compare_xml(resultantXML, expectedXML)
+
+        self.assertEquals(result, True, "Virtual registers did not populate as expected. " + reason)
 
         # clean up intermediate results
-        os.remove("test/test_fetch_bill_data/bill_reg_test_2_in.xml")
-
+        os.remove(os.path.join("test", "test_fetch_bill_data", "bill_reg_test_2_in.xml"))
 
     def testBindRegister(self):
-        dom = bindery.parse("test/test_fetch_bill_data/RegTest.xml")
+        # ToDo: port to lxml
+        dom = bindery.parse(os.path.join("test", "test_fetch_bill_data", "RegTest.xml"))
         registers = fbd.bindRegisters(dom)
         # parse only the shadow registers
         self.assertEqual(5, len(registers), "Expected five shadow registers")

@@ -1,29 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ub:utilitybill xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="utilitybill" account="10001" xsi:schemaLocation="utilitybill ../UtilityBill.xsd" id="4">
-	<ub:car>
-		<ub:accountnumber>3091 4490 03</ub:accountnumber>
-		<ub:serviceaddress>
-			<ub:addressee>College Park Car Wash Inc.</ub:addressee>
-			<ub:street>8616 Baltimore Ave</ub:street>
-			<ub:city>College Park</ub:city>
-			<ub:state>MD</ub:state>
-			<ub:country/>
-			<ub:postalcode>20740</ub:postalcode>
-			<ub:telephonenumber/>
-			<ub:hours/>
-		</ub:serviceaddress>
-		<ub:billingaddress>
-			<ub:addressee>College Park Car Wash</ub:addressee>
-			<ub:street>7106 Ridgewood Ave</ub:street>
-			<ub:city>Chevy Chase</ub:city>
-			<ub:state>MD</ub:state>
-			<ub:country/>
-			<ub:postalcode>20815-5148</ub:postalcode>
-			<ub:telephonenumber/>
-			<ub:hours/>
-		</ub:billingaddress>
-	</ub:car>
-	<ub:skylinebill>
+<ub:bill xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="bill" account="10001" xsi:schemaLocation="bill ../UtilityBill.xsd" id="4">
+	<ub:rebill>
+		<ub:car>
+			<ub:serviceaddress>
+				<ub:addressee>College Park Car Wash Inc.</ub:addressee>
+				<ub:street>8616 Baltimore Ave</ub:street>
+				<ub:city>College Park</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode>20740</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>College Park Car Wash</ub:addressee>
+				<ub:street>7106 Ridgewood Ave</ub:street>
+				<ub:city>Chevy Chase</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode>20815-5148</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
 		<ub:billperiodbegin>2010-01-11</ub:billperiodbegin>
 		<ub:billperiodend>2010-03-04</ub:billperiodend>
 		<ub:priorbalance>28.21</ub:priorbalance>
@@ -39,8 +38,31 @@
 		<ub:duedate>2010-05-15</ub:duedate>
 		<ub:issued>2010-04-28</ub:issued>
 		<ub:message>Electric service 2010-01-11 to 2010-02-04 was estimated and Skyline charges cancelled. Actual usage billed this period.</ub:message>
-	</ub:skylinebill>
-	<ub:summary service="Electric">
+	</ub:rebill>
+	<ub:utilbill service="Electric">
+		<ub:car>
+			<ub:accountnumber>3091 4490 03</ub:accountnumber>
+			<ub:serviceaddress>
+				<ub:addressee>College Park Car Wash Inc.</ub:addressee>
+				<ub:street>8616 Baltimore Ave</ub:street>
+				<ub:city>College Park</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode>20740</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>College Park Car Wash</ub:addressee>
+				<ub:street>7106 Ridgewood Ave</ub:street>
+				<ub:city>Chevy Chase</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode>20815-5148</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
 		<ub:priorbalance>0.0</ub:priorbalance>
 		<ub:previouspayment>
 			<ub:payee/>
@@ -60,8 +82,31 @@
 			<ub:penalty/>
 			<ub:amount>0.00</ub:amount>
 		</ub:latepayment>
-	</ub:summary>
-	<ub:summary service="Gas">
+	</ub:utilbill>
+	<ub:utilbill service="Gas">
+		<ub:car>
+			<ub:accountnumber>3091 4490 03</ub:accountnumber>
+			<ub:serviceaddress>
+				<ub:addressee>College Park Car Wash Inc.</ub:addressee>
+				<ub:street>8616 Baltimore Ave</ub:street>
+				<ub:city>College Park</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode>20740</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>College Park Car Wash</ub:addressee>
+				<ub:street>7106 Ridgewood Ave</ub:street>
+				<ub:city>Chevy Chase</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode>20815-5148</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
 		<ub:priorbalance>0.0</ub:priorbalance>
 		<ub:previouspayment>
 			<ub:payee/>
@@ -81,7 +126,7 @@
 			<ub:penalty/>
 			<ub:amount>0.00</ub:amount>
 		</ub:latepayment>
-	</ub:summary>
+	</ub:utilbill>
 	<ub:details service="Gas">
 		<ub:rateschedule>
 			<ub:name>Commercial Heat/Cool</ub:name>
@@ -768,4 +813,4 @@
 			</ub:register>
 		</ub:meter>
 	</ub:measuredusage>
-</ub:utilitybill>
+</ub:bill>

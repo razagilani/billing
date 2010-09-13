@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
-<ub:utilitybill id="10000" account="10001" xsi:schemaLocation="utilitybill ../UtilityBill.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="utilitybill">
+<ub:bill id="10000" account="10001" xsi:schemaLocation="bill ../bill.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="bill">
 	<ub:measuredusage service="Gas">
 		<ub:meter>
 			<ub:estimated>false</ub:estimated>
@@ -322,4 +322,4 @@
 			</ub:register>
 		</ub:meter>
 	</ub:measuredusage>
-</ub:utilitybill>
+</ub:bill>
