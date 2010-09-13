@@ -1,0 +1,75 @@
+<html>
+<head>
+
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Stateful Array Grid Example</title>
+
+    <!-- ** CSS ** -->
+    <!-- base library -->
+    <link rel="stylesheet" type="text/css" href="ext-3.2.1/resources/css/ext-all.css" />
+
+    <!-- overrides to base library -->
+
+    <!-- page specific -->
+    <link rel="stylesheet" type="text/css" href="skylinearray-grid.css" />
+    <link rel="stylesheet" type="text/css" href="grid-examples.css" />
+
+    <script type="text/javascript" src="xml-bind.js"></script>
+    <script type="text/javascript" src="xml-support.js"></script>
+    <script type="text/javascript" src="jquery-1.4.2.js"></script>
+
+
+
+    <style type=text/css>
+        /* style rows on mouseover */
+        .x-grid3-row-over .x-grid3-cell-inner {
+            font-weight: bold;
+        }
+    </style>
+
+    <!-- ** Javascript ** -->
+    <!-- ExtJS library: base/adapter -->
+    <script type="text/javascript" src="ext-3.2.1/adapter/ext/ext-base.js"></script>
+
+    <!-- ExtJS library: all widgets -->
+    <script type="text/javascript" src="ext-3.2.1/ext-all.js"></script>
+
+    <!-- extensions -->
+    <script type="text/javascript" src="ext-3.2.1/examples/ux/GroupSummary.js"></script>
+
+    <!-- overrides to base library -->
+
+    <!-- page specific -->
+    <script type="text/javascript" src="skylinearray-grid.js"></script>
+
+    <!-- start the execution of javascript code -->
+    <script type="text/javascript">
+        $(document).ready(function() {
+            //bindXML();
+            renderWidgets();
+          });
+    </script>
+
+</head>
+<body>
+
+<div>
+    <input type="text" id="customer-accounts" size="20"/>
+    <input type="text" id="customer-bills" size="20"/>
+</div>
+   
+  <table>
+    <tr>
+      <td>
+        <form id="accountsForm" action="javascipt:selectAccount(this);"></form>
+      </td>
+      <td>
+        <form id="billsForm" action="javascipt:selectBill(this);"></form>
+      </td>
+    </tr>
+  </table>
+   
+    <div id="grid-example"></div>
+
+</body>
+</html>
