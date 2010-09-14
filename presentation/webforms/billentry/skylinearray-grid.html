@@ -2,7 +2,7 @@
 <head>
 
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Stateful Array Grid Example</title>
+    <title>Bill charge entry</title>
 
     <!-- ** CSS ** -->
     <!-- base library -->
@@ -32,7 +32,7 @@
     <script type="text/javascript" src="ext-3.2.1/adapter/ext/ext-base.js"></script>
 
     <!-- ExtJS library: all widgets -->
-    <script type="text/javascript" src="ext-3.2.1/ext-all.js"></script>
+    <script type="text/javascript" src="ext-3.2.1/ext-all-debug.js"></script>
 
     <!-- extensions -->
     <script type="text/javascript" src="ext-3.2.1/examples/ux/GroupSummary.js"></script>
@@ -54,11 +54,11 @@
 <body>
 
 <div>
-    <input type="text" id="customer-accounts" size="20"/>
-    <input type="text" id="customer-bills" size="20"/>
+    Account: <input type="text" id="customer-accounts" size="20"/>
+    Bill: <input type="text" id="customer-bills" size="20"/>
 </div>
    
-  <table>
+  <!--table>
     <tr>
       <td>
         <form id="accountsForm" action="javascipt:selectAccount(this);"></form>
@@ -67,7 +67,7 @@
         <form id="billsForm" action="javascipt:selectBill(this);"></form>
       </td>
     </tr>
-  </table>
+  </table-->
    
     <div id="grid-example"></div>
 

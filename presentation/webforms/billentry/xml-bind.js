@@ -28,6 +28,7 @@ var appAvailable = false;
 
 // Lots of manual lifting here.  This is due to the fact that JS Frameworks do not do
 // a good job of handling XML Namespaces. 
+// ToDo: evaluate this function across browsers
 function billXML2Array(billDoc)
 {
 
@@ -73,7 +74,66 @@ function billXML2Array(billDoc)
 }
 
 
+// ToDo: evaluate this function across browsers
+function Array2BillXML(bill, records)
+{
 
+    // enumerate the records
+    // for each chargegroup encountered, find the actual charges in xml
+    // delete those actual charges
+    // reconstruct the actual charges from the records
+    // and insert them into the chargegroup
+
+
+    // find the charges and remove them from the XML Doc
+    //node[0].parentNode.removeChild(node[0]);
+    findActualCharges(bill)
+
+    // given the array of records from the store backing
+    // the grid, convert them to XML
+    var cg = null;
+    for(r = 0; r < records.length; r++)
+    {
+        if (cg != records[r].data.chargegroup) 
+        {
+            cg = records[r].data.chargegroup;
+            alert(cg);
+        }
+    }
+
+    var charge = billDoc.createElementNS("bill","ub:charge");
+    var chargeDescription = billDoc.createElementNS("bill", "ub:description")
+    chargeDescription.appendChild(billDoc.createTextNode("Enter description"));
+    charge.appendChild(chargeDescription);
+
+    //var chargeQuantity = billDoc.createElementNS("bill", "ub:quantity");
+    //chargeQuantity.appendChild(billDoc.createTextNode("Quantity"));
+    //charge.appendChild(chargeQuantity);
+
+    //var chargeRate = billDoc.createElementNS("bill", "ub:rate");
+    //chargeRate.appendChild(billDoc.createTextNode("Rate"));
+    //charge.appendChild(chargeRate);
+
+    var chargeTotal = billDoc.createElementNS("bill", "ub:total");
+    chargeTotal.appendChild(billDoc.createTextNode("0.0"));
+    charge.appendChild(chargeTotal);
+
+    function findActualCharges(bill)
+    {
+        // find the node with the actualcharges
+        
+        var chargegroup = billDoc.getElementsByTagName("ub:chargegroup");
+        for (cg = 0; cg < chargegroup.length; cg++)
+        {
+
+            var charges = chargegroup[cg].getElementsByTagName("ub:charges")[0];
+            if (charges.attributes[0].nodeValue == "actual")
+                STOPPED HERE
+        }
+
+    }
+
+}
 
 
 

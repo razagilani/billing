@@ -1,20 +1,29 @@
+
+
+// Configure ext js widgets and events
 function renderWidgets()
 {
 
+    // global to access xml bill for saving changes
+    // The DOM containing an XML representation of a bill
+    var bill = null;
+
+
+    // ToDo: state support for grid
     //Ext.state.Manager.setProvider(new Ext.state.CookieProvider());
 
-    // set up combo boxes
 
+    // set up combo box for listing the accounts
     var customerAccountRecordType = Ext.data.Record.create([
-        {name: 'account', mapping: ""}
+        {name: 'account', mapping: ''}
     ]);
 
+    // Trick: the repeating record is <account> and it is directly a child of <accounts> 
     var customerAccountXMLReader = new Ext.data.XmlReader({
         record: 'account',
     }, customerAccountRecordType);
 
     var customerAccountStore = new Ext.data.Store({
-        //url: 'http://skyline/exist/rest/db/skyline/bills',
         url: 'http://skyline/exist/rest/db/skyline/ListAccounts.xql',
         reader: customerAccountXMLReader
     });
@@ -29,8 +38,9 @@ function renderWidgets()
         applyTo: 'customer-accounts',
     });
 
+    // set up combo box for listing the bills
     var customerBillRecordType = Ext.data.Record.create([
-        {name: 'bill', mapping: ""}
+        {name: 'bill', mapping: ''}
     ]);
 
     var customerBillXMLReader = new Ext.data.XmlReader({
@@ -38,7 +48,6 @@ function renderWidgets()
     }, customerBillRecordType);
 
     var customerBillStore = new Ext.data.Store({
-        //url: 'http://skyline/exist/rest/db/skyline/bills',
         url: 'http://skyline/exist/rest/db/skyline/ListBills.xql',
         reader: customerBillXMLReader
     });
@@ -55,34 +64,29 @@ function renderWidgets()
 
     // events to link the account and bill combo boxes with eachother and the bill view
     customerAccountCombo.on('select', function(combobox, record, index) {
+
+
         customerBillStore.setBaseParam('id', record.data.account);
         customerBillStore.load();
     });
 
+    // fired when the customer bill combo box is selected
+    // ToDo: do not allow selection change if store is unsaved
     customerBillCombo.on('select', function(combobox, record, index) {
 
+        // loads a bill from eXistDB
         Ext.Ajax.request({
-           url: 'http://skyline/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() + '/' + record.data.bill,
-           success: bindBill,
-           failure: bindBillFail,
-           //headers: {
-               //'my-header': 'foo'
-           //},
-           //params: { foo: 'bar' }
+           url: 'http://skyline/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+            + '/' + record.data.bill,
+           success: billLoaded,
+           failure: billLoadFailed,
         });
             
     });
 
-    function bindBill(data) {
-        hypoCharges = billXML2Array(data.responseXML);
-        store.loadData(hypoCharges);
-    }
 
-    function bindBillFail(data) {
-        alert(data);
-    }
-
-    // flatten xml representation to an array
+    // initial data loaded into the grid before a bill is loaded
+    // ToDo: have grid show empty prior to load
     var myData = [
         ['Charge Group 1', null,500,'ccf', 10,'dollars',1000],
         ['Charge Group 3', '3 Charge Description',100,'kWh', 10,'percent',1000],
@@ -220,8 +224,12 @@ function renderWidgets()
                 sortable: true, 
                 dataIndex: 'autototal', 
                 summaryType: 'sum',
+                align: 'right',
                 renderer: function(v, params, record)
                 {
+                    // terrible hack allowing percentages to display as x%
+                    // yet participate as a value between 0 and 1 for
+                    // showing that charge items compute
                     var q = record.data.quantity;
                     var r = record.data.rate;
 
@@ -253,34 +261,51 @@ function renderWidgets()
     // create the Grid
     var grid = new Ext.grid.EditorGridPanel({
         tbar: [{
+            // ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
+            ref: '../insertBtn',
             iconCls: 'icon-user-add',
             text: 'Insert',
+            disabled: true,
             handler: function()
             {
-                var defaultData = 
-                {
-                    chargegroup: 'Charge Group 1',
-                    description: 'description',
-                    quantity: 15.5,
-                    quantityunits: 'kWh',
-                    rate: 15.5,
-                    rateunits: 'dollars',
-                    total: 1500.1,
-                    //autototal: 0
-                };
-                var ChargeItemType = grid.getStore().recordType;
-                var c = new ChargeItemType(defaultData);
-
                 grid.stopEditing();
+
                 // grab the current selection - only one row may be selected per singlselect configuration
                 var selection = grid.getSelectionModel().getSelected();
+
+                // make the new record
+                var ChargeItemType = grid.getStore().recordType;
+                var defaultData = 
+                {
+                    // ok, this is tricky:  the newly created record is assigned the chargegroup
+                    // of the selection during the insert.  This way, the new record is added
+                    // to the proper group.  Otherwise, if the record does not have the same
+                    // chargegroup name of the adjacent record, a new group is shown in the grid
+                    // and the UI goes out of sync.  Try this by change the chargegroup below
+                    // to some other string.
+                    chargegroup: selection.data.chargegroup,
+                    description: 'enter description',
+                    quantity: 0,
+                    quantityunits: 'kWh',
+                    rate: 0,
+                    rateunits: 'dollars',
+                    total: 0,
+                    //autototal: 0
+                };
+                var c = new ChargeItemType(defaultData);
+    
+                // select newly inserted record
                 var insertionPoint = store.indexOf(selection);
                 store.insert(insertionPoint + 1, c);
                 grid.getView().refresh();
                 grid.getSelectionModel().selectRow(insertionPoint);
-                grid.startEditing(0);
+                grid.startEditing(insertionPoint +1,1);
+                
+                // An inserted record must be saved 
+                grid.saveBtn.setDisabled(false);
             }
         },{
+            // ref places a name for this component into the grid so it may be referenced as grid.removeBtn...
             ref: '../removeBtn',
             iconCls: 'icon-user-delete',
             text: 'Remove',
@@ -295,10 +320,20 @@ function renderWidgets()
                 }
             }
         },{
+            // places reference to this button in grid.  
+            ref: '../saveBtn',
             text: 'Save',
+            disabled: true,
             handler: function()
             {
-                store.commitChanges();
+                // disable the save button for the save attempt.
+                // is there a closer place for this to the actual button click due to the possibility of a double
+                // clicked button submitting two ajax requests?
+                grid.saveBtn.setDisabled(1);
+
+                // stop grid editing so that widgets like comboboxes in rows don't stay focused
+                grid.stopEditing();
+
                 saveToXML(store.getRange());
             }
         }],
@@ -327,22 +362,88 @@ function renderWidgets()
 
     // selection callbacks
     grid.getSelectionModel().on('selectionchange', function(sm){
-        sm.getCount();
+        // if a selection is made, allow it to be removed
+        // if the selection was deselected to nothing, allow no 
+        // records to be removed.
         grid.removeBtn.setDisabled(sm.getCount() < 1);
+
+        // if there was a selection, allow an insertion
+        grid.insertBtn.setDisabled(sm.getCount()<1);
+
     });
-    
+  
+    // grid's data store callback for when data is edited
+    // when the store backing the grid is edited, enable the save button
+    store.on('update', function(){
+        grid.saveBtn.setDisabled(false);
+    });
     
     // render the grid to the specified div in the page
     grid.render('grid-example');
 
 
-}
+
+    // Functions that handle the loading and saving of bill xml 
+    // using the restful interface of eXist DB
+
+
+    // called due to customerBillCombo.on() select event (see above)
+    function billLoaded(data) {
+        bill = data.responseXML;
+        hypoCharges = billXML2Array(data.responseXML);
+        store.loadData(hypoCharges);
+    }
+
+    function billLoadFailed(data) {
+        // ToDo: take corrective action
+        alert(data);
+    }
 
     function saveToXML(records)
     {
-       alert(records[0].data.description);
+
+        // take the records that are maintained in the store
+        // and update the bill document with them.
+        bill = Array2BillXML(bill, records);
+
+        // ToDo: credentials
+
+        if (bill != null)
+        {
+
+            Ext.Ajax.request({
+               url: 'http://skyline/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+                + '/' + customerBillCombo.getValue(),
+               method: 'PUT',
+               xmlData: bill,
+               success: billSaved,
+               failure: billDidNotSave,
+            });
+        } else alert("No bill to save");
     }
 
+    function billSaved(data)
+    {
+        // successful PUT of bill to eXistDB.  Deflag the red dirty markers on grid
+        store.commitChanges();
+
+        // disable the save button until the next edit to the grid store
+        grid.saveBtn.setDisabled(true);
+
+
+        alert("Bill Saved " + data);
+    }
+
+    function billDidNotSave(data)
+    {
+        alert("Bill Save Failed " + data);
+
+        // reenable the save button because of the failed save attempt
+        grid.saveBtn.setDisabled(false);
+    }
+
+
+}
 
 
 
