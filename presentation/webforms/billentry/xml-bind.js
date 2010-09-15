@@ -35,6 +35,8 @@ function billXML2Array(billDoc)
     // build an array based on the bill xml hypothetical charges
     var hc = new Array();
     
+
+    // ToDo: support multiple <ub:details service=*/>
     // bind to chargegroups
     var chargegroup = billDoc.getElementsByTagName("ub:chargegroup");
     for (cg = 0; cg < chargegroup.length; cg++)
@@ -75,6 +77,7 @@ function billXML2Array(billDoc)
 
 
 // ToDo: evaluate this function across browsers
+// records passed in must be ordered by chargegroup, as they are by the GroupingStore
 function Array2BillXML(bill, records)
 {
 
@@ -84,61 +87,91 @@ function Array2BillXML(bill, records)
     // reconstruct the actual charges from the records
     // and insert them into the chargegroup
 
-
-    // find the charges and remove them from the XML Doc
-    //node[0].parentNode.removeChild(node[0]);
-    findActualCharges(bill)
-
     // given the array of records from the store backing
     // the grid, convert them to XML
+ 
+    // used to track each new chargegroup found in the groupingstore records
     var cg = null;
+    // used to track the XML charges that are deleted then recreated
+    var charges = null;
+    // used to track charges total. see below where it is added to the charges.
+    var chargesSubtotal = 0;
+    var chargesTotalElem = null;
+
     for(r = 0; r < records.length; r++)
     {
-        if (cg != records[r].data.chargegroup) 
+        // pick the current record from the grid grouping store and turn it into XML
+        var curRec = records[r];
+
+        // a new chargegroup is seen
+        if (cg != curRec.data.chargegroup) 
         {
-            cg = records[r].data.chargegroup;
-            alert(cg);
-        }
-    }
+            cg = curRec.data.chargegroup;
 
-    var charge = billDoc.createElementNS("bill","ub:charge");
-    var chargeDescription = billDoc.createElementNS("bill", "ub:description")
-    chargeDescription.appendChild(billDoc.createTextNode("Enter description"));
-    charge.appendChild(chargeDescription);
+            // reset the total
+            chargesSubtotal = 0;
 
-    //var chargeQuantity = billDoc.createElementNS("bill", "ub:quantity");
-    //chargeQuantity.appendChild(billDoc.createTextNode("Quantity"));
-    //charge.appendChild(chargeQuantity);
+            // ToDo: must support multiple <ub:details service=*/>
+            // find the associated actual charges
+            var actualChargesNodeList = evaluateXPath(bill, 
+                "/ub:bill/ub:details/ub:chargegroup[@type=\""+cg+"\"]/ub:charges[@type=\"actual\"]");
 
-    //var chargeRate = billDoc.createElementNS("bill", "ub:rate");
-    //chargeRate.appendChild(billDoc.createTextNode("Rate"));
-    //charge.appendChild(chargeRate);
+            // ToDo: assert only one set of charges came back
+            charges = actualChargesNodeList[0];
 
-    var chargeTotal = billDoc.createElementNS("bill", "ub:total");
-    chargeTotal.appendChild(billDoc.createTextNode("0.0"));
-    charge.appendChild(chargeTotal);
+            // remove only the charge item children leaving the total child behind
+            var deleteChildrenNodeList = evaluateXPath(charges, "ub:charge");
+            for (i = 0; i < deleteChildrenNodeList.length; i++)
+            {
+                charges.removeChild(deleteChildrenNodeList[i]);
+            }
 
-    function findActualCharges(bill)
-    {
-        // find the node with the actualcharges
-        
-        var chargegroup = billDoc.getElementsByTagName("ub:chargegroup");
-        for (cg = 0; cg < chargegroup.length; cg++)
-        {
-
-            var charges = chargegroup[cg].getElementsByTagName("ub:charges")[0];
-            if (charges.attributes[0].nodeValue == "actual")
-                STOPPED HERE
+            // Get the total element
+            // ToDo: assert only one is returned
+            chargesTotalElem = evaluateXPath(charges, "ub:total")[0];
+            
         }
 
+        // for the currently obtained charges element, add a new child for every iteration of r
+        // when a new chargegroup is encountered, set charges to the new set of charges
+
+        // once removed, recreate each charge
+        var charge = bill.createElementNS("bill","ub:charge");
+
+        // and the children of each charge
+        var description = bill.createElementNS("bill", "ub:description")
+        description.appendChild(bill.createTextNode(curRec.data.description));
+        charge.appendChild(description);
+
+        var quantity = bill.createElementNS("bill", "ub:quantity");
+        quantity.setAttribute("units", curRec.data.quantityunits);
+        quantity.appendChild(bill.createTextNode(curRec.data.quantity));
+        charge.appendChild(quantity);
+
+        var rate = bill.createElementNS("bill", "ub:rate");
+        rate.setAttribute("units", curRec.data.rateunits);
+        rate.appendChild(bill.createTextNode(curRec.data.rate));
+        charge.appendChild(rate);
+
+        var total = bill.createElementNS("bill", "ub:total");
+        total.appendChild(bill.createTextNode(curRec.data.total));
+        charge.appendChild(total);
+
+        // finally, add the charge to the current set of charges
+        charges.insertBefore(charge, chargesTotalElem);
+
+        // accumulate the total.  Don't like to do this here...
+        // Appears to be no good way to get the grouping store group totals
+        // So, we totalize here, or forget it and let a downstream program
+        // add the totals to the XML doc.
+        // avoid float rounding by going integer math
+        chargesSubtotal += parseFloat(curRec.data.total*100);
+        chargesTotalElem.removeChild(chargesTotalElem.firstChild);
+        chargesTotalElem.appendChild(bill.createTextNode((chargesSubtotal/100).toString()));
     }
 
+    return bill;
 }
-
-
-
-
-
 
 
 
