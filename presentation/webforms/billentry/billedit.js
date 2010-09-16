@@ -390,8 +390,8 @@ function renderWidgets()
     // called due to customerBillCombo.on() select event (see above)
     function billLoaded(data) {
         bill = data.responseXML;
-        hypoCharges = billXML2Array(data.responseXML);
-        store.loadData(hypoCharges);
+        actualCharges = billXML2Array(data.responseXML);
+        store.loadData(actualCharges);
     }
 
     function billLoadFailed(data) {
