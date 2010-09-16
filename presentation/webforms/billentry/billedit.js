@@ -1,5 +1,3 @@
-
-
 // Configure ext js widgets and events
 function renderWidgets()
 {
@@ -23,8 +21,10 @@ function renderWidgets()
         record: 'account',
     }, customerAccountRecordType);
 
+    alert('http://'+serverName+'/exist/rest/db/skyline/ListAccounts.xql');
     var customerAccountStore = new Ext.data.Store({
-        url: 'http://skyline/exist/rest/db/skyline/ListAccounts.xql',
+        // serverName externally declared in local-vars.js
+        url: 'http://'+serverName+'/exist/rest/db/skyline/ListAccounts.xql',
         reader: customerAccountXMLReader
     });
 
@@ -48,7 +48,8 @@ function renderWidgets()
     }, customerBillRecordType);
 
     var customerBillStore = new Ext.data.Store({
-        url: 'http://skyline/exist/rest/db/skyline/ListBills.xql',
+        // serverName externally declared in local-vars.js
+        url: 'http://'+serverName+'/exist/rest/db/skyline/ListBills.xql',
         reader: customerBillXMLReader
     });
 
@@ -76,8 +77,9 @@ function renderWidgets()
 
         // loads a bill from eXistDB
         Ext.Ajax.request({
-           url: 'http://skyline/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
-            + '/' + record.data.bill,
+            // servername externally declared in local-vars.js
+            url: 'http://'+serverName+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+                + '/' + record.data.bill,
            success: billLoaded,
            failure: billLoadFailed,
         });
@@ -86,20 +88,9 @@ function renderWidgets()
 
 
     // initial data loaded into the grid before a bill is loaded
-    // ToDo: have grid show empty prior to load
-    var myData = [
-        ['Charge Group 1', null,500,'ccf', 10,'dollars',1000],
-        ['Charge Group 3', '3 Charge Description',100,'kWh', 10,'percent',1000],
-        ['Charge Group 1', '1 Charge Description',100,'kWh', 10,'dollars',1000],
-        ['Charge Group 1', '1 Charge Description',100,'kWh', 10,'cents',1000],
-        ['Charge Group 1', '1 Charge Description',100,'ccf', 10,'percent',1000],
-        ['Charge Group 2', '2 Charge Description',100,'KWD', 10,'cents',1000],
-        ['Charge Group 2', '2 Charge Description',100,'qty units', 10,'rate units',1000],
-        ['Charge Group 2', '2 Charge Description',100,'qty units', 10,'rate units',1000],
-        ['Charge Group 2', '2 Charge Description',100,'qty units', 10,'rate units',1000],
-        ['Charge Group 3', '3 Charge Description',100,'qty units', 10,'rate units',1000],
-        ['Charge Group 3', '3 Charge Description',100,'qty units', 10,'rate units',1000],
-        ['Charge Group 3', '3 Charge Description',100,'qty units', 10,'rate units',1000],
+    // populate with data if initial pre-loaded data is desired
+    var billData = [
+        //['Charge Group 1', 'Charge Description',100,'qty units', 10,'rate units',1000],
     ];
 
     var reader = new Ext.data.ArrayReader({}, [
@@ -115,8 +106,8 @@ function renderWidgets()
 
     var store = new Ext.data.GroupingStore({
             reader: reader,
-            data: myData,
-            sortInfo:{field: 'chargegroup', direction: "ASC"},
+            data: billData,
+            sortInfo:{field: 'chargegroup', direction: 'ASC'},
             groupField:'chargegroup'
         });
 
@@ -412,14 +403,15 @@ function renderWidgets()
         {
 
             Ext.Ajax.request({
-               url: 'http://skyline/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
-                + '/' + customerBillCombo.getValue(),
-               method: 'PUT',
-               xmlData: bill,
-               success: billSaved,
-               failure: billDidNotSave,
+                // servername externally declared in local-vars.js 
+                url: 'http://'+serverName+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+                    + '/' + customerBillCombo.getValue(),
+                method: 'PUT',
+                xmlData: bill,
+                success: billSaved,
+                failure: billDidNotSave,
             });
-        } else alert("No bill to save");
+        } else alert('No bill to save');
     }
 
     function billSaved(data)
@@ -431,12 +423,12 @@ function renderWidgets()
         grid.saveBtn.setDisabled(true);
 
 
-        alert("Bill Saved " + data);
+        alert('Bill Saved ' + data);
     }
 
     function billDidNotSave(data)
     {
-        alert("Bill Save Failed " + data);
+        alert('Bill Save Failed ' + data);
 
         // reenable the save button because of the failed save attempt
         grid.saveBtn.setDisabled(false);
