@@ -1,2 +1,2 @@
-var serverName = 'tyrell';
-//var serverName = 'skyline';
+//var serverName = 'tyrell';
+var serverName = 'skyline';
