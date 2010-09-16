@@ -21,7 +21,6 @@ function renderWidgets()
         record: 'account',
     }, customerAccountRecordType);
 
-    alert('http://'+serverName+'/exist/rest/db/skyline/ListAccounts.xql');
     var customerAccountStore = new Ext.data.Store({
         // serverName externally declared in local-vars.js
         url: 'http://'+serverName+'/exist/rest/db/skyline/ListAccounts.xql',
