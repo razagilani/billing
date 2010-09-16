@@ -11,17 +11,16 @@ function billXML2Array(bill)
     var chargeIndex = 0 
 
     // ToDo: support multiple <ub:details service=*/>
-    // bind to chargegroups
-    //var chargegroup = bill.getElementsByTagName("ub:chargegroup");
+    // get to chargegroups
     var chargegroup = evaluateXPath(bill, 
                 "/ub:bill/ub:details[@service=\"Gas\"]/ub:chargegroup");
     for (cg = 0; cg < chargegroup.length; cg++)
     {
 
-	// chargegroups contain two sets of charges.  Actual, or hypothetical
+        // chargegroups contain two sets of charges.  Actual, or hypothetical
         var charges = chargegroup[cg].getElementsByTagName("ub:charges")[0];
 
-	// if an actual set of charges, create an array of the charges
+        // if an actual set of charges, create an array of the charges
         var chargesType = charges.attributes[0].nodeValue;
         if (chargesType == "actual")
         {
@@ -35,18 +34,20 @@ function billXML2Array(bill)
                 hc[chargeIndex][0] = chargegroup[cg].attributes[0].nodeValue;
 
                 var descriptionElem = (charge[c].getElementsByTagName("ub:description"))[0];
-                hc[chargeIndex][1] = descriptionElem && descriptionElem.childNodes[0].nodeValue ? descriptionElem.childNodes[0].nodeValue : null;
+                hc[chargeIndex][1] = (descriptionElem && descriptionElem.hasChildNodes()) ? descriptionElem.childNodes[0].nodeValue : null;
 
                 var quantityElem = (charge[c].getElementsByTagName("ub:quantity"))[0];
-                hc[chargeIndex][2] = quantityElem && quantityElem.childNodes[0] ? quantityElem.childNodes[0].nodeValue : null;
-                hc[chargeIndex][3] = quantityElem && quantityElem.attributes[0] ? quantityElem.attributes[0].nodeValue : null;
+                hc[chargeIndex][2] = (quantityElem && quantityElem.hasChildNodes()) ? quantityElem.childNodes[0].nodeValue : null;
+                hc[chargeIndex][3] = (quantityElem && quantityElem.hasAttributes()) ? quantityElem.attributes[0].nodeValue : null;
 
                 var rateElem = (charge[c].getElementsByTagName("ub:rate"))[0];
-                hc[chargeIndex][4] = rateElem && rateElem.childNodes[0] ? rateElem.childNodes[0].nodeValue : null;
-                hc[chargeIndex][5] = rateElem && rateElem.attributes[0] ? rateElem.attributes[0].nodeValue : null;
+                hc[chargeIndex][4] = (rateElem && rateElem.hasChildNodes()) ? rateElem.childNodes[0].nodeValue : null;
+                hc[chargeIndex][5] = (rateElem && rateElem.hasAttributes()) ? rateElem.attributes[0].nodeValue : null;
 
                 var totalElem = (charge[c].getElementsByTagName("ub:total"))[0];
-                hc[chargeIndex][6] = totalElem && totalElem.childNodes[0].nodeValue ? totalElem.childNodes[0].nodeValue : null;
+                hc[chargeIndex][6] = (totalElem && totalElem.hasChildNodes()) ? totalElem.childNodes[0].nodeValue : null;
+                var processingnoteElem = (charge[c].getElementsByTagName("ub:processingnote"))[0];
+                hc[chargeIndex][7] = (processingnoteElem && processingnoteElem.hasChildNodes()) ? processingnoteElem.childNodes[0].nodeValue : null;
 
                 // increment the array index allowing for the next chargegroup charges to be appended.
                 chargeIndex++;
@@ -122,23 +123,40 @@ function Array2BillXML(bill, records)
         var charge = bill.createElementNS("bill","ub:charge");
 
         // and the children of each charge
-        var description = bill.createElementNS("bill", "ub:description")
-        description.appendChild(bill.createTextNode(curRec.data.description));
-        charge.appendChild(description);
+        if (curRec.data.description && curRec.data.description.length != 0) {
+            var description = bill.createElementNS("bill", "ub:description")
+            description.appendChild(bill.createTextNode(curRec.data.description));
+            charge.appendChild(description);
+        }
 
-        var quantity = bill.createElementNS("bill", "ub:quantity");
-        quantity.setAttribute("units", curRec.data.quantityunits);
-        quantity.appendChild(bill.createTextNode(curRec.data.quantity));
-        charge.appendChild(quantity);
+        if (curRec.data.quantity && curRec.data.quantity.length != 0) {
+            var quantity = bill.createElementNS("bill", "ub:quantity");
+            if (curRec.data.quantityunits && curRec.data.quantityunits.length != 0) {
+                quantity.setAttribute("units", curRec.data.quantityunits);
+            }
+            quantity.appendChild(bill.createTextNode(curRec.data.quantity));
+            charge.appendChild(quantity);
+        }
 
-        var rate = bill.createElementNS("bill", "ub:rate");
-        rate.setAttribute("units", curRec.data.rateunits);
-        rate.appendChild(bill.createTextNode(curRec.data.rate));
-        charge.appendChild(rate);
+        if (curRec.data.rate && curRec.data.rate.length != 0) {
+            var rate = bill.createElementNS("bill", "ub:rate");
+            if (curRec.data.rateunits && curRec.data.rateunits.length != 0) {
+                rate.setAttribute("units", curRec.data.rateunits);
+            }
+            rate.appendChild(bill.createTextNode(curRec.data.rate));
+            charge.appendChild(rate);
+        }
 
+        // there is always a total
         var total = bill.createElementNS("bill", "ub:total");
         total.appendChild(bill.createTextNode(curRec.data.total));
         charge.appendChild(total);
+
+        if (curRec.data.processingnote && curRec.data.processingnote.length != 0) {
+            var processingnote = bill.createElementNS("bill", "ub:processingnote");
+            processingnote.appendChild(bill.createTextNode(curRec.data.processingnote));
+            charge.appendChild(processingnote);
+        }
 
         // finally, add the charge to the current set of charges
         charges.insertBefore(charge, chargesTotalElem);
