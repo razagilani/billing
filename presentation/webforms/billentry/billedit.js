@@ -309,6 +309,7 @@ function renderWidgets()
                 {
                     store.remove(r);
                 }
+                grid.saveBtn.setDisabled(false);
             }
         },{
             // places reference to this button in grid.  
@@ -320,7 +321,7 @@ function renderWidgets()
                 // disable the save button for the save attempt.
                 // is there a closer place for this to the actual button click due to the possibility of a double
                 // clicked button submitting two ajax requests?
-                grid.saveBtn.setDisabled(1);
+                grid.saveBtn.setDisabled(true);
 
                 // stop grid editing so that widgets like comboboxes in rows don't stay focused
                 grid.stopEditing();

@@ -1,46 +1,55 @@
-
-
 // Lots of manual lifting here.  This is due to the fact that JS Frameworks do not do
 // a good job of handling XML Namespaces. 
+// Given a XML document with bill actual charges, flatten them out into a two dimensional array
 // ToDo: evaluate this function across browsers
-function billXML2Array(billDoc)
+function billXML2Array(bill)
 {
 
     // build an array based on the bill xml hypothetical charges
     var hc = new Array();
-    
+    // this array will have chargegroup-charge pairs and a number of rows for all charges in a chargegroup
+    var chargeIndex = 0 
 
     // ToDo: support multiple <ub:details service=*/>
     // bind to chargegroups
-    var chargegroup = billDoc.getElementsByTagName("ub:chargegroup");
+    //var chargegroup = bill.getElementsByTagName("ub:chargegroup");
+    var chargegroup = evaluateXPath(bill, 
+                "/ub:bill/ub:details[@service=\"Gas\"]/ub:chargegroup");
     for (cg = 0; cg < chargegroup.length; cg++)
     {
 
+	// chargegroups contain two sets of charges.  Actual, or hypothetical
         var charges = chargegroup[cg].getElementsByTagName("ub:charges")[0];
-        if (charges.attributes[0].nodeValue == "actual")
+
+	// if an actual set of charges, create an array of the charges
+        var chargesType = charges.attributes[0].nodeValue;
+        if (chargesType == "actual")
         {
 
             var charge = charges.getElementsByTagName("ub:charge");
             for(c = 0; c < charge.length; c++)
             {
 
-                hc[c] = new Array();
+                hc[chargeIndex] = new Array();
 
-                hc[c][0] = chargegroup[cg].attributes[0].nodeValue;
+                hc[chargeIndex][0] = chargegroup[cg].attributes[0].nodeValue;
 
                 var descriptionElem = (charge[c].getElementsByTagName("ub:description"))[0];
-                hc[c][1] = descriptionElem && descriptionElem.childNodes[0].nodeValue ? descriptionElem.childNodes[0].nodeValue : null;
+                hc[chargeIndex][1] = descriptionElem && descriptionElem.childNodes[0].nodeValue ? descriptionElem.childNodes[0].nodeValue : null;
 
                 var quantityElem = (charge[c].getElementsByTagName("ub:quantity"))[0];
-                hc[c][2] = quantityElem && quantityElem.childNodes[0] ? quantityElem.childNodes[0].nodeValue : null;
-                hc[c][3] = quantityElem && quantityElem.attributes[0] ? quantityElem.attributes[0].nodeValue : null;
+                hc[chargeIndex][2] = quantityElem && quantityElem.childNodes[0] ? quantityElem.childNodes[0].nodeValue : null;
+                hc[chargeIndex][3] = quantityElem && quantityElem.attributes[0] ? quantityElem.attributes[0].nodeValue : null;
 
                 var rateElem = (charge[c].getElementsByTagName("ub:rate"))[0];
-                hc[c][4] = rateElem && rateElem.childNodes[0] ? rateElem.childNodes[0].nodeValue : null;
-                hc[c][5] = rateElem && rateElem.attributes[0] ? rateElem.attributes[0].nodeValue : null;
+                hc[chargeIndex][4] = rateElem && rateElem.childNodes[0] ? rateElem.childNodes[0].nodeValue : null;
+                hc[chargeIndex][5] = rateElem && rateElem.attributes[0] ? rateElem.attributes[0].nodeValue : null;
 
                 var totalElem = (charge[c].getElementsByTagName("ub:total"))[0];
-                hc[c][6] = totalElem && totalElem.childNodes[0].nodeValue ? totalElem.childNodes[0].nodeValue : null;
+                hc[chargeIndex][6] = totalElem && totalElem.childNodes[0].nodeValue ? totalElem.childNodes[0].nodeValue : null;
+
+                // increment the array index allowing for the next chargegroup charges to be appended.
+                chargeIndex++;
 
             }
         }
@@ -88,7 +97,7 @@ function Array2BillXML(bill, records)
             // ToDo: must support multiple <ub:details service=*/>
             // find the associated actual charges
             var actualChargesNodeList = evaluateXPath(bill, 
-                "/ub:bill/ub:details/ub:chargegroup[@type=\""+cg+"\"]/ub:charges[@type=\"actual\"]");
+                "/ub:bill/ub:details[@service=\"Gas\"]/ub:chargegroup[@type=\""+cg+"\"]/ub:charges[@type=\"actual\"]");
 
             // ToDo: assert only one set of charges came back
             charges = actualChargesNodeList[0];
