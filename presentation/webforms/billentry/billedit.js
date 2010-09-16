@@ -81,6 +81,7 @@ function renderWidgets()
                 + '/' + record.data.bill,
            success: billLoaded,
            failure: billLoadFailed,
+           disableCaching: true,
         });
             
     });
@@ -421,8 +422,6 @@ function renderWidgets()
         // disable the save button until the next edit to the grid store
         grid.saveBtn.setDisabled(true);
 
-
-        alert('Bill Saved ' + data);
     }
 
     function billDidNotSave(data)
