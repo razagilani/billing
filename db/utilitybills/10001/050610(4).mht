@@ -1,0 +1,1290 @@
+From: "<Saved by Windows Internet Explorer 8>" <Invalid address>
+Subject: =?Windows-1252?Q?=A9_WGL_Holdings?=
+Date: Fri, 7 May 2010 11:48:47 +0000
+MIME-Version: 1.0
+Content-Type: multipart/related; type="text/html"; boundary="part18053-boundary-1452703265-228018008"
+X-MimeOLE: Produced By Microsoft MimeOLE V6.00.2900.5579
+
+
+--part18053-boundary-1452703265-228018008
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+Content-Location: https://eservice.washgas.com/eservice_center/print_bill.cfm?CFID=33105771&CFTOKEN=19156311
+
+=EF=BB=BF<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD><TITLE>=C2=A9 WGL Holdings</TITLE>
+<META content=3D"text/html; charset=3Dutf-8" http-equiv=3DContent-Type>
+<SCRIPT>
+function check(obj,field) {
+	//alert(typeof(field.length));
+	if (obj.checked) {
+		for (i =3D 0; i < field.length; i++){
+			if(!field[i].disabled)field[i].checked =3D true;
+		}
+		if(typeof(field.length) !=3D "number"){
+			//alert("its a single row situation");
+			if(!field.disabled)field.checked =3D true;
+		}
+	}
+	else{
+		for (i =3D 0; i < field.length; i++) {
+			field[i].checked =3D false;
+		}
+		if(typeof(field.length) !=3D "number"){
+			//alert("its a single row situation");
+			field.checked =3D false;
+		}
+	}
+}
+</SCRIPT>
+
+<META content=3DNO-CACHE http-equiv=3DPRAGMA>
+<META content=3D-1 http-equiv=3DEXPIRES>
+<META name=3Ddescription=20
+content=3D"WGL Holdings, Inc. owns Washington Gas Light Company, a =
+natural gas utility in Washington, D.C., Maryland and Virginia. WGL =
+Holdings also owns retail energy marketing and commercial heating, =
+ventilating and air conditioning (HVAC) businesses.">
+<META name=3DKeywords=20
+content=3D"WGL Holdings, Inc.,WGL Holdings Incorporated,WGL Holdings =
+Inc,WGL Holdings, Inc,WGL Holdings Inc.,WGL =
+Holdings,WGL,wglh,wglc,wgln,wglo,wglp,wglco,wglcn,wglcp,Washington Gas =
+Holdings,Washington Gas Holdings, Inc.,Washington Gas Holdings, =
+Inc,Washington Gas Holdings Incorporated,Washington Gas Holdings =
+Inc.,Washington Gas Holdings Inc,WG Holdings,WG Holdings, Inc.,WG =
+Holdings Inc,WG Holdings, Inc,WG Holdings Inc.,WG Holdings =
+Incorporated,Washington Gas,Washington Gas Light,Washington gas light =
+co.,Washington gas light company,DC gas utility,Maryland gas =
+utility,Virginia gas utility,DC gas company,MD gas company,Maryland gas =
+company,Virginia gas company,Maryland natural gas,Virginia natural =
+gas,DC natural gas,WGL Investor Relations,energy marketing,energy =
+services,heating,ventilating,air conditioning,commercial =
+hvac,HVAC,WGES,ACI,American combustion,WGESystems,WGE =
+Systems,WGEServices,WG Services,Washington energy,Washington =
+utility,Washington gas company,Washington natural gas,DC energy,Virginia =
+energy,Maryland energy,D.C. energy,D.C. utility,D.C. natural gas,D.C. =
+gas company,wgl investor,wgl press release,utility,gas,natural =
+gas,energy"><LINK=20
+rel=3DSTYLESHEET type=3Dtext/css=20
+href=3D"https://eservice.washgas.com/WGIncludes/HTML/style2.css">
+<STYLE type=3Dtext/css>BODY {
+	MARGIN: 0px
+}
+</STYLE>
+
+<META name=3DGENERATOR content=3D"MSHTML 8.00.6001.18904"></HEAD>
+<BODY leftMargin=3D0 bgColor=3D#ffffff marginwidth=3D"0" =
+marginheight=3D"0">
+<TABLE>
+  <DIV style=3D"DISPLAY: block" id=3Dprintbill></DIV>
+  <TBODY>
+  <TR>
+    <TD colSpan=3D2 align=3Dleft><A href=3D"javascript:printme()">Print=20
+  Bill</A></TD></TR>
+  <DIV></DIV>
+  <TR>
+    <TD width=3D10>&nbsp;</TD>
+    <TD class=3Dbody align=3Dleft><LINK rel=3DSTYLESHEET type=3Dtext/css =
+
+      =
+href=3D"https://eservice.washgas.com/wgincludes/html/billview.css">
+      <TABLE border=3D0 cellSpacing=3D0 cellPadding=3D0 width=3D1000>
+        <TBODY>
+        <TR>
+          <TD width=3D"10%"><IMG border=3D0=20
+            =
+src=3D"https://eservice.washgas.com/wgimages/billview/logo.gif"=20
+            width=3D125 height=3D32></TD>
+          <TD class=3Drowheader width=3D"20%" align=3Dright>Service=20
+            Address:&nbsp;&nbsp;&nbsp; </TD>
+          <TD class=3Dbody width=3D"30%">COLLEGE PARK CAR WASH =
+INC<BR>8616=20
+            BALTIMORE AVE<BR>COLLEGE PARK, MD 20740 </TD>
+          <TD class=3Dbody width=3D"10%" align=3Dleft>Billing=20
+            Date<BR>Page<BR>Account No. </TD>
+          <TD class=3Dbody width=3D"20%" =
+align=3Dleft>05/06/2010<BR>1<BR>2051065106=20
+          </TD></TR>
+        <TR>
+          <TD width=3D"100%" colSpan=3D4>&nbsp;</TD></TR>
+        <TR>
+          <TD width=3D"100%" =
+colSpan=3D3>&nbsp;</TD></TR></TBODY></TABLE>
+      <TABLE border=3D1 cellSpacing=3D0 borderColor=3Dblack =
+cellPadding=3D2=20
+        width=3D1000><TBODY>
+        <TR>
+          <TD class=3Drowheader width=3D"12%" =
+align=3Dmiddle>Previous<BR>Bill=20
+          Amount</TD>
+          <TD class=3Drowheader width=3D"12%"=20
+          align=3Dmiddle>Payments/<BR>Adjustments</TD>
+          <TD class=3Drowheader width=3D"12%" =
+align=3Dmiddle>Disputed<BR>Charges</TD>
+          <TD class=3Drowheader width=3D"12%" =
+align=3Dmiddle>Balance<BR>Forward</TD>
+          <TD class=3Drowheader width=3D"10%" =
+align=3Dmiddle>Current<BR>Charges</TD>
+          <TD class=3Drowheader width=3D"16%" align=3Dmiddle>Pay=20
+            Agreement<BR>Installment</TD>
+          <TD class=3Drowheader width=3D"13%" align=3Dmiddle>Total =
+Amount<BR>Due</TD>
+          <TD class=3Drowheader width=3D"13%" align=3Dmiddle>Date =
+Due</TD></TR>
+        <TR>
+          <TD class=3Dbody width=3D"12%" align=3Dmiddle>$519.60</TD>
+          <TD class=3Dbody width=3D"12%" align=3Dmiddle>$519.60 CR</TD>
+          <TD class=3Dbody width=3D"12%" align=3Dmiddle>$0.00</TD>
+          <TD class=3Dbody width=3D"12%" align=3Dmiddle>$0.00</TD>
+          <TD class=3Dbody width=3D"10%" align=3Dmiddle>$344.87</TD>
+          <TD class=3Dbody width=3D"16%" align=3Dmiddle>$0.00</TD>
+          <TD class=3Dduerow width=3D"13%" align=3Dmiddle>$344.87</TD>
+          <TD class=3Dbody width=3D"13%"=20
+      align=3Dmiddle>05/27/2010</TD></TR></TBODY></TABLE>
+      <TABLE class=3DDISimage border=3D0 width=3D1000>
+        <TBODY>
+        <TR>
+          <TD class=3Dtitle vAlign=3Dtop width=3D"10%" =
+align=3Dmiddle><BR><BR>Billing=20
+            <BR>Summary</TD>
+          <TD width=3D"50%">
+            <TABLE border=3D1 cellSpacing=3D0 borderColorLight=3Dblack =
+width=3D"100%">
+              <TBODY>
+              <TR>
+                <TD class=3Drowheader width=3D"25%" =
+align=3Dmiddle>Summary Detail</TD>
+                <TD class=3Drowheader width=3D"25%" =
+align=3Dmiddle>Washington Gas</TD>
+                <TD class=3Drowheader width=3D"25%" =
+align=3Dmiddle>WGES</TD>
+                <TD class=3Drowheader width=3D"25%"=20
+                align=3Dmiddle>Summary<BR>Totals</TD></TR>
+              <TR>
+                <TD class=3Dsmallbody width=3D"25%">Previous Bill =
+Amount</TD>
+                <TD class=3Dsmallbody width=3D"25%" =
+align=3Dmiddle>$189.19</TD>
+                <TD class=3Dsmallbody width=3D"25%" =
+align=3Dmiddle>$565.05</TD>
+                <TD class=3Dsmallbody width=3D"25%" =
+align=3Dmiddle>$519.60</TD></TR>
+              <TR>
+                <TD class=3Dsmallbody =
+width=3D"25%">Payments/Adjustments</TD>
+                <TD class=3Dsmallbody width=3D"25%" =
+align=3Dmiddle>$188.32 CR</TD>
+                <TD class=3Dsmallbody width=3D"25%" =
+align=3Dmiddle>$331.28 CR</TD>
+                <TD class=3Dsmallbody width=3D"25%" =
+align=3Dmiddle>$519.60 CR</TD></TR>
+              <TR>
+                <TD colSpan=3D4>&nbsp;</TD></TR>
+              <TR>
+                <TD class=3Dsmallbody width=3D"25%">Balance Forward</TD>
+                <TD class=3Dsmallbody width=3D"25%" align=3Dmiddle>$0.87 =
+</TD>
+                <TD class=3Dsmallbody width=3D"25%" =
+align=3Dmiddle>$233.77 </TD>
+                <TD class=3Dsmallbody width=3D"25%" align=3Dmiddle>$0.00 =
+</TD></TR>
+              <TR>
+                <TD class=3Dsmallbody width=3D"25%">Current Charges</TD>
+                <TD class=3Dsmallbody width=3D"25%" =
+align=3Dmiddle>$129.64</TD>
+                <TD class=3Dsmallbody width=3D"25%" =
+align=3Dmiddle>$215.23</TD>
+                <TD class=3Dsmallbody width=3D"25%" =
+align=3Dmiddle>$344.87</TD></TR>
+              <TR>
+                <TD class=3Dduerow width=3D"25%">Amount Due</TD>
+                <TD class=3Dduerow width=3D"25%" =
+align=3Dmiddle>$130.51</TD>
+                <TD class=3Dduerow width=3D"25%" =
+align=3Dmiddle>$449.00</TD>
+                <TD class=3Dduerow width=3D"25%"=20
+            align=3Dmiddle>$344.87</TD></TR></TBODY></TABLE>
+            <P class=3Dbillblacksmall>To avoid late charges, full =
+payment should=20
+            be received by 05/27/2010.<BR>Your prompt payment is =
+appreciated.=20
+            Any inquiry or complaint about this bill should be made =
+prior to the=20
+            due date, in order to avoid late charges. </P></TD></TR>
+        <TR>
+          <TD class=3Dtitle vAlign=3Dtop width=3D"10%"=20
+            align=3Dmiddle><BR>Customer<BR>Service</TD>
+          <TD width=3D"50%">
+            <TABLE border=3D0 cellPadding=3D0 width=3D"100%">
+              <TBODY>
+              <TR>
+                <TD class=3Drowheader vAlign=3Dtop width=3D"60%">For =
+inquiries about=20
+                  your utility bill</TD>
+                <TD class=3Drowheader width=3D"50%">703-750-1000<BR>711 =
+for=20
+                  TTY/TDD; voice relay</TD></TR>
+              <TR>
+                <TD class=3Drowheader width=3D"60%">For inquiries =
+outside of your=20
+                  local calling area</TD>
+                <TD class=3Drowheader =
+width=3D"50%">1-800-752-7520</TD></TR>
+              <TR>
+                <TD class=3Drowheader width=3D"60%">For service =
+emergencies</TD>
+                <TD class=3Drowheader =
+width=3D"50%">703-750-1400</TD></TR>
+              <TR>
+                <TD class=3Drowheader width=3D"70%">For service =
+emergencies=20
+                  outside of your local calling area</TD>
+                <TD class=3Drowheader width=3D"50%">1-800-752-7520 Press =
+'0' then=20
+                  '1'</TD></TR>
+              <TR>
+                <TD class=3Drowheader width=3D"60%">To contact WGES</TD>
+                <TD class=3Drowheader width=3D"50%">1-888-236-WGES =
+(9437)</TD></TR>
+              <TR>
+                <TD width=3D"100%" colSpan=3D2>
+                  <HR color=3Dblack SIZE=3D1 noShade>
+                </TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"50%"><B>Mail Payment=20
+                  to:</B><BR>Washington Gas<BR>P.O. Box =
+37747<BR>Philadelphia,=20
+                  PA 19101-5047 </TD>
+                <TD class=3Dbody width=3D"50%"><FONT =
+class=3Drowheader>Send other=20
+                  correspondence to:</FONT><BR>Washington Gas<BR>ATTN: =
+Customer=20
+                  Choice Program<BR>6801 Industrial Road<BR>Springfield, =
+VA=20
+                  22151-4294 </TD></TR>
+              <TR>
+                <TD width=3D"100%" colSpan=3D2>
+                  <HR color=3Dblack SIZE=3D1 noShade>
+                </TD></TR>
+              <TR>
+                <TD class=3Dmessage width=3D"100%" colSpan=3D2>Payments =
+not received=20
+                  by the due date subject the account to a security =
+deposit=20
+                  where permitted by regulation.</TD></TR>
+              <TR>
+                <TD width=3D"100%" colSpan=3D2>
+                  <HR color=3Dblack SIZE=3D1 noShade>
+                </TD></TR></TBODY></TABLE></TD></TR></TBODY></TABLE>
+      <TABLE border=3D0 width=3D1000>
+        <TBODY>
+        <TR>
+          <TD colSpan=3D5>
+            <HR color=3D#000000 width=3D"100%" noShade>
+          </TD></TR>
+        <TR>
+          <TD class=3Dbody colSpan=3D5>Please detach this stub and =
+return with=20
+            payment. Make checks payable to <B>WASHINGTON GAS</B> or pay =
+online=20
+            at <B><A=20
+            =
+href=3D"http://www.washingtongas.com/">http://www.washingtongas.com/</A><=
+/B>.<BR><BR></TD></TR>
+        <TR>
+          <TD vAlign=3Dtop width=3D"15%"><IMG border=3D0=20
+            =
+src=3D"https://eservice.washgas.com/wgimages/billview/logo.gif"=20
+            width=3D125 height=3D32></TD>
+          <TD class=3Drowheader vAlign=3Dtop width=3D"30%">101 =
+Constitution Avenue,=20
+            NW<BR>Washington, DC 20080<BR>703-750-1000 </TD>
+          <TD class=3Drowheader vAlign=3Dtop width=3D"5%" =
+align=3Dright><INPUT=20
+            value=3DON type=3Dcheckbox name=3DC1> </TD>
+          <TD class=3Dsmallbody vAlign=3Dtop rowSpan=3D2 =
+width=3D"25%"><B>Washington=20
+            Area Fuel Fund</B><BR>If you have previously pledged a =
+donation, do=20
+            not check the box. Check box and include donation with =
+payment.=20
+            <BR><BR>Donation Amount $________ </TD>
+          <TD vAlign=3Dtop rowSpan=3D2 width=3D"25%">
+            <TABLE border=3D0 width=3D"100%">
+              <TBODY>
+              <TR>
+                <TD class=3Dbody width=3D"50%">Account No.</TD>
+                <TD width=3D"50%">2051065106</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"50%">Due Date</TD>
+                <TD width=3D"50%">05/27/2010</TD></TR>
+              <TR>
+                <TD class=3Drowheader width=3D"50%"><B>Amount =
+Due</B></TD>
+                <TD width=3D"50%"><B>$344.87</B> </TD></TR>
+              <TR>
+                <TD class=3Drowheader width=3D"50%"><B>Amount =
+Paid</B></TD>
+                <TD class=3Drowheader=20
+          width=3D"50%">$__________</TD></TR></TBODY></TABLE></TD></TR>
+        <TR>
+          <TD class=3Dbody vAlign=3Dtop width=3D"50%" colSpan=3D3 =
+align=3Dleft>ADDRESS=20
+            SERVICE REQUESTED</TD></TR>
+        <TR>
+          <TD width=3D"45%" colSpan=3D2>&nbsp;</TD>
+          <TD width=3D"5%" align=3Dright><INPUT value=3DON =
+type=3Dcheckbox name=3DC1>=20
+</TD>
+          <TD class=3Dsmallbody width=3D"50%" colSpan=3D2><BR><B>Mailing =
+Address or=20
+            Name Change?</B><BR>Please check box and complete form on =
+back.=20
+        </TD></TR>
+        <TR>
+          <TD class=3Dbody width=3D"50%" colSpan=3D3><B>COLLEGE PARK CAR =
+WASH INC=20
+            <BR>7106 RIDGEWOOD AVE <BR>CHEVY CHASE, MD 20815 </B></TD>
+          <TD class=3Dbody width=3D"50%" colSpan=3D2><BR>Washington =
+Gas<BR>P.O. Box=20
+            37747<BR>Philadelphia, PA 19101-5047 </TD></TR>
+        <TR>
+          <TD width=3D"50%" colSpan=3D3></TD>
+          <TD width=3D"50%" colSpan=3D2>
+            <P align=3Dright><BR><BR>2051065106003448700344875=20
+      </P></TD></TR></TBODY></TABLE>
+      <P>&nbsp;</P>
+      <TABLE border=3D0 width=3D1000>
+        <TBODY>
+        <TR>
+          <TD class=3Drowheader width=3D"15%">Service Address:</TD>
+          <TD class=3Dbody width=3D"35%">COLLEGE PARK CAR WASH =
+INC<BR>8616=20
+            BALTIMORE AVE<BR>COLLEGE PARK, MD 20740 </TD>
+          <TD class=3Dbody width=3D"40%" align=3Dmiddle><FONT=20
+            class=3Drowheader>Account No. =
+&nbsp;&nbsp;</FONT>2051065106</TD>
+          <TD class=3Dbody width=3D"15%">Page =
+2</TD></TR></TBODY></TABLE>
+      <P>&nbsp;</P>
+      <TABLE border=3D1 cellSpacing=3D0 borderColor=3D#000000 =
+cellPadding=3D0=20
+width=3D1000>
+        <TBODY>
+        <TR>
+          <TD width=3D"100%">
+            <TABLE border=3D0 cellSpacing=3D0 cellPadding=3D0 =
+width=3D"100%">
+              <TBODY>
+              <TR>
+                <TD class=3Drowheader vAlign=3Dbottom width=3D"9%"=20
+                  align=3Dmiddle>Meter<BR>Number </TD>
+                <TD class=3Drowheader vAlign=3Dbottom width=3D"9%"=20
+                  align=3Dmiddle>Current<BR>Reading<BR>Date </TD>
+                <TD class=3Drowheader vAlign=3Dbottom width=3D"9%"=20
+                  align=3Dmiddle>Prior<BR>Reading<BR>Date </TD>
+                <TD class=3Drowheader vAlign=3Dbottom width=3D"9%"=20
+                  align=3Dmiddle>Current<BR>Meter<BR>Reading </TD>
+                <TD class=3Drowheader vAlign=3Dbottom width=3D"10%"=20
+                  align=3Dmiddle>Prior<BR>Meter<BR>Reading </TD>
+                <TD class=3Drowheader vAlign=3Dbottom width=3D"10%" =
+align=3Dmiddle>CCF=20
+                  Of<BR>Gas<BR>Used </TD>
+                <TD class=3Drowheader width=3D"1%">&nbsp;</TD>
+                <TD class=3Drowheader vAlign=3Dbottom width=3D"10%"=20
+                  align=3Dmiddle>Unmetered<BR>Gas Light<BR>(CCF) </TD>
+                <TD class=3Drowheader width=3D"1%">&nbsp;</TD>
+                <TD class=3Drowheader vAlign=3Dbottom width=3D"10%"=20
+                  align=3Dmiddle>Total CCF<BR>Of Gas<BR>Used </TD>
+                <TD class=3Drowheader width=3D"1%">&nbsp;</TD>
+                <TD class=3Drowheader vAlign=3Dbottom width=3D"10%"=20
+                  align=3Dmiddle>Conversion<BR>Factor </TD>
+                <TD class=3Drowheader width=3D"1%">&nbsp;</TD>
+                <TD class=3Drowheader vAlign=3Dbottom width=3D"10%"=20
+                  align=3Dmiddle>Total<BR>Therms<BR>Used </TD></TR>
+              <TR>
+                <TD colSpan=3D14>
+                  <HR color=3D#000000 SIZE=3D2 noShade>
+                </TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"9%" align=3Dmiddle>T37110</TD>
+                <TD class=3Dbody width=3D"9%" =
+align=3Dmiddle>05/03/10</TD>
+                <TD class=3Dbody width=3D"9%" =
+align=3Dmiddle>04/02/10</TD>
+                <TD class=3Dbody width=3D"9%" align=3Dmiddle>21,383</TD>
+                <TD class=3Dbody width=3D"10%" =
+align=3Dmiddle>21,155</TD>
+                <TD class=3Dbody width=3D"10%" align=3Dmiddle>228</TD>
+                <TD class=3Dbody width=3D"1%" align=3Dmiddle>+</TD>
+                <TD class=3Dbody width=3D"10%" align=3Dmiddle>0</TD>
+                <TD class=3Dbody width=3D"1%" align=3Dmiddle>=3D</TD>
+                <TD class=3Dbody width=3D"10%" align=3Dmiddle>228</TD>
+                <TD class=3Dbody width=3D"1%" align=3Dmiddle>X</TD>
+                <TD class=3Dbody width=3D"10%" align=3Dmiddle>1.018</TD>
+                <TD class=3Dbody width=3D"1%" align=3Dmiddle>=3D</TD>
+                <TD class=3Dbody width=3D"10%"=20
+            =
+align=3Dmiddle>232.1</TD></TR></TBODY></TABLE></TD></TR></TBODY></TABLE>
+      <P>&nbsp;</P>
+      <TABLE border=3D0 width=3D1000>
+        <TBODY>
+        <TR>
+          <TD class=3DTitle vAlign=3Dtop width=3D"10%">Payments=20
+            and&nbsp;<BR>Adjustments </TD>
+          <TD vAlign=3Dtop rowSpan=3D2 width=3D"33%">
+            <TABLE border=3D0 cellPadding=3D0 width=3D"100%">
+              <TBODY>
+              <TR>
+                <TD class=3Dbody width=3D"75%">Payment (04/29/2010)</TD>
+                <TD class=3Dbody width=3D"25%" align=3Dright>$519.60=20
+            CR</TD></TR></TBODY></TABLE>
+            <HR color=3Dblack width=3D"100%" noShade>
+
+            <TABLE border=3D0 cellPadding=3D0 width=3D"100%">
+              <TBODY>
+              <TR>
+                <TD class=3Drowheader width=3D"75%">Payments and =
+Adjustments=20
+                Total</TD>
+                <TD class=3Drowheader width=3D"20%" =
+align=3Dright>$519.60 CR</TD></TR>
+              <TR>
+                <TD class=3Drowheader width=3D"100%" =
+colSpan=3D2><I>Thank you for=20
+                  your payment</I></TD></TR>
+              <TR>
+                <TD width=3D"100%" =
+colSpan=3D2>&nbsp;&nbsp;</TD></TR></TBODY></TABLE>
+            <TABLE border=3D0 width=3D"100%">
+              <TBODY>
+              <TR>
+                <TD class=3Drowheader width=3D"100%" =
+colSpan=3D2>Distribution=20
+                Service</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"100%" colSpan=3D2>Rate Class: =
+COMMERCIAL=20
+                  HEAT/COOL</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"100%" =
+colSpan=3D2>&nbsp;</TD></TR>
+              <TR>
+                <TD class=3Drowheader width=3D"100%" =
+colSpan=3D2>DISTRIBUTION=20
+                CHARGE:</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"75%">232.1 Therms @ =
+$0.2672/Therm</TD>
+                <TD class=3Dbody width=3D"25%" =
+align=3Dright>$62.02</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"75%">Misc Debit by =
+Adjustment</TD>
+                <TD class=3Dbody width=3D"25%" =
+align=3Dright>$6.22</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"75%">System Charge</TD>
+                <TD class=3Dbody width=3D"25%" =
+align=3Dright>$36.25</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"75%">MD Sales Tax - =
+Distribution @=20
+                  $0.0600 </TD>
+                <TD class=3Dbody width=3D"25%" =
+align=3Dright>$5.90</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"75%">MD Gross Receipts =
+Surcharge </TD>
+                <TD class=3Dbody width=3D"25%" =
+align=3Dright>$0.01</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"75%">Prince George's County =
+Energy Tax=20
+                </TD>
+                <TD class=3Dbody width=3D"25%"=20
+            align=3Dright>$19.24</TD></TR></TBODY></TABLE>
+            <TABLE border=3D0 width=3D"100%">
+              <TBODY>
+              <TR>
+                <TD width=3D"100%" colSpan=3D2>
+                  <HR color=3D#000000 SIZE=3D0 noShade>
+                </TD></TR>
+              <TR>
+                <TD class=3Drowheader width=3D"50%">Washington Gas Sub =
+Total</TD>
+                <TD class=3Drowheader width=3D"10%">
+                  <P align=3Dright><B>$129.64</B></P></TD></TR>
+              <TR>
+                <TD width=3D"100%" colSpan=3D2>
+                  <HR color=3D#000000 SIZE=3D0 noShade>
+                </TD></TR>
+              <TR>
+                <TD class=3Drowheader width=3D"50%">Washington Gas =
+Total</TD>
+                <TD class=3Drowheader width=3D"10%">
+                  <P =
+align=3Dright><B>$129.64</B></P></TD></TR></TBODY></TABLE>
+            <TABLE border=3D0 width=3D"100%">
+              <TBODY>
+              <TR>
+                <TD class=3Dbody width=3D"100%" colSpan=3D2>For ease of =
+managing=20
+                  your gas account, call 703-750-1000 for information =
+about=20
+                  enrolling in the automated payment plan and the budget =
+
+              plan.</TD></TR>
+              <TR>
+                <TD width=3D"100%" colSpan=3D2>&nbsp;</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"100%" colSpan=3D2>
+                  <TABLE border=3D0 cellSpacing=3D2 cellPadding=3D0 =
+width=3D"100%">
+                    <TBODY>
+                    <TR>
+                      <TD colSpan=3D5>Washington Gas is regulated by the =
+
+                        Maryland Public Service Commission. Washington =
+Gas will=20
+                        furnish rate schedule and bill calculation data =
+upon=20
+                        request. </TD></TR>
+                    <TR>
+                      <TD width=3D"25%" noWrap align=3Dleft><B>MD=20
+Commission</B></TD>
+                      <TD width=3D"15%" noWrap =
+align=3Dleft><B>Phone:</B></TD>
+                      <TD width=3D"25%" noWrap =
+align=3Dleft><B>410-767-8000</B></TD>
+                      <TD width=3D"10%" noWrap =
+align=3Dleft><B>Fax:</B></TD>
+                      <TD width=3D"25%" noWrap=20
+                    align=3Dleft><B>410-333-6495</B></TD></TR>
+                    <TR>
+                      <TD width=3D"25%" noWrap align=3Dleft>&nbsp;</TD>
+                      <TD width=3D"15%" noWrap align=3Dleft>&nbsp;</TD>
+                      <TD width=3D"25%" noWrap =
+align=3Dleft><B>800-492-0474</B></TD>
+                      <TD width=3D"10%" noWrap =
+align=3Dleft><B>TTY:</B></TD>
+                      <TD width=3D"25%" noWrap=20
+                    =
+align=3Dleft><B>800-735-2258</B></TD></TR></TBODY></TABLE></TD></TR>
+              <TR>
+                <TD width=3D"100%" colSpan=3D2>&nbsp;</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"100%" colSpan=3D2>Your next =
+meter reading=20
+                  date is 06/02/10 </TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"100%" colSpan=3D2>
+                  <HR color=3D#000000 SIZE=3D0 noShade>
+                </TD></TR></TBODY></TABLE></TD>
+          <TD vAlign=3Dtop rowSpan=3D2 width=3D"34%">
+            <TABLE border=3D1 cellSpacing=3D0 borderColor=3D#000000=20
+            borderColorLight=3D#333333 cellPadding=3D3 width=3D"100%">
+              <TBODY>
+              <TR>
+                <TD class=3Dbody width=3D"100%" colSpan=3D3 =
+align=3Dmiddle>Gas Use=20
+                  Profile</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"33%" align=3Dleft>Period</TD>
+                <TD class=3Dbody width=3D"33%" align=3Dmiddle>05/2009 =
+</TD>
+                <TD class=3Dbody width=3D"33%" align=3Dmiddle>05/2010 =
+</TD></TR>
+              <TR vAlign=3Dcenter>
+                <TD class=3Dbody width=3D"33%" =
+align=3Dleft>Estimated<BR>Reading</TD>
+                <TD class=3Dbody width=3D"33%" align=3Dmiddle>NO </TD>
+                <TD class=3Dbody width=3D"34%" align=3Dmiddle>NO =
+</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"33%" =
+align=3Dleft>Total<BR>Therms</TD>
+                <TD class=3Dbody width=3D"33%" align=3Dmiddle>239 </TD>
+                <TD class=3Dbody width=3D"34%" align=3Dmiddle>232 =
+</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"33%" align=3Dleft>Days</TD>
+                <TD class=3Dbody width=3D"33%" align=3Dmiddle>26 </TD>
+                <TD class=3Dbody width=3D"34%" align=3Dmiddle>31 =
+</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"33%" =
+align=3Dleft>Therms/Day</FONT></TD>
+                <TD class=3Dbody width=3D"33%" align=3Dmiddle>9 </TD>
+                <TD class=3Dbody width=3D"34%" align=3Dmiddle>7 =
+</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"33%" align=3Dleft>Avg =
+Temp<BR>For</TD>
+                <TD class=3Dbody width=3D"33%" align=3Dmiddle></TD>
+                <TD class=3Dbody width=3D"34%"=20
+            align=3Dmiddle></TD></TR></TBODY></TABLE><BR><BR></TD></TR>
+        <TR>
+          <TD class=3Dtitle vAlign=3Dtop width=3D"10%">Natural =
+Gas<BR>Utility=20
+            <P><IMG border=3D0=20
+            =
+src=3D"https://eservice.washgas.com/wgimages/billview/logo.gif"=20
+            width=3D125 height=3D32></P></TD></TR>
+        <TR>
+          <TD vAlign=3Dtop width=3D"10%">&nbsp;=20
+            <P><IMG border=3D0=20
+            =
+src=3D"https://eservice.washgas.com/wgimages/billview/wges2.gif"></P></TD=
+>
+          <TD>
+            <TABLE border=3D0 width=3D"100%">
+              <TBODY>
+              <TR>
+                <TD class=3Drowheader width=3D"100%" colSpan=3D2>Natural =
+Gas Supply=20
+                  Service</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"75%">Commodity 232.1 Wet =
+Therms @=20
+                  $0.86000/Therm</TD>
+                <TD class=3Dbody width=3D"25%" =
+align=3Dright>$199.61</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"75%">Balancing 232.1 Wet =
+Therms @=20
+                  $0.01480/Therm</TD>
+                <TD class=3Dbody width=3D"25%" =
+align=3Dright>$3.44</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"75%">MD Sales Tax - Commodity =
+@ $0.0600=20
+                </TD>
+                <TD class=3Dbody width=3D"25%" =
+align=3Dright>$12.18</TD></TR>
+              <TR>
+                <TD width=3D"90%" colSpan=3D2>
+                  <HR color=3D#000000 SIZE=3D0 noShade>
+                </TD></TR>
+              <TR>
+                <TD class=3Drowheader width=3D"80%">WGES Total</TD>
+                <TD class=3Drowheader width=3D"10%" =
+align=3Dright>$215.23</TD></TR>
+              <TR>
+                <TD width=3D"100%" colSpan=3D2>&nbsp;</TD></TR>
+              <TR>
+                <TD class=3Drowheader width=3D"80%">Actual Monthly =
+Distribution=20
+                  and<BR>Natural Gas Supply Service Charges</TD>
+                <TD class=3Drowheader width=3D"10%" =
+align=3Dright>$344.87</TD></TR>
+              <TR>
+                <TD class=3Dbody width=3D"100%" colSpan=3D2>Washington =
+Gas protects=20
+                  customers' account information. It is shared only with =
+the=20
+                  person whose name appears on the account, and only =
+that person=20
+                  can authorize that a second name be=20
+          added.</TD></TR></TBODY></TABLE></TD>
+          <TD>&nbsp;</TD></TR></TBODY></TABLE>
+      <P>&nbsp;</P>
+      <TABLE border=3D0 cellPadding=3D6 width=3D1000>
+        <TBODY>
+        <TR>
+          <TD class=3Dbody vAlign=3Dtop width=3D"25%"><FONT =
+class=3Drowheader>Payment=20
+            Locations:</FONT><BR>Monday - Friday (except Holidays)=20
+            <P>101 Constitution Avenue, NW<BR>Washington, DC<BR>(8:30 =
+a.m. -=20
+            4:30 p.m.)</P>
+            <P>3101 Martin Luther King, Jr. Avenue, SE<BR>Washington,=20
+            DC<BR>(8am-4pm)(Payment by check or money order =
+only)</P></TD>
+          <TD class=3Dbody vAlign=3Dtop width=3D"33%">
+            <P class=3Drowheader align=3Dcenter>CHANGE OF MAILING =
+ADDRESS OR=20
+NAME</P>
+            <P align=3Dcenter>Remember to check box on front of =
+bill.</P>
+            <P =
+align=3Dcenter>___________________________________<BR>Customer Name=20
+            OR Name Changed to</P>
+            <P =
+align=3Dcenter>___________________________________<BR>Street=20
+            Address</P>
+            <P =
+align=3Dcenter>___________________________________<BR>Street=20
+            Address (cont'd)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Apt. =
+No.</P>
+            <P=20
+            =
+align=3Dcenter>___________________________________<BR>City&nbsp;&nbsp;&nb=
+sp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs=
+p;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=20
+            State&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =
+Zip</P>
+            <P =
+align=3Dcenter>___________________________________<BR>Customer=20
+            Account Number</P>&nbsp; </TD>
+          <TD class=3Dbody vAlign=3Dtop width=3D"25%"><FONT =
+class=3Drowheader>Drop=20
+            Boxes</FONT><BR>101 Constitution Avenue, NW<BR>Washington,=20
+            DC<BR>(during regular business hours)=20
+            <P>3101 Martin Luther King, Jr. Avenue, SE<BR>Washington, =
+DC</P>
+            <P>4000 Forestville RD<BR>Forestville, MD</P>
+            <P>6801 Industrial Road<BR>Springfield, =
+VA</P></TD></TR></TBODY></TABLE><!-- Include copyright template.-->
+      <CENTER><FONT size=3D1>=C2=A9 Copyright 2004 Washington Gas Light=20
+      Company</FONT></CENTER></TD></TR></TBODY></TABLE>
+<SCRIPT>
+		function printme() {
+			document.getElementById("printbill").style.display =3D"none";
+			window.print();
+		}
+	</SCRIPT>
+</BODY></HTML>
+
+
+--part18053-boundary-1452703265-228018008
+Content-Type: image/gif
+Content-Transfer-Encoding: base64
+Content-Location: https://eservice.washgas.com/wgimages/billview/logo.gif
+
+R0lGODlhfQAgAMT/ACkpKTExMc7OxmtrY729rcbGtbW1pWNjWq2tnJycjKWllEpKQt7exufnzoyM
+e4SEc3t7a0JCOSEhGBAQCLXGvaW1vXucrYyltXOUrWuMrWOEpVJ7pTlrnDFjnAAAAAAAACH5BAEA
+AA0ALAAAAAB9ACAAAAX/YCOOZGmeaKqubOu+LyNQV6ZlFyUwcO//wGCDUdFwjpvksbOpCITQqNTF
+oGyYF+dOVrlomJSpeDy9dDgVnkhwUQ8r1wt5TqeaM0+SWU4SWDoWbnWDhHsmZmcVh4CEjXUVjCWI
+HWd5eh2KJAcJQw4HBQ0FnygJDiMIEJaOYwwcG4INk5QdGqpDGhuqHguhAR6cCR6gJwsAIw4LwynK
+qy8XHLays7SwFIBuEsYGEh4DDQMSDAYEIuKgCwGhDQIFPALkIgWgDMgGQwZPDDIEsM0NHBkkTRvY
+AYOJDNBGQJhAwEGEAAEYRDjwYAHFAgMOLFBwQAKECA4QPEhAcWIDhxkh//gaQEDjAgIcPx7wR8Ja
+JhEUOEwDqHOWLUg3t0E4MCCBBAUAEjx4MCAABAkDHLRkqFLjgAkKHExIEOCBgQkDIAAggE5UhKtZ
+PdAcYYFDiS/TLDTAMG2DiRtqBCyYkFRAAABjMx5IWnEBAnQNEkxc0FSAAKhjGQRwgKwB2JMAFkSQ
+N2GtiA0aavakFHrdaEwlMLwa8cDD2AYHPBxQ4CGrhAchH0YwxnWBRQmcH3RVMIEycIgCmpYtoNYz
+QBIVRmtwI8suibaWth3gYdRBAQBEFzjUOJSXAsYHPjoGYADZ0wcEoCbIDPJBBHYSPDOIJGJSwhHR
+TSOIGZYwQMAw4jzR0P+BBjqgQCjksCNPAfAYUABu3TWAACcNIQDhPfrx10CAIjaQ0zSqEDiIAAdE
+YBEznqnAgUEjCHBFB2FcMotbevw3AoX9oBBkHwooYEuMKYBWwh8dqGLjNKWxtdoaH7noIZJrYcBj
+jTpZIgBcs+Q4ggbTlbMQBAggNwSWzUDyE2rrgElaCQJwwEcomYlgwAMFOAABnwwkAAEEMLI5RUEH
+BcQAXQNF0+QpxTWgwAMItIQMSFAdcKWhY2gJiwAZyEDQnWtwUKYIxJniQDYNVSSBYgsQyikZAtBi
+gg7SBCKQmHhG1MADEhwQgAJXEbAnVEPOCoQhi8yiK3QdkCqCVrFC1JFqJ7cd4AB4ySrrAwN/3FTj
+LKGWEN2pJaAyKAICUIaAAq06cKS3QjCQQbSCgMvET67MSy+Si9Ii7pfiUkBXLf/SS8QRGog7gsE6
+tZFwwn4gcQMGNmygEwb+TjwrERjgkoQGGFzQsccopzxrCAA7
+
+
+--part18053-boundary-1452703265-228018008
+Content-Type: image/gif
+Content-Transfer-Encoding: base64
+Content-Location: https://eservice.washgas.com/wgimages/billview/wges2.gif
+
+R0lGODlhZAAXAMQAAFZWVunp6dvb27u7uykpKcPDw7KysqKioqurq5ubm3Nzc4ODgxUVFfj4+IuL
+i3t7e5SUlPHx8UJCQkpKSjg4ONTU1Gtra9DQ0PX19cnJyc3Nzfz8/GJiYuHh4QAAAP///yH5BAAA
+AAAALAAAAABkABcAAAX/4CeOX4MAXjpBEem+cCzPdG2TwUIQ0oI4kx0ncCsaj8iXgUExYEQa0cYg
+YThemMvzI6iIItpYtiXqbpK1yqBArh08i7PoPSA5PApXwXP4RBgeHR8KHkQwGR4GIwQebTEbAQ1F
+ERwpHgR1NAcMiiMIKQQCJAIMCyQdDAQbex4IHxQSH3IuiJkfBbYym44ukiMYKAgdiAxnWy8RHhAk
+n5YEhiIDHgUkFh4bOgQWDQwKOhJXVAQL0goTABkOCgYACgQTAhgKPQBBHhIVCRQEDw0KChwIKDB0
+4d4INQIAMJjAxgKBJh8WUCAxAJAlDxNmfbAAYNadChIUWKCA6AGDAw88/0izYIHBJwoJmFA46QHA
+nQWVHDAC6CHBGwUQlFEQ6sHLh4KKMiyAYGABgwESBPIJEoFAhhEFLF7EM4oBtTlwni5xwKDDgioq
+GSw8UOtDFQI0KzSoSQDA0WlvPqB48pDHhzdGNSj7kIBR0ZGp7hDgUAABAzIBDHs4qTXXhIlS4DII
+IGDyhDcOUnYQsGACnkRuU8UNQNduraB6PUiisG/Ch09GSRUTMYGBwgQKb7tj8MC2CAMXE3xImYLC
+LJMkJFza8MeDumnWEkhAIK2SoqFq31xgDcAah6EDEii74+DTt79FR9yRkMDxJQYX4DoAEAGFTSnW
+pGDKBxhI9hUXEjwnwf8yG0lwQQcTLMhBAgpQMMEDAkhwlTkcAACVABH00IEDHLxhQIYk6UOBApTk
+AZUgIjRgAG20PVCABBPsd2M9n/RRwlAGjUBICgwSCIAvaNgggQQdBJVLkjMQ4OMHQbVSjSVFAoMk
+lDNoMBMFT3IZwwMWHAQIjB9UoNWBCBBAAkoiWTClmH4McIAFC4hyQwcGQFPDA5iJYA2MkTkzS0vR
+XUJbHnRCcYlJDERhwyZhylARNAHARCCQKbgyggR2jWCapLdk0JghCCxAxAAVaBBBBCdmYMCJBNIa
+Wx8CTHBVAQrsqgGfBggSgAEaHLBBB9xJ0oECCJxRwQEFSLIBBZ6KUMH/NkOmUOYI0ujJmwcPIICA
+AEP1RkAHHCxEwBKAQFAbA1VMpF4n6hGQQCZOVXHATEzAMQhxaTHCELzaOGbagEv4uYZWzo3QAAUP
+uGCaWgxAENVGGPFBHlxQBdJZAimFGOgHAwBJkgdDwDUUAgGkUoEyb8wUwH775HBPKxnA+LAEW1Z3
+iZ8K8WKaLe9gPNQO/DzklgciWNcBuD1hRU0+p6XCg18Yq2enop+mss8A6Y7jS2QW+LnAZBeMQAl+
+L5gWLgIF+GUNCgcEcEBFbhJygHqmSEcAktIVsEFQEDDAQQQIGID1BYA4F5RCF1S4QwDpzRrBUN4K
+wDEJYI6gAVykkmCaiiWXxWLNAQoxcsAOIlQylClvRDxCBowwwt/ZjDgAywiVcEClB/kBwgHeNd3R
+2xU4uDNOnwFEUIDuAvEyQgcVVF/BaMJWEMEGF/yapiioI1CQKepdRUIErcolSwUZeCEAmgFc/0H8
+819wgbIaXOBs+zHYDcA+O7CQA7zVKC4AAEcAEAUHJHCMAtogBAA7
+
+
+--part18053-boundary-1452703265-228018008
+Content-Type: text/css; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+Content-Location: https://eservice.washgas.com/WGIncludes/HTML/style2.css
+
+UNKNOWN {
+	COLOR: #000000
+}
+.blue {
+	BACKGROUND-COLOR: blue; FONT-FAMILY: Verdana, Arial, Helvetica, =
+sans-serif; COLOR: #ffffff; FONT-WEIGHT: bold
+}
+BODY {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #000000; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.smallbody {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #000000; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.billredlrg {
+	FONT-STYLE: normal; FONT-FAMILY: Arial, Verdana, Helvetica, sans-serif; =
+COLOR: #ff0000; FONT-SIZE: 8pt; FONT-WEIGHT: bold
+}
+.billblacksmall {
+	FONT-STYLE: normal; FONT-FAMILY: Arial, Verdana, Helvetica, sans-serif; =
+COLOR: #000000; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.billblacklrgbold {
+	FONT-STYLE: normal; FONT-FAMILY: Arial, Verdana, Helvetica, sans-serif; =
+COLOR: #000000; FONT-SIZE: 8pt; FONT-WEIGHT: bold
+}
+.billblacklrg {
+	FONT-STYLE: normal; FONT-FAMILY: Arial, Verdana, Helvetica, sans-serif; =
+COLOR: #000000; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+TABLE {
+	FONT-STYLE: normal; WIDTH: 95%; FONT-FAMILY: Verdana, Arial, Helvetica, =
+sans-serif; COLOR: #000000; FONT-SIZE: 7pt; FONT-WEIGHT: normal
+}
+TD {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #000000; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+TD.silver {
+	BACKGROUND-COLOR: silver; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: #000000; FONT-SIZE: 8pt; =
+FONT-WEIGHT: normal
+}
+TD.blue {
+	BACKGROUND-COLOR: #99ccff; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: #000000; FONT-SIZE: 8pt; =
+FONT-WEIGHT: normal
+}
+TD.white {
+	BACKGROUND-COLOR: #99ccff; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: #000000; FONT-SIZE: 8pt; =
+FONT-WEIGHT: normal
+}
+TD.maroon {
+	BACKGROUND-COLOR: #990000; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: white; FONT-SIZE: 8pt; FONT-WEIGHT: =
+normal
+}
+TR.silver {
+	BACKGROUND-COLOR: silver; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: #000000; FONT-SIZE: 8pt; =
+FONT-WEIGHT: normal
+}
+TR.blue {
+	BACKGROUND-COLOR: #99ccff; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: #000000; FONT-SIZE: 8pt; =
+FONT-WEIGHT: normal
+}
+TR.white {
+	BACKGROUND-COLOR: #99ccff; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: #000000; FONT-SIZE: 8pt; =
+FONT-WEIGHT: normal
+}
+TR.maroon {
+	BACKGROUND-COLOR: #990000; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: white; FONT-SIZE: 8pt; FONT-WEIGHT: =
+normal
+}
+P {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #000000; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+UL.special {
+	LIST-STYLE-IMAGE: url(/wgimages/common/bullet2.gif)
+}
+UL UL {
+	LIST-STYLE-POSITION: outside; LIST-STYLE-TYPE: circle
+}
+LI.square {
+	LIST-STYLE-TYPE: square
+}
+B {
+	FONT-WEIGHT: bold
+}
+I {
+	FONT-STYLE: italic
+}
+A:link {
+	COLOR: #336699
+}
+A:active {
+	COLOR: #cccccc
+}
+A:visited {
+	COLOR: #336699
+}
+.footer {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #336699; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.notification {
+	COLOR: red; FONT-WEIGHT: bold
+}
+.GreenButton {
+	BORDER-BOTTOM: lime groove; TEXT-ALIGN: center; BORDER-LEFT: lime =
+groove; BACKGROUND-COLOR: lime; FONT-VARIANT: small-caps; FONT-FAMILY: =
+sans-serif; COLOR: black; FONT-SIZE: small; BORDER-TOP: lime groove; =
+FONT-WEIGHT: bold; BORDER-RIGHT: lime groove
+}
+.RedButton {
+	BORDER-BOTTOM: red groove; TEXT-ALIGN: center; BORDER-LEFT: red groove; =
+BACKGROUND-COLOR: red; FONT-VARIANT: small-caps; FONT-FAMILY: =
+sans-serif; COLOR: yellow; FONT-SIZE: small; BORDER-TOP: red groove; =
+FONT-WEIGHT: bold; BORDER-RIGHT: red groove
+}
+.searchtext {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #336699; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.searchHighlight {
+	BACKGROUND-COLOR: yellow; FONT-STYLE: italic; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: #ff0000; FONT-SIZE: 12pt; =
+FONT-WEIGHT: bold
+}
+.blink {
+	FONT-VARIANT: small-caps; FONT-FAMILY: Verdana, Arial, Helvetica, =
+sans-serif; COLOR: blue; FONT-SIZE: larger; TEXT-DECORATION: blink
+}
+.invisible {
+	DISPLAY: none; VISIBILITY: hidden; FONT-SIZE: 1pt
+}
+.rowheader {
+	FONT-STYLE: normal; FONT-FAMILY: Arial, Verdana, Helvetica, sans-serif; =
+COLOR: #003366; FONT-SIZE: 8pt; FONT-WEIGHT: bold
+}
+.columnheader {
+	FONT-VARIANT: small-caps; FONT-STYLE: normal; FONT-FAMILY: Arial, =
+Verdana, Helvetica, sans-serif; COLOR: #333366; FONT-SIZE: 8pt; =
+FONT-WEIGHT: bold
+}
+.small {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #000000; FONT-SIZE: 9pt; FONT-WEIGHT: normal
+}
+.hint {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #000000; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.cellinstruction {
+	FONT-STYLE: italic; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #cccccd; FONT-SIZE: 7.5pt; VERTICAL-ALIGN: sub; FONT-WEIGHT: =
+normal
+}
+.date {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #999999; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.menuheader {
+	FONT-VARIANT: small-caps; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+sans-serif, Arial, Helvetica; COLOR: #99ccff; FONT-SIZE: 7pt; =
+FONT-WEIGHT: bold; TEXT-DECORATION: none
+}
+.menuitem {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, sans-serif, Arial, Helvetica; =
+COLOR: #99ccff; FONT-SIZE: 7.5pt; FONT-WEIGHT: bold; TEXT-DECORATION: =
+none
+}
+.whitemenuitem {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, sans-serif, Arial, Helvetica; =
+COLOR: #fffff0; FONT-SIZE: 8pt; FONT-WEIGHT: normal; TEXT-DECORATION: =
+none
+}
+.menuitemul {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, sans-serif, Arial, Helvetica; =
+COLOR: #99ccff; FONT-SIZE: 7.5pt; FONT-WEIGHT: bold
+}
+.faq {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, sans-serif, Arial, Helvetica; =
+COLOR: #003366; FONT-WEIGHT: bold; TEXT-DECORATION: none
+}
+.linkSpecial {
+	COLOR: #99ccff; TEXT-DECORATION: none
+}
+.linkSpecialNav {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+FONT-SIZE: 8pt; FONT-WEIGHT: normal; TEXT-DECORATION: none
+}
+.topnav {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #99ccff; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.subsidiaries {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #003366; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.news {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #003366; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+P.advertising {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #666666; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+P.callout {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #336699; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+H1 {
+	FONT-VARIANT: small-caps; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: #336699; FONT-SIZE: 8pt; =
+FONT-WEIGHT: bold
+}
+H1.green {
+	FONT-VARIANT: small-caps; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: #669900; FONT-SIZE: 8pt; =
+FONT-WEIGHT: bold
+}
+H1.red {
+	FONT-VARIANT: small-caps; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: #990000; FONT-SIZE: 8pt; =
+FONT-WEIGHT: bold
+}
+H2 {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #990000; FONT-SIZE: 8pt; FONT-WEIGHT: bold
+}
+H3 {
+	FONT-STYLE: italic; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #000066; FONT-SIZE: 8pt; FONT-WEIGHT: bold
+}
+H4 {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #990000; FONT-SIZE: 8pt; FONT-WEIGHT: bold
+}
+.login {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #ffffff; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.MOSTitle {
+	FONT-FAMILY: cursive; COLOR: cornflowerblue; FONT-SIZE: 8pt; =
+FONT-WEIGHT: normal
+}
+DIV.c1 {
+	TEXT-ALIGN: center
+}
+
+
+--part18053-boundary-1452703265-228018008
+Content-Type: text/css; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+Content-Location: https://eservice.washgas.com/wgincludes/html/billview.css
+
+UNKNOWN {
+	FONT-STYLE: normal; FONT-FAMILY: Helvetica, Verdana, Arial, sans-serif; =
+COLOR: #000000; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.smallbody {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #000000; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.tinybody {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #000000; FONT-SIZE: 6pt; FONT-WEIGHT: normal
+}
+.billredlrg {
+	FONT-STYLE: normal; FONT-FAMILY: Arial, Verdana, Helvetica, sans-serif; =
+COLOR: #ff0000; FONT-SIZE: 10pt; FONT-WEIGHT: bold
+}
+.billblacksmall {
+	FONT-STYLE: normal; FONT-FAMILY: Arial, Verdana, Helvetica, sans-serif; =
+COLOR: #000000; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.billblacklrgbold {
+	FONT-STYLE: normal; FONT-FAMILY: Arial, Verdana, Helvetica, sans-serif; =
+COLOR: #000000; FONT-SIZE: 10pt; FONT-WEIGHT: bold
+}
+.billblacklrg {
+	FONT-STYLE: normal; FONT-FAMILY: Arial, Verdana, Helvetica, sans-serif; =
+COLOR: #000000; FONT-SIZE: 10pt; FONT-WEIGHT: normal
+}
+TABLE {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #000000; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+TD {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #000000; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+P {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #000000; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+UL.special {
+	LIST-STYLE-IMAGE: url(/wgimages/common/bullet2.gif)
+}
+UL UL {
+	LIST-STYLE-POSITION: outside; LIST-STYLE-TYPE: circle
+}
+LI.square {
+	LIST-STYLE-TYPE: square
+}
+B {
+	FONT-WEIGHT: bold
+}
+I {
+	FONT-STYLE: italic
+}
+A:link {
+	COLOR: #336699
+}
+A:active {
+	COLOR: #cccccc
+}
+A:visited {
+	COLOR: #336699
+}
+.footer {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #336699; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.notification {
+	COLOR: red; FONT-WEIGHT: bold
+}
+.GreenButton {
+	BORDER-BOTTOM: lime groove; TEXT-ALIGN: center; BORDER-LEFT: lime =
+groove; BACKGROUND-COLOR: lime; FONT-VARIANT: small-caps; FONT-FAMILY: =
+sans-serif; COLOR: black; FONT-SIZE: small; BORDER-TOP: lime groove; =
+FONT-WEIGHT: bold; BORDER-RIGHT: lime groove
+}
+.RedButton {
+	BORDER-BOTTOM: red groove; TEXT-ALIGN: center; BORDER-LEFT: red groove; =
+BACKGROUND-COLOR: red; FONT-VARIANT: small-caps; FONT-FAMILY: =
+sans-serif; COLOR: yellow; FONT-SIZE: small; BORDER-TOP: red groove; =
+FONT-WEIGHT: bold; BORDER-RIGHT: red groove
+}
+.searchtext {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #336699; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.searchHighlight {
+	BACKGROUND-COLOR: yellow; FONT-STYLE: italic; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: #ff0000; FONT-SIZE: 12pt; =
+FONT-WEIGHT: bold
+}
+.blink {
+	FONT-VARIANT: small-caps; FONT-FAMILY: Verdana, Arial, Helvetica, =
+sans-serif; COLOR: blue; FONT-SIZE: larger; TEXT-DECORATION: blink
+}
+.invisible {
+	DISPLAY: none; VISIBILITY: hidden; FONT-SIZE: 1pt
+}
+.rowheader {
+	FONT-STYLE: normal; FONT-FAMILY: Helvetica, Arial, Verdana, sans-serif; =
+COLOR: #000000; FONT-SIZE: 8pt; FONT-WEIGHT: bold
+}
+.columnheader {
+	FONT-VARIANT: small-caps; FONT-STYLE: normal; FONT-FAMILY: Arial, =
+Verdana, Helvetica, sans-serif; COLOR: #000000; FONT-SIZE: 10pt; =
+FONT-WEIGHT: bold
+}
+.date {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #999999; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.menuheader {
+	FONT-VARIANT: small-caps; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+sans-serif, Arial, Helvetica; COLOR: #99ccff; FONT-SIZE: 7pt; =
+FONT-WEIGHT: bold; TEXT-DECORATION: none
+}
+.menuitem {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, sans-serif, Arial, Helvetica; =
+COLOR: #99ccff; FONT-SIZE: 7.5pt; FONT-WEIGHT: bold; TEXT-DECORATION: =
+none
+}
+.whitemenuitem {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, sans-serif, Arial, Helvetica; =
+COLOR: #fffff0; FONT-SIZE: 8pt; FONT-WEIGHT: normal; TEXT-DECORATION: =
+none
+}
+.menuitemul {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, sans-serif, Arial, Helvetica; =
+COLOR: #99ccff; FONT-SIZE: 7.5pt; FONT-WEIGHT: bold
+}
+.faq {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, sans-serif, Arial, Helvetica; =
+COLOR: #003366; FONT-WEIGHT: bold; TEXT-DECORATION: none
+}
+.linkSpecial {
+	COLOR: #99ccff; TEXT-DECORATION: none
+}
+.linkSpecialNav {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+FONT-SIZE: 8pt; FONT-WEIGHT: normal; TEXT-DECORATION: none
+}
+.topnav {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #99ccff; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.subsidiaries {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #003366; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+.news {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #003366; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+P.advertising {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #666666; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+P.callout {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #336699; FONT-SIZE: 8pt; FONT-WEIGHT: normal
+}
+H1 {
+	FONT-VARIANT: small-caps; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: #336699; FONT-SIZE: 10pt; =
+FONT-WEIGHT: bold
+}
+B.reg {
+	FONT-VARIANT: small-caps; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: #336699; FONT-SIZE: 10pt; =
+FONT-WEIGHT: bold
+}
+B.italic {
+	FONT-VARIANT: small-caps; FONT-STYLE: italic; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: #336699; FONT-SIZE: 10pt; =
+FONT-WEIGHT: bold
+}
+B.big {
+	FONT-VARIANT: small-caps; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: #336699; FONT-SIZE: 12pt; =
+FONT-WEIGHT: bold
+}
+H1.green {
+	FONT-VARIANT: small-caps; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: #669900; FONT-SIZE: 10pt; =
+FONT-WEIGHT: bold
+}
+H1.red {
+	FONT-VARIANT: small-caps; FONT-STYLE: normal; FONT-FAMILY: Verdana, =
+Arial, Helvetica, sans-serif; COLOR: #990000; FONT-SIZE: 10pt; =
+FONT-WEIGHT: bold
+}
+H2 {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #990000; FONT-SIZE: 10pt; FONT-WEIGHT: bold
+}
+H3 {
+	FONT-STYLE: italic; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #000066; FONT-SIZE: 8pt; FONT-WEIGHT: bold
+}
+H4 {
+	FONT-STYLE: normal; FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; =
+COLOR: #990000; FONT-SIZE: 8pt; FONT-WEIGHT: bold
+}
+.Title {
+	FONT-STYLE: italic; FONT-FAMILY: Lucinda; COLOR: #000000; FONT-SIZE: =
+11pt; FONT-WEIGHT: bold
+}
+.DueRow {
+	FONT-FAMILY: Verdana, Arial, Helvetica, sans-serif; COLOR: #000000; =
+FONT-SIZE: 10pt; FONT-WEIGHT: bold
+}
+DIV.c1 {
+	TEXT-ALIGN: center
+}
+
+
+--part18053-boundary-1452703265-228018008--
