@@ -170,7 +170,7 @@ function renderWidgets()
                 width: 75,
                 sortable: true,
                 dataIndex: 'rate',
-                editor: new Ext.form.NumberField({decimalPrecision: 5, allowBlank: true})
+                editor: new Ext.form.NumberField({decimalPrecision: 10, allowBlank: true})
             },
             {
                 header: 'Units',
