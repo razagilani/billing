@@ -101,6 +101,7 @@ function renderWidgets()
        {name: 'rate'},
        {name: 'rateunits'},
        {name: 'total', type: 'float'},
+       {name: 'processingnote'},
        {name: 'autototal', type: 'float'}
     ]);
 
@@ -158,7 +159,7 @@ function renderWidgets()
                             'displayText'
                         ],
                         // TODO: externalize these units
-                        data: [['kWh'], ['ccf']]
+                        data: [['dollars'], ['kWh'], ['ccf'], ['Therms'], ['kWD'], ['KQH'], ['rkVA']]
                     }),
                     valueField: 'displayText',
                     displayField: 'displayText'
@@ -343,8 +344,8 @@ function renderWidgets()
         animCollapse: false,
         stripeRows: true,
         autoExpandColumn: 'chargegroup',
-        height: 550,
-        width: 800,
+        height: 900,
+        width: 1000,
         title: 'Actual Charges',
         clicksToEdit: 2
         // config options for stateful behavior
@@ -412,6 +413,16 @@ function renderWidgets()
                 success: billSaved,
                 failure: billDidNotSave,
             });
+            /* Seeing this bug in your FF console?
+             *   Error: no element found
+             *   Source File: http://tyrell/exist/rest/db/skyline/bills/00000/3.xml
+             *   Line: 1
+             * eXistDB returns no entity in the response body for PUTs
+             * Per http://www.w3.org/TR/XMLHttpRequest, the browser should handle this.
+             * FF does not.  
+             * http://www.sencha.com/forum/showthread.php?78777-CLOSED-3.0.1-Ext.Ajax.request-causes-firefox-error-when-no-entity-returned
+             * https://bugzilla.mozilla.org/show_bug.cgi?id=521301
+             */
         } else alert('No bill to save');
     }
 
