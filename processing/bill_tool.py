@@ -266,6 +266,10 @@ if __name__ == "__main__":
         print "Output bill must be specified"
         exit()
 
+    if (options.inputbill == options.outputbill):
+        print "Input bill and output bill should not match!"
+        exit()
+
     if (options.roll == None and options.sumhypothetical == None and options.sumactual == None):
         print "Specify operation"
 
