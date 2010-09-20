@@ -22,8 +22,8 @@ function renderWidgets()
     }, customerAccountRecordType);
 
     var customerAccountStore = new Ext.data.Store({
-        // serverName externally declared in local-vars.js
-        url: 'http://'+serverName+'/exist/rest/db/skyline/ListAccounts.xql',
+        // location.host externally declared in local-vars.js
+        url: 'http://'+location.host+'/exist/rest/db/skyline/ListAccounts.xql',
         reader: customerAccountXMLReader
     });
 
@@ -47,8 +47,8 @@ function renderWidgets()
     }, customerBillRecordType);
 
     var customerBillStore = new Ext.data.Store({
-        // serverName externally declared in local-vars.js
-        url: 'http://'+serverName+'/exist/rest/db/skyline/ListBills.xql',
+        // location.host externally declared in local-vars.js
+        url: 'http://'+location.host+'/exist/rest/db/skyline/ListBills.xql',
         reader: customerBillXMLReader
     });
 
@@ -77,7 +77,7 @@ function renderWidgets()
         // loads a bill from eXistDB
         Ext.Ajax.request({
             // servername externally declared in local-vars.js
-            url: 'http://'+serverName+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+            url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
                 + '/' + record.data.bill,
            success: billLoaded,
            failure: billLoadFailed,
@@ -406,7 +406,7 @@ function renderWidgets()
 
             Ext.Ajax.request({
                 // servername externally declared in local-vars.js 
-                url: 'http://'+serverName+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+                url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
                     + '/' + customerBillCombo.getValue(),
                 method: 'PUT',
                 xmlData: bill,
