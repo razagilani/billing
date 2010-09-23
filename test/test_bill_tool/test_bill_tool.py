@@ -98,5 +98,29 @@ class TestBillTool(unittest.TestCase):
 
         os.remove(resultantBill)
 
+
+    # test the totalization of the rebill section
+    def test_totalize(self):
+        """ for the rebill's total adjustment, balanceforward, recharges and currentcharges """ 
+        """ check the total due computes properly. """
+
+        unprocessedBill = os.path.join("test", "test_bill_tool", "totalize_1_pre.xml")
+        resultantBill = os.path.join("test", "test_bill_tool", "totalize_1_in.xml")
+        correctBill = os.path.join("test", "test_bill_tool", "totalize_1_post.xml")
+
+
+        BillTool().totalize(unprocessedBill, resultantBill)
+
+        etree_in = etree.parse(resultantBill)
+        etree_post = etree.parse(correctBill)
+
+        (result, reason) = XMLUtils().compare_xml(etree_in, etree_post)
+
+        self.assertEquals(result, True, "totaldue did not sum up correctly " + 
+            resultantBill + " does not match " + correctBill + "\n" + reason)
+
+        os.remove(resultantBill)
+
+
 if __name__ == '__main__':
     unittest.main()
