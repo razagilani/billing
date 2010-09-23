@@ -37,7 +37,11 @@ class BillTool():
 
     # totalize the bill
     def totalize(self, unprocessedBill, targetBill, user=None, password=None):
-        pass;
+        tree = etree.parse(unprocessedBill)
+
+        # write bill back out
+        xml = etree.tostring(tree, pretty_print=True)
+        XMLUtils().save_xml_file(xml, targetBill, user, password)
 
     # compute the value, charges and savings of renewable energy
     def compute_re(self, unprocessedBill, targetBill, discount_rate = None, user=None, password=None):
