@@ -31,9 +31,9 @@
 		<ub:balanceforward>0.00</ub:balanceforward>
 		<ub:hypotheticalecharges>6476.52</ub:hypotheticalecharges>
 		<ub:actualecharges>6445.15</ub:actualecharges>
-		<ub:revalue>3.37</ub:revalue>
-		<ub:recharges>0.00</ub:recharges>
-		<ub:resavings>0.00</ub:resavings>
+		<ub:revalue>31.37</ub:revalue>
+		<ub:recharges>26.65</ub:recharges>
+		<ub:resavings>4.72</ub:resavings>
 		<ub:currentcharges>0.00</ub:currentcharges>
 		<ub:totaldue>0.00</ub:totaldue>
 		<ub:duedate>2010-02-27</ub:duedate>
@@ -68,8 +68,8 @@
 		<ub:hypotheticalecharges>2523.60</ub:hypotheticalecharges>
 		<ub:actualecharges>2499.85</ub:actualecharges>
 		<ub:revalue>23.75</ub:revalue>
-		<ub:recharges>20.19</ub:recharges>
-		<ub:resavings>3.56</ub:resavings>
+		<ub:recharges>20.18</ub:recharges>
+		<ub:resavings>3.57</ub:resavings>
 	</ub:utilbill>
 	<ub:utilbill service="Electric">
 		<ub:car>
@@ -100,8 +100,8 @@
 		<ub:hypotheticalecharges>3952.92</ub:hypotheticalecharges>
 		<ub:actualecharges>3945.30</ub:actualecharges>
 		<ub:revalue>7.62</ub:revalue>
-		<ub:recharges>6.48</ub:recharges>
-		<ub:resavings>1.14</ub:resavings>
+		<ub:recharges>6.47</ub:recharges>
+		<ub:resavings>1.15</ub:resavings>
 	</ub:utilbill>
 	<ub:details service="Gas">
 		<ub:rateschedule>

@@ -77,7 +77,8 @@ class TestBillTool(unittest.TestCase):
 
         os.remove(resultantBill)
 
-    def test_utilbill_rebill_summation(self):
+    # test the computation of value, savings and charges for renewable energy
+    def test_compute_re(self):
         """ for all utilbills, the revalue, charges and savings need to be calculated.  Then they must be """
         """ summed up for the same elements in rebill """
 
@@ -85,7 +86,7 @@ class TestBillTool(unittest.TestCase):
         resultantBill = os.path.join("test", "test_bill_tool", "rebill_summation_1_in.xml")
         correctBill = os.path.join("test", "test_bill_tool", "rebill_summation_1_post.xml")
         
-        BillTool().sum_utilbill_rebill(unprocessedBill, resultantBill, 0.15)
+        BillTool().compute_re(unprocessedBill, resultantBill, 0.15)
 
         etree_in = etree.parse(resultantBill)
         etree_post = etree.parse(correctBill)

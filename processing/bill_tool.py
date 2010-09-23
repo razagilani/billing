@@ -20,6 +20,11 @@ from skyliner.xml_utils import XMLUtils
 # for testing
 #import StringIO
 
+# used for processing fixed point monetary decimal numbers
+from decimal import *
+
+
+
 class BillTool():
     """ Class with a variety of utility procedures for processing bills """
     
@@ -30,7 +35,12 @@ class BillTool():
     def get_elem(self, tree, xpath):
         return tree.xpath(xpath, namespaces={"ub":"bill"})
 
-    def sum_utilbill_rebill(self, unprocessedBill, targetBill, discount_rate = None, user=None, password=None):
+    # totalize the bill
+    def totalize(self, unprocessedBill, targetBill, user=None, password=None):
+        pass;
+
+    # compute the value, charges and savings of renewable energy
+    def compute_re(self, unprocessedBill, targetBill, discount_rate = None, user=None, password=None):
 
         tree = etree.parse(unprocessedBill)
 
@@ -39,14 +49,29 @@ class BillTool():
         for utilbill in utilbills:
 
             # determine the difference between the hypothetical and actual energy charges to determine revalue
-            self.get_elem(utilbill, "ub:revalue")[0].text = \
-            str(self.get_elem(utilbill, "ub:hypotheticalecharges - ub:actualecharges"))
+            hypocharges = Decimal(self.get_elem(utilbill, "ub:hypotheticalecharges")[0].text)
+            actualcharges = Decimal(self.get_elem(utilbill, "ub:actualecharges")[0].text)
+            revalue = hypocharges - actualcharges
+            self.get_elem(utilbill, "ub:revalue")[0].text = str(revalue)
 
-            self.get_elem(utilbill, "ub:recharges")[0].text = \
-            str(float(self.get_elem(utilbill, "ub:revalue")[0].text) * (1.0 - discount_rate))
+            # we receive rounding down
+            recharges = Decimal(self.get_elem(utilbill, "ub:revalue")[0].text) * Decimal(str(1.0 - discount_rate))
+            self.get_elem(utilbill, "ub:recharges")[0].text = str(recharges.quantize(Decimal('.01'), rounding=ROUND_DOWN))
 
-            self.get_elem(utilbill, "ub:resavings")[0].text = \
-            str(float(self.get_elem(utilbill, "ub:revalue")[0].text) * discount_rate)
+            # customers receive rounding up
+            resavings = Decimal(self.get_elem(utilbill, "ub:revalue")[0].text) * Decimal(str(discount_rate))
+            self.get_elem(utilbill, "ub:resavings")[0].text = str(resavings.quantize(Decimal('.01'), rounding=ROUND_UP))
+
+            # assert recharges + resavings = revalue
+            assert(recharges + resavings == revalue)
+        
+        rebillrevalue = self.get_elem(tree, "sum(/ub:bill/ub:utilbill/ub:revalue)")
+        rebillrecharges = self.get_elem(tree, "sum(/ub:bill/ub:utilbill/ub:recharges)")
+        rebillresavings = self.get_elem(tree, "sum(/ub:bill/ub:utilbill/ub:resavings)")
+
+        self.get_elem(tree, "/ub:bill/ub:rebill/ub:revalue")[0].text = str(rebillrevalue)
+        self.get_elem(tree, "/ub:bill/ub:rebill/ub:recharges")[0].text = str(rebillrecharges)
+        self.get_elem(tree, "/ub:bill/ub:rebill/ub:resavings")[0].text = str(rebillresavings)
 
         # write bill back out
         xml = etree.tostring(tree, pretty_print=True)
