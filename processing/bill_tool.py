@@ -292,6 +292,7 @@ if __name__ == "__main__":
     parser.add_option("--roll", dest="roll", action="store_true", help="Roll the bill to the next period.")
     parser.add_option("--sumhypothetical", action="store_true", dest="sumhypothetical", help="Summarize hypothetical charges.")
     parser.add_option("--sumactual", action="store_true", dest="sumactual", help="Summarize actual charges.")
+    parser.add_option("--totalize", action="store_true", dest="totalize", help="Calculate total due.")
 
     (options, args) = parser.parse_args()
 
@@ -321,3 +322,6 @@ if __name__ == "__main__":
 
     if (options.sumactual):
             BillTool().sum_actual_charges(options.inputbill, options.outputbill, options.user, options.password)
+
+    if (options.totalize):
+            BillTool().totalize(options.inputbill, options.outputbill, options.user, options.password)
