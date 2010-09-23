@@ -23,8 +23,6 @@ from skyliner.xml_utils import XMLUtils
 # used for processing fixed point monetary decimal numbers
 from decimal import *
 
-
-
 class BillTool():
     """ Class with a variety of utility procedures for processing bills """
     
@@ -36,8 +34,18 @@ class BillTool():
         return tree.xpath(xpath, namespaces={"ub":"bill"})
 
     # totalize the bill
+    # /ub:bill/ub:rebill/ub:totaldue = /ub:bill/ub:rebill/ub:totaladjustment + /ub:bill/ub:rebill/ub:balanceforward + 
+    # /ub:bill/ub:rebill/ub:recharges + /ub:bill/ub:rebill/ub:currentcharges
     def totalize(self, unprocessedBill, targetBill, user=None, password=None):
         tree = etree.parse(unprocessedBill)
+
+        totaladjustment = float(self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaladjustment")[0].text)
+        balanceforward = float(self.get_elem(tree, "/ub:bill/ub:rebill/ub:balanceforward")[0].text)
+        recharges = float(self.get_elem(tree, "/ub:bill/ub:rebill/ub:recharges")[0].text)
+        currentcharges = float(self.get_elem(tree, "/ub:bill/ub:rebill/ub:currentcharges")[0].text)
+
+        self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaldue")[0].text = \
+            str(totaladjustment + balanceforward + recharges + currentcharges)
 
         # write bill back out
         xml = etree.tostring(tree, pretty_print=True)
