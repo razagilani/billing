@@ -34,6 +34,9 @@ function billXML2Array(bill)
                 hc[chargeIndex][0] = chargegroup[cg].attributes[0].nodeValue;
 
                 var descriptionElem = (charge[c].getElementsByTagName("ub:description"))[0];
+                // if the data is available, get it, otherwise use a null.  However, ext js grid changes
+                // a null into an empty string if focus passes through the cell that is backed by a null
+                // this results in a dirty store though no data changes were intended.
                 hc[chargeIndex][1] = (descriptionElem && descriptionElem.hasChildNodes()) ? descriptionElem.childNodes[0].nodeValue : null;
 
                 var quantityElem = (charge[c].getElementsByTagName("ub:quantity"))[0];
