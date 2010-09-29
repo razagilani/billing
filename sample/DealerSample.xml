@@ -1,87 +1,109 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
-<ub:utilitybill id="2" account="10001" xsi:schemaLocation="utilitybill ../UtilityBill.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="utilitybill">
-	<ub:car>
-		<ub:accountnumber>3091 4490 03</ub:accountnumber>
-		<ub:serviceaddress>
-			<ub:addressee>Business Name</ub:addressee>
-			<ub:street>2301 Washington Ave</ub:street>
-			<ub:city>Washington</ub:city>
-			<ub:state>DC</ub:state>
-			<ub:country/>
-			<ub:postalcode>20009</ub:postalcode>
-			<ub:telephonenumber/>
-			<ub:hours/>
-		</ub:serviceaddress>
-		<ub:billingaddress>
-			<ub:addressee>Business Owner</ub:addressee>
-			<ub:street>33 MountainTop Way</ub:street>
-			<ub:city>Potomac</ub:city>
-			<ub:state>MD</ub:state>
-			<ub:country/>
-			<ub:postalcode>20845</ub:postalcode>
-			<ub:telephonenumber/>
-			<ub:hours/>
-		</ub:billingaddress>
-	</ub:car>
-	<ub:skylinebill>
+<ub:bill id="2" account="10001" xsi:schemaLocation="bill ../UtilityBill.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ub="bill">
+	<ub:rebill>
+		<ub:car>
+			<ub:serviceaddress>
+				<ub:addressee>Boardwalk Avenue Apartments</ub:addressee>
+				<ub:street>1600 Monopoly Ave, NW</ub:street>
+				<ub:city>Washington</ub:city>
+				<ub:state>DC</ub:state>
+				<ub:country/>
+				<ub:postalcode>20009</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>Seaside Property Management</ub:addressee>
+				<ub:street>1600 Monopoly Ave, #101 NW</ub:street>
+				<ub:city>Washington</ub:city>
+				<ub:state>DC</ub:state>
+				<ub:country/>
+				<ub:postalcode>20009</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
 		<ub:billperiodbegin>2009-12-04</ub:billperiodbegin>
 		<ub:billperiodend>2010-01-10</ub:billperiodend>
 		<ub:priorbalance>213.22</ub:priorbalance>
 		<ub:paymentreceived>213.22</ub:paymentreceived>
 		<ub:totaladjustment>0.00</ub:totaladjustment>
 		<ub:balanceforward>0.00</ub:balanceforward>
-		<ub:actualservicecharges>6445.15</ub:actualservicecharges>
-		<ub:hypotheticalservicecharges>6754.52</ub:hypotheticalservicecharges>
-		<ub:energycharges>262.96</ub:energycharges>
-		<ub:customersavings>46.41</ub:customersavings>
+		<ub:hypotheticalecharges>6754.52</ub:hypotheticalecharges>
+		<ub:actualecharges>6445.15</ub:actualecharges>
+		<ub:revalue>309.37</ub:revalue>
+		<ub:recharges>262.96</ub:recharges>
+		<ub:resavings>46.41</ub:resavings>
 		<ub:currentcharges>262.96</ub:currentcharges>
 		<ub:totaldue>262.96</ub:totaldue>
 		<ub:duedate>2010-02-27</ub:duedate>
 		<ub:issued>2010-02-12</ub:issued>
-	</ub:skylinebill>
-	<ub:summary service="Gas">
-		<ub:priorbalance>0.0</ub:priorbalance>
-		<ub:previouspayment>
-			<ub:payee/>
-			<ub:amount>0.0</ub:amount>
-		</ub:previouspayment>
-		<ub:balanceforward>0.0</ub:balanceforward>
+	</ub:rebill>
+	<ub:utilbill service="Gas">
+		<ub:car>
+			<ub:accountnumber>101-22-383A-948</ub:accountnumber>
+			<ub:serviceaddress>
+				<ub:addressee>Business Name</ub:addressee>
+				<ub:street>2301 Washington Ave</ub:street>
+				<ub:city>Washington</ub:city>
+				<ub:state>DC</ub:state>
+				<ub:country/>
+				<ub:postalcode>20009</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>Business Owner</ub:addressee>
+				<ub:street>33 MountainTop Way</ub:street>
+				<ub:city>Potomac</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode>20845</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
 		<ub:billperiodbegin>2009-12-04</ub:billperiodbegin>
 		<ub:billperiodend>2010-01-06</ub:billperiodend>
-		<ub:issuedate>2010-01-08</ub:issuedate>
-		<ub:hypotheticalcharges>2732.22</ub:hypotheticalcharges>
-		<ub:currentcharges>2499.85</ub:currentcharges>
-		<ub:skylinevalue>232.37</ub:skylinevalue>
-		<ub:skylinesavings>34.86</ub:skylinesavings>
-		<ub:totaldue>0.00</ub:totaldue>
-		<ub:duedate>2010-01-29</ub:duedate>
-		<ub:latepayment>
-			<ub:penalty/>
-			<ub:amount>0.00</ub:amount>
-		</ub:latepayment>
-	</ub:summary>
-	<ub:summary service="Electric">
-		<ub:priorbalance>0.0</ub:priorbalance>
-		<ub:previouspayment>
-			<ub:payee/>
-			<ub:amount>0.0</ub:amount>
-		</ub:previouspayment>
-		<ub:balanceforward>0.0</ub:balanceforward>
+		<ub:hypotheticalecharges>2732.22</ub:hypotheticalecharges>
+		<ub:actualecharges>2499.85</ub:actualecharges>
+		<ub:revalue>232.37</ub:revalue>
+		<ub:recharges>197.51</ub:recharges>
+		<ub:resavings>34.86</ub:resavings>
+	</ub:utilbill>
+	<ub:utilbill service="Electric">
+		<ub:car>
+			<ub:accountnumber>A-33300167</ub:accountnumber>
+			<ub:serviceaddress>
+				<ub:addressee>Business Name</ub:addressee>
+				<ub:street>2301 Washington Ave</ub:street>
+				<ub:city>Washington</ub:city>
+				<ub:state>DC</ub:state>
+				<ub:country/>
+				<ub:postalcode>20009</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>Business Owner</ub:addressee>
+				<ub:street>33 MountainTop Way</ub:street>
+				<ub:city>Potomac</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode>20845</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
 		<ub:billperiodbegin>2009-12-07</ub:billperiodbegin>
 		<ub:billperiodend>2010-01-11</ub:billperiodend>
-		<ub:issuedate>2010-01-13</ub:issuedate>
-		<ub:hypotheticalcharges>4022.30</ub:hypotheticalcharges>
-		<ub:currentcharges>3945.30</ub:currentcharges>
-		<ub:skylinevalue>77.00</ub:skylinevalue>
-		<ub:skylinesavings>11.55</ub:skylinesavings>
-		<ub:totaldue>0.0</ub:totaldue>
-		<ub:duedate>2010-02-04</ub:duedate>
-		<ub:latepayment>
-			<ub:penalty/>
-			<ub:amount>0.00</ub:amount>
-		</ub:latepayment>
-	</ub:summary>
+		<ub:hypotheticalecharges>4022.30</ub:hypotheticalecharges>
+		<ub:actualecharges>3945.30</ub:actualecharges>
+		<ub:revalue>77.00</ub:revalue>
+		<ub:recharges>65.45</ub:recharges>
+		<ub:resavings>11.55</ub:resavings>
+	</ub:utilbill>
 	<ub:details service="Gas">
 		<ub:rateschedule>
 			<ub:name>Commercial Heat/Cool</ub:name>
@@ -430,6 +452,8 @@
 	<ub:measuredusage service="Gas">
 		<ub:meter>
 			<ub:estimated>false</ub:estimated>
+			<ub:priorreaddate>2010-12-04</ub:priorreaddate>
+			<ub:presentreaddate>2011-01-05</ub:presentreaddate>
 			<ub:identifier>T37110</ub:identifier>
 			<ub:register shadow="true">
 				<ub:identifier>T37110</ub:identifier>
@@ -474,6 +498,8 @@
 	<ub:measuredusage service="Electric">
 		<ub:meter>
 			<ub:estimated>false</ub:estimated>
+			<ub:priorreaddate>2010-12-10</ub:priorreaddate>
+			<ub:presentreaddate>2011-01-10</ub:presentreaddate>
 			<ub:identifier>475T</ub:identifier>
 			<ub:register shadow="true">
 				<ub:identifier>475T</ub:identifier>
@@ -754,4 +780,4 @@
 			<ub:period month="Dec" quantity="19"/>
 		</ub:consumptiontrend>
 	</ub:statistics>
-</ub:utilitybill>
+</ub:bill>
