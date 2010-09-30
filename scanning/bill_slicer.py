@@ -14,7 +14,7 @@ class BillSlicer:
 
     @cherrypy.expose
     def crop(self, imgId, ulX, ulY, lrX, lrY):
-        im = Image.open(os.path.join("static","workingimages","Penick-2010-03-22-0.png"))
+        im = Image.open(os.path.join("static","workingimages","test0.png"))
         # PIL doc: The region is defined by a 4-tuple, where coordinates are (left, upper, right, lower)
         # x0, y0, x1, y1
         cim = im.crop((int(ulX), int(ulY), int(lrX), int(lrY)))
