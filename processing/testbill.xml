@@ -243,23 +243,23 @@
 		</ub:rateschedule>
 		<ub:chargegroup type="Distribution">
 			<ub:charges type="actual">
-				<ub:charge>
+				<ub:charge rsbinding="CUSTOMER_CHARGE">
 					<ub:description>Customer Charge</ub:description>
 					<ub:total>36.26</ub:total>
 				</ub:charge>
-				<ub:charge>
+				<ub:charge rsbinding="ON_PEAK_ENERGY">
 					<ub:description>On-Peak Energy</ub:description>
 					<ub:quantity units="kWh">5360</ub:quantity>
 					<ub:rate units="dollars">0.0111585</ub:rate>
 					<ub:total>59.81</ub:total>
 				</ub:charge>
-				<ub:charge>
+				<ub:charge rsbinding="INT_PEAK_ENERGY">
 					<ub:description>Int-Peak Energy</ub:description>
 					<ub:quantity units="kWh">4320</ub:quantity>
 					<ub:rate units="dollars">0.0111597</ub:rate>
 					<ub:total>48.21</ub:total>
 				</ub:charge>
-				<ub:charge>
+				<ub:charge rsbinding="OFF_PEAK_ENERGY">
 					<ub:description>Off Peak Energy</ub:description>
 					<ub:quantity units="kWh">11600</ub:quantity>
 					<ub:rate units="dollars">0.0111594</ub:rate>
@@ -270,45 +270,33 @@
 					<ub:quantity units="KWD">68.0</ub:quantity>
 					<ub:total>65.16</ub:total>
 				</ub:charge>
-				<ub:charge>
-					<ub:description>Franchise tax (delivery) </ub:description>
-					<ub:quantity units="kWh">21280</ub:quantity>
-					<ub:rate units="dollars">0.0006200</ub:rate>
-					<ub:total>13.19</ub:total>
-					<ub:processingnote>Rate * Total kWh</ub:processingnote>
-				</ub:charge>
-				<ub:charge>
-					<ub:description>Universal Service Charge</ub:description>
-					<ub:total>20.59</ub:total>
-				</ub:charge>
-				<ub:charge>
-					<ub:description>MD Environmental surcharge</ub:description>
-					<ub:quantity units="kWh">21280</ub:quantity>
-					<ub:rate units="dollars">0.0001550</ub:rate>
+				<ub:charge rsbinding="ENERGY_FIRST_BLOCK">
+					<ub:description>Usage - first block</ub:description>
+					<ub:quantity units="kWh">400</ub:quantity>
+					<ub:rate units="dollars">0.005125</ub:rate>
 					<ub:total>3.30</ub:total>
-					<ub:processingnote>Rate * Total kWh</ub:processingnote>
 				</ub:charge>
-				<ub:charge>
-					<ub:description>Gross receipts tax</ub:description>
-					<ub:quantity units="dollars">375.97</ub:quantity>
-					<ub:rate units="percent">2.040800</ub:rate>
+				<ub:charge rsbinding="ENERGY_REMAINDER_BLOCK">
+					<ub:description>Usage - remainder</ub:description>
+					<ub:quantity units="kWh">375.97</ub:quantity>
+					<ub:rate units="dollars">0.065125</ub:rate>
 					<ub:total>7.68</ub:total>
-					<ub:processingnote>Tax on Customer charge; on, int, off peak; max demand; franchise tax; universale service charge; md env surcharge.  Billing error actual 7.673</ub:processingnote>
+					<ub:processingnote/>
 				</ub:charge>
-				<ub:charge>
-					<ub:description>PG County Energy</ub:description>
+				<ub:charge rsbinding="DELIVERY_TAX">
+					<ub:description>Delivery Tax</ub:description>
 					<ub:quantity units="kWh">21280</ub:quantity>
 					<ub:rate units="dollars">0.0080900</ub:rate>
 					<ub:total>172.15</ub:total>
 					<ub:processingnote>Rate * Total kWh; Utility Billing error - actual  172.16</ub:processingnote>
 				</ub:charge>
-				<ub:charge>
+				<ub:charge rsbinding="ADMIN_CREDIT">
 					<ub:description>Administrative credit</ub:description>
 					<ub:quantity units="kWh">21280</ub:quantity>
 					<ub:rate units="dollars">-0.0004</ub:rate>
 					<ub:total>-8.51</ub:total>
 				</ub:charge>
-				<ub:charge>
+				<ub:charge rsbinding="SALES_TAX_DISTRIBUTION">
 					<ub:description>Sales Tax</ub:description>
 					<ub:quantity units="dollars">372.00</ub:quantity>
 					<ub:rate units="percent">6.0</ub:rate>
@@ -318,90 +306,78 @@
 				<ub:total>569.61</ub:total>
 			</ub:charges>
 			<ub:charges type="hypothetical">
-				<ub:charge>
+				<ub:charge rsbinding="CUSTOMER_CHARGE">
 					<ub:description>Customer Charge</ub:description>
 					<ub:total>36.26</ub:total>
 				</ub:charge>
-				<ub:charge>
+				<ub:charge rsbinding="ON_PEAK_ENERGY">
 					<ub:description>On-Peak Energy</ub:description>
-					<ub:quantity units="kWh">5391.85</ub:quantity>
+					<ub:quantity units="kWh">5360</ub:quantity>
 					<ub:rate units="dollars">0.0111585</ub:rate>
-					<ub:total>60.16</ub:total>
+					<ub:total>59.81</ub:total>
 				</ub:charge>
-				<ub:charge>
+				<ub:charge rsbinding="INT_PEAK_ENERGY">
 					<ub:description>Int-Peak Energy</ub:description>
-					<ub:quantity units="kWh">4328.92</ub:quantity>
+					<ub:quantity units="kWh">4320</ub:quantity>
 					<ub:rate units="dollars">0.0111597</ub:rate>
-					<ub:total>48.31</ub:total>
+					<ub:total>48.21</ub:total>
 				</ub:charge>
-				<ub:charge>
+				<ub:charge rsbinding="OFF_PEAK_ENERGY">
 					<ub:description>Off Peak Energy</ub:description>
-					<ub:quantity units="kWh">11607.37</ub:quantity>
+					<ub:quantity units="kWh">11600</ub:quantity>
 					<ub:rate units="dollars">0.0111594</ub:rate>
-					<ub:total>129.53</ub:total>
+					<ub:total>129.45</ub:total>
 				</ub:charge>
 				<ub:charge>
 					<ub:description>Maximum Demand</ub:description>
 					<ub:quantity units="KWD">68.0</ub:quantity>
 					<ub:total>65.16</ub:total>
 				</ub:charge>
-				<ub:charge>
-					<ub:description>Franchise tax (delivery) </ub:description>
-					<ub:quantity units="kWh">21328.14</ub:quantity>
-					<ub:rate units="dollars">0.0006200</ub:rate>
-					<ub:total>13.22</ub:total>
-					<ub:processingnote>Rate * Total kWh</ub:processingnote>
+				<ub:charge rsbinding="ENERGY_FIRST_BLOCK">
+					<ub:description>Usage - first block</ub:description>
+					<ub:quantity units="kWh">400</ub:quantity>
+					<ub:rate units="dollars">0.005125</ub:rate>
+					<ub:total>3.30</ub:total>
 				</ub:charge>
-				<ub:charge>
-					<ub:description>Universal Service Charge</ub:description>
-					<ub:total>20.59</ub:total>
-				</ub:charge>
-				<ub:charge>
-					<ub:description>MD Environmental surcharge</ub:description>
-					<ub:quantity units="kWh">21328.14</ub:quantity>
-					<ub:rate units="dollars">0.0001550</ub:rate>
-					<ub:total>3.31</ub:total>
-					<ub:processingnote>Rate * Total kWh</ub:processingnote>
-				</ub:charge>
-				<ub:charge>
-					<ub:description>Gross receipts tax</ub:description>
-					<ub:quantity units="dollars">376.54</ub:quantity>
-					<ub:rate units="percent">2.040800</ub:rate>
+				<ub:charge rsbinding="ENERGY_REMAINDER_BLOCK">
+					<ub:description>Usage - remainder</ub:description>
+					<ub:quantity units="kWh">375.97</ub:quantity>
+					<ub:rate units="dollars">0.065125</ub:rate>
 					<ub:total>7.68</ub:total>
-					<ub:processingnote>Tax on Customer charge; on, int, off peak; max demand; franchise tax; universale service charge; md env surcharge.  Billing error actual 7.673</ub:processingnote>
+					<ub:processingnote/>
 				</ub:charge>
-				<ub:charge>
-					<ub:description>PG County Energy</ub:description>
-					<ub:quantity units="kWh">21328.14</ub:quantity>
+				<ub:charge rsbinding="DELIVERY_TAX">
+					<ub:description>Delivery Tax</ub:description>
+					<ub:quantity units="kWh">21280</ub:quantity>
 					<ub:rate units="dollars">0.0080900</ub:rate>
-					<ub:total>172.54</ub:total>
+					<ub:total>172.15</ub:total>
 					<ub:processingnote>Rate * Total kWh; Utility Billing error - actual  172.16</ub:processingnote>
 				</ub:charge>
-				<ub:charge>
+				<ub:charge rsbinding="ADMIN_CREDIT">
 					<ub:description>Administrative credit</ub:description>
-					<ub:quantity units="kWh">21328.14</ub:quantity>
+					<ub:quantity units="kWh">21280</ub:quantity>
 					<ub:rate units="dollars">-0.0004</ub:rate>
-					<ub:total>-8.53</ub:total>
+					<ub:total>-8.51</ub:total>
 				</ub:charge>
-				<ub:charge>
+				<ub:charge rsbinding="SALES_TAX_DISTRIBUTION">
 					<ub:description>Sales Tax</ub:description>
 					<ub:quantity units="dollars">372.00</ub:quantity>
 					<ub:rate units="percent">6.0</ub:rate>
 					<ub:total>22.32</ub:total>
 					<ub:processingnote>Computation Unknown; Minimally energy, demand and charges; 22.32/6% = 487.33</ub:processingnote>
 				</ub:charge>
-				<ub:total>570.55</ub:total>
+				<ub:total>569.61</ub:total>
 			</ub:charges>
 		</ub:chargegroup>
 		<ub:chargegroup type="Generation/Supply">
 			<ub:charges type="actual">
-				<ub:charge>
+				<ub:charge rsbinding="TOTAL_USE">
 					<ub:description>Total Use</ub:description>
 					<ub:quantity units="kWh">21280</ub:quantity>
 					<ub:rate units="cents">0.103</ub:rate>
 					<ub:total>2191.84</ub:total>
 				</ub:charge>
-				<ub:charge>
+				<ub:charge rsbinding="SALES_TAX_SUPPLY">
 					<ub:description>Sales Tax</ub:description>
 					<ub:quantity units="dollars">2194.84</ub:quantity>
 					<ub:rate units="percent">6.0</ub:rate>
@@ -411,20 +387,20 @@
 				<ub:total>2323.35</ub:total>
 			</ub:charges>
 			<ub:charges type="hypothetical">
-				<ub:charge>
+				<ub:charge rsbinding="TOTAL_USE">
 					<ub:description>Total Use</ub:description>
-					<ub:quantity units="kWh">21328.14</ub:quantity>
+					<ub:quantity units="kWh">21280</ub:quantity>
 					<ub:rate units="cents">0.103</ub:rate>
-					<ub:total>2196.80</ub:total>
+					<ub:total>2191.84</ub:total>
 				</ub:charge>
-				<ub:charge>
+				<ub:charge rsbinding="SALES_TAX_SUPPLY">
 					<ub:description>Sales Tax</ub:description>
-					<ub:quantity units="dollars">2196.80</ub:quantity>
+					<ub:quantity units="dollars">2194.84</ub:quantity>
 					<ub:rate units="percent">6.0</ub:rate>
-					<ub:total>131.81</ub:total>
+					<ub:total>131.51</ub:total>
 					<ub:processingnote>Tax on Total Use</ub:processingnote>
 				</ub:charge>
-				<ub:total>2328.61</ub:total>
+				<ub:total>2323.35</ub:total>
 			</ub:charges>
 		</ub:chargegroup>
 		<ub:total type="actual">2892.96</ub:total>
