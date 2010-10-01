@@ -39,7 +39,7 @@
 		<ub:duedate>2010-03-31</ub:duedate>
 		<ub:issued>2010-03-15</ub:issued>
 	</ub:rebill>
-	<ub:utilbill service="Electric">
+	<ub:utilbill service="Electric" rsbinding="pepco">
 		<ub:utility>PEPCO</ub:utility>
 		<ub:car>
 			<ub:accountnumber>3091 4490 03</ub:accountnumber>
@@ -72,7 +72,7 @@
 		<ub:recharges>5.27</ub:recharges>
 		<ub:resavings>0.93</ub:resavings>
 	</ub:utilbill>
-	<ub:utilbill service="Gas">
+	<ub:utilbill service="Gas" rsbinding="washgas">
 		<ub:utility>WashGas</ub:utility>
 		<ub:car>
 			<ub:accountnumber>2051065106</ub:accountnumber>
@@ -432,7 +432,7 @@
 			<ub:priorreaddate>1970-01-01</ub:priorreaddate>
 			<ub:presentreaddate>1970-01-01</ub:presentreaddate>
 			<ub:identifier>T37110</ub:identifier>
-			<ub:register rsbinding="TOTAL" shadow="false">
+			<ub:register rsbinding="REG_TOTAL" shadow="false">
 				<ub:identifier>T37110</ub:identifier>
 				<ub:description>Skyline Generated Therms</ub:description>
 				<ub:effective>
@@ -451,7 +451,7 @@
 				<ub:units>therms</ub:units>
 				<ub:total>19.55</ub:total>
 			</ub:register>
-			<ub:register rsbinding="TOTAL" shadow="true">
+			<ub:register rsbinding="REG_TOTAL" shadow="true">
 				<ub:identifier>T37110</ub:identifier>
 				<ub:description>Skyline Generated Therms</ub:description>
 				<ub:effective>
@@ -495,8 +495,8 @@
 					</ub:inclusions>
 				</ub:effective>
 				<ub:units>kWh</ub:units>
-				<ub:presentreading>48.14</ub:presentreading>
-				<ub:total>48.14</ub:total>
+				<ub:presentreading>21280</ub:presentreading>
+				<ub:total>21280</ub:total>
 			</ub:register>
 			<ub:register rsbinding="REG_TOTAL" shadow="true">
 				<ub:identifier>475T</ub:identifier>
@@ -695,8 +695,8 @@
 					</ub:exclusions>
 				</ub:effective>
 				<ub:units>kWh</ub:units>
-				<ub:presentreading>31.85</ub:presentreading>
-				<ub:total>31.85</ub:total>
+				<ub:presentreading>5360</ub:presentreading>
+				<ub:total>5360</ub:total>
 			</ub:register>
 			<ub:register rsbinding="REG_PEAK" shadow="true">
 				<ub:identifier>D05</ub:identifier>

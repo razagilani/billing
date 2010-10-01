@@ -275,6 +275,46 @@ class BillTool():
         XMLUtils().save_xml_file(xml, outputbill, user, password)
 
 
+    def bindrs(self, inputbill, rsdb):
+
+        import yaml
+        import rate_structure
+
+        # given a bill that has its actual registers populated, apply a rate structure 
+        # For now, just compare it to what is input for development purposes
+
+        # Bind to XML bill
+        tree = etree.parse(inputbill)
+
+        # determine what services are present in the bill
+        utilbills = self.get_elem(tree, "/ub:bill/ub:utilbill")
+
+        # identify the per service rate structures within the bill
+        # /ub:bill/ub:details/ub:rateschedule/@rsbinding
+        for utilbill in utilbills:
+            rsbinding_utilbill = self.get_elem(utilbill, "@rsbinding")[0]
+            service = self.get_elem(utilbill, "@service")[0]
+            rsbinding_rateschedule = self.get_elem(tree, "/ub:bill/ub:details[@service='"+service+"']/ub:rateschedule/@rsbinding")[0]
+            rs = yaml.load(file(rsdb + os.sep + os.path.join(rsbinding_utilbill, rsbinding_rateschedule)+".yaml"))
+            rs.configure()
+
+            # acquire actual meter registers for this service
+
+            actual_registers = self.get_elem(utilbill, "/ub:bill/ub:measuredusage[@service='" + service+ "']/ub:meter/ub:register[@shadow='false']")
+            for actual_register in actual_registers:
+                rsbinding_register = self.get_elem(actual_register, "@rsbinding")[0]
+                register_quantity = self.get_elem(actual_register, "ub:total")[0].text
+
+                rs.__dict__[rsbinding_register].quantity = float(register_quantity)
+
+            print "ON_PEAK_ENERGY " + str(rs.__dict__["ON_PEAK_ENERGY"].total)
+            print "SALES_TAX_DISTRIBUTION " + str(rs.__dict__["SALES_TAX_DISTRIBUTION"].total)
+
+
+
+
+
+
 def main(options):
     """
     """
@@ -293,6 +333,8 @@ if __name__ == "__main__":
     parser.add_option("--sumhypothetical", action="store_true", dest="sumhypothetical", help="Summarize hypothetical charges.")
     parser.add_option("--sumactual", action="store_true", dest="sumactual", help="Summarize actual charges.")
     parser.add_option("--totalize", action="store_true", dest="totalize", help="Calculate total due.")
+    parser.add_option("--bindrs", action="store_true", dest="bindrs", help="Bind and evaluate a rate structure.")
+    parser.add_option("--rsdb", dest="rsdb", help="Location of the rate structure database.")
 
     (options, args) = parser.parse_args()
 
@@ -304,24 +346,34 @@ if __name__ == "__main__":
         print "Output bill must be specified"
         exit()
 
-
-    if (options.roll == None and options.sumhypothetical == None and options.sumactual == None):
-        print "Specify operation"
-
     if (options.roll):
         if (options.inputbill == options.outputbill):
             print "Input bill and output bill should not match!"
             exit()
         if (options.amountpaid == None):
             print "Specify --amountpaid"
+            exit()
         else:
             BillTool().roll_bill(options.inputbill, options.outputbill, options.amountpaid, options.user, options.password)
+            exit()
 
     if (options.sumhypothetical):
-            BillTool().sum_hypothetical_charges(options.inputbill, options.outputbill, options.user, options.password)
+        BillTool().sum_hypothetical_charges(options.inputbill, options.outputbill, options.user, options.password)
+        exit()
 
     if (options.sumactual):
-            BillTool().sum_actual_charges(options.inputbill, options.outputbill, options.user, options.password)
+        BillTool().sum_actual_charges(options.inputbill, options.outputbill, options.user, options.password)
+        exit()
 
     if (options.totalize):
-            BillTool().totalize(options.inputbill, options.outputbill, options.user, options.password)
+        BillTool().totalize(options.inputbill, options.outputbill, options.user, options.password)
+        exit()
+
+    if (options.bindrs):
+        if (options.rsdb == None):
+            print "Specify --rsdb"
+            exit()
+        BillTool().bindrs(options.inputbill, options.rsdb)
+        exit()
+        
+    print "Specify operation"
