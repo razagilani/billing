@@ -275,7 +275,7 @@ class BillTool():
         XMLUtils().save_xml_file(xml, outputbill, user, password)
 
 
-    def bindrs(self, inputbill, rsdb):
+    def bindrs(self, inputbill, outputbill, rsdb, hypothetical, user=None, password=None):
 
         import yaml
         import rate_structure
@@ -283,36 +283,86 @@ class BillTool():
         # given a bill that has its actual registers populated, apply a rate structure 
         # For now, just compare it to what is input for development purposes
 
-        # Bind to XML bill
+        # load XML bill
         tree = etree.parse(inputbill)
 
-        # determine what services are present in the bill
+        # determine what services are present in the utilbills
         utilbills = self.get_elem(tree, "/ub:bill/ub:utilbill")
 
-        # identify the per service rate structures within the bill
+        # identify the per service rate structures within a utilbill
         # /ub:bill/ub:details/ub:rateschedule/@rsbinding
         for utilbill in utilbills:
+            # get name of the utility
             rsbinding_utilbill = self.get_elem(utilbill, "@rsbinding")[0]
+            # get service
             service = self.get_elem(utilbill, "@service")[0]
+            # get name of the rate structure
             rsbinding_rateschedule = self.get_elem(tree, "/ub:bill/ub:details[@service='"+service+"']/ub:rateschedule/@rsbinding")[0]
+            # load the rate structure and configure it
             rs = yaml.load(file(rsdb + os.sep + os.path.join(rsbinding_utilbill, rsbinding_rateschedule)+".yaml"))
             rs.configure()
 
             # acquire actual meter registers for this service
-
             actual_registers = self.get_elem(utilbill, "/ub:bill/ub:measuredusage[@service='" + service+ "']/ub:meter/ub:register[@shadow='false']")
+            # each service has a number of actual utility registers
             for actual_register in actual_registers:
                 rsbinding_register = self.get_elem(actual_register, "@rsbinding")[0]
-                register_quantity = self.get_elem(actual_register, "ub:total")[0].text
+                register_quantity = 0.0
+                # a hypothetical binding includes both the actual and shadow register values added together
+                if (hypothetical):
+                    shadow_register = self.get_elem(actual_register,"../ub:register[@shadow='true' and @rsbinding='"+rsbinding_register+"']")[0]
+                    register_quantity += float(self.get_elem(shadow_register, "ub:total")[0].text)
 
-                rs.__dict__[rsbinding_register].quantity = float(register_quantity)
+                register_quantity += float(self.get_elem(actual_register, "ub:total")[0].text)
 
-            print "ON_PEAK_ENERGY " + str(rs.__dict__["ON_PEAK_ENERGY"].total)
-            print "SALES_TAX_DISTRIBUTION " + str(rs.__dict__["SALES_TAX_DISTRIBUTION"].total)
+                rs.__dict__[rsbinding_register].quantity = register_quantity
 
+            print(rs)
 
+            # now that the rate structure is loaded, configured and populated with registers
+            # bind to the charge items in the bill
 
+            # if hypothetical, then treat the hypothetical charges
+            charges = None
+            if (hypothetical):
+                print "PROCESSING HYPOTHETICAL" + str(hypothetical)
+                charges = self.get_elem(utilbill, "/ub:bill/ub:details[@service='"+service+"']/ub:chargegroup/ub:charges[@type='hypothetical']/ub:charge")
+                # TODO: create the hypothetical charges from the actual charges 
+            else:
+                print "PROCESSING ACTUAL"
+                charges = self.get_elem(utilbill, "/ub:bill/ub:details[@service='"+service+"']/ub:chargegroup/ub:charges[@type='actual']/ub:charge")
 
+            for charge in charges:
+                print "Before " + etree.tostring(charge)
+                charge_binding = self.get_elem(charge, "@rsbinding")
+                if (len(charge_binding) == 0):
+                    # TODO: pretty print this
+                    print "No Binding for " + str(charge)
+                    continue
+
+                rsi = rs.__dict__[charge_binding[0]]
+
+                # if the quantity is present in the rate structure, override value in XML
+                if (rsi.__dict__.has_key('quantity')):
+                    # TODO create quantity element if it does not exist
+                    quantity = self.get_elem(charge, "ub:quantity")[0]
+                    quantity.text = str(rsi.quantity)
+
+                # if the rate is present in the rate structure, override value in XML
+                if (rsi.__dict__.has_key('rate')):
+                    rate = self.get_elem(charge, "ub:rate")[0]
+                    rate.text = str(rsi.rate)
+
+                if (rsi.__dict__.has_key('total')):
+                    total = self.get_elem(charge, "ub:total")[0]
+                    total.text = str(rsi.total)
+
+                print "After " + etree.tostring(charge)
+        xml = etree.tostring(tree, pretty_print=True)
+
+        #TODO handle cases where bindings are in the XML but not the RS
+
+        XMLUtils().save_xml_file(xml, outputbill, user, password)
 
 
 def main(options):
@@ -333,7 +383,8 @@ if __name__ == "__main__":
     parser.add_option("--sumhypothetical", action="store_true", dest="sumhypothetical", help="Summarize hypothetical charges.")
     parser.add_option("--sumactual", action="store_true", dest="sumactual", help="Summarize actual charges.")
     parser.add_option("--totalize", action="store_true", dest="totalize", help="Calculate total due.")
-    parser.add_option("--bindrs", action="store_true", dest="bindrs", help="Bind and evaluate a rate structure.")
+    parser.add_option("--bindrsactual", action="store_true", dest="bindrsactual", help="Bind and evaluate a rate structure.")
+    parser.add_option("--bindrshypothetical", action="store_true", dest="bindrshypothetical", help="Bind and evaluate a rate structure.")
     parser.add_option("--rsdb", dest="rsdb", help="Location of the rate structure database.")
 
     (options, args) = parser.parse_args()
@@ -369,11 +420,18 @@ if __name__ == "__main__":
         BillTool().totalize(options.inputbill, options.outputbill, options.user, options.password)
         exit()
 
-    if (options.bindrs):
+    if (options.bindrsactual):
         if (options.rsdb == None):
             print "Specify --rsdb"
             exit()
-        BillTool().bindrs(options.inputbill, options.rsdb)
+        BillTool().bindrs(options.inputbill, options.outputbill, options.rsdb, False, options.user, options.password)
+        exit()
+
+    if (options.bindrshypothetical):
+        if (options.rsdb == None):
+            print "Specify --rsdb"
+            exit()
+        BillTool().bindrs(options.inputbill, options.outputbill, options.rsdb, True, options.user, options.password)
         exit()
         
     print "Specify operation"

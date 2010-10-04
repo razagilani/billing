@@ -111,7 +111,7 @@
 		</ub:rateschedule>
 		<ub:chargegroup type="Distribution">
 			<ub:charges type="actual">
-				<ub:charge rsbinding="foo">
+				<ub:charge>
 					<ub:description>Usage</ub:description>
 					<ub:quantity units="Therms">300.0</ub:quantity>
 					<ub:rate units="dollars">0.3180</ub:rate>
@@ -253,7 +253,7 @@
 					<ub:rate units="dollars">0.0111585</ub:rate>
 					<ub:total>59.81</ub:total>
 				</ub:charge>
-				<ub:charge rsbinding="INT_PEAK_ENERGY">
+				<ub:charge rsbinding="INT_ENERGY">
 					<ub:description>Int-Peak Energy</ub:description>
 					<ub:quantity units="kWh">4320</ub:quantity>
 					<ub:rate units="dollars">0.0111597</ub:rate>
@@ -316,7 +316,7 @@
 					<ub:rate units="dollars">0.0111585</ub:rate>
 					<ub:total>59.81</ub:total>
 				</ub:charge>
-				<ub:charge rsbinding="INT_PEAK_ENERGY">
+				<ub:charge rsbinding="INT_ENERGY">
 					<ub:description>Int-Peak Energy</ub:description>
 					<ub:quantity units="kWh">4320</ub:quantity>
 					<ub:rate units="dollars">0.0111597</ub:rate>

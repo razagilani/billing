@@ -1,5 +1,5 @@
 !rate_structure
-name: NONRES-MGT-L-V-IIB-Winter
+name: Commercial Heat/Cool
 service: Electric
 effective: 2010-09-01
 expires: 2010-10-15
@@ -7,22 +7,22 @@ registers:
     - !register
       descriptor: REG_TOTAL
       description: Total kWh register
-      quantity: 500
+      quantity: 0
       quantityunits: kWh
     - !register
       descriptor: REG_PEAK
       description: Peak kWh register
-      quantity: 25
+      quantity: 0
       quantityunits: kWh
     - !register
       descriptor: REG_INT
       description: Shoulder kWh register
-      quantity: 25 
+      quantity: 0
       quantityunits: kWh
     - !register
       descriptor: REG_OFFPEAK
       description: Off-Peak kWh register
-      quantity: 50
+      quantity: 0 
       quantityunits: kWh
 rates:
     - !rate_structure_item
@@ -94,7 +94,7 @@ rates:
       descriptor: TOTAL_USE
       description: Total use supply charge
       quantity: REG_TOTAL.quantity
-      quantityunits: dollars
+      quantityunits: kWh
       rate: 0.103
       rateunits: percent
       total: TOTAL_USE.quantity * TOTAL_USE.rate
