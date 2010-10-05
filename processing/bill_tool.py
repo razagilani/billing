@@ -276,71 +276,93 @@ class BillTool():
 
 
     def bindrs(self, inputbill, outputbill, rsdb, hypothetical, user=None, password=None):
+        """ This function binds a rate structure against the actual and hypothetical charges found """
+        """ in a bill. """
 
         import yaml
         import rate_structure
 
-        # given a bill that has its actual registers populated, apply a rate structure 
-        # For now, just compare it to what is input for development purposes
+        # given a bill that has its actual registers populated, apply a rate structure.
 
         # load XML bill
         tree = etree.parse(inputbill)
 
-        # determine what services are present in the utilbills
+
+        # TODO: much of the code below to be refactored when register definitions are 
+        # placed in the rate structure
+
+
+        # obtain utilbill groves to determine what services are present in the utilbills
         utilbills = self.get_elem(tree, "/ub:bill/ub:utilbill")
 
-        # identify the per service rate structures within a utilbill
+        # identify the per service rate structures for each utilbill
         # /ub:bill/ub:details/ub:rateschedule/@rsbinding
         for utilbill in utilbills:
+
             # get name of the utility
             rsbinding_utilbill = self.get_elem(utilbill, "@rsbinding")[0]
             # get service
             service = self.get_elem(utilbill, "@service")[0]
             # get name of the rate structure
-            rsbinding_rateschedule = self.get_elem(tree, "/ub:bill/ub:details[@service='"+service+"']/ub:rateschedule/@rsbinding")[0]
-            # load the rate structure and configure it
-            rs = yaml.load(file(rsdb + os.sep + os.path.join(rsbinding_utilbill, rsbinding_rateschedule)+".yaml"))
+            rsbinding_rateschedule = self.get_elem(tree, "/ub:bill/ub:details[@service='" + 
+                service + "']/ub:rateschedule/@rsbinding")[0]
+
+            # now load the rate structure and configure it
+            rs = yaml.load(file(rsdb + os.sep + os.path.join(rsbinding_utilbill, rsbinding_rateschedule) + ".yaml"))
             rs.configure()
 
             # acquire actual meter registers for this service
-            actual_registers = self.get_elem(utilbill, "/ub:bill/ub:measuredusage[@service='" + service+ "']/ub:meter/ub:register[@shadow='false']")
+            actual_registers = self.get_elem(utilbill, "/ub:bill/ub:measuredusage[@service='" + 
+                service + "']/ub:meter/ub:register[@shadow='false']")
+
             # each service has a number of actual utility registers
             for actual_register in actual_registers:
-                rsbinding_register = self.get_elem(actual_register, "@rsbinding")[0]
-                register_quantity = 0.0
-                # a hypothetical binding includes both the actual and shadow register values added together
-                if (hypothetical):
-                    shadow_register = self.get_elem(actual_register,"../ub:register[@shadow='true' and @rsbinding='"+rsbinding_register+"']")[0]
-                    register_quantity += float(self.get_elem(shadow_register, "ub:total")[0].text)
 
+                # each register has a binding to a register declared in the rate structure
+                rsbinding_register = self.get_elem(actual_register, "@rsbinding")[0]
+
+                # actual register quantity, with shadow register value optionally added
+                register_quantity = 0.0
+
+                # acquire shadow register and track its value
                 register_quantity += float(self.get_elem(actual_register, "ub:total")[0].text)
 
+                if (hypothetical):
+                    # acquire shadow register and add its value
+                    shadow_reg_total = self.get_elem(actual_register,"../ub:register[@shadow='true' and @rsbinding='"
+                        +rsbinding_register+"']/ub:total")[0]
+                    register_quantity += float(shadow_reg_total.text)
+
+                # populate rate structure with meter quantities read from XML
                 rs.__dict__[rsbinding_register].quantity = register_quantity
 
-            print(rs)
+            #print(rs)
 
             # now that the rate structure is loaded, configured and populated with registers
             # bind to the charge items in the bill
 
-            # if hypothetical, then treat the hypothetical charges
+            # if hypothetical, then treat the hypothetical charges. If not, process actual
             charges = None
             if (hypothetical):
-                print "PROCESSING HYPOTHETICAL" + str(hypothetical)
-                charges = self.get_elem(utilbill, "/ub:bill/ub:details[@service='"+service+"']/ub:chargegroup/ub:charges[@type='hypothetical']/ub:charge")
+                charges = self.get_elem(utilbill, "/ub:bill/ub:details[@service='"
+                    + service+"']/ub:chargegroup/ub:charges[@type='hypothetical']/ub:charge")
                 # TODO: create the hypothetical charges from the actual charges 
             else:
-                print "PROCESSING ACTUAL"
-                charges = self.get_elem(utilbill, "/ub:bill/ub:details[@service='"+service+"']/ub:chargegroup/ub:charges[@type='actual']/ub:charge")
-
+                charges = self.get_elem(utilbill, "/ub:bill/ub:details[@service='"
+                    + service + "']/ub:chargegroup/ub:charges[@type='actual']/ub:charge")
+            
+            # process each individual charge and bind it to the rate structure
             for charge in charges:
-                print "Before " + etree.tostring(charge)
+                # a charge may not have a binding because it is not meant to be bound
                 charge_binding = self.get_elem(charge, "@rsbinding")
                 if (len(charge_binding) == 0):
                     # TODO: pretty print this
                     print "No Binding for " + str(charge)
                     continue
 
+                # obtain the rate structure item that is bound to this charge
                 rsi = rs.__dict__[charge_binding[0]]
+                rsi.bound = True
 
                 # if the quantity is present in the rate structure, override value in XML
                 if (rsi.__dict__.has_key('quantity')):
@@ -350,19 +372,21 @@ class BillTool():
 
                 # if the rate is present in the rate structure, override value in XML
                 if (rsi.__dict__.has_key('rate')):
+                    # TODO create rate element if it does not exist
                     rate = self.get_elem(charge, "ub:rate")[0]
                     rate.text = str(rsi.rate)
 
                 if (rsi.__dict__.has_key('total')):
+                    # TODO create total element if it does not exist
                     total = self.get_elem(charge, "ub:total")[0]
                     total.text = str(rsi.total)
 
-                print "After " + etree.tostring(charge)
-        xml = etree.tostring(tree, pretty_print=True)
+            for rsi in rs.rates:
+                if (hasattr(rsi, 'bound') == False):
+                    print "RSI not bound " + str(rsi)
 
-        #TODO handle cases where bindings are in the XML but not the RS
 
-        XMLUtils().save_xml_file(xml, outputbill, user, password)
+        XMLUtils().save_xml_file(etree.tostring(tree, pretty_print=True), outputbill, user, password)
 
 
 def main(options):
