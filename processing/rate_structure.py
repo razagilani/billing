@@ -2,6 +2,10 @@ import yaml
 from decimal import *
 
 class rate_structure(yaml.YAMLObject):
+    """ The rate structure is the model for how utilities calculate their utility bill.  This model does not
+    necessarily dictate the re bill, because the re bill can have charges that are not part of this model.
+    This is also why the rate structure model does not comprehend charge grouping, subtotals or totals.
+    """
     yaml_tag = u'!rate_structure'
 
     def register_needs(self):
@@ -19,41 +23,34 @@ class rate_structure(yaml.YAMLObject):
         for reg in self.registers:
             self.__dict__[reg.descriptor] = reg
 
-
+        # so that rate structure items may be referenced from this objects namespace
         for rsi in self.rates:
-            # so that rate structure items may be referenced this objects namespace
             self.__dict__[rsi.descriptor] = rsi
             # so that RSIs have access to this objects namespace
             rsi.ratestructure = self
 
     def __str__(self):
 
-        def has(key):
-            return self.__dict__.has_key(key)
         s = '' 
-        s += '%s\t' % (self.name if has('name') else '')
-        s += '%s\t' % (self.service if has('service') else '')
+        s += '%s\t' % (self.name if hasattr(self, 'name') else '')
+        s += '%s\t' % (self.service if hasattr(self, 'service') else '')
         s += '\n'
         for reg in self.registers:
             s += str(reg)
         for rsi in self.rates:
             s += str(rsi)
         return s
-            
-        
 
 class register(yaml.YAMLObject):
     yaml_tag = u'!register'
 
     def __str__(self):
 
-        def has(key):
-            return self.__dict__.has_key(key)
         s = '' 
-        s += '%s\t' % (self.descriptor if has('descriptor') else '')
-        s += '%s\t' % (self.description if has('description') else '')
-        s += '%s\t' % (self.quantity if has('quantity') else '')
-        s += '%s\t' % (self.quantityunits if has('quantityunits') else '')
+        s += '%s\t' % (self.descriptor if hasattr(self, 'descriptor') else '')
+        s += '%s\t' % (self.description if hasattr(self, 'description') else '')
+        s += '%s\t' % (self.quantity if hasattr(self, 'quantity') else '')
+        s += '%s\t' % (self.quantityunits if hasattr(self, 'quantityunits') else '')
         s += '\n'
         return s
 
@@ -92,18 +89,15 @@ class rate_structure_item(yaml.YAMLObject):
             return object.__getattribute__(self, name)
 
     def __str__(self):
-        s = ""
 
-        def has(key):
-            return self.__dict__.has_key(key)
-
-        s += '%s\t' % (self.descriptor if has('descriptor') else '')
-        s += '%s\t' % (self.description if has('description') else '')
-        s += '%s\t' % (self.quantity if has('quantity') else '')
-        s += '%s\t' % (self.quantityunits if has('quantityunits') else '')
-        s += '%s\t' % (self.rate if has('rate') else '')
-        s += '%s\t' % (self.rateunits if has('rateunits') else '')
-        s += '%s\t' % (self.total if has('total') else '')
+        s = ''
+        s += '%s\t' % (self.descriptor if hasattr(self, 'descriptor') else '')
+        s += '%s\t' % (self.description if hasattr(self, 'description') else '')
+        s += '%s\t' % (self.quantity if hasattr(self, 'quantity') else '')
+        s += '%s\t' % (self.quantityunits if hasattr(self, 'quantityunits') else '')
+        s += '%s\t' % (self.rate if hasattr(self, 'rate') else '')
+        s += '%s\t' % (self.rateunits if hasattr(self, 'rateunits') else '')
+        s += '%s\t' % (self.total if hasattr(self, 'total') else '')
 
         s += '\n'
         return s
