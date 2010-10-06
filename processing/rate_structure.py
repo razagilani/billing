@@ -73,6 +73,12 @@ class rate_structure_item(yaml.YAMLObject):
                 return eval(object.__getattribute__(self, 'quantity'), object.__getattribute__(self, 'ratestructure').__dict__)
             # otherwise just return the quantity since it does not have to be evaluated
             return object.__getattribute__(self, 'quantity')
+        if (name == 'rate'):
+            # if the rate is a string, an expression, eval it
+            if (type(object.__getattribute__(self, 'rate')) == str):
+                return eval(object.__getattribute__(self, 'rate'), object.__getattribute__(self, 'ratestructure').__dict__)
+            return object.__getattribute__(self, 'rate')
+
         elif (name == 'total'):
             #print str(type(object.__getattribute__(self, 'total'))) + str(object.__getattribute__(self, 'total'))
             # if the total is a string, an expression, eval it
