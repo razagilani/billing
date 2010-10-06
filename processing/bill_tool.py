@@ -308,7 +308,11 @@ class BillTool():
                 service + "']/ub:rateschedule/@rsbinding")[0]
 
             # now load the rate structure and configure it
-            rs = yaml.load(file(rsdb + os.sep + os.path.join(rsbinding_utilbill, rsbinding_rateschedule) + ".yaml"))
+            rate_structures = yaml.load_all(file(rsdb + os.sep + os.path.join(rsbinding_utilbill, rsbinding_rateschedule) + ".yaml"))
+            for rs in rate_structures:
+                print rs
+            
+            # TODO: only the last rate structure is used.  Use the one that has a valid date
             rs.configure()
 
             # acquire actual meter registers for this service
