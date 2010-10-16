@@ -277,12 +277,14 @@ class BillTool():
 
     def bindrs(self, inputbill, outputbill, rsdb, hypothetical, user=None, password=None):
         """ This function binds a rate structure against the actual and hypothetical charges found """
-        """ in a bill. """
+        """ in a bill. If and RSI specifies information no in the bill, it is added to the bill.   """
+        """ If the bill specifies information in a charge that is not in the RSI, the charge is """
+        """ left untouched."""
 
         import yaml
         import rate_structure
 
-        # given a bill that has its actual registers populated, apply a rate structure.
+        # given a bill that has its actual or shadow registers populated, apply a rate structure.
 
         # load XML bill
         tree = etree.parse(inputbill)
@@ -310,6 +312,7 @@ class BillTool():
             # now load the rate structure and configure it
             rate_structures = yaml.load_all(file(rsdb + os.sep + os.path.join(rsbinding_utilbill, rsbinding_rateschedule) + ".yaml"))
             for rs in rate_structures:
+                print "*** Loaded Rate Structure for " + service
                 print rs
             
             # TODO: only the last rate structure is used.  Use the one that has a valid date
@@ -332,15 +335,13 @@ class BillTool():
                 register_quantity += float(self.get_elem(actual_register, "ub:total")[0].text)
 
                 if (hypothetical):
-                    # acquire shadow register and add its value
+                    # acquire shadow register and add its value to the actual register to sum re and ce
                     shadow_reg_total = self.get_elem(actual_register,"../ub:register[@shadow='true' and @rsbinding='"
                         +rsbinding_register+"']/ub:total")[0]
                     register_quantity += float(shadow_reg_total.text)
 
                 # populate rate structure with meter quantities read from XML
                 rs.__dict__[rsbinding_register].quantity = register_quantity
-
-            #print(rs)
 
             # now that the rate structure is loaded, configured and populated with registers
             # bind to the charge items in the bill
@@ -360,34 +361,80 @@ class BillTool():
                 # a charge may not have a binding because it is not meant to be bound
                 charge_binding = self.get_elem(charge, "@rsbinding")
                 if (len(charge_binding) == 0):
-                    # TODO: pretty print this
-                    print "No Binding for " + str(charge)
+                    print "*** No @rsbinding for " + etree.tostring(charge)
                     continue
 
                 # obtain the rate structure item that is bound to this charge
                 rsi = rs.__dict__[charge_binding[0]]
+                # flag the rsi so we can know which RSIs were not processed
                 rsi.bound = True
 
+                # if there is a description present in the rate structure, override the value in xml
+                # if there is not description in the RSI, leave the one in XML
+                if (hasattr(rsi, 'description')):
+                    descriptionElems = self.get_elem(charge, "ub:description")
+                    description = None
+                    if (len(descriptionElems) == 0):
+                        # description element missing, so insert one
+                        description = etree.Element("{bill}description")
+                        charge.insert(0, description)
+                    else:
+                        description = descriptionElems[0]
+                    description.text = rsi.description
+
                 # if the quantity is present in the rate structure, override value in XML
-                if (rsi.__dict__.has_key('quantity')):
-                    # TODO create quantity element if it does not exist
-                    quantity = self.get_elem(charge, "ub:quantity")[0]
+                if (hasattr(rsi, 'quantity')):
+                    quantityElems = self.get_elem(charge, "ub:quantity")
+                    quantity = None
+                    if (len(quantityElems) == 0):
+                        # quantity element is missing, so insert one
+                        attribs = {}
+                        if (hasattr(rsi, "quantityunits")):
+                            attribs["units"] = rsi.quantityunits
+                            
+                        quantity = etree.Element("{bill}quantity", attribs)
+                        # TODO make sure this index is safe if there is no description
+                        # index is a function of the description sibling index... figure it out
+                        charge.insert(1, quantity)
+                        print "*** updated charge with quantity"
+                    else:
+                        quantity = quantityElems[0]
                     quantity.text = str(rsi.quantity)
 
                 # if the rate is present in the rate structure, override value in XML
-                if (rsi.__dict__.has_key('rate')):
+                if (hasattr(rsi, 'rate')):
                     # TODO create rate element if it does not exist
-                    rate = self.get_elem(charge, "ub:rate")[0]
+                    rateElems = self.get_elem(charge, "ub:rate")
+                    rate = None
+                    if (len(rateElems) == 0):
+                        # rate element missing, so insert one
+                        attribs = {}
+                        if (hasattr(rsi, "rateunits")):
+                            attribs["rateunits"] = rsi.rateunits
+                        rate = etree.Element("{bill}rate", attribs)
+                        # TODO make sure this index is safe if there is no rate
+                        # index is a function of the presence of siblings....
+                        charge.insert(2, rate)
+                    else:
+                        rate = rateElems[0]
                     rate.text = str(rsi.rate)
 
-                if (rsi.__dict__.has_key('total')):
+                if (hasattr(rsi, 'total')):
                     # TODO create total element if it does not exist
-                    total = self.get_elem(charge, "ub:total")[0]
+                    totalElems = self.get_elem(charge, "ub:total")
+                    total = None
+                    if (len(totalElems) == 0):
+                        # total element is missing, so create one
+                        total = etree.Element("{bill}total")
+                        # TODO make sure this index is safe and a function of the present siblings
+                        charge.insert(3, total)
+                    else:
+                        total = totalElems[0]
                     total.text = str(rsi.total)
 
             for rsi in rs.rates:
                 if (hasattr(rsi, 'bound') == False):
-                    print "RSI not bound " + str(rsi)
+                    print "*** RSI not bound " + str(rsi)
 
 
         XMLUtils().save_xml_file(etree.tostring(tree, pretty_print=True), outputbill, user, password)
