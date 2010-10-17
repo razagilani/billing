@@ -245,10 +245,8 @@
 			<ub:charges type="actual">
 				<ub:charge rsbinding="CUSTOMER_CHARGE">
 					<ub:description>Customer Charge</ub:description>
-					<ub:total>36.26</ub:total>
 				</ub:charge>
 				<ub:charge rsbinding="ON_PEAK_ENERGY">
-					<ub:description>On-Peak Energy</ub:description>
 					<ub:quantity units="kWh">5360</ub:quantity>
 					<ub:rate units="dollars">0.0111585</ub:rate>
 					<ub:total>59.81</ub:total>

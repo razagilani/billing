@@ -430,7 +430,7 @@ class BillTool():
                         # total is always last child
                         charge.append(total)
                         print "*** updated charge with total because it was absent in the bill and present in the RSI"
-                    total.text = str(rsi.total)
+                    total.text = "{0:.2f}".format(rsi.total)
 
             for rsi in rs.rates:
                 if (hasattr(rsi, 'bound') == False):
