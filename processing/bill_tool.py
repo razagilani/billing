@@ -34,26 +34,9 @@ class BillTool():
     def get_elem(self, tree, xpath):
         return tree.xpath(xpath, namespaces={"ub":"bill"})
 
-    # totalize the bill
-    # /ub:bill/ub:rebill/ub:totaldue = /ub:bill/ub:rebill/ub:totaladjustment + /ub:bill/ub:rebill/ub:balanceforward + 
-    # /ub:bill/ub:rebill/ub:recharges + /ub:bill/ub:rebill/ub:currentcharges
-    def totalize(self, unprocessedBill, targetBill, user=None, password=None):
-        tree = etree.parse(unprocessedBill)
-
-        totaladjustment = float(self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaladjustment")[0].text)
-        balanceforward = float(self.get_elem(tree, "/ub:bill/ub:rebill/ub:balanceforward")[0].text)
-        recharges = float(self.get_elem(tree, "/ub:bill/ub:rebill/ub:recharges")[0].text)
-        currentcharges = float(self.get_elem(tree, "/ub:bill/ub:rebill/ub:currentcharges")[0].text)
-
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaldue")[0].text = \
-            str(totaladjustment + balanceforward + recharges + currentcharges)
-
-        # write bill back out
-        xml = etree.tostring(tree, pretty_print=True)
-        XMLUtils().save_xml_file(xml, targetBill, user, password)
 
     # compute the value, charges and savings of renewable energy
-    def compute_re(self, unprocessedBill, targetBill, discount_rate = None, user=None, password=None):
+    def sumbill(self, unprocessedBill, targetBill, discount_rate = None, user=None, password=None):
 
         tree = etree.parse(unprocessedBill)
 
@@ -68,12 +51,12 @@ class BillTool():
             self.get_elem(utilbill, "ub:revalue")[0].text = str(revalue)
 
             # we receive rounding down
-            recharges = Decimal(self.get_elem(utilbill, "ub:revalue")[0].text) * Decimal(str(1.0 - discount_rate))
-            self.get_elem(utilbill, "ub:recharges")[0].text = str(recharges.quantize(Decimal('.01'), rounding=ROUND_DOWN))
+            recharges = Decimal(self.get_elem(utilbill, "ub:revalue")[0].text) * Decimal(str(1.0 - float(discount_rate)))
+            self.get_elem(utilbill, "ub:recharges")[0].text = str(recharges.quantize(Decimal('.00'), rounding=ROUND_DOWN))
 
             # customers receive rounding up
             resavings = Decimal(self.get_elem(utilbill, "ub:revalue")[0].text) * Decimal(str(discount_rate))
-            self.get_elem(utilbill, "ub:resavings")[0].text = str(resavings.quantize(Decimal('.01'), rounding=ROUND_UP))
+            self.get_elem(utilbill, "ub:resavings")[0].text = str(resavings.quantize(Decimal('.00'), rounding=ROUND_UP))
 
             # assert recharges + resavings = revalue
             assert(recharges + resavings == revalue)
@@ -85,6 +68,17 @@ class BillTool():
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:revalue")[0].text = str(rebillrevalue)
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:recharges")[0].text = str(rebillrecharges)
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:resavings")[0].text = str(rebillresavings)
+
+        # totalize the bill
+        # /ub:bill/ub:rebill/ub:totaldue = /ub:bill/ub:rebill/ub:totaladjustment + /ub:bill/ub:rebill/ub:balanceforward + 
+        # /ub:bill/ub:rebill/ub:recharges + /ub:bill/ub:rebill/ub:currentcharges
+        totaladjustment = float(self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaladjustment")[0].text)
+        balanceforward = float(self.get_elem(tree, "/ub:bill/ub:rebill/ub:balanceforward")[0].text)
+        recharges = float(self.get_elem(tree, "/ub:bill/ub:rebill/ub:recharges")[0].text)
+        currentcharges = float(self.get_elem(tree, "/ub:bill/ub:rebill/ub:currentcharges")[0].text)
+
+        self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaldue")[0].text = \
+            str(totaladjustment + balanceforward + recharges + currentcharges)
 
         # write bill back out
         xml = etree.tostring(tree, pretty_print=True)
@@ -107,12 +101,12 @@ class BillTool():
         for hypothetical_charges in all_hypothetical_charges:
             # and set the subtotal for for each hypothetical set of charges
             self.get_elem(hypothetical_charges, "ub:total")[0].text = \
-            "{0:.2f}".format(self.get_elem(hypothetical_charges, "sum(ub:charge/ub:total)"))
+            str(self.get_elem(hypothetical_charges, "sum(ub:charge/ub:total)"))
 
         # for each utility details, sum up the hypothetical charges totals 
         details = self.get_elem(tree, "/ub:bill/ub:details")
         for detail in details:
-            total = "{0:.2f}".format(self.get_elem(detail, "sum(ub:chargegroup/ub:charges[@type=\"hypothetical\"]/ub:total)"))
+            total = str(self.get_elem(detail, "sum(ub:chargegroup/ub:charges[@type=\"hypothetical\"]/ub:total)"))
             self.get_elem(detail, "ub:total[@type=\"hypothetical\"]")[0].text = total 
             # now that the utility details are totalized, hypothetical values are put into the utilibill summary
             service_type = detail.attrib["service"]
@@ -121,7 +115,7 @@ class BillTool():
         # finally, these hypothetical energy charges get rolled up into rebill
 
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:hypotheticalecharges")[0].text = \
-        "{0:.2f}".format(self.get_elem(tree, "sum(/ub:bill/ub:utilbill/ub:hypotheticalecharges)"))
+        str(self.get_elem(tree, "sum(/ub:bill/ub:utilbill/ub:hypotheticalecharges)"))
 
         xml = etree.tostring(tree, pretty_print=True)
 
@@ -144,12 +138,12 @@ class BillTool():
         for actual_charges in all_actual_charges:
             # and set the subtotal for for each actual set of charges
             self.get_elem(actual_charges, "ub:total")[0].text = \
-            "{0:.2f}".format(self.get_elem(actual_charges, "sum(ub:charge/ub:total)"))
+            str(self.get_elem(actual_charges, "sum(ub:charge/ub:total)"))
 
         # for each utility details, sum up the actual charges totals 
         details = self.get_elem(tree, "/ub:bill/ub:details")
         for detail in details:
-            total = "{0:.2f}".format(self.get_elem(detail, "sum(ub:chargegroup/ub:charges[@type=\"actual\"]/ub:total)"))
+            total = str(self.get_elem(detail, "sum(ub:chargegroup/ub:charges[@type=\"actual\"]/ub:total)"))
             self.get_elem(detail, "ub:total[@type=\"actual\"]")[0].text = total 
             # now that the utility details are totalized, actual values are put into the utilibill summary
             service_type = detail.attrib["service"]
@@ -158,7 +152,7 @@ class BillTool():
         # finally, these actual energy charges get rolled up into rebill
 
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:actualecharges")[0].text = \
-        "{0:.2f}".format(self.get_elem(tree, "sum(/ub:bill/ub:utilbill/ub:actualecharges)"))
+        str(self.get_elem(tree, "sum(/ub:bill/ub:utilbill/ub:actualecharges)"))
 
         xml = etree.tostring(tree, pretty_print=True)
 
@@ -195,7 +189,9 @@ class BillTool():
             message[0].clear()
 
         # next period begin is prev period end
-        # ToDo business logic specific dates are selected here
+        # TODO business logic specific dates are selected here
+        # TODO this is an incorrect computation of the re bill period begin - the re bill period begin will be
+        # the smallest date of all the utilbill bill period ends
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:billperiodbegin")[0].text = \
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:billperiodend")[0].text
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:billperiodend")[0].clear()
@@ -307,6 +303,7 @@ class BillTool():
             service = utilbill.get("service")
 
             # get name of the rate structure
+            # TODO test for one element in array
             rsbinding_rateschedule = self.get_elem(tree, "/ub:bill/ub:details[@service='" + 
                 service + "']/ub:rateschedule/@rsbinding")[0]
 
@@ -430,7 +427,7 @@ class BillTool():
                         # total is always last child
                         charge.append(total)
                         print "*** updated charge with total because it was absent in the bill and present in the RSI"
-                    total.text = "{0:.2f}".format(rsi.total)
+                    total.text = str(rsi.total)
 
             for rsi in rs.rates:
                 if (hasattr(rsi, 'bound') == False):
@@ -456,7 +453,8 @@ if __name__ == "__main__":
     parser.add_option("--roll", dest="roll", action="store_true", help="Roll the bill to the next period.")
     parser.add_option("--sumhypothetical", action="store_true", dest="sumhypothetical", help="Summarize hypothetical charges.")
     parser.add_option("--sumactual", action="store_true", dest="sumactual", help="Summarize actual charges.")
-    parser.add_option("--totalize", action="store_true", dest="totalize", help="Calculate total due.")
+    parser.add_option("--sumbill", action="store_true", dest="sumbill", help="Calculate total due.")
+    parser.add_option("--discountrate",  dest="discountrate", help="Customer energy discount rate from 0.0 to 1.0")
     parser.add_option("--bindrsactual", action="store_true", dest="bindrsactual", help="Bind and evaluate a rate structure.")
     parser.add_option("--bindrshypothetical", action="store_true", dest="bindrshypothetical", help="Bind and evaluate a rate structure.")
     parser.add_option("--rsdb", dest="rsdb", help="Location of the rate structure database.")
@@ -490,8 +488,11 @@ if __name__ == "__main__":
         BillTool().sum_actual_charges(options.inputbill, options.outputbill, options.user, options.password)
         exit()
 
-    if (options.totalize):
-        BillTool().totalize(options.inputbill, options.outputbill, options.user, options.password)
+    if (options.sumbill):
+        if (options.discountrate):
+            BillTool().sumbill(options.inputbill, options.outputbill, options.discountrate, options.user, options.password)
+        else:
+            print "Specify --discountrate"
         exit()
 
     if (options.bindrsactual):

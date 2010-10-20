@@ -28,7 +28,9 @@ rates:
     - !rate_structure_item
       descriptor: CUSTOMER_CHARGE
       description: Monthly flat charge
-      total: 16.26
+      quantity: 1
+      rate: 16.26
+      total:
     - !rate_structure_item
       descriptor: ON_PEAK_ENERGY
       description: On peak energy usage

@@ -14,6 +14,7 @@ import os
 from pprint import pprint
 from types import NoneType
 import math
+from decimal import *
 
 # handle command line options
 from optparse import OptionParser
@@ -477,7 +478,7 @@ def main(options):
     # populate summaryChargesTableF
     utilitycharges = [
         [Paragraph("Your Utility Charges", styles['BillLabelSmCenter']),Paragraph("", styles['BillLabelSm']),Paragraph("Green Energy", styles['BillLabelSmCenter'])],
-        [Paragraph("Without Skyline", styles['BillLabelSmCenter']),Paragraph("With Skyline", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
+        [Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
     ]+[
         [Paragraph(str(utilbill.hypotheticalecharges),styles['BillFieldRight']), Paragraph(str(utilbill.actualecharges),styles['BillFieldRight']), Paragraph(str(utilbill.revalue),styles['BillFieldRight'])]
         for utilbill in iter(dom.bill.utilbill)
@@ -504,7 +505,7 @@ def main(options):
     # populate current charges
     currentCharges = [
         [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.resavings), styles['BillFieldRight'])],
-        [Paragraph("Skyline Charges", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.recharges), styles['BillFieldRight'])]
+        [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.recharges), styles['BillFieldRight'])]
     ]
 
     t = Table(currentCharges, [135,85])
@@ -558,7 +559,7 @@ def main(options):
     # list of the rows
     measuredUsage = [
         ["Utility Register", "Description", "Quantity", "", "",""],
-        [None, None, "Skyline", "Utility", "Total", None],
+        [None, None, "Renewable", "Utility", "Total", None],
         [None, None, None, None,  None, None,]
     ]
 
@@ -572,7 +573,7 @@ def main(options):
                             utilityregister = matchregister
                             break
                     # get the total calculation out of here and update bill model to support it.
-                    measuredUsage.append([register.identifier, register.description, register.total, utilityregister.total, float(str(register.total)) + float(str(utilityregister.total)), register.units])
+                    measuredUsage.append([register.identifier, register.description, Decimal(str(register.total)).quantize(Decimal('.01')), Decimal(str(utilityregister.total)).quantize(Decimal('.01')), Decimal(str(register.total)).quantize(Decimal('.01')) + Decimal(str(utilityregister.total)).quantize(Decimal('.01')), register.units])
                     utilityregister = None
 
     measuredUsage.append([None, None, None, None, None, None])
@@ -635,11 +636,17 @@ def main(options):
                             serviceStr = str(details.service)
                             service = details.service
                         description = charge.description if (charge.description is not None) else ""
-                        quantity = charge.quantity if (charge.quantity is not None) else ""
                         quantityUnits = charge.quantity.units if (charge.quantity is not None) else ""
-                        rate = charge.rate  if (charge.rate is not None) else ""
+                        if (quantityUnits == 'Therms' or quantityUnits == 'therms'):
+                            quantity = Decimal(str(charge.quantity)).quantize(Decimal('.00')) if (charge.quantity is not None) else ""
+                        elif (quantityUnits == 'Dollars' or quantityUnits == 'dollars'):
+                            quantity = Decimal(str(charge.quantity)).quantize(Decimal('.00')) if (charge.quantity is not None) else ""
+                        else:
+                            quantity = charge.quantity if (charge.quantity is not None) else ""
                         rateUnits = charge.rate.units if (charge.rate is not None) else ""
-                        total = charge.total
+                        rate = charge.rate  if (charge.rate is not None) else ""
+                        total = Decimal(str(charge.total)).quantize(Decimal('.00'))
+                        #total = charge.total
                         chargeDetails.append([serviceStr, str(description), str(quantity), str(quantityUnits), str(rate), str(rateUnits), str(total)])
                         # clear string so that it gets set on next service type
                         serviceStr = None
