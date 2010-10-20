@@ -87,9 +87,15 @@ class rate_structure_item(yaml.YAMLObject):
                 return eval(object.__getattribute__(self, 'total'), object.__getattribute__(self, 'ratestructure').__dict__)
             if (type(object.__getattribute__(self, 'total')) == type(None)):
                 # total is not set, therefore, evaluate it.
+                # Using python Decimal money math here since it appears utilities round up
+                # when calculating, not later... No doubt this is going to vary across utilities
+
+                # TODO: figure out how to do monetary rounding here
                 self.total = self.quantity * self.rate
+                return object.__getattribute__(self.total)
+
             # otherwise just return the total since it does not have to be evaluated
-            #return self.__dict__['total']
+            # TODO figure out how to do moentary rounding here
             return object.__getattribute__(self, 'total')
         else:
             return object.__getattribute__(self, name)
