@@ -433,6 +433,8 @@ class BillTool():
                 if (hasattr(rsi, 'bound') == False):
                     print "*** RSI was not bound " + str(rsi)
 
+        print "*** Evaluated ratestructure to: " + str(rs)
+
         XMLUtils().save_xml_file(etree.tostring(tree, pretty_print=True), outputbill, user, password)
 
 
