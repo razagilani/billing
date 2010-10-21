@@ -64,9 +64,18 @@ class rate_structure_item(yaml.YAMLObject):
     # hack that allows python code fragments to recursively evaluate, however there is no good means to check for cycles
     def __getattribute__(self, name):
 
+        # if this RSI does not yet have its ratestructure set and the ratestructure __dict__ is not full of the register 
+        # values that we need to evaluate RSIs, so do nothing special
+        if (object.__getattribute__(self, 'ratestructure') is None):
+            return object.__getattribute__(self, name)
+           
+        # So now do something special since a ratestructure is available to this RSI
+        # Basically, every time one of the RSI properties, quantity, rate or total is
+        # accessed, eval it if it is a string using the ratestructure __dict__ as
+        # its namespace
+
         # object.__geta... call supermethod to preventing unexpected recursion here
         if (name == 'quantity'):
-            #print str(type(object.__getattribute__(self, 'quantity'))) + str(object.__getattribute__(self, 'quantity'))
             # if the quantity is a string, an expression, eval it
             if (type(object.__getattribute__(self, 'quantity')) == str):
                 # assign eval results to attribute if re-evaluation doesn't have to be done. self.quantity = eval(...)
@@ -80,7 +89,6 @@ class rate_structure_item(yaml.YAMLObject):
             return object.__getattribute__(self, 'rate')
 
         elif (name == 'total'):
-            #print str(type(object.__getattribute__(self, 'total'))) + str(object.__getattribute__(self, 'total'))
             # if the total is a string, an expression, eval it
             if (type(object.__getattribute__(self, 'total')) == str):
                 # assign eval results to attribute if re-evaluation doesn't have to be done. self.total = eval(...)
@@ -91,7 +99,12 @@ class rate_structure_item(yaml.YAMLObject):
                 # when calculating, not later... No doubt this is going to vary across utilities
 
                 # TODO: figure out how to do monetary rounding here
-                self.total = self.quantity * self.rate
+                try:
+                    self.total = self.quantity * self.rate
+                except Exception, err:
+                    print('ERROR: %s\n' % str(err))
+                    raise e
+                    
                 return object.__getattribute__(self.total)
 
             # otherwise just return the total since it does not have to be evaluated
@@ -103,13 +116,13 @@ class rate_structure_item(yaml.YAMLObject):
     def __str__(self):
 
         s = ''
-        s += '%s\t' % (self.descriptor if hasattr(self, 'descriptor') else '')
-        s += '%s\t' % (self.description if hasattr(self, 'description') else '')
-        s += '%s\t' % (self.quantity if hasattr(self, 'quantity') else '')
-        s += '%s\t' % (self.quantityunits if hasattr(self, 'quantityunits') else '')
-        s += '%s\t' % (self.rate if hasattr(self, 'rate') else '')
-        s += '%s\t' % (self.rateunits if hasattr(self, 'rateunits') else '')
-        s += '%s\t' % (self.total if hasattr(self, 'total') else '')
+        s += 'descriptor: %s\t' % (self.descriptor if hasattr(self, 'descriptor') else '')
+        s += 'description: %s\t' % (self.description if hasattr(self, 'description') else '')
+        s += 'quantity: %s\t' % (self.quantity if hasattr(self, 'quantity') else '')
+        s += 'quantityunits: %s\t' % (self.quantityunits if hasattr(self, 'quantityunits') else '')
+        s += 'rate: %s\t' % (self.rate if hasattr(self, 'rate') else '')
+        s += 'rateunits: %s\t' % (self.rateunits if hasattr(self, 'rateunits') else '')
+        s += 'total: %s\t' % (self.total if hasattr(self, 'total') else '')
 
         s += '\n'
         return s
