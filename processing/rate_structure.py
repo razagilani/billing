@@ -79,8 +79,6 @@ class rate_structure_item(yaml.YAMLObject):
     # like 'total' must be declared somewhere, if not they yaml.  So we declare them here.
     # And later ask if the value of the attribute is None to determine how processing occurs
     total = None
-    quantity = None
-    rate = None
 
 
     # hack that allows python code fragments to recursively evaluate, however there is no good means to check for cycles
@@ -104,31 +102,28 @@ class rate_structure_item(yaml.YAMLObject):
         # to a register in the rate_structure's __dict__ or more interestingly, a subtotal of all
         # specified rate_structure_item descriptors in the event of a subtotal.
         if (name == 'quantity'):
-            if (type(object.__getattribute__(self, 'quantity')) == type(None)):
-                print "Quantity accessed, but quantity not set in rs yaml"
-                raise AttributeError
+            # consider testing for presence of attr, catching attribute error, printing msg and throwing the AE
 
             # if the quantity is a string, an expression, eval it
             if (type(object.__getattribute__(self, 'quantity')) == str):
 
                 # evaluate the string and return the result as the value of the quantity attribute
                 return eval(object.__getattribute__(self, 'quantity'), object.__getattribute__(self, 'ratestructure').__dict__)
-            # otherwise just return the quantity since it does not have to be evaluated
+            # otherwise just play dumb and return the quantity since it does not or no longer has to be evaluated
+            # playing dumb is smart for functions like hasattr() or other consumers of __getattribute__
             return object.__getattribute__(self, 'quantity')
 
         # handle requests for a rate_structure_item rate.  This is usually a number, but could be something
         # very complex like a declining block rate tax
         if (name == 'rate'):
-            if (type(object.__getattribute__(self, 'rate')) == type(None)):
-                print "Rate accessed, but rate not set in rs yaml"
-                raise AttributeError
+            # consider testing for presence of attr, catching attribute error, printing msg and throwing the AE
 
             # if the rate is a string, an expression, eval it
             if (type(object.__getattribute__(self, 'rate')) == str):
 
                 # evaluate the string and return the result as the value of the rate attribute
                 return eval(object.__getattribute__(self, 'rate'), object.__getattribute__(self, 'ratestructure').__dict__)
-            # otherwise, just return the rate
+            # otherwise, just play dumb and return the rate - important for functions that depend on __getattribute__
             return object.__getattribute__(self, 'rate')
 
         elif (name == 'total'):
