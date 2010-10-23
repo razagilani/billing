@@ -73,7 +73,6 @@ rates:
       quantity: REG_THERMS.quantity
       quantityunits: therms
       rate: 1.05507
-      total:
     - !rate_structure_item
       descriptor: EXCISE_TAX
       description: Declining block tax
