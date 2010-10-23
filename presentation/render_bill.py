@@ -305,9 +305,10 @@ def main(options):
     #Elements.append(UseUpSpace())
 
     # populate due date and amount
+    totaldue = str(Decimal(str(dom.bill.rebill.totaldue)).quantize(Decimal('.00')))
     dueDateAndAmount = [
         [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.duedate), styles['BillFieldRight'])], 
-        [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.totaldue), styles['BillFieldRight'])]
+        [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(totaldue, styles['BillFieldRight'])]
     ]
     
     t = Table(dueDateAndAmount, [135,85])
@@ -476,11 +477,14 @@ def main(options):
     Elements.append(UseUpSpace())
 
     # populate summaryChargesTableF
+    hypotheticalcharges = str(Decimal(str(utilbill.hypotheticalecharges)).quantize(Decimal('.00')))
+    actualcharges = str(Decimal(str(utilbill.actualecharges)).quantize(Decimal('.00')))
+    revalue = str(Decimal(str(utilbill.revalue)).quantize(Decimal('.01')))
     utilitycharges = [
         [Paragraph("Your Utility Charges", styles['BillLabelSmCenter']),Paragraph("", styles['BillLabelSm']),Paragraph("Green Energy", styles['BillLabelSmCenter'])],
         [Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
     ]+[
-        [Paragraph(str(utilbill.hypotheticalecharges),styles['BillFieldRight']), Paragraph(str(utilbill.actualecharges),styles['BillFieldRight']), Paragraph(str(utilbill.revalue),styles['BillFieldRight'])]
+        [Paragraph(hypotheticalcharges,styles['BillFieldRight']), Paragraph(actualcharges,styles['BillFieldRight']), Paragraph(revalue,styles['BillFieldRight'])]
         for utilbill in iter(dom.bill.utilbill)
     ]
 
@@ -491,10 +495,13 @@ def main(options):
     Elements.append(UseUpSpace())
 
     # populate balances
+    priorbalance = str(Decimal(str(dom.bill.rebill.priorbalance)).quantize(Decimal('.00')))
+    paymentreceived = str(Decimal(str(dom.bill.rebill.paymentreceived)).quantize(Decimal('.00')))
+    totaladjustment = str(Decimal(str(dom.bill.rebill.totaladjustment)).quantize(Decimal('.00')))
     balances = [
-        [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.priorbalance),styles['BillFieldRight'])],
-        [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.paymentreceived), styles['BillFieldRight'])],
-        [Paragraph("Adjustments", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.totaladjustment), styles['BillFieldRight'])],
+        [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(priorbalance,styles['BillFieldRight'])],
+        [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(paymentreceived, styles['BillFieldRight'])],
+        [Paragraph("Adjustments", styles['BillLabelRight']), Paragraph(totaladjustment, styles['BillFieldRight'])],
     ]
 
     t = Table(balances, [180,85])
@@ -503,9 +510,11 @@ def main(options):
     Elements.append(UseUpSpace())
 
     # populate current charges
+    savings = str(Decimal(str(dom.bill.rebill.resavings)).quantize(Decimal('.00')))
+    renewablecharges = str(Decimal(str(dom.bill.rebill.recharges)).quantize(Decimal('.00')))
     currentCharges = [
-        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.resavings), styles['BillFieldRight'])],
-        [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.recharges), styles['BillFieldRight'])]
+        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(savings, styles['BillFieldRight'])],
+        [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(renewablecharges, styles['BillFieldRight'])]
     ]
 
     t = Table(currentCharges, [135,85])
@@ -514,19 +523,21 @@ def main(options):
     Elements.append(UseUpSpace())
 
     # populate balanceForward
-    balanceForward = [
-        [Paragraph("Balance Forward", styles['BillLabelRight']), Paragraph(str(dom.bill.rebill.balanceforward), styles['BillFieldRight'])]
+    balanceforward = str(Decimal(str(dom.bill.rebill.balanceforward)).quantize(Decimal('.00')))
+    balance = [
+        [Paragraph("Balance Forward", styles['BillLabelRight']), Paragraph( balanceforward, styles['BillFieldRight'])]
     ]
 
-    t = Table(balanceForward, [135,85])
+    t = Table(balance, [135,85])
     t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,0),(-1,-1),colors.white)]))
     Elements.append(t)
     Elements.append(UseUpSpace())
 
 
     # populate balanceDueFrame
+    totalbalance = str(Decimal(str(dom.bill.rebill.totaldue)).quantize(Decimal('.00'))) 
     balanceDue = [
-        [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph(str(dom.bill.rebill.totaldue), styles['BillFieldRight'])]
+        [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph( totalbalance, styles['BillFieldRight'])]
     ]
 
     t = Table(balanceDue, [135,85])
@@ -637,6 +648,7 @@ def main(options):
                             service = details.service
                         description = charge.description if (charge.description is not None) else ""
                         quantityUnits = charge.quantity.units if (charge.quantity is not None) else ""
+                        # TODO: better scheme for rounding as a function of units
                         if (quantityUnits == 'Therms' or quantityUnits == 'therms'):
                             quantity = Decimal(str(charge.quantity)).quantize(Decimal('.00')) if (charge.quantity is not None) else ""
                         elif (quantityUnits == 'Dollars' or quantityUnits == 'dollars'):
@@ -652,7 +664,7 @@ def main(options):
                         serviceStr = None
         for total in iter(details.total):
             if(total.type == u'hypothetical'):
-                chargeDetails.append([None, None, None, None, None, None, str(total)])
+                chargeDetails.append([None, None, None, None, None, None, Decimal(str(total)).quantize(Decimal('.00'))])
         # spacer
         chargeDetails.append([None, None, None, None, None, None, None])
 

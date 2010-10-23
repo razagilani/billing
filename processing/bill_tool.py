@@ -418,22 +418,25 @@ class BillTool():
                         print "*** updated charge with rate because it was absent in the bill and present in the RSI"
                     rate.text = str(rsi.rate)
 
-                if (hasattr(rsi, 'total')):
-                    # TODO create total element if it does not exist
-                    total = charge.find("{bill}total")
-                    if (total is None):
-                        # total element is missing, so create one
-                        total = etree.Element("{bill}total")
-                        # total is always last child
-                        charge.append(total)
-                        print "*** updated charge with total because it was absent in the bill and present in the RSI"
-                    total.text = str(rsi.total)
+                total = charge.find("{bill}total")
+                if (total is None):
+                    # total element is missing, so create one
+                    total = etree.Element("{bill}total")
+                    # total is always last child
+                    charge.append(total)
+                    print "*** updated charge with total because it was absent in the bill and present in the RSI"
+                total.text = str(rsi.total)
+
+                print etree.tostring(charge)
+
+
 
             for rsi in rs.rates:
                 if (hasattr(rsi, 'bound') == False):
                     print "*** RSI was not bound " + str(rsi)
 
         print "*** Evaluated ratestructure to: " + str(rs)
+
 
         XMLUtils().save_xml_file(etree.tostring(tree, pretty_print=True), outputbill, user, password)
 
