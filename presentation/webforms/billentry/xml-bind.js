@@ -13,7 +13,7 @@ function billXML2Array(bill)
     // ToDo: support multiple <ub:details service=*/>
     // get to chargegroups
     var chargegroup = evaluateXPath(bill, 
-                "/ub:bill/ub:details[@service=\"Electric\"]/ub:chargegroup");
+                "/ub:bill/ub:details[@service=\"Gas\"]/ub:chargegroup");
     for (cg = 0; cg < chargegroup.length; cg++)
     {
 
@@ -101,7 +101,7 @@ function Array2BillXML(bill, records)
             // ToDo: must support multiple <ub:details service=*/>
             // find the associated actual charges
             var actualChargesNodeList = evaluateXPath(bill, 
-                "/ub:bill/ub:details[@service=\"Electric\"]/ub:chargegroup[@type=\""+cg+"\"]/ub:charges[@type=\"actual\"]");
+                "/ub:bill/ub:details[@service=\"Gas\"]/ub:chargegroup[@type=\""+cg+"\"]/ub:charges[@type=\"actual\"]");
 
             // ToDo: assert only one set of charges came back
             charges = actualChargesNodeList[0];
