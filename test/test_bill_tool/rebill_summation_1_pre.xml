@@ -27,14 +27,14 @@
 		<ub:billperiodend>2010-01-10</ub:billperiodend>
 		<ub:priorbalance>8.13</ub:priorbalance>
 		<ub:paymentreceived>5.22</ub:paymentreceived>
-		<ub:totaladjustment>0.00</ub:totaladjustment>
-		<ub:balanceforward>0.00</ub:balanceforward>
+		<ub:totaladjustment>2.50</ub:totaladjustment>
+		<ub:balanceforward>5.41</ub:balanceforward>
 		<ub:hypotheticalecharges>6476.52</ub:hypotheticalecharges>
 		<ub:actualecharges>6445.15</ub:actualecharges>
 		<ub:revalue>0.00</ub:revalue>
 		<ub:recharges>0.00</ub:recharges>
 		<ub:resavings>0.00</ub:resavings>
-		<ub:currentcharges>0.00</ub:currentcharges>
+		<ub:currentcharges>3.42</ub:currentcharges>
 		<ub:totaldue>0.00</ub:totaldue>
 		<ub:duedate>2010-02-27</ub:duedate>
 		<ub:issued>2010-02-12</ub:issued>

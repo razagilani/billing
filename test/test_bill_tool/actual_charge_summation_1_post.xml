@@ -98,7 +98,7 @@
 		<ub:billperiodbegin>2009-12-07</ub:billperiodbegin>
 		<ub:billperiodend>2010-01-11</ub:billperiodend>
 		<ub:hypotheticalecharges>3952.92</ub:hypotheticalecharges>
-		<ub:actualecharges>3945.30</ub:actualecharges>
+		<ub:actualecharges>3945.3</ub:actualecharges>
 		<ub:revalue>7.62</ub:revalue>
 		<ub:recharges>6.48</ub:recharges>
 		<ub:resavings>1.14</ub:resavings>
@@ -432,7 +432,7 @@
 				<ub:total>3194.50</ub:total>
 			</ub:charges>
 		</ub:chargegroup>
-		<ub:total type="actual">3945.30</ub:total>
+		<ub:total type="actual">3945.3</ub:total>
 		<ub:total type="hypothetical">3952.92</ub:total>
 	</ub:details>
 	<ub:billableusage service="Gas">

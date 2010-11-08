@@ -65,7 +65,7 @@
 		</ub:car>
 		<ub:billperiodbegin>2009-12-04</ub:billperiodbegin>
 		<ub:billperiodend>2010-01-06</ub:billperiodend>
-		<ub:hypotheticalecharges>2523.60</ub:hypotheticalecharges>
+		<ub:hypotheticalecharges>2523.6</ub:hypotheticalecharges>
 		<ub:actualecharges>2499.85</ub:actualecharges>
 		<ub:revalue>23.75</ub:revalue>
 		<ub:recharges>20.19</ub:recharges>
@@ -235,7 +235,7 @@
 			</ub:charges>
 		</ub:chargegroup>
 		<ub:total type="actual">2499.85</ub:total>
-		<ub:total type="hypothetical">2523.60</ub:total>
+		<ub:total type="hypothetical">2523.6</ub:total>
 	</ub:details>
 	<ub:details service="Electric">
 		<ub:rateschedule>
@@ -429,10 +429,10 @@
 					<ub:total>180.82</ub:total>
 					<ub:processingnote>Tax on Total Use</ub:processingnote>
 				</ub:charge>
-				<ub:total>3194.50</ub:total>
+				<ub:total>3194.5</ub:total>
 			</ub:charges>
 		</ub:chargegroup>
-		<ub:total type="actual">3945.30</ub:total>
+		<ub:total type="actual">3945.3</ub:total>
 		<ub:total type="hypothetical">3952.92</ub:total>
 	</ub:details>
 	<ub:billableusage service="Gas">
