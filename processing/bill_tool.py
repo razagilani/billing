@@ -440,6 +440,99 @@ class BillTool():
 
         XMLUtils().save_xml_file(etree.tostring(tree, pretty_print=True), outputbill, user, password)
 
+    def calculate_statistics(self, inputbill, outputbill, user=None, password=None):
+
+        tree = etree.parse(inputbill)
+
+        # determine the renewable and conventional energy across all services by converting all registers to BTUs
+        def normalize(units, total):
+            if (units.lower() == "kwh"):
+                # 1 kWh = 3413 BTU
+                return total * 3413 
+            elif (units.lower() == "therms"):
+                # 1 therm = 100000 BTUs
+                return total * 100000
+            else:
+                raise Exception("Units '" + units + "' not supported")
+
+
+        registers = self.get_elem(tree, "/ub:bill/ub:measuredusage/ub:meter/ub:register[@type=\"total\"]")
+
+        re = 0
+        ce = 0
+        # CO2 is fuel dependent
+        co2 = 0
+        def calcco2(units, total):
+            if (units.lower() == "kwh"):
+                return total * 1.297
+            elif (units.lower() == "therms"):
+                return total * 13.46
+            else:
+                raise Exception("Units '" + units + "' not supported")
+
+
+        for register in registers:
+            shadow = self.get_elem(register, "@shadow")[0]
+            units = self.get_elem(register, "ub:units")[0].text
+            total = float(self.get_elem(register, "ub:total")[0].text)
+
+            if (shadow == "true"):
+                re += normalize(units, total)
+                # re offsets CO2
+                co2 += calcco2(units, total)
+            else:
+                ce += normalize(units, total)
+
+        re_utilization = Decimal(str(re / (re + ce))).quantize(Decimal('.0'), rounding=ROUND_UP)
+        ce_utilization = Decimal(str(ce / (re + ce))).quantize(Decimal('.0'), rounding=ROUND_DOWN)
+
+        # update utilization stats
+        self.get_elem(tree, "/ub:bill/ub:statistics/ub:renewableutilization")[0].text = str(re_utilization)
+        self.get_elem(tree, "/ub:bill/ub:statistics/ub:conventionalutilization")[0].text = str(re_utilization)
+
+
+        # determine cumulative savings
+        cumulative_savings = Decimal(self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalsavings")[0].text)
+        current_savings = Decimal(self.get_elem(tree, "/ub:bill/ub:rebill/ub:resavings")[0].text)
+
+        self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalsavings")[0].text  = str((cumulative_savings + current_savings).quantize(Decimal('.00'), rounding=ROUND_DOWN))
+
+
+        # set renewable consumed
+        self.get_elem(tree, "/ub:bill/ub:statistics/ub:renewableconsumed")[0].text = str(Decimal(str(re)).quantize(Decimal('1')))
+        cumulative_renewable_consumed = long(self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalrenewableconsumed")[0].text)
+        self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalrenewableconsumed")[0].text = str(Decimal(str(cumulative_renewable_consumed + re)).quantize(Decimal('1')))
+
+        # set conventional consumed
+        #self.get_elem(tree, "/ub:bill/ub:statistics/ub:conventionalconsumed")[0].text = str(Decimal(str(ce)).quantize(Decimal('1')))
+        #cumulative_conventional_consumed = long(self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalconventionalconsumed")[0].text)
+        #self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalconventionalconsumed")[0].text = str(Decimal(str(cumulative_conventional_consumed + re)).quantize(Decimal('1')))
+
+
+        self.get_elem(tree, "/ub:bill/ub:statistics/ub:co2offset")[0].text = str(co2)
+        cumulative_co2 = float(self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalco2offset")[0].text)
+        self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalco2offset")[0].text = str(Decimal(str(cumulative_co2 + co2)).quantize(Decimal('.1')))
+
+
+        print etree.tostring(tree, pretty_print=True)
+        print re
+        print co2
+
+
+
+
+
+        print re_utilization
+        print ce_utilization
+
+        # get ce and units
+
+        # determine conventional to renewable energy  utilization for all services
+
+
+
+        XMLUtils().save_xml_file(etree.tostring(tree, pretty_print=True), outputbill, user, password)
+
 
 def main(options):
     """
@@ -463,6 +556,8 @@ if __name__ == "__main__":
     parser.add_option("--bindrsactual", action="store_true", dest="bindrsactual", help="Bind and evaluate a rate structure.")
     parser.add_option("--bindrshypothetical", action="store_true", dest="bindrshypothetical", help="Bind and evaluate a rate structure.")
     parser.add_option("--rsdb", dest="rsdb", help="Location of the rate structure database.")
+
+    parser.add_option("--calcstats", action="store_true", dest="calcstats", help="Calculate statistics")
 
     (options, args) = parser.parse_args()
 
@@ -512,6 +607,10 @@ if __name__ == "__main__":
             print "Specify --rsdb"
             exit()
         BillTool().bindrs(options.inputbill, options.outputbill, options.rsdb, True, options.user, options.password)
+        exit()
+
+    if (options.calcstats):
+        BillTool().calculate_statistics(options.inputbill, options.outputbill, options.user, options.password)
         exit()
         
     print "Specify operation"
