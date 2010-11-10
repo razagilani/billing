@@ -544,9 +544,9 @@
 					</xs:sequence>
 					<xs:attribute name="shadow" type="xs:boolean" use="required"/>
 					<xs:attribute name="rsbinding"/>
-					<xs:attribute name="type">
+					<xs:attribute name="type" use="required">
 						<xs:annotation>
-							<xs:documentation>Register type</xs:documentation>
+							<xs:documentation>For all used energy, there must be at least one register of type 'total' that reflects total usage.</xs:documentation>
 						</xs:annotation>
 						<xs:simpleType>
 							<xs:restriction base="xs:string">
