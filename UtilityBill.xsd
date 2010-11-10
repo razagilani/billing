@@ -544,6 +544,18 @@
 					</xs:sequence>
 					<xs:attribute name="shadow" type="xs:boolean" use="required"/>
 					<xs:attribute name="rsbinding"/>
+					<xs:attribute name="type">
+						<xs:annotation>
+							<xs:documentation>Register type</xs:documentation>
+						</xs:annotation>
+						<xs:simpleType>
+							<xs:restriction base="xs:string">
+								<xs:enumeration value="total"/>
+								<xs:enumeration value="tou"/>
+								<xs:enumeration value="demand"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:attribute>
 				</xs:complexType>
 			</xs:element>
 		</xs:sequence>
