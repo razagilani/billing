@@ -418,7 +418,8 @@ class BillTool():
                         else:
                             charge.append(rate)
                         print "*** updated charge with rate because it was absent in the bill and present in the RSI"
-                    rate.text = str(rsi.rate)
+                    # wrap rsi.rate in a Decimal to avoid exponential formatting of very small rate values
+                    rate.text = str(Decimal(str(rsi.rate)))
 
                 total = charge.find("{bill}total")
                 if (total is None):
@@ -493,12 +494,12 @@ class BillTool():
                 ce += normalize(units, total)
 
         # determine re to ce utilization ratio
-        re_utilization = Decimal(str(re / (re + ce))).quantize(Decimal('.0'), rounding=ROUND_UP)
-        ce_utilization = Decimal(str(ce / (re + ce))).quantize(Decimal('.0'), rounding=ROUND_DOWN)
+        re_utilization = Decimal(str(re / (re + ce))).quantize(Decimal('.00'), rounding=ROUND_UP)
+        ce_utilization = Decimal(str(ce / (re + ce))).quantize(Decimal('.00'), rounding=ROUND_DOWN)
 
         # update utilization stats in XML
         self.get_elem(tree, "/ub:bill/ub:statistics/ub:renewableutilization")[0].text = str(re_utilization)
-        self.get_elem(tree, "/ub:bill/ub:statistics/ub:conventionalutilization")[0].text = str(re_utilization)
+        self.get_elem(tree, "/ub:bill/ub:statistics/ub:conventionalutilization")[0].text = str(ce_utilization)
 
         # determine cumulative savings
         cumulative_savings = Decimal(self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalsavings")[0].text)
@@ -538,10 +539,8 @@ class BillTool():
         periods = self.get_elem(tree, "/ub:bill/ub:statistics/ub:consumptiontrend/ub:period")
 
         month = datetime.datetime.strptime(billdate, "%Y-%m-%d").strftime("%b")
-        print "*** " + month
 
         for period in periods:
-            print period.get("month")
             if(period.get("month") == month):
                 period.set("quantity", str(Decimal(str(re/100000)).quantize(Decimal(".0"))))
 
