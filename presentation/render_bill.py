@@ -647,12 +647,14 @@ def main(options):
                             serviceStr = str(details.service)
                             service = details.service
                         description = charge.description if (charge.description is not None) else ""
-                        quantityUnits = charge.quantity.units if (charge.quantity is not None) else ""
+                        quantityUnits = charge.quantity.units if (charge.quantity.units is not None) else ""
                         # TODO: better scheme for rounding as a function of units
-                        if (quantityUnits == 'Therms' or quantityUnits == 'therms'):
+                        if (quantityUnits is not None and quantityUnits.lower() == 'therms'):
                             quantity = Decimal(str(charge.quantity)).quantize(Decimal('.00')) if (charge.quantity is not None) else ""
-                        elif (quantityUnits == 'Dollars' or quantityUnits == 'dollars'):
+                        elif (quantityUnits is not None and quantityUnits.lower() == 'dollars'):
                             quantity = Decimal(str(charge.quantity)).quantize(Decimal('.00')) if (charge.quantity is not None) else ""
+                        elif (quantityUnits is not None and quantityUnits.lower() == 'kwh'):
+                            quantity = Decimal(str(charge.quantity)).quantize(Decimal('.0')) if (charge.quantity is not None) else ""
                         else:
                             quantity = charge.quantity if (charge.quantity is not None) else ""
                         rateUnits = charge.rate.units if (charge.rate is not None) else ""
