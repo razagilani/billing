@@ -256,9 +256,9 @@
 														<xs:complexType>
 															<xs:complexContent>
 																<xs:extension base="ub:charge">
-																	<xs:attribute name="id">
+																	<xs:attribute name="rsbinding">
 																		<xs:annotation>
-																			<xs:documentation>Binding for charge item specific logic such as tax on total energy, or tax on a subset of charge elements.</xs:documentation>
+																			<xs:documentation>Rate structure binding for charge item specific logic such as tax on total energy, or tax on a subset of charge elements.</xs:documentation>
 																		</xs:annotation>
 																	</xs:attribute>
 																</xs:extension>
