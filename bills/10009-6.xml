@@ -325,24 +325,24 @@
 		<ub:conventionalutilization>0.73</ub:conventionalutilization>
 		<ub:renewableproduced>0</ub:renewableproduced>
 		<ub:co2offset>325.119599131</ub:co2offset>
-		<ub:totalsavings>42.18</ub:totalsavings>
-		<ub:totalrenewableconsumed>8799983</ub:totalrenewableconsumed>
+		<ub:totalsavings>92.23</ub:totalsavings>
+		<ub:totalrenewableconsumed>4531750</ub:totalrenewableconsumed>
 		<ub:totalrenewableproduced>0</ub:totalrenewableproduced>
-		<ub:totaltrees>2.82023076923</ub:totaltrees>
-		<ub:totalco2offset>3991.4</ub:totalco2offset>
+		<ub:totaltrees>1.57246153846</ub:totaltrees>
+		<ub:totalco2offset>2369.3</ub:totalco2offset>
 		<ub:consumptiontrend>
-			<ub:period month="Nov" quantity="0"/>
-			<ub:period month="Dec" quantity="0"/>
-			<ub:period month="Jan" quantity="0"/>
-			<ub:period month="Feb" quantity="0"/>
-			<ub:period month="Mar" quantity="0"/>
-			<ub:period month="Apr" quantity="0"/>
-			<ub:period month="May" quantity="2.72"/>
-			<ub:period month="Jun" quantity="14.63"/>
-			<ub:period month="Jul" quantity="15.39"/>
-			<ub:period month="Aug" quantity="6.8"/>
-			<ub:period month="Sep" quantity="14.5"/>
-			<ub:period month="Oct" quantity="8.6"/>
+			<ub:period quantity="0" month="Nov"/>
+			<ub:period quantity="0" month="Dec"/>
+			<ub:period quantity="0" month="Jan"/>
+			<ub:period quantity="0" month="Feb"/>
+			<ub:period quantity="0" month="Mar"/>
+			<ub:period quantity="0" month="Apr"/>
+			<ub:period quantity="2.72" month="May"/>
+			<ub:period quantity="14.63" month="Jun"/>
+			<ub:period quantity="15.39" month="Jul"/>
+			<ub:period quantity="6.8" month="Aug"/>
+			<ub:period quantity="14.5" month="Sep"/>
+			<ub:period quantity="8.6" month="Oct"/>
 		</ub:consumptiontrend>
 	</ub:statistics>
 </ub:bill>
