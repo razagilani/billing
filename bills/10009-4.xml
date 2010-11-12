@@ -35,7 +35,7 @@
 		<ub:recharges>18.88</ub:recharges>
 		<ub:resavings>10.18</ub:resavings>
 		<ub:currentcharges>0.00</ub:currentcharges>
-		<ub:totaldue>61.19</ub:totaldue>
+		<ub:totaldue>18.88</ub:totaldue>
 		<ub:duedate>2010-11-30</ub:duedate>
 		<ub:issued>2010-11-12</ub:issued>
 		<ub:message/>
@@ -325,24 +325,24 @@
 		<ub:conventionalutilization>0.74</ub:conventionalutilization>
 		<ub:renewableproduced>0</ub:renewableproduced>
 		<ub:co2offset>259.376696827</ub:co2offset>
-		<ub:totalsavings>109.86</ub:totalsavings>
-		<ub:totalrenewableconsumed>5634170</ub:totalrenewableconsumed>
+		<ub:totalsavings>58.96</ub:totalsavings>
+		<ub:totalrenewableconsumed>2221475</ub:totalrenewableconsumed>
 		<ub:totalrenewableproduced>0</ub:totalrenewableproduced>
-		<ub:totaltrees>1.94538461538</ub:totaltrees>
-		<ub:totalco2offset>2788.4</ub:totalco2offset>
+		<ub:totaltrees>0.947692307692</ub:totaltrees>
+		<ub:totalco2offset>1491.4</ub:totalco2offset>
 		<ub:consumptiontrend>
-			<ub:period month="Nov" quantity="0"/>
-			<ub:period month="Dec" quantity="0"/>
-			<ub:period month="Jan" quantity="0"/>
-			<ub:period month="Feb" quantity="0"/>
-			<ub:period month="Mar" quantity="0"/>
-			<ub:period month="Apr" quantity="0"/>
-			<ub:period month="May" quantity="2.72"/>
-			<ub:period month="Jun" quantity="14.63"/>
-			<ub:period month="Jul" quantity="15.39"/>
-			<ub:period month="Aug" quantity="6.8"/>
-			<ub:period month="Sep" quantity="0"/>
-			<ub:period month="Oct" quantity="0"/>
+			<ub:period quantity="0" month="Nov"/>
+			<ub:period quantity="0" month="Dec"/>
+			<ub:period quantity="0" month="Jan"/>
+			<ub:period quantity="0" month="Feb"/>
+			<ub:period quantity="0" month="Mar"/>
+			<ub:period quantity="0" month="Apr"/>
+			<ub:period quantity="2.72" month="May"/>
+			<ub:period quantity="14.63" month="Jun"/>
+			<ub:period quantity="15.39" month="Jul"/>
+			<ub:period quantity="6.8" month="Aug"/>
+			<ub:period quantity="0" month="Sep"/>
+			<ub:period quantity="0" month="Oct"/>
 		</ub:consumptiontrend>
 	</ub:statistics>
 </ub:bill>
