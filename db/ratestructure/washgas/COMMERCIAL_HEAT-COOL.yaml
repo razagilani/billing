@@ -1,108 +1,90 @@
 !rate_structure
-name: Commercial Heat/Cool
-service: Electric
-effective: 2010-09-01
-expires: 2010-10-15
+name: Rate Schedule 2 - Firm Commercial and Industrial Sales Service
+service: Gas
+effective: 2004-02-03
+expires:
 registers: 
     - !register
       descriptor: REG_TOTAL
       description: Total kWh register
       quantity: 0
       quantityunits: kWh
-    - !register
-      descriptor: REG_PEAK
-      description: Peak kWh register
-      quantity: 0
-      quantityunits: kWh
-    - !register
-      descriptor: REG_INT
-      description: Shoulder kWh register
-      quantity: 0
-      quantityunits: kWh
-    - !register
-      descriptor: REG_OFFPEAK
-      description: Off-Peak kWh register
-      quantity: 0 
-      quantityunits: kWh
 rates:
     - !rate_structure_item
-      descriptor: CUSTOMER_CHARGE
-      description: Monthly flat charge
+      descriptor: SYSTEM_CHARGE
+      description: System Charge
       quantity:
-      total: 36.26
-    - !rate_structure_item
-      descriptor: ON_PEAK_ENERGY
-      description: On peak energy usage
-      quantity: REG_PEAK.quantity
-      rate: 0.0111585
-      total:
-    - !rate_structure_item
-      descriptor: INT_ENERGY
-      description: Shoulder energy usage
-      quantity: REG_INT.quantity
-      rate: 0.0111597
-      total:
-    - !rate_structure_item
-      descriptor: OFF_PEAK_ENERGY
-      description: Off peak energy usage
-      quantity: REG_OFFPEAK.quantity
-      rate: 0.0111594
-      total:
+      total: 36.25
     - !rate_structure_item
       descriptor: ENERGY_FIRST_BLOCK
-      description: The first 400kWh
-      quantity: 1
-      quantity: 400 if (400 <= REG_TOTAL.quantity) else REG_TOTAL.quantity
-      quantityunits: kWh
-      rate: 0.005125
+      description: The first 300 therms
+      quantity: (300) if (REG_TOTAL.quantity > 300) else (REG_TOTAL.quantity)
+      quantityunits: therms
+      # this rate is affected by information not known until bill is received
+      rate: 0.3158
+      rateunits: dollars
+      total: 
+    - !rate_structure_item
+      descriptor: ENERGY_SECOND_BLOCK
+      description: The next 6700 therms
+      quantity: 6700
+      quantity: (6700) if (REG_TOTAL.quantity > 7000) else (REG_TOTAL.quantity - 300)
+      # this rate is affected by information not known until bill is received
+      quantityunits: therms
+      rate: 0.2152
+      rateunits: dollars
       total: 
     - !rate_structure_item
       descriptor: ENERGY_REMAINDER_BLOCK
-      description: All kWh after 400
-      quantity: REG_TOTAL.quantity - 400 if (REG_TOTAL.quantity > 400) else 0
-      quantityunits: kWh
-      rate: 0.06421
+      description: Over 7,000 therms
+      quantity: (REG_TOTAL.quantity - 7000) if (REG_TOTAL.quantity > 7000 ) else (0)
+      # this rate is affected by information not known until bill is received
+      quantityunits: therms
+      rate: 0.1573
       rateunits: dollars
       total: 
     - !rate_structure_item
-      descriptor: DELIVERY_TAX
-      description: Per kWh tax
+      descriptor: STATE_SALES_TAX
+      description: Per therm tax
       quantity: REG_TOTAL.quantity
-      quantityunits: kWh
-      rate: 0.007
+      quantityunits: therm
+      rate: 0.06
       rateunits: dollars
       total: 
     - !rate_structure_item
-      descriptor: ADMIN_CREDIT
-      description: Administrative credit, periodically applied.  But how?
+      descriptor: GROSS_RECEIPTS_SURCHARGE
+      description: MD Gross Receipts Surcharge
+      # Varies month to month
+      total: 0.03
+    - !rate_structure_item
+      descriptor: PG_COUNTY_ENERGY_TAX
+      description: Prince Georges County energy tax
       quantity: REG_TOTAL.quantity
-      quantityunits: kWh
-      # example way to us a Decimal
-      #rate: !!python/object/new:decimal.Decimal ["-0.0004"]
-      rate: -0.0004
-      rateunits: dollars
-      total: 
-    - !rate_structure_item
-      descriptor: SALES_TAX_DISTRIBUTION
-      description: Sales tax for all charges
-      quantity: CUSTOMER_CHARGE.total + ON_PEAK_ENERGY.total + INT_ENERGY.total + OFF_PEAK_ENERGY.total + ENERGY_FIRST_BLOCK.total + ENERGY_REMAINDER_BLOCK.total 
       quantityunits: dollars
       rate: 0.06
       rateunits: percent
-      total: SALES_TAX_DISTRIBUTION.quantity * SALES_TAX_DISTRIBUTION.rate
+      total:
     - !rate_structure_item
-      descriptor: TOTAL_USE
-      description: Total use supply charge
+      descriptor: SUPPLY_COMMODITY
+      description: Commodity
       quantity: REG_TOTAL.quantity
-      quantityunits: kWh
-      rate: 0.103
+      quantityunits: therms
+      rate: 0.86
       rateunits: percent
-      total: TOTAL_USE.quantity * TOTAL_USE.rate
+      total: 
     - !rate_structure_item
-      descriptor: SALES_TAX_SUPPLY
-      description: Sales tax for supply charges
-      quantity: TOTAL_USE.total
-      quantityunits: dollars
+      descriptor: SUPPLY_BALANCING
+      description: Balancing
+      quantity: REG_TOTAL.quantity
+      quantityunits: therms
+      rate: 0.0148
+      rateunits: percent
+      total: 
+    - !rate_structure_item
+      descriptor: SUPPLY_SALES_TAX
+      description: MD Sales tax commodity
+      quantity: REG_TOTAL.quantity
+      quantityunits: therms
       rate: 0.06
       rateunits: percent
-      total: SALES_TAX_SUPPLY.quantity * SALES_TAX_SUPPLY.rate
+      total: 
