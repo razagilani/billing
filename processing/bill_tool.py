@@ -479,6 +479,7 @@ class BillTool():
 
         # obtain all the registers, for all the services, that are of type 'total'
         registers = self.get_elem(tree, "/ub:bill/ub:measuredusage/ub:meter/ub:register[@type=\"total\"]")
+        if not len(registers): print "Make sure total type registers exist!"
 
         for register in registers:
             shadow = self.get_elem(register, "@shadow")[0]
@@ -518,7 +519,8 @@ class BillTool():
                 = str(Decimal(str(cumulative_renewable_consumed + re)).quantize(Decimal('1')))
 
         # set conventional consumed
-        #self.get_elem(tree, "/ub:bill/ub:statistics/ub:conventionalconsumed")[0].text = str(Decimal(str(ce)).quantize(Decimal('1')))
+        self.get_elem(tree, "/ub:bill/ub:statistics/ub:conventionalconsumed")[0].text = \
+                str(Decimal(str(ce)).quantize(Decimal('1')))
         #cumulative_conventional_consumed = long(self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalconventionalconsumed")[0].text)
         #self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalconventionalconsumed")[0].text = str(Decimal(str(cumulative_conventional_consumed + re)).quantize(Decimal('1')))
 
