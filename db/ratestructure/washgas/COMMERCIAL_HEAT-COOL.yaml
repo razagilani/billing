@@ -6,9 +6,9 @@ expires:
 registers: 
     - !register
       descriptor: REG_TOTAL
-      description: Total kWh register
+      description: Total therms register
       quantity: 0
-      quantityunits: kWh
+      quantityunits: therms
 rates:
 # looks like wash gas rounds up charge item totals
     - !rate_structure_item
