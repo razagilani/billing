@@ -22,7 +22,7 @@ rates:
       quantity: (300) if (REG_TOTAL.quantity > 300) else (REG_TOTAL.quantity)
       quantityunits: therms
       # this rate is affected by information not known until bill is received
-      rate: 0.2791
+      rate: 0.3610
       rateunits: dollars
       total: 
     - !rate_structure_item
