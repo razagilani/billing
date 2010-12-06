@@ -1,0 +1,38 @@
+For the customers that we are billing, here are their last processed bills:
+
+10001 Dave's Carwash 2010-09-30 2010-10-29
+10002 Penick Village 2010-07-14 2010-08-11
+10004 Family Laundry 2010-07-06 2010-08-04
+10005 3025 Porter St 2010-09-22 2010-10-21
+10009 3001 13th St 2010-10-01 2010-11-01
+
+
+For the customer bills we have obtained or received, here is what has to be processed:
+
+10002 Penick Village 2010-09-14 2010-10-12
+10004 Family Laundry 2010-09-02 2010-10-04
+10005 3025 Porter St 2010-10-21 2010-11-22
+10007 1811 S St NW 2010-07-16 2010-08-16
+10011 1815 S St NW 2010-07-16 2010-08-16
+
+
+Missing bills are:
+
+10004 Family Laundry 2010-08-04 2010-09-02
+
+
+New Customers that haven't been billed:
+
+10003 3501 13th St NW  
+10006 1409 15th St NW  
+10008 1825 Vernon St NW  
+10010 Tiber Island  
+
+
+Days since their last Skyline bill:
+
+10001 Dave's Carwash 35
+10002 Penick Village 114
+10004 Family Laundry 121
+10005 3025 Porter St 43
+10009 3001 13th St 32
