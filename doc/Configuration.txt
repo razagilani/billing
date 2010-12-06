@@ -30,7 +30,7 @@ PYTHONPATH must point to C:\Python26\Lib\site-packages\ChartDirector\lib
 inconsolata must be added to system fonts for chart director.  Figure out way for CD to depend on fonts directory.
 
 
-Linux ubunu (9.10 Karmic Koala):
+Linux ubunu (9.10 Karmic Koala):
 
 (install python, headers and setuptools)
 
