@@ -52,7 +52,7 @@ def main():
                 loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
             )
 
-    template = env.get_template("status_text.jinja") 
+    template = env.get_template("status_text.jnj") 
                         
     with file(os.path.join("", "status_text.txt"), 'w') as out:
         out.writelines(template.render(template_values))
