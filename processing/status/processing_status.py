@@ -24,6 +24,7 @@ def main():
     template_values = {}
 
     try:
+        # TODO: remove password string
         db_conn = MySQLdb.connect(host="tyrell", user="prod", passwd="JCnvgUOTxHzEasKUBNv3", db="skyline")
 
         for name, query in queries.iteritems():
