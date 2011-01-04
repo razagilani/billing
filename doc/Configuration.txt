@@ -74,4 +74,47 @@ ReportLab:
 
 
 
+Configuring File Server
+=======================
+
+predicate: Samba installed and running
+
+mkdir /db/skyline/bills
+sudo useradd -s /bin/true billing
+sudo passwd billing
+sudo smbpasswd -L -a billing
+(smbpasswd matches linux passwd.  is linux passwd even needed?)
+
+
+Update smb.conf
+
+[db]
+    path = /db/
+    browseable = yes
+    read only = no
+    writeable = yes
+    write list = 
+    guest ok = no
+    create mask = 0644
+    directory mask = 0755
+    force user = billing
+    force group = billing
+
+sudo service samba restart
+
+
+
+
+
+Creating the Billing database in eXist
+======================================
+
+URL prefix:
+
+/db/skyline/bills/[account]/[sequence].xml
+
+Ensure that UtilityBill.xsd is located at: /db/skyline/bills/UtilityBill.xsd as text/html
+Upload through the eXist admin client
+
+
 
