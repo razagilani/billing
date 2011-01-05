@@ -102,6 +102,10 @@ Update smb.conf
 
 sudo service samba restart
 
+Mounting this filesystem on a linux client: 
+
+sudo smbmount //tyrell/db /db -o user=billing
+
 
 
 
