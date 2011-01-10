@@ -1,7 +1,6 @@
 // Configure ext js widgets and events
 function renderWidgets()
 {
-
     // global to access xml bill for saving changes
     // The DOM containing an XML representation of a bill
     var bill = null;
@@ -22,7 +21,6 @@ function renderWidgets()
     }, customerAccountRecordType);
 
     var customerAccountStore = new Ext.data.Store({
-        // location.host externally declared in local-vars.js
         url: 'http://'+location.host+'/exist/rest/db/skyline/ListAccounts.xql',
         reader: customerAccountXMLReader
     });
@@ -47,7 +45,6 @@ function renderWidgets()
     }, customerBillRecordType);
 
     var customerBillStore = new Ext.data.Store({
-        // location.host externally declared in local-vars.js
         url: 'http://'+location.host+'/exist/rest/db/skyline/ListBills.xql',
         reader: customerBillXMLReader
     });
@@ -76,7 +73,6 @@ function renderWidgets()
 
         // loads a bill from eXistDB
         Ext.Ajax.request({
-            // servername externally declared in local-vars.js
             url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
                 + '/' + record.data.bill,
            success: billLoaded,
@@ -389,6 +385,7 @@ function renderWidgets()
 
     function billLoadFailed(data) {
         // ToDo: take corrective action
+        alert("Here")
         alert(data);
     }
 
@@ -405,7 +402,6 @@ function renderWidgets()
         {
 
             Ext.Ajax.request({
-                // servername externally declared in local-vars.js 
                 url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
                     + '/' + customerBillCombo.getValue(),
                 method: 'PUT',
