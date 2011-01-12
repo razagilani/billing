@@ -10,6 +10,10 @@ function renderWidgets()
     //Ext.state.Manager.setProvider(new Ext.state.CookieProvider());
 
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Account and Bill selection tab
+    //
+
     // set up combo box for listing the accounts
     var customerAccountRecordType = Ext.data.Record.create([
         {name: 'account', mapping: ''}
@@ -20,6 +24,8 @@ function renderWidgets()
         record: 'account',
     }, customerAccountRecordType);
 
+    // access the list of accounts so that a customer may be selected and their
+    // bills listed
     var customerAccountStore = new Ext.data.Store({
         url: 'http://'+location.host+'/exist/rest/db/skyline/ListAccounts.xql',
         reader: customerAccountXMLReader
@@ -32,7 +38,6 @@ function renderWidgets()
         triggerAction: 'all',
         emptyText:'Select...',
         selectOnFocus:true,
-        applyTo: 'customer-accounts',
     });
 
     // set up combo box for listing the bills
@@ -44,6 +49,8 @@ function renderWidgets()
         record: 'bill',
     }, customerBillRecordType);
 
+
+    // access the list of bills for a customer that has been previously selected.
     var customerBillStore = new Ext.data.Store({
         url: 'http://'+location.host+'/exist/rest/db/skyline/ListBills.xql',
         reader: customerBillXMLReader
@@ -56,18 +63,17 @@ function renderWidgets()
         triggerAction: 'all',
         emptyText:'Select...',
         selectOnFocus:true,
-        applyTo: 'customer-bills',
     });
 
-    // events to link the account and bill combo boxes with eachother and the bill view
+    // event to link the account to the bill combo box
     customerAccountCombo.on('select', function(combobox, record, index) {
-
-
         customerBillStore.setBaseParam('id', record.data.account);
         customerBillStore.load();
     });
 
     // fired when the customer bill combo box is selected
+    // because a customer account and bill has been selected, load 
+    // the bill document.  Follow billLoaded() for additional details
     // ToDo: do not allow selection change if store is unsaved
     customerBillCombo.on('select', function(combobox, record, index) {
 
@@ -79,13 +85,65 @@ function renderWidgets()
            failure: billLoadFailed,
            disableCaching: true,
         });
-            
     });
+
+
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Bill Period tab
+    //
+    var initialPeriodData = {
+            periods: [
+                {service: 'Gas', begindate: '2010-10-11'},
+                //{service: 'Gas', begindate: new Date(2007, 10, 29)},
+            ]
+        }
+
+    var bpds = new Ext.data.JsonStore({
+        // store configs
+        autoDestroy: true,
+        data: initialPeriodData,
+        storeId: 'myStore',
+        // reader configs
+        root: 'periods',
+        idProperty: 'service',
+        //fields: ['name', 'url', {name:'size', type: 'float'}, {name:'lastmod', type:'date'}]
+        fields: ['service', 'begindate']
+    });
+
+    STOPPED HERE - NOW THAT STORE IS CONFIGURED, SEE IF WE CAN GET THE FORM FIELDS PUT TOGETHER
+
+/*
+    var dr = new Ext.FormPanel({
+        labelWidth: 125,
+        frame: true,
+        title: 'Date Range',
+        bodyStyle:'padding:5px 5px 0',
+        width: 350,
+        defaults: {width: 175},
+        defaultType: 'datefield',
+        items: [{
+            fieldLabel: 'Start Date',
+            name: 'startdt',
+            id: 'startdt',
+            vtype: 'daterange',
+            endDateField: 'enddt' // id of the end date field
+        },{
+            fieldLabel: 'End Date',
+            name: 'enddt',
+            id: 'enddt',
+            vtype: 'daterange',
+            startDateField: 'startdt' // id of the start date field
+        }]
+    });
+*/
+
+
 
 
     // initial data loaded into the grid before a bill is loaded
     // populate with data if initial pre-loaded data is desired
-    var billData = [
+    var initialBillData = [
         //['Charge Group 1', 'Charge Description',100,'qty units', 10,'rate units',1000],
     ];
 
@@ -103,7 +161,7 @@ function renderWidgets()
 
     var store = new Ext.data.GroupingStore({
             reader: reader,
-            data: billData,
+            data: initialBillData,
             sortInfo:{field: 'chargegroup', direction: 'ASC'},
             groupField:'chargegroup'
         });
@@ -367,28 +425,108 @@ function renderWidgets()
         grid.saveBtn.setDisabled(false);
     });
     
-    // render the grid to the specified div in the page
-    grid.render('grid-example');
+    // configure bill period objects
 
+    // get all utility service period starts and make widgets
+
+    // 
+
+
+
+
+    // assemble all of the widgets in a tabpanel with a header section
+    var viewport = new Ext.Viewport
+    (
+      {
+        layout: 'border',
+        items: [
+          {
+            region: 'north',
+            border: false,
+            xtype: 'panel',
+            layout: 'fit',
+            height: 60,
+            layoutConfig:
+            {
+              border: false,
+            },
+            autoLoad: {url:'header', scripts:true},
+          },{
+            region: 'center',
+            xtype: 'tabpanel',
+            activeTab: 0,
+            items:[
+              {
+                title: 'Select Bill',
+                xtype: 'panel',
+                //layout: 'fit',
+                items: [
+                  customerAccountCombo,
+                  customerBillCombo
+                ],
+              },{
+                title: 'Bill Periods',
+                xtype: 'panel',
+                layout: 'fit',
+                items: [
+                  //utilityPeriods, // array of fields
+                  //rePeriodBegin, // minimum utility Period begin
+                  //rePeriodEnd // maximum utility period end
+                ],
+              },{
+                title: 'Charge Items',
+                xtype: 'panel',
+                layout: 'fit',
+                items: [
+                  grid
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    )
 
 
     // Functions that handle the loading and saving of bill xml 
     // using the restful interface of eXist DB
 
 
+    // responsible for initializing all ui widget backing stores
     // called due to customerBillCombo.on() select event (see above)
     function billLoaded(data) {
+
+        // set the bill document to a global so that it may always be referenced
         bill = data.responseXML;
+
+        // 'deserialize' the bill data from XML into locally manageable data structures
+        
+        // flatten the actual charges found in the bill
+        // ToDo: do this on a per service basis
         actualCharges = billXML2Array(data.responseXML);
+
+        // get all of the utility bill periods for each service
+        beginPeriods = utilbillPeriodBegins(data.responseXML);
+
+        // now that we have the data in locally manageable data structures
+        // tell all of the backing ui widget data stores to load the data
+
+        // load the data into the charges backing data store
         store.loadData(actualCharges);
+
+        // load the data into the utility bill periods backing store
+        //utilPeriodStore.loadData(beginPeriods);
     }
 
     function billLoadFailed(data) {
         // ToDo: take corrective action
-        alert("Here")
+        alert("Bill loading failed");
         alert(data);
     }
 
+    // responsible for taking all of the data in the ui widget backing stores
+    // and 'deserializing' them from locally manageable data types into XML
+    // which is then submitted to the restful bill db
     function saveToXML(records)
     {
 
