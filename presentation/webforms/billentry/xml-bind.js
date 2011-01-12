@@ -1,7 +1,35 @@
 // Lots of manual lifting here.  This is due to the fact that JS Frameworks do not do
 // a good job of handling XML Namespaces. 
+
+// Given an XML document, extract the begin dates that were automaticall set during bill roll
+// ToDo: evaluate this function across browsers
+function utilbillPeriodBegins(bill)
+{
+
+    var periodBegins = new Array();
+
+    evaluateXPath(bill, "/ub:bill/ub:utilbill/ub:billperiodbegin").forEach(
+        function(value, index, theArray) 
+        {
+            periodBegins.push(
+                {
+                    'service': value.parentNode.attributes['service'].value,
+                    'begindate': value.childNodes[0].nodeValue
+                }
+            )
+        }
+    );
+
+    return {'periods': periodBegins};
+}
+
+
+
+
 // Given a XML document with bill actual charges, flatten them out into a two dimensional array
 // ToDo: evaluate this function across browsers
+// ToDo: rename to something like Actualcharges
+// ToDo: turn this into array of json
 function billXML2Array(bill)
 {
 
@@ -13,7 +41,7 @@ function billXML2Array(bill)
     // ToDo: support multiple <ub:details service=*/>
     // get to chargegroups
     var chargegroup = evaluateXPath(bill, 
-                "/ub:bill/ub:details[@service=\"Gas\"]/ub:chargegroup");
+                "/ub:bill/ub:details[@service=\"Electric\"]/ub:chargegroup");
     for (cg = 0; cg < chargegroup.length; cg++)
     {
 
