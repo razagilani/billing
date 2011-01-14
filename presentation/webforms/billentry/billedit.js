@@ -87,15 +87,14 @@ function renderWidgets()
         });
     });
 
-
-
     ////////////////////////////////////////////////////////////////////////////
     // Bill Period tab
     //
 
     // create a panel to which we can dynamically add/remove components
+    // this panel is later added to the viewport so that it may be rendered
 
-    var billPeriodsForm = new Ext.FormPanel(
+    var ubPeriodsFormPanel = new Ext.FormPanel(
     {
         labelWidth: 125,
         frame: true,
@@ -103,33 +102,52 @@ function renderWidgets()
         bodyStyle:'padding:5px 5px 0',
         width: 350,
         defaults: {width: 175},
-        items: [
-            new Ext.form.DateField({
-                fieldLabel: 'test Service: Electric',
-                name: 'Electric',
-                value: '01/02/03'
-            }),
+        items:[], // added by configureUBPeriodsForm()
+        buttons: 
+        [
+            {
+                text   : 'Save',
+                handler: function() {
+                    if (ubPeriodsFormPanel.getForm().isValid()) {
+                        // save values to bill document
+                        setUBBillPeriods(/*the array goes here - stopped here*/);
+
+                        // send bill document to server
+                    }
+                }
+            },{
+                text   : 'Reset',
+                handler: function() {
+                    ubPeriodsFormPanel.getForm().reset();
+                }
+            }
         ]
     });
 
     // dynamically create the period forms when a bill is loaded
-    function configureBeginPeriods(beginPeriods)
+    function configureUBPeriodsForm(beginPeriods)
     {
-        billPeriodsForm.removeAll();
+        ubPeriodsFormPanel.removeAll();
 
         beginPeriods.forEach(
             function (value, index, array) {
-                billPeriodsForm.add(
+                ubPeriodsFormPanel.add(
                     new Ext.form.DateField({
-                        fieldLabel: value.service + ' Service',
+                        fieldLabel: value.service + ' Service Begin',
                         name: value.service,
                         value: value.begindate,
+                        disabled: true,
+                    }),
+                    new Ext.form.DateField({
+                        fieldLabel: value.service + ' Service End',
+                        name: value.service,
+                        value: value.enddate,
                     })
                 )
             }
         );
 
-        billPeriodsForm.doLayout();
+        ubPeriodsFormPanel.doLayout();
     }
 
 
@@ -464,21 +482,8 @@ function renderWidgets()
                 xtype: 'panel',
                 layout: 'fit',
                 items: [
-        /*            new Ext.FormPanel({
-                        labelWidth: 125,
-                        frame: true,
-                        title: 'test Begin Date',
-                        bodyStyle:'padding:5px 5px 0',
-                        width: 350,
-                        defaults: {width: 175},
-                        items: [{
-                            fieldLabel: 'test Service: Electric',
-                            xtype: 'datefield',
-                            name: 'Electric',
-                            value: '01/02/03'
-                        }]
-                    })
-               */ billPeriodsForm ]
+                    ubPeriodsFormPanel
+                ]
             },{
                 title: 'Charge Items',
                 xtype: 'panel',
@@ -493,6 +498,10 @@ function renderWidgets()
       }
     )
 
+
+    // TODO: move these functions to a separate file for organization purposes
+    // also consider what to do about the Ext.data.Stores and where they should
+    // go since they hit the web for data.
 
     // Functions that handle the loading and saving of bill xml 
     // using the restful interface of eXist DB
@@ -509,11 +518,11 @@ function renderWidgets()
         
         // flatten the actual charges found in the bill
         // ToDo: do this on a per service basis
-        actualCharges = billXML2Array(data.responseXML);
+        actualCharges = getActualCharges(data.responseXML);
 
         // get all of the utility bill periods for each service
-        beginPeriods = utilbillPeriodBegins(data.responseXML);
-        configureBeginPeriods(beginPeriods);
+        ubPeriods = getUBPeriods(data.responseXML);
+        configureUBPeriodsForm(ubPeriods);
 
         // now that we have the data in locally manageable data structures
         // tell all of the backing ui widget data stores to load the data
@@ -529,15 +538,17 @@ function renderWidgets()
         alert(data);
     }
 
-    // responsible for taking all of the data in the ui widget backing stores
-    // and 'deserializing' them from locally manageable data types into XML
-    // which is then submitted to the restful bill db
+    // the UI widgets are responsible for getting/setting data from the bill document.
+    // This methods is reponsible for the restful communication of the bill doc
+    // back to the server.
     function saveToXML(records)
     {
 
+
+        // TODO: move this to the UI widget responsible for editing this content.
         // take the records that are maintained in the store
         // and update the bill document with them.
-        bill = Array2BillXML(bill, records);
+        bill = setActualCharges(bill, records);
 
         // ToDo: credentials
 
@@ -588,6 +599,7 @@ function renderWidgets()
 
 
 
+// TODO: move this code to an area adjacent to the grid
 /**
  * Custom function used for column renderer
  * @param {Object} val
