@@ -9,7 +9,7 @@ function utilbillPeriodBegins(bill)
     var periodBegins = new Array();
 
     evaluateXPath(bill, "/ub:bill/ub:utilbill/ub:billperiodbegin").forEach(
-        function(value, index, theArray) 
+        function(value, index, array) 
         {
             periodBegins.push(
                 {
@@ -20,7 +20,7 @@ function utilbillPeriodBegins(bill)
         }
     );
 
-    return {'periods': periodBegins};
+    return periodBegins;
 }
 
 
