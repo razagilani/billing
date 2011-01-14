@@ -92,51 +92,45 @@ function renderWidgets()
     ////////////////////////////////////////////////////////////////////////////
     // Bill Period tab
     //
-    var initialPeriodData = {
-            periods: [
-                {service: 'Gas', begindate: '2010-10-11'},
-                //{service: 'Gas', begindate: new Date(2007, 10, 29)},
-            ]
-        }
 
-    var bpds = new Ext.data.JsonStore({
-        // store configs
-        autoDestroy: true,
-        data: initialPeriodData,
-        storeId: 'myStore',
-        // reader configs
-        root: 'periods',
-        idProperty: 'service',
-        //fields: ['name', 'url', {name:'size', type: 'float'}, {name:'lastmod', type:'date'}]
-        fields: ['service', 'begindate']
-    });
+    // create a panel to which we can dynamically add/remove components
 
-    STOPPED HERE - NOW THAT STORE IS CONFIGURED, SEE IF WE CAN GET THE FORM FIELDS PUT TOGETHER
-
-/*
-    var dr = new Ext.FormPanel({
+    var billPeriodsForm = new Ext.FormPanel(
+    {
         labelWidth: 125,
         frame: true,
-        title: 'Date Range',
+        title: 'test Begin Date',
         bodyStyle:'padding:5px 5px 0',
         width: 350,
         defaults: {width: 175},
-        defaultType: 'datefield',
-        items: [{
-            fieldLabel: 'Start Date',
-            name: 'startdt',
-            id: 'startdt',
-            vtype: 'daterange',
-            endDateField: 'enddt' // id of the end date field
-        },{
-            fieldLabel: 'End Date',
-            name: 'enddt',
-            id: 'enddt',
-            vtype: 'daterange',
-            startDateField: 'startdt' // id of the start date field
-        }]
+        items: [
+            new Ext.form.DateField({
+                fieldLabel: 'test Service: Electric',
+                name: 'Electric',
+                value: '01/02/03'
+            }),
+        ]
     });
-*/
+
+    // dynamically create the period forms when a bill is loaded
+    function configureBeginPeriods(beginPeriods)
+    {
+        billPeriodsForm.removeAll();
+
+        beginPeriods.forEach(
+            function (value, index, array) {
+                billPeriodsForm.add(
+                    new Ext.form.DateField({
+                        fieldLabel: value.service + ' Service',
+                        name: value.service,
+                        value: value.begindate,
+                    })
+                )
+            }
+        );
+
+        billPeriodsForm.doLayout();
+    }
 
 
 
@@ -434,6 +428,7 @@ function renderWidgets()
 
 
 
+
     // assemble all of the widgets in a tabpanel with a header section
     var viewport = new Ext.Viewport
     (
@@ -469,11 +464,22 @@ function renderWidgets()
                 xtype: 'panel',
                 layout: 'fit',
                 items: [
-                  //utilityPeriods, // array of fields
-                  //rePeriodBegin, // minimum utility Period begin
-                  //rePeriodEnd // maximum utility period end
-                ],
-              },{
+        /*            new Ext.FormPanel({
+                        labelWidth: 125,
+                        frame: true,
+                        title: 'test Begin Date',
+                        bodyStyle:'padding:5px 5px 0',
+                        width: 350,
+                        defaults: {width: 175},
+                        items: [{
+                            fieldLabel: 'test Service: Electric',
+                            xtype: 'datefield',
+                            name: 'Electric',
+                            value: '01/02/03'
+                        }]
+                    })
+               */ billPeriodsForm ]
+            },{
                 title: 'Charge Items',
                 xtype: 'panel',
                 layout: 'fit',
@@ -507,6 +513,7 @@ function renderWidgets()
 
         // get all of the utility bill periods for each service
         beginPeriods = utilbillPeriodBegins(data.responseXML);
+        configureBeginPeriods(beginPeriods);
 
         // now that we have the data in locally manageable data structures
         // tell all of the backing ui widget data stores to load the data
@@ -514,8 +521,6 @@ function renderWidgets()
         // load the data into the charges backing data store
         store.loadData(actualCharges);
 
-        // load the data into the utility bill periods backing store
-        //utilPeriodStore.loadData(beginPeriods);
     }
 
     function billLoadFailed(data) {
