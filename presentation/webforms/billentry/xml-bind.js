@@ -1,36 +1,46 @@
 // Lots of manual lifting here.  This is due to the fact that JS Frameworks do not do
 // a good job of handling XML Namespaces. 
 
-// Given an XML document, extract the begin dates that were automaticall set during bill roll
+// Given an XML document, extract the begin dates that were automatically set during bill roll
 // ToDo: evaluate this function across browsers
-function utilbillPeriodBegins(bill)
+function getUBPeriods(bill)
 {
 
-    var periodBegins = new Array();
+    var periods = new Array();
 
-    evaluateXPath(bill, "/ub:bill/ub:utilbill/ub:billperiodbegin").forEach(
+    evaluateXPath(bill, "/ub:bill/ub:utilbill").forEach(
         function(value, index, array) 
         {
-            periodBegins.push(
+            periods.push(
                 {
-                    'service': value.parentNode.attributes['service'].value,
-                    'begindate': value.childNodes[0].nodeValue
+                    'service': value.attributes['service'].value,
+                    // TODO: don't refer to index 0 w/o error check. therefore make a cover function in xml-support to do such a check
+                    'begindate': value.getElementsByTagNameNS("bill","billperiodbegin")[0].childNodes[0].nodeValue,
+                    'enddate': value.getElementsByTagNameNS("bill","billperiodend")[0].childNodes[0].nodeValue,
                 }
             )
         }
     );
 
-    return periodBegins;
+    return periods;
 }
 
-
+function setUBPeriods(bill, ubBillPeriods)
+{
+    ubBillPeriods.forEach( 
+        function (value, index, array) {
+            alert("Will save "+value);
+        }
+    );
+}
 
 
 // Given a XML document with bill actual charges, flatten them out into a two dimensional array
 // ToDo: evaluate this function across browsers
 // ToDo: rename to something like Actualcharges
 // ToDo: turn this into array of json
-function billXML2Array(bill)
+// ToDo: use the forEach construct
+function getActualCharges(bill)
 {
 
     // build an array based on the bill xml hypothetical charges
@@ -93,7 +103,7 @@ function billXML2Array(bill)
 
 // ToDo: evaluate this function across browsers
 // records passed in must be ordered by chargegroup, as they are by the GroupingStore
-function Array2BillXML(bill, records)
+function setActualCharges(bill, records)
 {
 
     // enumerate the records
