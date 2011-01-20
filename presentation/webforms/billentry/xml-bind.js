@@ -1,16 +1,15 @@
-// Lots of manual lifting here.  This is due to the fact that JS Frameworks do not do
-// a good job of handling XML Namespaces. 
-
 // Given an XML document, extract the begin dates that were automatically set during bill roll
 // ToDo: evaluate this function across browsers
 function getUBPeriods(bill)
 {
 
-    var periods = new Array();
+    var periods = new Array(); // equivalent to {}.  Arrays should not be used for kv pairs
 
     evaluateXPath(bill, "/ub:bill/ub:utilbill").forEach(
         function(value, index, array) 
         {
+            //periods['billperiodbegin-'+value.attributes['service'].value] = value.getElementsByTagNameNS("bill","billperiodbegin")[0].childNodes[0].nodeValue;
+            //periods['billperiodbegin-'+value.attributes['service'].value] = value.getElementsByTagNameNS("bill","billperiodend")[0].childNodes[0].nodeValue;
             periods.push(
                 {
                     'service': value.attributes['service'].value,
@@ -25,21 +24,71 @@ function getUBPeriods(bill)
     return periods;
 }
 
-function setUBPeriods(bill, ubBillPeriods)
+// Given form NVP's, extract that values and put them back into the XML document
+function setUBPeriods(bill, periods)
 {
-    ubBillPeriods.forEach( 
-        function (value, index, array) {
-            alert("Will save "+value);
+    for (var key in periods)
+    {
+        // form returns ubPeriods as associative array in the name value pair format of 
+        // key: [billperiodbegin|billperiodend]-[service]
+        // value: [date]
+        // strip out prefix on the name part of the nvp's that the form returns
+
+        // TODO: be more careful on indices and fail gracefully
+        var nodeList = evaluateXPath(bill, "/ub:bill/ub:utilbill[@service='"+key.substring(key.indexOf('-')+1)+"']/ub:"+key.substring(0,key.indexOf('-')));
+        nodeList[0].textContent = periods[key].format("Y-m-d");
+    }
+}
+
+// getter/setter for measured usage
+
+// Given an XML document, extract the dates that were automatically set during bill roll
+// ToDo: evaluate this function across browsers
+function getUBMeasuredUsagePeriods(bill)
+{
+
+    var periods = new Array(); // equivalent to {}.  Arrays should not be used for kv pairs
+
+    evaluateXPath(bill, "/ub:bill/ub:measuredusage").forEach(
+        function(value, index, array) 
+        {
+            periods.push(
+                {
+                    'service': value.attributes['service'].value,
+                    // TODO: don't refer to index 0 w/o error check. therefore make a cover function in xml-support to do such a check
+                    'priorreaddate': value.getElementsByTagNameNS("bill","priorreaddate")[0].childNodes[0].nodeValue,
+                    'presentreaddate': value.getElementsByTagNameNS("bill","presentreaddate")[0].childNodes[0].nodeValue,
+                }
+            )
         }
     );
+
+    return periods;
 }
+
+// Given form NVP's, extract that values and put them back into the XML document
+function setUBMeasuredUsagePeriods(bill, periods)
+{
+    for (var key in periods)
+    {
+        // form returns ubPeriods as associative array in the name value pair format of 
+        // key: [priorreaddate|currentreaddate]-[service]
+        // value: [date]
+        // strip out prefix on the name part of the nvp's that the form returns
+
+        // TODO: be more careful on indices and fail gracefully
+        var nodeList = evaluateXPath(bill, "/ub:bill/ub:utilbill[@service='"+key.substring(key.indexOf('-')+1)+"']/ub:"+key.substring(0,key.indexOf('-')));
+        nodeList[0].textContent = ubPeriods[key].format("Y-m-d");
+    }
+}
+
 
 
 // Given a XML document with bill actual charges, flatten them out into a two dimensional array
 // ToDo: evaluate this function across browsers
 // ToDo: rename to something like Actualcharges
-// ToDo: turn this into array of json
 // ToDo: use the forEach construct
+var globalServiceType = "Electric";
 function getActualCharges(bill)
 {
 
@@ -51,7 +100,7 @@ function getActualCharges(bill)
     // ToDo: support multiple <ub:details service=*/>
     // get to chargegroups
     var chargegroup = evaluateXPath(bill, 
-                "/ub:bill/ub:details[@service=\"Electric\"]/ub:chargegroup");
+                "/ub:bill/ub:details[@service=\""+globalServiceType+"\"]/ub:chargegroup");
     for (cg = 0; cg < chargegroup.length; cg++)
     {
 
@@ -71,24 +120,27 @@ function getActualCharges(bill)
 
                 hc[chargeIndex][0] = chargegroup[cg].attributes[0].nodeValue;
 
+                if (charge[c].hasAttribute("rsbinding"))
+                    hc[chargeIndex][1] = charge[c].attributes.rsbinding.value;
+
                 var descriptionElem = (charge[c].getElementsByTagName("ub:description"))[0];
                 // if the data is available, get it, otherwise use a null.  However, ext js grid changes
                 // a null into an empty string if focus passes through the cell that is backed by a null
                 // this results in a dirty store though no data changes were intended.
-                hc[chargeIndex][1] = (descriptionElem && descriptionElem.hasChildNodes()) ? descriptionElem.childNodes[0].nodeValue : null;
+                hc[chargeIndex][2] = (descriptionElem && descriptionElem.hasChildNodes()) ? descriptionElem.childNodes[0].nodeValue : null;
 
                 var quantityElem = (charge[c].getElementsByTagName("ub:quantity"))[0];
-                hc[chargeIndex][2] = (quantityElem && quantityElem.hasChildNodes()) ? quantityElem.childNodes[0].nodeValue : null;
-                hc[chargeIndex][3] = (quantityElem && quantityElem.hasAttributes()) ? quantityElem.attributes[0].nodeValue : null;
+                hc[chargeIndex][3] = (quantityElem && quantityElem.hasChildNodes()) ? quantityElem.childNodes[0].nodeValue : null;
+                hc[chargeIndex][4] = (quantityElem && quantityElem.hasAttributes()) ? quantityElem.attributes[0].nodeValue : null;
 
                 var rateElem = (charge[c].getElementsByTagName("ub:rate"))[0];
-                hc[chargeIndex][4] = (rateElem && rateElem.hasChildNodes()) ? rateElem.childNodes[0].nodeValue : null;
-                hc[chargeIndex][5] = (rateElem && rateElem.hasAttributes()) ? rateElem.attributes[0].nodeValue : null;
+                hc[chargeIndex][5] = (rateElem && rateElem.hasChildNodes()) ? rateElem.childNodes[0].nodeValue : null;
+                hc[chargeIndex][6] = (rateElem && rateElem.hasAttributes()) ? rateElem.attributes[0].nodeValue : null;
 
                 var totalElem = (charge[c].getElementsByTagName("ub:total"))[0];
-                hc[chargeIndex][6] = (totalElem && totalElem.hasChildNodes()) ? totalElem.childNodes[0].nodeValue : null;
+                hc[chargeIndex][7] = (totalElem && totalElem.hasChildNodes()) ? totalElem.childNodes[0].nodeValue : null;
                 var processingnoteElem = (charge[c].getElementsByTagName("ub:processingnote"))[0];
-                hc[chargeIndex][7] = (processingnoteElem && processingnoteElem.hasChildNodes()) ? processingnoteElem.childNodes[0].nodeValue : null;
+                hc[chargeIndex][8] = (processingnoteElem && processingnoteElem.hasChildNodes()) ? processingnoteElem.childNodes[0].nodeValue : null;
 
                 // increment the array index allowing for the next chargegroup charges to be appended.
                 chargeIndex++;
@@ -139,7 +191,7 @@ function setActualCharges(bill, records)
             // ToDo: must support multiple <ub:details service=*/>
             // find the associated actual charges
             var actualChargesNodeList = evaluateXPath(bill, 
-                "/ub:bill/ub:details[@service=\"Gas\"]/ub:chargegroup[@type=\""+cg+"\"]/ub:charges[@type=\"actual\"]");
+                "/ub:bill/ub:details[@service=\""+globalServiceType+"\"]/ub:chargegroup[@type=\""+cg+"\"]/ub:charges[@type=\"actual\"]");
 
             // ToDo: assert only one set of charges came back
             charges = actualChargesNodeList[0];
@@ -162,6 +214,10 @@ function setActualCharges(bill, records)
 
         // once removed, recreate each charge
         var charge = bill.createElementNS("bill","ub:charge");
+
+        var rsbinding = bill.createAttribute("rsbinding");
+        charge.setAttributeNode(rsbinding);
+        charge.attributes.rsbinding.value = curRec.data.rsbinding;
 
         // and the children of each charge
         if (curRec.data.description && curRec.data.description.length != 0) {
@@ -211,6 +267,4 @@ function setActualCharges(bill, records)
         chargesTotalElem.removeChild(chargesTotalElem.firstChild);
         chargesTotalElem.appendChild(bill.createTextNode((chargesSubtotal/100).toString()));
     }
-
-    return bill;
 }

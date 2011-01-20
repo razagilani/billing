@@ -96,23 +96,32 @@ function renderWidgets()
 
     var ubPeriodsFormPanel = new Ext.FormPanel(
     {
-        labelWidth: 125,
-        frame: true,
-        title: 'test Begin Date',
-        bodyStyle:'padding:5px 5px 0',
-        width: 350,
-        defaults: {width: 175},
+        header: false,
+        //labelWidth: 125,
+        //frame: true,
+        //title: 'test Begin Date',
+        //bodyStyle:'padding:5px 5px 0',
+        //width: 350,
+        //defaults: {width: 175},
         items:[], // added by configureUBPeriodsForm()
+        //autoDestroy: true,
+        //footer: true,
+        layout: 'form',
         buttons: 
         [
             {
                 text   : 'Save',
                 handler: function() {
                     if (ubPeriodsFormPanel.getForm().isValid()) {
+
+                        // extract values from form, and reconstruct
+                        // array to go back into xml-bind.js
+
                         // save values to bill document
-                        setUBBillPeriods(/*the array goes here - stopped here*/);
+                        setUBPeriods(bill, ubPeriodsFormPanel.getForm().getFieldValues());
 
                         // send bill document to server
+                        saveToXML();
                     }
                 }
             },{
@@ -124,34 +133,111 @@ function renderWidgets()
         ]
     });
 
-    // dynamically create the period forms when a bill is loaded
+    // dynamically create the period form fields when a bill is loaded
     function configureUBPeriodsForm(beginPeriods)
     {
         ubPeriodsFormPanel.removeAll();
 
+        // add the period date pickers to the form
         beginPeriods.forEach(
             function (value, index, array) {
                 ubPeriodsFormPanel.add(
                     new Ext.form.DateField({
                         fieldLabel: value.service + ' Service Begin',
-                        name: value.service,
+                        name: 'billperiodbegin-'+value.service,
                         value: value.begindate,
                         disabled: true,
                     }),
                     new Ext.form.DateField({
                         fieldLabel: value.service + ' Service End',
-                        name: value.service,
+                        name: 'billperiodend-'+value.service,
                         value: value.enddate,
                     })
                 )
             }
         );
 
-        ubPeriodsFormPanel.doLayout();
+        // the tabpanel that contains ubPeriodsFormPanel performs layoutOnTabChange:
+        // so the dynamically added forms draw properly
+
     }
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Measured Usage tab
+    //
 
+    // create a panel to which we can dynamically add/remove components
+    // this panel is later added to the viewport so that it may be rendered
 
+    var ubMeasuredUsageFormPanel = new Ext.FormPanel(
+    {
+        header: false,
+        //labelWidth: 125,
+        //frame: true,
+        //title: 'test Begin Date',
+        //bodyStyle:'padding:5px 5px 0',
+        //width: 350,
+        //defaults: {width: 175},
+        items:[], // added by configureUBMeasuredUsageForm()
+        //autoDestroy: true,
+        //footer: true,
+        layout: 'form',
+        buttons: 
+        [
+            {
+                text   : 'Save',
+                handler: function() {
+                    if (ubMeasuredUsageFormPanel.getForm().isValid()) {
+
+                        // extract values from form, and reconstruct
+                        // array to go back into xml-bind.js
+
+                        // save values to bill document
+                        setUBMeasuredUsage(bill, ubMeasuredUsageFormPanel.getForm().getFieldValues());
+
+                        // send bill document to server
+                        saveToXML();
+                    }
+                }
+            },{
+                text   : 'Reset',
+                handler: function() {
+                    ubMeasuredUsageFormPanel.getForm().reset();
+                }
+            }
+        ]
+    });
+
+    // dynamically create the measured usage form fields when a bill is loaded
+    function configureUBMeasuredUsagePeriodsForm(measuredUsagePeriods)
+    {
+        ubMeasuredUsageFormPanel.removeAll();
+
+        // add the period date pickers to the form
+        measuredUsagePeriods.forEach(
+            function (value, index, array) {
+                ubMeasuredUsageFormPanel.add(
+                    new Ext.form.DateField({
+                        fieldLabel: value.service + ' Prior Read Date',
+                        name: 'priorreaddate-'+value.service,
+                        value: value.priorreaddate,
+                        disabled: true,
+                    }),
+                    new Ext.form.DateField({
+                        fieldLabel: value.service + ' Present Read Date',
+                        name: 'presentreaddate-'+value.service,
+                        value: value.presentreaddate,
+                    })
+                )
+            }
+        );
+
+        // the tabpanel that contains this form panel performs layoutOnTabChange:
+        // so the dynamically added form fields draw properly
+
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
 
     // initial data loaded into the grid before a bill is loaded
     // populate with data if initial pre-loaded data is desired
@@ -161,6 +247,7 @@ function renderWidgets()
 
     var reader = new Ext.data.ArrayReader({}, [
        {name: 'chargegroup'},
+       {name: 'rsbinding'},
        {name: 'description'},
        {name: 'quantity'},
        {name: 'quantityunits'},
@@ -193,6 +280,13 @@ function renderWidgets()
                 dataIndex: 'chargegroup',
                 hidden: true 
             }, 
+            {
+                header: 'RS Binding',
+                width: 75,
+                sortable: true,
+                dataIndex: 'rsbinding',
+                editor: new Ext.form.TextField({allowBlank: true})
+            },
             {
                 header: 'Description',
                 width: 75,
@@ -393,7 +487,12 @@ function renderWidgets()
                 // stop grid editing so that widgets like comboboxes in rows don't stay focused
                 grid.stopEditing();
 
-                saveToXML(store.getRange());
+                // TODO: move this to the UI widget responsible for editing this content.
+                // take the records that are maintained in the store
+                // and update the bill document with them.
+                setActualCharges(bill, store.getRange());
+                
+                saveToXML();
             }
         }],
         colModel: colModel,
@@ -441,12 +540,36 @@ function renderWidgets()
 
     // get all utility service period starts and make widgets
 
-    // 
 
-
-
-
-
+    var theTabPanel = new Ext.TabPanel({
+        activeTab: 0,
+        //layoutOnTabChange: true,
+        items:[
+          {
+            title: 'Select Bill',
+            xtype: 'panel',
+            //layout: 'fit',
+            items: [
+              customerAccountCombo,
+              customerBillCombo
+            ],
+          },{
+            title: 'Bill Periods',
+            xtype: 'panel',
+            layout: 'fit',
+            items: [
+              ubPeriodsFormPanel
+            ]
+        },{
+            title: 'Charge Items',
+            xtype: 'panel',
+            layout: 'fit',
+            items: [
+              grid
+            ]
+          }
+        ]
+    });
     // assemble all of the widgets in a tabpanel with a header section
     var viewport = new Ext.Viewport
     (
@@ -468,6 +591,8 @@ function renderWidgets()
             region: 'center',
             xtype: 'tabpanel',
             activeTab: 0,
+            // necessary for child FormPanels to draw properly when dynamically changed
+            layoutOnTabChange: true,
             items:[
               {
                 title: 'Select Bill',
@@ -483,6 +608,13 @@ function renderWidgets()
                 layout: 'fit',
                 items: [
                     ubPeriodsFormPanel
+                ]
+            },{
+                title: 'Usage Periods',
+                xtype: 'panel',
+                layout: 'fit',
+                items: [
+                    ubMeasuredUsageFormPanel
                 ]
             },{
                 title: 'Charge Items',
@@ -518,11 +650,15 @@ function renderWidgets()
         
         // flatten the actual charges found in the bill
         // ToDo: do this on a per service basis
-        actualCharges = getActualCharges(data.responseXML);
+        actualCharges = getActualCharges(bill);
 
         // get all of the utility bill periods for each service
-        ubPeriods = getUBPeriods(data.responseXML);
+        ubPeriods = getUBPeriods(bill);
         configureUBPeriodsForm(ubPeriods);
+
+        // get the measured usage dates for each service
+        ubMeasuredUsagePeriods = getUBMeasuredUsagePeriods(bill);
+        configureUBMeasuredUsagePeriodsForm(ubMeasuredUsagePeriods);
 
         // now that we have the data in locally manageable data structures
         // tell all of the backing ui widget data stores to load the data
@@ -541,15 +677,8 @@ function renderWidgets()
     // the UI widgets are responsible for getting/setting data from the bill document.
     // This methods is reponsible for the restful communication of the bill doc
     // back to the server.
-    function saveToXML(records)
+    function saveToXML()
     {
-
-
-        // TODO: move this to the UI widget responsible for editing this content.
-        // take the records that are maintained in the store
-        // and update the bill document with them.
-        bill = setActualCharges(bill, records);
-
         // ToDo: credentials
 
         if (bill != null)
