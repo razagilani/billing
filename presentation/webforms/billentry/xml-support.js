@@ -53,12 +53,14 @@ function evaluateXPath(aNode, aExpr)
 	default:
 		try
 		{
+            // result is an XPathResult which only supports iterateNext(), 
+            // so we make it look like an array for convenience
 			while (res = result.iterateNext())
 				found.push(res);
 		} catch (e) {
 			alert(e);
 		}
-		return found;
+	    return found;
 	}
 
 }

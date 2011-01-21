@@ -5,21 +5,18 @@ function getUBPeriods(bill)
 
     var periods = new Array(); // equivalent to {}.  Arrays should not be used for kv pairs
 
-    evaluateXPath(bill, "/ub:bill/ub:utilbill").forEach(
-        function(value, index, array) 
-        {
-            //periods['billperiodbegin-'+value.attributes['service'].value] = value.getElementsByTagNameNS("bill","billperiodbegin")[0].childNodes[0].nodeValue;
-            //periods['billperiodbegin-'+value.attributes['service'].value] = value.getElementsByTagNameNS("bill","billperiodend")[0].childNodes[0].nodeValue;
-            periods.push(
-                {
-                    'service': value.attributes['service'].value,
-                    // TODO: don't refer to index 0 w/o error check. therefore make a cover function in xml-support to do such a check
-                    'begindate': value.getElementsByTagNameNS("bill","billperiodbegin")[0].childNodes[0].nodeValue,
-                    'enddate': value.getElementsByTagNameNS("bill","billperiodend")[0].childNodes[0].nodeValue,
-                }
-            )
-        }
-    );
+    evaluateXPath(bill, "/ub:bill/ub:utilbill").forEach(function(value, index, array) {
+        //periods['billperiodbegin-'+value.attributes['service'].value] = value.getElementsByTagNameNS("bill","billperiodbegin")[0].childNodes[0].nodeValue;
+        //periods['billperiodbegin-'+value.attributes['service'].value] = value.getElementsByTagNameNS("bill","billperiodend")[0].childNodes[0].nodeValue;
+        periods.push(
+            {
+                'service': value.attributes['service'].value,
+                // TODO: don't refer to index 0 w/o error check. therefore make a cover function in xml-support to do such a check
+                'begindate': value.getElementsByTagNameNS("bill","billperiodbegin")[0].childNodes[0].nodeValue,
+                'enddate': value.getElementsByTagNameNS("bill","billperiodend")[0].childNodes[0].nodeValue,
+            }
+        )
+    });
 
     return periods;
 }
@@ -84,12 +81,19 @@ function setUBMeasuredUsagePeriods(bill, periods)
 
 
 
-// Given a XML document with bill actual charges, flatten them out into a two dimensional array
-// ToDo: evaluate this function across browsers
-// ToDo: rename to something like Actualcharges
-// ToDo: use the forEach construct
 var globalServiceType = "Electric";
 function getActualCharges(bill)
+{
+    return getCharges(bill, 'actual', globalServiceType);
+}
+function getHypotheticalCharges(bill)
+{
+    return getCharges(bill, 'hypothetical', globalServiceType);
+}
+
+// Given a XML document with bill actual charges, flatten them out into a two dimensional array
+// ToDo: evaluate this function across browsers
+function getCharges(bill, type, service)
 {
 
     // build an array based on the bill xml hypothetical charges
@@ -97,54 +101,57 @@ function getActualCharges(bill)
     // this array will have chargegroup-charge pairs and a number of rows for all charges in a chargegroup
     var chargeIndex = 0 
 
-    // ToDo: support multiple <ub:details service=*/>
-    // get to chargegroups
     var chargegroup = evaluateXPath(bill, 
-                "/ub:bill/ub:details[@service=\""+globalServiceType+"\"]/ub:chargegroup");
-    for (cg = 0; cg < chargegroup.length; cg++)
+                "/ub:bill/ub:details[@service=\""+service+"\"]/ub:chargegroup");
+    // iterate over nodelist - which can't be iterated like an array can be using forEach, or for in.
+    for (var cg = 0; cg < chargegroup.length; cg++)
     {
 
         // chargegroups contain two sets of charges.  Actual, or hypothetical
-        var charges = chargegroup[cg].getElementsByTagName("ub:charges")[0];
+        var chargesElems = chargegroup[cg].getElementsByTagName("ub:charges");
 
-        // if an actual set of charges, create an array of the charges
-        var chargesType = charges.attributes[0].nodeValue;
-        if (chargesType == "actual")
-        {
+        for (var ce = 0; ce < chargesElems.length; ce++) {
 
-            var charge = charges.getElementsByTagName("ub:charge");
-            for(c = 0; c < charge.length; c++)
+            var chargesElem = chargesElems[ce];
+
+            // if an actual set of charges, create an array of the charges
+            var chargesType = chargesElem.attributes[0].nodeValue;
+            if (chargesType == type)
             {
 
-                hc[chargeIndex] = new Array();
+                var charge = chargesElem.getElementsByTagName("ub:charge");
+                for (var c = 0; c < charge.length; c++)
+                {
 
-                hc[chargeIndex][0] = chargegroup[cg].attributes[0].nodeValue;
+                    hc[chargeIndex] = new Array();
 
-                if (charge[c].hasAttribute("rsbinding"))
-                    hc[chargeIndex][1] = charge[c].attributes.rsbinding.value;
+                    hc[chargeIndex][0] = chargegroup[cg].attributes[0].nodeValue;
 
-                var descriptionElem = (charge[c].getElementsByTagName("ub:description"))[0];
-                // if the data is available, get it, otherwise use a null.  However, ext js grid changes
-                // a null into an empty string if focus passes through the cell that is backed by a null
-                // this results in a dirty store though no data changes were intended.
-                hc[chargeIndex][2] = (descriptionElem && descriptionElem.hasChildNodes()) ? descriptionElem.childNodes[0].nodeValue : null;
+                    if (charge[c].hasAttribute("rsbinding"))
+                        hc[chargeIndex][1] = charge[c].attributes.rsbinding.value;
 
-                var quantityElem = (charge[c].getElementsByTagName("ub:quantity"))[0];
-                hc[chargeIndex][3] = (quantityElem && quantityElem.hasChildNodes()) ? quantityElem.childNodes[0].nodeValue : null;
-                hc[chargeIndex][4] = (quantityElem && quantityElem.hasAttributes()) ? quantityElem.attributes[0].nodeValue : null;
+                    var descriptionElem = (charge[c].getElementsByTagName("ub:description"))[0];
+                    // if the data is available, get it, otherwise use a null.  However, ext js grid changes
+                    // a null into an empty string if focus passes through the cell that is backed by a null
+                    // this results in a dirty store though no data changes were intended.
+                    hc[chargeIndex][2] = (descriptionElem && descriptionElem.hasChildNodes()) ? descriptionElem.childNodes[0].nodeValue : null;
 
-                var rateElem = (charge[c].getElementsByTagName("ub:rate"))[0];
-                hc[chargeIndex][5] = (rateElem && rateElem.hasChildNodes()) ? rateElem.childNodes[0].nodeValue : null;
-                hc[chargeIndex][6] = (rateElem && rateElem.hasAttributes()) ? rateElem.attributes[0].nodeValue : null;
+                    var quantityElem = (charge[c].getElementsByTagName("ub:quantity"))[0];
+                    hc[chargeIndex][3] = (quantityElem && quantityElem.hasChildNodes()) ? quantityElem.childNodes[0].nodeValue : null;
+                    hc[chargeIndex][4] = (quantityElem && quantityElem.hasAttributes()) ? quantityElem.attributes[0].nodeValue : null;
 
-                var totalElem = (charge[c].getElementsByTagName("ub:total"))[0];
-                hc[chargeIndex][7] = (totalElem && totalElem.hasChildNodes()) ? totalElem.childNodes[0].nodeValue : null;
-                var processingnoteElem = (charge[c].getElementsByTagName("ub:processingnote"))[0];
-                hc[chargeIndex][8] = (processingnoteElem && processingnoteElem.hasChildNodes()) ? processingnoteElem.childNodes[0].nodeValue : null;
+                    var rateElem = (charge[c].getElementsByTagName("ub:rate"))[0];
+                    hc[chargeIndex][5] = (rateElem && rateElem.hasChildNodes()) ? rateElem.childNodes[0].nodeValue : null;
+                    hc[chargeIndex][6] = (rateElem && rateElem.hasAttributes()) ? rateElem.attributes[0].nodeValue : null;
 
-                // increment the array index allowing for the next chargegroup charges to be appended.
-                chargeIndex++;
+                    var totalElem = (charge[c].getElementsByTagName("ub:total"))[0];
+                    hc[chargeIndex][7] = (totalElem && totalElem.hasChildNodes()) ? totalElem.childNodes[0].nodeValue : null;
+                    var processingnoteElem = (charge[c].getElementsByTagName("ub:processingnote"))[0];
+                    hc[chargeIndex][8] = (processingnoteElem && processingnoteElem.hasChildNodes()) ? processingnoteElem.childNodes[0].nodeValue : null;
 
+                    // increment the array index allowing for the next chargegroup charges to be appended.
+                    chargeIndex++;
+                }
             }
         }
     }
@@ -153,9 +160,19 @@ function getActualCharges(bill)
 }
 
 
+function setActualCharges(bill, records)
+{
+    return setCharges(bill, 'actual', globalServiceType);
+}
+
+function setHypotheticalCharges(bill, records)
+{
+    return setCharges(bill, 'hypothetical', globalServiceType);
+}
+
 // ToDo: evaluate this function across browsers
 // records passed in must be ordered by chargegroup, as they are by the GroupingStore
-function setActualCharges(bill, records)
+function setCharges(bill, type, service)
 {
 
     // enumerate the records
@@ -175,7 +192,7 @@ function setActualCharges(bill, records)
     var chargesSubtotal = 0;
     var chargesTotalElem = null;
 
-    for(r = 0; r < records.length; r++)
+    for(var r = 0; r < records.length; r++)
     {
         // pick the current record from the grid grouping store and turn it into XML
         var curRec = records[r];
@@ -191,14 +208,14 @@ function setActualCharges(bill, records)
             // ToDo: must support multiple <ub:details service=*/>
             // find the associated actual charges
             var actualChargesNodeList = evaluateXPath(bill, 
-                "/ub:bill/ub:details[@service=\""+globalServiceType+"\"]/ub:chargegroup[@type=\""+cg+"\"]/ub:charges[@type=\"actual\"]");
+                "/ub:bill/ub:details[@service=\""+service+"\"]/ub:chargegroup[@type=\""+cg+"\"]/ub:charges[@type=\""+type+"\"]");
 
             // ToDo: assert only one set of charges came back
             charges = actualChargesNodeList[0];
 
             // remove only the charge item children leaving the total child behind
             var deleteChildrenNodeList = evaluateXPath(charges, "ub:charge");
-            for (i = 0; i < deleteChildrenNodeList.length; i++)
+            for (var i = 0; i < deleteChildrenNodeList.length; i++)
             {
                 charges.removeChild(deleteChildrenNodeList[i]);
             }
