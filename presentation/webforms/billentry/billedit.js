@@ -237,15 +237,21 @@ function renderWidgets()
 
     }
 
+
     ////////////////////////////////////////////////////////////////////////////
+    // Charges tab
+    //
+
+    /////////////////////////////////
+    // support for the actual charges
 
     // initial data loaded into the grid before a bill is loaded
     // populate with data if initial pre-loaded data is desired
-    var initialBillData = [
+    var initialActualCharges = [
         //['Charge Group 1', 'Charge Description',100,'qty units', 10,'rate units',1000],
     ];
 
-    var reader = new Ext.data.ArrayReader({}, [
+    var aChargesReader = new Ext.data.ArrayReader({}, [
        {name: 'chargegroup'},
        {name: 'rsbinding'},
        {name: 'description'},
@@ -258,18 +264,18 @@ function renderWidgets()
        {name: 'autototal', type: 'float'}
     ]);
 
-    var store = new Ext.data.GroupingStore({
-            reader: reader,
-            data: initialBillData,
+    var aChargesStore = new Ext.data.GroupingStore({
+            reader: aChargesReader,
+            data: initialActualCharges,
             sortInfo:{field: 'chargegroup', direction: 'ASC'},
             groupField:'chargegroup'
-        });
+    });
 
 
 	// utilize custom extension for Group Summary
-    var summary = new Ext.ux.grid.GroupSummary();
+    var aChargesSummary = new Ext.ux.grid.GroupSummary();
 
-    var colModel = new Ext.grid.ColumnModel(
+    var aChargesColModel = new Ext.grid.ColumnModel(
     {
         columns: [
             {
@@ -410,23 +416,23 @@ function renderWidgets()
     )
 
 
-    // create the Grid
-    var grid = new Ext.grid.EditorGridPanel({
+    // create actual charges Grid
+    var aChargesGrid = new Ext.grid.EditorGridPanel({
         tbar: [{
-            // ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
+            // ref places a name for this component into the grid so it may be referenced as aChargesGrid.insertBtn...
             ref: '../insertBtn',
             iconCls: 'icon-user-add',
             text: 'Insert',
             disabled: true,
             handler: function()
             {
-                grid.stopEditing();
+                aChargesGrid.stopEditing();
 
                 // grab the current selection - only one row may be selected per singlselect configuration
-                var selection = grid.getSelectionModel().getSelected();
+                var selection = aChargesGrid.getSelectionModel().getSelected();
 
                 // make the new record
-                var ChargeItemType = grid.getStore().recordType;
+                var ChargeItemType = aChargesGrid.getStore().recordType;
                 var defaultData = 
                 {
                     // ok, this is tricky:  the newly created record is assigned the chargegroup
@@ -447,30 +453,30 @@ function renderWidgets()
                 var c = new ChargeItemType(defaultData);
     
                 // select newly inserted record
-                var insertionPoint = store.indexOf(selection);
-                store.insert(insertionPoint + 1, c);
-                grid.getView().refresh();
-                grid.getSelectionModel().selectRow(insertionPoint);
-                grid.startEditing(insertionPoint +1,1);
+                var insertionPoint = aChargesStore.indexOf(selection);
+                aChargesStore.insert(insertionPoint + 1, c);
+                aChargesGrid.getView().refresh();
+                aChargesGrid.getSelectionModel().selectRow(insertionPoint);
+                aChargesGrid.startEditing(insertionPoint +1,1);
                 
                 // An inserted record must be saved 
-                grid.saveBtn.setDisabled(false);
+                aChargesGrid.saveBtn.setDisabled(false);
             }
         },{
-            // ref places a name for this component into the grid so it may be referenced as grid.removeBtn...
+            // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
             ref: '../removeBtn',
             iconCls: 'icon-user-delete',
             text: 'Remove',
             disabled: true,
             handler: function()
             {
-                grid.stopEditing();
-                var s = grid.getSelectionModel().getSelections();
+                aChargesGrid.stopEditing();
+                var s = aChargesGrid.getSelectionModel().getSelections();
                 for(var i = 0, r; r = s[i]; i++)
                 {
-                    store.remove(r);
+                    aChargesStore.remove(r);
                 }
-                grid.saveBtn.setDisabled(false);
+                aChargesGrid.saveBtn.setDisabled(false);
             }
         },{
             // places reference to this button in grid.  
@@ -482,28 +488,28 @@ function renderWidgets()
                 // disable the save button for the save attempt.
                 // is there a closer place for this to the actual button click due to the possibility of a double
                 // clicked button submitting two ajax requests?
-                grid.saveBtn.setDisabled(true);
+                aChargesGrid.saveBtn.setDisabled(true);
 
                 // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                grid.stopEditing();
+                aChargesGrid.stopEditing();
 
                 // TODO: move this to the UI widget responsible for editing this content.
                 // take the records that are maintained in the store
                 // and update the bill document with them.
-                setActualCharges(bill, store.getRange());
+                setActualCharges(bill, aChargesStore.getRange());
                 
                 saveToXML();
             }
         }],
-        colModel: colModel,
+        colModel: aChargesColModel,
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
-        store: store,
+        store: aChargesStore,
         enableColumnMove: false,
         view: new Ext.grid.GroupingView({
             forceFit:true,
             groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
         }),
-        plugins: summary,
+        plugins: aChargesSummary,
         frame: true,
         collapsible: true,
         animCollapse: false,
@@ -519,57 +525,332 @@ function renderWidgets()
     });
 
     // selection callbacks
-    grid.getSelectionModel().on('selectionchange', function(sm){
+    aChargesGrid.getSelectionModel().on('selectionchange', function(sm){
         // if a selection is made, allow it to be removed
         // if the selection was deselected to nothing, allow no 
         // records to be removed.
-        grid.removeBtn.setDisabled(sm.getCount() < 1);
+        aChargesGrid.removeBtn.setDisabled(sm.getCount() < 1);
 
         // if there was a selection, allow an insertion
-        grid.insertBtn.setDisabled(sm.getCount()<1);
+        aChargesGrid.insertBtn.setDisabled(sm.getCount()<1);
 
     });
   
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
-    store.on('update', function(){
-        grid.saveBtn.setDisabled(false);
+    aChargesStore.on('update', function(){
+        aChargesGrid.saveBtn.setDisabled(false);
     });
     
-    // configure bill period objects
-
-    // get all utility service period starts and make widgets
 
 
-    var theTabPanel = new Ext.TabPanel({
-        activeTab: 0,
-        //layoutOnTabChange: true,
-        items:[
-          {
-            title: 'Select Bill',
-            xtype: 'panel',
-            //layout: 'fit',
-            items: [
-              customerAccountCombo,
-              customerBillCombo
-            ],
-          },{
-            title: 'Bill Periods',
-            xtype: 'panel',
-            layout: 'fit',
-            items: [
-              ubPeriodsFormPanel
-            ]
-        },{
-            title: 'Charge Items',
-            xtype: 'panel',
-            layout: 'fit',
-            items: [
-              grid
-            ]
-          }
-        ]
+    ///////////////////////////////////////
+    // support for the hypothetical charges
+
+    // initial data loaded into the grid before a bill is loaded
+    // populate with data if initial pre-loaded data is desired
+    var initialHCharges = [
+        //['Charge Group 1', 'Charge Description',100,'qty units', 10,'rate units',1000],
+    ];
+
+    var hChargesReader = new Ext.data.ArrayReader({}, [
+       {name: 'chargegroup'},
+       {name: 'rsbinding'},
+       {name: 'description'},
+       {name: 'quantity'},
+       {name: 'quantityunits'},
+       {name: 'rate'},
+       {name: 'rateunits'},
+       {name: 'total', type: 'float'},
+       {name: 'processingnote'},
+       {name: 'autototal', type: 'float'}
+    ]);
+
+    var hChargesStore = new Ext.data.GroupingStore({
+            reader: hChargesReader,
+            data: initialHCharges,
+            sortInfo:{field: 'chargegroup', direction: 'ASC'},
+            groupField:'chargegroup'
     });
+
+
+	// utilize custom extension for Group Summary
+    var hChargesSummary = new Ext.ux.grid.GroupSummary();
+
+    var hChargesColModel = new Ext.grid.ColumnModel(
+    {
+        columns: [
+            {
+                id:'chargegroup',
+                header: 'Charge Group',
+                width: 160,
+                sortable: true,
+                dataIndex: 'chargegroup',
+                hidden: true 
+            }, 
+            {
+                header: 'RS Binding',
+                width: 75,
+                sortable: true,
+                dataIndex: 'rsbinding',
+                editor: new Ext.form.TextField({allowBlank: true})
+            },
+            {
+                header: 'Description',
+                width: 75,
+                sortable: true,
+                dataIndex: 'description',
+                editor: new Ext.form.TextField({allowBlank: false})
+            },
+            {
+                header: 'Quantity',
+                width: 75,
+                sortable: true,
+                dataIndex: 'quantity',
+                editor: new Ext.form.NumberField({decimalPrecision: 5, allowBlank: true})
+            },
+            {
+                header: 'Units',
+                width: 75,
+                sortable: true,
+                dataIndex: 'quantityunits',
+                editor: new Ext.form.ComboBox({
+                    typeAhead: true,
+                    triggerAction: 'all',
+                    // transform the data already specified in html
+                    //transform: 'light',
+                    lazyRender: true,
+                    listClass: 'x-combo-list-small',
+                    mode: 'local',
+                    store: new Ext.data.ArrayStore({
+                        fields: [
+                            'displayText'
+                        ],
+                        // TODO: externalize these units
+                        data: [['dollars'], ['kWh'], ['ccf'], ['Therms'], ['kWD'], ['KQH'], ['rkVA']]
+                    }),
+                    valueField: 'displayText',
+                    displayField: 'displayText'
+                })
+                
+            },
+            {
+                header: 'Rate',
+                width: 75,
+                sortable: true,
+                dataIndex: 'rate',
+                editor: new Ext.form.NumberField({decimalPrecision: 10, allowBlank: true})
+            },
+            {
+                header: 'Units',
+                width: 75,
+                sortable: true,
+                dataIndex: 'rateunits',
+                editor: new Ext.form.ComboBox({
+                    typeAhead: true,
+                    triggerAction: 'all',
+                    // transform the data already specified in html
+                    //transform: 'light',
+                    lazyRender: true,
+                    listClass: 'x-combo-list-small',
+                    mode: 'local',
+                    store: new Ext.data.ArrayStore({
+                        fields: [
+                            'displayText'
+                        ],
+                        // TODO: externalize these units
+                        data: [['dollars'], ['cents']]
+                    }),
+                    valueField: 'displayText',
+                    displayField: 'displayText'
+                })
+            },
+            {
+                header: 'Total', 
+                width: 75, 
+                sortable: true, 
+                dataIndex: 'total', 
+                summaryType: 'sum',
+                align: 'right',
+                editor: new Ext.form.NumberField({allowBlank: false}),
+                renderer: function(v, params, record)
+                {
+                    return Ext.util.Format.usMoney(record.data.total);
+                }
+            },
+            {
+                header: 'Auto Total', 
+                width: 75, 
+                sortable: true, 
+                dataIndex: 'autototal', 
+                summaryType: 'sum',
+                align: 'right',
+                renderer: function(v, params, record)
+                {
+                    // terrible hack allowing percentages to display as x%
+                    // yet participate as a value between 0 and 1 for
+                    // showing that charge items compute
+                    var q = record.data.quantity;
+                    var r = record.data.rate;
+
+                    if (r && record.data.quantityunits && record.data.rateunits == 'percent')
+                        r /= 100;
+
+                    if (q && r)
+                        record.data.autototal = q * r;
+                    else if (q && !r)
+                        record.data.autototal = record.data.total;
+                    else if (!q && r)
+                        record.data.autototal = record.data.total;
+                    else
+                        record.data.autototal = record.data.total;
+
+                    return Ext.util.Format.usMoney(record.data.autototal);
+                },
+                // figure out how to sum column based on a renderer
+                summaryRenderer: function(v, params, record)
+                {
+                    return Ext.util.Format.usMoney(record.data.autototal);
+                }
+            }
+        ]
+    }
+    );
+
+
+    // create actual charges Grid
+    var hChargesGrid = new Ext.grid.EditorGridPanel({
+        tbar: [{
+            // ref places a name for this component into the grid so it may be referenced as hChargesGrid.insertBtn...
+            ref: '../insertBtn',
+            iconCls: 'icon-user-add',
+            text: 'Insert',
+            disabled: true,
+            handler: function()
+            {
+                hChargesGrid.stopEditing();
+
+                // grab the current selection - only one row may be selected per singlselect configuration
+                var selection = hChargesGrid.getSelectionModel().getSelected();
+
+                // make the new record
+                var ChargeItemType = hChargesGrid.getStore().recordType;
+                var defaultData = 
+                {
+                    // ok, this is tricky:  the newly created record is assigned the chargegroup
+                    // of the selection during the insert.  This way, the new record is added
+                    // to the proper group.  Otherwise, if the record does not have the same
+                    // chargegroup name of the adjacent record, a new group is shown in the grid
+                    // and the UI goes out of sync.  Try this by change the chargegroup below
+                    // to some other string.
+                    chargegroup: selection.data.chargegroup,
+                    description: 'enter description',
+                    quantity: 0,
+                    quantityunits: 'kWh',
+                    rate: 0,
+                    rateunits: 'dollars',
+                    total: 0,
+                    //autototal: 0
+                };
+                var c = new ChargeItemType(defaultData);
+    
+                // select newly inserted record
+                var insertionPoint = hChargesStore.indexOf(selection);
+                hChargesStore.insert(insertionPoint + 1, c);
+                hChargesGrid.getView().refresh();
+                hChargesGrid.getSelectionModel().selectRow(insertionPoint);
+                hChargesGrid.startEditing(insertionPoint +1,1);
+                
+                // An inserted record must be saved 
+                hChargesGrid.saveBtn.setDisabled(false);
+            }
+        },{
+            // ref places a name for this component into the grid so it may be referenced as hChargesGrid.removeBtn...
+            ref: '../removeBtn',
+            iconCls: 'icon-user-delete',
+            text: 'Remove',
+            disabled: true,
+            handler: function()
+            {
+                hChargesGrid.stopEditing();
+                var s = hChargesGrid.getSelectionModel().getSelections();
+                for(var i = 0, r; r = s[i]; i++)
+                {
+                    hChargesStore.remove(r);
+                }
+                hChargesGrid.saveBtn.setDisabled(false);
+            }
+        },{
+            // places reference to this button in grid.  
+            ref: '../saveBtn',
+            text: 'Save',
+            disabled: true,
+            handler: function()
+            {
+                // disable the save button for the save attempt.
+                // is there a closer place for this to the actual button click due to the possibility of a double
+                // clicked button submitting two ajax requests?
+                hChargesGrid.saveBtn.setDisabled(true);
+
+                // stop grid editing so that widgets like comboboxes in rows don't stay focused
+                hChargesGrid.stopEditing();
+
+                // TODO: move this to the UI widget responsible for editing this content.
+                // take the records that are maintained in the store
+                // and update the bill document with them.
+                setActualCharges(bill, hChargesStore.getRange());
+                
+                saveToXML();
+            }
+        }],
+        colModel: hChargesColModel,
+        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+        store: hChargesStore,
+        enableColumnMove: false,
+        view: new Ext.grid.GroupingView({
+            forceFit:true,
+            groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
+        }),
+        plugins: hChargesSummary,
+        frame: true,
+        collapsible: true,
+        animCollapse: false,
+        stripeRows: true,
+        autoExpandColumn: 'chargegroup',
+        height: 900,
+        width: 1000,
+        title: 'Hypothetical Charges',
+        clicksToEdit: 2
+        // config options for stateful behavior
+        //stateful: true,
+        //stateId: 'grid' 
+    });
+
+    // selection callbacks
+    hChargesGrid.getSelectionModel().on('selectionchange', function(sm){
+        // if a selection is made, allow it to be removed
+        // if the selection was deselected to nothing, allow no 
+        // records to be removed.
+        hChargesGrid.removeBtn.setDisabled(sm.getCount() < 1);
+
+        // if there was a selection, allow an insertion
+        hChargesGrid.insertBtn.setDisabled(sm.getCount()<1);
+
+    });
+  
+    // grid's data store callback for when data is edited
+    // when the store backing the grid is edited, enable the save button
+    hChargesStore.on('update', function(){
+        hChargesGrid.saveBtn.setDisabled(false);
+    });
+
+
+
+    // end of tab widgets
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+
+
     // assemble all of the widgets in a tabpanel with a header section
     var viewport = new Ext.Viewport
     (
@@ -619,17 +900,17 @@ function renderWidgets()
             },{
                 title: 'Charge Items',
                 xtype: 'panel',
-                layout: 'fit',
+                layout: 'accordion',
                 items: [
-                  grid
+                  aChargesGrid,
+                  hChargesGrid
                 ]
               }
             ]
           }
         ]
       }
-    )
-
+    );
 
     // TODO: move these functions to a separate file for organization purposes
     // also consider what to do about the Ext.data.Stores and where they should
@@ -651,6 +932,7 @@ function renderWidgets()
         // flatten the actual charges found in the bill
         // ToDo: do this on a per service basis
         actualCharges = getActualCharges(bill);
+        hypotheticalCharges = getHypotheticalCharges(bill);
 
         // get all of the utility bill periods for each service
         ubPeriods = getUBPeriods(bill);
@@ -664,7 +946,8 @@ function renderWidgets()
         // tell all of the backing ui widget data stores to load the data
 
         // load the data into the charges backing data store
-        store.loadData(actualCharges);
+        aChargesStore.loadData(actualCharges);
+        hChargesStore.loadData(hypotheticalCharges);
 
     }
 
@@ -708,10 +991,12 @@ function renderWidgets()
     function billSaved(data)
     {
         // successful PUT of bill to eXistDB.  Deflag the red dirty markers on grid
-        store.commitChanges();
+        aChargesStore.commitChanges();
+        hChargesStore.commitChanges();
 
         // disable the save button until the next edit to the grid store
-        grid.saveBtn.setDisabled(true);
+        aChargesGrid.saveBtn.setDisabled(true);
+        hChargesGrid.saveBtn.setDisabled(true);
 
     }
 
@@ -720,7 +1005,8 @@ function renderWidgets()
         alert('Bill Save Failed ' + data);
 
         // reenable the save button because of the failed save attempt
-        grid.saveBtn.setDisabled(false);
+        aChargesGrid.saveBtn.setDisabled(false);
+        hChargesGrid.saveBtn.setDisabled(false);
     }
 
 
@@ -754,5 +1040,3 @@ function pctChange(val){
     }
     return val;
 }
-
-
