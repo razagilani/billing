@@ -3,6 +3,7 @@
 
 import unittest
 import minimock
+import shutil
 from skyliner import splinter
 from datetime import date, datetime
 from IPython.Debugger import Tracer; debug_here = Tracer()
@@ -94,6 +95,40 @@ class TestBillTool(unittest.TestCase):
         (result, reason) = XMLUtils().compare_xml(etree_in, etree_post)
 
         self.assertEquals(result, True, "Dollar amounts did not sum up correctly " + 
+            resultantBill + " does not match " + correctBill + "\n" + reason)
+
+        os.remove(resultantBill)
+
+    # test the computation of statistics
+    def test_calcstats(self):
+        """ Verify that the stats from a prior bill calculate right in the context of the next bill.  """
+
+        # the previous bill from which cumulative statistics are calculated
+        priorBill = os.path.join("test", "test_bill_tool", "calc_stats_prior.xml")
+
+        # the current bill with the previous bill's statistics section (carried from roll operation)
+        unprocessedBill = os.path.join("test", "test_bill_tool", "calc_stats_pre.xml")
+
+        # calculate statistics will update this one
+        resultantBill = os.path.join("test", "test_bill_tool", "calc_stats_in.xml")
+
+        # copy to the _in.xml file because calculate_statistics updates an existing file
+        # _in.xml files are not versioned
+        shutil.copyfile(unprocessedBill, resultantBill)
+
+        # and we expect this one
+        correctBill = os.path.join("test", "test_bill_tool", "calc_stats_post.xml")
+        
+
+
+        BillTool().calculate_statistics(priorBill, resultantBill)
+
+        etree_post = etree.parse(correctBill)
+        etree_in = etree.parse(resultantBill)
+
+        (result, reason) = XMLUtils().compare_xml(etree_in, etree_post)
+
+        self.assertEquals(result, True, "calculate statistics failed " + 
             resultantBill + " does not match " + correctBill + "\n" + reason)
 
         os.remove(resultantBill)
