@@ -448,9 +448,11 @@ class BillTool():
         """ contained in the registers. Cumulative statistics are determined by adding period statistics """
         """ to the past cumulative statistics """ 
 
-        tree = etree.parse(inputbill)
+        inputtree = etree.parse(inputbill)
+        outputtree = etree.parse(outputbill)
 
         # determine the renewable and conventional energy across all services by converting all registers to BTUs
+        # TODO these conversions should be treated in a utility class
         def normalize(units, total):
             if (units.lower() == "kwh"):
                 # 1 kWh = 3413 BTU
@@ -469,6 +471,7 @@ class BillTool():
 
         # CO2 is fuel dependent
         co2 = 0
+        # TODO these conversions should be treated in a utility class
         def calcco2(units, total):
             if (units.lower() == "kwh"):
                 return total * 1.297
@@ -478,7 +481,7 @@ class BillTool():
                 raise Exception("Units '" + units + "' not supported")
 
         # obtain all the registers, for all the services, that are of type 'total'
-        registers = self.get_elem(tree, "/ub:bill/ub:measuredusage/ub:meter/ub:register[@type=\"total\"]")
+        registers = self.get_elem(outputtree, "/ub:bill/ub:measuredusage/ub:meter/ub:register[@type=\"total\"]")
         if not len(registers): print "Make sure total type registers exist!"
 
         for register in registers:
@@ -499,46 +502,46 @@ class BillTool():
         ce_utilization = Decimal(str(ce / (re + ce))).quantize(Decimal('.00'), rounding=ROUND_DOWN)
 
         # update utilization stats in XML
-        self.get_elem(tree, "/ub:bill/ub:statistics/ub:renewableutilization")[0].text = str(re_utilization)
-        self.get_elem(tree, "/ub:bill/ub:statistics/ub:conventionalutilization")[0].text = str(ce_utilization)
+        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:renewableutilization")[0].text = str(re_utilization)
+        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:conventionalutilization")[0].text = str(ce_utilization)
 
         # determine cumulative savings
-        cumulative_savings = Decimal(self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalsavings")[0].text)
-        current_savings = Decimal(self.get_elem(tree, "/ub:bill/ub:rebill/ub:resavings")[0].text)
+        cumulative_savings = Decimal(self.get_elem(inputtree, "/ub:bill/ub:statistics/ub:totalsavings")[0].text)
+        current_savings = Decimal(self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:resavings")[0].text)
 
         # update cumulative savings in XML
-        self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalsavings")[0].text =\
+        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:totalsavings")[0].text =\
                 str((cumulative_savings + current_savings).quantize(Decimal('.00'), rounding=ROUND_DOWN))
 
         # set renewable consumed in XML
-        self.get_elem(tree, "/ub:bill/ub:statistics/ub:renewableconsumed")[0].text = \
+        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:renewableconsumed")[0].text = \
                 str(Decimal(str(re)).quantize(Decimal('1')))
         cumulative_renewable_consumed = \
-                long(self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalrenewableconsumed")[0].text)
-        self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalrenewableconsumed")[0].text \
+                long(self.get_elem(inputtree, "/ub:bill/ub:statistics/ub:totalrenewableconsumed")[0].text)
+        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:totalrenewableconsumed")[0].text \
                 = str(Decimal(str(cumulative_renewable_consumed + re)).quantize(Decimal('1')))
 
         # set conventional consumed
-        self.get_elem(tree, "/ub:bill/ub:statistics/ub:conventionalconsumed")[0].text = \
+        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:conventionalconsumed")[0].text = \
                 str(Decimal(str(ce)).quantize(Decimal('1')))
-        #cumulative_conventional_consumed = long(self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalconventionalconsumed")[0].text)
-        #self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalconventionalconsumed")[0].text = str(Decimal(str(cumulative_conventional_consumed + re)).quantize(Decimal('1')))
+        #cumulative_conventional_consumed = long(self.get_elem(inputtree, "/ub:bill/ub:statistics/ub:totalconventionalconsumed")[0].text)
+        #self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:totalconventionalconsumed")[0].text = str(Decimal(str(cumulative_conventional_consumed + re)).quantize(Decimal('1')))
 
         # set CO2 in XML
-        self.get_elem(tree, "/ub:bill/ub:statistics/ub:co2offset")[0].text = str(co2)
+        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:co2offset")[0].text = str(co2)
         # determine and set cumulative CO2
-        cumulative_co2 = float(self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalco2offset")[0].text)
-        self.get_elem(tree, "/ub:bill/ub:statistics/ub:totalco2offset")[0].text = str(Decimal(str(cumulative_co2 + co2)).quantize(Decimal('.1')))
+        cumulative_co2 = float(self.get_elem(inputtree, "/ub:bill/ub:statistics/ub:totalco2offset")[0].text)
+        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:totalco2offset")[0].text = str(Decimal(str(cumulative_co2 + co2)).quantize(Decimal('.1')))
 
         # determine and set total number of trees from total co2
-        self.get_elem(tree, "/ub:bill/ub:statistics/ub:totaltrees")[0].text = str(cumulative_co2/1300)
+        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:totaltrees")[0].text = str(cumulative_co2/1300)
         
 
         # determine re consumption trend
         # last day of re bill period is taken to be the month of consumption (This is ultimately utility dependent - 
         # especially when graphing ce from the utilty bill)
-        billdate = self.get_elem(tree, "/ub:bill/ub:rebill/ub:billperiodend")[0].text
-        periods = self.get_elem(tree, "/ub:bill/ub:statistics/ub:consumptiontrend/ub:period")
+        billdate = self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:billperiodend")[0].text
+        periods = self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:consumptiontrend/ub:period")
 
         month = datetime.datetime.strptime(billdate, "%Y-%m-%d").strftime("%b")
 
@@ -546,7 +549,7 @@ class BillTool():
             if(period.get("month") == month):
                 period.set("quantity", str(Decimal(str(re/100000)).quantize(Decimal(".0"))))
 
-        XMLUtils().save_xml_file(etree.tostring(tree, pretty_print=True), outputbill, user, password)
+        XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), outputbill, user, password)
 
 
 def main(options):
@@ -625,6 +628,9 @@ if __name__ == "__main__":
         exit()
 
     if (options.calcstats):
+        if (options.inputbill == options.outputbill):
+            print "Input bill and output bill should not match! Specify previous bill as input bill."
+            exit()
         BillTool().calculate_statistics(options.inputbill, options.outputbill, options.user, options.password)
         exit()
         
