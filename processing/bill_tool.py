@@ -16,6 +16,7 @@ import datetime
 
 # for xml processing
 from lxml import etree
+import copy
 
 from skyliner.xml_utils import XMLUtils
 
@@ -161,6 +162,35 @@ class BillTool():
         XMLUtils().save_xml_file(xml, targetBill, user, password)
 
 
+    def copy_actual_charges(self, unprocessedBill, targetBill, user=None, password=None):
+        """ Copy actual charges to hypothetical charges.  Move the /ub:bill/ub:details/ub:chargegroup/ub:charges[@type='actual'] """
+        """ to /ub:bill/ub:details/ub:chargegroup/ub:charges[@type='hypothetical'] """
+
+        tree = etree.parse(unprocessedBill)
+
+        # for each chargegroup, acquire the actual charges
+        chargegroups = self.get_elem(tree, "/ub:bill/ub:details/ub:chargegroup")
+
+        for chargegroup in chargegroups:
+            actual_charges = self.get_elem(chargegroup, "ub:charges[@type=\"actual\"]")
+            old_hypothetical_charges = self.get_elem(chargegroup, "ub:charges[@type=\"hypothetical\"]")
+
+            assert(len(actual_charges) == 1)
+
+            # if this assert fails, the hypothetical charges need to be inserted, because the old ones cannot be replaced.
+            assert(len(old_hypothetical_charges) == 1)
+
+            new_hypothetical_charges = copy.deepcopy(actual_charges[0])
+            new_hypothetical_charges.set("type", "hypothetical")
+
+            chargegroup.replace(old_hypothetical_charges[0], new_hypothetical_charges)
+
+            #print etree.tostring(hypothetical_charges, pretty_print=True)
+
+
+        xml = etree.tostring(tree, pretty_print=True)
+
+        XMLUtils().save_xml_file(xml, targetBill, user, password)
 
     def roll_bill(self, inputbill, outputbill, amountPaid, user=None, password=None):
 
@@ -567,6 +597,7 @@ if __name__ == "__main__":
     parser.add_option("-u", "--user", dest="user", default='prod', help="Bill database user account name.")
     parser.add_option("-p", "--password", dest="password", help="Bill database user account name.")
     parser.add_option("--roll", dest="roll", action="store_true", help="Roll the bill to the next period.")
+    parser.add_option("--copyactual", action="store_true", dest="copyactual", help="Copy actual charges to hypothetical charges.")
     parser.add_option("--sumhypothetical", action="store_true", dest="sumhypothetical", help="Summarize hypothetical charges.")
     parser.add_option("--sumactual", action="store_true", dest="sumactual", help="Summarize actual charges.")
     parser.add_option("--sumbill", action="store_true", dest="sumbill", help="Calculate total due.")
@@ -600,6 +631,10 @@ if __name__ == "__main__":
 
     if (options.sumhypothetical):
         BillTool().sum_hypothetical_charges(options.inputbill, options.outputbill, options.user, options.password)
+        exit()
+
+    if (options.copyactual):
+        BillTool().copy_actual_charges(options.inputbill, options.outputbill, options.user, options.password)
         exit()
 
     if (options.sumactual):

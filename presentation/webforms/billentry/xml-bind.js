@@ -162,17 +162,17 @@ function getCharges(bill, type, service)
 
 function setActualCharges(bill, records)
 {
-    return setCharges(bill, 'actual', globalServiceType);
+    return setCharges(bill, records, 'actual', globalServiceType);
 }
 
 function setHypotheticalCharges(bill, records)
 {
-    return setCharges(bill, 'hypothetical', globalServiceType);
+    return setCharges(bill, records, 'hypothetical', globalServiceType);
 }
 
 // ToDo: evaluate this function across browsers
 // records passed in must be ordered by chargegroup, as they are by the GroupingStore
-function setCharges(bill, type, service)
+function setCharges(bill, records, type, service)
 {
 
     // enumerate the records
