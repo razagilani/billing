@@ -96,8 +96,8 @@ function setUBMeasuredUsagePeriods(bill, periods)
         // strip out prefix on the name part of the nvp's that the form returns
 
         // TODO: be more careful on indices and fail gracefully
-        var nodeList = evaluateXPath(bill, "/ub:bill/ub:utilbill[@service='"+key.substring(key.indexOf('-')+1)+"']/ub:"+key.substring(0,key.indexOf('-')));
-        nodeList[0].textContent = ubPeriods[key].format("Y-m-d");
+        var nodeList = evaluateXPath(bill, "/ub:bill/ub:measuredusage[@service='"+key.substring(key.indexOf('-')+1)+"']/ub:meter/ub:"+key.substring(0,key.indexOf('-')));
+        nodeList[0].textContent = periods[key].format("Y-m-d");
     }
 }
 
