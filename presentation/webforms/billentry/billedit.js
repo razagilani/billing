@@ -193,7 +193,7 @@ function renderWidgets()
                         // array to go back into xml-bind.js
 
                         // save values to bill document
-                        setUBMeasuredUsage(bill, ubMeasuredUsageFormPanel.getForm().getFieldValues());
+                        setUBMeasuredUsagePeriods(bill, ubMeasuredUsageFormPanel.getForm().getFieldValues());
 
                         // send bill document to server
                         saveToXML(billSaved, billDidNotSave);
