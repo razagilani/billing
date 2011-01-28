@@ -1,8 +1,9 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 	<head>
-		<link rel="stylesheet" type="text/css" href="/static/marquee/marker.css" />
+    <!-- prototype is required by marquee -->
 		<script type="text/javascript" src="/static/marquee/prototype-1.6.1.js"></script>
+		<link rel="stylesheet" type="text/css" href="/static/marquee/marker.css" />
 		<script type="text/javascript" src="/static/marquee/rectmarquee.js"></script>
 
 		<script type="text/javascript">
@@ -18,13 +19,14 @@
 				marquee.setOnUpdateCallback(onMarqueeUpdate);
 
 				billThumbnail = new Image();
-				billThumbnail.src = "/static/workingimages/Penick-2010-03-22-0.png";
+				billThumbnail.src = "/db/skyline/utilitybills/00000/SERVICE/YYYYMMDD-YYYYMMDD/P/thumb.png";
 				billThumbnail.onload =
 					function ()
 					{
 					    // bind to html element the image that was lazyloaded
 						$('billThumbnailView').src = billThumbnail.src;
 
+            // set dashboard numbers to check math
 						// non dynamic values to display.  Should the thumbnail resize or the html element the image is in change size, these would need to be updated
 						document.getElementById('billThumbnailWidth').innerHTML = billThumbnail.width;
 						document.getElementById('billThumbnailHeight').innerHTML = billThumbnail.height;
@@ -78,7 +80,7 @@
 				var resultImg = new Element("img", {"id": imgName, "src":"/static/images/ajax-loader.gif"})
 				resultDiv.appendChild(resultImg);
 
-				// can't use an updater because the busy element must be replaced which prototype cannot do
+				// can't use a prototype updater because the busy element must be replaced which prototype cannot do
 				new Ajax.Request('/crop',
 					{method:'get', parameters: {imgId: imgName, ulX: pilGeom.ulX, ulY: pilGeom.ulY, lrX:pilGeom.lrX, lrY:pilGeom.lrY},
 					onSuccess: cropSuccess,
