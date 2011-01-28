@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import cherrypy
 import os
 from PIL import Image
@@ -24,7 +25,7 @@ class BillSlicer:
         cimFileName  = cimFileName + ".tif"
         cim.save(cimFileName)
         # ToDo: externalize this in conf file
-        subprocess.call(["C:\\tesseract\\tesseract.exe", cimFileName, cimFileName])
+        subprocess.call(["tesseract", cimFileName, cimFileName])
 	text = open(cimFileName + ".txt").read()
         return json.dumps({"imgId":imgId, "text":text})
 
