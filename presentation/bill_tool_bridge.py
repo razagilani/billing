@@ -20,7 +20,7 @@ class BillToolBridge:
     src_prefix = dest_prefix = "http://billentry:8080/exist/rest/db/skyline/bills/"
 
     @cherrypy.expose
-    def copyactual(self, src, dest):
+    def copyactual(self, src, dest, **args):
         BillTool().copy_actual_charges(self.src_prefix + src, self.dest_prefix + dest,"dev", "dev")
 
 
