@@ -121,7 +121,7 @@ function renderWidgets()
                         setUBPeriods(bill, ubPeriodsFormPanel.getForm().getFieldValues());
 
                         // send bill document to server
-                        saveToXML();
+                        saveToXML(billSaved, billDidNotSave);
                     }
                 }
             },{
@@ -196,7 +196,7 @@ function renderWidgets()
                         setUBMeasuredUsage(bill, ubMeasuredUsageFormPanel.getForm().getFieldValues());
 
                         // send bill document to server
-                        saveToXML();
+                        saveToXML(billSaved, billDidNotSave);
                     }
                 }
             },{
@@ -498,7 +498,53 @@ function renderWidgets()
                 // and update the bill document with them.
                 setActualCharges(bill, aChargesStore.getRange());
                 
-                saveToXML();
+                saveToXML(billSaved, billDidNotSave);
+            }
+        },{
+            // places reference to this button in grid.  
+            ref: '../copyActual',
+            text: 'Copy to Hypo',
+            disabled: false,
+            handler: function()
+            {
+                // disable the save button for the save attempt.
+                // is there a closer place for this to the actual button click due to the possibility of a double
+                // clicked button submitting two ajax requests?
+                aChargesGrid.saveBtn.setDisabled(true);
+
+                // stop grid editing so that widgets like comboboxes in rows don't stay focused
+                aChargesGrid.stopEditing();
+
+                // take the records that are maintained in the store
+                // and update the bill document with them.
+                setActualCharges(bill, aChargesStore.getRange());
+
+                saveToXML(function() {
+
+                    // now that the bill is saved, create the hypothetical charges
+                    // on the server
+
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/billtool/copyactual?'
+                            + 'src=' + customerAccountCombo.getValue() + '/' + customerBillCombo.getValue() 
+                            + '&dest=' + customerAccountCombo.getValue() + '/' + customerBillCombo.getValue(),
+                        disableCaching: true,
+                        success: function () {
+                            // loads a bill from eXistDB
+                            Ext.Ajax.request({
+                                url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+                                    + '/' + customerBillCombo.getValue(),
+                               success: billLoaded,
+                               failure: billLoadFailed,
+                               disableCaching: true,
+                            });
+                        },
+                        failure: function () {
+                            alert("copy actual response fail");
+                        }
+                    });
+                }, billDidNotSave);
+
             }
         }],
         colModel: aChargesColModel,
@@ -798,9 +844,9 @@ function renderWidgets()
                 // TODO: move this to the UI widget responsible for editing this content.
                 // take the records that are maintained in the store
                 // and update the bill document with them.
-                setActualCharges(bill, hChargesStore.getRange());
+                setHypotheticalCharges(bill, hChargesStore.getRange());
                 
-                saveToXML();
+                saveToXML(billSaved, billDidNotSave);
             }
         }],
         colModel: hChargesColModel,
@@ -960,7 +1006,7 @@ function renderWidgets()
     // the UI widgets are responsible for getting/setting data from the bill document.
     // This methods is reponsible for the restful communication of the bill doc
     // back to the server.
-    function saveToXML()
+    function saveToXML(successCallback, failCallback)
     {
         // ToDo: credentials
 
@@ -972,8 +1018,8 @@ function renderWidgets()
                     + '/' + customerBillCombo.getValue(),
                 method: 'PUT',
                 xmlData: bill,
-                success: billSaved,
-                failure: billDidNotSave,
+                success: successCallback,
+                failure: failCallback,
             });
             /* Seeing this bug in your FF console?
              *   Error: no element found
