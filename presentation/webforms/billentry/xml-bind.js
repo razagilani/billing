@@ -6,14 +6,28 @@ function getUBPeriods(bill)
     var periods = new Array(); // equivalent to {}.  Arrays should not be used for kv pairs
 
     evaluateXPath(bill, "/ub:bill/ub:utilbill").forEach(function(value, index, array) {
-        //periods['billperiodbegin-'+value.attributes['service'].value] = value.getElementsByTagNameNS("bill","billperiodbegin")[0].childNodes[0].nodeValue;
-        //periods['billperiodbegin-'+value.attributes['service'].value] = value.getElementsByTagNameNS("bill","billperiodend")[0].childNodes[0].nodeValue;
+
+
+        //value.getElementsByTagNameNS("bill","billperiodend")[0].childNodes[0].nodeValue;
+
+	var periodBegin;
+	var periodEnd;
+
+        var periodBeginElem = value.getElementsByTagNameNS("bill","billperiodbegin")[0];
+	// a bill will always have a billperiodbegin value
+	// TODO: catch this exception should the billperiodbegin not be present
+	var periodBegin = periodBeginElem.childNodes[0].nodeValue;
+
+        var periodEndElem = value.getElementsByTagNameNS("bill","billperiodend")[0];
+        // TODO: if there is no periodEnd, guess it vs assign periodBegin
+	var periodEnd = periodEndElem.hasChildNodes() ? periodEndElem.childNodes[0].nodeValue : periodBegin;
+
         periods.push(
             {
                 'service': value.attributes['service'].value,
                 // TODO: don't refer to index 0 w/o error check. therefore make a cover function in xml-support to do such a check
-                'begindate': value.getElementsByTagNameNS("bill","billperiodbegin")[0].childNodes[0].nodeValue,
-                'enddate': value.getElementsByTagNameNS("bill","billperiodend")[0].childNodes[0].nodeValue,
+                'begindate': periodBegin,
+                'enddate': periodEnd,
             }
         )
     });
@@ -49,12 +63,20 @@ function getUBMeasuredUsagePeriods(bill)
     evaluateXPath(bill, "/ub:bill/ub:measuredusage").forEach(
         function(value, index, array) 
         {
+            var priorReadDateElem = value.getElementsByTagNameNS("bill","priorreaddate")[0];
+            // a bill will always have a priorreaddateelem
+            // TODO: catch the exception if it does not
+            var priorReadDate = priorReadDateElem.childNodes[0].nodeValue;
+
+            var presentReadDateElem = value.getElementsByTagNameNS("bill","presentreaddate")[0];
+            // TODO: if there is no presentReadDate, guess it vs assign priorReadDate
+            var presentReadDate = presentReadDateElem.hasChildNodes() ? presentReadDateElem.childNodes[0].nodeValue : priorReadDate;
+
             periods.push(
                 {
                     'service': value.attributes['service'].value,
-                    // TODO: don't refer to index 0 w/o error check. therefore make a cover function in xml-support to do such a check
-                    'priorreaddate': value.getElementsByTagNameNS("bill","priorreaddate")[0].childNodes[0].nodeValue,
-                    'presentreaddate': value.getElementsByTagNameNS("bill","presentreaddate")[0].childNodes[0].nodeValue,
+                    'priorreaddate': priorReadDate,
+                    'presentreaddate': presentReadDate,
                 }
             )
         }
