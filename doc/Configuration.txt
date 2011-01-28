@@ -122,3 +122,8 @@ Upload through the eXist admin client
 
 
 
+Bill entry UI
+=============
+
+client JS needs to proxy to bill_tool_bridge
+
