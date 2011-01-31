@@ -172,21 +172,21 @@ class BillTool():
         chargegroups = self.get_elem(tree, "/ub:bill/ub:details/ub:chargegroup")
 
         for chargegroup in chargegroups:
+
             actual_charges = self.get_elem(chargegroup, "ub:charges[@type=\"actual\"]")
-            old_hypothetical_charges = self.get_elem(chargegroup, "ub:charges[@type=\"hypothetical\"]")
-
             assert(len(actual_charges) == 1)
-
-            # if this assert fails, the hypothetical charges need to be inserted, because the old ones cannot be replaced.
-            assert(len(old_hypothetical_charges) == 1)
 
             new_hypothetical_charges = copy.deepcopy(actual_charges[0])
             new_hypothetical_charges.set("type", "hypothetical")
 
-            chargegroup.replace(old_hypothetical_charges[0], new_hypothetical_charges)
+            old_hypothetical_charges = self.get_elem(chargegroup, "ub:charges[@type=\"hypothetical\"]")
+            if (len(old_hypothetical_charges) == 0):
+                # insert hypothetical
+                chargegroup.append(new_hypothetical_charges)
+            else:
+                chargegroup.replace(old_hypothetical_charges[0], new_hypothetical_charges)
 
             #print etree.tostring(hypothetical_charges, pretty_print=True)
-
 
         xml = etree.tostring(tree, pretty_print=True)
 
