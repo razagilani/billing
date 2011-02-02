@@ -1,5 +1,4 @@
 import yaml
-from decimal import *
 
 class rate_structure(yaml.YAMLObject):
     """ The rate structure is the model for how utilities calculate their utility bill.  This model does not
@@ -132,11 +131,26 @@ class rate_structure_item(yaml.YAMLObject):
                 # total is not set, therefore, evaluate it because we have enough information to do so.
                 # TODO: check to make sure quantity and rate are set
                 # Using python Decimal money math here since it appears utilities round up
-                # when calculating, charge items not later... No doubt this is going to vary across utilities
+                # when calculating charge items not later... No doubt this is going to vary across utilities
 
                 # TODO: figure out how to do monetary rounding here
                 try:
-                    self.total = self.quantity * self.rate
+                    from decimal import Decimal
+                    q = self.quantity
+                    r = self.rate
+                    rule = ""
+                    try:
+                        rule = self.roundrule if object.__getattribute__(self, 'roundrule') else None
+                    except Exception, err:
+                        print('Rounding rule: %s\n' % str(err))
+
+                    t = self.quantity * self.rate 
+
+                    if (rule):
+                        t = float(Decimal(str(t)).quantize(Decimal('.01'), rule))
+
+                    self.total = t
+
                 except Exception, err:
                     print('ERROR: %s\n' % str(err))
                     raise AttributeError 
@@ -165,6 +179,7 @@ class rate_structure_item(yaml.YAMLObject):
         s += 'quantityunits: %s\t' % (self.quantityunits if hasattr(self, 'quantityunits') else '')
         s += 'rate: %s\t' % (self.rate if hasattr(self, 'rate') else '')
         s += 'rateunits: %s\t' % (self.rateunits if hasattr(self, 'rateunits') else '')
+        s += 'roundrule: %s\t' % (self.roundrule if hasattr(self, 'roundrule') else '')
         s += 'total: %s\t' % (self.total if hasattr(self, 'total') else '')
 
         s += '\n'
