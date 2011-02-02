@@ -17,10 +17,14 @@
                     <tr>
                         <th>Account</th>
                         <th>Addressee</th>
-                        <th>Service</th>
+                        <th>Service Address</th>
+                        <th>Issued</th>
                         <th class="">Begin</th>
                         <th class="">End</th>
                         <th>Charge</th>
+                        <th>RE</th>
+                        <th>RE Units</th>
+                        <th>RE Rate</th>
                     </tr>
                     <xsl:for-each select="bills/bill">
                         <tr>
@@ -52,7 +56,12 @@
             </xsl:otherwise>
         </xsl:choose>
     </xsl:template>
-    <xsl:template match="service">
+    <xsl:template match="serviceaddress">
+        <td>
+            <xsl:value-of select="."/>
+        </td>
+    </xsl:template>
+    <xsl:template match="issued">
         <td>
             <xsl:value-of select="."/>
         </td>
@@ -67,7 +76,22 @@
             <xsl:value-of select="."/>
         </td>
     </xsl:template>
-    <xsl:template match="charge">
+    <xsl:template match="recharge">
+        <td style="text-align: right;">
+            <xsl:value-of select="."/>
+        </td>
+    </xsl:template>
+    <xsl:template match="re">
+        <td style="text-align: right;">
+            <xsl:value-of select="."/>
+        </td>
+    </xsl:template>
+    <xsl:template match="reunits">
+        <td style="text-align: right;">
+            <xsl:value-of select="."/>
+        </td>
+    </xsl:template>
+    <xsl:template match="rerate">
         <td style="text-align: right;">
             <xsl:value-of select="."/>
         </td>
