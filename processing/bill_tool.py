@@ -220,12 +220,7 @@ class BillTool():
         if(len(message)):
             message[0].clear()
 
-        # next period begin is prev period end
-        # TODO business logic specific dates are selected here
-        # TODO this is an incorrect computation of the re bill period begin - the re bill period begin will be
-        # the smallest date of all the utilbill bill period ends
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:billperiodbegin")[0].text = \
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:billperiodend")[0].text
+        self.get_elem(tree, "/ub:bill/ub:rebill/ub:billperiodbegin")[0].clear()
         self.get_elem(tree, "/ub:bill/ub:rebill/ub:billperiodend")[0].clear()
 
         # compute payments 
@@ -582,6 +577,49 @@ class BillTool():
         XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), outputbill, user, password)
 
 
+    def calculate_reperiod(self, inputbill, outputbill, user=None, password=None):
+        """ Set the Renewable Energy bill Period """
+
+        inputtree = etree.parse(inputbill)
+        outputtree = etree.parse(outputbill)
+
+        utilbill_begin_periods = self.get_elem(inputtree, "/ub:bill/ub:utilbill/ub:billperiodbegin")
+        utilbill_end_periods = self.get_elem(inputtree, "/ub:bill/ub:utilbill/ub:billperiodend")
+
+        rebill_periodbegindate = datetime.datetime.max
+        for period in utilbill_begin_periods:
+            candidate_date = datetime.datetime.strptime(period.text, "%Y-%m-%d")
+            # find minimum date
+            if (candidate_date < rebill_periodbegindate):
+                rebill_periodbegindate = candidate_date
+
+        rebill_periodenddate = datetime.datetime.min 
+        for period in utilbill_end_periods:
+            # find maximum date
+            candidate_date = datetime.datetime.strptime(period.text, "%Y-%m-%d")
+            if (candidate_date > rebill_periodenddate):
+                rebill_periodenddate = candidate_date
+
+        rebillperiodbegin = self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:billperiodbegin")[0].text = rebill_periodbegindate.strftime("%Y-%m-%d")
+        rebillperiodend = self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:billperiodend")[0].text = rebill_periodenddate.strftime("%Y-%m-%d")
+
+        XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), outputbill, user, password)
+
+    def issue(self, inputbill, outputbill, issuedate, user=None, password=None):
+        """ Set the Renewable Energy bill Period """
+
+        inputtree = etree.parse(inputbill)
+        outputtree = etree.parse(outputbill)
+
+        issuedate = datetime.datetime.strptime(options.issuedate, "%Y-%m-%d")
+        # TODO: parameterize for dependence on customer 
+        duedate = issuedate + datetime.timedelta(days=30)
+
+        self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:issued")[0].text = issuedate.strftime("%Y-%m-%d")
+        self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:duedate")[0].text = duedate.strftime("%Y-%m-%d")
+
+        XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), outputbill, user, password)
+
 def main(options):
     """
     """
@@ -606,7 +644,10 @@ if __name__ == "__main__":
     parser.add_option("--bindrshypothetical", action="store_true", dest="bindrshypothetical", help="Bind and evaluate a rate structure.")
     parser.add_option("--rsdb", dest="rsdb", help="Location of the rate structure database.")
 
-    parser.add_option("--calcstats", action="store_true", dest="calcstats", help="Calculate statistics")
+    parser.add_option("--calcstats", action="store_true", dest="calcstats", help="Calculate statistics.")
+    parser.add_option("--calcreperiod", action="store_true", dest="calcreperiod", help="Calculate Renewable Energy Period.")
+    # TODO: make this commit the bill, parameterize due date, etc...
+    parser.add_option("--issuedate",  dest="issuedate", help="Set the issue and due dates of the bill. Specify issue date YYYY-MM-DD")
 
     (options, args) = parser.parse_args()
 
@@ -619,6 +660,7 @@ if __name__ == "__main__":
         exit()
 
     if (options.roll):
+        # TODO: remove this check to the roll function, and have that function return status based on this check below
         if (options.inputbill == options.outputbill):
             print "Input bill and output bill should not match!"
             exit()
@@ -664,9 +706,28 @@ if __name__ == "__main__":
 
     if (options.calcstats):
         if (options.inputbill == options.outputbill):
+            # TODO: remove this check to the calcstats function, and have that function return status based on this check below
             print "Input bill and output bill should not match! Specify previous bill as input bill."
             exit()
         BillTool().calculate_statistics(options.inputbill, options.outputbill, options.user, options.password)
         exit()
-        
+
+    if (options.calcreperiod):
+        # TODO: remove this check to the calcreperiods function, and have that function return status based on this check below
+        if (options.inputbill != options.outputbill):
+            print "Input bill and output bill should match!"
+            exit()
+        BillTool().calculate_reperiod(options.inputbill, options.outputbill, options.user, options.password)
+        exit()
+
+    if (options.issuedate):
+        if (options.inputbill != options.outputbill):
+            print "Input bill and output bill should match!"
+            exit()
+        if (options.issuedate == None):
+            print "Specify --issuedate"
+            exit()
+        BillTool().issue(options.inputbill, options.outputbill, options.issuedate, options.user, options.password)
+        exit()
+
     print "Specify operation"
