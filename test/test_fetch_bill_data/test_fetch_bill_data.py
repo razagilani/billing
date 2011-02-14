@@ -14,7 +14,7 @@ import os
 
 
 # test target
-from skyliner import fetch_bill_data as fbd
+from billing.processing import fetch_bill_data as fbd
 
 
 def getRegister(rregisters, identifier):
@@ -166,7 +166,7 @@ class TestFetchBillData(unittest.TestCase):
 
 class SplinterMock():
     """Mock object for Splinter only doesn't do much"""
-    def __init__(self, server_root):
+    def __init__(self, server_root, mongo_conn, mongo_db):
         """Thanks for the server root, not gonna do anything with it"""
 
     def get_install_obj_for(self, install_name):
