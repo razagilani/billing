@@ -18,6 +18,8 @@ import datetime
 from lxml import etree
 import copy
 
+from billing import bill
+
 from skyliner.xml_utils import XMLUtils
 
 # for testing
@@ -532,7 +534,8 @@ class BillTool():
         self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:conventionalutilization")[0].text = str(ce_utilization)
 
         # determine cumulative savings
-        cumulative_savings = Decimal(self.get_elem(inputtree, "/ub:bill/ub:statistics/ub:totalsavings")[0].text)
+        totalsavings_text = self.get_elem(inputtree, "/ub:bill/ub:statistics/ub:totalsavings")[0].text
+        cumulative_savings = Decimal(totalsavings_text if totalsavings_text is not None else '0')
         current_savings = Decimal(self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:resavings")[0].text)
 
         # update cumulative savings in XML
@@ -542,8 +545,9 @@ class BillTool():
         # set renewable consumed in XML
         self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:renewableconsumed")[0].text = \
                 str(Decimal(str(re)).quantize(Decimal('1')))
+        totalrenewableconsumed_text = self.get_elem(inputtree, "/ub:bill/ub:statistics/ub:totalrenewableconsumed")[0].text
         cumulative_renewable_consumed = \
-                long(self.get_elem(inputtree, "/ub:bill/ub:statistics/ub:totalrenewableconsumed")[0].text)
+                long(totalrenewableconsumed_text if totalrenewableconsumed_text is not None else '0')
         self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:totalrenewableconsumed")[0].text \
                 = str(Decimal(str(cumulative_renewable_consumed + re)).quantize(Decimal('1')))
 
@@ -556,7 +560,8 @@ class BillTool():
         # set CO2 in XML
         self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:co2offset")[0].text = str(co2)
         # determine and set cumulative CO2
-        cumulative_co2 = float(self.get_elem(inputtree, "/ub:bill/ub:statistics/ub:totalco2offset")[0].text)
+        totalco2offset_text = self.get_elem(inputtree, "/ub:bill/ub:statistics/ub:totalco2offset")[0].text
+        cumulative_co2 = float(totalco2offset_text if totalco2offset_text is not None else '0')
         self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:totalco2offset")[0].text = str(Decimal(str(cumulative_co2 + co2)).quantize(Decimal('.1')))
 
         # determine and set total number of trees from total co2
