@@ -304,6 +304,7 @@ function setCharges(bill, records, type, service)
         // avoid float rounding by going integer math
         chargesSubtotal += parseFloat(curRec.data.total*100);
         chargesTotalElem.removeChild(chargesTotalElem.firstChild);
+        // TODO div by zero here.  This needs to be ripped out as described above
         chargesTotalElem.appendChild(bill.createTextNode((chargesSubtotal/100).toString()));
     }
 }
