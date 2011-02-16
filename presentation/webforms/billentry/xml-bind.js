@@ -103,7 +103,7 @@ function setUBMeasuredUsagePeriods(bill, periods)
 
 
 
-var globalServiceType = "Electric";
+var globalServiceType = "Gas";
 function getActualCharges(bill)
 {
     return getCharges(bill, 'actual', globalServiceType);
