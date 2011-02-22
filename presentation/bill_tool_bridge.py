@@ -22,7 +22,7 @@ class BillToolBridge:
     """ A monolithic class encapsulating the behavior to:  handle an incoming http request """
     """ and invoke bill_tool. """
 
-    src_prefix = dest_prefix = "http://tyrell/exist/rest/db/skyline/bills/"
+    src_prefix = dest_prefix = "http://tyrell:8080/exist/rest/db/skyline/bills/"
 
     @cherrypy.expose
     def copyactual(self, src, dest, **args):
