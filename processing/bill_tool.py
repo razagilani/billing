@@ -389,6 +389,7 @@ class BillTool():
             
             # process each individual charge and bind it to the rate structure
             for charge in charges:
+                print etree.tostring(charge)
                 # a charge may not have a binding because it is not meant to be bound
                 charge_binding = charge.get("rsbinding")
                 if (charge_binding is None):
@@ -458,7 +459,6 @@ class BillTool():
                     print "*** updated charge with total because it was absent in the bill and present in the RSI"
                 total.text = str(rsi.total)
 
-                print etree.tostring(charge)
 
 
 
