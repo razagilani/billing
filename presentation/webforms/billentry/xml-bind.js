@@ -254,9 +254,11 @@ function setCharges(bill, records, type, service)
         // once removed, recreate each charge
         var charge = bill.createElementNS("bill","ub:charge");
 
-        var rsbinding = bill.createAttribute("rsbinding");
-        charge.setAttributeNode(rsbinding);
-        charge.attributes.rsbinding.value = curRec.data.rsbinding;
+        if (curRec.data.rsbinding && curRec.data.rsbinding.length != 0) {
+            var rsbinding = bill.createAttribute("rsbinding");
+            charge.setAttributeNode(rsbinding);
+            charge.attributes.rsbinding.value = curRec.data.rsbinding;
+        }
 
         // and the children of each charge
         if (curRec.data.description && curRec.data.description.length != 0) {
