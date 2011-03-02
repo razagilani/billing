@@ -196,7 +196,8 @@ def main(options):
     # Window placement: 7/8" (63pt) from left and 1/2" (36pt) from bottom
 
     # Customer billing address frame
-    billingAddressF = Frame(78, 600, 250, 60, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
+    #billingAddressF = Frame(78, 600, 250, 60, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
+    billingAddressF = Frame(78, 600, 390, 60, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
 
     # 2/3
 
@@ -381,8 +382,6 @@ def main(options):
     t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
 
     Elements.append(t)
-
-
     Elements.append(UseUpSpace())
 
 
@@ -409,7 +408,6 @@ def main(options):
     t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
 
     Elements.append(t)
-
     Elements.append(Spacer(100,20))
     
     # build string for trees
@@ -425,7 +423,7 @@ def main(options):
 
     Elements.append(Paragraph("<para leftIndent=\"6\">"+treeString+"</para>", styles['BillLabel']))
     Elements.append(Spacer(100,5))
-    #Elements.append(Paragraph("<para leftIndent=\"50\">Ten's of Trees</para>", styles['GraphLabel']))
+    Elements.append(Paragraph("<para leftIndent=\"50\">Ten's of Trees</para>", styles['GraphLabel']))
 
     Elements.append(UseUpSpace())
 
