@@ -547,7 +547,7 @@ def main(options):
 
     # populate motd
     if bool(get_elem(bt, "/ub:bill/ub:rebill/ub:message")[0].text):
-        motd = Paragraph(str(get_elem(bt, "/ub:bill/ub:rebill/ub:message")), styles['BillFieldSm'])
+        motd = Paragraph(str(get_elem(bt, "/ub:bill/ub:rebill/ub:message")[0].text), styles['BillFieldSm'])
         Elements.append(motd)
     Elements.append(UseUpSpace())
 
@@ -665,7 +665,8 @@ def main(options):
                             quantity = str(get_elem(charge, "ub:quantity")[0].text) if (len(get_elem(charge, "ub:quantity"))>0) else ""
                         rateUnits = get_elem(charge, "ub:rate")[0].get("units") if (len(get_elem(charge, "ub:rate")) > 0) else ""
                         rate = get_elem(charge, "ub:rate")[0].text if (len(get_elem(charge, "ub:rate")) > 0) else ""
-                        total = Decimal(str(get_elem(charge, "ub:total")[0].text)).quantize(Decimal('.00'))
+                        total = str(get_elem(charge, "ub:total")[0].text)
+                        #total = Decimal(str(get_elem(charge, "ub:total")[0].text)).quantize(Decimal('.00'))
                         #total = charge.total
                         chargeDetails.append([serviceStr, str(description), str(quantity), str(quantityUnits), str(rate), str(rateUnits), str(total)])
                         # clear string so that it gets set on next service type
