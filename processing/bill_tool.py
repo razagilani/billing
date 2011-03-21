@@ -317,6 +317,9 @@ class BillTool():
         # load XML bill
         tree = etree.parse(inputbill)
 
+        # grab the account id so that ratestructures are customer dependent
+        account = self.get_elem(tree, "/ub:bill/@account")[0]
+        id = self.get_elem(tree, "/ub:bill/@id")[0]
 
         # TODO: much of the code below to be refactored when register definitions are 
         # placed in the rate structure
@@ -333,15 +336,14 @@ class BillTool():
             service = utilbill.get("service")
 
             # get name of the rate structure
-            # TODO test for one element in array
-            rsbinding_rateschedule = self.get_elem(tree, "/ub:bill/ub:details[@service='" + 
-                service + "']/ub:rateschedule/@rsbinding")[0]
+            # rateschedule rsbinding is deprecated
+            #rsbinding_rateschedule = self.get_elem(tree, "/ub:bill/ub:details[@service='" + 
+            #    service + "']/ub:rateschedule/@rsbinding")[0]
 
             # now load the rate structure and configure it
-            #rate_structures = yaml.load_all(file(rsdb + os.sep + os.path.join(rsbinding_utilbill, rsbinding_rateschedule) + ".yaml"))
-            
+            # load all the documents contained within the single specified RS file
             for rs in yaml.load_all(file(rsdb + os.sep 
-                + os.path.join(rsbinding_utilbill, rsbinding_rateschedule) + ".yaml")):
+                + os.path.join(rsbinding_utilbill, os.path.join(account, id)) + ".yaml")):
 
                 print "*** Loaded Rate Structure for " + service
                 print rs
