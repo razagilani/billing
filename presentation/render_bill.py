@@ -45,9 +45,6 @@ from reportlab.pdfbase.pdfmetrics import registerFontFamily
 
 
 # for xml processing
-#import amara
-#from amara import bindery
-#from amara import xml_print
 from lxml import etree
 
 #
@@ -297,9 +294,10 @@ def main(options):
 
     # populate account number, bill id & issue date
     accountNumber = [
-        [Paragraph("Account Number", styles['BillLabelRight']),Paragraph(bill.get_account() + " " + bill.get_id(),styles['BillField'])], 
-        [Paragraph("Issue Date", styles['BillLabelRight']), Paragraph(get_elem(bt, "/ub:bill/ub:rebill/ub:issued")[0].text, styles['BillField'])]
+        [Paragraph("Account Number", styles['BillLabelRight']),Paragraph(bill.account + " " + bill.id,styles['BillField'])], 
+        [Paragraph("Issue Date", styles['BillLabelRight']), Paragraph(str(bill.issue_date), styles['BillField'])]
     ]
+
     t = Table(accountNumber, [135,85])
     t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black)]))
     Elements.append(t)
@@ -308,8 +306,8 @@ def main(options):
 
     # populate due date and amount
     dueDateAndAmount = [
-        [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(str(bill.get_due_date()), styles['BillFieldRight'])], 
-        [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(bill.get_total_due()), styles['BillFieldRight'])]
+        [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(str(bill.due_date), styles['BillFieldRight'])], 
+        [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(bill.total_due), styles['BillFieldRight'])]
     ]
     
     t = Table(dueDateAndAmount, [135,85])
@@ -320,11 +318,11 @@ def main(options):
     # populate service address
     Elements.append(Spacer(100,10))
     Elements.append(Paragraph("Service Location", styles['BillLabel']))
-    Elements.append(Paragraph(str(get_elem(bt, "/ub:bill/ub:rebill/ub:car/ub:serviceaddress/ub:addressee")[0].text), styles['BillField']))
-    Elements.append(Paragraph(str(get_elem(bt, "/ub:bill/ub:rebill/ub:car/ub:serviceaddress/ub:street")[0].text), styles['BillField']))
-    Elements.append(Paragraph(str(get_elem(bt, "/ub:bill/ub:rebill/ub:car/ub:serviceaddress/ub:city")[0].text) + " " 
-        + str(get_elem(bt, "/ub:bill/ub:rebill/ub:car/ub:serviceaddress/ub:state")[0].text) + " " 
-        + str(get_elem(bt, "/ub:bill/ub:rebill/ub:car/ub:serviceaddress/ub:postalcode")[0].text), styles['BillField']))
+
+    sa = bill.service_address
+    Elements.append(Paragraph(sa['addressee'], styles['BillField']))
+    Elements.append(Paragraph(sa['street'], styles['BillField']))
+    Elements.append(Paragraph(sa['city'] + " " + sa['state'] + " " + sa['postalcode'], styles['BillField']))
     Elements.append(UseUpSpace())
 
     # populate special instructions
@@ -333,19 +331,22 @@ def main(options):
     
     # populate billing address
     Elements.append(Spacer(100,20))
-    Elements.append(Paragraph(str(get_elem(bt, "/ub:bill/ub:rebill/ub:car/ub:billingaddress/ub:addressee")[0].text), styles['BillFieldLg']))
-    Elements.append(Paragraph(str(get_elem(bt, "/ub:bill/ub:rebill/ub:car/ub:billingaddress/ub:street")[0].text), styles['BillFieldLg']))
-    Elements.append(Paragraph(str(get_elem(bt, "/ub:bill/ub:rebill/ub:car/ub:billingaddress/ub:city")[0].text) + " " 
-        + str(get_elem(bt, "/ub:bill/ub:rebill/ub:car/ub:billingaddress/ub:state")[0].text) + " " 
-        + str(get_elem(bt, "/ub:bill/ub:rebill/ub:car/ub:billingaddress/ub:postalcode")[0].text), styles['BillFieldLg']))
+    ba = bill.billing_address
+    Elements.append(Paragraph(ba['addressee'], styles['BillFieldLg']))
+    Elements.append(Paragraph(ba['street'], styles['BillFieldLg']))
+    Elements.append(Paragraph(ba['city'] + " " + ba['state'] + " " + ba['postalcode'], styles['BillFieldLg']))
     Elements.append(UseUpSpace())
 
+
+    # statistics
+
+    st = bill.statistics
 
     # populate graph one
 
     # Construct period consumption/production ratio graph
-    renewableUtilization = str(get_elem(bt, "/ub:bill/ub:statistics/ub:renewableutilization")[0].text)
-    conventionalUtilization = str(get_elem(bt, "/ub:bill/ub:statistics/ub:conventionalutilization")[0].text)
+    renewableUtilization = st['renewable_utilization']
+    conventionalUtilization = st['conventional_utilization']
     data = [renewableUtilization, conventionalUtilization]
     labels = ["Renewable", "Conventional"]
     c = PieChart(10*270, 10*127)
@@ -369,8 +370,8 @@ def main(options):
     
     # construct period environmental benefit
 
-    periodRenewableConsumed = str(get_elem(bt, "/ub:bill/ub:statistics/ub:renewableconsumed")[0].text)
-    periodPoundsCO2Offset = str(get_elem(bt, "/ub:bill/ub:statistics/ub:co2offset")[0].text)
+    periodRenewableConsumed = st['period_renewable_consumed']
+    periodPoundsCO2Offset = st['period_pounds_co2_offset']
     
     environmentalBenefit = [
         [Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
@@ -389,19 +390,14 @@ def main(options):
     
     # construct system life cumulative numbers table
 
-    totalDollarSavings = str(get_elem(bt, "/ub:bill/ub:statistics/ub:totalsavings")[0].text)
-    totalRenewableEnergyConsumed = str(get_elem(bt, "/ub:bill/ub:statistics/ub:totalrenewableconsumed")[0].text)
-    totalco2offset = str(get_elem(bt, "/ub:bill/ub:statistics/ub:totalco2offset")[0].text)
-    totalTrees = str(get_elem(bt, "/ub:bill/ub:statistics/ub:totaltrees")[0].text)
-
     systemLife = [
         [Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph(totalDollarSavings, styles['BillFieldSm'])],
-        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(totalRenewableEnergyConsumed + " BTUs", styles['BillFieldSm'])],
+        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph(st['total_dollar_savings'], styles['BillFieldSm'])],
+        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(st['total_renewable_energy_consumed'] + " BTUs", styles['BillFieldSm'])],
         # for next bill period
         #[Paragraph("Total Renewable Energy Produced", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
-        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(totalco2offset, styles['BillFieldSm'])],
-        [Paragraph("Tens of Trees to Date", styles['BillLabelSm']), Paragraph(totalTrees, styles['BillFieldSm'])]
+        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(st['total_co2_offset'], styles['BillFieldSm'])],
+        [Paragraph("Tens of Trees to Date", styles['BillLabelSm']), Paragraph(st['total_trees'], styles['BillFieldSm'])]
     ]
 
     t = Table(systemLife, [180,90])
@@ -411,8 +407,8 @@ def main(options):
     Elements.append(Spacer(100,20))
     
     # build string for trees
-    numTrees = math.modf(float(totalTrees))[1]
-    fracTree = str(math.modf(float(totalTrees))[0])[2:3]
+    numTrees = math.modf(float(st['total_trees']))[1]
+    fracTree = str(math.modf(float(st['total_trees']))[0])[2:3]
     
     treeString = ""
     while (numTrees) > 0:
@@ -433,7 +429,7 @@ def main(options):
     # construct annual production graph
     data = []
     labels = []
-    for period in (get_elem(bt, "/ub:bill/ub:statistics/ub:consumptiontrend/ub:period")):
+    for period in (st['consumption_trend']):
         labels.append(str(period.get("month")))
         data.append(float(period.get("quantity")))
 
@@ -458,16 +454,16 @@ def main(options):
 
     # populate billPeriodTableF
     # spacer so rows can line up with those in summarChargesTableF rows
+    ub_periods = bill.utilbill_periods
     serviceperiod = [
             [Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake'])],
             [Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
         ] + [
             [
-                Paragraph(str(utilbill.get("service")) + u' service',styles['BillLabelSmRight']), 
-                Paragraph(str(get_elem(utilbill, "ub:billperiodbegin")[0].text), styles['BillFieldRight']), 
-                Paragraph(str(get_elem(utilbill, "ub:billperiodend")[0].text), styles['BillFieldRight'])
-            ] 
-            for utilbill in get_elem(bt, "/ub:bill/ub:utilbill")
+                Paragraph(service + u' service',styles['BillLabelSmRight']), 
+                Paragraph(str(ub_periods[service]['begin']), styles['BillFieldRight']), 
+                Paragraph(str(ub_periods[service]['end']), styles['BillFieldRight'])
+            ] for service in ub_periods
         ]
 
     t = Table(serviceperiod, colWidths=[115,63,63])
@@ -477,15 +473,16 @@ def main(options):
     Elements.append(UseUpSpace())
 
     # populate summaryChargesTableF
-    hypotheticalcharges = str(Decimal(str(get_elem(bt, "/ub:bill/ub:utilbill/ub:hypotheticalecharges")[0].text)).quantize(Decimal('.00')))
-    actualcharges = str(Decimal(str(get_elem(bt, "/ub:bill/ub:utilbill/ub:actualecharges")[0].text)).quantize(Decimal('.00')))
-    revalue = str(Decimal(str(get_elem(bt, "/ub:bill/ub:utilbill/ub:revalue")[0].text)).quantize(Decimal('.01')))
+    ub_summary = bill.utilbill_summary_charges
     utilitycharges = [
         [Paragraph("Your Utility Charges", styles['BillLabelSmCenter']),Paragraph("", styles['BillLabelSm']),Paragraph("Green Energy", styles['BillLabelSmCenter'])],
         [Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
     ]+[
-        [Paragraph(hypotheticalcharges,styles['BillFieldRight']), Paragraph(actualcharges,styles['BillFieldRight']), Paragraph(revalue,styles['BillFieldRight'])]
-        for utilbill in iter(get_elem(bt, "/ub:bill/ub:utilbill"))
+        [
+            Paragraph(str(ub_summary[service]['hypotheticalecharges']),styles['BillFieldRight']), 
+            Paragraph(str(ub_summary[service]['actualecharges']),styles['BillFieldRight']), 
+            Paragraph(str(ub_summary[service]['revalue']),styles['BillFieldRight'])
+        ] for service in ub_summary
     ]
 
     t = Table(utilitycharges, colWidths=[84,84,84])
@@ -495,13 +492,11 @@ def main(options):
     Elements.append(UseUpSpace())
 
     # populate balances
-    priorbalance = str(Decimal(str(get_elem(bt, "/ub:bill/ub:rebill/ub:priorbalance")[0].text)).quantize(Decimal('.00')))
-    paymentreceived = str(Decimal(str(get_elem(bt, "/ub:bill/ub:rebill/ub:paymentreceived")[0].text)).quantize(Decimal('.00')))
-    totaladjustment = str(Decimal(str(get_elem(bt, "/ub:bill/ub:rebill/ub:totaladjustment")[0].text)).quantize(Decimal('.00')))
+    re_summary = bill.rebill_summary
     balances = [
-        [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(priorbalance,styles['BillFieldRight'])],
-        [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(paymentreceived, styles['BillFieldRight'])],
-        [Paragraph("Adjustments", styles['BillLabelRight']), Paragraph(totaladjustment, styles['BillFieldRight'])],
+        [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(re_summary['priorbalance']),styles['BillFieldRight'])],
+        [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(re_summary['paymentreceived']), styles['BillFieldRight'])],
+        [Paragraph("Adjustments", styles['BillLabelRight']), Paragraph(str(re_summary['totaladjustment']), styles['BillFieldRight'])],
     ]
 
     t = Table(balances, [180,85])
@@ -510,11 +505,9 @@ def main(options):
     Elements.append(UseUpSpace())
 
     # populate current charges
-    savings = str(Decimal(str(get_elem(bt, "/ub:bill/ub:rebill/ub:resavings")[0].text)).quantize(Decimal('.00')))
-    renewablecharges = str(Decimal(str(get_elem(bt, "/ub:bill/ub:rebill/ub:recharges")[0].text)).quantize(Decimal('.00')))
     currentCharges = [
-        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(savings, styles['BillFieldRight'])],
-        [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(renewablecharges, styles['BillFieldRight'])]
+        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(re_summary['savings']), styles['BillFieldRight'])],
+        [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(re_summary['renewablecharges']), styles['BillFieldRight'])]
     ]
 
     t = Table(currentCharges, [135,85])
@@ -523,9 +516,8 @@ def main(options):
     Elements.append(UseUpSpace())
 
     # populate balanceForward
-    balanceforward = str(Decimal(str(get_elem(bt, "/ub:bill/ub:rebill/ub:balanceforward")[0].text)).quantize(Decimal('.00')))
     balance = [
-        [Paragraph("Balance Forward", styles['BillLabelRight']), Paragraph( balanceforward, styles['BillFieldRight'])]
+        [Paragraph("Balance Forward", styles['BillLabelRight']), Paragraph(str(re_summary['balanceforward']), styles['BillFieldRight'])]
     ]
 
     t = Table(balance, [135,85])
@@ -535,9 +527,8 @@ def main(options):
 
 
     # populate balanceDueFrame
-    totalbalance = str(Decimal(str(get_elem(bt, "/ub:bill/ub:rebill/ub:totaldue")[0].text)).quantize(Decimal('.00'))) 
     balanceDue = [
-        [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph( totalbalance, styles['BillFieldRight'])]
+        [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph(str(re_summary['totaldue']), styles['BillFieldRight'])]
     ]
 
     t = Table(balanceDue, [135,85])
@@ -546,9 +537,7 @@ def main(options):
     Elements.append(UseUpSpace())
 
     # populate motd
-    if bool(get_elem(bt, "/ub:bill/ub:rebill/ub:message")[0].text):
-        motd = Paragraph(str(get_elem(bt, "/ub:bill/ub:rebill/ub:message")[0].text), styles['BillFieldSm'])
-        Elements.append(motd)
+    Elements.append(Paragraph(bill.motd, styles['BillFieldSm']))
     Elements.append(UseUpSpace())
 
 
@@ -574,24 +563,16 @@ def main(options):
         [None, None, None, None,  None, None,]
     ]
 
-    for measuredusage in (get_elem(bt, "/ub:bill/ub:measuredusage")):
-        for meter in (get_elem(measuredusage, "ub:meter")):
-            for register in (get_elem(meter, "ub:register")):
-                if (register.get("shadow") == u'true'):
-                    # find non-shadow register that matches this one - try and find a better way than linearly searching over and over - maybe xpath?
-                    for matchregister in (get_elem(meter, "ub:register")):
-                        if (str(get_elem(matchregister, "ub:identifier")[0].text) == str(get_elem(register, "ub:identifier")[0].text) and matchregister.get("shadow") == u'false'):
-                            utilityregister = matchregister
-                            break
-                    # get the total calculation out of here and update bill model to support it.
-                    measuredUsage.append([
-                        str(get_elem(register, "ub:identifier")[0].text), 
-                        str(get_elem(register, "ub:description")[0].text), 
-                        Decimal(str(get_elem(register, "ub:total")[0].text)).quantize(Decimal('.01')), 
-                        Decimal(str(get_elem(utilityregister, "ub:total")[0].text)).quantize(Decimal('.01')),
-                        Decimal(str(get_elem(register, "ub:total")[0].text)).quantize(Decimal('.01')) + Decimal(str(get_elem(utilityregister, "ub:total")[0].text)).quantize(Decimal('.01')),
-                        str(get_elem(register, "ub:units")[0].text)])
-                    utilityregister = None
+    usage = bill.measured_usage
+    for service in usage:
+        measuredUsage.append([
+            usage[service]['identifier'],
+            usage[service]['description'],
+            usage[service]['shadow_total'],
+            usage[service]['utility_total'],
+            usage[service]['total'],
+            usage[service]['units'],
+            ])
 
     measuredUsage.append([None, None, None, None, None, None])
 
@@ -640,6 +621,26 @@ def main(options):
         [None, None, None, None, None, None, None],
         [None, None, None, None, None, None, None]
     ]
+
+    details = bill.hypothetical_details
+    totals = bill.hypothetical_totals
+    for service in details:
+        for idx, detail in enumerate(details[service]):
+            chargeDetails.append([
+                service if idx == 0 else "",
+                detail['description'],
+                detail['quantity'],
+                detail['quantity_units'],
+                detail['rate'],
+                detail['rate_units'],
+                detail['total'],
+            ])
+
+        # spacer
+        chargeDetails.append([None, None, None, None, None, None, None])
+        chargeDetails.append([None, None, None, None, None, None, totals[service]])
+
+    """
     # sentinal for not printing service string each iteration
     service = None
 
@@ -674,8 +675,8 @@ def main(options):
         for total in get_elem(details, "ub:total"):
             if(total.get("type") == u'hypothetical'):
                 chargeDetails.append([None, None, None, None, None, None, Decimal(str(total.text)).quantize(Decimal('.00'))])
-        # spacer
-        chargeDetails.append([None, None, None, None, None, None, None])
+    """ 
+
 
     t = Table(chargeDetails, [50, 210, 70, 40, 70, 40, 70])
 
