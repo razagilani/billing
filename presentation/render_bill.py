@@ -44,9 +44,6 @@ from reportlab.pdfgen.canvas import Canvas
 from reportlab.pdfbase.pdfmetrics import registerFontFamily
 
 
-# for xml processing
-from lxml import etree
-
 #
 # for chart graphics
 #
@@ -272,7 +269,7 @@ def main(options):
 
     # Bind to XML bill
     #dom = bindery.parse(options.snob)
-    bt = etree.parse(options.snob)
+    #bt = etree.parse(options.snob)
 
     # instantiate a bill which will be bound to reportlab
     from billing import bill
@@ -640,44 +637,6 @@ def main(options):
         chargeDetails.append([None, None, None, None, None, None, None])
         chargeDetails.append([None, None, None, None, None, None, totals[service]])
 
-    """
-    # sentinal for not printing service string each iteration
-    service = None
-
-    for details in (get_elem(bt, "/ub:bill/ub:details")):
-        for chargegroup in (get_elem(details, "ub:chargegroup")):
-            for charges in (get_elem(chargegroup, "ub:charges")):
-                if charges.get("type") == u'hypothetical':
-                    for charge in (get_elem(charges, "ub:charge")):
-                        # populate service cell once for each group of services
-                        if(service != details.get("service")):
-                            serviceStr = str(details.get("service"))
-                            service = details.get("service")
-                        description = get_elem(charge, "ub:description")[0].text if (len(get_elem(charge, "ub:description")) > 0) else ""
-                        quantityUnits = get_elem(charge, "ub:quantity")[0].get("units") if (len(get_elem(charge, "ub:quantity")) > 0) else ""
-                        # TODO: better scheme for rounding as a function of units
-                        if (quantityUnits is not None and quantityUnits.lower() == 'therms'):
-                            quantity = Decimal(str(get_elem(charge, "ub:quantity")[0].text)).quantize(Decimal('.00')) if (len(get_elem(charge, "ub:quantity")) > 0) else ""
-                        elif (quantityUnits is not None and quantityUnits.lower() == 'dollars'):
-                            quantity = Decimal(str(get_elem(charge, "ub:quantity")[0].text)).quantize(Decimal('.00')) if (len(get_elem(charge, "ub:quantity")) > 0) else ""
-                        elif (quantityUnits is not None and quantityUnits.lower() == 'kwh'):
-                            quantity = Decimal(str(get_elem(charge, "ub:quantity")[0].text)).quantize(Decimal('.0')) if (len(get_elem(charge, "ub:quantity")) > 0) else ""
-                        else:
-                            quantity = str(get_elem(charge, "ub:quantity")[0].text) if (len(get_elem(charge, "ub:quantity"))>0) else ""
-                        rateUnits = get_elem(charge, "ub:rate")[0].get("units") if (len(get_elem(charge, "ub:rate")) > 0) else ""
-                        rate = get_elem(charge, "ub:rate")[0].text if (len(get_elem(charge, "ub:rate")) > 0) else ""
-                        total = str(get_elem(charge, "ub:total")[0].text)
-                        #total = Decimal(str(get_elem(charge, "ub:total")[0].text)).quantize(Decimal('.00'))
-                        #total = charge.total
-                        chargeDetails.append([serviceStr, str(description), str(quantity), str(quantityUnits), str(rate), str(rateUnits), str(total)])
-                        # clear string so that it gets set on next service type
-                        serviceStr = None
-        for total in get_elem(details, "ub:total"):
-            if(total.get("type") == u'hypothetical'):
-                chargeDetails.append([None, None, None, None, None, None, Decimal(str(total.text)).quantize(Decimal('.00'))])
-    """ 
-
-
     t = Table(chargeDetails, [50, 210, 70, 40, 70, 40, 70])
 
     #('BOX', (0,0), (-1,-1), 0.25, colors.black), 
@@ -712,10 +671,6 @@ def main(options):
     # render the document	
     doc.setProgressCallBack(progress)
     doc.build(Elements)
-
-# TODO refactor to shared utility class
-def get_elem(tree, xpath):
-    return tree.xpath(xpath, namespaces={"ub":"bill"})
 
 # remove all calculations to helpers
 def poundsCarbonFromGas(therms = 0):
