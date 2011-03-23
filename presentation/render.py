@@ -15,9 +15,6 @@ from types import NoneType
 import math
 from decimal import *
 
-# handle command line options
-from optparse import OptionParser
-
 #
 # Types for ReportLab
 #
@@ -85,7 +82,7 @@ registerFontFamily('Courier',normal='Courier',bold='CourierB',italic='CourierBI'
 
 
 #register Inconsolata (TODO address here)
-pdfmetrics.registerFont(TTFont("Inconsolata", 'fonts/Inconsolata.ttf'))
+pdfmetrics.registerFont(TTFont("Inconsolata", os.path.join(our_fonts,'Inconsolata.ttf')))
 registerFontFamily('Inconsolata', 
                     normal = 'Inconsolata', 
                     bold = 'Inconsolata',
@@ -101,6 +98,10 @@ Title = "Skyline Bill"
 pageinfo = "Skyline Bill"
 firstPageName = 'FirstPage'
 secondPageName = 'SecondPage'
+resource_dir = os.path.dirname(__file__)
+
+#TODO - determine platform independent means to do this
+tmp_dir = "/tmp"
 
 
 
@@ -140,8 +141,9 @@ class SIBillDocTemplate(BaseDocTemplate):
 
 
 def progress(type,value):
-    if (options.verbose):
-        sys.stdout.write('.')
+    # TODO fix module to support verbose flag passed in from the code that imports render_bill
+    #if (options.verbose):
+    sys.stdout.write('.')
      
 def main(options):
 
@@ -286,7 +288,7 @@ def main(options):
     #
 
     # populate backgroundF1
-    pageOneBackground = Image('images/' + backgrounds.pop(0),letter[0], letter[1])
+    pageOneBackground = Image(os.path.join(os.path.join(resource_dir, 'images'), backgrounds.pop(0)),letter[0], letter[1])
     Elements.append(pageOneBackground)
 
     # populate account number, bill id & issue date
@@ -357,9 +359,10 @@ def main(options):
     c.setPieSize((10*270)/2.2, (10*127)/1.65, ((10*127)/3.5))
     c.setData(data, labels)
     c.setLabelStyle('Inconsolata.ttf', 64)
-    c.makeChart("images/utilization.png")
+    image_path = os.path.join(tmp_dir, "utilization.png")
+    c.makeChart(image_path)
    
-    Elements.append(Image('images/utilization.png', 270*.9, 127*.9))
+    Elements.append(Image(image_path, 270*.9, 127*.9))
     Elements.append(UseUpSpace())
 
 
@@ -409,10 +412,10 @@ def main(options):
     
     treeString = ""
     while (numTrees) > 0:
-        treeString += "<img width=\"20\" height=\"25\" src=\"images/tree3.png\"/>"
+        treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(resource_dir, "images", "tree3.png") +"\"/>"
         numTrees -= 1
 
-    if (fracTree != 0): treeString += "<img width=\"20\" height=\"25\" src=\"images/tree3-" + fracTree + ".png\"/>"
+    if (fracTree != 0): treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(resource_dir, "images","tree3-" + fracTree + ".png") + "\"/>"
 
     Elements.append(Paragraph("<para leftIndent=\"6\">"+treeString+"</para>", styles['BillLabel']))
     Elements.append(Spacer(100,5))
@@ -440,13 +443,13 @@ def main(options):
     c.yAxis().setTitle("100 Thousand BTUs", 'Inconsolata.ttf', 52)
     c.xAxis().setLabels(labels)
     c.xAxis().setLabelStyle('Inconsolata.ttf', 64)
-    c.makeChart("images/SampleGraph4.png")    
+    c.makeChart(os.path.join(tmp_dir,"SampleGraph4.png"))    
 
-    Elements.append(Image('images/SampleGraph4.png', 270*.9, 127*.9))
+    Elements.append(Image(os.path.join(tmp_dir,'SampleGraph4.png'), 270*.9, 127*.9))
     Elements.append(UseUpSpace())
 
     # populate summary background
-    Elements.append(Image('images/SummaryBackground.png', 443, 151))
+    Elements.append(Image(os.path.join(resource_dir,'images','SummaryBackground.png'), 443, 151))
     Elements.append(UseUpSpace())
 
     # populate billPeriodTableF
@@ -545,7 +548,7 @@ def main(options):
     Elements.append(PageBreak());
 
 
-    pageTwoBackground = Image('images/' + backgrounds.pop(0),letter[0], letter[1])
+    pageTwoBackground = Image(os.path.join(resource_dir,'images',backgrounds.pop(0)),letter[0], letter[1])
     Elements.append(pageTwoBackground)
 
     #populate measured usage header frame
@@ -690,22 +693,3 @@ def equivalentTrees(poundsCarbonAvoided = 0):
     """One ton per tree over the lifetime, ~13 lbs a year.
     Assume 1.08 pounds per bill period"""
     return int(poundsCarbon) * 1.08
-
-if __name__ == "__main__":
-    parser = OptionParser()
-    parser.add_option("-s", "--snob", dest="snob", help="Convert bill to PDF", metavar="FILE")
-    parser.add_option("-o", "--output", dest="output", help="PDF output file", metavar="FILE")
-    parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="Print progress to stdout.")
-    parser.add_option("-b", "--background", dest="background", default="EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png", help="Background file names in comma separated page order. E.g. -b foo-page1.png,foo-page2.png")
-
-    (options, args) = parser.parse_args()
-
-    if (options.snob == None):
-        print "SNOB must be specified."
-        exit()
-
-    if (options.output == None):
-        print "Output file must be specified."
-        exit()
-
-    main(options)
