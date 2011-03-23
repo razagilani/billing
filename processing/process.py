@@ -1,8 +1,7 @@
 #!/usr/bin/python
 """
-File: bill_tool.py
+File: process.py
 Description: Various utility procedures to process bills
-Usage: See command line synopsis
 """
 
 #
@@ -28,7 +27,7 @@ from skyliner.xml_utils import XMLUtils
 # used for processing fixed point monetary decimal numbers
 from decimal import *
 
-class BillTool():
+class Process():
     """ Class with a variety of utility procedures for processing bills """
     
     def __init__(self):
@@ -628,114 +627,3 @@ class BillTool():
 
         XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), outputbill, user, password)
 
-def main(options):
-    """
-    """
-    pass
-
-if __name__ == "__main__":
-
-    # configure optparse
-    parser = OptionParser()
-    parser.add_option("-i", "--inputbill", dest="inputbill", help="Previous bill to acted on", metavar="FILE")
-    parser.add_option("-o", "--outputbill", dest="outputbill", help="Next bill to be targeted", metavar="FILE")
-    parser.add_option("-a", "--amountpaid", dest="amountpaid", help="Amount paid on previous bill")
-    parser.add_option("-u", "--user", dest="user", default='prod', help="Bill database user account name.")
-    parser.add_option("-p", "--password", dest="password", help="Bill database user account name.")
-    parser.add_option("--roll", dest="roll", action="store_true", help="Roll the bill to the next period.")
-    parser.add_option("--copyactual", action="store_true", dest="copyactual", help="Copy actual charges to hypothetical charges.")
-    parser.add_option("--sumhypothetical", action="store_true", dest="sumhypothetical", help="Summarize hypothetical charges.")
-    parser.add_option("--sumactual", action="store_true", dest="sumactual", help="Summarize actual charges.")
-    parser.add_option("--sumbill", action="store_true", dest="sumbill", help="Calculate total due.")
-    parser.add_option("--discountrate",  dest="discountrate", help="Customer energy discount rate from 0.0 to 1.0")
-    parser.add_option("--bindrsactual", action="store_true", dest="bindrsactual", help="Bind and evaluate a rate structure.")
-    parser.add_option("--bindrshypothetical", action="store_true", dest="bindrshypothetical", help="Bind and evaluate a rate structure.")
-    parser.add_option("--rsdb", dest="rsdb", help="Location of the rate structure database.")
-
-    parser.add_option("--calcstats", action="store_true", dest="calcstats", help="Calculate statistics.")
-    parser.add_option("--calcreperiod", action="store_true", dest="calcreperiod", help="Calculate Renewable Energy Period.")
-    # TODO: make this commit the bill, parameterize due date, etc...
-    parser.add_option("--issuedate",  dest="issuedate", help="Set the issue and due dates of the bill. Specify issue date YYYY-MM-DD")
-
-    (options, args) = parser.parse_args()
-
-    if (options.inputbill == None):
-        print "Input bill must be specified."
-        exit()
-
-    if (options.outputbill == None):
-        print "Output bill must be specified"
-        exit()
-
-    if (options.roll):
-        # TODO: remove this check to the roll function, and have that function return status based on this check below
-        if (options.inputbill == options.outputbill):
-            print "Input bill and output bill should not match!"
-            exit()
-        if (options.amountpaid == None):
-            print "Specify --amountpaid"
-            exit()
-        else:
-            BillTool().roll_bill(options.inputbill, options.outputbill, options.amountpaid, options.user, options.password)
-            exit()
-
-    if (options.sumhypothetical):
-        BillTool().sum_hypothetical_charges(options.inputbill, options.outputbill, options.user, options.password)
-        exit()
-
-    if (options.copyactual):
-        BillTool().copy_actual_charges(options.inputbill, options.outputbill, options.user, options.password)
-        exit()
-
-    if (options.sumactual):
-        BillTool().sum_actual_charges(options.inputbill, options.outputbill, options.user, options.password)
-        exit()
-
-    if (options.sumbill):
-        if (options.discountrate):
-            BillTool().sumbill(options.inputbill, options.outputbill, options.discountrate, options.user, options.password)
-        else:
-            print "Specify --discountrate"
-        exit()
-
-    if (options.bindrsactual):
-        if (options.rsdb == None):
-            print "Specify --rsdb"
-            exit()
-        BillTool().bindrs(options.inputbill, options.outputbill, options.rsdb, False, options.user, options.password)
-        exit()
-
-    if (options.bindrshypothetical):
-        if (options.rsdb == None):
-            print "Specify --rsdb"
-            exit()
-        BillTool().bindrs(options.inputbill, options.outputbill, options.rsdb, True, options.user, options.password)
-        exit()
-
-    if (options.calcstats):
-        if (options.inputbill == options.outputbill):
-            # TODO: remove this check to the calcstats function, and have that function return status based on this check below
-            print "Input bill and output bill should not match! Specify previous bill as input bill."
-            exit()
-        BillTool().calculate_statistics(options.inputbill, options.outputbill, options.user, options.password)
-        exit()
-
-    if (options.calcreperiod):
-        # TODO: remove this check to the calcreperiods function, and have that function return status based on this check below
-        if (options.inputbill != options.outputbill):
-            print "Input bill and output bill should match!"
-            exit()
-        BillTool().calculate_reperiod(options.inputbill, options.outputbill, options.user, options.password)
-        exit()
-
-    if (options.issuedate):
-        if (options.inputbill != options.outputbill):
-            print "Input bill and output bill should match!"
-            exit()
-        if (options.issuedate == None):
-            print "Specify --issuedate"
-            exit()
-        BillTool().issue(options.inputbill, options.outputbill, options.issuedate, options.user, options.password)
-        exit()
-
-    print "Specify operation"
