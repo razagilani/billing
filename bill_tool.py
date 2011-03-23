@@ -6,7 +6,7 @@
 
 # handle command line options
 from optparse import OptionParser
-from billing.presentation import render_bill as rb
+from billing.presentation import render as r
 from billing.processing import process as p
 
 if __name__ == "__main__":
@@ -15,12 +15,14 @@ if __name__ == "__main__":
     parser.add_option("--mode", dest="mode", help="process|render")
 
     # old render_bill options (now render.py)
+    # TODO: merge -s and -o into --input and --output or something
     parser.add_option("-s", "--snob", dest="snob", help="Convert bill to PDF", metavar="FILE")
     parser.add_option("-o", "--output", dest="output", help="PDF output file", metavar="FILE")
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="Print progress to stdout.")
     parser.add_option("-b", "--background", dest="background", default="EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png", help="Background file names in comma separated page order. E.g. -b foo-page1.png,foo-page2.png")
 
     # old bill_tool options (now process.py)
+    # TODO: --inputbill and --outputbill should become --input and --output
     parser.add_option("--inputbill", dest="inputbill", help="Previous bill to acted on", metavar="FILE")
     parser.add_option("--outputbill", dest="outputbill", help="Next bill to be targeted", metavar="FILE")
     parser.add_option("-a", "--amountpaid", dest="amountpaid", help="Amount paid on previous bill")
@@ -53,7 +55,7 @@ if __name__ == "__main__":
             print "Output file must be specified."
             exit()
 
-        rb.main(options)
+        r.main(options)
 
     # handle process options 
     elif (options.mode == "process"):
@@ -63,13 +65,13 @@ if __name__ == "__main__":
             exit()
 
         if (options.outputbill == None):
-            print "Output bill must be specified"
-            exit()
+            print "Using %s for output." % options.inputbill
+            options.outputbill = options.inputbill
+
 
         if (options.roll):
-            # TODO: remove this check to the roll function, and have that function return status based on this check below
             if (options.inputbill == options.outputbill):
-                print "Input bill and output bill should not match!"
+                print "Input bill and output bill cannot not match."
                 exit()
             if (options.amountpaid == None):
                 print "Specify --amountpaid"
@@ -79,18 +81,30 @@ if __name__ == "__main__":
                 exit()
 
         if (options.sumhypothetical):
+            if (options.inputbill != options.outputbill):
+                print "Input bill and output bill should be the same."
+                exit()
             Process().sum_hypothetical_charges(options.inputbill, options.outputbill, options.user, options.password)
             exit()
 
         if (options.copyactual):
+            if (options.inputbill != options.outputbill):
+                print "Input bill and output bill should be the same."
+                exit()
             Process().copy_actual_charges(options.inputbill, options.outputbill, options.user, options.password)
             exit()
 
         if (options.sumactual):
+            if (options.inputbill != options.outputbill):
+                print "Input bill and output bill should be the same."
+                exit()
             Process().sum_actual_charges(options.inputbill, options.outputbill, options.user, options.password)
             exit()
 
         if (options.sumbill):
+            if (options.inputbill != options.outputbill):
+                print "Input bill and output bill should be the same."
+                exit()
             if (options.discountrate):
                 Process().sumbill(options.inputbill, options.outputbill, options.discountrate, options.user, options.password)
             else:
@@ -98,6 +112,9 @@ if __name__ == "__main__":
             exit()
 
         if (options.bindrsactual):
+            if (options.inputbill != options.outputbill):
+                print "Input bill and output bill should be the same."
+                exit()
             if (options.rsdb == None):
                 print "Specify --rsdb"
                 exit()
@@ -105,6 +122,9 @@ if __name__ == "__main__":
             exit()
 
         if (options.bindrshypothetical):
+            if (options.inputbill != options.outputbill):
+                print "Input bill and output bill should be the same."
+                exit()
             if (options.rsdb == None):
                 print "Specify --rsdb"
                 exit()
@@ -113,23 +133,21 @@ if __name__ == "__main__":
 
         if (options.calcstats):
             if (options.inputbill == options.outputbill):
-                # TODO: remove this check to the calcstats function, and have that function return status based on this check below
                 print "Input bill and output bill should not match! Specify previous bill as input bill."
                 exit()
             Process().calculate_statistics(options.inputbill, options.outputbill, options.user, options.password)
             exit()
 
         if (options.calcreperiod):
-            # TODO: remove this check to the calcreperiods function, and have that function return status based on this check below
             if (options.inputbill != options.outputbill):
-                print "Input bill and output bill should match!"
+                print "Input bill and output bill should be the same."
                 exit()
             Process().calculate_reperiod(options.inputbill, options.outputbill, options.user, options.password)
             exit()
 
         if (options.issuedate):
             if (options.inputbill != options.outputbill):
-                print "Input bill and output bill should match!"
+                print "Input bill and output bill should be the same."
                 exit()
             if (options.issuedate == None):
                 print "Specify --issuedate"
