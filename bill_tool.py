@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
-#
-# runtime environment
-#
+"""
+Command line front end for processing and rendering bills.
+"""
 
 # handle command line options
 from optparse import OptionParser
@@ -12,10 +12,10 @@ from billing.processing import process as p
 if __name__ == "__main__":
     parser = OptionParser()
 
-    parser.add_option("--mode", dest="mode", help="process|render")
 
     # old render_bill options (now render.py)
     # TODO: merge -s and -o into --input and --output or something
+    parser.add_option("--render", action="store_true", dest="render", help="Render a bill")
     parser.add_option("-s", "--snob", dest="snob", help="Convert bill to PDF", metavar="FILE")
     parser.add_option("-o", "--output", dest="output", help="PDF output file", metavar="FILE")
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="Print progress to stdout.")
@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     (options, args) = parser.parse_args()
 
-    if (options.mode == "render"):
+    if (options.render):
 
         # handle render options
         if (options.snob == None):
@@ -56,103 +56,100 @@ if __name__ == "__main__":
             exit()
 
         r.main(options)
+        exit()
 
-    # handle process options 
-    elif (options.mode == "process"):
+    if (options.inputbill == None):
+        print "Input bill must be specified."
+        exit()
 
-        if (options.inputbill == None):
-            print "Input bill must be specified."
+    if (options.outputbill == None):
+        print "Using %s for output." % options.inputbill
+        options.outputbill = options.inputbill
+
+    if (options.roll):
+        if (options.inputbill == options.outputbill):
+            print "Input bill and output bill should not match."
+            exit()
+        if (options.amountpaid == None):
+            print "Specify --amountpaid"
+            exit()
+        else:
+            p.Process().roll_bill(options.inputbill, options.outputbill, options.amountpaid, options.user, options.password)
             exit()
 
-        if (options.outputbill == None):
-            print "Using %s for output." % options.inputbill
-            options.outputbill = options.inputbill
-
-
-        if (options.roll):
-            if (options.inputbill == options.outputbill):
-                print "Input bill and output bill cannot not match."
-                exit()
-            if (options.amountpaid == None):
-                print "Specify --amountpaid"
-                exit()
-            else:
-                Process().roll_bill(options.inputbill, options.outputbill, options.amountpaid, options.user, options.password)
-                exit()
-
-        if (options.sumhypothetical):
-            if (options.inputbill != options.outputbill):
-                print "Input bill and output bill should be the same."
-                exit()
-            Process().sum_hypothetical_charges(options.inputbill, options.outputbill, options.user, options.password)
+    if (options.sumhypothetical):
+        if (options.inputbill != options.outputbill):
+            print "Input bill and output bill should be the same."
             exit()
+        p.Process().sum_hypothetical_charges(options.inputbill, options.outputbill, options.user, options.password)
+        exit()
 
-        if (options.copyactual):
-            if (options.inputbill != options.outputbill):
-                print "Input bill and output bill should be the same."
-                exit()
-            Process().copy_actual_charges(options.inputbill, options.outputbill, options.user, options.password)
+    if (options.copyactual):
+        if (options.inputbill != options.outputbill):
+            print "Input bill and output bill should be the same."
             exit()
+        p.Process().copy_actual_charges(options.inputbill, options.outputbill, options.user, options.password)
+        exit()
 
-        if (options.sumactual):
-            if (options.inputbill != options.outputbill):
-                print "Input bill and output bill should be the same."
-                exit()
-            Process().sum_actual_charges(options.inputbill, options.outputbill, options.user, options.password)
+    if (options.sumactual):
+        if (options.inputbill != options.outputbill):
+            print "Input bill and output bill should be the same."
             exit()
+        p.Process().sum_actual_charges(options.inputbill, options.outputbill, options.user, options.password)
+        exit()
 
-        if (options.sumbill):
-            if (options.inputbill != options.outputbill):
-                print "Input bill and output bill should be the same."
-                exit()
-            if (options.discountrate):
-                Process().sumbill(options.inputbill, options.outputbill, options.discountrate, options.user, options.password)
-            else:
-                print "Specify --discountrate"
+    if (options.sumbill):
+        if (options.inputbill != options.outputbill):
+            print "Input bill and output bill should be the same."
             exit()
+        if (options.discountrate):
+            p.Process().sumbill(options.inputbill, options.outputbill, options.discountrate, options.user, options.password)
+        else:
+            print "Specify --discountrate"
+        exit()
 
-        if (options.bindrsactual):
-            if (options.inputbill != options.outputbill):
-                print "Input bill and output bill should be the same."
-                exit()
-            if (options.rsdb == None):
-                print "Specify --rsdb"
-                exit()
-            Process().bindrs(options.inputbill, options.outputbill, options.rsdb, False, options.user, options.password)
+    if (options.bindrsactual):
+        if (options.inputbill != options.outputbill):
+            print "Input bill and output bill should be the same."
             exit()
-
-        if (options.bindrshypothetical):
-            if (options.inputbill != options.outputbill):
-                print "Input bill and output bill should be the same."
-                exit()
-            if (options.rsdb == None):
-                print "Specify --rsdb"
-                exit()
-            Process().bindrs(options.inputbill, options.outputbill, options.rsdb, True, options.user, options.password)
+        if (options.rsdb == None):
+            print "Specify --rsdb"
             exit()
+        p.Process().bindrs(options.inputbill, options.outputbill, options.rsdb, False, options.user, options.password)
+        exit()
 
-        if (options.calcstats):
-            if (options.inputbill == options.outputbill):
-                print "Input bill and output bill should not match! Specify previous bill as input bill."
-                exit()
-            Process().calculate_statistics(options.inputbill, options.outputbill, options.user, options.password)
+    if (options.bindrshypothetical):
+        if (options.inputbill != options.outputbill):
+            print "Input bill and output bill should be the same."
             exit()
-
-        if (options.calcreperiod):
-            if (options.inputbill != options.outputbill):
-                print "Input bill and output bill should be the same."
-                exit()
-            Process().calculate_reperiod(options.inputbill, options.outputbill, options.user, options.password)
+        if (options.rsdb == None):
+            print "Specify --rsdb"
             exit()
+        p.Process().bindrs(options.inputbill, options.outputbill, options.rsdb, True, options.user, options.password)
+        exit()
 
-        if (options.issuedate):
-            if (options.inputbill != options.outputbill):
-                print "Input bill and output bill should be the same."
-                exit()
-            if (options.issuedate == None):
-                print "Specify --issuedate"
-                exit()
-            Process().issue(options.inputbill, options.outputbill, options.issuedate, options.user, options.password)
+    if (options.calcstats):
+        if (options.inputbill == options.outputbill):
+            print "Input bill and output bill should not match. Specify previous bill as input bill."
             exit()
+        p.Process().calculate_statistics(options.inputbill, options.outputbill, options.user, options.password)
+        exit()
 
-        print "Specify Process Operation"
+    if (options.calcreperiod):
+        if (options.inputbill != options.outputbill):
+            print "Input bill and output bill should be the same."
+            exit()
+        p.Process().calculate_reperiod(options.inputbill, options.outputbill, options.user, options.password)
+        exit()
+
+    if (options.issuedate):
+        if (options.inputbill != options.outputbill):
+            print "Input bill and output bill should be the same."
+            exit()
+        if (options.issuedate == None):
+            print "Specify --issuedate"
+            exit()
+        p.Process().issue(options.inputbill, options.outputbill, options.issuedate, options.user, options.password)
+        exit()
+
+    print "Specify Process Operation"

@@ -137,7 +137,6 @@ class Process():
 
         tree = etree.parse(unprocessedBill)
 
-
         # get the child groves for each set of actual charges and total them up
         all_actual_charges = self.get_elem(tree, "/ub:bill/ub:details/ub:chargegroup/ub:charges[@type=\"actual\"]")
         for actual_charges in all_actual_charges:
