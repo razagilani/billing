@@ -1,4 +1,56 @@
+#!/usr/bin/python
+
 import yaml
+import jinja2
+import os
+from decimal import Decimal
+
+class RateStructure():
+    """ The rate structure is the model for how utilities calculate their utility bill.  This model does not
+    necessarily dictate the re bill, because the re bill can have charges that are not part of this model.
+    This is also why the rate structure model does not comprehend charge grouping, subtotals or totals.
+    """
+    def __init__(self, props):
+
+        self.name = props["name"]
+        self.service = props["service"]
+        self.registers = [Register(reg_props) for reg_props in props["registers"]]
+        self.rates = [RateStructureItem(rsi_props) for rsi_props in props["rates"]]
+
+        # so that registers may be referenced from this obects namespace
+        for reg in self.registers:
+            self.__dict__[reg.descriptor] = reg
+
+        # RSI fields like quantity and rate refer to values in other RSIs.
+        # so a common namespace must exist for the eval() strategy found in RSIs.
+        for rsi in self.rates:
+            self.__dict__[rsi.descriptor] = rsi
+            # so that RSIs have access to this objects namespace and can
+            # pass the ratestructure into eval as the global namespace
+            rsi.ratestructure = self
+
+        for rate in self.rates:
+            print str(rate)
+
+    def register_needs(self):
+        """ Return a list of registers that must be populated with energy."""
+        needs = []
+        for register in self.registers:
+            if (register.quantity == None):
+                needs.append(register)
+        return needs
+
+    def __str__(self):
+
+        s = '' 
+        s += '%s\t' % (self.name if hasattr(self, 'name') else '')
+        s += '%s\t' % (self.service if hasattr(self, 'service') else '')
+        s += '\n'
+        for reg in self.registers:
+            s += str(reg)
+        for rsi in self.rates:
+            s += str(rsi)
+        return s
 
 class rate_structure(yaml.YAMLObject):
     """ The rate structure is the model for how utilities calculate their utility bill.  This model does not
@@ -18,7 +70,7 @@ class rate_structure(yaml.YAMLObject):
     def configure(self):
         """ After this rate_structure is loaded, add rsi descriptors to it. """
 
-        # so that registers may be referenced from this obects namespace
+        # so that registers may be referenced from this objects namespace
         for reg in self.registers:
             self.__dict__[reg.descriptor] = reg
 
@@ -40,6 +92,25 @@ class rate_structure(yaml.YAMLObject):
             s += str(rsi)
         return s
 
+
+
+class Register():
+
+    def __init__(self, props):
+            for key in props:
+                setattr(self, key, props[key])
+
+    def __str__(self):
+
+        s = '' 
+        s += '%s\t' % (self.descriptor if hasattr(self, 'descriptor') else '')
+        s += '%s\t' % (self.description if hasattr(self, 'description') else '')
+        s += '%s\t' % (self.quantity if hasattr(self, 'quantity') else '')
+        s += '%s\t' % (self.quantityunits if hasattr(self, 'quantityunits') else '')
+        s += '\n'
+        return s
+
+
 class register(yaml.YAMLObject):
     yaml_tag = u'!register'
 
@@ -50,6 +121,118 @@ class register(yaml.YAMLObject):
         s += '%s\t' % (self.description if hasattr(self, 'description') else '')
         s += '%s\t' % (self.quantity if hasattr(self, 'quantity') else '')
         s += '%s\t' % (self.quantityunits if hasattr(self, 'quantityunits') else '')
+        s += '\n'
+        return s
+
+class RateStructureItem():
+    """ Container class for RSIs.  This serves as a class from which rate_structure_item instances are obtained """
+    """ via definition in the rs yaml. An RSI consists of (importantly) a descriptor, quantity, rate and total.  """
+    """ The descriptor must be set in yaml and map to the bill xml @rsbinding for a given charge."""
+    """ The quantity may be a number or a python expression, usually the variable of a register in the rate_structure. """
+    """ The rate may be absent or a number. """
+    """ The total may be absent or a number. """
+    """ In cases where these rate_structure_items attributes are absent in yaml, the rate_structure_item can """
+    """ calculate them.  A notable example is total, which is usually not set in the rs yaml except for """
+    """ fixed charges, like a customer charge. """
+
+    # set by the ratestructure that contains the rate_structure_items
+    ratestructure = None
+
+    def __init__(self, props):
+        for key in props:
+
+            # all keys passed are prepended with an _
+            # and directly set in this instance
+            # because we cover those instance attributes 
+            # with an @property decorator for encapsulated 
+            # functionality
+
+            # if a value exists in the rate
+            value = props[key]
+            if (value is not None):
+                # use that value but change it to a Decimal if it is a float or int
+                value = value if type(value) == str else Decimal(str(value))
+                setattr(self, "_"+key, value)
+                #print "%s - %s:%s" % (key, props[key], str(type(props[key])))
+
+    @property
+    def descriptor(self):
+        return self._descriptor
+
+    @property
+    def total(self):
+        try:
+            if (hasattr(self, "_quantity") and hasattr(self, "_rate")):
+
+                # set total, using the public interface for quantity and rate
+                # so that quantity and rate evaluate themselves
+                self._total = self.quantity * self.rate 
+
+                rule = self._roundrule if hasattr(self, "_roundrule") else None
+                self._total = Decimal(str(self._total)).quantize(Decimal('.01'), rule)
+
+            return self._total
+
+        except Exception, err:
+            print('ERROR: %s\n' % (str(err), ))
+            raise AttributeError 
+
+
+    @property
+    def description(self):
+        return self._description
+
+    @property
+    def quantity(self):
+        if type(self._quantity) is str:
+            return eval(self._quantity, self.ratestructure.__dict__)
+
+        return self._quantity
+
+
+    @property
+    def quantityunits(self):
+        return self.quantityunits
+
+    @property
+    def rate(self):
+        if type(self._rate) is str:
+            return eval(self._rate, self.ratestructure.__dict__)
+
+        return self._rate
+
+    @property
+    def rateunits(self):
+        return self.rateunits
+
+    #@total.setter
+    #def total(self, total):
+        #print "Property set " + str(total)
+        #self._total = total
+
+
+    def __str__(self):
+
+        s = 'Unevaluated RSI\n'
+        s += 'descriptor: %s\n' % (self._descriptor if hasattr(self, '_descriptor') else '')
+        s += 'description: %s\n' % (self._description if hasattr(self, '_description') else '')
+        s += 'quantity: %s\n' % (self._quantity if hasattr(self, '_quantity') else '')
+        s += 'quantityunits: %s\n' % (self._quantityunits if hasattr(self, '_quantityunits') else '')
+        s += 'rate: %s\n' % (self._rate if hasattr(self, '_rate') else '')
+        s += 'rateunits: %s\n' % (self._rateunits if hasattr(self, '_rateunits') else '')
+        s += 'roundrule: %s\n' % (self._roundrule if hasattr(self, '_roundrule') else '')
+        s += 'total: %s\n' % (self._total if hasattr(self, '_total') else '')
+        s += '\n'
+
+        s += 'Evaluated RSI\n'
+        s += 'descriptor: %s\n' % (self.descriptor if hasattr(self, 'descriptor') else '')
+        s += 'description: %s\n' % (self.description if hasattr(self, 'description') else '')
+        s += 'quantity: %s\n' % (self.quantity if hasattr(self, 'quantity') else '')
+        s += 'quantityunits: %s\n' % (self.quantityunits if hasattr(self, 'quantityunits') else '')
+        s += 'rate: %s\n' % (self.rate if hasattr(self, 'rate') else '')
+        s += 'rateunits: %s\n' % (self.rateunits if hasattr(self, 'rateunits') else '')
+        s += 'roundrule: %s\n' % (self.roundrule if hasattr(self, 'roundrule') else '')
+        s += 'total: %s\n' % (self.total if hasattr(self, 'total') else '')
         s += '\n'
         return s
 
@@ -75,11 +258,13 @@ class rate_structure_item(yaml.YAMLObject):
     # If the attributes are not declared in the rs yaml, errors will occur if those
     # attributes are accessed in an instance of a rate_structure_item and do not exist.
     # And because of the __getattribute__ hack below, attributes that are dynamically computed
-    # like 'total' must be declared somewhere, if not they yaml.  So we declare them here.
+    # like 'total' must be declared somewhere, if not the yaml.  So we declare them here.
     # And later ask if the value of the attribute is None to determine how processing occurs
     total = None
+    quantity = None
+    rate = None
 
-
+    """
     # hack that allows python code fragments to recursively evaluate, however there is no good means to check for cycles
     def __getattribute__(self, name):
 
@@ -169,6 +354,8 @@ class rate_structure_item(yaml.YAMLObject):
         # we don't care about attributes that have nothing to do with the rate_structure_item yaml declared attrs
         else:
             return object.__getattribute__(self, name)
+
+    """
 
     def __str__(self):
 
