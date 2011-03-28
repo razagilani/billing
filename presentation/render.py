@@ -141,11 +141,18 @@ class SIBillDocTemplate(BaseDocTemplate):
 
 
 def progress(type,value):
-    # TODO fix module to support verbose flag passed in from the code that imports render_bill
+    # TODO fix module to support verbose flag passed in from cmd arg parser 
     #if (options.verbose):
     sys.stdout.write('.')
-     
-def main(options):
+    
+
+
+def stringify(d):
+    """ convert dictionary values that are None to empty string. """
+    d.update(dict([(k,'') for k,v in d.items() if v is None ]))
+    return d
+
+def render(inputbill, outputfile, backgrounds, verbose):
 
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name='BillLabel', fontName='VerdanaB', fontSize=10, leading=10))
@@ -266,21 +273,17 @@ def main(options):
     secondPage = PageTemplate(id=secondPageName,frames=[backgroundF2, measuredUsageHeaderF, measuredUsageF, chargeDetailsHeaderF, chargeDetailsF])
     #
 
-    doc = SIBillDocTemplate(options.output, pagesize=letter, showBoundary=0, allowSplitting=0)
+    doc = SIBillDocTemplate(outputfile, pagesize=letter, showBoundary=0, allowSplitting=0)
     doc.addPageTemplates([firstPage, secondPage])
-
-    # Bind to XML bill
-    #dom = bindery.parse(options.snob)
-    #bt = etree.parse(options.snob)
 
     # instantiate a bill which will be bound to reportlab
     from billing import bill
-    bill = bill.Bill(options.snob)
+    bill = bill.Bill(inputbill)
 
     Elements = []
 
     # grab the backgrounds that were passed in
-    backgrounds = options.background.split(",")
+    backgrounds = backgrounds.split(",")
 
 
     #
@@ -318,7 +321,7 @@ def main(options):
     Elements.append(Spacer(100,10))
     Elements.append(Paragraph("Service Location", styles['BillLabel']))
 
-    sa = bill.service_address
+    sa = stringify(bill.service_address)
     Elements.append(Paragraph(sa['addressee'], styles['BillField']))
     Elements.append(Paragraph(sa['street'], styles['BillField']))
     Elements.append(Paragraph(sa['city'] + " " + sa['state'] + " " + sa['postalcode'], styles['BillField']))
@@ -330,7 +333,7 @@ def main(options):
     
     # populate billing address
     Elements.append(Spacer(100,20))
-    ba = bill.billing_address
+    ba = stringify(bill.billing_address)
     Elements.append(Paragraph(ba['addressee'], styles['BillFieldLg']))
     Elements.append(Paragraph(ba['street'], styles['BillFieldLg']))
     Elements.append(Paragraph(ba['city'] + " " + ba['state'] + " " + ba['postalcode'], styles['BillFieldLg']))
