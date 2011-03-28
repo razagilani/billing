@@ -257,26 +257,34 @@ def bindRegisters(dom, verbose=False):
 
     return registers
 
-def main(options):
+def fetch_bill_data(server, olap_id, bill, period_begin, period_end, verbose):
     """
     """
 
     # Bind to XML bill
-    dom = bindery.parse(options.bill)
+    dom = bindery.parse(bill)
 
-    if (options.begin != None):
-        options.begin = datetime(int(options.begin[0:4]),int(options.begin[4:6]),int(options.begin[6:8]))
+    if (period_begin != None):
+        period_begin = datetime(int(period_begin[0:4]),int(period_begin[4:6]),int(period_begin[6:8]))
         
-    if (options.end != None):
-        options.end = datetime(int(options.end[0:4]),int(options.end[4:6]),int(options.end[6:8]))
+    if (period_end != None):
+        period_end = datetime(int(period_end[0:4]),int(period_end[4:6]),int(period_end[6:8]))
 
     # ToDo: check option values for correctness
-    dom = usageDataToVirtualRegister(options.install, 
+    dom = usageDataToVirtualRegister(olap_id, 
                                          dom, 
-                                         options.server,
-                                         options.begin,
-                                         options.end,
-                                         options.verbose)
+                                         server,
+                                         period_begin,
+                                         period_end,
+                                         verbose)
+
+    xml = dom.xml_encode()
+
+    if (options.readonly == False):
+        if (options.verbose):
+            print "Updating bill " + options.bill
+
+        XMLUtils().save_xml_file(xml, options.bill, options.user, options.password)
     return dom
 
 if __name__ == "__main__":
@@ -318,12 +326,5 @@ if __name__ == "__main__":
     else:
         print "Meter currentreaddate overridden."
 
-    dom = main(options)
+    fetch_bill_data(options.server, options.install, options.bill, options.begin, options.end, options.verbose)
     
-    xml = dom.xml_encode()
-
-    if (options.readonly == False):
-        if (options.verbose):
-            print "Updating bill " + options.bill
-
-        XMLUtils().save_xml_file(xml, options.bill, options.user, options.password)
