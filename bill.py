@@ -151,17 +151,22 @@ class Bill(object):
             for meter in self.xpath("/ub:bill/ub:measuredusage[@service='"+service+"']/ub:meter"):
                 for register in meter.findall("ub:register[@shadow='false']", namespaces={'ub':'bill'} ):
 
-                    identifier = register.find("ub:identifier", namespaces={'ub':'bill'}).text
-                    description = register.find("ub:description", namespaces={'ub':'bill'}).text
-                    units = register.find("ub:units", namespaces={'ub':'bill'}).text
+                    identifier = register.find("ub:identifier", namespaces={'ub':'bill'})
+                    identifier = identifier.text if identifier is not None else None
+
+                    description = register.find("ub:description", namespaces={'ub':'bill'})
+                    description = description.text if description is not None else None
+
+                    units = register.find("ub:units", namespaces={'ub':'bill'})
+                    units = units.text if units is not None else None
 
                     # TODO optional quantize
-                    total = register.find("ub:total", namespaces={'ub':'bill'}).text
-                    total = Decimal(total).quantize(Decimal(str(.01)))
+                    total = register.find("ub:total", namespaces={'ub':'bill'})
+                    total = Decimal(total.text).quantize(Decimal(str(.00))) if total is not None else None
 
                     shadow_register = meter.find("ub:register[@shadow='true'][ub:identifier='"+identifier+"']",namespaces={'ub':'bill'})
-                    shadow_total = shadow_register.find("ub:total", namespaces={'ub':'bill'}).text
-                    shadow_total = Decimal(shadow_total).quantize(Decimal(str(.01)))
+                    shadow_total = shadow_register.find("ub:total", namespaces={'ub':'bill'})
+                    shadow_total = Decimal(shadow_total.text).quantize(Decimal(str(.00))) if shadow_total is not None else None
 
                     measured_usages[service] = {
                         "identifier": identifier,
@@ -210,9 +215,14 @@ class Bill(object):
                 for charges in chargegroup.findall("ub:charges[@type='hypothetical']", namespaces={"ub":"bill"}):
                     for charge in charges.findall("ub:charge", namespaces={"ub":"bill"}):
                         
-                        description = charge.find("ub:description", namespaces={'ub':'bill'}).text
+                        description = charge.find("ub:description", namespaces={'ub':'bill'})
+                        description = description.text if description is not None else None
 
-                        quantity = charge.find("ub:quantity", namespaces={'ub':'bill'}).text
+                        quantity = charge.find("ub:quantity", namespaces={'ub':'bill'})
+                        quantity = quantity.text if quantity is not None else None
+
+
+                        # TODO review lxml api for a better method to access attributes
                         quantity_units = charge.xpath("ub:quantity/@units", namespaces={'ub':'bill'})
                         if (len(quantity_units)):
                             quantity_units = quantity_units[0]
@@ -220,6 +230,7 @@ class Bill(object):
                             quantity_units = ""
 
                         # TODO helper to quantize based on units
+                        # TODO not sure we want to quantize here. think it over.
                         if (quantity_units.lower() == 'therms'):
                             quantity = Decimal(quantity).quantize(Decimal('.00'))
                         elif (quantity_units.lower() == 'dollars'):
@@ -227,15 +238,18 @@ class Bill(object):
                         elif (quantity_units.lower() == 'kwh'):
                             quantity = Decimal(quantity).quantize(Decimal('.0'))
 
-                        rate = charge.find("ub:rate", namespaces={'ub':'bill'}).text
+                        rate = charge.find("ub:rate", namespaces={'ub':'bill'})
+                        rate = rate.text if rate is not None else None
+                        
+                        # TODO review lxml api for a better method to access attributes
                         rate_units = charge.xpath("ub:rate/@units", namespaces={'ub':'bill'})
                         if (len(rate_units)):
                             rate_units = rate_units[0]
                         else:
                             rate_units = ""
 
-                        total = charge.find("ub:total", namespaces={'ub':'bill'}).text
-                        total = Decimal(total).quantize(Decimal('.00'))
+                        total = charge.find("ub:total", namespaces={'ub':'bill'})
+                        total = Decimal(total.text).quantize(Decimal('.00')) if total is not None else None
 
                         hypothetical_details[service].append({
                             'description': description,
