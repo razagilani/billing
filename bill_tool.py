@@ -1,33 +1,43 @@
 #!/usr/bin/python
-
 """
 Command line front end for processing and rendering bills.
 """
 
+import os
+
 # handle command line options
 from optparse import OptionParser
-from billing.presentation import render as r
-from billing.processing import process as p
+from billing.presentation import render
+from billing.processing import process
+from billing.processing import state
+from billing.processing import fetch_bill_data as fbd
 
 if __name__ == "__main__":
     parser = OptionParser()
 
+    # TODO: --inputbill and --outputbill should become --inputsource and --outputsource (or something)
+    # and then create input as inputsource/account/sequence etc...
+    parser.add_option("--source", dest="source", help="Source location of bill to acted on", metavar="FILE")
+    parser.add_option("--destination", dest="destination", help="Destination location of bill to be targeted", metavar="FILE")
 
-    # old render_bill options (now render.py)
+    parser.add_option("--account", dest="account", help="Customer billing account")
+    parser.add_option("--sequence", dest="sequence", help="Bill sequence number")
+
+    # username and password for web services & db
+    parser.add_option("--user", dest="user", default='prod', help="User account name.")
+    parser.add_option("--password", dest="password", help="User account name.")
+
     # TODO: merge -s and -o into --input and --output or something
+
+    # Generate a PDF from bill xml
     parser.add_option("--render", action="store_true", dest="render", help="Render a bill")
     parser.add_option("-s", "--snob", dest="snob", help="Convert bill to PDF", metavar="FILE")
     parser.add_option("-o", "--output", dest="output", help="PDF output file", metavar="FILE")
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="Print progress to stdout.")
     parser.add_option("-b", "--background", dest="background", default="EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png", help="Background file names in comma separated page order. E.g. -b foo-page1.png,foo-page2.png")
 
-    # old bill_tool options (now process.py)
-    # TODO: --inputbill and --outputbill should become --input and --output
-    parser.add_option("--inputbill", dest="inputbill", help="Previous bill to acted on", metavar="FILE")
-    parser.add_option("--outputbill", dest="outputbill", help="Next bill to be targeted", metavar="FILE")
-    parser.add_option("-a", "--amountpaid", dest="amountpaid", help="Amount paid on previous bill")
-    parser.add_option("-u", "--user", dest="user", default='prod', help="Bill database user account name.")
-    parser.add_option("-p", "--password", dest="password", help="Bill database user account name.")
+    # Process bill
+    parser.add_option("--amountpaid", dest="amountpaid", help="Amount paid on previous bill")
     parser.add_option("--roll", dest="roll", action="store_true", help="Roll the bill to the next period.")
     parser.add_option("--copyactual", action="store_true", dest="copyactual", help="Copy actual charges to hypothetical charges.")
     parser.add_option("--sumhypothetical", action="store_true", dest="sumhypothetical", help="Summarize hypothetical charges.")
@@ -42,114 +52,148 @@ if __name__ == "__main__":
     # TODO: make this commit the bill, parameterize due date, etc...
     parser.add_option("--issuedate",  dest="issuedate", help="Set the issue and due dates of the bill. Specify issue date YYYY-MM-DD")
 
+    # state db for processing
+    parser.add_option("--commit", action="store_true", dest="commit", help="Update bill in state db as processed")
+    parser.add_option("--begin", dest="begin", help="RE bill period begin")
+    parser.add_option("--end", dest="end", help="RE bill period end")
+
+    # fetch bill data
+    parser.add_option("--fetch", action="store_true", dest="fetch", help="Fetch bill data")
+    parser.add_option("--olap", dest="olap_id", help="Bind to data from olap NAME. e.g. daves ", metavar="NAME")
+    # ToDo: bind to fuel type and begin period in bill 
+    parser.add_option("--server", dest="server", default='http://duino-drop.appspot.com/', help="Location of a server that OLAP class Splinter() can use.")
+
     (options, args) = parser.parse_args()
 
-    if (options.render):
-
-        # handle render options
-        if (options.snob == None):
-            print "SNOB must be specified."
-            exit()
-
-        if (options.output == None):
-            print "Output file must be specified."
-            exit()
-
-        r.main(options)
+    if (options.account == None):
+        print "Account must be specified."
         exit()
 
-    if (options.inputbill == None):
+    if (options.sequence == None):
+        print "Sequence must be specified."
+        exit()
+
+    if (options.source == None):
         print "Input bill must be specified."
         exit()
 
-    if (options.outputbill == None):
-        print "Using %s for output." % options.inputbill
-        options.outputbill = options.inputbill
+    # XML DB bill locations
+    inputbill_xml = options.source + "/" + options.account + "/" + options.sequence + ".xml"
+
+    # handle old fetch_bill_data
+    if (options.fetch):
+        fbd.fetch_bill_data(options.server, options.olap_id, inputbill_xml, options.begin, options.end, options.verbose)
+
+    # handle state db operations
+    if (options.commit):
+        # TODO: snarf begin and end from bill itself
+        state.commit_bill(options.account, options.sequence, inputbill_xml, options.begin, options.end) 
+
+    if (options.render):
+
+        if (options.destination == None):
+            print "Destination must be specified."
+            exit()
+
+        # PDF system locations
+        outputbill_pdf = os.path.join(options.destination, options.account, options.sequence + ".pdf")
+
+        render.render(inputbill_xml, outputbill_pdf, options.background, options.verbose)
+        exit()
 
     if (options.roll):
-        if (options.inputbill == options.outputbill):
-            print "Input bill and output bill should not match."
+        if (options.destination == None):
+            print "Destination must be specified."
             exit()
+
         if (options.amountpaid == None):
             print "Specify --amountpaid"
             exit()
-        else:
-            p.Process().roll_bill(options.inputbill, options.outputbill, options.amountpaid, options.user, options.password)
-            exit()
+
+        outputbill_xml = options.destination + "/" + options.account + "/" + str(int(options.sequence)+1) + ".xml"
+        process.Process().roll_bill(inputbill_xml, outputbill_xml, options.amountpaid, options.user, options.password)
+        exit()
+
+    if (options.destination == None):
+        print "Using %s for output." % options.source
+        options.destination = options.source
+
+    outputbill_xml = options.destination + "/" + options.account + "/" + options.sequence + ".xml"
+    print "Output Bill XML Path " + outputbill_xml
 
     if (options.sumhypothetical):
-        if (options.inputbill != options.outputbill):
+        if (inputbill_xml != outputbill):
             print "Input bill and output bill should be the same."
             exit()
-        p.Process().sum_hypothetical_charges(options.inputbill, options.outputbill, options.user, options.password)
+        process.Process().sum_hypothetical_charges(inputbill, outputbill, options.user, options.password)
         exit()
 
     if (options.copyactual):
-        if (options.inputbill != options.outputbill):
+        if (inputbill_xml != outputbill_xml):
             print "Input bill and output bill should be the same."
             exit()
-        p.Process().copy_actual_charges(options.inputbill, options.outputbill, options.user, options.password)
+        process.Process().copy_actual_charges(inputbill_xml, outputbill_xml, options.user, options.password)
         exit()
 
     if (options.sumactual):
-        if (options.inputbill != options.outputbill):
+        if (inputbill_xml != outputbill_xml):
             print "Input bill and output bill should be the same."
             exit()
-        p.Process().sum_actual_charges(options.inputbill, options.outputbill, options.user, options.password)
+        process.Process().sum_actual_charges(inputbill_xml, outputbill_xml, options.user, options.password)
         exit()
 
     if (options.sumbill):
-        if (options.inputbill != options.outputbill):
+        if (inputbill_xml != outputbill_xml):
             print "Input bill and output bill should be the same."
             exit()
         if (options.discountrate):
-            p.Process().sumbill(options.inputbill, options.outputbill, options.discountrate, options.user, options.password)
+            process.Process().sumbill(inputbill_xml, outputbill_xml, options.discountrate, options.user, options.password)
         else:
             print "Specify --discountrate"
         exit()
 
     if (options.bindrsactual):
-        if (options.inputbill != options.outputbill):
+        if (inputbill_xml != outputbill_xml):
             print "Input bill and output bill should be the same."
             exit()
         if (options.rsdb == None):
             print "Specify --rsdb"
             exit()
-        p.Process().bindrs(options.inputbill, options.outputbill, options.rsdb, False, options.user, options.password)
+        process.Process().bindrs(inputbill_xml, outputbill_xml, options.rsdb, False, options.user, options.password)
         exit()
 
     if (options.bindrshypothetical):
-        if (options.inputbill != options.outputbill):
+        if (inputbill_xml != outputbill_xml):
             print "Input bill and output bill should be the same."
             exit()
         if (options.rsdb == None):
             print "Specify --rsdb"
             exit()
-        p.Process().bindrs(options.inputbill, options.outputbill, options.rsdb, True, options.user, options.password)
+        process.Process().bindrs(inputbill_xml, outputbill_xml, options.rsdb, True, options.user, options.password)
         exit()
 
     if (options.calcstats):
-        if (options.inputbill == options.outputbill):
+        if (inputbill_xml == outputbill_xml):
             print "Input bill and output bill should not match. Specify previous bill as input bill."
             exit()
-        p.Process().calculate_statistics(options.inputbill, options.outputbill, options.user, options.password)
+        process.Process().calculate_statistics(inputbill_xml, outputbill_xml, options.user, options.password)
         exit()
 
     if (options.calcreperiod):
-        if (options.inputbill != options.outputbill):
+        if (inputbill_xml != outputbill_xml):
             print "Input bill and output bill should be the same."
             exit()
-        p.Process().calculate_reperiod(options.inputbill, options.outputbill, options.user, options.password)
+        process.Process().calculate_reperiod(inputbill_xml, outputbill_xml, options.user, options.password)
         exit()
 
     if (options.issuedate):
-        if (options.inputbill != options.outputbill):
+        if (inputbill_xml != outputbill_xml):
             print "Input bill and output bill should be the same."
             exit()
         if (options.issuedate == None):
             print "Specify --issuedate"
             exit()
-        p.Process().issue(options.inputbill, options.outputbill, options.issuedate, options.user, options.password)
+        process.Process().issue(inputbill_xml, outputbill_xml, options.issuedate, options.user, options.password)
         exit()
 
     print "Specify Process Operation"
