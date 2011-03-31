@@ -107,6 +107,7 @@ class RateStructureItem():
     # allow printing this object to evaluate the rate structure properties
     # __str__ seems to bury exceptions, so not necessary the best thing 
     # to have enabled during development.
+    #TODO: better name
     deepprint = False
 
     # set by the ratestructure that contains the rate_structure_items
@@ -126,17 +127,22 @@ class RateStructureItem():
             # because we cover these RSI instance attributes 
             # with an @property decorator to encapsulate
             # functionality required to dynamically 
-            # evaluate those attributes
+            # evaluate those attributes and return the computed Decimal value
 
             # if a value exists in the rate
             value = props[key]
             if (value is not None):
                 # use that value but change it to a Decimal if it is a float or int
-                value = value if type(value) == str else Decimal(str(value))
+                #value = value if type(value) == str else Decimal(str(value))
+                # make sure everything is a string
+                value = str(value)
                 setattr(self, "_"+key, value)
                 print "%s - %s:%s" % (key, props[key], str(type(value)))
             else:
                 print "Warning: %s %s is an empty property" % (props["descriptor"], key)
+                # Don't add the attr the property since it has no value and its only contribution 
+                # would be to make for None type checking all over the place.
+
 
     @property
     def descriptor(self):
@@ -147,56 +153,51 @@ class RateStructureItem():
 
     def evaluate_rsi(self, rsi_value):
         """
-        An RSI value may be one of a String as in the case of an expression,
-        a Decimal as in the case of 
+        An RSI value is an str that has an expression that may be evaluated.
+        An RSI expression can be as simpe as a number, or as complex as a Python
+        statement that references values of other RSIs.
         """
 
-        assert type(rsi_value) in [str, Decimal, type(None)]
+        assert type(rsi_value) is str
 
-        if type(rsi_value) is Decimal:
-            return rsi_value
-
-        elif type(rsi_value) is str:
-            result = None
-            try:
-                result = eval(rsi_value, self.ratestructure.__dict__)
-            except RuntimeError as re:
-                print "Runtime Error"
-                print str(re)
-                print('Exception: %s' % re)
-            except TypeError as te:
-                print "Type Error"
-                print str(te)
-                print('Exception: %s' % te)
-            return Decimal(str(result))
-        elif type(rsi_value) is type(None):
-            print "%s: Empty value" % self._descriptor
-            return None
-            
-
+        result = None
+        try:
+            result = eval(rsi_value, self.ratestructure.__dict__)
+        except RuntimeError as re:
+            print "Runtime Error"
+            print str(re)
+            print('Exception: %s' % re)
+            # TODO: set RSI state to track recursion.
+        #except TypeError as te:
+        #    print "Type Error"
+        #    print str(te)
+        #    print('Exception: %s' % te)
+        return result
 
     @property
     def total(self):
         """
+        Totals are Decimals computed from RSI expressions.
         """
 
-        if hasattr(self, "_total") and self._total is not None:
-            # it is either a string or a decimal
-            return self.evaluate_rsi(self._total)
+        if hasattr(self, "_total"):
+            result = self.evaluate_rsi(self._total)
+            return Decimal(str(result))
 
-        # total wasn't defined in RS yaml, so it must be computed
+        # total isn't defined in by RSI, so it must be computed
         else:
 
             # total must be computed from rate and/or quantity.
 
             # TODO: consider the meaning of the possible existing rate and quantity for the RSI
-            # even though it has a total.  What if r and q are set and don't equal total?!
+            # even though it has a total.  What if r and q are set and don't equal a total that has been set?!
 
             # TODO: it total exists, and either rate or quantity is missing, why not solve for
             # the missing term?
 
             # Access the public interface for quantity and rate
-            # so that quantity and rate evaluate themselves
+            # so that quantity and rate evaluate themselves and 
+            # return Decimals that may be used for computation.
             q = self.quantity
             r = self.rate
                 
@@ -233,28 +234,8 @@ class RateStructureItem():
     def quantity(self):
 
         if hasattr(self, "_quantity"):
-            assert(type(self._quantity) in [str, Decimal, type(None) ])
-            if type(self._quantity) is str:
-                # quantity is an expression and so must be 
-                # evaluated in the context of the ratestructure
-                quantity = None
-                try:
-                    quantity = eval(self._quantity, self.ratestructure.__dict__)
-                    print "quantity evaluated to type %s" % type(quantity)
-                except RuntimeError as re:
-                    print "Runtime Error"
-                    print str(re)
-                    print('Exception: %s' % re)
-                # quantity must be returned as a Decimal
-                return Decimal(str(quantity))
-            elif type(self._quantity) is Decimal:
-                # quantity explicity set in yaml, so just return in
-                return self._quantity
-            else:
-                # TODO: figure design out for quantities that are externally set
-                print "Quantity does not have a value"
-        else:
-            print "%s: Quantity does not exist" % self._descriptor
+            result = self.evaluate_rsi(self._quantity)
+            return Decimal(str(result))
 
         # quantity property does not exist
         return None
@@ -274,26 +255,8 @@ class RateStructureItem():
     def rate(self):
 
         if hasattr(self, "_rate"):
-            assert(type(self._rate) in [str, Decimal, type(None)])
-            if type(self._rate) is str:
-                # rate is an expression, and so must be 
-                # evaluated in the context of the ratestructure
-                rate = None
-                try:
-                    rate = eval(self._rate, self.ratestructure.__dict__)
-                except RuntimeError as re:
-                    print "Runtime Error"
-                    print str(re)
-                    print('Exception: %s' % re)
-                return rate
-            elif type(self._rate) is Decimal:
-                # rate was explicity set in yaml, so just return it
-                return self._rate
-            else:
-                # TODO: figure design out for rates that are externally set
-                print "Rate does not have a value"
-        else:
-            print "%s: Rate does not exist" % self._descriptor
+            result = self.evaluate_rsi(self._rate)
+            return Decimal(str(result))
 
         # rate property does not exist
         return None
@@ -304,12 +267,6 @@ class RateStructureItem():
             return self.rateunits
         else:
             return None
-
-    #@total.setter
-    #def total(self, total):
-        #print "Property set " + str(total)
-        #self._total = total
-
 
     def __str__(self):
 
