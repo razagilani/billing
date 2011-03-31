@@ -340,14 +340,16 @@ class Process():
 
             # now load the rate structure and configure it
             # load all the documents contained within the single specified RS file
-            for rs in yaml.load_all(file(rsdb + os.sep 
-                + os.path.join(rsbinding_utilbill, os.path.join(account, id)) + ".yaml")):
+            # old style yaml files
+            #for rs in yaml.load_all(file(rsdb + os.sep + os.path.join(rsbinding_utilbill, os.path.join(account, id)) + ".yaml")):
 
-                print "*** Loaded Rate Structure for " + service
-                print rs
+                # print "*** Loaded Rate Structure for " + service
+                # print rs
             
-            # TODO: only the last rate structure is used.  Use the one that has a valid date
-            rs.configure()
+            rs = yaml.load(file(os.path.join(rsdb, rsbinding_utilbill, account, id+".yaml")))
+            # TODO: Check ratestructure valid date ranges
+            rs = rate_structure.RateStructure(rs)
+            #rs.configure()
 
             # acquire actual meter registers for this service
             actual_registers = self.get_elem(utilbill, "/ub:bill/ub:measuredusage[@service='" + 
@@ -403,7 +405,7 @@ class Process():
 
                 # if there is a description present in the rate structure, override the value in xml
                 # if there is no description in the RSI, leave the one in XML
-                if (hasattr(rsi, 'description')):
+                if (rsi.description is not None):
                     description = charge.find("{bill}description")
                     if (description is None):
                         # description element missing, so insert one
@@ -414,12 +416,12 @@ class Process():
                     description.text = rsi.description
 
                 # if the quantity is present in the rate structure, override value in XML
-                if (hasattr(rsi, 'quantity')):
+                if (rsi.quantity is not None):
                     quantity = charge.find("{bill}quantity")
                     if (quantity is None):
                         # quantity element is missing, so insert one
                         attribs = {}
-                        if (hasattr(rsi, "quantityunits")):
+                        if (rsi.quantityunits is not None):
                             attribs["units"] = rsi.quantityunits
                             
                         quantity = etree.Element("{bill}quantity", attribs)
@@ -432,12 +434,12 @@ class Process():
                     quantity.text = str(rsi.quantity)
 
                 # if the rate is present in the rate structure, override value in XML
-                if (hasattr(rsi, 'rate')):
+                if (rsi.rate is not None):
                     rate = charge.find("{bill}rate")
                     if (rate is None):
                         # rate element missing, so insert one
                         attribs = {}
-                        if (hasattr(rsi, "rateunits")):
+                        if (rsi.rateunits is not None):
                             attribs["units"] = rsi.rateunits
                         rate = etree.Element("{bill}rate", attribs)
                         # insert as preceding sibling to the last element which is total
@@ -465,8 +467,6 @@ class Process():
             for rsi in rs.rates:
                 if (hasattr(rsi, 'bound') == False):
                     print "*** RSI was not bound " + str(rsi)
-
-        print "*** Evaluated ratestructure to: " + str(rs)
 
 
         XMLUtils().save_xml_file(etree.tostring(tree, pretty_print=True), outputbill, user, password)
