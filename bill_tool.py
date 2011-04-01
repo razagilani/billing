@@ -77,17 +77,29 @@ if __name__ == "__main__":
         print "Input bill must be specified."
         exit()
 
+    if (options.destination == None):
+        print "Using %s for output." % options.source
+        options.destination = options.source
+
+    if (options.calcstats):
+        inputbill_xml = options.source + "/" + options.account + "/" + str(int(options.sequence)-1) + ".xml"
+        outputbill_xml = options.destination + "/" + options.account + "/" + options.sequence + ".xml"
+        process.Process().calculate_statistics(inputbill_xml, outputbill_xml, options.user, options.password)
+        exit()
+
     # XML DB bill locations
     inputbill_xml = options.source + "/" + options.account + "/" + options.sequence + ".xml"
 
     # handle old fetch_bill_data
     if (options.fetch):
-        fbd.fetch_bill_data(options.server, options.olap_id, inputbill_xml, options.begin, options.end, options.verbose)
+        fbd.fetch_bill_data(options.server, options.user, options.password, options.olap_id, inputbill_xml, options.begin, options.end, options.verbose)
+        exit()
 
     # handle state db operations
     if (options.commit):
         # TODO: snarf begin and end from bill itself
-        state.commit_bill(options.account, options.sequence, inputbill_xml, options.begin, options.end) 
+        state.commit_bill(options.user, options.password, options.account, options.sequence, inputbill_xml, options.begin, options.end) 
+        exit()
 
     if (options.render):
 
@@ -114,18 +126,16 @@ if __name__ == "__main__":
         process.Process().roll_bill(inputbill_xml, outputbill_xml, options.amountpaid, options.user, options.password)
         exit()
 
-    if (options.destination == None):
-        print "Using %s for output." % options.source
-        options.destination = options.source
+
 
     outputbill_xml = options.destination + "/" + options.account + "/" + options.sequence + ".xml"
     print "Output Bill XML Path " + outputbill_xml
 
     if (options.sumhypothetical):
-        if (inputbill_xml != outputbill):
+        if (inputbill_xml != outputbill_xml):
             print "Input bill and output bill should be the same."
             exit()
-        process.Process().sum_hypothetical_charges(inputbill, outputbill, options.user, options.password)
+        process.Process().sum_hypothetical_charges(inputbill_xml, outputbill_xml, options.user, options.password)
         exit()
 
     if (options.copyactual):
@@ -172,12 +182,6 @@ if __name__ == "__main__":
         process.Process().bindrs(inputbill_xml, outputbill_xml, options.rsdb, True, options.user, options.password)
         exit()
 
-    if (options.calcstats):
-        if (inputbill_xml == outputbill_xml):
-            print "Input bill and output bill should not match. Specify previous bill as input bill."
-            exit()
-        process.Process().calculate_statistics(inputbill_xml, outputbill_xml, options.user, options.password)
-        exit()
 
     if (options.calcreperiod):
         if (inputbill_xml != outputbill_xml):
