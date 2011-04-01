@@ -10,11 +10,10 @@ import MySQLdb
 from optparse import OptionParser
 
 
-def commit_bill(account, sequence, uri, start, end):
+def commit_bill(user, password, account, sequence, uri, start, end):
 
     try:
-        # TODO: remove password string
-        conn = MySQLdb.connect(host="localhost", user="dev", passwd="dev", db="skyline")
+        conn = MySQLdb.connect(host="tyrell", user=user, passwd=password, db="skyline")
 
         commit_bill = "call commit_bill(%s, %s, %s, %s, %s)"
 
