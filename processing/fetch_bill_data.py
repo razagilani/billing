@@ -257,7 +257,7 @@ def bindRegisters(dom, verbose=False):
 
     return registers
 
-def fetch_bill_data(server, olap_id, bill, period_begin, period_end, verbose):
+def fetch_bill_data(server, user, password, olap_id, bill, period_begin, period_end, verbose):
     """
     """
 
@@ -280,11 +280,10 @@ def fetch_bill_data(server, olap_id, bill, period_begin, period_end, verbose):
 
     xml = dom.xml_encode()
 
-    if (options.readonly == False):
-        if (options.verbose):
-            print "Updating bill " + options.bill
+    if (verbose):
+        print "Updating bill %s" % (bill)
 
-        XMLUtils().save_xml_file(xml, options.bill, options.user, options.password)
+        XMLUtils().save_xml_file(xml, bill, user, password)
     return dom
 
 if __name__ == "__main__":
