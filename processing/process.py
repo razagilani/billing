@@ -617,7 +617,7 @@ class Process():
         inputtree = etree.parse(inputbill)
         outputtree = etree.parse(outputbill)
 
-        issuedate = datetime.datetime.strptime(options.issuedate, "%Y-%m-%d")
+        issuedate = datetime.datetime.strptime(issuedate, "%Y-%m-%d")
         # TODO: parameterize for dependence on customer 
         duedate = issuedate + datetime.timedelta(days=30)
 
