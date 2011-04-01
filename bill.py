@@ -269,7 +269,7 @@ class Bill(object):
         hypothetical_totals = {}
         for service in self.xpath("/ub:bill/ub:details/@service"):
             total = self.xpath("/ub:bill/ub:details[@service='"+service+"']/ub:total[@type='hypothetical']")[0].text
-            hypothetical_totals[service] = total
+            hypothetical_totals[service] = Decimal(total).quantize(Decimal('.00'))
 
         return hypothetical_totals
 
