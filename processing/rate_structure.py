@@ -119,7 +119,8 @@ class RateStructureItem():
     calculate them.  A notable example is total, which is usually not set in the rs yaml except for
     fixed charges, like a customer charge. 
     RSIs track their values as instance variables that match the properties in yaml but prepended with an underscore.
-    RSIs internally represent the properties from yaml as strings, but externally return Decimals.
+    RSIs internally represent the properties from yaml as strings, but externally return the type from the eval(expr)
+    operation.
     """
 
     # allow printing this object to evaluate the rate structure properties
@@ -135,7 +136,7 @@ class RateStructureItem():
         """
         Instantiate an RSI with a dictionary of RSI properties that come from the 'rates:' list in YAML
         file used to instantiate the parent RateStructure.
-        There are two allowed types for the values of an RSI property: String and Decimal.
+        The allowed types for the values of an RSI property are those that are python native: str, float or int.
         """
 
         self._rate_structure = rate_structure
@@ -147,12 +148,12 @@ class RateStructureItem():
             # because we cover these RSI instance attributes 
             # with an @property decorator to encapsulate
             # functionality required to dynamically 
-            # evaluate those attributes and return the computed Decimal value
+            # evaluate those attributes and return the results of eval()
 
             # if a value exists in the rate
             value = props[key]
             if (value is not None):
-                # make sure everything is a string
+                # make sure everything is a string for the eval() function
                 value = str(value)
                 # place these propery values in self, but prepend the _ so @property methods of self
                 # do not access them since @property methods are used for expression evaluation
@@ -201,6 +202,7 @@ class RateStructureItem():
             raise re
 
         except NameError as ne:
+            print str(ne)
             raise NoSuchRSIError(self.descriptor, rsi_value)
 
         except SyntaxError as se:
@@ -214,13 +216,12 @@ class RateStructureItem():
     @property
     def total(self):
         """
-        Totals are Decimals computed from RSI expressions.
         """
 
         if hasattr(self, "_total"):
-            result = self.evaluate_rsi(self._total)
 
-            return Decimal(str(result)) if result is not None else None
+            result = self.evaluate_rsi(self._total)
+            return result if result is not None else None
 
         # total isn't defined in by RSI, so it must be computed
         else:
@@ -233,8 +234,7 @@ class RateStructureItem():
             # TODO: it total exists, and either rate or quantity is missing, why not solve for
             # the missing term?
 
-            # Access the public interface for quantity and rate
-            # so that quantity and rate evaluate themselves 
+            # Look for a quantity, but it is ok if it does not exist - provided there is a rate
             q = self.quantity if hasattr(self, "_quantity") else None
 
             # Look for a rate and let the exception fly if it does not exist
@@ -242,8 +242,9 @@ class RateStructureItem():
                 
             # A quantity and rate must be set to evaluate total.
             if q is not None:
-                self._total = str(q * r)
+                print "%s: %s %s (%s)" % (self.descriptor, q, r, self.description)
                 #print "%s: %s = %s * %s (%s)" % (self.descriptor, self._total, q, r, self.description)
+                self._total = str(q * r)
 
             # No quantity, but there is a rate. 
             # A flat rate assumption can be made.
@@ -253,7 +254,9 @@ class RateStructureItem():
             rule = self._roundrule if hasattr(self, "_roundrule") else None
             # we can set self._total if we want to compute only once
             #TODO: flag for compute once
-            return Decimal(str(self._total)).quantize(Decimal('.01'), rule)
+
+            # perform decimal round rule.  Preserve native type. 
+            return float(Decimal(str(self._total)).quantize(Decimal('.01'), rule))
 
     @property
     def description(self):
@@ -268,7 +271,7 @@ class RateStructureItem():
 
         if hasattr(self, "_quantity"):
             result = self.evaluate_rsi(self._quantity)
-            return Decimal(str(result))
+            return result
 
         raise NoPropertyError(self._descriptor, "%s.quantity does not exist" % self._descriptor)
 
@@ -289,7 +292,7 @@ class RateStructureItem():
 
         if hasattr(self, "_rate"):
             result = self.evaluate_rsi(self._rate)
-            return Decimal(str(result))
+            return result
 
         raise NoPropertyError(self._descriptor, "%s.rate does not exist" % self._descriptor)
 
