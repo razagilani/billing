@@ -227,6 +227,11 @@ function renderWidgets()
                         fieldLabel: value.service + ' Present Read Date',
                         name: 'presentreaddate-'+value.service,
                         value: value.presentreaddate,
+                    }),
+                    new Ext.form.NumberField({
+                        fieldLabel: value.service + ' Register Total',
+                        name: 'regtotal-'+value.service,
+                        value: value.regtotal,
                     })
                 )
             }
@@ -897,6 +902,8 @@ function renderWidgets()
     ////////////////////////////////////////////////////////////////////////////
 
 
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // assemble all of the widgets in a tabpanel with a header section
     var viewport = new Ext.Viewport
     (
@@ -913,7 +920,8 @@ function renderWidgets()
             {
               border: false,
             },
-            autoLoad: {url:'header', scripts:true},
+            //autoLoad: {url:'green_stripe.jpg', scripts:true},
+            contentEl: 'header',
           },{
             region: 'center',
             xtype: 'tabpanel',
@@ -953,7 +961,19 @@ function renderWidgets()
                 ]
               }
             ]
-          }
+          },{
+            region: 'south',
+            border: false,
+            xtype: 'panel',
+            layout: 'fit',
+            height: 30,
+            layoutConfig:
+            {
+              border: false,
+            },
+            //autoLoad: {url:'green_stripe.jpg', scripts:true},
+            contentEl: 'footer',
+          },
         ]
       }
     );
