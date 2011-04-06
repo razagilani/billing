@@ -72,11 +72,14 @@ function getUBMeasuredUsagePeriods(bill)
             // TODO: if there is no presentReadDate, guess it vs assign priorReadDate
             var presentReadDate = presentReadDateElem.hasChildNodes() ? presentReadDateElem.childNodes[0].nodeValue : priorReadDate;
 
+            var regTotal = evaluateXPath(value, "ub:meter/ub:register[@type='total' and @shadow='false']/ub:total")[0].childNodes[0].nodeValue;
+
             periods.push(
                 {
                     'service': value.attributes['service'].value,
                     'priorreaddate': priorReadDate,
                     'presentreaddate': presentReadDate,
+                    'regtotal': regTotal
                 }
             )
         }
@@ -91,13 +94,20 @@ function setUBMeasuredUsagePeriods(bill, periods)
     for (var key in periods)
     {
         // form returns ubPeriods as associative array in the name value pair format of 
-        // key: [priorreaddate|currentreaddate]-[service]
-        // value: [date]
+        // key: [priorreaddate|currentreaddate|regtotal]-[service]
+        // value: [date|number]
         // strip out prefix on the name part of the nvp's that the form returns
 
         // TODO: be more careful on indices and fail gracefully
-        var nodeList = evaluateXPath(bill, "/ub:bill/ub:measuredusage[@service='"+key.substring(key.indexOf('-')+1)+"']/ub:meter/ub:"+key.substring(0,key.indexOf('-')));
-        nodeList[0].textContent = periods[key].format("Y-m-d");
+
+        // if it is a readdate
+        if (key.indexOf("readdate") != -1 ) {
+          var nodeList = evaluateXPath(bill, "/ub:bill/ub:measuredusage[@service='"+key.substring(key.indexOf('-')+1)+"']/ub:meter/ub:"+key.substring(0,key.indexOf('-')));
+          nodeList[0].textContent = periods[key].format("Y-m-d");
+        } else if (key.indexOf("regtotal") != -1 ) {
+          var nodeList = evaluateXPath(bill, "/ub:bill/ub:measuredusage[@service='"+key.substring(key.indexOf('-')+1)+"']/ub:meter/ub:register[@type='total' and @shadow='false']/ub:total");
+          nodeList[0].textContent = periods[key];
+        }
     }
 }
 
