@@ -15,19 +15,98 @@ import cherrypy
 # template support
 import jinja2, os
 
-from billing.processing.bill_tool import BillTool
+import ConfigParser
+
+from billing.processing import process
 
 
+# TODO rename to ProcessBridge or something
 class BillToolBridge:
     """ A monolithic class encapsulating the behavior to:  handle an incoming http request """
     """ and invoke bill_tool. """
 
     src_prefix = dest_prefix = "http://tyrell:8080/exist/rest/db/skyline/bills/"
+    config = None
+
+    def __init__(self):
+        self.config = ConfigParser.RawConfigParser()
+        #print os.path.dirname(os.path.realpath(__file__))
+        config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'bill_tool_bridge.cfg')
+        if not self.config.read(config_file_path):
+            print "Creating config file"
+            self.config.add_section('xmldb')
+            self.config.set('xmldb', 'destination_prefix', 'http://tyrell:8080/exist/rest/db/skyline/bills/')
+            self.config.set('xmldb', 'source_prefix', 'http://tyrell:8080/exist/rest/db/skyline/bills/')
+            self.config.set('xmldb', 'password', 'sME5ayMbmKuwy7mM99Kq')
+            self.config.set('xmldb', 'user', 'prod')
+            self.config.add_section('http')
+            self.config.set('http', 'socket_port', '8185')
+            self.config.set('http', 'socket_host', '10.0.0.250')
+            self.config.add_section('rsdb')
+            self.config.set('rsdb', 'path', '/db/skyline/ratestructure/')
+
+
+            # Writing our configuration file to 'example.cfg'
+            with open(config_file_path, 'wb') as new_config_file:
+                self.config.write(new_config_file)
+
+            self.config.read(config_file_path)
+
+
 
     @cherrypy.expose
     def copyactual(self, src, dest, **args):
-        BillTool().copy_actual_charges(self.src_prefix + src, self.dest_prefix + dest,"prod", "sME5ayMbmKuwy7mM99Kq")
+        process.Process().copy_actual_charges(
+            self.config.get("xmldb", "source_prefix") + src, 
+            self.config.get("xmldb", "destination_prefix")+dest,
+            self.config.get("xmldb", "user"),
+            self.config.get("xmldb", "password")
+        )
 
+    @cherrypy.expose
+    def roll(self, src, dest, amount, **args):
+        process.Process().roll_bill(
+            self.config.get("xmldb", "source_prefix") + src, 
+            self.config.get("xmldb", "destination_prefix")+dest,
+            amount,
+            self.config.get("xmldb", "user"),
+            self.config.get("xmldb", "password")
+        )
+
+    @cherrypy.expose
+    def bindree(self, src, dest, **args):
+
+        # actual
+        process.Process().bindrs(
+            self.config.get("xmldb", "source_prefix") + src, 
+            self.config.get("xmldb", "destination_prefix")+dest,
+            self.config.get("rsdb", "path"),
+            False, 
+            self.config.get("xmldb", "user"),
+            self.config.get("xmldb", "password")
+        )
+
+
+        #hypothetical
+        process.Process().bindrs(
+            self.config.get("xmldb", "source_prefix") + src, 
+            self.config.get("xmldb", "destination_prefix")+dest,
+            self.config.get("rsdb", "path"),
+            True, 
+            self.config.get("xmldb", "user"),
+            self.config.get("xmldb", "password")
+        )
+
+        process.Process().calculate_reperiod(
+            self.config.get("xmldb", "source_prefix") + src, 
+            self.config.get("xmldb", "destination_prefix")+dest,
+            self.config.get("xmldb", "user"),
+            self.config.get("xmldb", "password")
+        )
+
+
+
+bridge = BillToolBridge()
 
 if __name__ == '__main__':
 
@@ -41,10 +120,10 @@ if __name__ == '__main__':
             'tools.response_headers.on': True,
         },
     }
-    cherrypy.config.update({ 'server.socket_host': "10.0.0.250",
-                             'server.socket_port': 8185,
+    cherrypy.config.update({ 'server.socket_host': bridge.config.get("http", "socket_host"),
+                             'server.socket_port': int(bridge.config.get("http", "socket_port")),
                              })
-    cherrypy.quickstart(BillToolBridge(), "/", config = local_conf)
+    cherrypy.quickstart(bridge, "/", config = local_conf)
 else:
     # WSGI Mode
     cherrypy.config.update({'environment': 'embedded'})
@@ -53,5 +132,5 @@ else:
         cherrypy.engine.start(blocking=False)
         atexit.register(cherrypy.engine.stop)
 
-    application = cherrypy.Application(BillToolBridge(), script_name=None, config=None)
+    application = cherrypy.Application(bridge, script_name=None, config=None)
 

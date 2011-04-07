@@ -87,6 +87,97 @@ function renderWidgets()
         });
     });
 
+    // forms for calling bill process operations
+
+    var billOperationButton = new Ext.SplitButton({
+        text: 'Process Bill',
+        handler: allOperations, // handle a click on the button itself
+        menu: new Ext.menu.Menu({
+            items: [
+                // these items will render as dropdown menu items when the arrow is clicked:
+                {text: 'Roll Period', handler: rollOperation},
+                {text: 'Bind RE&E Offset', handler: bindREEOperation},
+                {text: 'Bind Rate Structure', handler: function(){}},
+                {text: 'Sum', handler: function(){}},
+                {text: 'Issue', handler: function(){}},
+                {text: 'Render', handler: function(){}},
+                {text: 'Commit', handler: function(){}},
+            ]
+        })
+    });
+
+    function allOperations()
+    {
+    }
+
+    function bindREEOperation()
+    {
+        saveToXML(function() {
+
+            account = customerAccountCombo.getValue();
+            sequence = customerBillCombo.getValue();
+
+            Ext.Ajax.request({
+                url: 'http://'+location.host+'/billtool/bindree?'
+                    + 'src=' + account + '/' + sequence
+                    + '&dest=' + account + '/' + sequence,
+                disableCaching: true,
+                success: function () {
+                    // loads a bill from eXistDB
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+                            + '/' + customerBillCombo.getValue(),
+                       success: billLoaded,
+                       failure: billLoadFailed,
+                       disableCaching: true,
+                    });
+                },
+                failure: function () {
+                    alert("Bind REE response fail");
+                }
+            });
+        }, billDidNotSave);
+    }
+
+    function rollOperation()
+    {
+        // modal to accept amount paid
+        Ext.Msg.prompt('Amount Paid', 'Enter amount paid:', function(btn, text){
+            if (btn == 'ok')
+            {
+                var amountPaid = parseFloat(text)
+                saveToXML(function() {
+
+                    account = customerAccountCombo.getValue();
+                    sequence = customerBillCombo.getValue();
+                    // sequences come back from eXist as [seq].xml
+                    sequence = sequence.split(".",1);
+
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/billtool/roll?'
+                            + 'src=' + account + '/' + sequence + '.xml'
+                            + '&dest=' + account + '/' + (parseInt(sequence)+1) + '.xml'
+                            + '&amount=' + amountPaid,
+                        disableCaching: true,
+                        success: function () {
+                            // loads a bill from eXistDB
+                            Ext.Ajax.request({
+                                url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+                                    + '/' + (parseInt(sequence)+1) + '.xml',
+                               success: billLoaded,
+                               failure: billLoadFailed,
+                               disableCaching: true,
+                            });
+                        },
+                        failure: function () {
+                            alert("roll response fail");
+                        }
+                    });
+                }, billDidNotSave);
+            }
+        });
+    }
+
     ////////////////////////////////////////////////////////////////////////////
     // Bill Period tab
     //
@@ -935,7 +1026,8 @@ function renderWidgets()
                 //layout: 'fit',
                 items: [
                   customerAccountCombo,
-                  customerBillCombo
+                  customerBillCombo,
+                  billOperationButton
                 ],
               },{
                 title: 'Bill Periods',
