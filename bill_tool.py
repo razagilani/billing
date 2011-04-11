@@ -53,6 +53,8 @@ if __name__ == "__main__":
     parser.add_option("--issuedate",  dest="issuedate", help="Set the issue and due dates of the bill. Specify issue date YYYY-MM-DD")
 
     # state db for processing
+    parser.add_option("--host", dest="host")
+    parser.add_option("--database", dest="database")
     parser.add_option("--commit", action="store_true", dest="commit", help="Update bill in state db as processed")
     parser.add_option("--begin", dest="begin", help="RE bill period begin")
     parser.add_option("--end", dest="end", help="RE bill period end")
@@ -96,9 +98,12 @@ if __name__ == "__main__":
         exit()
 
     # handle state db operations
+    if (options.host is None or options.database is None):
+        print "Host and database must be specified"
+        exit()
     if (options.commit):
         # TODO: snarf begin and end from bill itself
-        state.commit_bill(options.user, options.password, options.account, options.sequence, inputbill_xml, options.begin, options.end) 
+        state.commit_bill(options.host, options.database, options.user, options.password, options.account, options.sequence, inputbill_xml, options.begin, options.end) 
         exit()
 
     if (options.render):
