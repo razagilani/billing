@@ -11,8 +11,8 @@ root_dir = os.path.dirname(os.path.abspath(__file__))
 exclude_from = 'fabexcludes.txt'
 
 def prepare_deploy():
-    fabops.local('tar cvfz /tmp/%s.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../%s' % (project_name, exclude_from, project_name))
-    fabops.local('tar cvfz /tmp/billing_processing.tar.z ../bill.py ../__init__.py ../processing/bill_tool.py ../processing/__init__.py')
+    fabops.local('tar czvf /tmp/%s.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../%s' % (project_name, exclude_from, project_name))
+    fabops.local('tar czvf /tmp/billing_processing.tar.z ../bill.py ../__init__.py ../processing/process.py ../processing/__init__.py ../processing/state.py')
 
 def deploy():
     prepare_deploy()
