@@ -10,10 +10,10 @@ import MySQLdb
 from optparse import OptionParser
 
 
-def commit_bill(user, password, account, sequence, uri, start, end):
+def commit_bill(host, db, user, password, account, sequence, uri, start, end):
 
     try:
-        conn = MySQLdb.connect(host="tyrell", user=user, passwd=password, db="skyline")
+        conn = MySQLdb.connect(host=host, user=user, passwd=password, db=db)
 
         commit_bill = "call commit_bill(%s, %s, %s, %s, %s)"
 
@@ -41,6 +41,37 @@ def commit_bill(user, password, account, sequence, uri, start, end):
         if (vars().has_key('conn') is True and type(conn) is MySQLdb.connections.Connection): 
             conn.close()
 
+def discount_rate(host, db, user, password, account):
+
+    try:
+        conn = MySQLdb.connect(host=host, user=user, passwd=password, db=db)
+
+        discount_query = "select discountrate from customer where account = %s"
+
+        cur = conn.cursor(MySQLdb.cursors.DictCursor)
+        cur.execute(discount_query, (account))
+        row = cur.fetchone()
+        print row
+        conn.commit()
+        cur.close()
+
+        return row['discountrate']
+
+    except MySQLdb.Error:
+        print "Database error"
+        raise
+
+    except:
+        print "Unexpected error:", sys.exc_info()[0]
+        raise
+
+    finally:
+        if (vars().has_key('cur') is True and type(cur) is MySQLdb.cursors.Cursor):
+            # it is safe to close a cursor multiple times
+            cur.close()
+
+        if (vars().has_key('conn') is True and type(conn) is MySQLdb.connections.Connection): 
+            conn.close()
 
 if __name__ == "__main__":
 

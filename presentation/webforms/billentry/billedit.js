@@ -98,7 +98,7 @@ function renderWidgets()
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
                 {text: 'Bind Rate Structure', handler: function(){}},
-                {text: 'Sum', handler: function(){}},
+                {text: 'Sum', handler: sumOperation},
                 {text: 'Issue', handler: function(){}},
                 {text: 'Render', handler: function(){}},
                 {text: 'Commit', handler: function(){}},
@@ -108,6 +108,36 @@ function renderWidgets()
 
     function allOperations()
     {
+    }
+
+    function sumOperation()
+    {
+        saveToXML(function() {
+
+            account = customerAccountCombo.getValue();
+            sequence = customerBillCombo.getValue();
+
+            Ext.Ajax.request({
+                url: 'http://'+location.host+'/billtool/sum?'
+                    + 'src=' + account + '/' + sequence
+                    + '&dest=' + account + '/' + sequence
+                    + '&account=' + account,
+                disableCaching: true,
+                success: function () {
+                    // loads a bill from eXistDB
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+                            + '/' + customerBillCombo.getValue(),
+                       success: billLoaded,
+                       failure: billLoadFailed,
+                       disableCaching: true,
+                    });
+                },
+                failure: function () {
+                    alert("Sum response fail");
+                }
+            });
+        }, billDidNotSave);
     }
 
     function bindREEOperation()
