@@ -18,9 +18,11 @@ import jinja2, os
 import ConfigParser
 
 from billing.processing import process
+from billing.processing import state
 
 
 # TODO rename to ProcessBridge or something
+# TODO don't require UI to pass in destination.
 class BillToolBridge:
     """ A monolithic class encapsulating the behavior to:  handle an incoming http request """
     """ and invoke bill_tool. """
@@ -37,13 +39,18 @@ class BillToolBridge:
             self.config.add_section('xmldb')
             self.config.set('xmldb', 'destination_prefix', 'http://tyrell:8080/exist/rest/db/skyline/bills/')
             self.config.set('xmldb', 'source_prefix', 'http://tyrell:8080/exist/rest/db/skyline/bills/')
-            self.config.set('xmldb', 'password', 'sME5ayMbmKuwy7mM99Kq')
+            self.config.set('xmldb', 'password', '[password]')
             self.config.set('xmldb', 'user', 'prod')
             self.config.add_section('http')
             self.config.set('http', 'socket_port', '8185')
             self.config.set('http', 'socket_host', '10.0.0.250')
             self.config.add_section('rsdb')
             self.config.set('rsdb', 'path', '/db/skyline/ratestructure/')
+            self.config.add_section('statedb')
+            self.config.set('statedb', 'host', 'localhost')
+            self.config.set('statedb', 'database', 'skyline')
+            self.config.set('statedb', 'user', 'dev')
+            self.config.set('statedb', 'password', '[password]')
 
 
             # Writing our configuration file to 'example.cfg'
@@ -104,6 +111,26 @@ class BillToolBridge:
             self.config.get("xmldb", "password")
         )
 
+    @cherrypy.expose
+    def sum(self, src, dest, account, **args):
+    
+        # get discount rate
+        discount_rate = state.discount_rate(
+            self.config.get("statedb", "host"),
+            self.config.get("statedb", "db"),
+            self.config.get("statedb", "user"),
+            self.config.get("statedb", "password"),
+            account
+        )
+
+        process.Process().sumbill(
+            self.config.get("xmldb", "source_prefix") + src, 
+            self.config.get("xmldb", "destination_prefix")+dest,
+            discount_rate,
+            self.config.get("xmldb", "user"),
+            self.config.get("xmldb", "password")
+        )
+        
 
 
 bridge = BillToolBridge()
