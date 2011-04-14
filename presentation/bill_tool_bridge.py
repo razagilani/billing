@@ -19,6 +19,9 @@ import ConfigParser
 
 from billing.processing import process
 from billing.processing import state
+from billing.processing import fetch_bill_data as fbd
+
+from billing import nexus_util as nu
 
 
 # TODO rename to ProcessBridge or something
@@ -81,7 +84,42 @@ class BillToolBridge:
         )
 
     @cherrypy.expose
-    def bindree(self, src, dest, **args):
+    def bindree(self, src, dest, account, **args):
+
+
+        print " inbind ree"
+
+        #import FBD, then call it.  Figure out how to get the begin/end date if mandatory
+        #if (options.fetch):
+        #    fbd.fetch_bill_data(options.server, options.user, options.password, options.olap_id, inputbill_xml, options.begin, options.end, options.verbose)
+        #    exit()
+
+        from billing.processing import fetch_bill_data as fbd
+        # TODO make args to fetch bill data optional
+        fbd.fetch_bill_data(
+            "http://duino-drop.appspot.com/",
+            self.config.get("xmldb", "user"),
+            self.config.get("xmldb", "password"),
+            nu.NexusUtil("nexus").olap_id(account),
+            self.config.get("xmldb", "source_prefix") + src, 
+            None,
+            None,
+            True
+        )
+
+
+        process.Process().bindrs(
+            self.config.get("xmldb", "source_prefix") + src, 
+            self.config.get("xmldb", "destination_prefix")+dest,
+            self.config.get("rsdb", "path"),
+            False, 
+            self.config.get("xmldb", "user"),
+            self.config.get("xmldb", "password")
+        )
+
+    @cherrypy.expose
+    def bindrs(self, src, dest, **args):
+
 
         # actual
         process.Process().bindrs(
@@ -113,6 +151,22 @@ class BillToolBridge:
 
     @cherrypy.expose
     def sum(self, src, dest, account, **args):
+
+        # sum actual
+        process.Process().sum_actual_charges(
+            self.config.get("xmldb", "source_prefix") + src, 
+            self.config.get("xmldb", "destination_prefix")+dest,
+            self.config.get("xmldb", "user"),
+            self.config.get("xmldb", "password")
+        )
+
+        # sum hypothetical
+        process.Process().sum_hypothetical_charges(
+            self.config.get("xmldb", "source_prefix") + src, 
+            self.config.get("xmldb", "destination_prefix")+dest,
+            self.config.get("xmldb", "user"),
+            self.config.get("xmldb", "password")
+        )
     
         # get discount rate
         discount_rate = state.discount_rate(

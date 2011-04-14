@@ -97,7 +97,7 @@ function renderWidgets()
                 // these items will render as dropdown menu items when the arrow is clicked:
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
-                {text: 'Bind Rate Structure', handler: function(){}},
+                {text: 'Bind Rate Structure', handler: bindRSOperation},
                 {text: 'Sum', handler: sumOperation},
                 {text: 'Issue', handler: function(){}},
                 {text: 'Render', handler: function(){}},
@@ -140,7 +140,7 @@ function renderWidgets()
         }, billDidNotSave);
     }
 
-    function bindREEOperation()
+    function bindRSOperation()
     {
         saveToXML(function() {
 
@@ -148,9 +148,42 @@ function renderWidgets()
             sequence = customerBillCombo.getValue();
 
             Ext.Ajax.request({
-                url: 'http://'+location.host+'/billtool/bindree?'
+                url: 'http://'+location.host+'/billtool/bindrs?'
                     + 'src=' + account + '/' + sequence
                     + '&dest=' + account + '/' + sequence,
+                disableCaching: true,
+                success: function () {
+                    // loads a bill from eXistDB
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+                            + '/' + customerBillCombo.getValue(),
+                       success: billLoaded,
+                       failure: billLoadFailed,
+                       disableCaching: true,
+                    });
+                },
+                failure: function () {
+                    alert("Bind REE response fail");
+                }
+            });
+        }, billDidNotSave);
+    }
+
+    function bindREEOperation()
+    {
+        saveToXML(function() {
+
+            account = customerAccountCombo.getValue();
+            sequence = customerBillCombo.getValue();
+
+
+            this.registerAjaxEvents()
+
+            Ext.Ajax.request({
+                url: 'http://'+location.host+'/billtool/bindree?'
+                    + 'src=' + account + '/' + sequence
+                    + '&dest=' + account + '/' + sequence
+                    + '&account=' + account,
                 disableCaching: true,
                 success: function () {
                     // loads a bill from eXistDB
@@ -1227,4 +1260,28 @@ function pctChange(val){
         return '<span style="color:red;">' + val + '%</span>';
     }
     return val;
+}
+
+function showSpinner()
+{
+    Ext.Msg.show({title: "Please Wait...", closable: false})
+}
+
+function hideSpinner()
+{
+    Ext.Msg.hide()
+    unregisterAjaxEvents()
+}
+
+function registerAjaxEvents()
+{
+    Ext.Ajax.addListener('beforerequest', this.showSpinner, this);
+    Ext.Ajax.addListener('requestcomplete', this.hideSpinner, this);
+    Ext.Ajax.addListener('requestexception', this.hideSpinner, this);
+}
+function unregisterAjaxEvents()
+{
+    Ext.Ajax.removeListener('beforerequest', this.showSpinner, this);
+    Ext.Ajax.removeListener('requestcomplete', this.hideSpinner, this);
+    Ext.Ajax.removeListener('requestexception', this.hideSpinner, this);
 }
