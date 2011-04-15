@@ -99,16 +99,31 @@ function renderWidgets()
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
                 {text: 'Bind Rate Structure', handler: bindRSOperation},
                 {text: 'Sum', handler: sumOperation},
-                {text: 'Issue', handler: function(){}},
-                {text: 'Render', handler: function(){}},
-                {text: 'Commit', handler: function(){}},
+                {text: 'Issue', handler: issueOperation},
+                {text: 'Render', handler: renderOperation},
+                {text: 'Commit', handler: commitOperation},
             ]
         })
     });
 
+
+
     function allOperations()
     {
     }
+
+    // refactor request object
+    /*MyAjaxRequest = Ext.extend ( Ext.Ajax.request, {
+         url : 'ajax.php' ,
+         params : { action : 'getDate' },
+         method: 'GET',
+         success: function ( result, request ) {
+            Ext.MessageBox.alert ('Success', 'Data return from the server: '+    result.responseText);
+         },
+         failure: function ( result, request) {
+            Ext.MessageBox.alert('Failed', result.responseText);
+          }
+    } ); */
 
     function sumOperation()
     {
@@ -117,11 +132,16 @@ function renderWidgets()
             account = customerAccountCombo.getValue();
             sequence = customerBillCombo.getValue();
 
+            // sequences come back from eXist as [seq].xml
+            sequence = sequence.split(".",1);
+
+            this.registerAjaxEvents()
             Ext.Ajax.request({
-                url: 'http://'+location.host+'/billtool/sum?'
-                    + 'src=' + account + '/' + sequence
-                    + '&dest=' + account + '/' + sequence
-                    + '&account=' + account,
+                url: 'http://'+location.host+'/billtool/sum',
+                params: { 
+                    account: account,
+                    sequence: sequence
+                },
                 disableCaching: true,
                 success: function () {
                     // loads a bill from eXistDB
@@ -144,13 +164,20 @@ function renderWidgets()
     {
         saveToXML(function() {
 
+
             account = customerAccountCombo.getValue();
             sequence = customerBillCombo.getValue();
 
+            // sequences come back from eXist as [seq].xml
+            sequence = sequence.split(".",1);
+
+            this.registerAjaxEvents()
             Ext.Ajax.request({
-                url: 'http://'+location.host+'/billtool/bindrs?'
-                    + 'src=' + account + '/' + sequence
-                    + '&dest=' + account + '/' + sequence,
+                url: 'http://'+location.host+'/billtool/bindrs',
+                params: { 
+                    account: account,
+                    sequence: sequence
+                },
                 disableCaching: true,
                 success: function () {
                     // loads a bill from eXistDB
@@ -176,14 +203,16 @@ function renderWidgets()
             account = customerAccountCombo.getValue();
             sequence = customerBillCombo.getValue();
 
+            // sequences come back from eXist as [seq].xml
+            sequence = sequence.split(".",1);
 
             this.registerAjaxEvents()
-
             Ext.Ajax.request({
-                url: 'http://'+location.host+'/billtool/bindree?'
-                    + 'src=' + account + '/' + sequence
-                    + '&dest=' + account + '/' + sequence
-                    + '&account=' + account,
+                url: 'http://'+location.host+'/billtool/bindree',
+                params: { 
+                    account: account,
+                    sequence: sequence
+                },
                 disableCaching: true,
                 success: function () {
                     // loads a bill from eXistDB
@@ -208,6 +237,7 @@ function renderWidgets()
         Ext.Msg.prompt('Amount Paid', 'Enter amount paid:', function(btn, text){
             if (btn == 'ok')
             {
+                this.registerAjaxEvents()
                 var amountPaid = parseFloat(text)
                 saveToXML(function() {
 
@@ -217,20 +247,33 @@ function renderWidgets()
                     sequence = sequence.split(".",1);
 
                     Ext.Ajax.request({
-                        url: 'http://'+location.host+'/billtool/roll?'
-                            + 'src=' + account + '/' + sequence + '.xml'
-                            + '&dest=' + account + '/' + (parseInt(sequence)+1) + '.xml'
-                            + '&amount=' + amountPaid,
+                        url: 'http://'+location.host+'/billtool/roll',
+                        params: { 
+                            account: account,
+                            sequence: sequence,
+                            amount: amountPaid
+                        },
                         disableCaching: true,
-                        success: function () {
-                            // loads a bill from eXistDB
-                            Ext.Ajax.request({
-                                url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
-                                    + '/' + (parseInt(sequence)+1) + '.xml',
-                               success: billLoaded,
-                               failure: billLoadFailed,
-                               disableCaching: true,
-                            });
+                        success: function (response, options) {
+                            var o = {};
+                            try {o = Ext.decode(response.responseText);}
+                            catch(e) {
+                                alert("Could not decode JSON data");
+                            }
+                            if(true !== o.success) {
+                                Ext.Msg.alert('Error', o.errors.reason);
+
+                            } else {
+                                // do your success processing here
+                                // loads a bill from eXistDB
+                                Ext.Ajax.request({
+                                    url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+                                        + '/' + (parseInt(sequence)+1) + '.xml',
+                                   success: billLoaded,
+                                   failure: billLoadFailed,
+                                   disableCaching: true,
+                                });
+                            }
                         },
                         failure: function () {
                             alert("roll response fail");
@@ -239,6 +282,123 @@ function renderWidgets()
                 }, billDidNotSave);
             }
         });
+    }
+
+    function issueOperation()
+    {
+        saveToXML(function() {
+
+            account = customerAccountCombo.getValue();
+            sequence = customerBillCombo.getValue();
+
+            // sequences come back from eXist as [seq].xml
+            sequence = sequence.split(".",1);
+
+            this.registerAjaxEvents()
+            Ext.Ajax.request({
+                url: 'http://'+location.host+'/billtool/issue',
+                params: { 
+                    account: account,
+                    sequence: sequence,
+                },
+                disableCaching: true,
+                success: function () {
+                    // loads a bill from eXistDB
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+                            + '/' + customerBillCombo.getValue(),
+                       success: billLoaded,
+                       failure: billLoadFailed,
+                       disableCaching: true,
+                    });
+                },
+                failure: function () {
+                    alert("Issue response fail");
+                }
+            });
+        }, billDidNotSave);
+    }
+
+    function renderOperation()
+    {
+        saveToXML(function() {
+
+            account = customerAccountCombo.getValue();
+            sequence = customerBillCombo.getValue();
+            // sequences come back from eXist as [seq].xml
+            sequence = sequence.split(".",1);
+
+            this.registerAjaxEvents()
+            Ext.Ajax.request({
+                // TODO: pass in only account and sequence
+                url: 'http://'+location.host+'/billtool/render',
+                params: { 
+                    account: account,
+                    sequence: sequence,
+                },
+                disableCaching: true,
+                success: function () {
+                    // loads a bill from eXistDB
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+                            + '/' + customerBillCombo.getValue(),
+                       success: billLoaded,
+                       failure: billLoadFailed,
+                       disableCaching: true,
+                    });
+                },
+                failure: function () {
+                    alert("Render response fail");
+                }
+            });
+        }, billDidNotSave);
+    }
+
+    function commitOperation()
+    {
+        saveToXML(function() {
+
+            account = customerAccountCombo.getValue();
+            sequence = customerBillCombo.getValue();
+            // sequences come back from eXist as [seq].xml
+            sequence = sequence.split(".",1);
+
+
+            // TODO: this is bad news.  Need a better way to handle multiple services
+            // shouldn't make two async calls to server that use same callbacks to close modal wait panel and reload bill
+            periods = getUBPeriods(bill);
+            periods.forEach(
+                function (value, index, array) {
+                    this.registerAjaxEvents()
+                    Ext.Ajax.request({
+                        // TODO: pass in only account and sequence
+                        url: 'http://'+location.host+'/billtool/commit',
+                        params: {
+                            account: account,
+                            sequence: sequence,
+                            begin: value.begindate,
+                            end: value.enddate,
+                        },
+                        disableCaching: true,
+                        success: function () {
+                            // loads a bill from eXistDB
+                            Ext.Ajax.request({
+                                url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+                                    + '/' + customerBillCombo.getValue(),
+                               success: billLoaded,
+                               failure: billLoadFailed,
+                               disableCaching: true,
+                            });
+                        },
+                        failure: function () {
+                            alert("commit response fail");
+                        }
+                    });
+
+                }
+            )
+
+        }, billDidNotSave);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -288,12 +448,12 @@ function renderWidgets()
     });
 
     // dynamically create the period form fields when a bill is loaded
-    function configureUBPeriodsForm(beginPeriods)
+    function configureUBPeriodsForm(periods)
     {
         ubPeriodsFormPanel.removeAll();
 
         // add the period date pickers to the form
-        beginPeriods.forEach(
+        periods.forEach(
             function (value, index, array) {
                 ubPeriodsFormPanel.add(
                     new Ext.form.DateField({
