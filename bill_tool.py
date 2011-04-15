@@ -75,6 +75,18 @@ if __name__ == "__main__":
         print "Sequence must be specified."
         exit()
 
+    if (options.commit):
+        # handle state db operations
+        if (options.dbhost is None or options.database is None):
+            print "Host and database must be specified"
+            exit()
+        if (options.begin is None or options.end is None):
+            print "Utility bill period must be specified"
+            exit()
+        # TODO: snarf begin and end from bill itself
+        state.commit_bill(options.dbhost, options.database, options.user, options.password, options.account, options.sequence, options.begin, options.end) 
+        exit()
+
     if (options.source == None):
         print "Input bill must be specified."
         exit()
@@ -97,14 +109,6 @@ if __name__ == "__main__":
         fbd.fetch_bill_data(options.server, options.user, options.password, options.olap_id, inputbill_xml, options.begin, options.end, options.verbose)
         exit()
 
-    if (options.commit):
-        # handle state db operations
-        if (options.dbhost is None or options.database is None):
-            print "Host and database must be specified"
-            exit()
-        # TODO: snarf begin and end from bill itself
-        state.commit_bill(options.dbhost, options.database, options.user, options.password, options.account, options.sequence, inputbill_xml, options.begin, options.end) 
-        exit()
 
     if (options.render):
 
