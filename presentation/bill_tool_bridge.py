@@ -20,6 +20,7 @@ import ConfigParser
 from billing.processing import process
 from billing.processing import state
 from billing.processing import fetch_bill_data as fbd
+from billing.presentation import render
 
 from billing import nexus_util as nu
 
@@ -28,7 +29,7 @@ from billing import nexus_util as nu
 # TODO don't require UI to pass in destination.
 class BillToolBridge:
     """ A monolithic class encapsulating the behavior to:  handle an incoming http request """
-    """ and invoke bill_tool. """
+    """ and invoke bill processing code.  No business logic should reside here."""
 
     src_prefix = dest_prefix = "http://tyrell:8080/exist/rest/db/skyline/bills/"
     config = None
@@ -40,15 +41,16 @@ class BillToolBridge:
         if not self.config.read(config_file_path):
             print "Creating config file"
             self.config.add_section('xmldb')
-            self.config.set('xmldb', 'destination_prefix', 'http://tyrell:8080/exist/rest/db/skyline/bills/')
-            self.config.set('xmldb', 'source_prefix', 'http://tyrell:8080/exist/rest/db/skyline/bills/')
+            self.config.set('xmldb', 'destination_prefix', 'http://tyrell:8080/exist/rest/db/skyline/bills')
+            self.config.set('xmldb', 'source_prefix', 'http://tyrell:8080/exist/rest/db/skyline/bills')
             self.config.set('xmldb', 'password', '[password]')
             self.config.set('xmldb', 'user', 'prod')
             self.config.add_section('http')
             self.config.set('http', 'socket_port', '8185')
             self.config.set('http', 'socket_host', '10.0.0.250')
-            self.config.add_section('rsdb')
-            self.config.set('rsdb', 'path', '/db/skyline/ratestructure/')
+            self.config.add_section('billdb')
+            self.config.set('billdb', 'rspath', '/db/skyline/ratestructure/')
+            self.config.set('billdb', 'billpath', '/db/skyline/bills/')
             self.config.add_section('statedb')
             self.config.set('statedb', 'host', 'localhost')
             self.config.set('statedb', 'database', 'skyline')
@@ -65,34 +67,44 @@ class BillToolBridge:
 
 
     @cherrypy.expose
-    def copyactual(self, src, dest, **args):
+    def copyactual(self, account, sequence, **args):
         process.Process().copy_actual_charges(
-            self.config.get("xmldb", "source_prefix") + src, 
-            self.config.get("xmldb", "destination_prefix")+dest,
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
             self.config.get("xmldb", "user"),
             self.config.get("xmldb", "password")
         )
 
     @cherrypy.expose
-    def roll(self, src, dest, amount, **args):
+    def roll(self, account, sequence, amount, **args):
+        # TODO: remove this business logic to Process()
+        # check to see if this bill can be rolled
+
+
+        last_sequence = state.last_sequence(
+            self.config.get("statedb", "host"),
+            self.config.get("statedb", "db"),
+            self.config.get("statedb", "user"),
+            self.config.get("statedb", "password"),
+            account
+        )
+
+        # TODO: Process() should implement this
+        if (int(sequence) < int(last_sequence)):
+            #raise cherrypy.HTTPError("500", "can't roll")
+            #cherrypy.response.status = 500
+            return '{success: false, errors: {reason:"Not the last sequence"}}'
+
         process.Process().roll_bill(
-            self.config.get("xmldb", "source_prefix") + src, 
-            self.config.get("xmldb", "destination_prefix")+dest,
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, int(sequence)+1),
             amount,
             self.config.get("xmldb", "user"),
             self.config.get("xmldb", "password")
         )
 
     @cherrypy.expose
-    def bindree(self, src, dest, account, **args):
-
-
-        print " inbind ree"
-
-        #import FBD, then call it.  Figure out how to get the begin/end date if mandatory
-        #if (options.fetch):
-        #    fbd.fetch_bill_data(options.server, options.user, options.password, options.olap_id, inputbill_xml, options.begin, options.end, options.verbose)
-        #    exit()
+    def bindree(self, account, sequence, **args):
 
         from billing.processing import fetch_bill_data as fbd
         # TODO make args to fetch bill data optional
@@ -107,25 +119,15 @@ class BillToolBridge:
             True
         )
 
-
-        process.Process().bindrs(
-            self.config.get("xmldb", "source_prefix") + src, 
-            self.config.get("xmldb", "destination_prefix")+dest,
-            self.config.get("rsdb", "path"),
-            False, 
-            self.config.get("xmldb", "user"),
-            self.config.get("xmldb", "password")
-        )
-
     @cherrypy.expose
-    def bindrs(self, src, dest, **args):
+    def bindrs(self, account, sequence, **args):
 
 
         # actual
         process.Process().bindrs(
-            self.config.get("xmldb", "source_prefix") + src, 
-            self.config.get("xmldb", "destination_prefix")+dest,
-            self.config.get("rsdb", "path"),
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+            self.config.get("billdb", "rspath"),
             False, 
             self.config.get("xmldb", "user"),
             self.config.get("xmldb", "password")
@@ -134,36 +136,36 @@ class BillToolBridge:
 
         #hypothetical
         process.Process().bindrs(
-            self.config.get("xmldb", "source_prefix") + src, 
-            self.config.get("xmldb", "destination_prefix")+dest,
-            self.config.get("rsdb", "path"),
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+            self.config.get("billdb", "rspath"),
             True, 
             self.config.get("xmldb", "user"),
             self.config.get("xmldb", "password")
         )
 
         process.Process().calculate_reperiod(
-            self.config.get("xmldb", "source_prefix") + src, 
-            self.config.get("xmldb", "destination_prefix")+dest,
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
             self.config.get("xmldb", "user"),
             self.config.get("xmldb", "password")
         )
 
     @cherrypy.expose
-    def sum(self, src, dest, account, **args):
+    def sum(self, account, sequence, **args):
 
         # sum actual
         process.Process().sum_actual_charges(
-            self.config.get("xmldb", "source_prefix") + src, 
-            self.config.get("xmldb", "destination_prefix")+dest,
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
             self.config.get("xmldb", "user"),
             self.config.get("xmldb", "password")
         )
 
         # sum hypothetical
         process.Process().sum_hypothetical_charges(
-            self.config.get("xmldb", "source_prefix") + src, 
-            self.config.get("xmldb", "destination_prefix")+dest,
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
             self.config.get("xmldb", "user"),
             self.config.get("xmldb", "password")
         )
@@ -178,13 +180,48 @@ class BillToolBridge:
         )
 
         process.Process().sumbill(
-            self.config.get("xmldb", "source_prefix") + src, 
-            self.config.get("xmldb", "destination_prefix")+dest,
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
             discount_rate,
             self.config.get("xmldb", "user"),
             self.config.get("xmldb", "password")
         )
         
+    @cherrypy.expose
+    def issue(self, account, sequence, **args):
+
+        # sum actual
+        process.Process().issue(
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+            None,
+            self.config.get("xmldb", "user"),
+            self.config.get("xmldb", "password")
+        )
+
+    @cherrypy.expose
+    def render(self, account, sequence, **args):
+
+        render.render(
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+            self.config.get("billdb", "billpath")+ "%s/%s.pdf" % (account, sequence),
+            "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
+            None,
+        )
+
+    @cherrypy.expose
+    def commit(self, account, sequence, begin, end, **args):
+
+        state.commit_bill(
+            self.config.get("statedb", "host"),
+            self.config.get("statedb", "db"),
+            self.config.get("statedb", "user"),
+            self.config.get("statedb", "password"),
+            account,
+            sequence,
+            begin,
+            end
+        )
 
 
 bridge = BillToolBridge()
