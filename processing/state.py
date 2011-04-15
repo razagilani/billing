@@ -10,20 +10,14 @@ import MySQLdb
 from optparse import OptionParser
 
 
-def commit_bill(host, db, user, password, account, sequence, uri, start, end):
-
+def fetch_all(host, db, user, password, query, params):
     try:
         conn = MySQLdb.connect(host=host, user=user, passwd=password, db=db)
 
-        commit_bill = "call commit_bill(%s, %s, %s, %s, %s)"
-
         cur = conn.cursor(MySQLdb.cursors.DictCursor)
-        cur.execute(commit_bill, (account, sequence, uri, start, end))
+        cur.execute(query, params)
         # TODO: print some sane message about failures
-        print cur.fetchall()
-        #print "Number of rows inserted: %d" % cur.rowcount
-        conn.commit()
-        cur.close()
+        return cur.fetchall()
 
     except MySQLdb.Error:
         print "Database error"
@@ -40,38 +34,27 @@ def commit_bill(host, db, user, password, account, sequence, uri, start, end):
 
         if (vars().has_key('conn') is True and type(conn) is MySQLdb.connections.Connection): 
             conn.close()
+
+def commit_bill(host, db, user, password, account, sequence, start, end):
+
+    query = "call commit_bill(%s, %s, %s, %s)"
+    params = (account, sequence, start, end)
+    return execute_query(host, db, user, password, query, params)
 
 def discount_rate(host, db, user, password, account):
 
-    try:
-        conn = MySQLdb.connect(host=host, user=user, passwd=password, db=db)
+    query = "select discountrate from customer where account = %s"
+    params = (account)
+    rows = fetch_all(host, db, user, password, query, params)
+    # TODO: error checking...
+    return rows[0]['discountrate']
 
-        discount_query = "select discountrate from customer where account = %s"
-
-        cur = conn.cursor(MySQLdb.cursors.DictCursor)
-        cur.execute(discount_query, (account))
-        row = cur.fetchone()
-        print row
-        conn.commit()
-        cur.close()
-
-        return row['discountrate']
-
-    except MySQLdb.Error:
-        print "Database error"
-        raise
-
-    except:
-        print "Unexpected error:", sys.exc_info()[0]
-        raise
-
-    finally:
-        if (vars().has_key('cur') is True and type(cur) is MySQLdb.cursors.Cursor):
-            # it is safe to close a cursor multiple times
-            cur.close()
-
-        if (vars().has_key('conn') is True and type(conn) is MySQLdb.connections.Connection): 
-            conn.close()
+def last_sequence(host, db, user, password, account):
+    query = "select max(sequence) as maxseq from rebill where customer_id = (select id from customer where account = %s)"
+    params = (account)
+    rows = fetch_all(host, db, user, password, query, params)
+    # TODO: error checking...
+    return rows[0]['maxseq']
 
 if __name__ == "__main__":
 
