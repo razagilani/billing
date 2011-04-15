@@ -611,13 +611,16 @@ class Process():
 
         XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), outputbill, user, password)
 
-    def issue(self, inputbill, outputbill, issuedate, user=None, password=None):
+    def issue(self, inputbill, outputbill, issuedate=None, user=None, password=None):
         """ Set the Renewable Energy bill Period """
 
         inputtree = etree.parse(inputbill)
         outputtree = etree.parse(outputbill)
 
-        issuedate = datetime.datetime.strptime(issuedate, "%Y-%m-%d")
+        if issuedate is None:
+            issuedate = datetime.date.today()
+        else:
+            issuedate = datetime.datetime.strptime(issuedate, "%Y-%m-%d")
         # TODO: parameterize for dependence on customer 
         duedate = issuedate + datetime.timedelta(days=30)
 
