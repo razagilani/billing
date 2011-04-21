@@ -3,6 +3,7 @@ fabexcludes.txt
 *.pyc
 doc
 *.swp
+bill_tool_bridge.cfg
 js/ext-3.3.1/docs
 js/ext-3.3.1/examples
 js/ext-3.3.1/ext-all-debug-w-comments.js
