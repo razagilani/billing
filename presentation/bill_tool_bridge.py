@@ -91,8 +91,6 @@ class BillToolBridge:
 
         # TODO: Process() should implement this
         if (int(sequence) < int(last_sequence)):
-            #raise cherrypy.HTTPError("500", "can't roll")
-            #cherrypy.response.status = 500
             return '{success: false, errors: {reason:"Not the last sequence"}}'
 
         process.Process().roll_bill(
@@ -102,6 +100,7 @@ class BillToolBridge:
             self.config.get("xmldb", "user"),
             self.config.get("xmldb", "password")
         )
+        return '{success: true}'
 
     @cherrypy.expose
     def bindree(self, account, sequence, **args):
@@ -113,7 +112,7 @@ class BillToolBridge:
             self.config.get("xmldb", "user"),
             self.config.get("xmldb", "password"),
             nu.NexusUtil("nexus").olap_id(account),
-            self.config.get("xmldb", "source_prefix") + src, 
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
             None,
             None,
             True
@@ -121,7 +120,6 @@ class BillToolBridge:
 
     @cherrypy.expose
     def bindrs(self, account, sequence, **args):
-
 
         # actual
         process.Process().bindrs(
@@ -145,6 +143,16 @@ class BillToolBridge:
         )
 
         process.Process().calculate_reperiod(
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+            self.config.get("xmldb", "user"),
+            self.config.get("xmldb", "password")
+        )
+
+    @cherrypy.expose
+    def calcstats(self, account, sequence, **args):
+
+        process.Process().calculate_statistics(
             "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
             "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
             self.config.get("xmldb", "user"),
@@ -190,7 +198,8 @@ class BillToolBridge:
     @cherrypy.expose
     def issue(self, account, sequence, **args):
 
-        # sum actual
+        # only sets the issue date
+
         process.Process().issue(
             "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
             "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
@@ -198,6 +207,7 @@ class BillToolBridge:
             self.config.get("xmldb", "user"),
             self.config.get("xmldb", "password")
         )
+
 
     @cherrypy.expose
     def render(self, account, sequence, **args):
@@ -211,7 +221,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def commit(self, account, sequence, begin, end, **args):
-
+        
         state.commit_bill(
             self.config.get("statedb", "host"),
             self.config.get("statedb", "db"),
@@ -221,6 +231,18 @@ class BillToolBridge:
             sequence,
             begin,
             end
+        )
+
+    @cherrypy.expose
+    def issueToCustomer(self, account, sequence, **args):
+
+        state.issue(
+            self.config.get("statedb", "host"),
+            self.config.get("statedb", "db"),
+            self.config.get("statedb", "user"),
+            self.config.get("statedb", "password"),
+            account,
+            sequence
         )
 
 
