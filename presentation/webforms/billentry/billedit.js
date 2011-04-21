@@ -99,9 +99,11 @@ function renderWidgets()
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
                 {text: 'Bind Rate Structure', handler: bindRSOperation},
                 {text: 'Sum', handler: sumOperation},
+                {text: 'CalcStats', handler: calcStatsOperation},
                 {text: 'Issue', handler: issueOperation},
                 {text: 'Render', handler: renderOperation},
                 {text: 'Commit', handler: commitOperation},
+                {text: 'Issue to Customer', handler: issueToCustomerOperation},
             ]
         })
     });
@@ -124,6 +126,76 @@ function renderWidgets()
             Ext.MessageBox.alert('Failed', result.responseText);
           }
     } ); */
+
+    function issueToCustomerOperation()
+    {
+        saveToXML(function() {
+
+            account = customerAccountCombo.getValue();
+            sequence = customerBillCombo.getValue();
+
+            // sequences come back from eXist as [seq].xml
+            sequence = sequence.split(".",1);
+
+            this.registerAjaxEvents()
+            Ext.Ajax.request({
+                url: 'http://'+location.host+'/billtool/issueToCustomer',
+                params: { 
+                    account: account,
+                    sequence: sequence
+                },
+                disableCaching: true,
+                success: function () {
+                    // loads a bill from eXistDB
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+                            + '/' + customerBillCombo.getValue(),
+                       success: billLoaded,
+                       failure: billLoadFailed,
+                       disableCaching: true,
+                    });
+                },
+                failure: function () {
+                    alert("Issue to customer response fail");
+                }
+            });
+        }, billDidNotSave);
+    }
+
+    function calcStatsOperation()
+    {
+        saveToXML(function() {
+
+            account = customerAccountCombo.getValue();
+            sequence = customerBillCombo.getValue();
+
+            // sequences come back from eXist as [seq].xml
+            sequence = sequence.split(".",1);
+
+            this.registerAjaxEvents()
+            Ext.Ajax.request({
+                url: 'http://'+location.host+'/billtool/calcstats',
+                params: { 
+                    account: account,
+                    sequence: sequence
+                },
+                disableCaching: true,
+                success: function () {
+                    // loads a bill from eXistDB
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+                            + '/' + customerBillCombo.getValue(),
+                       success: billLoaded,
+                       failure: billLoadFailed,
+                       disableCaching: true,
+                    });
+                },
+                failure: function () {
+                    alert("Sum response fail");
+                }
+            });
+        }, billDidNotSave);
+    }
 
     function sumOperation()
     {
@@ -190,7 +262,7 @@ function renderWidgets()
                     });
                 },
                 failure: function () {
-                    alert("Bind REE response fail");
+                    alert("Bind RS response fail");
                 }
             });
         }, billDidNotSave);
@@ -840,13 +912,19 @@ function renderWidgets()
 
                 saveToXML(function() {
 
+                    account = customerAccountCombo.getValue();
+                    sequence = customerBillCombo.getValue();
+
+                    // sequences come back from eXist as [seq].xml
+                    sequence = sequence.split(".",1);
+
                     // now that the bill is saved, create the hypothetical charges
                     // on the server
 
                     Ext.Ajax.request({
                         url: 'http://'+location.host+'/billtool/copyactual?'
-                            + 'src=' + customerAccountCombo.getValue() + '/' + customerBillCombo.getValue() 
-                            + '&dest=' + customerAccountCombo.getValue() + '/' + customerBillCombo.getValue(),
+                            + 'account=' + account
+                            + '&sequence=' + sequence,
                         disableCaching: true,
                         success: function () {
                             // loads a bill from eXistDB
