@@ -143,7 +143,8 @@ class SIBillDocTemplate(BaseDocTemplate):
 def progress(type,value):
     # TODO fix module to support verbose flag passed in from cmd arg parser 
     #if (options.verbose):
-    sys.stdout.write('.')
+    #sys.stdout.write('.')
+    pass
     
 
 
@@ -153,6 +154,7 @@ def stringify(d):
     return d
 
 def render(inputbill, outputfile, backgrounds, verbose):
+
 
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name='BillLabel', fontName='VerdanaB', fontSize=10, leading=10))
@@ -369,6 +371,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(UseUpSpace())
 
 
+
     # populate graph two 
     
     # construct period environmental benefit
@@ -421,6 +424,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     if (fracTree != 0): treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(resource_dir, "images","tree3-" + fracTree + ".png") + "\"/>"
 
     Elements.append(Paragraph("<para leftIndent=\"6\">"+treeString+"</para>", styles['BillLabel']))
+
     Elements.append(Spacer(100,5))
     Elements.append(Paragraph("<para leftIndent=\"50\">Ten's of Trees</para>", styles['GraphLabel']))
 
@@ -451,6 +455,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(Image(os.path.join(tmp_dir,'SampleGraph4.png'), 270*.9, 127*.9))
     Elements.append(UseUpSpace())
 
+
     # populate summary background
     Elements.append(Image(os.path.join(resource_dir,'images','SummaryBackground.png'), 443, 151))
     Elements.append(UseUpSpace())
@@ -474,6 +479,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'CENTER'), ('ALIGN',(2,0),(2,-1),'CENTER'), ('RIGHTPADDING', (0,2),(0,-1), 8), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,2), (-1,-1), 0.25, colors.black), ('BOX', (1,2), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,2),(-1,-1),colors.white)]))
     Elements.append(t)
     Elements.append(UseUpSpace())
+
 
     # populate summaryChargesTableF
     ub_summary = bill.utilbill_summary_charges
@@ -507,6 +513,8 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(t)
     Elements.append(UseUpSpace())
 
+
+
     # populate current charges
     currentCharges = [
         [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(re_summary['savings']), styles['BillFieldRight'])],
@@ -529,6 +537,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(UseUpSpace())
 
 
+
     # populate balanceDueFrame
     balanceDue = [
         [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph(str(re_summary['totaldue']), styles['BillFieldRight'])]
@@ -544,11 +553,13 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(UseUpSpace())
 
 
+
     #
     # Second Page
     #
     Elements.append(NextPageTemplate("SecondPage"));
     Elements.append(PageBreak());
+
 
 
     pageTwoBackground = Image(os.path.join(resource_dir,'images',backgrounds.pop(0)),letter[0], letter[1])
@@ -676,7 +687,10 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     # render the document	
     doc.setProgressCallBack(progress)
-    doc.build(Elements)
+    try:
+        doc.build(Elements)
+    except Exception as e:
+        print str(e)
 
 # remove all calculations to helpers
 def poundsCarbonFromGas(therms = 0):
