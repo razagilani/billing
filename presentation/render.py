@@ -517,8 +517,8 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     # populate current charges
     currentCharges = [
-        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(re_summary['savings']), styles['BillFieldRight'])],
-        [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(re_summary['renewablecharges']), styles['BillFieldRight'])]
+        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(re_summary['resavings']), styles['BillFieldRight'])],
+        [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(re_summary['recharges']), styles['BillFieldRight'])]
     ]
 
     t = Table(currentCharges, [135,85])

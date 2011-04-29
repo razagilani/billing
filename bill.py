@@ -27,10 +27,18 @@ from decimal import *
 
 
 class Bill(object):
+    """
+    A container for bill data.  Business logic is purposefully externalized.
+    """
    
+
+    # TODO: don't construct with billref when this container is capable of providing non-xml data to persist
     def __init__(self, billref):
         super(Bill,self).__init__()
         self.inputtree = lxml.etree.parse(billref)
+
+    def xml(self):
+        return lxml.etree.tostring(self.inputtree, pretty_print=True)
 
     #TODO better function name to reflect the return types of XPath - not just elements, but sums, etc...
     #TODO function to return a single element vs list - that will clean up lots of code
@@ -131,17 +139,48 @@ class Bill(object):
 
     @property
     def utilbill_summary_charges(self):
+        """
+        Returns a dictionary keyed by service whose values are a dictionary containing the keys 'hypotheticalecharges', 
+        'actualecharges', 'revalue', 'recharges', 'resavings'
+        """
         utilbill_summary_charges = {}
         for service in self.xpath("/ub:bill/ub:utilbill/@service" ):
             hypotheticalecharges = self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:hypotheticalecharges")[0].text
             actualecharges = self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:actualecharges")[0].text
             revalue = self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:revalue")[0].text
+            recharges = self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:recharges")[0].text
+            resavings = self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:resavings")[0].text
+
             # TODO optional quantization?
             hypotheticalecharges = Decimal(hypotheticalecharges).quantize(Decimal('.00'))
             actualecharges = Decimal(actualecharges).quantize(Decimal('.00'))
             revalue = Decimal(revalue).quantize(Decimal('.00'))
-            utilbill_summary_charges[service] = {'hypotheticalecharges':hypotheticalecharges, 'actualecharges': actualecharges, 'revalue': revalue} 
+            recharges = Decimal(recharges).quantize(Decimal('.00'))
+            resavings = Decimal(resavings).quantize(Decimal('.00'))
+
+            utilbill_summary_charges[service] = {
+                'hypotheticalecharges':hypotheticalecharges,
+                'actualecharges': actualecharges,
+                'revalue': revalue,
+                'recharges': recharges,
+                'resavings': resavings,
+            } 
+
         return utilbill_summary_charges
+
+    @utilbill_summary_charges.setter
+    def utilbill_summary_charges(self, summary_charges):
+        """
+        Sets a dictionary keyed by service whose values are a dictionary containing the keys 'hypotheticalecharges', 
+        'actualecharges', 'revalue', 'recharges', 'resavings' into the bill xml
+        """
+        # TODO: create xml elements if missing
+        for service, charges in summary_charges.items():
+            self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:hypotheticalecharges")[0].text = str(charges['hypotheticalecharges'])
+            self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:actualecharges")[0].text = str(charges['actualecharges'])
+            self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:revalue")[0].text = str(charges['revalue'])
+            self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:recharges")[0].text = str(charges['recharges'])
+            self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:resavings")[0].text = str(charges['resavings'])
 
     @property
     def measured_usage(self):
@@ -192,22 +231,134 @@ class Bill(object):
         priorbalance = Decimal(priorbalance).quantize(Decimal('.00'))
         paymentreceived = Decimal(paymentreceived).quantize(Decimal('.00'))
         totaladjustment = Decimal(totaladjustment).quantize(Decimal('.00'))
-        savings = Decimal(savings).quantize(Decimal('.00'))
-        renewablecharges = Decimal(renewablecharges).quantize(Decimal('.00'))
+        resavings = Decimal(savings).quantize(Decimal('.00'))
+        recharges = Decimal(renewablecharges).quantize(Decimal('.00'))
         balanceforward = Decimal(balanceforward).quantize(Decimal('.00'))
         totaldue = Decimal(totaldue).quantize(Decimal('.00'))
         return {
             'priorbalance': priorbalance, 
             'paymentreceived': paymentreceived, 
             'totaladjustment':totaladjustment, 
-            'savings': savings, 
-            'renewablecharges': renewablecharges, 
+            # Eventually populate this
+            'revalue': None,
+            'resavings': resavings, 
+            'recharges': recharges, 
             'balanceforward': balanceforward, 
             'totaldue':totaldue
         }
-        
+
+    @rebill_summary.setter
+    def rebill_summary(self, summary):
+        self.xpath("/ub:bill/ub:rebill/ub:priorbalance")[0].text = str(summary['priorbalance'])
+        self.xpath("/ub:bill/ub:rebill/ub:paymentreceived")[0].text = str(summary['paymentreceived'])
+        self.xpath("/ub:bill/ub:rebill/ub:totaladjustment")[0].text = str(summary['totaladjustment'])
+        # eventually populate a total revalue
+        self.xpath("/ub:bill/ub:rebill/ub:resavings")[0].text = str(summary['resavings'])
+        self.xpath("/ub:bill/ub:rebill/ub:recharges")[0].text = str(summary['recharges'])
+        self.xpath("/ub:bill/ub:rebill/ub:balanceforward")[0].text = str(summary['balanceforward'])
+        self.xpath("/ub:bill/ub:rebill/ub:totaldue")[0].text = str(summary['totaldue'])
+
+
+    @property
+    def hypothetical_charges(self):
+        """
+        Return by service, hypothetical charges grouped by chargegroup including chargegroup totals.
+        """
+        return self.charge_items('hypothetical')
+
+
+    # Should all dollar quantities be treated as Decimal?  Probably, but how will this impact serialization to JSON?
+    def charge_items(self, charges_type):
+        """
+        Return ci_type charge items by service with charges grouped by chargegroup including chargegroup and grand totals.
+        """
+        charge_items = {} 
+
+        # this is really pedantic, but incrementally building the xpath makes the code much clearer
+
+        # get each type of service present
+        for detail_service in self.xpath("/ub:bill/ub:details/@service"):
+
+            # convert lxml object to a string to act as dict key
+            detail_service = str(detail_service)
+            
+            charge_items[detail_service] = {}
+            
+            grand_total = self.xpath("/ub:bill/ub:details[@service='%s']/ub:total[@type='%s']" % (detail_service, charges_type))[0].text
+
+            charge_items[detail_service]['chargegroups'] = {}
+            charge_items[detail_service]['total'] = Decimal(grand_total).quantize(Decimal('.0000'))
+
+            # get chargegroup types for that service
+            for cg_type in self.xpath("/ub:bill/ub:details[@service='%s']/ub:chargegroup/@type" % detail_service):
+
+                # convert lxml object to a string to act as dict key
+                cg_type = str(cg_type)
+
+                charge_items[detail_service]['chargegroups'][cg_type] = {}
+
+                # get the charges of charges_type from the chargegroup
+                for charges in self.xpath("/ub:bill/ub:details[@service='%s']/ub:chargegroup[@type='%s']/ub:charges[@type='%s']" % (detail_service, cg_type, charges_type)):
+
+                    charge_items[detail_service]['chargegroups'][cg_type]['charges'] = []
+
+                    charge_items[detail_service]['chargegroups'][cg_type]['total'] = Decimal(charges.find("ub:total", namespaces={"ub":"bill"}).text).quantize(Decimal('.0000'))
+                    
+                    for charge in charges.findall("ub:charge", namespaces={"ub":"bill"}):
+
+                        description = charge.find("ub:description", namespaces={'ub':'bill'})
+                        description = description.text if description is not None else None
+
+                        quantity = charge.find("ub:quantity", namespaces={'ub':'bill'})
+                        quantity = quantity.text if quantity is not None else None
+
+
+                        # TODO review lxml api for a better method to access attributes
+                        quantity_units = charge.xpath("ub:quantity/@units", namespaces={'ub':'bill'})
+                        if (len(quantity_units)):
+                            quantity_units = quantity_units[0]
+                        else:
+                            quantity_units = ""
+
+                        # TODO helper to quantize based on units
+                        # TODO not sure we want to quantize here. think it over.
+                        if (quantity_units.lower() == 'therms'):
+                            quantity = Decimal(quantity).quantize(Decimal('.00'))
+                        elif (quantity_units.lower() == 'dollars'):
+                            quantity = Decimal(quantity).quantize(Decimal('.00'))
+                        elif (quantity_units.lower() == 'kwh'):
+                            quantity = Decimal(quantity).quantize(Decimal('.0'))
+
+                        rate = charge.find("ub:rate", namespaces={'ub':'bill'})
+                        rate = rate.text if rate is not None else None
+                        
+                        # TODO review lxml api for a better method to access attributes
+                        rate_units = charge.xpath("ub:rate/@units", namespaces={'ub':'bill'})
+                        if (len(rate_units)):
+                            rate_units = rate_units[0]
+                        else:
+                            rate_units = ""
+
+                        total = charge.find("ub:total", namespaces={'ub':'bill'})
+                        total = Decimal(total.text).quantize(Decimal('.0000')) if total is not None else None
+
+                        charge_items[detail_service]['chargegroups'][cg_type]['charges'].append({
+                            'description': description,
+                            'quantity': quantity,
+                            'quantity_units': quantity_units,
+                            'rate': rate,
+                            'rate_units': rate_units,
+                            'total': total
+                        })
+
+        return charge_items
+
     @property
     def hypothetical_details(self):
+        """
+        Used by render bill.  Does not include chargegroups or chargegroup totals.
+        TODO: eliminate this since the consumer of this method can use others for the same data.
+        """
         hypothetical_details = {}
         for service in self.xpath("/ub:bill/ub:details/@service"):
             hypothetical_details[service] = []
@@ -259,7 +410,6 @@ class Bill(object):
                             'rate_units': rate_units,
                             'total': total
                         })
-
 
         return hypothetical_details
 
@@ -325,31 +475,33 @@ if __name__ == "__main__":
 
     bill = Bill(options.inputbill)
 
-    print bill.account
-    print bill.id
+    #print bill.account
+    #print bill.id
 
-    print bill.service_address
-    bill.service_address = bill.service_address
-    print bill.service_address 
+    #print bill.service_address
+    #bill.service_address = bill.service_address
+    #print bill.service_address 
 
-    print bill.rebill_periods
-    bill.rebill_periods = bill.rebill_periods
-    print bill.rebill_periods
+    #print bill.rebill_periods
+    #bill.rebill_periods = bill.rebill_periods
+    #print bill.rebill_periods
 
-    print bill.utilbill_periods
-    utilbill_periods = bill.utilbill_periods
-    print [utilbill_periods[service] for service in utilbill_periods]
+    #print bill.utilbill_periods
+    #utilbill_periods = bill.utilbill_periods
+    #print [utilbill_periods[service] for service in utilbill_periods]
 
-    print bill.due_date
+    #print bill.due_date
 
-    print bill.statistics
+    #print bill.statistics
 
-    print bill.motd
+    #print bill.motd
 
-    print bill.measured_usage
+    #print bill.measured_usage
 
-    print bill.hypothetical_details
+    #print bill.hypothetical_details
 
-    print bill.hypothetical_total
+    print bill.hypothetical_charges
+
+    print bill.hypothetical_charges_totals
 
     #XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), outputbill, user, password)
