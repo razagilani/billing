@@ -81,25 +81,40 @@ class BillToolBridge:
         # check to see if this bill can be rolled
 
 
-        last_sequence = state.last_sequence(
-            self.config.get("statedb", "host"),
-            self.config.get("statedb", "db"),
-            self.config.get("statedb", "user"),
-            self.config.get("statedb", "password"),
-            account
-        )
+        try:
 
-        # TODO: Process() should implement this
-        if (int(sequence) < int(last_sequence)):
-            return '{success: false, errors: {reason:"Not the last sequence"}}'
+            last_sequence = state.last_sequence(
+                self.config.get("statedb", "host"),
+                self.config.get("statedb", "db"),
+                self.config.get("statedb", "user"),
+                self.config.get("statedb", "password"),
+                account
+            )
 
-        process.Process().roll_bill(
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, int(sequence)+1),
-            amount,
-            self.config.get("xmldb", "user"),
-            self.config.get("xmldb", "password")
-        )
+            # TODO: Process() should implement this
+
+            # last_sequnce is None is no prior bills have been rolled (sequence 0)
+            if last_sequence is not None and (int(sequence) < int(last_sequence)):
+                return '{success: false, errors: {reason:"Not the last sequence"}}'
+
+                print "int last sequence %s " % int(last_sequence)
+
+                # TODO: Process() should implement this
+                if (int(sequence) < int(last_sequence)):
+                    return '{success: false, errors: {reason:"Not the last sequence"}}'
+
+
+            process.Process().roll_bill(
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, int(sequence)+1),
+                amount,
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )   
+
+        except Exception as e:
+                return '{success: false, errors: {reason:%s}}' % str(e)
+
         return '{success: true}'
 
     @cherrypy.expose
