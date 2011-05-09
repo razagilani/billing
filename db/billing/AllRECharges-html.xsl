@@ -21,10 +21,12 @@
                         <th>Issued</th>
                         <th class="">Begin</th>
                         <th class="">End</th>
-                        <th>Charge</th>
+                        <th>RE Value</th>
+                        <th>RE Rate</th>
+                        <th>RE Charge</th>
                         <th>RE</th>
                         <th>RE Units</th>
-                        <th>RE Rate</th>
+                        <th>RE Rate Discounted</th>
                     </tr>
                     <xsl:for-each select="bills/bill">
                         <tr>
@@ -73,6 +75,16 @@
     </xsl:template>
     <xsl:template match="periodend">
         <td class="periodend">
+            <xsl:value-of select="."/>
+        </td>
+    </xsl:template>
+    <xsl:template match="revalue">
+        <td style="text-align: right;">
+            <xsl:value-of select="."/>
+        </td>
+    </xsl:template>
+    <xsl:template match="rerate">
+        <td style="text-align: right;">
             <xsl:value-of select="."/>
         </td>
     </xsl:template>
