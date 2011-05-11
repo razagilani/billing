@@ -13,6 +13,10 @@ class RateStructure():
     necessarily dictate the re bill, because the re bill can have charges that are not part of this model.
     This is also why the rate structure model does not comprehend charge grouping, subtotals or totals.
     """
+
+    registers = []
+    rates = []
+
     def __init__(self, rs_yaml):
         """
         Construct with a loaded yaml file that contains the necessary fields for the ratestructure
@@ -56,12 +60,14 @@ class RateStructure():
         #TODO: graceful failure on bad yaml
         self.name = rs_yaml["name"]
         self.service = rs_yaml["service"]
-        self.registers = [Register(reg_rs_yaml) for reg_rs_yaml in rs_yaml["registers"]]
+        if rs_yaml["registers"] is not None:
+            self.registers = [Register(reg_rs_yaml) for reg_rs_yaml in rs_yaml["registers"]]
 
         # RSIs refer to RS namespace, so they are constructed with self along with their properties
         # so that RSIs have access to this object's namespace and can
         # pass the ratestructure into eval as the global namespace
-        self.rates = [RateStructureItem(rsi_rs_yaml, self) for rsi_rs_yaml in rs_yaml["rates"]]
+        if rs_yaml["rates"] is not None: 
+            self.rates = [RateStructureItem(rsi_rs_yaml, self) for rsi_rs_yaml in rs_yaml["rates"]]
 
     def register_needs(self):
         """ 
