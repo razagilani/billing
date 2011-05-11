@@ -45,6 +45,7 @@ class Process(object):
 
     # compute the value, charges and savings of renewable energy
     def sumbill(self, unprocessedBill, targetBill, discount_rate = None, user=None, password=None):
+        # TODO discount_rate should be a decimal so that it doesn't have to be converted below.
 
         the_bill = bill.Bill(unprocessedBill)
 
@@ -52,22 +53,36 @@ class Process(object):
         ub_summary_charges = the_bill.utilbill_summary_charges;
         rebill_summary = the_bill.rebill_summary
 
+        # get the total actual energy charges per service
+        actualecharges = the_bill.actualecharges
+
+        # get the total hypothetical energy charges per service
+        hypotheticalecharges = the_bill.hypotheticalecharges
+
         # eventually track total revalue
-        #rebill_summary['revalue'] = Decimal("0.00")
+        rebill_summary['revalue'] = Decimal("0.00")
         rebill_summary['recharges'] = Decimal("0.00")
         rebill_summary['resavings'] = Decimal("0.00")
+        rebill_summary['actualecharges'] = Decimal("0.00")
+        rebill_summary['hypotheticalecharges'] = Decimal("0.00")
 
         for (service, charges) in ub_summary_charges.items():
+            # grab the charges totals and update the summary rollup of them
+            charges['hypotheticalecharges'] = hypotheticalecharges[service]
+            charges['actualecharges'] = actualecharges[service]
+
             charges['revalue'] = charges['hypotheticalecharges'] - charges['actualecharges']
             charges['recharges'] = (charges['revalue'] * Decimal(str(1.0 -float(discount_rate)))).quantize(Decimal('.00'), rounding=ROUND_DOWN)
             charges['resavings'] = (charges['revalue'] * Decimal(str(float(discount_rate)))).quantize(Decimal('.00'), rounding=ROUND_UP)
-            assert(charges['recharges'] + charges['resavings'] == charges['revalue'])
 
             # accumulate charges across all services
             # eventually track total revalue
-            #rebill_summary['revalue'] += charges['revalue']
+            rebill_summary['revalue'] += charges['revalue']
             rebill_summary['recharges'] += charges['recharges']
             rebill_summary['resavings'] += charges['resavings']
+
+            rebill_summary['actualecharges'] += charges['actualecharges']
+            rebill_summary['hypotheticalecharges'] += charges['hypotheticalecharges']
 
         rebill_summary['totaldue'] = rebill_summary['totaladjustment'] + rebill_summary['balanceforward'] + rebill_summary['recharges']
 
@@ -77,53 +92,7 @@ class Process(object):
 
         XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
 
-        """
-        # obtain all of the utilbill groves 
-        utilbills = self.get_elem(tree, "/ub:bill/ub:utilbill")
-        for utilbill in utilbills:
-
-            # determine the difference between the hypothetical and actual energy charges to determine revalue
-            hypocharges = Decimal(self.get_elem(utilbill, "ub:hypotheticalecharges")[0].text)
-            actualcharges = Decimal(self.get_elem(utilbill, "ub:actualecharges")[0].text)
-            revalue = hypocharges - actualcharges
-            self.get_elem(utilbill, "ub:revalue")[0].text = str(revalue)
-
-            # we receive rounding down
-            recharges = Decimal(self.get_elem(utilbill, "ub:revalue")[0].text) * Decimal(str(1.0 - float(discount_rate)))
-            self.get_elem(utilbill, "ub:recharges")[0].text = str(recharges.quantize(Decimal('.00'), rounding=ROUND_DOWN))
-
-            # customers receive rounding up
-            resavings = Decimal(self.get_elem(utilbill, "ub:revalue")[0].text) * Decimal(str(discount_rate))
-            self.get_elem(utilbill, "ub:resavings")[0].text = str(resavings.quantize(Decimal('.00'), rounding=ROUND_UP))
-
-            # assert recharges + resavings = revalue
-            assert(recharges + resavings == revalue)
-        
-        rebillrevalue = self.get_elem(tree, "sum(/ub:bill/ub:utilbill/ub:revalue)")
-        rebillrecharges = self.get_elem(tree, "sum(/ub:bill/ub:utilbill/ub:recharges)")
-        rebillresavings = self.get_elem(tree, "sum(/ub:bill/ub:utilbill/ub:resavings)")
-
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:revalue")[0].text = str(rebillrevalue)
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:recharges")[0].text = str(rebillrecharges)
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:resavings")[0].text = str(rebillresavings)
-
-        # totalize the bill
-        # /ub:bill/ub:rebill/ub:totaldue = /ub:bill/ub:rebill/ub:totaladjustment + /ub:bill/ub:rebill/ub:balanceforward + 
-        # /ub:bill/ub:rebill/ub:recharges + /ub:bill/ub:rebill/ub:currentcharges
-        totaladjustment = float(self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaladjustment")[0].text)
-        balanceforward = float(self.get_elem(tree, "/ub:bill/ub:rebill/ub:balanceforward")[0].text)
-        recharges = float(self.get_elem(tree, "/ub:bill/ub:rebill/ub:recharges")[0].text)
-        currentcharges = float(self.get_elem(tree, "/ub:bill/ub:rebill/ub:currentcharges")[0].text)
-
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaldue")[0].text = \
-            str(totaladjustment + balanceforward + recharges + currentcharges)
-
-        # write bill back out
-        xml = etree.tostring(tree, pretty_print=True)
-        XMLUtils().save_xml_file(xml, targetBill, user, password)
-
-        """
-
+    # TODO cover method that accepts charges_type of hypo or actual
     def sum_hypothetical_charges(self, unprocessedBill, targetBill, user=None, password=None):
         """ 
         After a rate structure has been bound, sum up the totals, by chargegroup.
@@ -132,9 +101,6 @@ class Process(object):
         the_bill = bill.Bill(unprocessedBill)
 
         hypothetical_charges = the_bill.hypothetical_charges
-
-        pp = pprint.PrettyPrinter(indent=2)
-        pp.pprint (hypothetical_charges)
        
         for service, cg_items in hypothetical_charges.items():
             # cg_items contains dict of chargegroups and a grand total
@@ -153,48 +119,8 @@ class Process(object):
                     # summarize the service
                     cg_items['total'] += charge['total']
 
-        pp.pprint (hypothetical_charges)
-
         # set the newly totalized charges
-        STOPPED HERE
-        #the_bill.hypothetical_charges = hypothetical_charges
-
-
-        """ Sums up all hypothetical charges.  For each set of hypothetical charges, """
-        """ /ub:bill/ub:details/ub:chargegroup/ub:charges[@type="hypothetical"]/ub:total = """
-        """ sum(/ub:bill/ub:details/ub:chargegroup/ub:charges[@type="hypothetical"]/ub:charge/ub:total """
-        """ For each set of services, /ub:bill/ub:details/ub:total[@type="hypothetical"] = """
-        """ sum(/ub:bill/ub:details/ub:chargegroup/ub:charges[@type="hypothetical"]/ub:total) """
-        """ Each /ub:bill/ub:utilbill/ub:hypotheticalecharges = /ub:bill/ub:details/ub:total """
-        """ /ub:bill/ub:rebill/ub:hypotheticalecharges = sum(/ub:bill/ub:utilbill/ub:hypotheticalecharges) """
-
-        """
-        tree = etree.parse(unprocessedBill)
-
-        # get the child groves for each set of hypothetical charges and total them up
-        all_hypothetical_charges = self.get_elem(tree, "/ub:bill/ub:details/ub:chargegroup/ub:charges[@type=\"hypothetical\"]")
-        for hypothetical_charges in all_hypothetical_charges:
-            # and set the subtotal for for each hypothetical set of charges
-            self.get_elem(hypothetical_charges, "ub:total")[0].text = \
-            str(self.get_elem(hypothetical_charges, "sum(ub:charge/ub:total)"))
-
-        # for each utility details, sum up the hypothetical charges totals 
-        details = self.get_elem(tree, "/ub:bill/ub:details")
-        for detail in details:
-            total = str(self.get_elem(detail, "sum(ub:chargegroup/ub:charges[@type=\"hypothetical\"]/ub:total)"))
-            self.get_elem(detail, "ub:total[@type=\"hypothetical\"]")[0].text = total 
-
-            # now that the utility details are totalized, hypothetical values are put into the utilibill summary
-            service_type = detail.attrib["service"]
-            self.get_elem(tree, "/ub:bill/ub:utilbill[@service=\""+service_type+"\"]/ub:hypotheticalecharges")[0].text = total
-        
-        # finally, these hypothetical energy charges get rolled up into rebill
-
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:hypotheticalecharges")[0].text = \
-        str(self.get_elem(tree, "sum(/ub:bill/ub:utilbill/ub:hypotheticalecharges)"))
-
-        xml = etree.tostring(tree, pretty_print=True)
-        """
+        the_bill.hypothetical_charges = hypothetical_charges
 
         XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
 
