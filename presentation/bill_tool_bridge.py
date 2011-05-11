@@ -9,6 +9,9 @@ site.addsitedir('/var/local/billtool/lib/python2.6/site-packages')
 import sys
 sys.stdout = sys.stderr
 
+import traceback
+import json
+
 # CGI support
 import cherrypy
 
@@ -68,12 +71,19 @@ class BillToolBridge:
 
     @cherrypy.expose
     def copyactual(self, account, sequence, **args):
-        process.Process().copy_actual_charges(
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-            self.config.get("xmldb", "user"),
-            self.config.get("xmldb", "password")
-        )
+
+        try:
+            process.Process().copy_actual_charges(
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )
+
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return json.dumps({'success': True})
 
     @cherrypy.expose
     def roll(self, account, sequence, amount, **args):
@@ -113,152 +123,194 @@ class BillToolBridge:
             )   
 
         except Exception as e:
-                return '{success: false, errors: {reason:%s}}' % str(e)
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return '{success: true}'
+        return json.dumps({'success': True})
 
     @cherrypy.expose
     def bindree(self, account, sequence, **args):
 
         from billing.processing import fetch_bill_data as fbd
-        # TODO make args to fetch bill data optional
-        fbd.fetch_bill_data(
-            "http://duino-drop.appspot.com/",
-            self.config.get("xmldb", "user"),
-            self.config.get("xmldb", "password"),
-            nu.NexusUtil("nexus").olap_id(account),
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-            None,
-            None,
-            True
-        )
+        try:
+            # TODO make args to fetch bill data optional
+            fbd.fetch_bill_data(
+                "http://duino-drop.appspot.com/",
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password"),
+                nu.NexusUtil("nexus").olap_id(account),
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                None,
+                None,
+                True
+            )
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return json.dumps({'success': True})
 
     @cherrypy.expose
     def bindrs(self, account, sequence, **args):
 
-        # actual
-        process.Process().bindrs(
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-            self.config.get("billdb", "rspath"),
-            False, 
-            self.config.get("xmldb", "user"),
-            self.config.get("xmldb", "password")
-        )
+        try:
+            # actual
+            process.Process().bindrs(
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+                self.config.get("billdb", "rspath"),
+                False, 
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )
 
 
-        #hypothetical
-        process.Process().bindrs(
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-            self.config.get("billdb", "rspath"),
-            True, 
-            self.config.get("xmldb", "user"),
-            self.config.get("xmldb", "password")
-        )
+            #hypothetical
+            process.Process().bindrs(
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+                self.config.get("billdb", "rspath"),
+                True, 
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )
 
-        process.Process().calculate_reperiod(
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-            self.config.get("xmldb", "user"),
-            self.config.get("xmldb", "password")
-        )
+            process.Process().calculate_reperiod(
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )
+
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return json.dumps({'success': True})
 
     @cherrypy.expose
     def calcstats(self, account, sequence, **args):
 
-        process.Process().calculate_statistics(
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-            self.config.get("xmldb", "user"),
-            self.config.get("xmldb", "password")
-        )
+        try:
+            process.Process().calculate_statistics(
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return json.dumps({'success': True})
 
     @cherrypy.expose
     def sum(self, account, sequence, **args):
 
-        # sum actual
-        process.Process().sum_actual_charges(
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-            self.config.get("xmldb", "user"),
-            self.config.get("xmldb", "password")
-        )
+        try:
+            # sum actual
+            process.Process().sum_actual_charges(
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )
 
-        # sum hypothetical
-        process.Process().sum_hypothetical_charges(
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-            self.config.get("xmldb", "user"),
-            self.config.get("xmldb", "password")
-        )
-    
-        # get discount rate
-        discount_rate = state.discount_rate(
-            self.config.get("statedb", "host"),
-            self.config.get("statedb", "db"),
-            self.config.get("statedb", "user"),
-            self.config.get("statedb", "password"),
-            account
-        )
+            # sum hypothetical
+            process.Process().sum_hypothetical_charges(
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )
+        
+            # get discount rate
+            discount_rate = state.discount_rate(
+                self.config.get("statedb", "host"),
+                self.config.get("statedb", "db"),
+                self.config.get("statedb", "user"),
+                self.config.get("statedb", "password"),
+                account
+            )
 
-        process.Process().sumbill(
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-            discount_rate,
-            self.config.get("xmldb", "user"),
-            self.config.get("xmldb", "password")
-        )
+            process.Process().sumbill(
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+                discount_rate,
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return json.dumps({'success': True})
         
     @cherrypy.expose
     def issue(self, account, sequence, **args):
 
         # only sets the issue date
 
-        process.Process().issue(
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-            None,
-            self.config.get("xmldb", "user"),
-            self.config.get("xmldb", "password")
-        )
+        try:
+            process.Process().issue(
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+                None,
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return json.dumps({'success': True})
+
 
 
     @cherrypy.expose
     def render(self, account, sequence, **args):
 
-        render.render(
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-            self.config.get("billdb", "billpath")+ "%s/%s.pdf" % (account, sequence),
-            "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
-            None,
-        )
+        try:
+            render.render(
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                self.config.get("billdb", "billpath")+ "%s/%s.pdf" % (account, sequence),
+                "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
+                None,
+            )
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return json.dumps({'success': True})
 
     @cherrypy.expose
     def commit(self, account, sequence, begin, end, **args):
         
-        state.commit_bill(
-            self.config.get("statedb", "host"),
-            self.config.get("statedb", "db"),
-            self.config.get("statedb", "user"),
-            self.config.get("statedb", "password"),
-            account,
-            sequence,
-            begin,
-            end
-        )
+        try:
+            state.commit_bill(
+                self.config.get("statedb", "host"),
+                self.config.get("statedb", "db"),
+                self.config.get("statedb", "user"),
+                self.config.get("statedb", "password"),
+                account,
+                sequence,
+                begin,
+                end
+            )
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return json.dumps({'success': True})
 
     @cherrypy.expose
     def issueToCustomer(self, account, sequence, **args):
 
-        state.issue(
-            self.config.get("statedb", "host"),
-            self.config.get("statedb", "db"),
-            self.config.get("statedb", "user"),
-            self.config.get("statedb", "password"),
-            account,
-            sequence
-        )
+        try:
+            state.issue(
+                self.config.get("statedb", "host"),
+                self.config.get("statedb", "db"),
+                self.config.get("statedb", "user"),
+                self.config.get("statedb", "password"),
+                account,
+                sequence
+            )
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return json.dumps({'success': True})
 
 
 bridge = BillToolBridge()
