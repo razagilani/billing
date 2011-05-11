@@ -14,7 +14,7 @@ class NexusUtil(object):
     def olap_id(self, bill_account):
         """ For a billing account number, return an olap_id """
 
-        url = "http://%s/nexus_rest/lookup?system=billing&systemid=%s&forsystem=olap" % (
+        url = "http://%s/nexus_query/lookup?system=billing&systemid=%s&forsystem=olap" % (
             self.host,
             bill_account
         )
@@ -27,7 +27,7 @@ class NexusUtil(object):
         """ For a billing account number, return an olap_id """
         #http://nexus/nexus_rest/lookup_all?system=billing&systemid=10001
 
-        url = "http://%s/nexus_rest/lookup_all?system=%s&systemid=%s" % (
+        url = "http://%s/nexus_query/lookup_all?system=%s&systemid=%s" % (
             self.host,
             system,
             system_id
