@@ -8,7 +8,6 @@ function renderWidgets()
     // global ajax timeout
     Ext.Ajax.timeout = 480000; //8 minutes
 
-
     // ToDo: state support for grid
     //Ext.state.Manager.setProvider(new Ext.state.CookieProvider());
 
@@ -112,6 +111,32 @@ function renderWidgets()
     });
 
 
+    function successResponse(response, options) 
+    {
+        var o = {};
+        try {
+            o = Ext.decode(response.responseText);}
+        catch(e) {
+            alert("Could not decode JSON data");
+        }
+        if(true !== o.success) {
+            Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
+        } else {
+            // do your success processing here
+            // loads a bill from eXistDB
+            account = customerAccountCombo.getValue();
+            sequence = customerBillCombo.getValue();
+            // sequences come back from eXist as [seq].xml
+            sequence = sequence.split(".",1);
+            Ext.Ajax.request({
+                url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + account
+                    + '/' + (parseInt(sequence)) + '.xml',
+               success: billLoaded,
+               failure: billLoadFailed,
+               disableCaching: true,
+            });
+        }
+    }
 
     function allOperations()
     {
@@ -134,30 +159,15 @@ function renderWidgets()
     {
         saveToXML(function() {
 
-            account = customerAccountCombo.getValue();
-            sequence = customerBillCombo.getValue();
-
-            // sequences come back from eXist as [seq].xml
-            sequence = sequence.split(".",1);
-
             this.registerAjaxEvents()
             Ext.Ajax.request({
                 url: 'http://'+location.host+'/billtool/issueToCustomer',
                 params: { 
-                    account: account,
-                    sequence: sequence
+                    account: customerAccountCombo.getValue(),
+                    sequence: customerBillCombo.getValue().split(".",1)
                 },
                 disableCaching: true,
-                success: function () {
-                    // loads a bill from eXistDB
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
-                            + '/' + customerBillCombo.getValue(),
-                       success: billLoaded,
-                       failure: billLoadFailed,
-                       disableCaching: true,
-                    });
-                },
+                success: sucessResponse,
                 failure: function () {
                     alert("Issue to customer response fail");
                 }
@@ -169,30 +179,15 @@ function renderWidgets()
     {
         saveToXML(function() {
 
-            account = customerAccountCombo.getValue();
-            sequence = customerBillCombo.getValue();
-
-            // sequences come back from eXist as [seq].xml
-            sequence = sequence.split(".",1);
-
             this.registerAjaxEvents()
             Ext.Ajax.request({
                 url: 'http://'+location.host+'/billtool/calcstats',
                 params: { 
-                    account: account,
-                    sequence: sequence
+                    account: customerAccountCombo.getValue(),
+                    sequence: customerBillCombo.getValue().split(".",1)
                 },
                 disableCaching: true,
-                success: function () {
-                    // loads a bill from eXistDB
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
-                            + '/' + customerBillCombo.getValue(),
-                       success: billLoaded,
-                       failure: billLoadFailed,
-                       disableCaching: true,
-                    });
-                },
+                success: successResponse,
                 failure: function () {
                     alert("Sum response fail");
                 }
@@ -204,30 +199,15 @@ function renderWidgets()
     {
         saveToXML(function() {
 
-            account = customerAccountCombo.getValue();
-            sequence = customerBillCombo.getValue();
-
-            // sequences come back from eXist as [seq].xml
-            sequence = sequence.split(".",1);
-
             this.registerAjaxEvents()
             Ext.Ajax.request({
                 url: 'http://'+location.host+'/billtool/sum',
                 params: { 
-                    account: account,
-                    sequence: sequence
+                    account: customerAccountCombo.getValue(),
+                    sequence: customerBillCombo.getValue().split(".",1)
                 },
                 disableCaching: true,
-                success: function () {
-                    // loads a bill from eXistDB
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
-                            + '/' + customerBillCombo.getValue(),
-                       success: billLoaded,
-                       failure: billLoadFailed,
-                       disableCaching: true,
-                    });
-                },
+                success: successResponse,
                 failure: function () {
                     alert("Sum response fail");
                 }
@@ -239,31 +219,15 @@ function renderWidgets()
     {
         saveToXML(function() {
 
-
-            account = customerAccountCombo.getValue();
-            sequence = customerBillCombo.getValue();
-
-            // sequences come back from eXist as [seq].xml
-            sequence = sequence.split(".",1);
-
             this.registerAjaxEvents()
             Ext.Ajax.request({
                 url: 'http://'+location.host+'/billtool/bindrs',
                 params: { 
-                    account: account,
-                    sequence: sequence
+                    account: customerAccountCombo.getValue(),
+                    sequence: customerBillCombo.getValue().split(".",1)
                 },
                 disableCaching: true,
-                success: function () {
-                    // loads a bill from eXistDB
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
-                            + '/' + customerBillCombo.getValue(),
-                       success: billLoaded,
-                       failure: billLoadFailed,
-                       disableCaching: true,
-                    });
-                },
+                success: successResponse,
                 failure: function () {
                     alert("Bind RS response fail");
                 }
@@ -275,30 +239,15 @@ function renderWidgets()
     {
         saveToXML(function() {
 
-            account = customerAccountCombo.getValue();
-            sequence = customerBillCombo.getValue();
-
-            // sequences come back from eXist as [seq].xml
-            sequence = sequence.split(".",1);
-
             this.registerAjaxEvents()
             Ext.Ajax.request({
                 url: 'http://'+location.host+'/billtool/bindree',
                 params: { 
-                    account: account,
-                    sequence: sequence
+                    account: customerAccountCombo.getValue(),
+                    sequence: customerBillCombo.getValue().split(".",1)
                 },
                 disableCaching: true,
-                success: function () {
-                    // loads a bill from eXistDB
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
-                            + '/' + customerBillCombo.getValue(),
-                       success: billLoaded,
-                       failure: billLoadFailed,
-                       disableCaching: true,
-                    });
-                },
+                success: successResponse,
                 failure: function () {
                     alert("Bind REE response fail");
                 }
@@ -363,30 +312,15 @@ function renderWidgets()
     {
         saveToXML(function() {
 
-            account = customerAccountCombo.getValue();
-            sequence = customerBillCombo.getValue();
-
-            // sequences come back from eXist as [seq].xml
-            sequence = sequence.split(".",1);
-
             this.registerAjaxEvents()
             Ext.Ajax.request({
                 url: 'http://'+location.host+'/billtool/issue',
                 params: { 
-                    account: account,
-                    sequence: sequence,
+                    account: customerAccountCombo.getValue(),
+                    sequence: customerBillCombo.getValue().split(".",1)
                 },
                 disableCaching: true,
-                success: function () {
-                    // loads a bill from eXistDB
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
-                            + '/' + customerBillCombo.getValue(),
-                       success: billLoaded,
-                       failure: billLoadFailed,
-                       disableCaching: true,
-                    });
-                },
+                success: successResponse,
                 failure: function () {
                     alert("Issue response fail");
                 }
@@ -398,30 +332,16 @@ function renderWidgets()
     {
         saveToXML(function() {
 
-            account = customerAccountCombo.getValue();
-            sequence = customerBillCombo.getValue();
-            // sequences come back from eXist as [seq].xml
-            sequence = sequence.split(".",1);
-
             this.registerAjaxEvents()
             Ext.Ajax.request({
                 // TODO: pass in only account and sequence
                 url: 'http://'+location.host+'/billtool/render',
                 params: { 
-                    account: account,
-                    sequence: sequence,
+                    account: customerAccountCombo.getValue(),
+                    sequence: customerBillCombo.getValue().split(".",1)
                 },
                 disableCaching: true,
-                success: function () {
-                    // loads a bill from eXistDB
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
-                            + '/' + customerBillCombo.getValue(),
-                       success: billLoaded,
-                       failure: billLoadFailed,
-                       disableCaching: true,
-                    });
-                },
+                success: successResponse,
                 failure: function () {
                     alert("Render response fail");
                 }
@@ -449,22 +369,13 @@ function renderWidgets()
                         // TODO: pass in only account and sequence
                         url: 'http://'+location.host+'/billtool/commit',
                         params: {
-                            account: account,
-                            sequence: sequence,
+                            account: customerAccountCombo.getValue(),
+                            sequence: customerBillCombo.getValue().split(".",1),
                             begin: value.begindate,
                             end: value.enddate,
                         },
                         disableCaching: true,
-                        success: function () {
-                            // loads a bill from eXistDB
-                            Ext.Ajax.request({
-                                url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
-                                    + '/' + customerBillCombo.getValue(),
-                               success: billLoaded,
-                               failure: billLoadFailed,
-                               disableCaching: true,
-                            });
-                        },
+                        success: successResponse,
                         failure: function () {
                             alert("commit response fail");
                         }
