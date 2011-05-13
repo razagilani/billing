@@ -6,7 +6,7 @@ function renderWidgets()
     var bill = null;
 
     // global ajax timeout
-    Ext.Ajax.timeout = 480000; //8 minutes
+    Ext.Ajax.timeout = 960000; //16 minutes
 
     // ToDo: state support for grid
     //Ext.state.Manager.setProvider(new Ext.state.CookieProvider());
