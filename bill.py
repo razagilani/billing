@@ -25,7 +25,12 @@ import json
 # used for processing fixed point monetary decimal numbers
 from decimal import *
 
+from collections import namedtuple
 
+from recordtype import recordtype
+
+
+# TODO: the xpath functions return a special kind of string. Probably want to convert it before returning int
 class Bill(object):
     """
     A container for bill data.  Business logic is purposefully externalized.
@@ -52,9 +57,16 @@ class Bill(object):
     def account(self):
         return self.xpath("/ub:bill/@account")[0]
 
+    # TODO rename to sequnce
     @property
     def id(self):
         return self.xpath("/ub:bill/@id")[0]
+
+    # TODO rename to sequnce
+    @id.setter
+    def id(self, id):
+        self.xpath("/ub:bill/@id")[0] = id
+
 
     @property
     def total_due(self,rounding=None):
@@ -64,10 +76,12 @@ class Bill(object):
         
         return Decimal(total_due).quantize(Decimal(".00"), rounding)
 
+    # TODO convenience method - get due_date from rebill()
     @property
     def due_date(self):
         return datetime.strptime(self.xpath("/ub:bill/ub:rebill/ub:duedate")[0].text, "%Y-%m-%d").date()
 
+    # TODO convenience method - get issue_date from rebill()
     @property
     def issue_date(self):
         return datetime.strptime(self.xpath("/ub:bill/ub:rebill/ub:issued")[0].text, "%Y-%m-%d").date()
@@ -116,6 +130,8 @@ class Bill(object):
         self.xpath("/ub:bill/ub:rebill/ub:car/ub:billingaddress/ub:country")[0].text = billing_address.get("country")
         self.xpath("/ub:bill/ub:rebill/ub:car/ub:billingaddress/ub:postalcode")[0].text = billing_address.get("postalcode")
 
+    # convenience method
+    # TODO acquire these periods from the function rebill() vs access the xml here
     @property
     def rebill_periods(self):
         begin = datetime.strptime(self.xpath("/ub:bill/ub:rebill/ub:billperiodbegin")[0].text, "%Y-%m-%d").date()
@@ -123,6 +139,7 @@ class Bill(object):
         return {"begin":begin, "end":end}
 
     @rebill_periods.setter
+    # TODO acquire these periods from the function rebill() vs access the xml here
     def rebill_periods(self, periods):
         self.xpath("/ub:bill/ub:rebill/ub:billperiodbegin")[0].text = periods.get("begin").strftime("%Y-%m-%d")
         self.xpath("/ub:bill/ub:rebill/ub:billperiodend")[0].text = periods.get("end").strftime("%Y-%m-%d")
@@ -137,6 +154,7 @@ class Bill(object):
                 }
         return utilbill_periods
 
+    # TODO convert to namedtuple
     @property
     def utilbill_summary_charges(self):
         """
@@ -145,11 +163,13 @@ class Bill(object):
         """
         utilbill_summary_charges = {}
         for service in self.xpath("/ub:bill/ub:utilbill/@service" ):
-            hypotheticalecharges = self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:hypotheticalecharges")[0].text
-            actualecharges = self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:actualecharges")[0].text
-            revalue = self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:revalue")[0].text
-            recharges = self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:recharges")[0].text
-            resavings = self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:resavings")[0].text
+            begin = datetime.strptime(self.xpath("/ub:bill/ub:utilbill[@service='%s']/ub:billperiodbegin" % service)[0].text, "%Y-%m-%d").date()
+            end = datetime.strptime(self.xpath("/ub:bill/ub:utilbill[@service='%s']/ub:billperiodend" % service)[0].text, "%Y-%m-%d").date()
+            hypotheticalecharges = self.xpath("/ub:bill/ub:utilbill[@service='%s']/ub:hypotheticalecharges" % service)[0].text
+            actualecharges = self.xpath("/ub:bill/ub:utilbill[@service='%s']/ub:actualecharges" % service)[0].text
+            revalue = self.xpath("/ub:bill/ub:utilbill[@service='%s']/ub:revalue" % service)[0].text
+            recharges = self.xpath("/ub:bill/ub:utilbill[@service='%s']/ub:recharges" % service)[0].text
+            resavings = self.xpath("/ub:bill/ub:utilbill[@service='%s']/ub:resavings" % service)[0].text
 
             # TODO optional quantization?
             hypotheticalecharges = Decimal(hypotheticalecharges).quantize(Decimal('.00'))
@@ -159,6 +179,8 @@ class Bill(object):
             resavings = Decimal(resavings).quantize(Decimal('.00'))
 
             utilbill_summary_charges[service] = {
+                'begin': begin,
+                'end': end,
                 'hypotheticalecharges':hypotheticalecharges,
                 'actualecharges': actualecharges,
                 'revalue': revalue,
@@ -168,6 +190,7 @@ class Bill(object):
 
         return utilbill_summary_charges
 
+    # TODO convert to namedtuple
     @utilbill_summary_charges.setter
     def utilbill_summary_charges(self, summary_charges):
         """
@@ -176,19 +199,59 @@ class Bill(object):
         """
         # TODO: create xml elements if missing
         for service, charges in summary_charges.items():
-            self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:hypotheticalecharges")[0].text = str(charges['hypotheticalecharges'])
-            self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:actualecharges")[0].text = str(charges['actualecharges'])
-            self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:revalue")[0].text = str(charges['revalue'])
-            self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:recharges")[0].text = str(charges['recharges'])
-            self.xpath("/ub:bill/ub:utilbill[@service='"+service+"']/ub:resavings")[0].text = str(charges['resavings'])
+            self.xpath("/ub:bill/ub:utilbill[@service='%s']/ub:billperiodbegin" % service)[0].text = charges['begin'].strftime("%Y-%m-%d") if charges['begin'] is not None else None
+            self.xpath("/ub:bill/ub:utilbill[@service='%s']/ub:billperiodend" % service)[0].text = charges['end'].strftime("%Y-%m-%d") if charges['end'] is not None else None
+            self.xpath("/ub:bill/ub:utilbill[@service='%s']/ub:hypotheticalecharges" % service)[0].text = str(charges['hypotheticalecharges'])
+            self.xpath("/ub:bill/ub:utilbill[@service='%s']/ub:actualecharges" % service)[0].text = str(charges['actualecharges'])
+            self.xpath("/ub:bill/ub:utilbill[@service='%s']/ub:revalue" % service)[0].text = str(charges['revalue'])
+            self.xpath("/ub:bill/ub:utilbill[@service='%s']/ub:recharges" % service)[0].text = str(charges['recharges'])
+            self.xpath("/ub:bill/ub:utilbill[@service='%s']/ub:resavings" % service)[0].text = str(charges['resavings'])
 
+
+    # convert to recordtype
     @property
     def measured_usage(self):
+
         measured_usages = {}
 
+        Meter = recordtype("meter", ["identifier", "estimated","priorreaddate", "presentreaddate", "registers"])
+
+        # TODO: track meter effective times here
+        # inclusions/exclusions have been flattened from xsd
+        Register = recordtype("register", ["rsbinding", "shadow", "type", "identifier", "description", "inclusions","exclusions", "units", "total", "priorreading", "presentreading", "factor"])
+        Effective = recordtype("effective", ["description", "times", "weekdays", "holidays"])
+        Holiday = recordtype("holiday", ["description", "date"])
+        Weekday = recordtype("weekday", ["fromhour", "tohour", "weekday"])
+
         for service in self.xpath("/ub:bill/ub:measuredusage/@service"):
+
+            measured_usages[service] = []
+
             for meter in self.xpath("/ub:bill/ub:measuredusage[@service='"+service+"']/ub:meter"):
-                for register in meter.findall("ub:register[@shadow='false']", namespaces={'ub':'bill'} ):
+                
+                meter_identifier = meter.find("ub:identifier", namespaces={'ub':'bill'})
+                meter_identifier = meter_identifier.text if meter_identifier is not None else None
+
+                estimated = meter.find("ub:estimated", namespaces={'ub':'bill'})
+                estimated = estimated.text if estimated is not None else None
+                estimated = False if estimated is not None and estimated.lower() == 'false' \
+                    else True if estimated is not None and estimated.lower() == 'true' else None
+
+                priorreaddate = meter.find("ub:priorreaddate", namespaces={'ub':'bill'})
+                priorreaddate = priorreaddate.text if priorreaddate is not None else None
+                priorreaddate = datetime.strptime(priorreaddate, "%Y-%m-%d").date() if priorreaddate is not None else None
+
+                presentreaddate = meter.find("ub:presentreaddate", namespaces={'ub':'bill'})
+                presentreaddate = presentreaddate.text if presentreaddate is not None else None
+                presentreaddate = datetime.strptime(presentreaddate, "%Y-%m-%d").date() if presentreaddate is not None else None
+
+                meter_record = Meter(meter_identifier, estimated, priorreaddate, presentreaddate, [])
+
+                for register in meter.findall("ub:register", namespaces={'ub':'bill'} ):
+
+                    rsbinding = register.get("rsbinding")
+                    shadow = register.get("shadow")
+                    regtype = register.get("type")
 
                     identifier = register.find("ub:identifier", namespaces={'ub':'bill'})
                     identifier = identifier.text if identifier is not None else None
@@ -199,6 +262,15 @@ class Bill(object):
                     units = register.find("ub:units", namespaces={'ub':'bill'})
                     units = units.text if units is not None else None
 
+                    priorreading = register.find("ub:priorreading", namespaces={'ub':'bill'})
+                    priorreading = priorreading.text if priorreading is not None else None
+
+                    presentreading = register.find("ub:presentreading", namespaces={'ub':'bill'})
+                    presentreading = presentreading.text if presentreading is not None else None
+
+                    factor = register.find("ub:factor", namespaces={'ub':'bill'})
+                    factor = factor.text if factor is not None else None
+
                     # TODO optional quantize
                     total = register.find("ub:total", namespaces={'ub':'bill'})
                     total = Decimal(total.text).quantize(Decimal(str(.00))) if total is not None else None
@@ -207,6 +279,10 @@ class Bill(object):
                     shadow_total = shadow_register.find("ub:total", namespaces={'ub':'bill'})
                     shadow_total = Decimal(shadow_total.text).quantize(Decimal(str(.00))) if shadow_total is not None else None
 
+                    #recordtype("register", ["rsbinding", "shadow", "type", "identifier", "description", "inclusions","exclusions", "units", "total", "priorreading", "presentreading", "factor"])
+                    meter_record.registers.append(Register(rsbinding, shadow, regtype, identifier, description, [], [], units, total, priorreading, presentreading, factor))
+
+                    """
                     measured_usages[service] = {
                         "identifier": identifier,
                         "description": description,
@@ -215,52 +291,87 @@ class Bill(object):
                         "total": total + shadow_total,
                         "units": units
                     }
+                    """
+
+                measured_usages[service].append(meter_record)
 
         return measured_usages
 
+
+    #STOPPED HERE 
+    #@measured_usages.setter
+
+
+    # TODO rename to rebill, and send entire grove
     @property
     def rebill_summary(self):
+
+        begin = datetime.strptime(self.xpath("/ub:bill/ub:rebill/ub:billperiodbegin")[0].text, "%Y-%m-%d").date()
+        end = datetime.strptime(self.xpath("/ub:bill/ub:rebill/ub:billperiodend")[0].text, "%Y-%m-%d").date()
         priorbalance = self.xpath("/ub:bill/ub:rebill/ub:priorbalance")[0].text
         paymentreceived = self.xpath("/ub:bill/ub:rebill/ub:paymentreceived")[0].text
         totaladjustment = self.xpath("/ub:bill/ub:rebill/ub:totaladjustment")[0].text
-        savings = self.xpath("/ub:bill/ub:rebill/ub:resavings")[0].text
-        renewablecharges = self.xpath("/ub:bill/ub:rebill/ub:recharges")[0].text
         balanceforward = self.xpath("/ub:bill/ub:rebill/ub:balanceforward")[0].text
+        hypotheticalecharges = self.xpath("/ub:bill/ub:rebill/ub:hypotheticalecharges")[0].text
+        actualecharges = self.xpath("/ub:bill/ub:rebill/ub:actualecharges")[0].text
+        revalue = self.xpath("/ub:bill/ub:rebill/ub:revalue")[0].text
+        resavings = self.xpath("/ub:bill/ub:rebill/ub:resavings")[0].text
+        recharges = self.xpath("/ub:bill/ub:rebill/ub:recharges")[0].text
         totaldue = self.xpath("/ub:bill/ub:rebill/ub:totaldue")[0].text
+        duedate = datetime.strptime(self.xpath("/ub:bill/ub:rebill/ub:duedate")[0].text, "%Y-%m-%d").date()
+        issued = datetime.strptime(self.xpath("/ub:bill/ub:rebill/ub:issued")[0].text, "%Y-%m-%d").date()
+        message = self.xpath("/ub:bill/ub:rebill/ub:message")[0].text
+
         # TODO optional quantization?
         priorbalance = Decimal(priorbalance).quantize(Decimal('.00'))
         paymentreceived = Decimal(paymentreceived).quantize(Decimal('.00'))
         totaladjustment = Decimal(totaladjustment).quantize(Decimal('.00'))
-        resavings = Decimal(savings).quantize(Decimal('.00'))
-        recharges = Decimal(renewablecharges).quantize(Decimal('.00'))
+        revalue = Decimal(revalue).quantize(Decimal('.00'))
+        recharges = Decimal(recharges).quantize(Decimal('.00'))
+        resavings = Decimal(resavings).quantize(Decimal('.00'))
         balanceforward = Decimal(balanceforward).quantize(Decimal('.00'))
         totaldue = Decimal(totaldue).quantize(Decimal('.00'))
-        return {
-            'priorbalance': priorbalance, 
-            'paymentreceived': paymentreceived, 
-            'totaladjustment':totaladjustment, 
-            # Eventually populate this
-            'revalue': None,
-            'resavings': resavings, 
-            'recharges': recharges, 
-            'balanceforward': balanceforward, 
-            'totaldue':totaldue
-        }
+
+        Rebill = recordtype("rebill",
+            ['begin', 'end', 'priorbalance', 'paymentreceived', 'totaladjustment', 'balanceforward',
+            'hypotheticalecharges', 'actualecharges', 'revalue', 'resavings', 'recharges', 'totaldue', 'duedate', 'issued', 'message']
+        )
+
+        return Rebill(begin, end, priorbalance, paymentreceived, totaladjustment, balanceforward, 
+            hypotheticalecharges, actualecharges, revalue, resavings, recharges, totaldue, duedate, issued, message)
 
     @rebill_summary.setter
-    def rebill_summary(self, summary):
+    def rebill_summary(self, r):
 
-        self.xpath("/ub:bill/ub:rebill/ub:priorbalance")[0].text = str(summary['priorbalance'])
-        self.xpath("/ub:bill/ub:rebill/ub:paymentreceived")[0].text = str(summary['paymentreceived'])
-        self.xpath("/ub:bill/ub:rebill/ub:totaladjustment")[0].text = str(summary['totaladjustment'])
-        self.xpath("/ub:bill/ub:rebill/ub:balanceforward")[0].text = str(summary['balanceforward'])
-        self.xpath("/ub:bill/ub:rebill/ub:hypotheticalecharges")[0].text = str(summary['hypotheticalecharges'])
-        self.xpath("/ub:bill/ub:rebill/ub:actualecharges")[0].text = str(summary['actualecharges'])
-        self.xpath("/ub:bill/ub:rebill/ub:revalue")[0].text = str(summary['revalue'])
-        self.xpath("/ub:bill/ub:rebill/ub:resavings")[0].text = str(summary['resavings'])
-        self.xpath("/ub:bill/ub:rebill/ub:recharges")[0].text = str(summary['recharges'])
-        self.xpath("/ub:bill/ub:rebill/ub:totaldue")[0].text = str(summary['totaldue'])
+        self.xpath("/ub:bill/ub:rebill/ub:billperiodbegin")[0].text = r.begin.strftime("%Y-%m-%d") if r.begin is not None else None
+        self.xpath("/ub:bill/ub:rebill/ub:billperiodend")[0].text = r.end.strftime("%Y-%m-%d") if r.end is not None else None
+        self.xpath("/ub:bill/ub:rebill/ub:priorbalance")[0].text = str(r.priorbalance)
+        self.xpath("/ub:bill/ub:rebill/ub:paymentreceived")[0].text = str(r.paymentreceived)
+        self.xpath("/ub:bill/ub:rebill/ub:totaladjustment")[0].text = str(r.totaladjustment)
+        self.xpath("/ub:bill/ub:rebill/ub:balanceforward")[0].text = str(r.balanceforward)
+        self.xpath("/ub:bill/ub:rebill/ub:hypotheticalecharges")[0].text = str(r.hypotheticalecharges)
+        self.xpath("/ub:bill/ub:rebill/ub:actualecharges")[0].text = str(r.actualecharges)
+        self.xpath("/ub:bill/ub:rebill/ub:revalue")[0].text = str(r.revalue)
+        self.xpath("/ub:bill/ub:rebill/ub:resavings")[0].text = str(r.resavings)
+        self.xpath("/ub:bill/ub:rebill/ub:recharges")[0].text = str(r.recharges)
+        self.xpath("/ub:bill/ub:rebill/ub:totaldue")[0].text = str(r.totaldue)
+        self.xpath("/ub:bill/ub:rebill/ub:duedate")[0].text = r.duedate.strftime("%Y-%m-%d") if r.duedate is not None else None
+        self.xpath("/ub:bill/ub:rebill/ub:issued")[0].text = r.issued.strftime("%Y-%m-%d") if r.issued is not None else None
+        self.xpath("/ub:bill/ub:rebill/ub:message")[0].text = r.message
 
+    @property
+    def actual_charges(self):
+        """
+        Return by service, actual charges grouped by chargegroup including chargegroup totals.
+        """
+        return self.charge_items('actual')
+
+    @actual_charges.setter
+    def actual_charges(self, charge_items):
+        """
+        Set the actual charges into XML
+        """
+        return self.set_charge_items('actual', charge_items)
 
     @property
     def hypothetical_charges(self):
@@ -453,6 +564,7 @@ class Bill(object):
         """
         return self.echarges('hypothetical')
 
+
     @property
     def actualecharges(self):
         """
@@ -532,14 +644,21 @@ class Bill(object):
         return hypothetical_details
 
 
+    #TODO convenience method, depend on hypothetical_charges_details vs access xml directy here
+    # or just make consumer depend on the main function instead
     @property
     def hypothetical_totals(self):
         hypothetical_totals = {}
         for service in self.xpath("/ub:bill/ub:details/@service"):
-            total = self.xpath("/ub:bill/ub:details[@service='"+service+"']/ub:total[@type='hypothetical']")[0].text
+            total = self.xpath("/ub:bill/ub:details[@service='%s']/ub:total[@type='hypothetical']" % service)[0].text
             hypothetical_totals[service] = Decimal(total).quantize(Decimal('.00'))
 
         return hypothetical_totals
+
+    @hypothetical_totals.setter
+    def hypothetical_totals(self, totals):
+        for service in totals:
+            self.xpath("/ub:bill/ub:details[@service='%s']/ub:total[@type='hypothetical']" % service)[0].text = str(totals[service])
 
 
     @property
@@ -618,6 +737,23 @@ if __name__ == "__main__":
 
     #print bill.hypothetical_details
 
-    print bill.hypothetical_charges
+    #print bill.hypothetical_charges
+
+    #r = bill.rebill_summary
+    #print r
+    #bill.rebill_summary = r
+    #print bill.rebill_summary
+
+    #t = bill.hypothetical_totals
+    #print t
+    #bill.hypothetical_totals = t
+
+    m = bill.measured_usage
+    print m
+
+
+
+
+
 
     #XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), outputbill, user, password)
