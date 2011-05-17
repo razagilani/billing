@@ -12,6 +12,7 @@ import os
 from optparse import OptionParser
 
 from datetime import datetime
+from datetime import time
 
 # for xml processing
 from lxml import etree
@@ -20,7 +21,6 @@ import copy
 
 from skyliner.xml_utils import XMLUtils
 
-import json
 
 # used for processing fixed point monetary decimal numbers
 from decimal import *
@@ -29,11 +29,18 @@ from collections import namedtuple
 
 from recordtype import recordtype
 
+from mutable_named_tuple import MutableNamedTuple
+
+
+
 
 # TODO: the xpath functions return a special kind of string. Probably want to convert it before returning int
+
 class Bill(object):
     """
     A container for bill data.  Business logic is purposefully externalized.
+    - return types cannot be JSON encoded because of datetime and decimal types.  Consider how to approach later.
+    - returned data are hierarchical MutableNamedTuples, which are OrderedDicts to preserve XML doc order
     """
    
 
@@ -208,50 +215,335 @@ class Bill(object):
             self.xpath("/ub:bill/ub:utilbill[@service='%s']/ub:resavings" % service)[0].text = str(charges['resavings'])
 
 
-    # convert to recordtype
     @property
     def measured_usage(self):
 
         measured_usages = {}
 
-        Meter = recordtype("meter", ["identifier", "estimated","priorreaddate", "presentreaddate", "registers"])
-
-        # TODO: track meter effective times here
-        # inclusions/exclusions have been flattened from xsd
-        Register = recordtype("register", ["rsbinding", "shadow", "type", "identifier", "description", "inclusions","exclusions", "units", "total", "priorreading", "presentreading", "factor"])
-        Effective = recordtype("effective", ["description", "times", "weekdays", "holidays"])
-        Holiday = recordtype("holiday", ["description", "date"])
-        Weekday = recordtype("weekday", ["fromhour", "tohour", "weekday"])
-
         for service in self.xpath("/ub:bill/ub:measuredusage/@service"):
 
             measured_usages[service] = []
 
-            for meter in self.xpath("/ub:bill/ub:measuredusage[@service='"+service+"']/ub:meter"):
-                
-                meter_identifier = meter.find("ub:identifier", namespaces={'ub':'bill'})
-                meter_identifier = meter_identifier.text if meter_identifier is not None else None
+            meter_mnt = MutableNamedTuple()
 
-                estimated = meter.find("ub:estimated", namespaces={'ub':'bill'})
-                estimated = estimated.text if estimated is not None else None
-                estimated = False if estimated is not None and estimated.lower() == 'false' \
+            # TODO: do not initialize MNT fields if they do not exist in XML
+            meter_mnt.identifier = None
+            meter_mnt.estimated = None
+            meter_mnt.priorreaddate = None
+            meter_mnt.presentreaddate = None
+            meter_mnt.registers = []
+
+            for meter_elem in self.xpath("/ub:bill/ub:measuredusage[@service='"+service+"']/ub:meter"):
+                
+                meter_identifier_elem = meter_elem.find("ub:identifier", namespaces={'ub':'bill'})
+                meter_mnt.identifier = meter_identifier_elem.text if meter_identifier_elem is not None else None
+
+                estimated_elem = meter_elem.find("ub:estimated", namespaces={'ub':'bill'})
+                estimated = estimated_elem.text if estimated_elem is not None else None
+                meter_mnt.estimated = False if estimated is not None and estimated.lower() == 'false' \
                     else True if estimated is not None and estimated.lower() == 'true' else None
 
-                priorreaddate = meter.find("ub:priorreaddate", namespaces={'ub':'bill'})
-                priorreaddate = priorreaddate.text if priorreaddate is not None else None
-                priorreaddate = datetime.strptime(priorreaddate, "%Y-%m-%d").date() if priorreaddate is not None else None
+                priorreaddate_elem = meter_elem.find("ub:priorreaddate", namespaces={'ub':'bill'})
+                priorreaddate = priorreaddate_elem.text if priorreaddate_elem is not None else None
+                meter_mnt.priorreaddate = datetime.strptime(priorreaddate, "%Y-%m-%d").date() if priorreaddate is not None else None
 
-                presentreaddate = meter.find("ub:presentreaddate", namespaces={'ub':'bill'})
-                presentreaddate = presentreaddate.text if presentreaddate is not None else None
-                presentreaddate = datetime.strptime(presentreaddate, "%Y-%m-%d").date() if presentreaddate is not None else None
+                presentreaddate_elem = meter_elem.find("ub:presentreaddate", namespaces={'ub':'bill'})
+                presentreaddate = presentreaddate_elem.text if presentreaddate_elem is not None else None
+                meter_mnt.presentreaddate = datetime.strptime(presentreaddate, "%Y-%m-%d").date() if presentreaddate is not None else None
 
-                meter_record = Meter(meter_identifier, estimated, priorreaddate, presentreaddate, [])
+                for register_elem in meter_elem.findall("ub:register", namespaces={'ub':'bill'} ):
 
-                for register in meter.findall("ub:register", namespaces={'ub':'bill'} ):
+                    register_mnt = MutableNamedTuple()
 
-                    rsbinding = register.get("rsbinding")
-                    shadow = register.get("shadow")
-                    regtype = register.get("type")
+                    register_mnt.rsbinding = None
+                    register_mnt.shadow = None
+                    register_mnt.regtype = None
+                    register_mnt.identifier = None
+                    register_mnt.description = None
+                    # inclusions/exclusions have been flattened through effective
+                    register_mnt.inclusions = []
+                    register_mnt.exclusions = []
+                    register_mnt.units = None
+                    register_mnt.total = None
+                    register_mnt.priorreading = None
+                    register_mnt.presentreading = None
+                    register_mnt.factor = None
+
+                    register_mnt.rsbinding = register_elem.get("rsbinding")
+                    register_mnt.shadow = register_elem.get("shadow")
+                    register_mnt.regtype = register_elem.get("type")
+
+                    identifier_elem = register_elem.find("ub:identifier", namespaces={'ub':'bill'})
+                    register_mnt.identifier = identifier_elem.text if identifier_elem is not None else None
+
+                    description_elem = register_elem.find("ub:description", namespaces={'ub':'bill'})
+                    register_mnt.description = description_elem.text if description_elem is not None else None
+
+                    units_elem = register_elem.find("ub:units", namespaces={'ub':'bill'})
+                    register_mnt.units = units_elem.text if units_elem is not None else None
+
+                    priorreading_elem = register_elem.find("ub:priorreading", namespaces={'ub':'bill'})
+                    register_mnt.priorreading = priorreading_elem.text if priorreading_elem is not None else None
+
+                    presentreading_elem = register_elem.find("ub:presentreading", namespaces={'ub':'bill'})
+                    register_mnt.presentreading = presentreading_elem.text if presentreading_elem is not None else None
+
+                    factor_elem = register_elem.find("ub:factor", namespaces={'ub':'bill'})
+                    register_mnt.factor = factor_elem.text if factor_elem is not None else None
+
+                    # TODO optional quantize
+                    total_elem = register_elem.find("ub:total", namespaces={'ub':'bill'})
+                    register_mnt.total = Decimal(total_elem.text).quantize(Decimal(str(".00"))) if total_elem is not None else None
+
+                    # inclusions are either a Holiday or Days
+                    for inclusion_elem in register_elem.findall("ub:effective/ub:inclusions", namespaces={'ub':'bill'}):
+
+                        description_elem = inclusion_elem.find("ub:description", namespaces={'ub':'bill'})
+                        description = description_elem.text if description_elem is not None else None
+
+                        # either a from/tohour + weekdays is expected or a holiday is expected
+                        holiday_elem = inclusion_elem.find("ub:holiday", namespaces={'ub':'bill'})
+                        if holiday_elem is not None:
+
+                            holiday_mnt = MutableNamedTuple()
+                            holiday_mnt.description = None
+                            holiday_mnt.date = None
+
+                            holiday_mnt.description = holiday_elem.get("description")
+                            holiday_date = holiday_elem.text if holiday_elem.text is not None else None
+                            holiday_mnt.date = datetime.strptime(holiday_date, "%Y-%m-%d").date() if holiday_date is not None else None
+
+                            register_mnt.inclusions.append(holiday_mnt)
+
+                        # then it is a grove of from/tohour w/ weekdays
+                        else:
+
+                            # fromhour/tohour + weekday triplets
+                            nonholiday_mnt = MutableNamedTuple()
+                            nonholiday_mnt.fromhour = None
+                            nonholiday_mnt.tohour = None
+                            nonholiday_mnt.weekdays = []
+
+                            for child_elem in inclusion_elem.iterchildren():
+                                if (child_elem.tag == "{bill}fromhour"):
+                                    fromhour = child_elem.text if child_elem.text is not None else None
+                                    nonholiday_mnt.fromhour = datetime.strptime(fromhour, "%H:%M:%S").time() 
+                                if (child_elem.tag == "{bill}tohour"):
+                                    tohour = child_elem.text if child_elem.text is not None else None
+                                    nonholiday_mnt.tohour = datetime.strptime(tohour, "%H:%M:%S").time() 
+                                # occurs multiple times
+                                if (child_elem.tag == "{bill}weekday"):
+                                    weekday = child_elem.text if child_elem.text is not None else None
+
+                                    if weekday is not None:
+                                        nonholiday_mnt.weekdays.append(weekday)
+
+                            register_mnt.inclusions.append(nonholiday_mnt)
+
+                    # TODO refactor so that inclusions AND exclusions are treated in the same block of code. (See above)
+                    # exclusions are either a Holiday or Days
+                    for exclusion_elem in register_elem.findall("ub:effective/ub:exclusions", namespaces={'ub':'bill'}):
+
+                        description_elem = exclusion_elem.find("ub:description", namespaces={'ub':'bill'})
+                        description = description_elem.text if description_elem is not None else None
+
+                        # either a from/tohour + weekdays is expected or a holiday is expected
+                        holiday_elem = exclusion_elem.find("ub:holiday", namespaces={'ub':'bill'})
+                        if holiday_elem is not None:
+
+                            holiday_mnt = MutableNamedTuple()
+                            holiday_mnt.description = None
+                            holiday_mnt.date = None
+
+                            holiday_mnt.description = holiday_elem.get("description")
+                            holiday_date = holiday_elem.text if holiday_elem.text is not None else None
+                            holiday_mnt.date = datetime.strptime(holiday_date, "%Y-%m-%d").date() if holiday_date is not None else None
+
+                            register_mnt.exclusions.append(holiday_mnt)
+
+                        # then it is a grove of from/tohour w/ weekdays
+                        else:
+
+                            # fromhour/tohour + weekday triplets
+                            nonholiday_mnt = MutableNamedTuple()
+                            nonholiday_mnt.fromhour = None
+                            nonholiday_mnt.tohour = None
+                            nonholiday_mnt.weekdays = []
+
+                            for child_elem in exclusion_elem.iterchildren():
+                                if (child_elem.tag == "{bill}fromhour"):
+                                    fromhour = child_elem.text if child_elem.text is not None else None
+                                    nonholiday_mnt.fromhour = datetime.strptime(fromhour, "%H:%M:%S").time() 
+                                if (child_elem.tag == "{bill}tohour"):
+                                    tohour = child_elem.text if child_elem.text is not None else None
+                                    nonholiday_mnt.tohour = datetime.strptime(tohour, "%H:%M:%S").time() 
+                                # occurs multiple times
+                                if (child_elem.tag == "{bill}weekday"):
+                                    weekday = child_elem.text if child_elem.text is not None else None
+
+                                    if weekday is not None:
+                                        nonholiday_mnt.weekdays.append(weekday)
+
+                            register_mnt.exclusions.append(nonholiday_mnt)
+
+                    meter_mnt.registers.append(register_mnt)
+
+                measured_usages[service].append(meter_mnt)
+
+        return measured_usages
+
+    @measured_usage.setter
+    def measured_usage(self, measured_usage):
+
+        for service, meters in measured_usage.items():
+
+            measuredusage_elem = self.xpath("/ub:bill/ub:measuredusage[@service='%s']" % service)[0]
+            measuredusage_elem.clear()
+            measuredusage_elem.set('service', service)
+
+            for meter in meters:
+                
+                meter_elem = measuredusage_elem.makeelement("{bill}meter")
+                measuredusage_elem.append(meter_elem)
+
+                if hasattr(meter, "identifier"):
+                    identifier_elem = meter_elem.makeelement("{bill}identifier")
+                    if meter.identifier is not None: identifier_elem.text = meter.identifier
+                    meter_elem.append(identifier_elem)
+
+                if hasattr(meter, "estimated"):
+                    estimated_elem = meter_elem.makeelement("{bill}estimated")
+                    if meter.estimated is not None: estimated_elem.text = str(meter.estimated)
+                    meter_elem.append(estimated_elem)
+
+                if hasattr(meter, "priorreaddate"):
+                    priorreaddate_elem = meter_elem.makeelement("{bill}priorreaddate")
+                    if meter.priorreaddate is not None: priorreaddate_elem.text = meter.priorreaddate.strftime("%Y-%m-%d")
+                    meter_elem.append(priorreaddate_elem)
+
+                if hasattr(meter, "presentreaddate"):
+                    presentreaddate_elem = meter_elem.makeelement("{bill}presentreaddate")
+                    if meter.presentreaddate is not None: presentreaddate_elem.text = meter.presentreaddate.strftime("%Y-%m-%d")
+                    meter_elem.append(presentreaddate_elem)
+
+                for register in meter.registers:
+
+                    register_elem = meter_elem.makeelement("{bill}register")
+                    meter_elem.append(register_elem)
+
+                    if hasattr(register, "rsbinding"):
+                        if register.rsbinding is not None: register_elem.set("rsbinding", register.rsbinding)
+                    if hasattr(register, "shadow"):
+                        if register.shadow is not None: register_elem.set("shadow", register.shadow)
+                    if hasattr(register, "type"):
+                        if register.regtype is not None: register_elem.set("type", register.regtype)
+
+                    if hasattr(register, "identifier"):
+                        identifier_elem = register_elem.makeelement("{bill}identifier")
+                        if register.identifier is not None: identifier_elem.text = register.identifier
+                        register_elem.append(identifier_elem)
+
+                    if hasattr(register, "description"):
+                        description_elem = register_elem.makeelement("{bill}description")
+                        if register.description is not None: description_elem.text = register.description
+                        register_elem.append(description_elem)
+
+                    # inclusions/exclusions had been flattened through effective
+                    effective_elem = register_elem.makeelement("{bill}effective")
+                    register_elem.append(effective_elem)
+
+                    if hasattr(register, "units"):
+                        units_elem = register_elem.makeelement("{bill}units")
+                        if register.units is not None: units_elem.text = register.units
+                        register_elem.append(units_elem)
+
+                    if hasattr(register, "total"):
+                        total_elem = register_elem.makeelement("{bill}total")
+                        if register.total is not None: total_elem.text = str(register.total)
+                        register_elem.append(total_elem)
+
+                    if hasattr(register, "priorreading"):
+                        priorreading_elem = register_elem.makeelement("{bill}priorreading")
+                        if register.priorreading is not None: priorreading_elem.text = str(register.priorreading)
+                        register_elem.append(priorreading_elem)
+
+                    if hasattr(register, "presentreading"):
+                        presentreading_elem = register_elem.makeelement("{bill}presentreading")
+                        if register.presentreading is not None: presentreading_elem.text = str(register.presentreading)
+                        register_elem.append(presentreading_elem)
+                    
+                    if hasattr(register, "factor"):
+                        factor_elem = register_elem.makeelement("{bill}factor")
+                        if register.factor is not None: factor_elem.text = register.factor
+                        register_elem.append(factor_elem)
+
+                    for inclusion in register.inclusions:
+
+                        inclusions_elem = effective_elem.makeelement("{bill}inclusions")
+                        effective_elem.append(inclusions_elem)
+
+                        # determine if a from/tohour triplet or holiday
+                        if (hasattr(inclusion, "fromhour")):
+
+                            fromhour_elem = inclusions_elem.makeelement("{bill}fromhour")
+                            fromhour_elem.text = inclusion.fromhour.strftime("%H:%M:%S")
+                            inclusions_elem.append(fromhour_elem)
+
+                            tohour_elem = inclusions_elem.makeelement("{bill}tohour")
+                            tohour_elem.text = inclusion.tohour.strftime("%H:%M:%S")
+
+                            inclusions_elem.append(tohour_elem)
+
+                            for weekday in inclusion.weekdays:
+                                weekday_elem = inclusions_elem.makeelement("{bill}weekday")
+                                weekday_elem.text = weekday
+                                inclusions_elem.append(weekday_elem)
+
+                        # holiday
+                        else:
+                            holiday_elem = inclusions_elem.makeelement("{bill}holiday")
+                            holiday_elem.set("description", inclusion.description)
+                            holiday_elem.text = inclusion.date.strftime("%y-%m-%d")
+                            inclusions_elem.append(holiday_elem)
+
+                    for exclusion in register.exclusions:
+
+                        exclusions_elem = effective_elem.makeelement("{bill}exclusions")
+                        effective_elem.append(exclusions_elem)
+
+                        # determine if a from/tohour triplet or holiday
+                        if (hasattr(exclusion, "fromhour")):
+
+                            fromhour_elem = exclusions_elem.makeelement("{bill}fromhour")
+                            fromhour_elem.text = str(exclusion.fromhour)
+                            exclusions_elem.append(fromhour_elem)
+
+                            tohour_elem = exclusions_elem.makeelement("{bill}tohour")
+                            tohour_elem.text = str(exclusion.tohour)
+                            exclusions_elem.append(tohour_elem)
+
+                            for weekday in exclusion.weekdays:
+                                weekday_elem = exclusions_elem.makeelement("{bill}weekday")
+                                weekday_elem.text = weekday
+                                exclusions_elem.append(weekday_elem)
+
+                        # holiday
+                        else:
+                            holiday_elem = exclusions_elem.makeelement("{bill}holiday")
+                            holiday_elem.set("description", exclusion.description)
+                            holiday_elem.text = exclusion.date.strftime("%y-%m-%d")
+                            exclusions_elem.append(holiday_elem)
+
+                print lxml.etree.tostring(measuredusage_elem, pretty_print=True)
+
+
+    @property
+    def old_measured_usage(self):
+        measured_usages = {}
+
+        for service in self.xpath("/ub:bill/ub:measuredusage/@service"):
+            for meter in self.xpath("/ub:bill/ub:measuredusage[@service='"+service+"']/ub:meter"):
+                for register in meter.findall("ub:register[@shadow='false']", namespaces={'ub':'bill'} ):
 
                     identifier = register.find("ub:identifier", namespaces={'ub':'bill'})
                     identifier = identifier.text if identifier is not None else None
@@ -262,15 +554,6 @@ class Bill(object):
                     units = register.find("ub:units", namespaces={'ub':'bill'})
                     units = units.text if units is not None else None
 
-                    priorreading = register.find("ub:priorreading", namespaces={'ub':'bill'})
-                    priorreading = priorreading.text if priorreading is not None else None
-
-                    presentreading = register.find("ub:presentreading", namespaces={'ub':'bill'})
-                    presentreading = presentreading.text if presentreading is not None else None
-
-                    factor = register.find("ub:factor", namespaces={'ub':'bill'})
-                    factor = factor.text if factor is not None else None
-
                     # TODO optional quantize
                     total = register.find("ub:total", namespaces={'ub':'bill'})
                     total = Decimal(total.text).quantize(Decimal(str(.00))) if total is not None else None
@@ -279,10 +562,6 @@ class Bill(object):
                     shadow_total = shadow_register.find("ub:total", namespaces={'ub':'bill'})
                     shadow_total = Decimal(shadow_total.text).quantize(Decimal(str(.00))) if shadow_total is not None else None
 
-                    #recordtype("register", ["rsbinding", "shadow", "type", "identifier", "description", "inclusions","exclusions", "units", "total", "priorreading", "presentreading", "factor"])
-                    meter_record.registers.append(Register(rsbinding, shadow, regtype, identifier, description, [], [], units, total, priorreading, presentreading, factor))
-
-                    """
                     measured_usages[service] = {
                         "identifier": identifier,
                         "description": description,
@@ -291,16 +570,8 @@ class Bill(object):
                         "total": total + shadow_total,
                         "units": units
                     }
-                    """
-
-                measured_usages[service].append(meter_record)
 
         return measured_usages
-
-
-    #STOPPED HERE 
-    #@measured_usages.setter
-
 
     # TODO rename to rebill, and send entire grove
     @property
@@ -748,10 +1019,11 @@ if __name__ == "__main__":
     #print t
     #bill.hypothetical_totals = t
 
+    import pprint
+    pp = pprint.PrettyPrinter(indent=4)
     m = bill.measured_usage
-    print m
-
-
+    pp.pprint(m)
+    bill.measured_usage = m
 
 
 
