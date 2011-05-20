@@ -39,8 +39,25 @@ from mutable_named_tuple import MutableNamedTuple
 class Bill(object):
     """
     A container for bill data.  Business logic is purposefully externalized.
-    - return types cannot be JSON encoded because of datetime and decimal types.  Consider how to approach later.
-    - returned data are hierarchical MutableNamedTuples, which are OrderedDicts to preserve XML doc order
+    - Return types cannot be JSON encoded because of datetime and decimal types.  Consider how to approach later.
+    - Returned data are hierarchical MutableNamedTuples, which are OrderedDicts to preserve XML doc order
+
+    XML coding practices/design issues:
+    - Tags must be prepended with namespace because {ns} (James Clark notation) is not supported in .xpath()
+    - Only use Clark notation for creating elements, if at all
+    - Updating the xml document is tricky, this is because updates must delete xml data. How does one know what xml data to delete based on data missing from a passed tuple?
+        - One option is to clear the entire grove. This is a poor option, because the grove may contain data that was not originally returned. (see how hypothetical and actual details or how the rebill and utilbill w/ CARs work)
+        - The best option appears to be to understand what subset of elements was returned, and then to clear only that subset.  The subset must be determined through parameters that are passed to the getters and setters.  See how get/set details works - charges_type and service specify a subset of elements, which can then be later identified during an update. Also using the function name to convey the subset is useful - e.g. utilbill_summary, excludes the CARs, while utilbill would not.  Each function can the handle deleting and inserting elements accordingly.
+
+    - The DOM is manually manipulated
+    - Helper functions for setting properties to and from cdata and attrs are only for terminal leaves of the DOM
+    - Optionality of XML elements is left as an exercise for the programmer. In places they are assumed to be mandatory, and already present in the XML document.
+    - Document order has to be preserved in the structures returned. Therefore, MutableNamedTuple, a Named Tuple based on an OrderedDict is used.
+    - There are two models for returned data:  One where a flat group of element data is needed (e.g. a CAR or summary) and the other where a deep hierarchy is needed (e.g. details or measured usage)
+        - Because of this there are two primary patterns: helper function assisted binding to cdata and attrs and walking the tree and manually building nested MutableNamedTuples with helper functions
+        - There is no clear generic way to handle both, such a way would be a generic python <-> XML mapper which is too heavy weight.
+
+
     """
    
 
@@ -127,7 +144,7 @@ class Bill(object):
 
             return child_elem
 
-    def attr_to_prop(self, lxml_element, attr_name, prop_container, prop_name ):
+    def attr_to_prop(self, lxml_element, attr_name, prop_type, prop_container, prop_name ):
         """
         Given prop_container set the prop_name attr in the tuple as a prop_type
         whose value is the value of attr_name.
@@ -139,17 +156,30 @@ class Bill(object):
         if lxml_element is not None:
             # if there is an attribute, then there is a property to be set
             if attr_name in lxml_element.attrib:
+                # set the attribute, though it may still yet be empty
                 prop_container.__setattr__(prop_name, None)
+
                 # if there is an attribute value, then there is a property value to be set
                 if lxml_element.attrib[attr_name] is not None:
-                    prop_container.__setattr__(prop_name, lxml_element.attrib[attr_name])
+                    if prop_type is bool:
+                        if str(lxml_element.attrib[attr_name]).lower() == "true":
+                            prop_container.__setattr__(prop_name, True)
+                        else:
+                            #TODO test for false, and raise error if not
+                            prop_container.__setattr__(prop_name, False)
+                    elif prop_type is str:
+                        prop_container.__setattr__(prop_name, lxml_element.attrib[attr_name])
+
+
+
 
     def prop_to_attr(self, prop_container, prop_name, lxml_element, attr_name):
         # TODO: what if there is no element passed in?
         
         # if there is no attribute called  prop_name in prop_container then set no attribute
         if hasattr(prop_container, prop_name):
-            prop_value = prop_container.__getattr__(prop_name)
+            # xml is always string data
+            prop_value = str(prop_container.__getattr__(prop_name))
             lxml_element.set(attr_name, prop_value)
 
 
@@ -194,7 +224,7 @@ class Bill(object):
 
     @property
     def account(self):
-        return self.xpath("/{bill}bill/@account")[0]
+        return self.xpath("/ub:bill/@account")[0]
 
     # TODO rename to sequnce
     @property
@@ -217,7 +247,7 @@ class Bill(object):
 
     @property
     def due_date(self):
-        r = self.rebill
+        r = self.rebill_summary
         return r.duedate
 
     # TODO convenience method - get issue_date from rebill()
@@ -293,9 +323,73 @@ class Bill(object):
                 }
         return utilbill_periods
 
-    # TODO convert to namedtuple
+
     @property
     def utilbill_summary_charges(self):
+        """
+        Returns a dictionary whose keys are service and values are a MutableNamedTuple excluding the CARs.
+        """
+        utilbill_elem_list = self.xpath("/ub:bill/ub:utilbill")
+
+        if not utilbill_elem_list: 
+
+            # there are none
+            return None
+
+        else:
+
+            utilbill_summary_charges = {}
+
+            for utilbill_elem in utilbill_elem_list:
+
+                u = MutableNamedTuple()
+
+                # TODO: pass in root element, and lookup subelement
+                self.cdata_to_prop(utilbill_elem.find("ub:billperiodbegin", {"ub":"bill"}), datetime, u, "begin" )
+                self.cdata_to_prop(utilbill_elem.find("ub:billperiodend", {"ub":"bill"}), datetime, u, "end" )
+                self.cdata_to_prop(utilbill_elem.find("ub:hypotheticalecharges", {"ub":"bill"}), Decimal, u, "hypotheticalecharges" )
+                self.cdata_to_prop(utilbill_elem.find("ub:actualecharges", {"ub":"bill"}), Decimal, u, "actualecharges" )
+                self.cdata_to_prop(utilbill_elem.find("ub:revalue", {"ub":"bill"}), Decimal, u, "revalue" )
+                self.cdata_to_prop(utilbill_elem.find("ub:recharges", {"ub":"bill"}), Decimal, u, "recharges" )
+
+
+                # TODO error check absence of attr
+                service = utilbill_elem.get("service")
+                utilbill_summary_charges[service] = u
+
+            return utilbill_summary_charges
+
+    @utilbill_summary_charges.setter
+    def utilbill_summary_charges(self, summary_charges):
+        """
+        """
+
+        for service, utilbill in summary_charges.items():
+
+            utilbill_elem_list = self.xpath("/ub:bill/ub:utilbill[@service='%s']" % service)
+
+            if not utilbill_elem_list:
+                # TODO: there is no utilbill element so let's create it? It is mandatory in xsd..
+                pass
+
+            utilbill_elem = utilbill_elem_list[0]
+
+            # clear a subset of terminal elements but preserve the CAR
+            #self.remove_children_named(utilbill_elem, ["billperiodbegin", "billperiodend", "hypotheticalecharges", "actualecharges",
+            #    "revalue", "recharges", "resavings"]
+
+            u = MutableNamedTuple()
+
+            self.prop_to_cdata(u, "begin", utilbill_elem, "billperiodbegin")
+            self.prop_to_cdata(u, "end", utilbill_elem, "billperiodend")
+            self.prop_to_cdata(u, "hypotheticalecharges", utilbill_elem, "hypotheticalecharges")
+            self.prop_to_cdata(u, "actualecharges", utilbill_elem, "actualecharges")
+            self.prop_to_cdata(u, "revalue", utilbill_elem, "revalue")
+            self.prop_to_cdata(u, "recharges", utilbill_elem, "recharges")
+            self.prop_to_cdata(u, "resavings", utilbill_elem, "resavings")
+
+    @property
+    def old_utilbill_summary_charges(self):
         """
         Returns a dictionary keyed by service whose values are a dictionary containing the keys 'hypotheticalecharges', 
         'actualecharges', 'revalue', 'recharges', 'resavings'
@@ -329,9 +423,8 @@ class Bill(object):
 
         return utilbill_summary_charges
 
-    # TODO convert to namedtuple
     @utilbill_summary_charges.setter
-    def utilbill_summary_charges(self, summary_charges):
+    def old_utilbill_summary_charges(self, summary_charges):
         """
         Sets a dictionary keyed by service whose values are a dictionary containing the keys 'hypotheticalecharges', 
         'actualecharges', 'revalue', 'recharges', 'resavings' into the bill xml
@@ -347,6 +440,7 @@ class Bill(object):
             self.xpath("/ub:bill/ub:utilbill[@service='%s']/ub:resavings" % service)[0].text = str(charges['resavings'])
 
 
+    # TODO: upgrade to new helper methods
     @property
     def measured_usage(self):
 
@@ -387,6 +481,7 @@ class Bill(object):
 
                     register_mnt = MutableNamedTuple()
 
+                    #TODO: don't initialize these so that they are not returned a artificially set in XML
                     register_mnt.rsbinding = None
                     register_mnt.shadow = None
                     register_mnt.regtype = None
@@ -402,7 +497,8 @@ class Bill(object):
                     register_mnt.factor = None
 
                     register_mnt.rsbinding = register_elem.get("rsbinding")
-                    register_mnt.shadow = register_elem.get("shadow")
+                    #register_mnt.shadow = register_elem.get("shadow")
+                    self.attr_to_prop(register_elem, "shadow", bool, register_mnt, "shadow")
                     register_mnt.regtype = register_elem.get("type")
 
                     identifier_elem = register_elem.find("ub:identifier", namespaces={'ub':'bill'})
@@ -524,6 +620,8 @@ class Bill(object):
 
         return measured_usages
 
+
+    # convert to helper functions
     @measured_usage.setter
     def measured_usage(self, measured_usage):
 
@@ -565,8 +663,9 @@ class Bill(object):
 
                     if hasattr(register, "rsbinding"):
                         if register.rsbinding is not None: register_elem.set("rsbinding", register.rsbinding)
-                    if hasattr(register, "shadow"):
-                        if register.shadow is not None: register_elem.set("shadow", register.shadow)
+                    self.prop_to_attr(register, "shadow", register_elem, "shadow")
+                    #if hasattr(register, "shadow"):
+                    #    if register.shadow is not None: register_elem.set("shadow", register.shadow)
                     if hasattr(register, "type"):
                         if register.regtype is not None: register_elem.set("type", register.regtype)
 
@@ -963,7 +1062,7 @@ class Bill(object):
             #rateschedule_mnt.name = None
 
             self.cdata_to_prop(rateschedule_elem.find("ub:name", {"ub":"bill"}), str, rateschedule_mnt, "name")
-            self.attr_to_prop(rateschedule_elem, "rsbinding", rateschedule_mnt, "rsbinding")
+            self.attr_to_prop(rateschedule_elem, "rsbinding", str, rateschedule_mnt, "rsbinding")
 
             detail_mnt.rateschedule = rateschedule_mnt
 
@@ -971,7 +1070,7 @@ class Bill(object):
 
                 chargegroup_mnt = MutableNamedTuple()
 
-                self.attr_to_prop(chargegroup, "type", chargegroup_mnt, "type")
+                self.attr_to_prop(chargegroup, "type", str, chargegroup_mnt, "type")
 
                 # there are only two types of charges per chargegroup
                 for charges_child in chargegroup.find("ub:charges[@type='%s']" % (charges_type), {"ub":"bill"}):
@@ -991,9 +1090,9 @@ class Bill(object):
 
                         self.cdata_to_prop(charges_child.find("{bill}description"), str, charge_mnt, "description")
                         self.cdata_to_prop(charges_child.find("ub:quantity", {"ub":"bill"}), str, charge_mnt, "quantity")
-                        self.attr_to_prop(charges_child.find("ub:quantity", {"ub":"bill"}), "units", charge_mnt, "quantityunits")
+                        self.attr_to_prop(charges_child.find("ub:quantity", {"ub":"bill"}), "units", str, charge_mnt, "quantityunits")
                         self.cdata_to_prop(charges_child.find("ub:rate", {"ub":"bill"}), str, charge_mnt, "rate")
-                        self.attr_to_prop(charges_child.find("ub:rate", {"ub":"bill"}), "units", charge_mnt, "rateunits")
+                        self.attr_to_prop(charges_child.find("ub:rate", {"ub":"bill"}), "units", str, charge_mnt, "rateunits")
                         self.cdata_to_prop(charges_child.find("ub:total", {"ub":"bill"}), Decimal, charge_mnt, "total")
                         self.cdata_to_prop(charges_child.find("ub:processingnote", {"ub":"bill"}), str, charge_mnt, "processingnote")
 
@@ -1113,7 +1212,13 @@ class Bill(object):
 
             # handle total of charges_type
             # assumes type=charges_type is a mandatory element since attr is not set
-            self.prop_to_cdata(details, "total", details_elem, "total")
+            # this won't work because details_elem is qualified by the attribute 'type' whose value is charges_type
+            # unfortunately, there are to child elements called total due to the hypothetical and actual charges living side by side
+            # See 13605187 in pivotal
+            #self.prop_to_cdata(details, "total", details_elem, "total")
+            total_elem = details_elem.find("ub:total[@type='%s']" % (charges_type), {"ub":"bill"})
+            total_elem.text = str(details.total)
+
 
 
     def set_charge_items(self, charges_type, charge_items):
@@ -1215,12 +1320,9 @@ class Bill(object):
 
         return echarges
 
+    """
     @property
     def hypothetical_details(self):
-        """
-        Used by render bill.  Does not include chargegroups or chargegroup totals.
-        TODO: eliminate this since the consumer of this method can use others for the same data.
-        """
         hypothetical_details = {}
         for service in self.xpath("/ub:bill/ub:details/@service"):
             hypothetical_details[service] = []
@@ -1274,6 +1376,7 @@ class Bill(object):
                         })
 
         return hypothetical_details
+    """
 
 
     #TODO convenience method, depend on hypothetical_charges_details vs access xml directy here
@@ -1345,12 +1448,12 @@ if __name__ == "__main__":
 
     bill = Bill(options.inputbill)
 
-    #print bill.account
-    print bill.id
+    print bill.account
+    #print bill.id
 
     #print bill.service_address
     #bill.service_address = bill.service_address
-    #print bill.service_address 
+    print bill.service_address 
 
     #print bill.rebill_periods
     #bill.rebill_periods = bill.rebill_periods

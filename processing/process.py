@@ -125,43 +125,46 @@ class Process(object):
         XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
 
     def sum_actual_charges(self, unprocessedBill, targetBill, user=None, password=None):
-        """ Sums up all actual charges.  For each set of actual charges, """
-        """ /ub:bill/ub:details/ub:chargegroup/ub:charges[@type="actual"]/ub:total = """
-        """ sum(/ub:bill/ub:details/ub:chargegroup/ub:charges[@type="actual"]/ub:charge/ub:total """
-        """ For each set of services, /ub:bill/ub:details/ub:total[@type="actual"] = """
-        """ sum(/ub:bill/ub:details/ub:chargegroup/ub:charges[@type="actual"]/ub:total) """
-        """ Each /ub:bill/ub:utilbill/ub:actualecharges = /ub:bill/ub:details/ub:total """
-        """ /ub:bill/ub:rebill/ub:actualecharges = sum(/ub:bill/ub:utilbill/ub:actualecharges) """
+        """ 
+        After a rate structure has been bound, sum up the totals, by chargegroup.
+        """
 
-        tree = etree.parse(unprocessedBill)
+        the_bill = bill.Bill(unprocessedBill)
 
-        # get the child groves for each set of actual charges and total them up
-        all_actual_charges = self.get_elem(tree, "/ub:bill/ub:details/ub:chargegroup/ub:charges[@type=\"actual\"]")
-        for actual_charges in all_actual_charges:
-            # and set the subtotal for for each actual set of charges
-            self.get_elem(actual_charges, "ub:total")[0].text = \
-            str(self.get_elem(actual_charges, "sum(ub:charge/ub:total)"))
+        actual_charges = the_bill.actual_charges
+       
+        for service, cg_items in actual_charges.items():
+            # cg_items contains dict of chargegroups and a grand total
 
-        # for each utility details, sum up the actual charges totals 
-        details = self.get_elem(tree, "/ub:bill/ub:details")
-        for detail in details:
-            total = str(self.get_elem(detail, "sum(ub:chargegroup/ub:charges[@type=\"actual\"]/ub:total)"))
-            self.get_elem(detail, "ub:total[@type=\"actual\"]")[0].text = total 
-            # now that the utility details are totalized, actual values are put into the utilibill summary
-            service_type = detail.attrib["service"]
-            self.get_elem(tree, "/ub:bill/ub:utilbill[@service=\""+service_type+"\"]/ub:actualecharges")[0].text = total
-        
-        # finally, these actual energy charges get rolled up into rebill
+            # the grand total
+            cg_items['total'] = Decimal("0.00")
 
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:actualecharges")[0].text = \
-        str(self.get_elem(tree, "sum(/ub:bill/ub:utilbill/ub:actualecharges)"))
+            for chargegroup, c_items in cg_items['chargegroups'].items():
+                # c_items contains dict of charges and a total for the chargegroup
 
-        xml = etree.tostring(tree, pretty_print=True)
+                for charge in c_items['charges']:
 
-        XMLUtils().save_xml_file(xml, targetBill, user, password)
+                    # summarize chargegroup
+                    c_items['total'] += charge['total']
 
+                    # summarize the service
+                    cg_items['total'] += charge['total']
+
+        # set the newly totalized charges
+        the_bill.actual_charges = actual_charges
+
+        XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
 
     def copy_actual_charges(self, unprocessedBill, targetBill, user=None, password=None):
+        the_bill = bill.Bill(unprocessedBill)
+
+        #TODO: this actually deletes all existing hypothetical charges.  This is ok unless for some reason the set of hypothetical charges could be larger than the actual
+        actual_charges = the_bill.actual_charges
+        the_bill.hypothetical_charges = actual_charges
+
+        XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
+
+    def old_copy_actual_charges(self, unprocessedBill, targetBill, user=None, password=None):
         """ Copy actual charges to hypothetical charges.  Move the /ub:bill/ub:details/ub:chargegroup/ub:charges[@type='actual'] """
         """ to /ub:bill/ub:details/ub:chargegroup/ub:charges[@type='hypothetical'] """
 
@@ -189,9 +192,206 @@ class Process(object):
 
         xml = etree.tostring(tree, pretty_print=True)
 
+
         XMLUtils().save_xml_file(xml, targetBill, user, password)
 
-    def roll_bill(self, inputbill, outputbill, amountPaid, user=None, password=None):
+    def roll_bill(self, inputbill, targetBill, amountPaid, user=None, password=None):
+
+        the_bill = bill.Bill(inputbill)
+
+        # increment sequence
+        the_bill.id = int(the_bill.id)+1
+
+        # get the rebill and zero it out
+        r = the_bill.rebill_summary
+
+        # process rebill
+
+        r.begin = datetime.datetime.max
+        r.begin = None
+        r.end = None
+        r.totaladjustment = Decimal("0.00")
+        r.hypotheticalecharges = Decimal("0.00")
+        r.actualecharges = Decimal("0.00")
+        r.revalue = Decimal("0.00")
+        r.recharges = Decimal("0.00")
+        r.resavings = Decimal("0.00")
+        r.duedate = None
+        r.issued = None
+        r.message = None
+
+        # compute payments
+        r.priorbalance = r.totaldue
+        r.totaldue = Decimal("0.00")
+        r.paymentreceived = Decimal(amountPaid)
+        r.balanceforward = r.priorbalance - r.paymentreceived
+
+        # set rebill back to bill
+        the_bill.rebill_summary = r
+
+        # get utilbill summaries and zero them out
+        ub_summary_charges = the_bill.utilbill_summary_charges
+        for (service, charges) in ub_summary_charges.items():
+            # utility billing periods are utility specific
+            # ToDo business logic specific dates are selected here
+            charges.begin = charges.end
+            charges.end = None
+
+            charges.hypotheticalecharges = Decimal("0.00")
+            charges.actualecharges = Decimal("0.00")
+            charges.revalue = Decimal("0.00")
+            charges.recharges = Decimal("0.00")
+            charges.resavings = Decimal("0.00")
+
+        # set the utilbill summaries back into bill
+        the_bill.utilbill_summary_charges = ub_summary_charges
+
+        # process /ub:bill/ub:details/
+
+        # zero out details totals
+
+        def zero_charges(details):
+
+            for service, detail in details.items():
+                print "Got %s detail. total is %s " % (service, detail.total)
+                detail.total = Decimal("0.00")
+                print "zeroed out %s " % detail.total
+
+                for chargegroup in detail.chargegroups:
+                    #TODO: zero out a chargegroup total when one exists
+
+                    for charge in chargegroup.charges:
+                        if hasattr(charge, "rate"): charge.rate = None 
+                        if hasattr(charge, "quantity"): charge.quantity = None 
+                        charge.total = Decimal("0.00")
+            return details
+
+        the_bill.actual_details = zero_charges(the_bill.actual_details)
+        the_bill.hypothetical_details = zero_charges(the_bill.hypothetical_details)
+       
+        # reset measured usage
+        measured_usage = the_bill.measured_usage
+
+        for service, meters in measured_usage.items():
+            for meter in meters:
+                meter.priorreaddate = meter.presentreaddate
+                meter.presentreaddate = None
+                for register in meter.registers:
+                    register.total = Decimal("0")
+                    register.presentreading = Decimal("0")
+
+        the_bill.measured_usage = measured_usage
+
+        XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
+
+    def recent_roll_bill(self, inputbill, targetBill, amountPaid, user=None, password=None):
+
+        the_bill = bill.Bill(inputbill)
+
+        # increment sequence
+        the_bill.id = int(the_bill.id)+1
+
+        # get the rebill and zero it out
+        r = the_bill.rebill_summary
+
+        # process rebill
+
+        r.begin = datetime.datetime.max
+        r.begin = None
+        r.end = None
+        r.totaladjustment = Decimal("0.00")
+        r.hypotheticalecharges = Decimal("0.00")
+        r.actualecharges = Decimal("0.00")
+        r.revalue = Decimal("0.00")
+        r.recharges = Decimal("0.00")
+        r.resavings = Decimal("0.00")
+        r.duedate = None
+        r.issued = None
+        r.message = None
+
+        # compute payments
+        r.priorbalance = r.totaldue
+        r.totaldue = Decimal("0.00")
+        r.paymentreceived = Decimal(amountPaid)
+        r.balanceforward = r.priorbalance - r.paymentreceived
+
+        # set rebill back to bill
+        the_bill.rebill_summary = r
+
+        # get utilbill summaries and zero them out
+        # TODO convert to namedtuple
+        ub_summary_charges = the_bill.utilbill_summary_charges
+        for (service, charges) in ub_summary_charges.items():
+            # utility billing periods are utility specific
+            # ToDo business logic specific dates are selected here
+            charges['begin'] = charges['end']
+            charges['end'] = None
+
+            charges['hypotheticalecharges'] = Decimal("0.00")
+            charges['actualecharges'] = Decimal("0.00")
+            charges['revalue'] = Decimal("0.00")
+            charges['recharges'] = Decimal("0.00")
+            charges['resavings'] = Decimal("0.00")
+
+        # set the utilbill summaries back into bill
+        the_bill.utilbill_summary_charges = ub_summary_charges
+
+        # process /ub:bill/ub:details/
+
+        # zero out details totals
+        actual_charges = the_bill.actual_charges
+       
+        for service, cg_items in actual_charges.items():
+            # cg_items contains dict of chargegroups and a grand total
+
+            # the grand total
+            cg_items['total'] = Decimal("0.00")
+
+            for chargegroup, c_items in cg_items['chargegroups'].items():
+                # c_items contains dict of charges and a total for the chargegroup
+
+                for charge in c_items['charges']:
+                    charge['rate'] = None
+                    charge['quantity'] = None
+                    charge['total'] = Decimal("0.00")
+
+        the_bill.actual_charges = actual_charges
+
+
+        hypothetical_charges = the_bill.hypothetical_charges
+       
+        for service, cg_items in hypothetical_charges.items():
+            # cg_items contains dict of chargegroups and a grand total
+
+            # the grand total
+            cg_items['total'] = Decimal("0.00")
+
+            for chargegroup, c_items in cg_items['chargegroups'].items():
+                # c_items contains dict of charges and a total for the chargegroup
+
+                for charge in c_items['charges']:
+                    charge['rate'] = None
+                    charge['quantity'] = None
+                    charge['total'] = Decimal("0.00")
+
+        the_bill.hypothetical_charges = hypothetical_charges
+
+        # reset measured usage
+        measured_usage = the_bill.measured_usage
+
+        for service, meters in measured_usage.items():
+            for meter in meters:
+                meter.priorreaddate = meter.presentreaddate
+                meter.presentreaddate = None
+                for register in meter.registers:
+                    register.total = Decimal("0")
+                    register.presentreading = Decimal("0")
+
+        the_bill.measured_usage = measured_usage
+
+        XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
+
+    def old_roll_bill(self, inputbill, outputbill, amountPaid, user=None, password=None):
 
 
         # Bind to XML bill
