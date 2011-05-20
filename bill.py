@@ -60,9 +60,141 @@ class Bill(object):
         """ Returns all of the results from dereferencing the XPath. """
         return self.inputtree.xpath(xpath, namespaces={"ub":"bill",})
 
+    def remove_children_named(self, root_elem, names):
+        for name in names:
+            root_elem.remove(root_elem.find("ub:%s" % name, {"ub":"bill"}))
+
+    def remove_attrs_named(self, elem, names):
+        for name in names:
+            if name in elem.attrib:
+                del elem.attrib[name]
+
+
+    """
+    Notes on the property to xml and xml to property functions.
+    First of all, we do not want to be in the business of a generic 
+    xml to python mapping (*).  There are too many pitfalls.  Therefore
+    an intentional line is drawn between the two way setting of
+    python properties (ie those of a tuple) and xml element attributes
+    and cdata AND manipulating the xml document structure.
+    Consumers of these functions must manipulate the xml document 
+    structure and are responsible for conditionally creating
+    intermediate nodes whose terminal descendents are then in turn
+    individually treated by these functions.
+    (*) Why? Ultimately we are only using on XSD so a generic system
+    would be wasted and there are other projects that should be 
+    considered in the future:
+    http://www.rexx.com/~dkuhlman/generateDS.html
+    http://www.ibm.com/developerworks/xml/library/x-matters39/index.html
+    http://uche.ogbuji.net/tech/4suite/amara/ (sucks and isn't maintained)
+    """
+
+    def prop_to_cdata(self, prop_container, prop_name, root_elem, child_elem_name):
+        """
+        Given a root_elem that has been cleared of all children (so that doc order
+        is implicitly reconstructed), create a new child element of child_elem_name
+        if prop_container is an attribute named prop_name. And if so, create cdata
+        for the child element if the attribute prop_name has a property value.
+        Finer points are:
+        There is no good way to track the insertion point for element.insert() so it
+        is just easier to have the root element cleared of all children which are then
+        added back in the order this function is called.
+        """
+
+        # if the property is not present, do nothing as root_elem has been previously cleared
+        if hasattr(prop_container, prop_name):
+
+            # attr exists, so make empty child element if needed
+            child_elem = root_elem.find("{bill}%s" % child_elem_name)
+            if child_elem is None:
+                child_elem = root_elem.makeelement("{bill}%s" % child_elem_name)
+                root_elem.append(child_elem)
+            prop_value = prop_container.__getattr__(prop_name)
+
+            if prop_value is not None:
+
+                if type(prop_value) is datetime:
+                    child_elem.text = prop_value.strftime("%Y-%m-%d")
+
+                if type(prop_value) is time:
+                    child_elem.text = prop_value.strftime("%H:%M:%S")
+
+                if type(prop_value) is str:
+                    child_elem.text = prop_value
+
+                if type(prop_value) is Decimal:
+                    child_elem.text = str(prop_value)
+
+            return child_elem
+
+    def attr_to_prop(self, lxml_element, attr_name, prop_container, prop_name ):
+        """
+        Given prop_container set the prop_name attr in the tuple as a prop_type
+        whose value is the value of attr_name.
+        Finer points:
+        Attributes are considered to only be strings. Add a prop_type if that turns out
+        to be false
+        """
+        # if there is no element, then there is no property to be set
+        if lxml_element is not None:
+            # if there is an attribute, then there is a property to be set
+            if attr_name in lxml_element.attrib:
+                prop_container.__setattr__(prop_name, None)
+                # if there is an attribute value, then there is a property value to be set
+                if lxml_element.attrib[attr_name] is not None:
+                    prop_container.__setattr__(prop_name, lxml_element.attrib[attr_name])
+
+    def prop_to_attr(self, prop_container, prop_name, lxml_element, attr_name):
+        # TODO: what if there is no element passed in?
+        
+        # if there is no attribute called  prop_name in prop_container then set no attribute
+        if hasattr(prop_container, prop_name):
+            prop_value = prop_container.__getattr__(prop_name)
+            lxml_element.set(attr_name, prop_value)
+
+
+
+    def cdata_to_prop(self, lxml_element, prop_type, prop_container, prop_name):
+        """
+        Given prop_container (a tuple) set the prop_name attr in the tuple as 
+        a prop_type whose value is the cdata from lxml_element.
+        Finer points are: 
+        If the element does not exist, the property must not exist.
+        If the element does exist, the property must exist.
+        If the element has cdata, the property must have a value.
+        """
+
+        # if there is no element, then there is no property set on prop_container
+        if lxml_element is not None:
+
+            # if there is an element, set the property but since an element may exist
+            # yet have no cdata, set the property to None
+            prop_container.__setattr__(prop_name, None)
+
+            # however if the element does have cdata, let's set the property with it
+            if lxml_element.text is not None:
+
+                # convert lxml element text to a python string
+                cdata = str(lxml_element.text)
+
+                # TODO: handle type errors and type formats
+                if prop_type is str:
+                    prop_container.__setattr__(prop_name, cdata)
+
+                if prop_type is Decimal:
+                    prop_container.__setattr__(prop_name, Decimal(cdata))
+
+                if prop_type is datetime:
+                    prop_container.__setattr__(prop_name, datetime.strptime(cdata, "%Y-%m-%d").date())
+
+                if prop_type is time:
+                    prop_container.__setattr__(prop_name, datetime.strptime(cdata, "%H:%M:%S").time())
+
+        return prop_container
+
     @property
     def account(self):
-        return self.xpath("/ub:bill/@account")[0]
+        return self.xpath("/{bill}bill/@account")[0]
 
     # TODO rename to sequnce
     @property
@@ -83,10 +215,10 @@ class Bill(object):
         
         return Decimal(total_due).quantize(Decimal(".00"), rounding)
 
-    # TODO convenience method - get due_date from rebill()
     @property
     def due_date(self):
-        return datetime.strptime(self.xpath("/ub:bill/ub:rebill/ub:duedate")[0].text, "%Y-%m-%d").date()
+        r = self.rebill
+        return r.duedate
 
     # TODO convenience method - get issue_date from rebill()
     @property
@@ -534,7 +666,7 @@ class Bill(object):
                             holiday_elem.text = exclusion.date.strftime("%y-%m-%d")
                             exclusions_elem.append(holiday_elem)
 
-                print lxml.etree.tostring(measuredusage_elem, pretty_print=True)
+                #print lxml.etree.tostring(measuredusage_elem, pretty_print=True)
 
 
     @property
@@ -573,62 +705,82 @@ class Bill(object):
 
         return measured_usages
 
+
+
+
     # TODO rename to rebill, and send entire grove
     @property
     def rebill_summary(self):
 
-        begin = datetime.strptime(self.xpath("/ub:bill/ub:rebill/ub:billperiodbegin")[0].text, "%Y-%m-%d").date()
-        end = datetime.strptime(self.xpath("/ub:bill/ub:rebill/ub:billperiodend")[0].text, "%Y-%m-%d").date()
-        priorbalance = self.xpath("/ub:bill/ub:rebill/ub:priorbalance")[0].text
-        paymentreceived = self.xpath("/ub:bill/ub:rebill/ub:paymentreceived")[0].text
-        totaladjustment = self.xpath("/ub:bill/ub:rebill/ub:totaladjustment")[0].text
-        balanceforward = self.xpath("/ub:bill/ub:rebill/ub:balanceforward")[0].text
-        hypotheticalecharges = self.xpath("/ub:bill/ub:rebill/ub:hypotheticalecharges")[0].text
-        actualecharges = self.xpath("/ub:bill/ub:rebill/ub:actualecharges")[0].text
-        revalue = self.xpath("/ub:bill/ub:rebill/ub:revalue")[0].text
-        resavings = self.xpath("/ub:bill/ub:rebill/ub:resavings")[0].text
-        recharges = self.xpath("/ub:bill/ub:rebill/ub:recharges")[0].text
-        totaldue = self.xpath("/ub:bill/ub:rebill/ub:totaldue")[0].text
-        duedate = datetime.strptime(self.xpath("/ub:bill/ub:rebill/ub:duedate")[0].text, "%Y-%m-%d").date()
-        issued = datetime.strptime(self.xpath("/ub:bill/ub:rebill/ub:issued")[0].text, "%Y-%m-%d").date()
-        message = self.xpath("/ub:bill/ub:rebill/ub:message")[0].text
+        rebill_elem_list = self.xpath("/ub:bill/ub:rebill")
 
-        # TODO optional quantization?
-        priorbalance = Decimal(priorbalance).quantize(Decimal('.00'))
-        paymentreceived = Decimal(paymentreceived).quantize(Decimal('.00'))
-        totaladjustment = Decimal(totaladjustment).quantize(Decimal('.00'))
-        revalue = Decimal(revalue).quantize(Decimal('.00'))
-        recharges = Decimal(recharges).quantize(Decimal('.00'))
-        resavings = Decimal(resavings).quantize(Decimal('.00'))
-        balanceforward = Decimal(balanceforward).quantize(Decimal('.00'))
-        totaldue = Decimal(totaldue).quantize(Decimal('.00'))
+        if not rebill_elem_list: 
 
-        Rebill = recordtype("rebill",
-            ['begin', 'end', 'priorbalance', 'paymentreceived', 'totaladjustment', 'balanceforward',
-            'hypotheticalecharges', 'actualecharges', 'revalue', 'resavings', 'recharges', 'totaldue', 'duedate', 'issued', 'message']
-        )
+            # there is no rebill element
+            return None
 
-        return Rebill(begin, end, priorbalance, paymentreceived, totaladjustment, balanceforward, 
-            hypotheticalecharges, actualecharges, revalue, resavings, recharges, totaldue, duedate, issued, message)
+        else:
+            rebill_elem = rebill_elem_list[0]
+
+            r = MutableNamedTuple()
+
+            # TODO: pass in root element, and lookup subelement
+            self.cdata_to_prop(rebill_elem.find("ub:billperiodbegin", {"ub":"bill"}), datetime, r, "begin" )
+            self.cdata_to_prop(rebill_elem.find("ub:billperiodend", {"ub":"bill"}), datetime, r, "end")
+            self.cdata_to_prop(rebill_elem.find("ub:priorbalance", {"ub":"bill"}), Decimal, r, "priorbalance" )
+            self.cdata_to_prop(rebill_elem.find("ub:paymentreceived", {"ub":"bill"}), Decimal, r, "paymentreceived")
+            self.cdata_to_prop(rebill_elem.find("ub:totaladjustment", {"ub":"bill"}), Decimal, r, "totaladjustment")
+            self.cdata_to_prop(rebill_elem.find("ub:balanceforward", {"ub":"bill"}), Decimal, r, "balanceforward")
+            self.cdata_to_prop(rebill_elem.find("ub:hypotheticalecharges", {"ub":"bill"}), Decimal, r, "hypotheticalecharges")
+            self.cdata_to_prop(rebill_elem.find("ub:actualecharges", {"ub":"bill"}), Decimal, r, "actualecharges")
+            self.cdata_to_prop(rebill_elem.find("ub:revalue", {"ub":"bill"}), Decimal, r, "revalue")
+            self.cdata_to_prop(rebill_elem.find("ub:resavings", {"ub":"bill"}), Decimal, r, "resavings")
+            self.cdata_to_prop(rebill_elem.find("ub:recharges", {"ub":"bill"}), Decimal, r, "recharges")
+            self.cdata_to_prop(rebill_elem.find("ub:totaldue", {"ub":"bill"}), Decimal, r, "totaldue")
+            self.cdata_to_prop(rebill_elem.find("ub:duedate", {"ub":"bill"}), datetime, r, "duedate")
+            self.cdata_to_prop(rebill_elem.find("ub:issued", {"ub":"bill"}), datetime, r, "issued")
+            self.cdata_to_prop(rebill_elem.find("ub:message", {"ub":"bill"}), str, r, "message")
+
+            return r
+
 
     @rebill_summary.setter
     def rebill_summary(self, r):
 
-        self.xpath("/ub:bill/ub:rebill/ub:billperiodbegin")[0].text = r.begin.strftime("%Y-%m-%d") if r.begin is not None else None
-        self.xpath("/ub:bill/ub:rebill/ub:billperiodend")[0].text = r.end.strftime("%Y-%m-%d") if r.end is not None else None
-        self.xpath("/ub:bill/ub:rebill/ub:priorbalance")[0].text = str(r.priorbalance)
-        self.xpath("/ub:bill/ub:rebill/ub:paymentreceived")[0].text = str(r.paymentreceived)
-        self.xpath("/ub:bill/ub:rebill/ub:totaladjustment")[0].text = str(r.totaladjustment)
-        self.xpath("/ub:bill/ub:rebill/ub:balanceforward")[0].text = str(r.balanceforward)
-        self.xpath("/ub:bill/ub:rebill/ub:hypotheticalecharges")[0].text = str(r.hypotheticalecharges)
-        self.xpath("/ub:bill/ub:rebill/ub:actualecharges")[0].text = str(r.actualecharges)
-        self.xpath("/ub:bill/ub:rebill/ub:revalue")[0].text = str(r.revalue)
-        self.xpath("/ub:bill/ub:rebill/ub:resavings")[0].text = str(r.resavings)
-        self.xpath("/ub:bill/ub:rebill/ub:recharges")[0].text = str(r.recharges)
-        self.xpath("/ub:bill/ub:rebill/ub:totaldue")[0].text = str(r.totaldue)
-        self.xpath("/ub:bill/ub:rebill/ub:duedate")[0].text = r.duedate.strftime("%Y-%m-%d") if r.duedate is not None else None
-        self.xpath("/ub:bill/ub:rebill/ub:issued")[0].text = r.issued.strftime("%Y-%m-%d") if r.issued is not None else None
-        self.xpath("/ub:bill/ub:rebill/ub:message")[0].text = r.message
+        rebill_elem_list = self.xpath("/ub:bill/ub:rebill")
+
+        if not rebill_elem_list:
+            # TODO: there is no rebill element so let's create it
+            pass
+
+        rebill_elem = rebill_elem_list[0]
+
+        # clear the entire grove, because present properties have to be added back in
+        # document order.  It would be difficult to delete/create each child because
+        # the insertion location would have to be tracked here.
+        # crap.. just can't clear because of sibling groves, list the car
+        #rebill_elem.clear()
+        self.remove_children_named(rebill_elem, ["billperiodbegin", "billperiodend", "priorbalance", "paymentreceived",
+            "totaladjustment", "balanceforward", "hypotheticalecharges", "actualecharges", "revalue", "resavings", 
+            "currentcharges", "recharges", "totaldue", "duedate", "issued", "message"])
+
+
+        self.prop_to_cdata(r, "begin", rebill_elem, "billperiodbegin")
+        self.prop_to_cdata(r, "end", rebill_elem, "billperiodend")
+        self.prop_to_cdata(r, "priorbalance", rebill_elem, "priorbalance")
+        self.prop_to_cdata(r, "paymentreceived", rebill_elem, "paymentreceived")
+        self.prop_to_cdata(r, "totaladjustment", rebill_elem, "totaladjustment")
+        self.prop_to_cdata(r, "balanceforward", rebill_elem, "balanceforward")
+        self.prop_to_cdata(r, "hypotheticalecharges", rebill_elem, "hypotheticalecharges")
+        self.prop_to_cdata(r, "actualecharges", rebill_elem, "actualecharges")
+        self.prop_to_cdata(r, "revalue", rebill_elem, "revalue")
+        self.prop_to_cdata(r, "recharges", rebill_elem, "recharges")
+        self.prop_to_cdata(r, "resavings", rebill_elem, "resavings")
+        self.prop_to_cdata(r, "currentcharges", rebill_elem, "currentcharges")
+        self.prop_to_cdata(r, "totaldue", rebill_elem, "totaldue")
+        self.prop_to_cdata(r, "duedate", rebill_elem, "duedate")
+        self.prop_to_cdata(r, "issued", rebill_elem, "issued")
+        self.prop_to_cdata(r, "message", rebill_elem, "message")
 
     @property
     def actual_charges(self):
@@ -636,6 +788,28 @@ class Bill(object):
         Return by service, actual charges grouped by chargegroup including chargegroup totals.
         """
         return self.charge_items('actual')
+
+    @property
+    def actual_details(self):
+        """
+        Return by service, actual charges grouped by chargegroup including chargegroup totals.
+        """
+        return self.details('actual')
+
+    @property
+    def hypothetical_details(self):
+        """
+        Return by service, actual charges grouped by chargegroup including chargegroup totals.
+        """
+        return self.details('hypothetical')
+
+    @actual_details.setter
+    def actual_details(self, details):
+        return self.set_details('actual', details)
+
+    @hypothetical_details.setter
+    def hypothetical_details(self, details):
+        return self.set_details('hypothetical', details)
 
     @actual_charges.setter
     def actual_charges(self, charge_items):
@@ -657,75 +831,6 @@ class Bill(object):
         Set the hypothetical charges into XML
         """
         return self.set_charge_items('hypothetical', charge_items)
-
-    def set_charge_items(self, charges_type, charge_items):
-
-        # get each service name, and associated chargegroups
-        for service in charge_items:
-            # TODO: create the service in XML if it does not exist
-            for chargegroup in charge_items[service]['chargegroups']:
-                # TODO: create the chargeroup in XML if it does not exist
-
-                # lookup the charge_type (hypothetical or actual) charges in the chargegroup
-                charges_elem = self.xpath("/ub:bill/ub:details[@service='%s']/ub:chargegroup[@type='%s']/ub:charges[@type='%s']" % (service, chargegroup, charges_type))[0]
-
-                # remove all charges_type children
-                charges_elem.clear()
-                # add the attr back since clear clears everything
-                charges_elem.set('type', charges_type)
-
-                for charge in charge_items[service]['chargegroups'][chargegroup]['charges']:
-                    rsbinding = charge['rsbinding']
-                    description = charge['description']
-                    rate = charge['rate']
-                    rate_units = charge['rate_units']
-                    quantity = charge['quantity']
-                    quantity_units = charge['quantity_units']
-                    total = charge['total']
-                    processingnote = charge['processingnote'] if 'processingnote' in charge else None
-
-                    # append new charge to charges
-                    charge_elem = charges_elem.makeelement("{bill}charge", rsbinding=rsbinding)
-                    charges_elem.append(charge_elem)
-
-                    # append new description to charge
-                    description_elem = charge_elem.makeelement("{bill}description")
-                    description_elem.text = description
-                    charge_elem.append(description_elem)
-
-                    # append new quantity and units to charge
-                    quantity_elem = charge_elem.makeelement("{bill}quantity")
-                    quantity_elem.text = str(quantity)
-                    quantity_elem.set('units', quantity_units)
-                    charge_elem.append(quantity_elem)
-
-                    # append new rate units to charge
-                    rate_elem = charge_elem.makeelement("{bill}rate")
-                    rate_elem.text = str(rate)
-                    rate_elem.set('units', rate_units)
-                    charge_elem.append(rate_elem)
-
-                    # append new total to charge
-                    total_elem = charge_elem.makeelement("{bill}total")
-                    total_elem.text = str(total)
-                    charge_elem.append(total_elem)
-
-                    # append new processing notes to charge
-                    note_elem = charge_elem.makeelement("{bill}processingnote")
-                    note_elem.text = processingnote
-                    charge_elem.append(note_elem)
-
-                charges_total = charge_items[service]['chargegroups'][chargegroup]['total']
-
-                charges_total_elem = charges_elem.makeelement("{bill}total")
-                charges_total_elem.text = str(charges_total)
-                charges_elem.append(charges_total_elem)
-
-            grand_total = charge_items[service]['total']
-
-            # TODO and the details total should by dynamically created too
-            grand_total_elem = self.xpath("/ub:bill/ub:details[@service='%s']/ub:total[@type='%s']" % (service, charges_type))[0]
-            grand_total_elem.text = str(grand_total)
 
     # Should all dollar quantities be treated as Decimal?  Probably, but how will this impact serialization to JSON?
     def charge_items(self, charges_type):
@@ -824,6 +929,262 @@ class Bill(object):
                         })
 
         return charge_items
+
+    def details(self, charges_type):
+        """
+        Return details by service
+        """
+
+        details = {} 
+
+        # enumerate each detail by service
+        for detail in self.xpath("/ub:bill/ub:details"):
+
+            service = detail.get("service")
+
+            # handle detail parent
+            # TODO: doc up finer points about this tuple
+            # Properties have to be initialized in document order
+            # Properties cannot be pre-initialized because they may not exist
+            # Properties that are container types (like chargegroups below) should
+            # not be initialized until they are going to be used.
+            detail_mnt = MutableNamedTuple()
+            #detail_mnt.rateschedule = None
+            # TODO: we don't want to have to initialize the mnt's because the properties may not exist
+            # so initialize the array if there are chargegroups.
+            #detail_mnt.chargegroups = []
+            #detail_mnt.total = None
+
+            # handle rateschedule child grove
+            rateschedule_elem = detail.find("ub:rateschedule", {"ub":"bill"})
+
+            rateschedule_mnt = MutableNamedTuple()
+            #rateschedule_mnt.rsbinding = None
+            #rateschedule_mnt.name = None
+
+            self.cdata_to_prop(rateschedule_elem.find("ub:name", {"ub":"bill"}), str, rateschedule_mnt, "name")
+            self.attr_to_prop(rateschedule_elem, "rsbinding", rateschedule_mnt, "rsbinding")
+
+            detail_mnt.rateschedule = rateschedule_mnt
+
+            for chargegroup in detail.findall("ub:chargegroup", {"ub":"bill"}):
+
+                chargegroup_mnt = MutableNamedTuple()
+
+                self.attr_to_prop(chargegroup, "type", chargegroup_mnt, "type")
+
+                # there are only two types of charges per chargegroup
+                for charges_child in chargegroup.find("ub:charges[@type='%s']" % (charges_type), {"ub":"bill"}):
+
+                    if charges_child.tag == "{bill}charge":
+
+                        charge_mnt = MutableNamedTuple()
+                        # For illustrating the tuple properties, but do not set them so function below can do so as a function of the XML
+                        #charge_mnt.rsbinding = None
+                        #charge_mnt.description = None
+                        #charge_mnt.quantity = None
+                        #charge_mnt.quantityunits = None
+                        #charge_mnt.rate = None
+                        #charge_mnt.rateunits = None
+                        #charge_mnt.total = None
+                        #charge_mnt.processingnote = None
+
+                        self.cdata_to_prop(charges_child.find("{bill}description"), str, charge_mnt, "description")
+                        self.cdata_to_prop(charges_child.find("ub:quantity", {"ub":"bill"}), str, charge_mnt, "quantity")
+                        self.attr_to_prop(charges_child.find("ub:quantity", {"ub":"bill"}), "units", charge_mnt, "quantityunits")
+                        self.cdata_to_prop(charges_child.find("ub:rate", {"ub":"bill"}), str, charge_mnt, "rate")
+                        self.attr_to_prop(charges_child.find("ub:rate", {"ub":"bill"}), "units", charge_mnt, "rateunits")
+                        self.cdata_to_prop(charges_child.find("ub:total", {"ub":"bill"}), Decimal, charge_mnt, "total")
+                        self.cdata_to_prop(charges_child.find("ub:processingnote", {"ub":"bill"}), str, charge_mnt, "processingnote")
+
+                        # initialize the charges property as an array if it has not already been done
+                        if not hasattr(chargegroup_mnt, "charges"): chargegroup_mnt.charges = []
+                        chargegroup_mnt.charges.append(charge_mnt)
+
+                    elif charges_child.tag == "{bill}total":
+
+                        total_mnt = MutableNamedTuple()
+
+                        self.cdata_to_prop(charges_child, Decimal, total_mnt, "total")
+
+
+                        # TODO: why append total to the charges list? Why not chargegroup_mnt.charges.total? Would that simplify the set_details code?
+                        # because mnt's don't nest unless another mnt is initialized, and the total is a sibling to the charges, so why deviate from
+                        # the xml model?
+                        chargegroup_mnt.charges.append(total_mnt)
+
+
+                # initialize the chargegroups property as an array if it has not already been done
+                if not hasattr(detail_mnt, "chargegroups"): detail_mnt.chargegroups = []
+                detail_mnt.chargegroups.append(chargegroup_mnt)
+
+            self.cdata_to_prop(detail.find("ub:total[@type='%s']" % (charges_type), {"ub":"bill"}), Decimal, detail_mnt, "total")
+
+            details[service] = detail_mnt
+
+        return details 
+
+    def set_details(self, charges_type, details):
+        """
+        details
+        """
+
+        for service, details in details.items():
+            """
+            The trick here is that actual and hypothetical charges live side-by-side
+            so we have to insert the charges_type in their proper xml locations.
+            """
+
+            # TODO error check this
+            details_elem = self.xpath("/ub:bill/ub:details[@service='%s']" % service)[0]
+
+            # handle rate schedule
+            # rateschedule is global to actual and hypothetical so create it if necessary
+
+            rateschedule_elem = details_elem.find("ub:rateschedule", {"ub":"bill"})
+            if rateschedule_elem is None:
+                rateschedule_elem = details_elem.makeelement("{bill}rateschedule")
+                # a rate schedule is always the first child
+                detail_elem.insert(0, rateschedule_elem)
+
+            # attrs and children are mandatory elements
+            #self.remove_attrs_named(rateschedule_elem, ["rsbinding"])
+            #self.remove_children_named(rateschedule_elem, ["name"])
+
+            self.prop_to_attr(details, "rsbinding", rateschedule_elem, "rsbinding")
+            self.prop_to_cdata(details.rateschedule, "name", rateschedule_elem, "name")
+
+
+            # handle chargegroups
+            for chargegroup in details.chargegroups:
+
+                # clear out all chargegroups from xml so that deletions occur
+                #[details_elem.remove(elem) for elem in details_elem.findall("ub:chargegroup", {"ub":"bill"})
+
+                #print chargegroup.type
+
+                # identify the chargegroup in question or create it
+                chargegroup_elem = details_elem.find("ub:chargegroup[@type='%s']" % chargegroup.type, {"ub":"bill"})
+
+                if chargegroup_elem is None:
+                    # append new chargegroup to end of list of chargegroups
+                    chargegroup_elem = details_elem.makeelement("{bill}chargegroup")
+
+                self.prop_to_attr(chargegroup, "type", chargegroup_elem, "type")
+
+                # handle charges of charges_type
+                # identify charges element
+                charges_elem = chargegroup_elem.find("ub:charges[@type='%s']" % charges_type)
+                if charges_elem is None:
+                    charges_elem = chargegroup_elem.makeelement("{bill}charges")
+                    # don't worry about insertion point because the order does not matter
+                    chargegroup_elem.append(charges_elem)
+                else:
+                    # clear all child charge elements of charges
+                    charges_elem.clear()
+
+                # set attribute back since clear wipes it
+                charges_elem.set("type", charges_type)
+
+                # all charges except for the last which is the total
+                for charge in chargegroup.charges[:-1]:
+                    charge_elem = charges_elem.makeelement("{bill}charge")
+
+                    self.prop_to_attr(charge, "rsbinding", charge_elem, "rsbinding")
+                    self.prop_to_cdata(charge, "description", charge_elem, "description")
+                    self.prop_to_cdata(charge, "quantity", charge_elem, "quantity")
+                    # TODO check to see if quantity exists first
+                    self.prop_to_attr(charge, "quantityunits", charge_elem.find("ub:quantity", {"ub":"bill"}), "units")
+                    self.prop_to_cdata(charge, "rate", charge_elem, "rate")
+                    # TODO check to see if rate exists first
+                    self.prop_to_attr(charge, "rateunits", charge_elem.find("ub:rate", {"ub":"bill"}), "units")
+                    self.prop_to_cdata(charge, "total", charge_elem, "total")
+                    self.prop_to_cdata(charge, "processingnote", charge_elem, "processingnote")
+
+                    charges_elem.append(charge_elem)
+
+                # the last element, the total for all the charges
+                total = chargegroup.charges[-1]
+                self.prop_to_cdata(total, "total", charges_elem, "total")
+
+            # TODO: prune remaining empty chargegroups
+
+            # TODO: chargegroup totals
+
+            # handle total of charges_type
+            # assumes type=charges_type is a mandatory element since attr is not set
+            self.prop_to_cdata(details, "total", details_elem, "total")
+
+
+    def set_charge_items(self, charges_type, charge_items):
+
+        # get each service name, and associated chargegroups
+        for service in charge_items:
+            # TODO: create the service in XML if it does not exist
+            for chargegroup in charge_items[service]['chargegroups']:
+                # TODO: create the chargeroup in XML if it does not exist
+
+                # lookup the charge_type (hypothetical or actual) charges in the chargegroup
+                charges_elem = self.xpath("/ub:bill/ub:details[@service='%s']/ub:chargegroup[@type='%s']/ub:charges[@type='%s']" % (service, chargegroup, charges_type))[0]
+
+                # remove all charges_type children
+                charges_elem.clear()
+                # add the attr back since clear clears everything
+                charges_elem.set('type', charges_type)
+
+                for charge in charge_items[service]['chargegroups'][chargegroup]['charges']:
+                    rsbinding = charge['rsbinding']
+                    description = charge['description']
+                    rate = charge['rate']
+                    rate_units = charge['rate_units']
+                    quantity = charge['quantity']
+                    quantity_units = charge['quantity_units']
+                    total = charge['total']
+                    processingnote = charge['processingnote'] if 'processingnote' in charge else None
+
+                    # append new charge to charges
+                    charge_elem = charges_elem.makeelement("{bill}charge", rsbinding=rsbinding if rsbinding is not None else "")
+                    charges_elem.append(charge_elem)
+
+                    # append new description to charge
+                    description_elem = charge_elem.makeelement("{bill}description")
+                    description_elem.text = description
+                    charge_elem.append(description_elem)
+
+                    # append new quantity and units to charge
+                    quantity_elem = charge_elem.makeelement("{bill}quantity")
+                    quantity_elem.text = str(quantity)
+                    quantity_elem.set('units', quantity_units)
+                    charge_elem.append(quantity_elem)
+
+                    # append new rate units to charge
+                    rate_elem = charge_elem.makeelement("{bill}rate")
+                    rate_elem.text = str(rate)
+                    rate_elem.set('units', rate_units)
+                    charge_elem.append(rate_elem)
+
+                    # append new total to charge
+                    total_elem = charge_elem.makeelement("{bill}total")
+                    total_elem.text = str(total)
+                    charge_elem.append(total_elem)
+
+                    # append new processing notes to charge
+                    note_elem = charge_elem.makeelement("{bill}processingnote")
+                    note_elem.text = processingnote
+                    charge_elem.append(note_elem)
+
+                charges_total = charge_items[service]['chargegroups'][chargegroup]['total']
+
+                charges_total_elem = charges_elem.makeelement("{bill}total")
+                charges_total_elem.text = str(charges_total)
+                charges_elem.append(charges_total_elem)
+
+            grand_total = charge_items[service]['total']
+
+            # TODO and the details total should by dynamically created too
+            grand_total_elem = self.xpath("/ub:bill/ub:details[@service='%s']/ub:total[@type='%s']" % (service, charges_type))[0]
+            grand_total_elem.text = str(grand_total)
+
 
 
 
@@ -974,6 +1335,7 @@ if __name__ == "__main__":
     # configure optparse
     parser = OptionParser()
     parser.add_option("-i", "--inputbill", dest="inputbill", help="Construct with bill", metavar="FILE")
+    parser.add_option("-o", "--outputbill", dest="outputbill", help="", metavar="FILE")
 
     (options, args) = parser.parse_args()
 
@@ -984,7 +1346,7 @@ if __name__ == "__main__":
     bill = Bill(options.inputbill)
 
     #print bill.account
-    #print bill.id
+    print bill.id
 
     #print bill.service_address
     #bill.service_address = bill.service_address
@@ -1019,13 +1381,16 @@ if __name__ == "__main__":
     #print t
     #bill.hypothetical_totals = t
 
-    import pprint
-    pp = pprint.PrettyPrinter(indent=4)
-    m = bill.measured_usage
-    pp.pprint(m)
-    bill.measured_usage = m
+    #import pprint
+    #pp = pprint.PrettyPrinter(indent=4)
+    #m = bill.measured_usage
+    #pp.pprint(m)
+    #bill.measured_usage = m
 
+    #d = bill.actual_details
+    #print d
+    #bill.actual_details = d
+    #print bill.actual_details
 
+    XMLUtils().save_xml_file(bill.xml(), options.outputbill, "prod", "prod")
 
-
-    #XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), outputbill, user, password)
