@@ -15,6 +15,8 @@ from types import NoneType
 import math
 from decimal import *
 
+from itertools import groupby
+
 #
 # Types for ReportLab
 #
@@ -480,7 +482,6 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(t)
     Elements.append(UseUpSpace())
 
-
     # populate summaryChargesTableF
     ub_summary = bill.utilbill_summary_charges
     utilitycharges = [
@@ -488,10 +489,10 @@ def render(inputbill, outputfile, backgrounds, verbose):
         [Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
     ]+[
         [
-            Paragraph(str(ub_summary[service]['hypotheticalecharges']),styles['BillFieldRight']), 
-            Paragraph(str(ub_summary[service]['actualecharges']),styles['BillFieldRight']), 
-            Paragraph(str(ub_summary[service]['revalue']),styles['BillFieldRight'])
-        ] for service in ub_summary
+            Paragraph(str(charges.hypotheticalecharges),styles['BillFieldRight']), 
+            Paragraph(str(charges.actualecharges),styles['BillFieldRight']), 
+            Paragraph(str(charges.revalue),styles['BillFieldRight'])
+        ] for service, charges in ub_summary.items()
     ]
 
     t = Table(utilitycharges, colWidths=[84,84,84])
@@ -577,16 +578,40 @@ def render(inputbill, outputfile, backgrounds, verbose):
         [None, None, None, None,  None, None,]
     ]
 
-    usage = bill.measured_usage
-    for service in usage:
-        measuredUsage.append([
-            usage[service]['identifier'],
-            usage[service]['description'],
-            usage[service]['shadow_total'],
-            usage[service]['utility_total'],
-            usage[service]['total'],
-            usage[service]['units'],
-            ])
+    #usage = bill.measured_usage
+    # TODO: show both the utilty and shadow register as separate line items such that both their descriptions and rules could be shown
+    for service, meters in bill.measured_usage.items():
+        for meter in meters:
+            keyfunc = lambda register:register.identifier
+            # sort the registers by identifier to ensure similar identifiers are adjacent
+            registers = sorted(meter.registers, key=keyfunc )
+
+            # group by the identifier attribute of each register
+            for identifier, register_group in groupby(registers, key=keyfunc):
+
+                shadow_total = None
+                utility_total = None
+                total = 0
+
+                # TODO validate that there is only a utility and shadow register
+                for register in register_group:
+                    if register.shadow is True:
+                        shadow_total = register.total
+                        total += register.total
+                    if register.shadow is False:
+                        utility_total = register.total
+                        total += register.total
+
+                measuredUsage.append([
+                    # TODO unless some wrapper class exists (pivotal 13643807) check for errors
+                    #usage.identifier if hasattr(usage, "identifier") else "" ,
+                    register.identifier,
+                    register.description if hasattr(register, "description") else "",
+                    shadow_total,
+                    utility_total,
+                    total,
+                    register.units,
+                ])
 
     measuredUsage.append([None, None, None, None, None, None])
 
@@ -636,23 +661,26 @@ def render(inputbill, outputfile, backgrounds, verbose):
         [None, None, None, None, None, None, None]
     ]
 
-    details = bill.hypothetical_details
-    totals = bill.hypothetical_totals
-    for service in details:
-        for idx, detail in enumerate(details[service]):
-            chargeDetails.append([
-                service if idx == 0 else "",
-                detail['description'],
-                detail['quantity'],
-                detail['quantity_units'],
-                detail['rate'],
-                detail['rate_units'],
-                detail['total'],
-            ])
+
+    for service, hypothetical_details in bill.hypothetical_details.items():
+
+        for chargegroup in hypothetical_details.chargegroups:
+            for idx, charge in enumerate(chargegroup.charges):
+                chargeDetails.append([
+                    service if idx == 0 else "",
+                    charge.description if hasattr(charge, "description") else None,
+                    charge.quantity if hasattr(charge, "quantity") else None,
+                    charge.quantity_units if hasattr(charge, "quantity_units") else None,
+                    charge.rate if hasattr(charge, "rate") else None,
+                    charge.rate_units if hasattr(charge, "rate_units") else None,
+                    charge.total if hasattr(charge, "total") else None,
+                ])
+
 
         # spacer
         chargeDetails.append([None, None, None, None, None, None, None])
-        chargeDetails.append([None, None, None, None, None, None, totals[service]])
+        chargeDetails.append([None, None, None, None, None, None, hypothetical_details.total])
+
 
     t = Table(chargeDetails, [50, 210, 70, 40, 70, 40, 70])
 
