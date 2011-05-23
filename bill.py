@@ -13,6 +13,7 @@ from optparse import OptionParser
 
 from datetime import datetime
 from datetime import time
+from datetime import date
 
 # for xml processing
 from lxml import etree
@@ -79,7 +80,10 @@ class Bill(object):
 
     def remove_children_named(self, root_elem, names):
         for name in names:
-            root_elem.remove(root_elem.find("ub:%s" % name, {"ub":"bill"}))
+            print  "Will remove %s " % name
+            child_elem = root_elem.find("ub:%s" % name, {"ub":"bill"})
+            if child_elem is not None:
+                root_elem.remove(child_elem)
 
     def remove_attrs_named(self, elem, names):
         for name in names:
@@ -117,6 +121,8 @@ class Bill(object):
         is just easier to have the root element cleared of all children which are then
         added back in the order this function is called.
         """
+        #print "prop_to_cdata %s %s" % (prop_container, prop_name)
+        #print "prop_container has attr %s" % hasattr(prop_container, prop_name)
 
         # if the property is not present, do nothing as root_elem has been previously cleared
         if hasattr(prop_container, prop_name):
@@ -130,17 +136,19 @@ class Bill(object):
 
             if prop_value is not None:
 
-                if type(prop_value) is datetime:
+                if type(prop_value) is date:
                     child_elem.text = prop_value.strftime("%Y-%m-%d")
-
-                if type(prop_value) is time:
+                elif type(prop_value) is time:
                     child_elem.text = prop_value.strftime("%H:%M:%S")
-
-                if type(prop_value) is str:
+                elif type(prop_value) is str:
                     child_elem.text = prop_value
-
-                if type(prop_value) is Decimal:
+                elif type(prop_value) is int:
                     child_elem.text = str(prop_value)
+                elif type(prop_value) is Decimal:
+                    child_elem.text = str(prop_value)
+                else:
+                    # TODO raise exception
+                    pass
 
             return child_elem
 
@@ -169,8 +177,11 @@ class Bill(object):
                             prop_container.__setattr__(prop_name, False)
                     elif prop_type is str:
                         prop_container.__setattr__(prop_name, lxml_element.attrib[attr_name])
-
-
+                    elif prop_type is Decimal:
+                        prop_container.__setattr__(prop_name, Decimal(lxml_element.attrib[attr_name]))
+                    else:
+                        #TODO raise exception
+                        pass
 
 
     def prop_to_attr(self, prop_container, prop_name, lxml_element, attr_name):
@@ -182,9 +193,13 @@ class Bill(object):
             prop_value = str(prop_container.__getattr__(prop_name))
             lxml_element.set(attr_name, prop_value)
 
+    # TODO implement this or change xml model for details/total[@type]
+    #def cdata_attr_to_prop(self, parent_elem, parent_attr, child_elem_name, prop_type, prop_container, prop_name):
 
 
-    def cdata_to_prop(self, lxml_element, prop_type, prop_container, prop_name):
+    # TODO: The problem with this function is that it requires the XSD to not qualify parent_elem with attributes.  
+    # What happens when there is one parent with two children with the same tagname yet different attributes?  
+    def cdata_to_prop(self, parent_elem, child_elem_name, prop_type, prop_container, prop_name):
         """
         Given prop_container (a tuple) set the prop_name attr in the tuple as 
         a prop_type whose value is the cdata from lxml_element.
@@ -194,31 +209,41 @@ class Bill(object):
         If the element has cdata, the property must have a value.
         """
 
+        # acquire the child element
+        # TODO: ensure that there is only one child named child_elem_name
+        child_elem = parent_elem.find("ub:%s" % child_elem_name, {"ub":"bill"})
+        if child_elem is None:
+            # TODO this may be an exceptional circumstance
+            # If there is no child, there is no property
+            return
+
         # if there is no element, then there is no property set on prop_container
-        if lxml_element is not None:
+        if child_elem is not None:
 
             # if there is an element, set the property but since an element may exist
             # yet have no cdata, set the property to None
             prop_container.__setattr__(prop_name, None)
 
             # however if the element does have cdata, let's set the property with it
-            if lxml_element.text is not None:
+            if child_elem.text is not None:
 
-                # convert lxml element text to a python string
-                cdata = str(lxml_element.text)
+                # convert child element text to a python string
+                cdata = str(child_elem.text)
 
                 # TODO: handle type errors and type formats
                 if prop_type is str:
                     prop_container.__setattr__(prop_name, cdata)
-
-                if prop_type is Decimal:
+                elif prop_type is int:
+                    prop_container.__setattr__(prop_name, int(cdata))
+                elif prop_type is Decimal:
                     prop_container.__setattr__(prop_name, Decimal(cdata))
-
-                if prop_type is datetime:
+                elif prop_type is date:
                     prop_container.__setattr__(prop_name, datetime.strptime(cdata, "%Y-%m-%d").date())
-
-                if prop_type is time:
+                elif prop_type is time:
                     prop_container.__setattr__(prop_name, datetime.strptime(cdata, "%H:%M:%S").time())
+                else:
+                    # TODO: raise exception
+                    pass
 
         return prop_container
 
@@ -234,8 +259,7 @@ class Bill(object):
     # TODO rename to sequnce
     @id.setter
     def id(self, id):
-        self.xpath("/ub:bill/@id")[0] = id
-
+        self.inputtree.getroot().set("id", str(id))
 
     @property
     def total_due(self,rounding=None):
@@ -345,12 +369,12 @@ class Bill(object):
                 u = MutableNamedTuple()
 
                 # TODO: pass in root element, and lookup subelement
-                self.cdata_to_prop(utilbill_elem.find("ub:billperiodbegin", {"ub":"bill"}), datetime, u, "begin" )
-                self.cdata_to_prop(utilbill_elem.find("ub:billperiodend", {"ub":"bill"}), datetime, u, "end" )
-                self.cdata_to_prop(utilbill_elem.find("ub:hypotheticalecharges", {"ub":"bill"}), Decimal, u, "hypotheticalecharges" )
-                self.cdata_to_prop(utilbill_elem.find("ub:actualecharges", {"ub":"bill"}), Decimal, u, "actualecharges" )
-                self.cdata_to_prop(utilbill_elem.find("ub:revalue", {"ub":"bill"}), Decimal, u, "revalue" )
-                self.cdata_to_prop(utilbill_elem.find("ub:recharges", {"ub":"bill"}), Decimal, u, "recharges" )
+                self.cdata_to_prop(utilbill_elem, "billperiodbegin", date, u, "begin" )
+                self.cdata_to_prop(utilbill_elem, "billperiodend", date, u, "end" )
+                self.cdata_to_prop(utilbill_elem, "hypotheticalecharges", Decimal, u, "hypotheticalecharges" )
+                self.cdata_to_prop(utilbill_elem, "actualecharges", Decimal, u, "actualecharges" )
+                self.cdata_to_prop(utilbill_elem, "revalue", Decimal, u, "revalue" )
+                self.cdata_to_prop(utilbill_elem, "recharges", Decimal, u, "recharges" )
 
 
                 # TODO error check absence of attr
@@ -375,18 +399,16 @@ class Bill(object):
             utilbill_elem = utilbill_elem_list[0]
 
             # clear a subset of terminal elements but preserve the CAR
-            #self.remove_children_named(utilbill_elem, ["billperiodbegin", "billperiodend", "hypotheticalecharges", "actualecharges",
-            #    "revalue", "recharges", "resavings"]
+            self.remove_children_named(utilbill_elem, ["billperiodbegin", "billperiodend", "hypotheticalecharges", "actualecharges",
+                "revalue", "recharges", "resavings"])
 
-            u = MutableNamedTuple()
-
-            self.prop_to_cdata(u, "begin", utilbill_elem, "billperiodbegin")
-            self.prop_to_cdata(u, "end", utilbill_elem, "billperiodend")
-            self.prop_to_cdata(u, "hypotheticalecharges", utilbill_elem, "hypotheticalecharges")
-            self.prop_to_cdata(u, "actualecharges", utilbill_elem, "actualecharges")
-            self.prop_to_cdata(u, "revalue", utilbill_elem, "revalue")
-            self.prop_to_cdata(u, "recharges", utilbill_elem, "recharges")
-            self.prop_to_cdata(u, "resavings", utilbill_elem, "resavings")
+            self.prop_to_cdata(utilbill, "begin", utilbill_elem, "billperiodbegin")
+            self.prop_to_cdata(utilbill, "end", utilbill_elem, "billperiodend")
+            self.prop_to_cdata(utilbill, "hypotheticalecharges", utilbill_elem, "hypotheticalecharges")
+            self.prop_to_cdata(utilbill, "actualecharges", utilbill_elem, "actualecharges")
+            self.prop_to_cdata(utilbill, "revalue", utilbill_elem, "revalue")
+            self.prop_to_cdata(utilbill, "recharges", utilbill_elem, "recharges")
+            self.prop_to_cdata(utilbill, "resavings", utilbill_elem, "resavings")
 
     @property
     def old_utilbill_summary_charges(self):
@@ -824,21 +846,21 @@ class Bill(object):
             r = MutableNamedTuple()
 
             # TODO: pass in root element, and lookup subelement
-            self.cdata_to_prop(rebill_elem.find("ub:billperiodbegin", {"ub":"bill"}), datetime, r, "begin" )
-            self.cdata_to_prop(rebill_elem.find("ub:billperiodend", {"ub":"bill"}), datetime, r, "end")
-            self.cdata_to_prop(rebill_elem.find("ub:priorbalance", {"ub":"bill"}), Decimal, r, "priorbalance" )
-            self.cdata_to_prop(rebill_elem.find("ub:paymentreceived", {"ub":"bill"}), Decimal, r, "paymentreceived")
-            self.cdata_to_prop(rebill_elem.find("ub:totaladjustment", {"ub":"bill"}), Decimal, r, "totaladjustment")
-            self.cdata_to_prop(rebill_elem.find("ub:balanceforward", {"ub":"bill"}), Decimal, r, "balanceforward")
-            self.cdata_to_prop(rebill_elem.find("ub:hypotheticalecharges", {"ub":"bill"}), Decimal, r, "hypotheticalecharges")
-            self.cdata_to_prop(rebill_elem.find("ub:actualecharges", {"ub":"bill"}), Decimal, r, "actualecharges")
-            self.cdata_to_prop(rebill_elem.find("ub:revalue", {"ub":"bill"}), Decimal, r, "revalue")
-            self.cdata_to_prop(rebill_elem.find("ub:resavings", {"ub":"bill"}), Decimal, r, "resavings")
-            self.cdata_to_prop(rebill_elem.find("ub:recharges", {"ub":"bill"}), Decimal, r, "recharges")
-            self.cdata_to_prop(rebill_elem.find("ub:totaldue", {"ub":"bill"}), Decimal, r, "totaldue")
-            self.cdata_to_prop(rebill_elem.find("ub:duedate", {"ub":"bill"}), datetime, r, "duedate")
-            self.cdata_to_prop(rebill_elem.find("ub:issued", {"ub":"bill"}), datetime, r, "issued")
-            self.cdata_to_prop(rebill_elem.find("ub:message", {"ub":"bill"}), str, r, "message")
+            self.cdata_to_prop(rebill_elem, "billperiodbegin", date, r, "begin" )
+            self.cdata_to_prop(rebill_elem, "billperiodend", date, r, "end")
+            self.cdata_to_prop(rebill_elem, "priorbalance", Decimal, r, "priorbalance" )
+            self.cdata_to_prop(rebill_elem, "paymentreceived", Decimal, r, "paymentreceived")
+            self.cdata_to_prop(rebill_elem, "totaladjustment", Decimal, r, "totaladjustment")
+            self.cdata_to_prop(rebill_elem, "balanceforward", Decimal, r, "balanceforward")
+            self.cdata_to_prop(rebill_elem, "hypotheticalecharges", Decimal, r, "hypotheticalecharges")
+            self.cdata_to_prop(rebill_elem, "actualecharges", Decimal, r, "actualecharges")
+            self.cdata_to_prop(rebill_elem, "revalue", Decimal, r, "revalue")
+            self.cdata_to_prop(rebill_elem, "resavings", Decimal, r, "resavings")
+            self.cdata_to_prop(rebill_elem, "recharges", Decimal, r, "recharges")
+            self.cdata_to_prop(rebill_elem, "totaldue", Decimal, r, "totaldue")
+            self.cdata_to_prop(rebill_elem, "duedate", datetime, r, "duedate")
+            self.cdata_to_prop(rebill_elem, "issued", datetime, r, "issued")
+            self.cdata_to_prop(rebill_elem, "message", str, r, "message")
 
             return r
 
@@ -1061,7 +1083,7 @@ class Bill(object):
             #rateschedule_mnt.rsbinding = None
             #rateschedule_mnt.name = None
 
-            self.cdata_to_prop(rateschedule_elem.find("ub:name", {"ub":"bill"}), str, rateschedule_mnt, "name")
+            self.cdata_to_prop(rateschedule_elem, "name", str, rateschedule_mnt, "name")
             self.attr_to_prop(rateschedule_elem, "rsbinding", str, rateschedule_mnt, "rsbinding")
 
             detail_mnt.rateschedule = rateschedule_mnt
@@ -1088,13 +1110,13 @@ class Bill(object):
                         #charge_mnt.total = None
                         #charge_mnt.processingnote = None
 
-                        self.cdata_to_prop(charges_child.find("{bill}description"), str, charge_mnt, "description")
-                        self.cdata_to_prop(charges_child.find("ub:quantity", {"ub":"bill"}), str, charge_mnt, "quantity")
+                        self.cdata_to_prop(charges_child, "description", str, charge_mnt, "description")
+                        self.cdata_to_prop(charges_child, "quantity", str, charge_mnt, "quantity")
                         self.attr_to_prop(charges_child.find("ub:quantity", {"ub":"bill"}), "units", str, charge_mnt, "quantityunits")
-                        self.cdata_to_prop(charges_child.find("ub:rate", {"ub":"bill"}), str, charge_mnt, "rate")
+                        self.cdata_to_prop(charges_child, "rate", str, charge_mnt, "rate")
                         self.attr_to_prop(charges_child.find("ub:rate", {"ub":"bill"}), "units", str, charge_mnt, "rateunits")
-                        self.cdata_to_prop(charges_child.find("ub:total", {"ub":"bill"}), Decimal, charge_mnt, "total")
-                        self.cdata_to_prop(charges_child.find("ub:processingnote", {"ub":"bill"}), str, charge_mnt, "processingnote")
+                        self.cdata_to_prop(charges_child, "total", Decimal, charge_mnt, "total")
+                        self.cdata_to_prop(charges_child, "processingnote", str, charge_mnt, "processingnote")
 
                         # initialize the charges property as an array if it has not already been done
                         if not hasattr(chargegroup_mnt, "charges"): chargegroup_mnt.charges = []
@@ -1104,7 +1126,7 @@ class Bill(object):
 
                         total_mnt = MutableNamedTuple()
 
-                        self.cdata_to_prop(charges_child, Decimal, total_mnt, "total")
+                        self.cdata_to_prop(charges_child, "total", Decimal, total_mnt, "total")
 
 
                         # TODO: why append total to the charges list? Why not chargegroup_mnt.charges.total? Would that simplify the set_details code?
@@ -1117,7 +1139,18 @@ class Bill(object):
                 if not hasattr(detail_mnt, "chargegroups"): detail_mnt.chargegroups = []
                 detail_mnt.chargegroups.append(chargegroup_mnt)
 
-            self.cdata_to_prop(detail.find("ub:total[@type='%s']" % (charges_type), {"ub":"bill"}), Decimal, detail_mnt, "total")
+            # TODO: cdata_to_prop cannot handle child elements qualified by an attribute
+            # So refactor out the code below.
+
+            # doesn't work because the total element is qualified by an attribute
+            # detail.find("ub:total[@type='%s']" % (charges_type), {"ub":"bill"}) is the child
+            #self.cdata_to_prop(detail, "total", Decimal, detail_mnt, "total")
+
+            total_elem = detail.find("ub:total[@type='%s']" % (charges_type), {"ub":"bill"})
+            if total_elem is not None:
+                detail_mnt.total = None
+                if total_elem.text is not None:
+                    detail_mnt.total = Decimal(total_elem.text)
 
             details[service] = detail_mnt
 
@@ -1405,6 +1438,82 @@ class Bill(object):
 
     @property
     def statistics(self):
+
+        statistics_elem_list = self.xpath("/ub:bill/ub:statistics")
+
+        if not statistics_elem_list: 
+
+            # there is no statistics element
+            # TODO create one
+            return None
+
+        else:
+            statistics_elem = statistics_elem_list[0]
+
+            s = MutableNamedTuple()
+
+            self.cdata_to_prop(statistics_elem, "conventionalconsumed", int, s, "conventionalconsumed" )
+            self.cdata_to_prop(statistics_elem, "renewableconsumed", int, s, "renewableconsumed" )
+            self.cdata_to_prop(statistics_elem, "renewableutilization", Decimal, s, "renewableutilization" )
+            self.cdata_to_prop(statistics_elem, "conventionalutilization", Decimal, s, "conventionalutilization" )
+            self.cdata_to_prop(statistics_elem, "renewableproduced", int, s, "renewableproduced" )
+            self.cdata_to_prop(statistics_elem, "co2offset", Decimal, s, "co2offset" )
+            self.cdata_to_prop(statistics_elem, "totalsavings", Decimal, s, "totalsavings" )
+            self.cdata_to_prop(statistics_elem, "totalrenewableconsumed", int, s, "totalrenewableconsumed" )
+            self.cdata_to_prop(statistics_elem, "totalrenewableproduced", int, s, "totalrenewableproduced" )
+            self.cdata_to_prop(statistics_elem, "totaltrees", Decimal, s, "totaltrees" )
+            self.cdata_to_prop(statistics_elem, "totalco2offset", Decimal, s, "totalco2offset" )
+
+            consumptiontrend_elem = statistics_elem.find("{bill}consumptiontrend")
+
+            if consumptiontrend_elem is not None:
+                # element exists, haven't seen children yet
+                s.consumptiontrend = []
+
+                period_elem_list = consumptiontrend_elem.findall("{bill}period")
+
+                for period_elem in period_elem_list:
+                    p = MutableNamedTuple()
+                    print period_elem.get("quantity")
+                    self.attr_to_prop(period_elem, "quantity", Decimal, p, "quantity")
+                    self.attr_to_prop(period_elem, "month", str, p, "month")
+                    s.consumptiontrend.append(p)
+
+        return s
+
+    @statistics.setter
+    def statistics(self, s):
+
+        statistics_elem = self.xpath("/ub:bill/ub:statistics[1]")[0]
+
+        # clear the immediate children, because present properties have to be added back in
+        # document order.  It would be difficult to delete/create each child because
+        # the insertion location would have to be tracked here.
+
+        self.remove_children_named(statistics_elem, ["conventionalconsumed", "renewableconsumed", "renewableutilization",
+            "conventionalutilization", "renewableproduced", "co2offset", "totalsavings", "totalrenewableconsumed",
+            "totalrenewableproduced", "totaltrees", "totalco2offset"])
+
+        self.prop_to_cdata(s, "conventionalconsumed", statistics_elem, "conventionalconsumed")
+        self.prop_to_cdata(s, "renewableconsumed", statistics_elem, "renewableconsumed")
+        self.prop_to_cdata(s, "renewableutilization", statistics_elem, "renewableutilization")
+        self.prop_to_cdata(s, "conventionalutilization", statistics_elem, "conventionalutilization")
+        self.prop_to_cdata(s, "renewableproduced", statistics_elem, "renewableproduced")
+        self.prop_to_cdata(s, "co2offset", statistics_elem, "co2offset")
+        self.prop_to_cdata(s, "totalsavings", statistics_elem, "totalsavings")
+        self.prop_to_cdata(s, "totalrenewableconsumed", statistics_elem, "totalrenewableconsumed")
+        self.prop_to_cdata(s, "totalrenewableproduced", statistics_elem, "totalrenewableproduced")
+        self.prop_to_cdata(s, "totaltrees", statistics_elem, "totaltrees")
+        self.prop_to_cdata(s, "totalco2offset", statistics_elem, "totalco2offset")
+
+        # months are overwritten in a circular fashion
+        for period in s.consumptiontrend:
+            period_elem = statistics_elem.find("ub:consumptiontrend/ub:period[@month='%s']" % period.month, {"ub":"bill"})
+            self.prop_to_attr(period, "month", period_elem, "month")
+            self.prop_to_attr(period, "quantity", period_elem, "quantity")
+
+    @property
+    def old_statistics(self):
         renewableUtilization = self.xpath("/ub:bill/ub:statistics/ub:renewableutilization")[0].text
         conventionalUtilization = self.xpath("/ub:bill/ub:statistics/ub:conventionalutilization")[0].text
         periodRenewableConsumed = self.xpath("/ub:bill/ub:statistics/ub:renewableconsumed")[0].text
@@ -1448,12 +1557,12 @@ if __name__ == "__main__":
 
     bill = Bill(options.inputbill)
 
-    print bill.account
+    #print bill.account
     #print bill.id
 
     #print bill.service_address
     #bill.service_address = bill.service_address
-    print bill.service_address 
+    #print bill.service_address 
 
     #print bill.rebill_periods
     #bill.rebill_periods = bill.rebill_periods
@@ -1494,6 +1603,11 @@ if __name__ == "__main__":
     #print d
     #bill.actual_details = d
     #print bill.actual_details
+
+
+    s = bill.statistics
+    print s
+    bill.statistics = s
 
     XMLUtils().save_xml_file(bill.xml(), options.outputbill, "prod", "prod")
 
