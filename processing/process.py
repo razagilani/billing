@@ -233,15 +233,15 @@ class Process(object):
         ub_summary_charges = the_bill.utilbill_summary_charges
         for (service, charges) in ub_summary_charges.items():
             # utility billing periods are utility specific
-            # ToDo business logic specific dates are selected here
+            # TODO business logic specific dates are selected here
             charges.begin = charges.end
             charges.end = None
 
-            charges.hypotheticalecharges = Decimal("0.00")
-            charges.actualecharges = Decimal("0.00")
-            charges.revalue = Decimal("0.00")
-            charges.recharges = Decimal("0.00")
-            charges.resavings = Decimal("0.00")
+            #charges.hypotheticalecharges = Decimal("0.00")
+            #charges.actualecharges = Decimal("0.00")
+            #charges.revalue = Decimal("0.00")
+            #charges.recharges = Decimal("0.00")
+            #charges.resavings = Decimal("0.00")
 
         # set the utilbill summaries back into bill
         the_bill.utilbill_summary_charges = ub_summary_charges
@@ -253,9 +253,8 @@ class Process(object):
         def zero_charges(details):
 
             for service, detail in details.items():
-                print "Got %s detail. total is %s " % (service, detail.total)
+
                 detail.total = Decimal("0.00")
-                print "zeroed out %s " % detail.total
 
                 for chargegroup in detail.chargegroups:
                     #TODO: zero out a chargegroup total when one exists
@@ -281,6 +280,27 @@ class Process(object):
                     register.presentreading = Decimal("0")
 
         the_bill.measured_usage = measured_usage
+
+
+        # zero out statistics section
+        statistics = the_bill.statistics
+
+        statistics.conventionalconsumed = None
+        statistics.renewableconsumed = None
+        statistics.renewableutilization = None
+        statistics.conventionalutilization = None
+        statistics.renewableproduced = None
+        statistics.co2offset = None
+        statistics.totalsavings = None
+        statistics.totalrenewableconsumed = None
+        statistics.totalrenewableproduced = None
+        statistics.totaltrees = None
+        statistics.totalco2offset = None
+
+        the_bill.statistics = statistics
+
+        # leave consumption trend alone since we want to carry it forward until it is based on the cubes
+        # at which time we can just recreate the whole trend
 
         XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
 
