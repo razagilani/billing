@@ -237,11 +237,11 @@ class Process(object):
             charges.begin = charges.end
             charges.end = None
 
-            #charges.hypotheticalecharges = Decimal("0.00")
-            #charges.actualecharges = Decimal("0.00")
-            #charges.revalue = Decimal("0.00")
-            #charges.recharges = Decimal("0.00")
-            #charges.resavings = Decimal("0.00")
+            charges.hypotheticalecharges = Decimal("0.00")
+            charges.actualecharges = Decimal("0.00")
+            charges.revalue = Decimal("0.00")
+            charges.recharges = Decimal("0.00")
+            charges.resavings = Decimal("0.00")
 
         # set the utilbill summaries back into bill
         the_bill.utilbill_summary_charges = ub_summary_charges
@@ -254,7 +254,9 @@ class Process(object):
 
             for service, detail in details.items():
 
+                print "got detail.total %s " % detail.total
                 detail.total = Decimal("0.00")
+                print "set detail.total %s " % detail.total
 
                 for chargegroup in detail.chargegroups:
                     #TODO: zero out a chargegroup total when one exists
@@ -303,219 +305,6 @@ class Process(object):
         # at which time we can just recreate the whole trend
 
         XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
-
-    def recent_roll_bill(self, inputbill, targetBill, amountPaid, user=None, password=None):
-
-        the_bill = bill.Bill(inputbill)
-
-        # increment sequence
-        the_bill.id = int(the_bill.id)+1
-
-        # get the rebill and zero it out
-        r = the_bill.rebill_summary
-
-        # process rebill
-
-        r.begin = datetime.datetime.max
-        r.begin = None
-        r.end = None
-        r.totaladjustment = Decimal("0.00")
-        r.hypotheticalecharges = Decimal("0.00")
-        r.actualecharges = Decimal("0.00")
-        r.revalue = Decimal("0.00")
-        r.recharges = Decimal("0.00")
-        r.resavings = Decimal("0.00")
-        r.duedate = None
-        r.issued = None
-        r.message = None
-
-        # compute payments
-        r.priorbalance = r.totaldue
-        r.totaldue = Decimal("0.00")
-        r.paymentreceived = Decimal(amountPaid)
-        r.balanceforward = r.priorbalance - r.paymentreceived
-
-        # set rebill back to bill
-        the_bill.rebill_summary = r
-
-        # get utilbill summaries and zero them out
-        # TODO convert to namedtuple
-        ub_summary_charges = the_bill.utilbill_summary_charges
-        for (service, charges) in ub_summary_charges.items():
-            # utility billing periods are utility specific
-            # ToDo business logic specific dates are selected here
-            charges['begin'] = charges['end']
-            charges['end'] = None
-
-            charges['hypotheticalecharges'] = Decimal("0.00")
-            charges['actualecharges'] = Decimal("0.00")
-            charges['revalue'] = Decimal("0.00")
-            charges['recharges'] = Decimal("0.00")
-            charges['resavings'] = Decimal("0.00")
-
-        # set the utilbill summaries back into bill
-        the_bill.utilbill_summary_charges = ub_summary_charges
-
-        # process /ub:bill/ub:details/
-
-        # zero out details totals
-        actual_charges = the_bill.actual_charges
-       
-        for service, cg_items in actual_charges.items():
-            # cg_items contains dict of chargegroups and a grand total
-
-            # the grand total
-            cg_items['total'] = Decimal("0.00")
-
-            for chargegroup, c_items in cg_items['chargegroups'].items():
-                # c_items contains dict of charges and a total for the chargegroup
-
-                for charge in c_items['charges']:
-                    charge['rate'] = None
-                    charge['quantity'] = None
-                    charge['total'] = Decimal("0.00")
-
-        the_bill.actual_charges = actual_charges
-
-
-        hypothetical_charges = the_bill.hypothetical_charges
-       
-        for service, cg_items in hypothetical_charges.items():
-            # cg_items contains dict of chargegroups and a grand total
-
-            # the grand total
-            cg_items['total'] = Decimal("0.00")
-
-            for chargegroup, c_items in cg_items['chargegroups'].items():
-                # c_items contains dict of charges and a total for the chargegroup
-
-                for charge in c_items['charges']:
-                    charge['rate'] = None
-                    charge['quantity'] = None
-                    charge['total'] = Decimal("0.00")
-
-        the_bill.hypothetical_charges = hypothetical_charges
-
-        # reset measured usage
-        measured_usage = the_bill.measured_usage
-
-        for service, meters in measured_usage.items():
-            for meter in meters:
-                meter.priorreaddate = meter.presentreaddate
-                meter.presentreaddate = None
-                for register in meter.registers:
-                    register.total = Decimal("0")
-                    register.presentreading = Decimal("0")
-
-        the_bill.measured_usage = measured_usage
-
-        XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
-
-    def old_roll_bill(self, inputbill, outputbill, amountPaid, user=None, password=None):
-
-
-        # Bind to XML bill
-        tree = etree.parse(inputbill)
-        #print etree.tostring(tree, pretty_print=True)
-
-        # increment bill id
-        bill = self.get_elem(tree, "/ub:bill")[0]
-        newId = int(bill.get("id"))
-        bill.set("id", str(newId+1))
-
-        # process /ub:bill/ub:rebill
-
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaladjustment")[0].text = "0.00"
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:hypotheticalecharges")[0].text = "0.00"
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:actualecharges")[0].text = "0.00"
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:revalue")[0].text = "0.00"
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:recharges")[0].text = "0.00"
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:resavings")[0].text = "0.00"
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:currentcharges")[0].text = "0.00"
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:duedate")[0].clear()
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:issued")[0].clear()
-
-        message = self.get_elem(tree, "/ub:bill/ub:rebill/ub:message")
-        if(len(message)):
-            message[0].clear()
-
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:billperiodbegin")[0].clear()
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:billperiodend")[0].clear()
-
-        # compute payments 
-        # TODO if ub:totalDue element does not exist, or has no value, raise exception
-        totalDue = self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaldue")[0].text
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:totaldue")[0].text = "0.00"
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:priorbalance")[0].text = totalDue
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:paymentreceived")[0].text = str(amountPaid)
-        self.get_elem(tree, "/ub:bill/ub:rebill/ub:balanceforward")[0].text = "{0:.2f}".format(float(totalDue) - float(amountPaid))
-
-
-        # process /ub:bill/ub:utilbill
-        utilbills = self.get_elem(tree, "/ub:bill/ub:utilbill")
-
-        # process each utility service and clear values
-        for utilbill in utilbills:
-            # utility billing periods are utility specific
-            # ToDo business logic specific dates are selected here
-            self.get_elem(utilbill, "ub:billperiodbegin")[0].text = self.get_elem(utilbill, "ub:billperiodend")[0].text
-            self.get_elem(utilbill, "ub:billperiodend")[0].clear()
-            self.get_elem(utilbill, "ub:hypotheticalecharges")[0].text = "0.00"
-            self.get_elem(utilbill, "ub:actualecharges")[0].text = "0.00"
-            self.get_elem(utilbill, "ub:revalue")[0].text = "0.00"
-            self.get_elem(utilbill, "ub:recharges")[0].text = "0.00"
-            self.get_elem(utilbill, "ub:resavings")[0].text = "0.00"
-
-        # process /ub:bill/ub:details/
-
-        subtotals = self.get_elem(tree, "/ub:bill/ub:details/ub:total")
-        for subtotal in subtotals:
-            # set text to "" since we don't want to clobber the element attributes
-            subtotal.text = "0.00"
-
-
-        # remove cdata but preserve unit attributes (.clear() clears attrs) -  last period actual charge values 
-        actualCharges = self.get_elem(tree, "/ub:bill/ub:details/ub:chargegroup/ub:charges[@type='actual']")
-        for actualCharge in actualCharges:
-            quantities = self.get_elem(actualCharge, "ub:charge/ub:quantity")
-            for quantity in quantities:
-                quantity.text = ""
-            rates = self.get_elem(actualCharge, "ub:charge/ub:rate")
-            for rate in rates:
-                rate.text = ""
-            totals = self.get_elem(actualCharge, "ub:charge/ub:total")
-            for total in totals: 
-                total.text = "0.00"
-            # clear chargegroup totals
-            totals = self.get_elem(actualCharge, "ub:total")
-            for total in totals:
-                total.text = "0.00"
-
-        # remove the hypothetical charges since they will be recreated from the actual charges
-        hypotheticalCharges = self.get_elem(tree, "/ub:bill/ub:details/ub:chargegroup/ub:charges[@type='hypothetical']")
-
-        for hypotheticalCharge in hypotheticalCharges:
-            hypotheticalCharge.getparent().remove(hypotheticalCharge)
-
-
-        # reset measured usage
-
-        # set meter read date
-        # ToDo: utility specific behavior
-        meters = self.get_elem(tree, "/ub:bill/ub:measuredusage/ub:meter")
-
-        for meter in meters:
-            self.get_elem(meter, "ub:priorreaddate")[0].text = self.get_elem(meter, "ub:presentreaddate")[0].text
-            self.get_elem(meter, "ub:presentreaddate")[0].clear()
-
-        registerTotals = self.get_elem(tree, "/ub:bill/ub:measuredusage/ub:meter/ub:register/ub:total")
-        for registerTotal in registerTotals:
-            registerTotal.text = "0"
-
-        
-        xml = etree.tostring(tree, pretty_print=True)
-
-        XMLUtils().save_xml_file(xml, outputbill, user, password)
 
 
     def bindrs(self, inputbill, outputbill, rsdb, hypothetical, user=None, password=None):
@@ -689,13 +478,16 @@ class Process(object):
 
         XMLUtils().save_xml_file(etree.tostring(tree, pretty_print=True), outputbill, user, password)
 
-    def calculate_statistics(self, inputbill, outputbill, user=None, password=None):
+    def calculate_statistics(self, input_bill, output_bill, user=None, password=None):
         """ Period Statistics for the input bill period are determined here from the total energy usage """
         """ contained in the registers. Cumulative statistics are determined by adding period statistics """
         """ to the past cumulative statistics """ 
 
-        inputtree = etree.parse(inputbill)
-        outputtree = etree.parse(outputbill)
+        # the trailing bill where totals are obtained
+        prev_bill = bill.Bill(input_bill)
+
+        # the current bill where accumulated values are stored
+        next_bill = bill.Bill(output_bill)
 
         # determine the renewable and conventional energy across all services by converting all registers to BTUs
         # TODO these conversions should be treated in a utility class
@@ -720,85 +512,78 @@ class Process(object):
         # TODO these conversions should be treated in a utility class
         def calcco2(units, total):
             if (units.lower() == "kwh"):
-                return total * 1.297
+                return total * Decimal("1.297")
             elif (units.lower() == "therms"):
-                return total * 13.46
+                return total * Decimal("13.46")
             else:
                 raise Exception("Units '" + units + "' not supported")
 
         # obtain all the registers, for all the services, that are of type 'total'
-        registers = self.get_elem(outputtree, "/ub:bill/ub:measuredusage/ub:meter/ub:register[@type=\"total\"]")
-        if not len(registers): print "Make sure total type registers exist!"
+        #registers = self.get_elem(outputtree, "/ub:bill/ub:measuredusage/ub:meter/ub:register[@type=\"total\"]")
+        #if not len(registers): print "Make sure total type registers exist!"
 
-        for register in registers:
-            shadow = self.get_elem(register, "@shadow")[0]
-            units = self.get_elem(register, "ub:units")[0].text
-            total = float(self.get_elem(register, "ub:total")[0].text)
+        for service, meters in next_bill.measured_usage.items():
+            for meter in meters:
+                for register in meter.registers:
 
-            # shadow register are the renewable energy registers
-            if (shadow == "true"):
-                re += normalize(units, total)
-                # re offsets CO2
-                co2 += calcco2(units, total)
-            else:
-                ce += normalize(units, total)
+                    units = register.units
+                    total = register.total
+
+                    if register.shadow is True:
+                        re += normalize(units, total)
+                        co2 += calcco2(units, total)
+                    else:
+                        ce += normalize(units, total)
+                        
+        next_stats = next_bill.statistics
+        prev_stats = prev_bill.statistics
 
         # determine re to ce utilization ratio
         re_utilization = Decimal(str(re / (re + ce))).quantize(Decimal('.00'), rounding=ROUND_UP)
         ce_utilization = Decimal(str(ce / (re + ce))).quantize(Decimal('.00'), rounding=ROUND_DOWN)
 
-        # update utilization stats in XML
-        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:renewableutilization")[0].text = str(re_utilization)
-        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:conventionalutilization")[0].text = str(ce_utilization)
+        # update utilization stats
+        next_stats.renewableutilization = re_utilization
+        next_stats.conventionalutilization = ce_utilization
 
         # determine cumulative savings
-        totalsavings_text = self.get_elem(inputtree, "/ub:bill/ub:statistics/ub:totalsavings")[0].text
-        cumulative_savings = Decimal(totalsavings_text if totalsavings_text is not None else '0')
-        current_savings = Decimal(self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:resavings")[0].text)
 
-        # update cumulative savings in XML
-        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:totalsavings")[0].text =\
-                str((cumulative_savings + current_savings).quantize(Decimal('.00'), rounding=ROUND_DOWN))
+        # update cumulative savings
+        next_stats.totalsavings = prev_stats.totalsavings + next_bill.rebill_summary.resavings
 
-        # set renewable consumed in XML
-        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:renewableconsumed")[0].text = \
-                str(Decimal(str(re)).quantize(Decimal('1')))
-        totalrenewableconsumed_text = self.get_elem(inputtree, "/ub:bill/ub:statistics/ub:totalrenewableconsumed")[0].text
-        cumulative_renewable_consumed = \
-                long(totalrenewableconsumed_text if totalrenewableconsumed_text is not None else '0')
-        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:totalrenewableconsumed")[0].text \
-                = str(Decimal(str(cumulative_renewable_consumed + re)).quantize(Decimal('1')))
+        # set renewable consumed
+        next_stats.renewableconsumed = re
+
+        next_stats.totalrenewableconsumed = prev_stats.renewableconsumed + re
 
         # set conventional consumed
-        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:conventionalconsumed")[0].text = \
-                str(Decimal(str(ce)).quantize(Decimal('1')))
-        #cumulative_conventional_consumed = long(self.get_elem(inputtree, "/ub:bill/ub:statistics/ub:totalconventionalconsumed")[0].text)
-        #self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:totalconventionalconsumed")[0].text = str(Decimal(str(cumulative_conventional_consumed + re)).quantize(Decimal('1')))
+        next_stats.conventionalconsumed = ce
+
+        next_stats.totalconventionalconsumed = prev_stats.conventionalconsumed + ce
 
         # set CO2 in XML
-        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:co2offset")[0].text = str(co2)
-        # determine and set cumulative CO2
-        totalco2offset_text = self.get_elem(inputtree, "/ub:bill/ub:statistics/ub:totalco2offset")[0].text
-        cumulative_co2 = float(totalco2offset_text if totalco2offset_text is not None else '0')
-        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:totalco2offset")[0].text = str(Decimal(str(cumulative_co2 + co2)).quantize(Decimal('.1')))
+        next_stats.co2offset = co2
 
-        # determine and set total number of trees from total co2
-        self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:totaltrees")[0].text = str(cumulative_co2/1300)
+        # determine and set cumulative CO2
+        next_stats.totalco2offset =  prev_stats.totalco2offset + co2
+
+        # externalize this calculation to utilities
+        next_stats.totaltrees = next_stats.totalco2offset/1300
         
 
         # determine re consumption trend
         # last day of re bill period is taken to be the month of consumption (This is ultimately utility dependent - 
         # especially when graphing ce from the utilty bill)
-        billdate = self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:billperiodend")[0].text
-        periods = self.get_elem(outputtree, "/ub:bill/ub:statistics/ub:consumptiontrend/ub:period")
+        billdate = next_bill.rebill_summary.end
 
-        month = datetime.datetime.strptime(billdate, "%Y-%m-%d").strftime("%b")
+        # determine current month (this needs to be quantized according to some logic)
+        month = billdate.strftime("%b")
 
-        for period in periods:
-            if(period.get("month") == month):
-                period.set("quantity", str(Decimal(str(re/100000)).quantize(Decimal(".0"))))
+        for period in next_stats.consumptiontrend:
+            if(period.month == month):
+                period.quantity = re/100000
 
-        XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), outputbill, user, password)
+        XMLUtils().save_xml_file(next_bill.xml(), output_bill, user, password)
 
 
     def calculate_reperiod(self, inputbill, outputbill, user=None, password=None):
