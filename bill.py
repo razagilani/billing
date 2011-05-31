@@ -397,41 +397,6 @@ class Bill(object):
         self.xpath("/ub:bill/ub:rebill/ub:billperiodbegin")[0].text = periods.get("begin").strftime("%Y-%m-%d")
         self.xpath("/ub:bill/ub:rebill/ub:billperiodend")[0].text = periods.get("end").strftime("%Y-%m-%d")
 
-    """
-    Consumers of Bill do this
-    @property
-    def utilbill_periods(self):
-        Helper to format data so that one form per service period can be made in browser.
-        Consider refactoring this to an external object so that Bill can simply
-        expose its properties.
-
-        utilbill_periods = {}
-
-        ub = self.utilbill_summary_charges
-
-        for service, summary in ub.items():
-            utilbill_periods[service] = {
-                'begin':summary.begin,
-                'end':summary.end
-                }
-
-        return utilbill_periods
-    """
-
-    """
-    Consumers of bill handle this now
-    def utilbill_period(self, service, begin, end):
-        Helper to allow wsgi to set data from form posts.
-        Consider refactoring this to an external object so that Bill can 
-        just expose its properties.
-        ub = self.utilbill_summary_charges
-
-        ub[service].begin = begin
-        ub[service].end = end
-
-        self.utilbill_summary_charges = ub
-    """
-
 
     # TODO call this utilbill, because it is when it returns the cars
     @property
@@ -551,12 +516,10 @@ class Bill(object):
     # TODO: prefix with ub?
     @property
     def measured_usage(self):
-        print "In measured_usage"
 
         measured_usages = {}
 
         for service in self.xpath("/ub:bill/ub:measuredusage/@service"):
-            print "got service %s " %service
 
             measured_usages[service] = []
 
@@ -576,29 +539,12 @@ class Bill(object):
             for meter_elem in self.xpath("/ub:bill/ub:measuredusage[@service='"+service+"']/ub:meter"):
                 
                 self.cdata_to_prop(meter_elem, "identifier", str, m, "identifier" )
-                #meter_identifier_elem = meter_elem.find("ub:identifier", namespaces={'ub':'bill'})
-                #meter_mnt.identifier = meter_identifier_elem.text if meter_identifier_elem is not None else None
-
-
                 self.cdata_to_prop(meter_elem, "estimated", bool, m, "estimated" )
-                #estimated_elem = meter_elem.find("ub:estimated", namespaces={'ub':'bill'})
-                #estimated = estimated_elem.text if estimated_elem is not None else None
-                #meter_mnt.estimated = False if estimated is not None and estimated.lower() == 'false' \
-                #    else True if estimated is not None and estimated.lower() == 'true' else None
-
                 self.cdata_to_prop(meter_elem, "priorreaddate", date, m, "priorreaddate" )
-                #priorreaddate_elem = meter_elem.find("ub:priorreaddate", namespaces={'ub':'bill'})
-                #priorreaddate = priorreaddate_elem.text if priorreaddate_elem is not None else None
-                #meter_mnt.priorreaddate = datetime.strptime(priorreaddate, "%Y-%m-%d").date() if priorreaddate is not None else None
-
                 self.cdata_to_prop(meter_elem, "presentreaddate", date, m, "presentreaddate" )
-                #presentreaddate_elem = meter_elem.find("ub:presentreaddate", namespaces={'ub':'bill'})
-                #presentreaddate = presentreaddate_elem.text if presentreaddate_elem is not None else None
-                #meter_mnt.presentreaddate = datetime.strptime(presentreaddate, "%Y-%m-%d").date() if presentreaddate is not None else None
 
                 for register_elem in meter_elem.findall("ub:register", namespaces={'ub':'bill'} ):
 
-                    #register_mnt = MutableNamedTuple()
                     # a register
                     r = MutableNamedTuple()
 
@@ -621,40 +567,18 @@ class Bill(object):
 
 
                     self.attr_to_prop(register_elem, "rsbinding", str, r, "rsbinding")
-                    #register_mnt.rsbinding = register_elem.get("rsbinding")
                     self.attr_to_prop(register_elem, "shadow", bool, r, "shadow")
-                    #register_mnt.shadow = register_elem.get("shadow")
                     self.attr_to_prop(register_elem, "type", str, r, "type")
-                    #register_mnt.regtype = register_elem.get("type")
 
                     self.cdata_to_prop(register_elem, "identifier", str, r, "identifier")
-                    #identifier_elem = register_elem.find("ub:identifier", namespaces={'ub':'bill'})
-                    #register_mnt.identifier = identifier_elem.text if identifier_elem is not None else None
-
                     self.cdata_to_prop(register_elem, "description", str, r, "description")
-                    #description_elem = register_elem.find("ub:description", namespaces={'ub':'bill'})
-                    #register_mnt.description = description_elem.text if description_elem is not None else None
-
                     self.cdata_to_prop(register_elem, "units", str, r, "units")
-                    #units_elem = register_elem.find("ub:units", namespaces={'ub':'bill'})
-                    #register_mnt.units = units_elem.text if units_elem is not None else None
-
                     self.cdata_to_prop(register_elem, "priorreading", Decimal, r, "priorreading")
-                    #priorreading_elem = register_elem.find("ub:priorreading", namespaces={'ub':'bill'})
-                    #register_mnt.priorreading = priorreading_elem.text if priorreading_elem is not None else None
-
                     self.cdata_to_prop(register_elem, "presentreading", Decimal, r, "presentreading")
-                    #presentreading_elem = register_elem.find("ub:presentreading", namespaces={'ub':'bill'})
-                    #register_mnt.presentreading = presentreading_elem.text if presentreading_elem is not None else None
-
                     self.cdata_to_prop(register_elem, "factor", Decimal, r, "factor")
-                    #factor_elem = register_elem.find("ub:factor", namespaces={'ub':'bill'})
-                    #register_mnt.factor = factor_elem.text if factor_elem is not None else None
 
                     # TODO optional quantize
                     self.cdata_to_prop(register_elem, "total", Decimal, r, "total")
-                    #total_elem = register_elem.find("ub:total", namespaces={'ub':'bill'})
-                    #register_mnt.total = Decimal(total_elem.text).quantize(Decimal(str(".00"))) if total_elem is not None else None
 
                     # inclusions are either a Holiday or Days
                     for inclusion_elem in register_elem.findall("ub:effective/ub:inclusions", namespaces={'ub':'bill'}):
@@ -668,16 +592,12 @@ class Bill(object):
                         if holiday_elem is not None:
 
                             # don't initialize properties
-                            #holiday_mnt = MutableNamedTuple()
                             h = MutableNamedTuple()
                             #holiday_mnt.description = None
                             #holiday_mnt.date = None
 
                             self.attr_to_prop(holiday_elem, "description", str, h, "description")
-                            #holiday_mnt.description = holiday_elem.get("description")
                             self.cdata_to_prop(holiday_elem, "date", date, h, "date")
-                            #holiday_date = holiday_elem.text if holiday_elem.text is not None else None
-                            #holiday_mnt.date = datetime.strptime(holiday_date, "%Y-%m-%d").date() if holiday_date is not None else None
 
                             r.inclusions.append(h)
 
@@ -685,8 +605,8 @@ class Bill(object):
                         else:
 
                             # fromhour/tohour + weekday triplets
-                            #nonholiday_mnt = MutableNamedTuple()
                             n = MutableNamedTuple()
+                            # TODO: don't initialize, doc instead
                             #nonholiday_mnt.fromhour = None
                             #nonholiday_mnt.tohour = None
                             # arrays need to be initialized
@@ -695,20 +615,6 @@ class Bill(object):
                             self.cdata_to_prop(inclusion_elem, "fromhour", time, n, "fromhour")
                             self.cdata_to_prop(inclusion_elem, "tohour", time, n, "tohour")
                             for child_elem in inclusion_elem.iterchildren():
-                                print "Got inclusions child elem "
-                                # TODO: need to test children tags... change xml model so we don't have to do this?
-                                # Why not just try and cdata_to_prop all and if the element is missing, no big deal.
-                                if (child_elem.tag == "{bill}fromhour"):
-                                    pass
-                                    #print "Got inclusions child elem fromhour"
-                                    #self.cdata_to_prop(child_elem, "fromhour", time, n, "fromhour")
-                                    #fromhour = child_elem.text if child_elem.text is not None else None
-                                    #nonholiday_mnt.fromhour = datetime.strptime(fromhour, "%H:%M:%S").time() 
-                                if (child_elem.tag == "{bill}tohour"):
-                                    pass
-                                    #self.cdata_to_prop(child_elem, "tohour", time, n, "tohour")
-                                    #tohour = child_elem.text if child_elem.text is not None else None
-                                    #nonholiday_mnt.tohour = datetime.strptime(tohour, "%H:%M:%S").time() 
                                 # occurs multiple times
                                 if (child_elem.tag == "{bill}weekday"):
                                     # adjacent weekday tags breaks the cdata_to_prop model
@@ -730,16 +636,12 @@ class Bill(object):
                         holiday_elem = exclusion_elem.find("ub:holiday", namespaces={'ub':'bill'})
                         if holiday_elem is not None:
 
-                            #holiday_mnt = MutableNamedTuple()
                             h = MutableNamedTuple()
                             #holiday_mnt.description = None
                             #holiday_mnt.date = None
 
                             self.attr_to_prop(holiday_elem, "description", str, h, "description")
-                            #holiday_mnt.description = holiday_elem.get("description")
                             self.cdata_to_prop(holiday_elem, "date", date, h, "date")
-                            #holiday_date = holiday_elem.text if holiday_elem.text is not None else None
-                            #holiday_mnt.date = datetime.strptime(holiday_date, "%Y-%m-%d").date() if holiday_date is not None else None
 
                             r.exclusions.append(h)
 
@@ -755,16 +657,6 @@ class Bill(object):
                             self.cdata_to_prop(exclusion_elem, "fromhour", time, n, "fromhour")
                             self.cdata_to_prop(exclusion_elem, "tohour", time, n, "tohour")
                             for child_elem in exclusion_elem.iterchildren():
-                                if (child_elem.tag == "{bill}fromhour"):
-                                    pass
-                                    #self.cdata_to_prop(child_elem, "fromhour", time, n, "fromhour")
-                                    #fromhour = child_elem.text if child_elem.text is not None else None
-                                    #nonholiday_mnt.fromhour = datetime.strptime(fromhour, "%H:%M:%S").time() 
-                                if (child_elem.tag == "{bill}tohour"):
-                                    pass
-                                    #self.cdata_to_prop(child_elem, "tohour", time, n, "tohour")
-                                    #tohour = child_elem.text if child_elem.text is not None else None
-                                    #nonholiday_mnt.tohour = datetime.strptime(tohour, "%H:%M:%S").time() 
                                 # occurs multiple times
                                 if (child_elem.tag == "{bill}weekday"):
                                     weekday = child_elem.text if child_elem.text is not None else None
@@ -797,28 +689,9 @@ class Bill(object):
                 measuredusage_elem.append(meter_elem)
 
                 self.prop_to_cdata(meter, "identifier", meter_elem, "identifier")
-                #if hasattr(meter, "identifier"):
-                #    identifier_elem = meter_elem.makeelement("{bill}identifier")
-                #    if meter.identifier is not None: identifier_elem.text = meter.identifier
-                #    meter_elem.append(identifier_elem)
-
                 self.prop_to_cdata(meter, "identifier", meter_elem, "identifier")
-                #if hasattr(meter, "estimated"):
-                #    estimated_elem = meter_elem.makeelement("{bill}estimated")
-                #    if meter.estimated is not None: estimated_elem.text = str(meter.estimated)
-                #    meter_elem.append(estimated_elem)
-
                 self.prop_to_cdata(meter, "priorreaddate", meter_elem, "priorreaddate")
-                #if hasattr(meter, "priorreaddate"):
-                #    priorreaddate_elem = meter_elem.makeelement("{bill}priorreaddate")
-                #    if meter.priorreaddate is not None: priorreaddate_elem.text = meter.priorreaddate.strftime("%Y-%m-%d")
-                #    meter_elem.append(priorreaddate_elem)
-
                 self.prop_to_cdata(meter, "presentreaddate", meter_elem, "presentreaddate")
-                #if hasattr(meter, "presentreaddate"):
-                #    presentreaddate_elem = meter_elem.makeelement("{bill}presentreaddate")
-                #    if meter.presentreaddate is not None: presentreaddate_elem.text = meter.presentreaddate.strftime("%Y-%m-%d")
-                #    meter_elem.append(presentreaddate_elem)
 
                 for register in meter.registers:
 
@@ -826,60 +699,20 @@ class Bill(object):
                     meter_elem.append(register_elem)
 
                     self.prop_to_attr(register, "rsbinding", register_elem, "rsbinding")
-                    #if hasattr(register, "rsbinding"):
-                    #    if register.rsbinding is not None: register_elem.set("rsbinding", register.rsbinding)
                     self.prop_to_attr(register, "shadow", register_elem, "shadow")
-                    #if hasattr(register, "shadow"):
-                    #    if register.shadow is not None: register_elem.set("shadow", register.shadow)
                     self.prop_to_attr(register, "type", register_elem, "type")
-                    #if hasattr(register, "type"):
-                    #    if register.regtype is not None: register_elem.set("type", register.regtype)
-
                     self.prop_to_cdata(register, "identifier", register_elem, "identifier")
-                    #if hasattr(register, "identifier"):
-                    #    identifier_elem = register_elem.makeelement("{bill}identifier")
-                    #    if register.identifier is not None: identifier_elem.text = register.identifier
-                    #    register_elem.append(identifier_elem)
-
                     self.prop_to_cdata(register, "description", register_elem, "description")
-                    #if hasattr(register, "description"):
-                    #    description_elem = register_elem.makeelement("{bill}description")
-                    #    if register.description is not None: description_elem.text = register.description
-                    #    register_elem.append(description_elem)
 
                     # inclusions/exclusions had been flattened through effective
                     effective_elem = register_elem.makeelement("{bill}effective")
                     register_elem.append(effective_elem)
 
                     self.prop_to_cdata(register, "units", register_elem, "units")
-                    #if hasattr(register, "units"):
-                    #    units_elem = register_elem.makeelement("{bill}units")
-                    #    if register.units is not None: units_elem.text = register.units
-                    #    register_elem.append(units_elem)
-
                     self.prop_to_cdata(register, "total", register_elem, "total")
-                    #if hasattr(register, "total"):
-                    #    total_elem = register_elem.makeelement("{bill}total")
-                    #    if register.total is not None: total_elem.text = str(register.total)
-                    #    register_elem.append(total_elem)
-
                     self.prop_to_cdata(register, "priorreading", register_elem, "priorreading")
-                    #if hasattr(register, "priorreading"):
-                    #    priorreading_elem = register_elem.makeelement("{bill}priorreading")
-                    #    if register.priorreading is not None: priorreading_elem.text = str(register.priorreading)
-                    #    register_elem.append(priorreading_elem)
-
                     self.prop_to_cdata(register, "presentreading", register_elem, "presentreading")
-                    #if hasattr(register, "presentreading"):
-                    #    presentreading_elem = register_elem.makeelement("{bill}presentreading")
-                    #    if register.presentreading is not None: presentreading_elem.text = str(register.presentreading)
-                    #    register_elem.append(presentreading_elem)
-                    
                     self.prop_to_cdata(register, "factor", register_elem, "factor")
-                    #if hasattr(register, "factor"):
-                    #    factor_elem = register_elem.makeelement("{bill}factor")
-                    #    if register.factor is not None: factor_elem.text = register.factor
-                    #    register_elem.append(factor_elem)
 
                     for inclusion in register.inclusions:
 
@@ -890,14 +723,8 @@ class Bill(object):
                         if (hasattr(inclusion, "fromhour")):
 
                             self.prop_to_cdata(inclusion, "fromhour", inclusion_elem, "fromhour")
-                            #fromhour_elem = inclusion_elem.makeelement("{bill}fromhour")
-                            #fromhour_elem.text = inclusion.fromhour.strftime("%H:%M:%S")
-                            #inclusion_elem.append(fromhour_elem)
 
                             self.prop_to_cdata(inclusion, "tohour", inclusion_elem, "tohour")
-                            #tohour_elem = inclusion_elem.makeelement("{bill}tohour")
-                            #tohour_elem.text = inclusion.tohour.strftime("%H:%M:%S")
-                            #inclusion_elem.append(tohour_elem)
 
                             for weekday in inclusion.weekdays:
                                 # TODO: support directly setting cdata
@@ -910,10 +737,6 @@ class Bill(object):
                         else:
                             self.prop_to_attr(inclusion, "description", inclusion_elem, "description")
                             self.prop_to_cdata(inclusion, "holiday", inclusion_elem, "holiday")
-                            #holiday_elem = inclusion_elem.makeelement("{bill}holiday")
-                            #holiday_elem.set("description", inclusion.description)
-                            #holiday_elem.text = inclusion.date.strftime("%y-%m-%d")
-                            #inclusion_elem.append(holiday_elem)
 
                     for exclusion in register.exclusions:
 
@@ -924,14 +747,8 @@ class Bill(object):
                         if (hasattr(exclusion, "fromhour")):
 
                             self.prop_to_cdata(exclusion, "fromhour", exclusion_elem, "fromhour")
-                            #fromhour_elem = exclusion_elem.makeelement("{bill}fromhour")
-                            #fromhour_elem.text = str(exclusion.fromhour)
-                            #exclusion_elem.append(fromhour_elem)
 
                             self.prop_to_cdata(exclusion, "tohour", exclusion_elem, "tohour")
-                            #tohour_elem = exclusion_elem.makeelement("{bill}tohour")
-                            #tohour_elem.text = str(exclusion.tohour)
-                            #exclusion_elem.append(tohour_elem)
 
                             for weekday in exclusion.weekdays:
                                 # TODO: support directly setting cdata
@@ -944,13 +761,9 @@ class Bill(object):
                         else:
                             self.prop_to_attr(exclusion, "description", exclusion_elem, "description")
                             self.prop_to_cdata(exclusion, "holiday", exclusion_elem, "holiday")
-                            #holiday_elem = exclusion_elem.makeelement("{bill}holiday")
-                            #holiday_elem.set("description", exclusion.description)
-                            #holiday_elem.text = exclusion.date.strftime("%y-%m-%d")
-                            #exclusion_elem.append(holiday_elem)
 
                 #print lxml.etree.tostring(measuredusage_elem, pretty_print=True)
-                print lxml.etree.tostring(self.inputtree, pretty_print=True)
+                #print lxml.etree.tostring(self.inputtree, pretty_print=True)
 
 
     @property
@@ -1304,12 +1117,6 @@ class Bill(object):
 
             self.cdata_attr_to_prop(detail, "total", [("type", charges_type)], Decimal, detail_mnt, "total")
 
-            #total_elem = detail.find("ub:total[@type='%s']" % (charges_type), {"ub":"bill"})
-            #if total_elem is not None:
-            #    detail_mnt.total = None
-            #    if total_elem.text is not None:
-            #        detail_mnt.total = Decimal(total_elem.text)
-
             details[service] = detail_mnt
 
         return details 
@@ -1404,11 +1211,7 @@ class Bill(object):
             # assumes type=charges_type is a mandatory element since attr is not set
             # this won't work because details_elem is qualified by the attribute 'type' whose value is charges_type
             # unfortunately, there are to child elements called total due to the hypothetical and actual charges living side by side
-            print "About to remove total for %s %s" % (charges_type, details.total)
             self.prop_to_cdata_attr(details, "total", details_elem, "total", [("type", charges_type)])
-            print "Did remove total for %s %s" % (charges_type, details.total)
-            #total_elem = details_elem.find("ub:total[@type='%s']" % (charges_type), {"ub":"bill"})
-            #total_elem.text = str(details.total)
 
 
 
@@ -1647,17 +1450,9 @@ if __name__ == "__main__":
 
     #print bill.motd
 
-    print "****************** before"
     m = bill.measured_usage
-    print m
-    print "**************** about to set"
     bill.measured_usage = m
-    print "**************** did set"
-    print "****************** after"
     m = bill.measured_usage
-    print m
-    print "****************** done"
-    
 
 
     #print bill.hypothetical_details
