@@ -12,6 +12,22 @@ function renderWidgets()
     //Ext.state.Manager.setProvider(new Ext.state.CookieProvider());
 
 
+    // set a variety of patterns for Date Pickers
+    Date.patterns = {
+        ISO8601Long:"Y-m-d H:i:s",
+        ISO8601Short:"Y-m-d",
+        ShortDate: "n/j/Y",
+        LongDate: "l, F d, Y",
+        FullDateTime: "l, F d, Y g:i:s A",
+        MonthDay: "F d",
+        ShortTime: "g:i A",
+        LongTime: "g:i:s A",
+        SortableDateTime: "Y-m-d\\TH:i:s",
+        UniversalSortableDateTime: "Y-m-d H:i:sO",
+        YearMonth: "F, Y"
+    };
+
+
     ////////////////////////////////////////////////////////////////////////////
     // Account and Bill selection tab
     //
@@ -390,156 +406,260 @@ function renderWidgets()
     ////////////////////////////////////////////////////////////////////////////
     // Bill Period tab
     //
+    // dynamically create the period forms when a bill is loaded
+    //
 
-    // create a panel to which we can dynamically add/remove components
-    // this panel is later added to the viewport so that it may be rendered
-
-    var ubPeriodsFormPanel = new Ext.FormPanel(
+    function configureUBPeriodsForms(account, sequence, periods)
     {
-        header: false,
-        //labelWidth: 125,
-        //frame: true,
-        //title: 'test Begin Date',
-        //bodyStyle:'padding:5px 5px 0',
-        //width: 350,
-        //defaults: {width: 175},
-        items:[], // added by configureUBPeriodsForm()
-        //autoDestroy: true,
-        //footer: true,
-        layout: 'form',
-        buttons: 
-        [
+        var ubPeriodsTab = tabPanel.getItem('ubPeriodsTab');
+
+        ubPeriodsTab.removeAll(true);
+
+        var ubPeriodsFormPanels = [];
+        
+        for (var service in periods)
+        {
+
+            var ubPeriodsFormPanel = new Ext.FormPanel(
             {
-                text   : 'Save',
-                handler: function() {
-                    if (ubPeriodsFormPanel.getForm().isValid()) {
+                id: service + 'UBPeriodsFormPanel',
+                header: false,
+                url: 'http://'+location.host+'/billtool/setUBPeriod',
+                border: false,
+                labelWidth: 125,
+                bodyStyle:'padding:10px 10px 0px 10px',
+                items:[], // added by configureUBPeriodsForm()
+                baseParams: null, // added by configureUBPeriodsForm()
+                autoDestroy: true,
+                layout: 'form',
+                buttons: 
+                [
+                    // TODO: the save button is generic in function, refactor
+                    {
+                        text   : 'Save',
+                        handler: function() {
 
-                        // extract values from form, and reconstruct
-                        // array to go back into xml-bind.js
+                            //http://www.sencha.com/forum/showthread.php?127087-Getting-the-right-scope-in-button-handler
+                            var formPanel = this.findParentByType(Ext.form.FormPanel);
 
-                        // save values to bill document
-                        setUBPeriods(bill, ubPeriodsFormPanel.getForm().getFieldValues());
+                            if (formPanel.getForm().isValid()) {
 
-                        // send bill document to server
-                        saveToXML(billSaved, billDidNotSave);
+                                formPanel.getForm().submit({
+                                    params:{
+                                        // see baseParams
+                                    }, 
+                                    waitMsg:'Saving...'
+                                }); 
+                            }else{
+                                Ext.MessageBox.alert('Errors', 'Please fix form errors noted.');
+                            }
+                        }
+                    },{
+                        text   : 'Reset',
+                        handler: function() {
+                            var formPanel = this.findParentByType(Ext.form.FormPanel);
+                            formPanel.getForm().reset();
+                        }
                     }
-                }
-            },{
-                text   : 'Reset',
-                handler: function() {
-                    ubPeriodsFormPanel.getForm().reset();
-                }
-            }
-        ]
-    });
+                ]
+            });
 
-    // dynamically create the period form fields when a bill is loaded
-    function configureUBPeriodsForm(periods)
-    {
-        ubPeriodsFormPanel.removeAll();
+            // add the period date pickers to the form
+            ubPeriodsFormPanel.add(
+                new Ext.form.DateField({
+                    fieldLabel: service + ' Service Begin',
+                    name: 'begin',
+                    value: periods[service].begin,
+                    format: 'Y-m-d'
+                }),
+                new Ext.form.DateField({
+                    fieldLabel: service + ' Service End',
+                    name: 'end',
+                    value: periods[service].end,
+                    format: 'Y-m-d'
+                })
+            );
 
-        // add the period date pickers to the form
-        periods.forEach(
-            function (value, index, array) {
-                ubPeriodsFormPanel.add(
-                    new Ext.form.DateField({
-                        fieldLabel: value.service + ' Service Begin',
-                        name: 'billperiodbegin-'+value.service,
-                        value: value.begindate,
-                        disabled: true,
-                    }),
-                    new Ext.form.DateField({
-                        fieldLabel: value.service + ' Service End',
-                        name: 'billperiodend-'+value.service,
-                        value: value.enddate,
-                    })
-                )
-            }
-        );
+            // add base parms for form post
+            ubPeriodsFormPanel.getForm().baseParams = {account: account, sequence: sequence, service:service}
 
-        // the tabpanel that contains ubPeriodsFormPanel performs layoutOnTabChange:
-        // so the dynamically added forms draw properly
+            ubPeriodsFormPanels.push(ubPeriodsFormPanel);
 
+        }
+        ubPeriodsTab.add(ubPeriodsFormPanels);
     }
 
     ////////////////////////////////////////////////////////////////////////////
     // Measured Usage tab
     //
-
+    //
     // create a panel to which we can dynamically add/remove components
     // this panel is later added to the viewport so that it may be rendered
 
-    var ubMeasuredUsageFormPanel = new Ext.FormPanel(
+
+    function configureUBMeasuredUsagesForms(account, sequence, usages)
     {
-        header: false,
-        //labelWidth: 125,
-        //frame: true,
-        //title: 'test Begin Date',
-        //bodyStyle:'padding:5px 5px 0',
-        //width: 350,
-        //defaults: {width: 175},
-        items:[], // added by configureUBMeasuredUsageForm()
-        //autoDestroy: true,
-        //footer: true,
-        layout: 'form',
-        buttons: 
-        [
+        var ubMeasuredUsagesTab = tabPanel.getItem('ubMeasuredUsagesTab');
+
+        ubMeasuredUsagesTab.removeAll(true);
+
+        var ubMeasuredUsagesFormPanels = [];
+
+        // for each service
+        for (var service in usages)
+        {
+            // enumerate each meter
+            usages[service].forEach(function(meter, index, array)
             {
-                text   : 'Save',
-                handler: function() {
-                    if (ubMeasuredUsageFormPanel.getForm().isValid()) {
+                var meterFormPanel = new Ext.FormPanel(
+                {
+                    id: service +'-'+meter.identifier+'-meterReadDateFormPanel',
+                    header: false,
+                    url: 'http://'+location.host+'/billtool/setMeter',
+                    border: false,
+                    labelWidth: 125,
+                    bodyStyle:'padding:10px 10px 0px 10px',
+                    items:[], // added by configureUBMeasuredUsagesForm()
+                    baseParams: null, // added by configureUBMeasuredUsagesForm()
+                    autoDestroy: true,
+                    layout: 'form',
+                    buttons: 
+                    [
+                        // TODO: the save button is generic in function, refactor
+                        {
+                            text   : 'Save',
+                            handler: function() {
 
-                        // extract values from form, and reconstruct
-                        // array to go back into xml-bind.js
+                                //http://www.sencha.com/forum/showthread.php?127087-Getting-the-right-scope-in-button-handler
+                                var formPanel = this.findParentByType(Ext.form.FormPanel);
 
-                        // save values to bill document
-                        setUBMeasuredUsagePeriods(bill, ubMeasuredUsageFormPanel.getForm().getFieldValues());
+                                if (formPanel.getForm().isValid()) {
 
-                        // send bill document to server
-                        saveToXML(billSaved, billDidNotSave);
-                    }
-                }
-            },{
-                text   : 'Reset',
-                handler: function() {
-                    ubMeasuredUsageFormPanel.getForm().reset();
-                }
-            }
-        ]
-    });
+                                    formPanel.getForm().submit({
+                                        params:{
+                                            // see baseParams
+                                        }, 
+                                        waitMsg:'Saving...',
+                                        failure: function(form, action) {
+                                            switch (action.failureType) {
+                                                case Ext.form.Action.CLIENT_INVALID:
+                                                    Ext.Msg.alert('Failure', 'Form fields may not be submitted with invalid values');
+                                                    break;
+                                                case Ext.form.Action.CONNECT_FAILURE:
+                                                    Ext.Msg.alert('Failure', 'Ajax communication failed');
+                                                    break;
+                                                case Ext.form.Action.SERVER_INVALID:
+                                                    Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                                                default:
+                                                    Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                                           }
+                                        },
+                                        success: function(form, action) {
+                                            alert(action.success);
+                                        }
+                                    }); 
+                                }else{
+                                    Ext.MessageBox.alert('Errors', 'Please fix the errors noted.');
+                                }
+                            }
+                        },{
+                            text   : 'Reset',
+                            handler: function() {
+                                var formPanel = this.findParentByType(Ext.form.FormPanel);
+                                formPanel.getForm().reset();
+                            }
+                        }
+                    ]
+                });
 
-    // dynamically create the measured usage form fields when a bill is loaded
-    function configureUBMeasuredUsagePeriodsForm(measuredUsagePeriods)
-    {
-        ubMeasuredUsageFormPanel.removeAll();
-
-        // add the period date pickers to the form
-        measuredUsagePeriods.forEach(
-            function (value, index, array) {
-                ubMeasuredUsageFormPanel.add(
+                // add the period date pickers to the form
+                meterFormPanel.add(
                     new Ext.form.DateField({
-                        fieldLabel: value.service + ' Prior Read Date',
-                        name: 'priorreaddate-'+value.service,
-                        value: value.priorreaddate,
-                        disabled: true,
+                        fieldLabel: service + ' Prior Read',
+                        name: 'priorreaddate',
+                        value: meter.priorreaddate,
+                        format: 'Y-m-d'
                     }),
                     new Ext.form.DateField({
-                        fieldLabel: value.service + ' Present Read Date',
-                        name: 'presentreaddate-'+value.service,
-                        value: value.presentreaddate,
-                    }),
-                    new Ext.form.NumberField({
-                        fieldLabel: value.service + ' Register Total',
-                        name: 'regtotal-'+value.service,
-                        value: value.regtotal,
+                        fieldLabel: service + ' Present Read',
+                        name: 'presentreaddate',
+                        value: meter.presentreaddate,
+                        format: 'Y-m-d'
                     })
-                )
-            }
-        );
+                );
 
-        // the tabpanel that contains this form panel performs layoutOnTabChange:
-        // so the dynamically added form fields draw properly
+                // add base parms for form post
+                meterFormPanel.getForm().baseParams = {account: account, sequence: sequence, service:service, meter_identifier:meter.identifier}
 
+                ubMeasuredUsagesFormPanels.push(meterFormPanel);
+
+                // and each register for that meter
+                meter.registers.forEach(function(register, index, array) 
+                {
+
+                    var registerFormPanel = new Ext.FormPanel(
+                    {
+                        id: service +'-'+meter.identifier+'-'+ register.identifier+'-meterReadDateFormPanel',
+                        header: false,
+                        url: 'http://'+location.host+'/billtool/setRegister',
+                        border: false,
+                        labelWidth: 125,
+                        bodyStyle:'padding:10px 10px 0px 10px',
+                        items:[], // added by configureUBMeasuredUsagesForm()
+                        baseParams: null, // added by configureUBMeasuredUsagesForm()
+                        autoDestroy: true,
+                        layout: 'form',
+                        buttons: 
+                        [
+                            // TODO: the save button is generic in function, refactor
+                            {
+                                text   : 'Save',
+                                handler: function() {
+
+                                    //http://www.sencha.com/forum/showthread.php?127087-Getting-the-right-scope-in-button-handler
+                                    var formPanel = this.findParentByType(Ext.form.FormPanel);
+
+                                    if (formPanel.getForm().isValid()) {
+
+                                        formPanel.getForm().submit({
+                                            params:{
+                                                // see baseParams
+                                            }, 
+                                            waitMsg:'Saving...'
+                                        }); 
+                                    }else{
+                                        Ext.MessageBox.alert('Errors', 'Please fix the errors noted.');
+                                    }
+                                }
+                            },{
+                                text   : 'Reset',
+                                handler: function() {
+                                    var formPanel = this.findParentByType(Ext.form.FormPanel);
+                                    formPanel.getForm().reset();
+                                }
+                            }
+                        ]
+                    });
+
+                    // add the period date pickers to the form
+                    registerFormPanel.add(
+                        new Ext.form.NumberField({
+                            fieldLabel: register.identifier,
+                            name: 'total',
+                            value: register.total,
+                        })
+                    );
+
+                    // add base parms for form post
+                    registerFormPanel.getForm().baseParams = {account: account, sequence: sequence, service:service, meter_identifier: meter.identifier, register_identifier:register.identifier}
+
+                    ubMeasuredUsagesFormPanels.push(registerFormPanel);
+
+                })
+            })
+        }
+
+        ubMeasuredUsagesTab.add(ubMeasuredUsagesFormPanels);
     }
 
 
@@ -1207,6 +1327,46 @@ function renderWidgets()
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
+    // construct tabpanel for viewport
+
+    var tabPanel = new Ext.TabPanel({
+      region:'center',
+      deferredRender:false,
+      autoScroll: true, 
+      //margins:'0 4 4 0',
+      // necessary for child FormPanels to draw properly when dynamically changed
+      layoutOnTabChange: true,
+      activeTab: 0,
+      items:[
+        {
+          title: 'Select Bill',
+          xtype: 'panel',
+          items: [
+            customerAccountCombo,
+            customerBillCombo,
+            billOperationButton
+          ],
+        },{
+          id: 'ubPeriodsTab',
+          title: 'Bill Periods',
+          xtype: 'panel',
+          items: null // configureUBPeriodForm set this
+        },{
+          id: 'ubMeasuredUsagesTab',
+          title: 'Usage Periods',
+          xtype: 'panel',
+          items: null // configureUBMeasuredUsagesForm sets this
+        },{
+          title: 'Charge Items',
+          xtype: 'panel',
+          layout: 'accordion',
+          items: [
+            aChargesGrid,
+            hChargesGrid
+          ]
+        }]
+      });
+ 
 
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
@@ -1228,47 +1388,9 @@ function renderWidgets()
             },
             //autoLoad: {url:'green_stripe.jpg', scripts:true},
             contentEl: 'header',
-          },{
-            region: 'center',
-            xtype: 'tabpanel',
-            activeTab: 0,
-            // necessary for child FormPanels to draw properly when dynamically changed
-            layoutOnTabChange: true,
-            items:[
-              {
-                title: 'Select Bill',
-                xtype: 'panel',
-                //layout: 'fit',
-                items: [
-                  customerAccountCombo,
-                  customerBillCombo,
-                  billOperationButton
-                ],
-              },{
-                title: 'Bill Periods',
-                xtype: 'panel',
-                layout: 'fit',
-                items: [
-                    ubPeriodsFormPanel
-                ]
-            },{
-                title: 'Usage Periods',
-                xtype: 'panel',
-                layout: 'fit',
-                items: [
-                    ubMeasuredUsageFormPanel
-                ]
-            },{
-                title: 'Charge Items',
-                xtype: 'panel',
-                layout: 'accordion',
-                items: [
-                  aChargesGrid,
-                  hChargesGrid
-                ]
-              }
-            ]
-          },{
+          },
+          tabPanel,
+          {
             region: 'south',
             border: false,
             xtype: 'panel',
@@ -1307,13 +1429,54 @@ function renderWidgets()
         actualCharges = getActualCharges(bill);
         hypotheticalCharges = getHypotheticalCharges(bill);
 
-        // get all of the utility bill periods for each service
-        ubPeriods = getUBPeriods(bill);
-        configureUBPeriodsForm(ubPeriods);
+        account = customerAccountCombo.getValue();
+        sequence = customerBillCombo.getValue();
+        // sequences come back from eXist as [seq].xml
+        sequence = sequence.split(".",1);
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/billtool/ubPeriods',
+            params: {account: account, sequence: sequence},
+            success: function(result, request) {
+                var jsonData = null;
+                try {
+                    jsonData = Ext.util.JSON.decode(result.responseText);
+                    if (jsonData.success == false)
+                    {
+                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                    } else {
+                        //Ext.MessageBox.alert('Success', 'Decode of stringData OK<br />jsonData.data = ' + jsonData);
+                    } 
+                    configureUBPeriodsForms(account, sequence, jsonData);
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Could not decode ' + data);
+                }
+            },
+            failure: function() {alert("ajax failure")},
+            disableCaching: true,
+        });
 
         // get the measured usage dates for each service
-        ubMeasuredUsagePeriods = getUBMeasuredUsagePeriods(bill);
-        configureUBMeasuredUsagePeriodsForm(ubMeasuredUsagePeriods);
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/billtool/ubMeasuredUsages',
+            params: {account: account, sequence: sequence},
+            success: function(result, request) {
+                var jsonData = null;
+                try {
+                    jsonData = Ext.util.JSON.decode(result.responseText);
+                    if (jsonData.success == false)
+                    {
+                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                    } else {
+                        //Ext.MessageBox.alert('Success', 'Decode of stringData OK<br />jsonData.data = ' + jsonData);
+                    } 
+                    configureUBMeasuredUsagesForms(account, sequence, jsonData);
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Could not decode ' + data);
+                }
+            },
+            failure: function() {alert("ajax failure")},
+            disableCaching: true,
+        });
 
         // now that we have the data in locally manageable data structures
         // tell all of the backing ui widget data stores to load the data

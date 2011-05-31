@@ -27,6 +27,12 @@ from billing.presentation import render
 
 from billing import nexus_util as nu
 
+from billing import bill
+
+from billing import json_util as ju
+
+from skyliner.xml_utils import XMLUtils
+
 
 # TODO rename to ProcessBridge or something
 # TODO don't require UI to pass in destination.
@@ -34,26 +40,25 @@ class BillToolBridge:
     """ A monolithic class encapsulating the behavior to:  handle an incoming http request """
     """ and invoke bill processing code.  No business logic should reside here."""
 
-    src_prefix = dest_prefix = "http://tyrell:8080/exist/rest/db/skyline/bills/"
+    #src_prefix = dest_prefix = "http://tyrell:8080/exist/rest/db/skyline/bills/"
     config = None
 
     def __init__(self):
         self.config = ConfigParser.RawConfigParser()
-        #print os.path.dirname(os.path.realpath(__file__))
         config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'bill_tool_bridge.cfg')
         if not self.config.read(config_file_path):
             print "Creating config file"
             self.config.add_section('xmldb')
-            self.config.set('xmldb', 'destination_prefix', 'http://tyrell:8080/exist/rest/db/skyline/bills')
-            self.config.set('xmldb', 'source_prefix', 'http://tyrell:8080/exist/rest/db/skyline/bills')
+            self.config.set('xmldb', 'destination_prefix', 'http://[host]:8080/exist/rest/db/skyline/bills')
+            self.config.set('xmldb', 'source_prefix', 'http://[host]:8080/exist/rest/db/skyline/bills')
             self.config.set('xmldb', 'password', '[password]')
             self.config.set('xmldb', 'user', 'prod')
             self.config.add_section('http')
             self.config.set('http', 'socket_port', '8185')
             self.config.set('http', 'socket_host', '10.0.0.250')
             self.config.add_section('billdb')
-            self.config.set('billdb', 'rspath', '/db/skyline/ratestructure/')
-            self.config.set('billdb', 'billpath', '/db/skyline/bills/')
+            self.config.set('billdb', 'rspath', '[root]db/skyline/ratestructure/')
+            self.config.set('billdb', 'billpath', '[root]db/skyline/bills/')
             self.config.add_section('statedb')
             self.config.set('statedb', 'host', 'localhost')
             self.config.set('statedb', 'database', 'skyline')
@@ -311,6 +316,117 @@ class BillToolBridge:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
         return json.dumps({'success': True})
+
+
+    ################
+    # Handle ubPeriods
+
+    @cherrypy.expose
+    def ubPeriods(self, account, sequence, **args):
+        """
+        Return all of the utilbill periods on a per service basis so that the forms may be
+        dynamically created.
+        """
+        utilbill_periods = {}
+
+        try:
+            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+
+            ubSummary = the_bill.utilbill_summary_charges
+
+            # TODO: just return utilbill summary charges and let extjs render the form
+            for service, summary in ubSummary.items():
+                utilbill_periods[service] = {
+                    'begin':summary.begin,
+                    'end':summary.end
+                    }
+
+        except Exception as e:
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return ju.dumps(utilbill_periods)
+
+    @cherrypy.expose
+    def setUBPeriod(self, account, sequence, service, begin, end, **args):
+        """ 
+        Utilbill period forms are dynamically created in browser, and post back to here individual periods.
+        """ 
+
+        try:
+            the_bill = bill.Bill( "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+
+            ubSummary = the_bill.utilbill_summary_charges
+
+            ubSummary[service].begin = begin
+            ubSummary[service].end = end
+
+            the_bill.utilbill_summary_charges = ubSummary
+
+            XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence),
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )
+
+
+        except Exception as e:
+             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return ju.dumps({'success':True})
+
+    #
+    ################
+
+    ################
+    # Handle measuredUsages
+
+    @cherrypy.expose
+    def ubMeasuredUsages(self, account, sequence, **args):
+        """
+        Return all of the measuredusages on a per service basis so that the forms may be
+        dynamically created.
+        """
+
+        try:
+            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+
+            ubMeasuredUsages = the_bill.measured_usage
+
+        except Exception as e:
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return ju.dumps(ubMeasuredUsages)
+
+
+    @cherrypy.expose
+    def setMeter(self, account, sequence, service, meter_identifier, presentreaddate, priorreaddate):
+
+        try:
+
+            the_bill = bill.Bill( "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+
+            ubMeasuredUsages = the_bill.measured_usage
+
+            # TODO: better way to filter for meter?
+            # TODO: error conditions
+            meter = [meter for meter in ubMeasuredUsages[service] if meter.identifier == meter_identifier][0]
+            meter.presentreaddate = presentreaddate
+            meter.priorreaddate = priorreaddate
+
+            the_bill.measured_usage = ubMeasuredUsages
+
+            XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence),
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )
+
+        except Exception as e:
+             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return ju.dumps({'success':True})
+
+
+    #
+    ################
 
 
 bridge = BillToolBridge()

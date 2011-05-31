@@ -36,6 +36,7 @@ function getUBPeriods(bill)
 }
 
 // Given form NVP's, extract that values and put them back into the XML document
+/*
 function setUBPeriods(bill, periods)
 {
     for (var key in periods)
@@ -50,6 +51,7 @@ function setUBPeriods(bill, periods)
         nodeList[0].textContent = periods[key].format("Y-m-d");
     }
 }
+*/
 
 // getter/setter for measured usage
 
