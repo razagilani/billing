@@ -404,6 +404,50 @@ function renderWidgets()
     }
 
     ////////////////////////////////////////////////////////////////////////////
+    //
+    // Generic form save handler
+    // 
+    function saveForm() 
+    {
+
+        //http://www.sencha.com/forum/showthread.php?127087-Getting-the-right-scope-in-button-handler
+        var formPanel = this.findParentByType(Ext.form.FormPanel);
+
+        if (formPanel.getForm().isValid()) {
+
+            formPanel.getForm().submit({
+                params:{
+                    // see baseParams
+                }, 
+                waitMsg:'Saving...',
+                failure: function(form, action) {
+                    switch (action.failureType) {
+                        case Ext.form.Action.CLIENT_INVALID:
+                            Ext.Msg.alert('Failure', 'Form fields may not be submitted with invalid values');
+                            break;
+                        case Ext.form.Action.CONNECT_FAILURE:
+                            Ext.Msg.alert('Failure', 'Ajax communication failed');
+                            break;
+                        case Ext.form.Action.SERVER_INVALID:
+                            Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                        default:
+                            Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                    }
+                },
+                success: function(form, action) {
+                    //alert(action.success);
+                }
+            })
+
+        }else{
+            Ext.MessageBox.alert('Errors', 'Please fix form errors noted.');
+        }
+    }
+
+    //
+    ////////////////////////////////////////////////////////////////////////////
+
+    ////////////////////////////////////////////////////////////////////////////
     // Bill Period tab
     //
     // dynamically create the period forms when a bill is loaded
@@ -437,23 +481,7 @@ function renderWidgets()
                     // TODO: the save button is generic in function, refactor
                     {
                         text   : 'Save',
-                        handler: function() {
-
-                            //http://www.sencha.com/forum/showthread.php?127087-Getting-the-right-scope-in-button-handler
-                            var formPanel = this.findParentByType(Ext.form.FormPanel);
-
-                            if (formPanel.getForm().isValid()) {
-
-                                formPanel.getForm().submit({
-                                    params:{
-                                        // see baseParams
-                                    }, 
-                                    waitMsg:'Saving...'
-                                }); 
-                            }else{
-                                Ext.MessageBox.alert('Errors', 'Please fix form errors noted.');
-                            }
-                        }
+                        handler: saveForm
                     },{
                         text   : 'Reset',
                         handler: function() {
@@ -528,40 +556,7 @@ function renderWidgets()
                         // TODO: the save button is generic in function, refactor
                         {
                             text   : 'Save',
-                            handler: function() {
-
-                                //http://www.sencha.com/forum/showthread.php?127087-Getting-the-right-scope-in-button-handler
-                                var formPanel = this.findParentByType(Ext.form.FormPanel);
-
-                                if (formPanel.getForm().isValid()) {
-
-                                    formPanel.getForm().submit({
-                                        params:{
-                                            // see baseParams
-                                        }, 
-                                        waitMsg:'Saving...',
-                                        failure: function(form, action) {
-                                            switch (action.failureType) {
-                                                case Ext.form.Action.CLIENT_INVALID:
-                                                    Ext.Msg.alert('Failure', 'Form fields may not be submitted with invalid values');
-                                                    break;
-                                                case Ext.form.Action.CONNECT_FAILURE:
-                                                    Ext.Msg.alert('Failure', 'Ajax communication failed');
-                                                    break;
-                                                case Ext.form.Action.SERVER_INVALID:
-                                                    Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
-                                                default:
-                                                    Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
-                                           }
-                                        },
-                                        success: function(form, action) {
-                                            alert(action.success);
-                                        }
-                                    }); 
-                                }else{
-                                    Ext.MessageBox.alert('Errors', 'Please fix the errors noted.');
-                                }
-                            }
+                            handler: saveForm
                         },{
                             text   : 'Reset',
                             handler: function() {
@@ -596,64 +591,51 @@ function renderWidgets()
                 // and each register for that meter
                 meter.registers.forEach(function(register, index, array) 
                 {
-
-                    var registerFormPanel = new Ext.FormPanel(
+                    if (register.shadow == false)
                     {
-                        id: service +'-'+meter.identifier+'-'+ register.identifier+'-meterReadDateFormPanel',
-                        header: false,
-                        url: 'http://'+location.host+'/billtool/setRegister',
-                        border: false,
-                        labelWidth: 125,
-                        bodyStyle:'padding:10px 10px 0px 10px',
-                        items:[], // added by configureUBMeasuredUsagesForm()
-                        baseParams: null, // added by configureUBMeasuredUsagesForm()
-                        autoDestroy: true,
-                        layout: 'form',
-                        buttons: 
-                        [
-                            // TODO: the save button is generic in function, refactor
-                            {
-                                text   : 'Save',
-                                handler: function() {
 
-                                    //http://www.sencha.com/forum/showthread.php?127087-Getting-the-right-scope-in-button-handler
-                                    var formPanel = this.findParentByType(Ext.form.FormPanel);
-
-                                    if (formPanel.getForm().isValid()) {
-
-                                        formPanel.getForm().submit({
-                                            params:{
-                                                // see baseParams
-                                            }, 
-                                            waitMsg:'Saving...'
-                                        }); 
-                                    }else{
-                                        Ext.MessageBox.alert('Errors', 'Please fix the errors noted.');
+                        var registerFormPanel = new Ext.FormPanel(
+                        {
+                            id: service +'-'+meter.identifier+'-'+ register.identifier+'-meterReadDateFormPanel',
+                            header: false,
+                            url: 'http://'+location.host+'/billtool/setActualRegister',
+                            border: false,
+                            labelWidth: 125,
+                            bodyStyle:'padding:10px 10px 0px 10px',
+                            items:[], // added by configureUBMeasuredUsagesForm()
+                            baseParams: null, // added by configureUBMeasuredUsagesForm()
+                            autoDestroy: true,
+                            layout: 'form',
+                            buttons: 
+                            [
+                                // TODO: the save button is generic in function, refactor
+                                {
+                                    text   : 'Save',
+                                    handler: saveForm
+                                },{
+                                    text   : 'Reset',
+                                    handler: function() {
+                                        var formPanel = this.findParentByType(Ext.form.FormPanel);
+                                        formPanel.getForm().reset();
                                     }
                                 }
-                            },{
-                                text   : 'Reset',
-                                handler: function() {
-                                    var formPanel = this.findParentByType(Ext.form.FormPanel);
-                                    formPanel.getForm().reset();
-                                }
-                            }
-                        ]
-                    });
+                            ]
+                        });
 
-                    // add the period date pickers to the form
-                    registerFormPanel.add(
-                        new Ext.form.NumberField({
-                            fieldLabel: register.identifier,
-                            name: 'total',
-                            value: register.total,
-                        })
-                    );
+                        // add the period date pickers to the form
+                        registerFormPanel.add(
+                            new Ext.form.NumberField({
+                                fieldLabel: register.identifier,
+                                name: 'total',
+                                value: register.total,
+                            })
+                        );
 
-                    // add base parms for form post
-                    registerFormPanel.getForm().baseParams = {account: account, sequence: sequence, service:service, meter_identifier: meter.identifier, register_identifier:register.identifier}
+                        // add base parms for form post
+                        registerFormPanel.getForm().baseParams = {account: account, sequence: sequence, service:service, meter_identifier: meter.identifier, register_identifier:register.identifier}
 
-                    ubMeasuredUsagesFormPanels.push(registerFormPanel);
+                        ubMeasuredUsagesFormPanels.push(registerFormPanel);
+                    }
 
                 })
             })
