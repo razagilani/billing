@@ -35,12 +35,10 @@ from skyliner.xml_utils import XMLUtils
 
 
 # TODO rename to ProcessBridge or something
-# TODO don't require UI to pass in destination.
 class BillToolBridge:
     """ A monolithic class encapsulating the behavior to:  handle an incoming http request """
     """ and invoke bill processing code.  No business logic should reside here."""
 
-    #src_prefix = dest_prefix = "http://tyrell:8080/exist/rest/db/skyline/bills/"
     config = None
 
     def __init__(self):
@@ -406,13 +404,50 @@ class BillToolBridge:
 
             ubMeasuredUsages = the_bill.measured_usage
 
-            # TODO: better way to filter for meter?
+            # TODO: better way to filter for meter? The list comprehension should always be a list of one element
             # TODO: error conditions
-            meter = [meter for meter in ubMeasuredUsages[service] if meter.identifier == meter_identifier][0]
+            meter = [meter for meter in ubMeasuredUsages[service] if meter.identifier == meter_identifier]
+            meter = meter[0] if meter else None
+            if meter is None: print "Should have found a single meter"
             meter.presentreaddate = presentreaddate
             meter.priorreaddate = priorreaddate
 
             the_bill.measured_usage = ubMeasuredUsages
+
+            XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence),
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )
+
+        except Exception as e:
+             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return ju.dumps({'success':True})
+
+    @cherrypy.expose
+    def setActualRegister(self, account, sequence, service, register_identifier, meter_identifier, total):
+
+        try:
+
+            the_bill = bill.Bill( "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+
+            ubMeasuredUsages = the_bill.measured_usage
+
+            # TODO: better way to filter for register and meter? The list comprehension should always be a list of one element
+            # TODO: error conditions
+            meter = [meter for meter in ubMeasuredUsages[service] if meter.identifier == meter_identifier]
+            meter = meter[0] if meter else None
+            if meter is None: print "Should have found a single meter"
+
+            register = [register for register in meter.registers if register.identifier == register_identifier and register.shadow is False]
+            register = register[0] if register else None
+            if register is None: print "Should have found a single register"
+
+            register.total = total
+
+            print "will set %s" % ubMeasuredUsages
+            the_bill.measured_usage = ubMeasuredUsages
+            print "did set %s" % the_bill.measured_usage
 
             XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence),
                 self.config.get("xmldb", "user"),
