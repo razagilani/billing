@@ -32,51 +32,42 @@ function renderWidgets()
     // Account and Bill selection tab
     //
 
-    // set up combo box for listing the accounts
-    var customerAccountRecordType = Ext.data.Record.create([
-        {name: 'account', mapping: ''}
-    ]);
 
-    // Trick: the repeating record is <account> and it is directly a child of <accounts> 
-    var customerAccountXMLReader = new Ext.data.XmlReader({
-        record: 'account',
-    }, customerAccountRecordType);
-
-    // access the list of accounts so that a customer may be selected and their
-    // bills listed
-    var customerAccountStore = new Ext.data.Store({
-        url: 'http://'+location.host+'/exist/rest/db/skyline/ListAccounts.xql',
-        reader: customerAccountXMLReader
+    var accountsStore = new Ext.data.JsonStore({
+        // store configs
+        autoDestroy: true,
+        autoLoad:false,
+        url: 'http://'+location.host+'/billtool/listAccounts',
+        storeId: 'accountsStore',
+        root: 'rows',
+        idProperty: 'account',
+        fields: ['account', 'name'],
     });
 
-    var customerAccountCombo = new Ext.form.ComboBox({
-        store: customerAccountStore,
-        displayField:'account',
+    var accountCombo = new Ext.form.ComboBox({
+        store: accountsStore,
+        displayField:'name',
+        valueField:'account',
         typeAhead: true,
         triggerAction: 'all',
         emptyText:'Select...',
         selectOnFocus:true,
     });
 
-    // set up combo box for listing the bills
-    var customerBillRecordType = Ext.data.Record.create([
-        {name: 'bill', mapping: ''}
-    ]);
-
-    var customerBillXMLReader = new Ext.data.XmlReader({
-        record: 'bill',
-    }, customerBillRecordType);
-
-
-    // access the list of bills for a customer that has been previously selected.
-    var customerBillStore = new Ext.data.Store({
-        url: 'http://'+location.host+'/exist/rest/db/skyline/ListBills.xql',
-        reader: customerBillXMLReader
+    var sequencesStore = new Ext.data.JsonStore({
+        // store configs
+        autoDestroy: true,
+        autoLoad:false,
+        url: 'http://'+location.host+'/billtool/listSequences',
+        storeId: 'sequencesStore',
+        root: 'rows',
+        idProperty: 'sequence',
+        fields: ['sequence'],
     });
 
-    var customerBillCombo = new Ext.form.ComboBox({
-        store: customerBillStore,
-        displayField:'bill',
+    var sequenceCombo = new Ext.form.ComboBox({
+        store: sequencesStore,
+        displayField:'sequence',
         typeAhead: true,
         triggerAction: 'all',
         emptyText:'Select...',
@@ -84,25 +75,40 @@ function renderWidgets()
     });
 
     // event to link the account to the bill combo box
-    customerAccountCombo.on('select', function(combobox, record, index) {
-        customerBillStore.setBaseParam('id', record.data.account);
-        customerBillStore.load();
+    accountCombo.on('select', function(combobox, record, index) {
+        sequencesStore.setBaseParam('account', record.data.account);
+        sequencesStore.load();
     });
 
     // fired when the customer bill combo box is selected
     // because a customer account and bill has been selected, load 
     // the bill document.  Follow billLoaded() for additional details
     // ToDo: do not allow selection change if store is unsaved
-    customerBillCombo.on('select', function(combobox, record, index) {
+    sequenceCombo.on('select', function(combobox, record, index) {
 
         // loads a bill from eXistDB
         Ext.Ajax.request({
-            url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
-                + '/' + record.data.bill,
+            url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + accountCombo.getValue() 
+                + '/' + record.data.sequence + ".xml",
            success: billLoaded,
            failure: billLoadFailed,
            disableCaching: true,
         });
+    });
+
+    // a hack so that a newly rolled bill may be access by directly entering its sequence
+    sequenceCombo.on('specialkey', function(field, e) {
+        if (e.getKey() == e.ENTER) {
+            // loads a bill from eXistDB
+            Ext.Ajax.request({
+                url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + accountCombo.getValue() 
+                    + '/' + sequenceCombo.getValue() + ".xml",
+               success: billLoaded,
+               failure: billLoadFailed,
+               disableCaching: true,
+            });
+        }
+
     });
 
     // forms for calling bill process operations
@@ -140,10 +146,8 @@ function renderWidgets()
         } else {
             // do your success processing here
             // loads a bill from eXistDB
-            account = customerAccountCombo.getValue();
-            sequence = customerBillCombo.getValue();
-            // sequences come back from eXist as [seq].xml
-            sequence = sequence.split(".",1);
+            account = accountCombo.getValue();
+            sequence = sequenceCombo.getValue();
             Ext.Ajax.request({
                 url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + account
                     + '/' + (parseInt(sequence)) + '.xml',
@@ -179,8 +183,8 @@ function renderWidgets()
             Ext.Ajax.request({
                 url: 'http://'+location.host+'/billtool/issueToCustomer',
                 params: { 
-                    account: customerAccountCombo.getValue(),
-                    sequence: customerBillCombo.getValue().split(".",1)
+                    account: accountCombo.getValue(),
+                    sequence: sequenceCombo.getValue()
                 },
                 disableCaching: true,
                 success: sucessResponse,
@@ -199,8 +203,8 @@ function renderWidgets()
             Ext.Ajax.request({
                 url: 'http://'+location.host+'/billtool/calcstats',
                 params: { 
-                    account: customerAccountCombo.getValue(),
-                    sequence: customerBillCombo.getValue().split(".",1)
+                    account: accountCombo.getValue(),
+                    sequence: sequenceCombo.getValue()
                 },
                 disableCaching: true,
                 success: successResponse,
@@ -219,8 +223,8 @@ function renderWidgets()
             Ext.Ajax.request({
                 url: 'http://'+location.host+'/billtool/sum',
                 params: { 
-                    account: customerAccountCombo.getValue(),
-                    sequence: customerBillCombo.getValue().split(".",1)
+                    account: accountCombo.getValue(),
+                    sequence: sequenceCombo.getValue()
                 },
                 disableCaching: true,
                 success: successResponse,
@@ -239,8 +243,8 @@ function renderWidgets()
             Ext.Ajax.request({
                 url: 'http://'+location.host+'/billtool/bindrs',
                 params: { 
-                    account: customerAccountCombo.getValue(),
-                    sequence: customerBillCombo.getValue().split(".",1)
+                    account: accountCombo.getValue(),
+                    sequence: sequenceCombo.getValue()
                 },
                 disableCaching: true,
                 success: successResponse,
@@ -259,8 +263,8 @@ function renderWidgets()
             Ext.Ajax.request({
                 url: 'http://'+location.host+'/billtool/bindree',
                 params: { 
-                    account: customerAccountCombo.getValue(),
-                    sequence: customerBillCombo.getValue().split(".",1)
+                    account: accountCombo.getValue(),
+                    sequence: sequenceCombo.getValue()
                 },
                 disableCaching: true,
                 success: successResponse,
@@ -281,10 +285,10 @@ function renderWidgets()
                 var amountPaid = parseFloat(text)
                 saveToXML(function() {
 
-                    account = customerAccountCombo.getValue();
-                    sequence = customerBillCombo.getValue();
+                    account = accountCombo.getValue();
+                    sequence = sequenceCombo.getValue();
                     // sequences come back from eXist as [seq].xml
-                    sequence = sequence.split(".",1);
+                    sequence = sequence;
 
                     Ext.Ajax.request({
                         url: 'http://'+location.host+'/billtool/roll',
@@ -307,7 +311,7 @@ function renderWidgets()
                                 // do your success processing here
                                 // loads a bill from eXistDB
                                 Ext.Ajax.request({
-                                    url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
+                                    url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + accountCombo.getValue() 
                                         + '/' + (parseInt(sequence)+1) + '.xml',
                                    success: billLoaded,
                                    failure: billLoadFailed,
@@ -332,8 +336,8 @@ function renderWidgets()
             Ext.Ajax.request({
                 url: 'http://'+location.host+'/billtool/issue',
                 params: { 
-                    account: customerAccountCombo.getValue(),
-                    sequence: customerBillCombo.getValue().split(".",1)
+                    account: accountCombo.getValue(),
+                    sequence: sequenceCombo.getValue()
                 },
                 disableCaching: true,
                 success: successResponse,
@@ -353,8 +357,8 @@ function renderWidgets()
                 // TODO: pass in only account and sequence
                 url: 'http://'+location.host+'/billtool/render',
                 params: { 
-                    account: customerAccountCombo.getValue(),
-                    sequence: customerBillCombo.getValue().split(".",1)
+                    account: accountCombo.getValue(),
+                    sequence: sequenceCombo.getValue()
                 },
                 disableCaching: true,
                 success: successResponse,
@@ -369,10 +373,10 @@ function renderWidgets()
     {
         saveToXML(function() {
 
-            account = customerAccountCombo.getValue();
-            sequence = customerBillCombo.getValue();
+            account = accountCombo.getValue();
+            sequence = sequenceCombo.getValue();
             // sequences come back from eXist as [seq].xml
-            sequence = sequence.split(".",1);
+            sequence = sequence;
 
 
             // TODO: this is bad news.  Need a better way to handle multiple services
@@ -385,8 +389,8 @@ function renderWidgets()
                         // TODO: pass in only account and sequence
                         url: 'http://'+location.host+'/billtool/commit',
                         params: {
-                            account: customerAccountCombo.getValue(),
-                            sequence: customerBillCombo.getValue().split(".",1),
+                            account: accountCombo.getValue(),
+                            sequence: sequenceCombo.getValue(),
                             begin: value.begindate,
                             end: value.enddate,
                         },
@@ -928,11 +932,11 @@ function renderWidgets()
 
                 saveToXML(function() {
 
-                    account = customerAccountCombo.getValue();
-                    sequence = customerBillCombo.getValue();
+                    account = accountCombo.getValue();
+                    sequence = sequenceCombo.getValue();
 
                     // sequences come back from eXist as [seq].xml
-                    sequence = sequence.split(".",1);
+                    sequence = sequence;
 
                     // now that the bill is saved, create the hypothetical charges
                     // on the server
@@ -945,8 +949,8 @@ function renderWidgets()
                         success: function () {
                             // loads a bill from eXistDB
                             Ext.Ajax.request({
-                                url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
-                                    + '/' + customerBillCombo.getValue(),
+                                url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + accountCombo.getValue() 
+                                    + '/' + sequenceCombo.getValue(),
                                success: billLoaded,
                                failure: billLoadFailed,
                                disableCaching: true,
@@ -1323,9 +1327,10 @@ function renderWidgets()
         {
           title: 'Select Bill',
           xtype: 'panel',
+          bodyStyle:'padding:10px 10px 0px 10px',
           items: [
-            customerAccountCombo,
-            customerBillCombo,
+            accountCombo,
+            sequenceCombo,
             billOperationButton
           ],
         },{
@@ -1398,7 +1403,7 @@ function renderWidgets()
 
 
     // responsible for initializing all ui widget backing stores
-    // called due to customerBillCombo.on() select event (see above)
+    // called due to sequenceCombo.on() select event (see above)
     function billLoaded(data) {
 
         // set the bill document to a global so that it may always be referenced
@@ -1411,10 +1416,8 @@ function renderWidgets()
         actualCharges = getActualCharges(bill);
         hypotheticalCharges = getHypotheticalCharges(bill);
 
-        account = customerAccountCombo.getValue();
-        sequence = customerBillCombo.getValue();
-        // sequences come back from eXist as [seq].xml
-        sequence = sequence.split(".",1);
+        account = accountCombo.getValue();
+        sequence = sequenceCombo.getValue();
         Ext.Ajax.request({
             url: 'http://'+location.host+'/billtool/ubPeriods',
             params: {account: account, sequence: sequence},
@@ -1486,8 +1489,8 @@ function renderWidgets()
         {
 
             Ext.Ajax.request({
-                url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + customerAccountCombo.getValue() 
-                    + '/' + customerBillCombo.getValue(),
+                url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + accountCombo.getValue() 
+                    + '/' + sequenceCombo.getValue(),
                 method: 'PUT',
                 xmlData: bill,
                 success: successCallback,
