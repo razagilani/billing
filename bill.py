@@ -28,8 +28,6 @@ from decimal import *
 
 from collections import namedtuple
 
-from recordtype import recordtype
-
 from mutable_named_tuple import MutableNamedTuple
 
 
