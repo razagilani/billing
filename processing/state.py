@@ -63,12 +63,19 @@ def last_sequence(host, db, user, password, account):
 
 def issue(host, db, user, password, account, sequence):
     query = "update rebill set issued = 1 where sequence = %s and customer_id = (select id from customer where account = %s)"
-    print query
-    print "%s %s" % (sequence,account)
     params = (sequence, account)
     # TODO: error checking...
     rows = fetch(host, db, user, password, query, params, False)
-    print str(rows)
+
+def listAccounts(host, db, user, password):
+    query = "select account from customer"
+    return fetch(host, db, user, password, query, None, True)
+
+def listSequences(host, db, user, password, account):
+    print "will query with %s " % account
+    query = "select sequence from rebill r where r.customer_id = (select id from customer where account = %s)"
+    params = (account)
+    return fetch(host, db, user, password, query, params, True)
 
 if __name__ == "__main__":
 
