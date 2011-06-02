@@ -24,8 +24,6 @@ class NexusUtil(object):
         return f.read()
 
     def all(self, system, system_id):
-        """ For a billing account number, return an olap_id """
-        #http://nexus/nexus_rest/lookup_all?system=billing&systemid=10001
 
         url = "http://%s/nexus_query/lookup_all?system=%s&systemid=%s" % (
             self.host,
@@ -33,9 +31,12 @@ class NexusUtil(object):
             system_id
         )
         f = urllib2.urlopen(url)
-
         record = json.load(f)
-        return record["rows"][0]
+
+        if record["total_rows"] > 0:
+            return record["rows"][0]
+        else:
+            return {}
 
 if __name__ == "__main__":
     parser = OptionParser()
