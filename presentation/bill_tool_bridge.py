@@ -18,6 +18,8 @@ import cherrypy
 # template support
 import jinja2, os
 
+import string
+
 import ConfigParser
 
 from billing.processing import process
@@ -32,6 +34,10 @@ from billing import bill
 from billing import json_util as ju
 
 from skyliner.xml_utils import XMLUtils
+
+from billing.nexus_util import NexusUtil
+
+
 
 
 # TODO rename to ProcessBridge or something
@@ -106,11 +112,9 @@ class BillToolBridge:
 
             # TODO: Process() should implement this
 
-            # last_sequnce is None is no prior bills have been rolled (sequence 0)
+            # last_sequence is None if no prior bills have been rolled (sequence 0)
             if last_sequence is not None and (int(sequence) < int(last_sequence)):
                 return '{success: false, errors: {reason:"Not the last sequence"}}'
-
-                print "int last sequence %s " % int(last_sequence)
 
                 # TODO: Process() should implement this
                 if (int(sequence) < int(last_sequence)):
@@ -314,6 +318,57 @@ class BillToolBridge:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
         return json.dumps({'success': True})
+
+
+    @cherrypy.expose
+    def listAccounts(self, **kwargs):
+        accounts = []
+        try:
+            # eventually, this data will have to support pagination
+            accounts = state.listAccounts(
+                self.config.get("statedb", "host"),
+                self.config.get("statedb", "db"),
+                self.config.get("statedb", "user"),
+                self.config.get("statedb", "password"),
+            )
+
+            # now get associated names from Nexus and add them to each account dictionary
+            nu = NexusUtil()
+            for account in accounts:
+                all_names = NexusUtil().all("billing", account['account'])
+                display_name = [account['account']]
+                if 'codename' in all_names:
+                    display_name.append(all_names['codename'])
+                if 'casualname' in all_names:
+                    display_name.append(all_names['casualname'])
+                if 'primus' in all_names:
+                    display_name.append(all_names['primus'])
+
+                account['name'] = string.join(display_name, ' - ')
+
+
+
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return json.dumps({'success': True, 'rows':accounts})
+
+    @cherrypy.expose
+    def listSequences(self, account, **kwargs):
+        sequences = []
+        try:
+            # eventually, this data will have to support pagination
+            sequences = state.listSequences(
+                self.config.get("statedb", "host"),
+                self.config.get("statedb", "db"),
+                self.config.get("statedb", "user"),
+                self.config.get("statedb", "password"),
+                account
+            )
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return json.dumps({'success': True, 'rows':sequences})
 
 
     ################
