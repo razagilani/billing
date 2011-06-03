@@ -1084,6 +1084,7 @@ class Bill(object):
                         #charge_mnt.total = None
                         #charge_mnt.processingnote = None
 
+                        self.attr_to_prop(charges_child, "rsbinding", str, charge_mnt, "rsbinding")
                         self.cdata_to_prop(charges_child, "description", str, charge_mnt, "description")
                         self.cdata_to_prop(charges_child, "quantity", str, charge_mnt, "quantity")
                         self.attr_to_prop(charges_child.find("ub:quantity", {"ub":"bill"}), "units", str, charge_mnt, "quantityunits")
