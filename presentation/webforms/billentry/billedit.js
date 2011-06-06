@@ -187,7 +187,7 @@ function renderWidgets()
                     sequence: sequenceCombo.getValue()
                 },
                 disableCaching: true,
-                success: sucessResponse,
+                success: successResponse,
                 failure: function () {
                     alert("Issue to customer response fail");
                 }
