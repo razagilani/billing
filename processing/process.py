@@ -164,37 +164,6 @@ class Process(object):
 
         XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
 
-    def old_copy_actual_charges(self, unprocessedBill, targetBill, user=None, password=None):
-        """ Copy actual charges to hypothetical charges.  Move the /ub:bill/ub:details/ub:chargegroup/ub:charges[@type='actual'] """
-        """ to /ub:bill/ub:details/ub:chargegroup/ub:charges[@type='hypothetical'] """
-
-        tree = etree.parse(unprocessedBill)
-
-        # for each chargegroup, acquire the actual charges
-        chargegroups = self.get_elem(tree, "/ub:bill/ub:details/ub:chargegroup")
-
-        for chargegroup in chargegroups:
-
-            actual_charges = self.get_elem(chargegroup, "ub:charges[@type=\"actual\"]")
-            assert(len(actual_charges) == 1)
-
-            new_hypothetical_charges = copy.deepcopy(actual_charges[0])
-            new_hypothetical_charges.set("type", "hypothetical")
-
-            old_hypothetical_charges = self.get_elem(chargegroup, "ub:charges[@type=\"hypothetical\"]")
-            if (len(old_hypothetical_charges) == 0):
-                # insert hypothetical
-                chargegroup.append(new_hypothetical_charges)
-            else:
-                chargegroup.replace(old_hypothetical_charges[0], new_hypothetical_charges)
-
-            #print etree.tostring(hypothetical_charges, pretty_print=True)
-
-        xml = etree.tostring(tree, pretty_print=True)
-
-
-        XMLUtils().save_xml_file(xml, targetBill, user, password)
-
     def roll_bill(self, inputbill, targetBill, amountPaid, user=None, password=None):
 
         the_bill = bill.Bill(inputbill)
@@ -583,6 +552,8 @@ class Process(object):
             if(period.month == month):
                 period.quantity = re/100000
 
+        next_bill.statistics = next_stats
+
         XMLUtils().save_xml_file(next_bill.xml(), output_bill, user, password)
 
 
@@ -592,6 +563,7 @@ class Process(object):
         inputtree = etree.parse(inputbill)
         outputtree = etree.parse(outputbill)
 
+        # TODO: refactor out xml code to depend on bill.py
         utilbill_begin_periods = self.get_elem(inputtree, "/ub:bill/ub:utilbill/ub:billperiodbegin")
         utilbill_end_periods = self.get_elem(inputtree, "/ub:bill/ub:utilbill/ub:billperiodend")
 
@@ -627,6 +599,7 @@ class Process(object):
         # TODO: parameterize for dependence on customer 
         duedate = issuedate + datetime.timedelta(days=30)
 
+        # TODO: refactor out xml code to depend on bill.py
         self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:issued")[0].text = issuedate.strftime("%Y-%m-%d")
         self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:duedate")[0].text = duedate.strftime("%Y-%m-%d")
 
