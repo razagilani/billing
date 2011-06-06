@@ -197,7 +197,7 @@ class BillToolBridge:
 
         try:
             process.Process().calculate_statistics(
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, int(sequence)-1), 
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
                 self.config.get("xmldb", "user"),
                 self.config.get("xmldb", "password")
@@ -493,6 +493,7 @@ class BillToolBridge:
             meter = [meter for meter in ubMeasuredUsages[service] if meter.identifier == meter_identifier]
             meter = meter[0] if meter else None
             if meter is None: print "Should have found a single meter"
+            # TODO: raise exception if no meter
 
             register = [register for register in meter.registers if register.identifier == register_identifier and register.shadow is False]
             register = register[0] if register else None
