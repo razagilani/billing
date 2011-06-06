@@ -312,7 +312,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     # populate due date and amount
     dueDateAndAmount = [
-        [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(str(bill.due_date), styles['BillFieldRight'])], 
+        [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(str(bill.rebill_summary.duedate), styles['BillFieldRight'])], 
         [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(bill.total_due), styles['BillFieldRight'])]
     ]
     
@@ -351,8 +351,8 @@ def render(inputbill, outputfile, backgrounds, verbose):
     # populate graph one
 
     # Construct period consumption/production ratio graph
-    renewableUtilization = st['renewable_utilization']
-    conventionalUtilization = st['conventional_utilization']
+    renewableUtilization = st['renewableutilization']
+    conventionalUtilization = st['conventionalutilization']
     data = [renewableUtilization, conventionalUtilization]
     labels = ["Renewable", "Conventional"]
     c = PieChart(10*270, 10*127)
@@ -378,12 +378,12 @@ def render(inputbill, outputfile, backgrounds, verbose):
     
     # construct period environmental benefit
 
-    periodRenewableConsumed = st['period_renewable_consumed']
-    periodPoundsCO2Offset = st['period_pounds_co2_offset']
+    periodRenewableConsumed = str(st['renewableconsumed'].quantize(Decimal("0")))
+    periodPoundsCO2Offset = str(st['co2offset'].quantize(Decimal("0")))
     
     environmentalBenefit = [
         [Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(periodRenewableConsumed + " BTUs", styles['BillFieldSm'])],
+        [Paragraph("Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("%s BTUs" % periodRenewableConsumed, styles['BillFieldSm'])],
         [Paragraph("Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(periodPoundsCO2Offset, styles['BillFieldSm'])],
     ]
 
@@ -400,12 +400,12 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     systemLife = [
         [Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph(st['total_dollar_savings'], styles['BillFieldSm'])],
-        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(st['total_renewable_energy_consumed'] + " BTUs", styles['BillFieldSm'])],
+        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph(str(st['totalsavings']), styles['BillFieldSm'])],
+        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(str(st['totalrenewableconsumed'].quantize(Decimal("0"))) + " BTUs", styles['BillFieldSm'])],
         # for next bill period
         #[Paragraph("Total Renewable Energy Produced", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
-        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(st['total_co2_offset'], styles['BillFieldSm'])],
-        [Paragraph("Tens of Trees to Date", styles['BillLabelSm']), Paragraph(st['total_trees'], styles['BillFieldSm'])]
+        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(str(st['totalco2offset'].quantize(Decimal("0"))), styles['BillFieldSm'])],
+        [Paragraph("Tens of Trees to Date", styles['BillLabelSm']), Paragraph(str(st['totaltrees'].quantize(Decimal("0.0"))), styles['BillFieldSm'])]
     ]
 
     t = Table(systemLife, [180,90])
@@ -415,8 +415,8 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(Spacer(100,20))
     
     # build string for trees
-    numTrees = math.modf(float(st['total_trees']))[1]
-    fracTree = str(math.modf(float(st['total_trees']))[0])[2:3]
+    numTrees = math.modf(float(st['totaltrees']))[1]
+    fracTree = str(math.modf(float(st['totaltrees']))[0])[2:3]
     
     treeString = ""
     while (numTrees) > 0:
@@ -438,7 +438,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     # construct annual production graph
     data = []
     labels = []
-    for period in (st['consumption_trend']):
+    for period in (st['consumptiontrend']):
         labels.append(str(period.get("month")))
         data.append(float(period.get("quantity")))
 
@@ -464,7 +464,8 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     # populate billPeriodTableF
     # spacer so rows can line up with those in summarChargesTableF rows
-    ub_periods = bill.utilbill_periods
+    #ub_periods = bill.utilbill_periods
+    ub_periods = bill.utilbill_summary_charges
     serviceperiod = [
             [Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake'])],
             [Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
@@ -489,9 +490,9 @@ def render(inputbill, outputfile, backgrounds, verbose):
         [Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
     ]+[
         [
-            Paragraph(str(charges.hypotheticalecharges),styles['BillFieldRight']), 
-            Paragraph(str(charges.actualecharges),styles['BillFieldRight']), 
-            Paragraph(str(charges.revalue),styles['BillFieldRight'])
+            Paragraph(str(charges.hypotheticalecharges.quantize(Decimal(".00"))),styles['BillFieldRight']), 
+            Paragraph(str(charges.actualecharges.quantize(Decimal(".00"))),styles['BillFieldRight']), 
+            Paragraph(str(charges.revalue.quantize(Decimal(".00"))),styles['BillFieldRight'])
         ] for service, charges in ub_summary.items()
     ]
 
@@ -504,9 +505,9 @@ def render(inputbill, outputfile, backgrounds, verbose):
     # populate balances
     re_summary = bill.rebill_summary
     balances = [
-        [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(re_summary['priorbalance']),styles['BillFieldRight'])],
-        [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(re_summary['paymentreceived']), styles['BillFieldRight'])],
-        [Paragraph("Adjustments", styles['BillLabelRight']), Paragraph(str(re_summary['totaladjustment']), styles['BillFieldRight'])],
+        [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(re_summary['priorbalance'].quantize(Decimal(".00"))),styles['BillFieldRight'])],
+        [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(re_summary['paymentreceived'].quantize(Decimal(".00"))), styles['BillFieldRight'])],
+        [Paragraph("Adjustments", styles['BillLabelRight']), Paragraph(str(re_summary['totaladjustment'].quantize(Decimal(".00"))), styles['BillFieldRight'])],
     ]
 
     t = Table(balances, [180,85])
@@ -518,8 +519,8 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     # populate current charges
     currentCharges = [
-        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(re_summary['resavings']), styles['BillFieldRight'])],
-        [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(re_summary['recharges']), styles['BillFieldRight'])]
+        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(re_summary['resavings'].quantize(Decimal(".00"))), styles['BillFieldRight'])],
+        [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(re_summary['recharges'].quantize(Decimal(".00"))), styles['BillFieldRight'])]
     ]
 
     t = Table(currentCharges, [135,85])
@@ -529,7 +530,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     # populate balanceForward
     balance = [
-        [Paragraph("Balance Forward", styles['BillLabelRight']), Paragraph(str(re_summary['balanceforward']), styles['BillFieldRight'])]
+        [Paragraph("Balance Forward", styles['BillLabelRight']), Paragraph(str(re_summary['balanceforward'].quantize(Decimal(".00"))), styles['BillFieldRight'])]
     ]
 
     t = Table(balance, [135,85])
@@ -541,7 +542,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     # populate balanceDueFrame
     balanceDue = [
-        [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph(str(re_summary['totaldue']), styles['BillFieldRight'])]
+        [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph(str(re_summary['totaldue'].quantize(Decimal(".00"))), styles['BillFieldRight'])]
     ]
 
     t = Table(balanceDue, [135,85])
@@ -607,9 +608,9 @@ def render(inputbill, outputfile, backgrounds, verbose):
                     #usage.identifier if hasattr(usage, "identifier") else "" ,
                     register.identifier,
                     register.description if hasattr(register, "description") else "",
-                    shadow_total,
+                    shadow_total.quantize(Decimal("0.00")) ,
                     utility_total,
-                    total,
+                    total.quantize(Decimal("0.00")),
                     register.units,
                 ])
 
@@ -669,17 +670,17 @@ def render(inputbill, outputfile, backgrounds, verbose):
                 chargeDetails.append([
                     service if idx == 0 else "",
                     charge.description if hasattr(charge, "description") else None,
-                    charge.quantity if hasattr(charge, "quantity") else None,
+                    charge.quantity.quantize(Decimal(".000")) if hasattr(charge, "quantity") else None,
                     charge.quantity_units if hasattr(charge, "quantity_units") else None,
-                    charge.rate if hasattr(charge, "rate") else None,
+                    charge.rate.quantize(Decimal(".00000")) if hasattr(charge, "rate") else None,
                     charge.rate_units if hasattr(charge, "rate_units") else None,
-                    charge.total if hasattr(charge, "total") else None,
+                    charge.total.quantize(Decimal(".00")) if hasattr(charge, "total") else None,
                 ])
 
 
         # spacer
         chargeDetails.append([None, None, None, None, None, None, None])
-        chargeDetails.append([None, None, None, None, None, None, hypothetical_details.total])
+        chargeDetails.append([None, None, None, None, None, None, hypothetical_details.total.quantize(Decimal(".00"))])
 
 
     t = Table(chargeDetails, [50, 210, 70, 40, 70, 40, 70])
