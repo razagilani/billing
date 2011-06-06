@@ -12,7 +12,7 @@ exclude_from = 'fabexcludes.txt'
 
 def prepare_deploy():
     fabops.local('tar czvf /tmp/%s.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../%s' % (project_name, exclude_from, project_name))
-    fabops.local('tar czvf /tmp/billing_processing.tar.z ../nexus_util.py ../bill.py ../__init__.py ../processing/process.py ../processing/__init__.py ../processing/state.py ../processing/fetch_bill_data.py ../processing/rate_structure.py')
+    fabops.local('tar czvf /tmp/billing_processing.tar.z ../nexus_util.py ../bill.py ../__init__.py ../processing/process.py ../processing/__init__.py ../processing/state.py ../processing/fetch_bill_data.py ../processing/rate_structure.py ../mutable_named_tuple.py ../nexus_util.py ../json_util.py')
     fabops.local('tar czvf /tmp/billing_presentation.tar.z ../presentation/__init__.py ../presentation/render.py ../presentation/images ../presentation/fonts')
 
 def deploy():
