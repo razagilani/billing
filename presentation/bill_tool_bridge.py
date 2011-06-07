@@ -537,6 +537,22 @@ class BillToolBridge:
     #
     ################
 
+    ################
+    # Handle utility bill upload
+
+    @cherrypy.expose
+    def upload_utility_bill(self, account, begin_date, end_date, file_to_upload, **args):
+        from billing.processing.billupload import BillUpload
+
+        upload = BillUpload()
+        try:
+            return upload.upload(account, begin_date, end_date, file_to_upload)
+        except Exception as e: 
+             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+    #
+    ################
+
 
 bridge = BillToolBridge()
 
