@@ -3,8 +3,6 @@ import errno
 import logging
 import time
 import re
-import cherrypy
-from cherrypy.lib import static
 
 CONFIG_FILE = 'billupload_config'
 
@@ -25,10 +23,15 @@ SAVE_DIRECTORY = '/tmp'
 LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
 
+# TODO: refactor into __init__ config file
 # read log file path from config file
+# TODO: what if file doesn't exist?
 for index, line in enumerate(open(CONFIG_FILE).read().split('\n')):
     if index == 0:
         log_file = line
+    else:
+        # TODO: what if there was no config in the file?
+        pass
 
 # create logger
 logger = logging.getLogger('billupload')
@@ -40,13 +43,13 @@ logger.addHandler(handler)
 
 class BillUpload(object):
         
-    @cherrypy.expose
-    # **args catches any extra parameters (ignored)
-    def upload(self, account, begin_date, end_date, file_to_upload, **args):
+    def upload(self, account, begin_date, end_date, file_to_upload):
         # check account name (removes malicious input, e.g. starting with '../')
         # TODO: check that it's really an existing account?
         if not re.match(ACCOUNT_NAME_REGEX, account):
             logger.error('invalid account name: "%s"' % account)
+            # TODO raise exception? Perhaps an external validator can do this work since it
+            # is not directly related to uploading and saving files
             return '{success: false}'
         
         # convert dates from string to python's 'time.struct_time' type, and back,
@@ -54,9 +57,12 @@ class BillUpload(object):
         try:
             begin_date_object = time.strptime(begin_date, INPUT_DATE_FORMAT)
             end_date_object = time.strptime(end_date, INPUT_DATE_FORMAT)
-        except:
-            logger.error('unexpected date format(s): %s, %s' \
-                    % (begin_date, end_date))
+        except Exception as e:
+            
+            logger.error('unexpected date format(s): %s, %s\n%s' \
+                    % (begin_date, end_date, str(e)))
+            # TODO raise exception? Perhaps an external validator can do this work since it
+            # is not directly related to uploading and saving files
             return '{success: false}'
         formatted_begin_date = time.strftime(OUTPUT_DATE_FORMAT, begin_date_object)
         formatted_end_date = time.strftime(OUTPUT_DATE_FORMAT, end_date_object)
@@ -66,6 +72,7 @@ class BillUpload(object):
             data = file_to_upload.file.read()
         except:
             logger.error('unable to read "' + file_to_upload.filename + '"')
+            # TODO raise exception
             return '{success: false}'
         finally:
             file_to_upload.file.close()
@@ -86,6 +93,7 @@ class BillUpload(object):
             else:
                 logger.error('unable to create directory "%"' \
                         % os.path.join(SAVE_DIRECTORY, save_file_path));
+                # TODO raise exception
                 return '{success: false}'
         
         # write the file in SAVE_DIRECTORY
@@ -94,29 +102,10 @@ class BillUpload(object):
             save_file.write(data)
         except:
             logger.error('unable to write "' + save_file_path + '"')
+            # TODO raise exception
             return '{success: false}'
         finally:
             save_file.close()
 
+        # TODO return True
         return '{success: true}'
-
-# configuration
-local_conf = {
-    '/' : {
-        'tools.staticdir.root' :os.path.dirname(os.path.abspath(__file__)), 
-        'tools.staticdir.dir' : '',
-        'tools.staticdir.on' : True,
-        'tools.expires.secs': 0,
-        'tools.response_headers.on': True,
-    },
-    '/js' :  {
-        'tools.staticdir.dir' : 'js',
-        'tools.staticdir.on' : True 
-    },
-}
-cherrypy.config.update({
-    #'server.socket_host': "10.0.0.250",
-    'server.socket_port': 8080,
-})
-
-cherrypy.quickstart(BillUpload(), config=local_conf)
