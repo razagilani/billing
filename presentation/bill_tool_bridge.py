@@ -95,7 +95,7 @@ class BillToolBridge:
         return json.dumps({'success': True})
 
     @cherrypy.expose
-    def roll(self, account, sequence, amount, **args):
+    def roll(self, account, sequence, **args):
         # TODO: remove this business logic to Process()
         # check to see if this bill can be rolled
 
@@ -124,6 +124,23 @@ class BillToolBridge:
             process.Process().roll_bill(
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, int(sequence)+1),
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )   
+
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return json.dumps({'success': True})
+
+    @cherrypy.expose
+    def pay(self, account, sequence, amount, **args):
+
+        try:
+
+            process.Process().pay_bill(
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
                 amount,
                 self.config.get("xmldb", "user"),
                 self.config.get("xmldb", "password")
@@ -197,7 +214,7 @@ class BillToolBridge:
 
         try:
             process.Process().calculate_statistics(
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, int(sequence)-1), 
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
                 self.config.get("xmldb", "user"),
                 self.config.get("xmldb", "password")
@@ -237,6 +254,7 @@ class BillToolBridge:
             )
 
             process.Process().sumbill(
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, int(sequence)-1), 
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
                 discount_rate,
@@ -493,6 +511,7 @@ class BillToolBridge:
             meter = [meter for meter in ubMeasuredUsages[service] if meter.identifier == meter_identifier]
             meter = meter[0] if meter else None
             if meter is None: print "Should have found a single meter"
+            # TODO: raise exception if no meter
 
             register = [register for register in meter.registers if register.identifier == register_identifier and register.shadow is False]
             register = register[0] if register else None

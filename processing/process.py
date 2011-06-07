@@ -43,10 +43,13 @@ class Process(object):
         return tree.xpath(xpath, namespaces={"ub":"bill"})
 
 
+    # TODO convert to property access
+    # TODO rename to sum_bill
     # compute the value, charges and savings of renewable energy
-    def sumbill(self, unprocessedBill, targetBill, discount_rate = None, user=None, password=None):
+    def sumbill(self, prior_bill, unprocessedBill, targetBill, discount_rate = None, user=None, password=None):
         # TODO discount_rate should be a decimal so that it doesn't have to be converted below.
 
+        prior_bill = bill.Bill(prior_bill)
         the_bill = bill.Bill(unprocessedBill)
 
         # get data from the bill
@@ -83,6 +86,11 @@ class Process(object):
 
             rebill_summary['actualecharges'] += charges['actualecharges']
             rebill_summary['hypotheticalecharges'] += charges['hypotheticalecharges']
+
+        # from old roll bill
+        #r.balanceforward = r.priorbalance - r.paymentreceived
+        rebill_summary.priorbalance = prior_bill.rebill_summary.totaldue
+        rebill_summary['balanceforward'] = rebill_summary['priorbalance'] - rebill_summary['paymentreceived']
 
         rebill_summary['totaldue'] = rebill_summary['totaladjustment'] + rebill_summary['balanceforward'] + rebill_summary['recharges']
 
@@ -164,38 +172,34 @@ class Process(object):
 
         XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
 
-    def old_copy_actual_charges(self, unprocessedBill, targetBill, user=None, password=None):
-        """ Copy actual charges to hypothetical charges.  Move the /ub:bill/ub:details/ub:chargegroup/ub:charges[@type='actual'] """
-        """ to /ub:bill/ub:details/ub:chargegroup/ub:charges[@type='hypothetical'] """
+    def pay_bill(self, source_bill, target_bill, amountPaid, user=None, password=None):
+        """
+        Accepts the prior bill, so that the total due can be obtained.
+        Sets the payment in the targetbill.
+        Prior bills can be recomputed, which may change the past total due.
+        Therefore current bills must pull that value forward.
+        """
 
-        tree = etree.parse(unprocessedBill)
+        #prior = bill.Bill(prior_bill)
+        pay = bill.Bill(source_bill)
 
-        # for each chargegroup, acquire the actual charges
-        chargegroups = self.get_elem(tree, "/ub:bill/ub:details/ub:chargegroup")
+        pay_rebill = pay.rebill_summary
 
-        for chargegroup in chargegroups:
+        # do this in sumBill
+        #pay_rebill.priorbalance = prior.rebill_summary.totaldue
+        pay_rebill.paymentreceived = Decimal(amountPaid)
 
-            actual_charges = self.get_elem(chargegroup, "ub:charges[@type=\"actual\"]")
-            assert(len(actual_charges) == 1)
+        # set rebill back to bill
+        pay.rebill_summary = pay_rebill
 
-            new_hypothetical_charges = copy.deepcopy(actual_charges[0])
-            new_hypothetical_charges.set("type", "hypothetical")
+        XMLUtils().save_xml_file(pay.xml(), target_bill, user, password)
 
-            old_hypothetical_charges = self.get_elem(chargegroup, "ub:charges[@type=\"hypothetical\"]")
-            if (len(old_hypothetical_charges) == 0):
-                # insert hypothetical
-                chargegroup.append(new_hypothetical_charges)
-            else:
-                chargegroup.replace(old_hypothetical_charges[0], new_hypothetical_charges)
-
-            #print etree.tostring(hypothetical_charges, pretty_print=True)
-
-        xml = etree.tostring(tree, pretty_print=True)
-
-
-        XMLUtils().save_xml_file(xml, targetBill, user, password)
 
     def roll_bill(self, inputbill, targetBill, amountPaid, user=None, password=None):
+        """
+        Create rebill for next period, based on prior bill.
+        This is acheived by accessing xml document for prior bill, and resetting select values.
+        """
 
         the_bill = bill.Bill(inputbill)
 
@@ -221,10 +225,11 @@ class Process(object):
         r.message = None
 
         # compute payments
-        r.priorbalance = r.totaldue
+        # moved to pay bill
+        #r.priorbalance = r.totaldue
         r.totaldue = Decimal("0.00")
-        r.paymentreceived = Decimal(amountPaid)
-        r.balanceforward = r.priorbalance - r.paymentreceived
+        #r.paymentreceived = Decimal(amountPaid)
+        #r.balanceforward = r.priorbalance - r.paymentreceived
 
         # set rebill back to bill
         the_bill.rebill_summary = r
@@ -583,6 +588,8 @@ class Process(object):
             if(period.month == month):
                 period.quantity = re/100000
 
+        next_bill.statistics = next_stats
+
         XMLUtils().save_xml_file(next_bill.xml(), output_bill, user, password)
 
 
@@ -592,6 +599,7 @@ class Process(object):
         inputtree = etree.parse(inputbill)
         outputtree = etree.parse(outputbill)
 
+        # TODO: refactor out xml code to depend on bill.py
         utilbill_begin_periods = self.get_elem(inputtree, "/ub:bill/ub:utilbill/ub:billperiodbegin")
         utilbill_end_periods = self.get_elem(inputtree, "/ub:bill/ub:utilbill/ub:billperiodend")
 
@@ -627,6 +635,7 @@ class Process(object):
         # TODO: parameterize for dependence on customer 
         duedate = issuedate + datetime.timedelta(days=30)
 
+        # TODO: refactor out xml code to depend on bill.py
         self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:issued")[0].text = issuedate.strftime("%Y-%m-%d")
         self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:duedate")[0].text = duedate.strftime("%Y-%m-%d")
 
