@@ -122,6 +122,7 @@ function renderWidgets()
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
                 {text: 'Bind Rate Structure', handler: bindRSOperation},
+                {text: 'Pay', handler: payOperation},
                 {text: 'Sum', handler: sumOperation},
                 {text: 'CalcStats', handler: calcStatsOperation},
                 {text: 'Issue', handler: issueOperation},
@@ -235,6 +236,58 @@ function renderWidgets()
         }, billDidNotSave);
     }
 
+    function payOperation()
+    {
+        // modal to accept amount paid
+        Ext.Msg.prompt('Amount Paid', 'Enter amount paid:', function(btn, text){
+            if (btn == 'ok')
+            {
+                this.registerAjaxEvents()
+                var amountPaid = parseFloat(text)
+                saveToXML(function() {
+
+                    account = accountCombo.getValue();
+                    sequence = sequenceCombo.getValue();
+
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/billtool/pay',
+                        params: { 
+                            account: account,
+                            sequence: sequence,
+                            amount: amountPaid
+                        },
+                        disableCaching: true,
+                        // TODO refactor this
+                        success: function (response, options) {
+                            var o = {};
+                            try {o = Ext.decode(response.responseText);}
+                            catch(e) {
+                                alert("Could not decode JSON data");
+                            }
+                            if(true !== o.success) {
+                                Ext.Msg.alert('Error', o.errors.reason);
+
+                            } else {
+                                // do your success processing here
+                                // loads a bill from eXistDB
+                                Ext.Ajax.request({
+                                    url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + accountCombo.getValue() 
+                                        + '/' + sequence + '.xml',
+                                   success: billLoaded,
+                                   failure: billLoadFailed,
+                                   disableCaching: true,
+                                });
+                            }
+                        },
+                        failure: function () {
+                            alert("roll response fail");
+                        }
+                    });
+                }, billDidNotSave);
+            }
+        });
+    }
+
     function bindRSOperation()
     {
         saveToXML(function() {
@@ -276,6 +329,37 @@ function renderWidgets()
     }
 
     function rollOperation()
+    {
+        saveToXML(function() {
+
+            this.registerAjaxEvents()
+            Ext.Ajax.request({
+                url: 'http://'+location.host+'/billtool/roll',
+                params: { 
+                    account: accountCombo.getValue(),
+                    sequence: sequenceCombo.getValue()
+                },
+                disableCaching: true,
+                success: function () {
+                    // do your success processing here
+                    // loads a bill from eXistDB
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + accountCombo.getValue() 
+                            + '/' + (parseInt(sequence)+1) + '.xml',
+                    // TODO: we just loaded sequence +1, so UI widgets would need to be updated
+                       success: billLoaded,
+                       failure: billLoadFailed,
+                       disableCaching: true,
+                    });
+                }
+                failure: function () {
+                    alert("Roll response fail");
+                }
+            });
+        }, billDidNotSave);
+    }
+
+    /*function rollOperation()
     {
         // modal to accept amount paid
         Ext.Msg.prompt('Amount Paid', 'Enter amount paid:', function(btn, text){
@@ -326,7 +410,7 @@ function renderWidgets()
                 }, billDidNotSave);
             }
         });
-    }
+    }*/
 
     function issueOperation()
     {
@@ -1416,6 +1500,11 @@ function renderWidgets()
         actualCharges = getActualCharges(bill);
         hypotheticalCharges = getHypotheticalCharges(bill);
 
+
+        // which bill loaded? We need to look in the bill, or have the params
+        // of the ajax call that loaded this bill.
+        // by getting the current values out of the ui, a bug is created on the 
+        // roll operation. 
         account = accountCombo.getValue();
         sequence = sequenceCombo.getValue();
         Ext.Ajax.request({
