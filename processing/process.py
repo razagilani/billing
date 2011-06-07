@@ -43,10 +43,13 @@ class Process(object):
         return tree.xpath(xpath, namespaces={"ub":"bill"})
 
 
+    # TODO convert to property access
+    # TODO rename to sum_bill
     # compute the value, charges and savings of renewable energy
-    def sumbill(self, unprocessedBill, targetBill, discount_rate = None, user=None, password=None):
+    def sumbill(self, prior_bill, unprocessedBill, targetBill, discount_rate = None, user=None, password=None):
         # TODO discount_rate should be a decimal so that it doesn't have to be converted below.
 
+        prior_bill = bill.Bill(prior_bill)
         the_bill = bill.Bill(unprocessedBill)
 
         # get data from the bill
@@ -83,6 +86,11 @@ class Process(object):
 
             rebill_summary['actualecharges'] += charges['actualecharges']
             rebill_summary['hypotheticalecharges'] += charges['hypotheticalecharges']
+
+        # from old roll bill
+        #r.balanceforward = r.priorbalance - r.paymentreceived
+        rebill_summary.priorbalance = prior_bill.rebill_summary.totaldue
+        rebill_summary['balanceforward'] = rebill_summary['priorbalance'] - rebill_summary['paymentreceived']
 
         rebill_summary['totaldue'] = rebill_summary['totaladjustment'] + rebill_summary['balanceforward'] + rebill_summary['recharges']
 
@@ -164,7 +172,34 @@ class Process(object):
 
         XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
 
+    def pay_bill(self, source_bill, target_bill, amountPaid, user=None, password=None):
+        """
+        Accepts the prior bill, so that the total due can be obtained.
+        Sets the payment in the targetbill.
+        Prior bills can be recomputed, which may change the past total due.
+        Therefore current bills must pull that value forward.
+        """
+
+        #prior = bill.Bill(prior_bill)
+        pay = bill.Bill(source_bill)
+
+        pay_rebill = pay.rebill_summary
+
+        # do this in sumBill
+        #pay_rebill.priorbalance = prior.rebill_summary.totaldue
+        pay_rebill.paymentreceived = Decimal(amountPaid)
+
+        # set rebill back to bill
+        pay.rebill_summary = pay_rebill
+
+        XMLUtils().save_xml_file(pay.xml(), target_bill, user, password)
+
+
     def roll_bill(self, inputbill, targetBill, amountPaid, user=None, password=None):
+        """
+        Create rebill for next period, based on prior bill.
+        This is acheived by accessing xml document for prior bill, and resetting select values.
+        """
 
         the_bill = bill.Bill(inputbill)
 
@@ -190,10 +225,11 @@ class Process(object):
         r.message = None
 
         # compute payments
-        r.priorbalance = r.totaldue
+        # moved to pay bill
+        #r.priorbalance = r.totaldue
         r.totaldue = Decimal("0.00")
-        r.paymentreceived = Decimal(amountPaid)
-        r.balanceforward = r.priorbalance - r.paymentreceived
+        #r.paymentreceived = Decimal(amountPaid)
+        #r.balanceforward = r.priorbalance - r.paymentreceived
 
         # set rebill back to bill
         the_bill.rebill_summary = r
