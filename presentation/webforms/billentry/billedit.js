@@ -27,6 +27,76 @@ function renderWidgets()
         YearMonth: "F, Y"
     };
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Upload tab
+    //
+    //
+
+    // account field
+    var upload_account = new Ext.form.TextField({
+        fieldLabel: 'Account',
+            name: 'account',
+            width: 200,
+            allowBlank: false,
+    });
+    // date fields
+    var upload_begin_date = new Ext.form.DateField({
+        fieldLabel: 'Begin Date',
+            name: 'begin_date',
+            width: 90,
+            allowBlank: false,
+            format: 'Y-m-d'
+    });
+    var upload_end_date = new Ext.form.DateField({
+        fieldLabel: 'End Date',
+            name: 'end_date',
+            width: 90,
+            allowBlank: false,
+            format: 'Y-m-d'
+    });
+
+    // buttons
+    var upload_reset_button = new Ext.Button({
+        text: 'Reset',
+        handler: function() {this.findParentByType(Ext.form.FormPanel).getForm().reset(); }
+    });
+    var upload_submit_button = new Ext.Button({
+        text: 'Submit',
+        handler: saveForm
+    });
+
+    var upload_form_panel = new Ext.form.FormPanel({
+        fileUpload: true,
+        title: 'Upload Bill',
+        width: 400,
+        url: 'http://'+location.host+'/billtool/upload_utility_bill',
+        frame:true,
+        autoHeight: true,
+        bodyStyle: 'padding: 10px 10px 0 10px;',
+        labelWidth: 50,
+        defaults: {
+            anchor: '95%',
+            allowBlank: false,
+            msgTarget: 'side'
+        },
+
+        items: [
+            upload_account,
+            upload_begin_date,
+            upload_end_date,
+            //file_chooser - defined in FileUploadField.js
+            {
+                xtype: 'fileuploadfield',
+                id: 'form-file',
+                emptyText: 'Select a file to upload',
+                name: 'file_to_upload',
+                buttonText: 'Choose file...',
+                buttonCfg: { width:80 }
+            },
+        ],
+
+        buttons: [upload_reset_button, upload_submit_button],
+    });
 
     ////////////////////////////////////////////////////////////////////////////
     // Account and Bill selection tab
@@ -51,6 +121,9 @@ function renderWidgets()
         typeAhead: true,
         triggerAction: 'all',
         emptyText:'Select...',
+        // TODO: seems to have no effect. investigate.
+        //resizeable: true,
+        width: 350,
         selectOnFocus:true,
     });
 
@@ -71,6 +144,7 @@ function renderWidgets()
         typeAhead: true,
         triggerAction: 'all',
         emptyText:'Select...',
+        width: 350,
         selectOnFocus:true,
     });
 
@@ -351,66 +425,13 @@ function renderWidgets()
                        failure: billLoadFailed,
                        disableCaching: true,
                     });
-                }
+                },
                 failure: function () {
                     alert("Roll response fail");
                 }
             });
         }, billDidNotSave);
     }
-
-    /*function rollOperation()
-    {
-        // modal to accept amount paid
-        Ext.Msg.prompt('Amount Paid', 'Enter amount paid:', function(btn, text){
-            if (btn == 'ok')
-            {
-                this.registerAjaxEvents()
-                var amountPaid = parseFloat(text)
-                saveToXML(function() {
-
-                    account = accountCombo.getValue();
-                    sequence = sequenceCombo.getValue();
-                    // sequences come back from eXist as [seq].xml
-                    sequence = sequence;
-
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/billtool/roll',
-                        params: { 
-                            account: account,
-                            sequence: sequence,
-                            amount: amountPaid
-                        },
-                        disableCaching: true,
-                        success: function (response, options) {
-                            var o = {};
-                            try {o = Ext.decode(response.responseText);}
-                            catch(e) {
-                                alert("Could not decode JSON data");
-                            }
-                            if(true !== o.success) {
-                                Ext.Msg.alert('Error', o.errors.reason);
-
-                            } else {
-                                // do your success processing here
-                                // loads a bill from eXistDB
-                                Ext.Ajax.request({
-                                    url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + accountCombo.getValue() 
-                                        + '/' + (parseInt(sequence)+1) + '.xml',
-                                   success: billLoaded,
-                                   failure: billLoadFailed,
-                                   disableCaching: true,
-                                });
-                            }
-                        },
-                        failure: function () {
-                            alert("roll response fail");
-                        }
-                    });
-                }, billDidNotSave);
-            }
-        });
-    }*/
 
     function issueOperation()
     {
@@ -534,6 +555,10 @@ function renderWidgets()
 
     //
     ////////////////////////////////////////////////////////////////////////////
+
+
+
+
 
     ////////////////////////////////////////////////////////////////////////////
     // Bill Period tab
@@ -1409,6 +1434,13 @@ function renderWidgets()
       activeTab: 0,
       items:[
         {
+          title: 'Upload Utility Bill',
+          xtype: 'panel',
+          layout: 'fit',
+          items: [
+            upload_form_panel
+          ],
+        },{
           title: 'Select Bill',
           xtype: 'panel',
           bodyStyle:'padding:10px 10px 0px 10px',

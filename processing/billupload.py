@@ -4,6 +4,7 @@ import logging
 import time
 import re
 
+# TODO prepend module directory to this file
 CONFIG_FILE = 'billupload_config'
 
 # strings allowed as account names
