@@ -60,14 +60,15 @@ class BillUpload(object):
         self.logger.addHandler(handler) 
     
    
-    def upload(self, account, begin_date, end_date, file_to_upload):
-        # this method just passes the arguments along to upload_bill and
-        # reports the result in JSON format so there's no JSON mixed into the
-        # real code
+   '''Accepts parameters for file upload, passes them to upload_bill, and
+   returns a response in JSON format (because there shouldn't be any JSON mixed
+   into the real code.)'''
+   def upload(self, account, begin_date, end_date, file_to_upload):
         if upload_bill(account, begin_date, end_date, file_to_upload):
             return '{success: true}'
         return '{sucess: false}'
 
+    '''Performs the actual work of uploading a file.'''
     def upload_bill(self, account, begin_date, end_date, file_to_upload):
         # check account name (removes malicious input, e.g. starting with '../')
         # TODO: check that it's really an existing account?
