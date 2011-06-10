@@ -1,28 +1,25 @@
 #!/usr/bin/python
 import os
+import sys
 import errno
 import logging
 import time
 import re
-
+import ConfigParser
 '''
-questions:
+This was supposed to be completely independent of cherrypy, but cherrypy passes the file argument as a cherrypy object, not a string or file object. See comment on BillUpload.upload().  Note that this problem also makes it hard to write tests or a command-line interface.
 
-- "Check in a 'dummy' config file. Usually name it filename-dev.config and another filename-prod.config.  Or, have the code create the file which is then hg ignored.  Don't ever write config file code - there is always a framework, and that framework is being used where your code was integrated, and is using python module support vs a hand rolled parser."
-config file is supposed to be read/written by some built-in python library? what format and what library?
-
-- should all the constants below go in the config file?
-
-- why is it better to raise exceptions than to return an error value? it kills the program so the failure doesn't get reported to the user. or do you mean to catch all exceptions in upload() and return {success: false} from there?
-
-- what do you mean by an external validator? i can separate validation into another object  but that still won't know things like what numbers correspond to an existing account.
-
-- how can i remove all cherrypy dependency when the file parameter is a cherrypy object?
-- how can i test the code that involves cherrypy stuff from the command line? i cannot pass in a cherrypy file object from a command-line interface (unless cherrypy provides a way to create it)
-
+TODO:
+    move some of the constants below into the config file?
 '''
-# TODO: is this what you mean by prepending the module directory?
-CONFIG_FILE_PATH = os.path.join(os.getcwd(), 'billupload_config')
+# config file should always be in same directory as this file: set it to the
+# path to the directory containing this file, relative to the program's current
+# directory (which will be different if the code in this file is called from a
+# different file
+#CONFIG_FILE_PATH = os.dirname(__file__)
+#CONFIG_FILE_PATH = os.path.join(os.getcwd(), 'billupload_config')
+# according to bill_tool_bridge.py, the correct way is:
+CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),'billupload_config')
 
 # strings allowed as account names
 ACCOUNT_NAME_REGEX = '[0-9]{5}'
@@ -35,94 +32,109 @@ OUTPUT_DATE_FORMAT = '%Y%m%d'
 
 # where account directories are located (uploaded files are saved inside of
 # those)
-# TODO: change this directory eventually
+# TODO: eventually change this to the real location
 SAVE_DIRECTORY = '/tmp'
 
-# format of error messages in the log file
-LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
+# default name of log file (config file can override this)
+DEFAULT_LOG_FILE_NAME = 'billupload.log'
 
+# default format of log entries (config file can override this)
+DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
 class BillUpload(object):
 
     def __init__(self):
-        # read config file if it exists, to get path of log file
+        # TODO: separate config-related code and use that also for 
+        # bill_tool_bridge.py
+        # if config file doesn't exist, create default version
+        # (self.config.read() can fail in 2 ways: returns None if file doesn't
+        # exist, raises exception in ConfigParser if the file is malformed.)
+        self.config = ConfigParser.RawConfigParser()
         try:
-            config_file = open(CONFIG_FILE_PATH)
-            for index, line in enumerate(config_file.read().split('\n')):
-                if index == 0:
-                    self.log_file = line
-                else:
-                    # TODO: what if there was no config in the file?
-                    pass
-        except IOError as e:
-            #TODO: what should i do if the file doesn't exist? create it with
-            # default values, use default values without creating the file, or
-            # just exit?
-            print e
-            exit()
-        finally:
-            config_file.close()
-
+            result = self.config.read(CONFIG_FILE_PATH)
+            if not result:
+                self.create_default_config_file()
+        except:
+            print >> sys.stderr, 'Config file at %s is malformed.' \
+                    % CONFIG_FILE_PATH
+            self.create_default_config_file()
+        
+        # get log file name and format from config file
+        log_file_path = os.path.join( \
+                os.path.dirname(os.path.realpath(__file__)), \
+                self.config.get('log', 'log_file_name'))
+        log_format = self.config.get('log', 'log_format')
+        
         # make sure log file is writable
-        # TODO this should not even run if log_file was not assigned
-        if not os.access(self.log_file, os.W_OK):
-            # TODO what should happen in this case? (note that loging this
-            # error is impossible)
-            print 'log file path "%s" is not writable.' % log_file
-            exit()
+        try:
+            open(log_file_path, 'a').close() # 'a' for append
+        except Exception as e:
+            # logging this error is impossible, so print to stderr
+            print >> sys.stderr, 'Log file path "%s" is not writable.' \
+                    % log_file_path
+            raise
         
         # create logger
         self.logger = logging.getLogger('billupload')
-        formatter = logging.Formatter(LOG_FORMAT)
-        handler = logging.FileHandler(self.log_file)
+        formatter = logging.Formatter(log_format)
+        handler = logging.FileHandler(log_file_path)
         handler.setFormatter(formatter)
         self.logger.addHandler(handler) 
 
 
-    '''Accepts parameters for file upload, passes them to upload_bill, and
-    returns a response in JSON format (because there shouldn't be any JSON mixed
-    into the real code.)'''
-    def upload(self, account, begin_date, end_date, file_to_upload):
-        if self.upload_bill(account, begin_date, end_date, file_to_upload):
-            return '{success: true}'
-        return '{sucess: false}'
-
-    '''Performs the actual work of uploading a file.'''
-    def upload_bill(self, account, begin_date, end_date, file_to_upload):
-        # check account name (removes malicious input, e.g. starting with '../')
-        # TODO: check that it's really an existing account?
-        if not re.match(ACCOUNT_NAME_REGEX, account):
-            self.logger.error('invalid account name: "%s"' % account)
-            # TODO raise exception? Perhaps an external validator can do this work since it
-            # is not directly related to uploading and saving files
-            return False
+    '''Writes a config file with default values at CONFIG_FILE_PATH.'''
+    def create_default_config_file(self):
+        print "Creating default config file at", CONFIG_FILE_PATH
+        self.config.add_section('log')
+        self.config.set('log', 'log_file_name', DEFAULT_LOG_FILE_NAME)
+        self.config.set('log', 'log_format', DEFAULT_LOG_FORMAT)
         
-        # convert dates from string to python's 'time.struct_time' type, and
-        # back, to get formatted dates
+        # write the file to CONFIG_FILE_PATH
+        with open(CONFIG_FILE_PATH, 'wb') as new_config_file:
+            self.config.write(new_config_file)
+        
+        # read from config file now that it must exist
+        self.config.read(CONFIG_FILE_PATH)
+
+
+    '''Uploads the file given by file_to_upload to the location
+    [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]. Returns
+    True for success, or throws one of various exceptions if something doesn't
+    work. (The caller takes care of reporting the error in the proper format.)
+    Note that account, begin_date, and end_date are strings, but file_to_upload
+    is a cherrypy object of class 'cherrypy._cpreqbody.Part'--so it's hard to
+    completely remove cherrypy dependency from this file. '''
+    # TODO: remove cherrypy dependency. caller should extract the actual file
+    # from cherrypy's object and pass that as 'file_to_upload'
+    def upload(self, account, begin_date, end_date, file_to_upload):
+        # check account name (validate_account just checks it against a regex)
+        # TODO: check that it's really an existing account against nexus
+        if not validate_account(account):
+            self.logger.error('invalid account name: "%s"' % account)
+            raise ValueError('invalid account name: "%s"' % account)
+
+        # convert dates into the proper format, & report error if that fails
         try:
-            begin_date_object = time.strptime(begin_date, INPUT_DATE_FORMAT)
-            end_date_object = time.strptime(end_date, INPUT_DATE_FORMAT)
+            formatted_begin_date = format_date(begin_date)
+            formatted_end_date = format_date(begin_date)
         except Exception as e:
-            self.logger.error('unexpected date format(s): %s, %s\n%s' \
+            self.logger.error('unexpected date format(s): %s, %s: %s' \
                     % (begin_date, end_date, str(e)))
-            # TODO raise exception? Perhaps an external validator can do this work since it
-            # is not directly related to uploading and saving files
-            return False
-        formatted_begin_date = time.strftime(OUTPUT_DATE_FORMAT, begin_date_object)
-        formatted_end_date = time.strftime(OUTPUT_DATE_FORMAT, end_date_object)
+            raise
         
         # read whole file in one chunk
         try:
             data = file_to_upload.file.read()
-        except:
-            self.logger.error('unable to read "' + file_to_upload.filename + '"')
-            # TODO raise exception
-            return False
+        except Exception as e:
+            self.logger.error('unable to read "%s": %s' % \
+                    (file_to_upload.filename, str(e)))
+            raise
         finally:
             file_to_upload.file.close()
         
-        # path where file will be saved: # [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]
-        # (NB: date format is determined by the submitter)
+        # path where file will be saved:
+        # [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension] (NB:
+        # date format is determined by the submitter)
         save_file_path = os.path.join(SAVE_DIRECTORY, account, \
                 formatted_begin_date + '-' + formatted_end_date \
                 + os.path.splitext(file_to_upload.filename)[1])
@@ -130,42 +142,46 @@ class BillUpload(object):
         # create the save directory if it doesn't exist
         try:
             os.makedirs(os.path.join(SAVE_DIRECTORY, account))
-        except OSError as error:
-            if error.errno == errno.EEXIST:
+        except OSError as e:
+            if e.errno == errno.EEXIST:
                 pass
             else:
-                self.logger.error('unable to create directory "%"' \
-                        % os.path.join(SAVE_DIRECTORY, save_file_path));
-                # TODO raise exception
-                return False
+                self.logger.error('unable to create directory "%s": %s' \
+                        % (os.path.join(SAVE_DIRECTORY, save_file_path), \
+                        str(e)))
+                raise
         
         # write the file in SAVE_DIRECTORY
-        save_file = open(save_file_path, 'w')
+        save_file = None
         try:
+            save_file = open(save_file_path, 'w')
             save_file.write(data)
-        except:
-            self.logger.error('unable to write "' + save_file_path + '"')
-            # TODO raise exception
-            return False
+        except Exception as e:
+            self.logger.error('unable to write "%s": %s' \
+                    % (save_file_path, str(e)))
+            raise
         finally:
-            save_file.close()
+            if save_file is not None:
+                save_file.close()
 
         return True
 
-# command-line interface for testing
-# note: this doesn't work because it passes argument 3 to upload_bill as a
-# string, but it needs to be a cherrypy file object (<class 'cherrypy._cpreqbody.Part'>)
-def main():
-    bu = BillUpload()
+# two "external validators" for checking accounts and dates ###################
 
-    args = raw_input('> ').split()
-    while args != ['q']:
-        if len(args) == 4:
-            print bu.upload(args[0], args[1], args[2], args[3])
-        else:
-            print 'enter 4 arguments'
-        args = raw_input('> ').split()
+'''Returns true iff the account is valid (just checks agains a regex, but this
+removes dangerous input)'''
+def validate_account(account):
+    return re.match(ACCOUNT_NAME_REGEX, account)
 
-if __name__ == '__main__':
-    main()
+'''Takes a date formatted according to INPUT_DATE_FORMAT and returns one
+formatted according to OUTPUT_DATE_FORMAT. if the argument dose not match
+INPUT_DATE_FORMAT, raises an exception.'''
+def format_date(date_string):
+    # convert to a time.struct_time object
+    try:
+        date_object = time.strptime(date_string, INPUT_DATE_FORMAT)
+    except:
+        raise
+    # convert back
+    return time.strftime(OUTPUT_DATE_FORMAT, date_object)
 
