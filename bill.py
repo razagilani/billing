@@ -38,6 +38,7 @@ class Bill(object):
     """
     A container for bill data.  Business logic is purposefully externalized.
     - Return types cannot be JSON encoded because of datetime and decimal types. json_util implements codecs for Date, Time and Decimal.
+                # xpath says "all charge children except the sibling total"
     - Returned data are hierarchical MutableNamedTuples, which are OrderedDicts to preserve XML doc order and should be returned as such.
     - This is difficult, because data being posted from a web browser may lose order, therefore the wsgi must pay attention to updating and
      deleting properties in the MutableNamedTuples based on the results in the post.
@@ -62,6 +63,7 @@ class Bill(object):
     - bills are selected by account and sequence
     - bills filter their data by service
     - consumers of a Bill have to flatten hierarchical data for wsgi/form posts
+    - the only data Bill should act on are data that directly map to and from the underlying XML.  In otherwords, a subtree could be returned from an xpath select, but the resultant structure of that data should not be changed.  For example, flattening chargegroup/charges such that they may be edited in a table.  The consumer of bill does that flattening.
 
     """
    
@@ -794,12 +796,6 @@ class Bill(object):
         self.prop_to_cdata(r, "issued", rebill_elem, "issued")
         self.prop_to_cdata(r, "message", rebill_elem, "message")
 
-    @property
-    def actual_charges(self):
-        """
-        Return by service, actual charges grouped by chargegroup including chargegroup totals.
-        """
-        return self.charge_items('actual')
 
     @property
     def actual_details(self):
@@ -823,6 +819,14 @@ class Bill(object):
     def hypothetical_details(self, details):
         return self.set_details('hypothetical', details)
 
+    @property
+    def actual_charges(self):
+        """
+        Return by service, actual charges grouped by chargegroup including chargegroup totals.
+        """
+        return self.charge_items('actual')
+
+    # TODO: this can depend on set_details
     @actual_charges.setter
     def actual_charges(self, charge_items):
         """
@@ -830,6 +834,7 @@ class Bill(object):
         """
         return self.set_charge_items('actual', charge_items)
 
+    # TODO: this can depend on set_details
     @property
     def hypothetical_charges(self):
         """
@@ -837,6 +842,7 @@ class Bill(object):
         """
         return self.charge_items('hypothetical')
 
+    # TODO: this can depend on set_details
     @hypothetical_charges.setter
     def hypothetical_charges(self, charge_items):
         """
@@ -844,104 +850,8 @@ class Bill(object):
         """
         return self.set_charge_items('hypothetical', charge_items)
 
-    # Should all dollar quantities be treated as Decimal?  Probably, but how will this impact serialization to JSON?
-    def charge_items(self, charges_type):
-        """
-        Return ci_type charge items by service with charges grouped by chargegroup including chargegroup and grand totals.
-        """
-        charge_items = {} 
 
-        # this is really pedantic, but incrementally building the xpath makes the code much clearer
-
-        # get each type of service present
-        for detail_service in self.xpath("/ub:bill/ub:details/@service"):
-
-            # convert lxml object to a string to act as dict key
-            detail_service = str(detail_service)
-            
-            charge_items[detail_service] = {}
-            
-            grand_total = self.xpath("/ub:bill/ub:details[@service='%s']/ub:total[@type='%s']" % (detail_service, charges_type))[0].text
-
-            charge_items[detail_service]['chargegroups'] = {}
-            charge_items[detail_service]['total'] = Decimal(grand_total)
-            #.quantize(Decimal('.0000'))
-
-            # get chargegroup types for that service
-            for cg_type in self.xpath("/ub:bill/ub:details[@service='%s']/ub:chargegroup/@type" % detail_service):
-
-                # convert lxml object to a string to act as dict key
-                cg_type = str(cg_type)
-
-                charge_items[detail_service]['chargegroups'][cg_type] = {}
-
-                # get the charges of charges_type from the chargegroup
-                for charges in self.xpath("/ub:bill/ub:details[@service='%s']/ub:chargegroup[@type='%s']/ub:charges[@type='%s']" % (detail_service, cg_type, charges_type)):
-
-                    charge_items[detail_service]['chargegroups'][cg_type]['charges'] = []
-
-                    charge_items[detail_service]['chargegroups'][cg_type]['total'] = Decimal(charges.find("ub:total", namespaces={"ub":"bill"}).text)
-                    #.quantize(Decimal('.0000'))
-                    
-                    for charge in charges.findall("ub:charge", namespaces={"ub":"bill"}):
-
-                        rsbinding = charge.get('rsbinding')
-
-                        description = charge.find("ub:description", namespaces={'ub':'bill'})
-                        description = description.text if description is not None else None
-
-                        quantity = charge.find("ub:quantity", namespaces={'ub':'bill'})
-                        quantity = quantity.text if quantity is not None else None
-
-                        # TODO review lxml api for a better method to access attributes
-                        quantity_units = charge.xpath("ub:quantity/@units", namespaces={'ub':'bill'})
-                        if (len(quantity_units)):
-                            quantity_units = quantity_units[0]
-                        else:
-                            quantity_units = ""
-
-                        # TODO helper to quantize based on units
-                        # TODO not sure we want to quantize here. think it over.
-                        if (quantity_units.lower() == 'therms'):
-                            quantity = Decimal(quantity)
-                            #.quantize(Decimal('.00'))
-                        elif (quantity_units.lower() == 'dollars'):
-                            quantity = Decimal(quantity)
-                            #.quantize(Decimal('.00'))
-                        elif (quantity_units.lower() == 'kwh'):
-                            quantity = Decimal(quantity)
-                            #.quantize(Decimal('.0'))
-
-                        rate = charge.find("ub:rate", namespaces={'ub':'bill'})
-                        rate = rate.text if rate is not None else None
-                        
-                        # TODO review lxml api for a better method to access attributes
-                        rate_units = charge.xpath("ub:rate/@units", namespaces={'ub':'bill'})
-                        if (len(rate_units)):
-                            rate_units = rate_units[0]
-                        else:
-                            rate_units = ""
-
-                        total = charge.find("ub:total", namespaces={'ub':'bill'})
-                        total = Decimal(total.text) if total is not None else None
-                        #.quantize(Decimal('.0000'))
-
-                        processingnote = charge.find("ub:processingnote", namespaces={'ub':'bill'})
-                        processingnote = processingnote.text if processingnote is not None else None
-
-                        charge_items[detail_service]['chargegroups'][cg_type]['charges'].append({
-                            'rsbinding': rsbinding,
-                            'description': description,
-                            'quantity': quantity,
-                            'quantity_units': quantity_units,
-                            'rate': rate,
-                            'rate_units': rate_units,
-                            'total': total,
-                            'processingnote': processingnote
-                        })
-
-        return charge_items
-
+    # consider merging the charge_items code in here
     def details(self, charges_type):
         """
         Return details by service
@@ -1018,7 +928,9 @@ class Bill(object):
 
                         total_mnt = MutableNamedTuple()
 
-                        self.cdata_to_prop(charges_child, "total", Decimal, total_mnt, "total")
+                        # total is a sibling to the charges that are being iterated
+                        # therefore, when a total is encountered, have to go up a level for cdata_to_prop
+                        self.cdata_to_prop(charges_child.getparent(), "total", Decimal, total_mnt, "total")
 
 
                         # TODO: why append total to the charges list? Why not chargegroup_mnt.charges.total? Would that simplify the set_details code?
@@ -1130,8 +1042,228 @@ class Bill(object):
             self.prop_to_cdata_attr(details, "total", details_elem, "total", [("type", charges_type)])
 
 
+    # until the XML model is changed to remove the charge sibling total to another location
+    # UI code needs this support because it is not possible to distinguish the types of tuples in an array. <charge/><total/> becomes [tuple, tuple]
+    # so, we return only charges.  details() will be used in the future when the consumer of details can look only at charges and not have to worry about totals.
+    @property
+    def actual_charges_no_totals(self):
+        return self.charge_items_no_totals('actual')
 
-    def set_charge_items(self, charges_type, charge_items):
+    @property
+    def hypothetical_charges_no_totals(self):
+        return self.charge_items_no_totals('hypothetical')
+
+    def charge_items_no_totals(self, charges_type):
+        """
+        """
+        # a dictionary of chargegroups whose key is service
+        charge_items = {} 
+
+        # enumerate each detail by service
+        for detail in self.xpath("/ub:bill/ub:details"):
+
+            service = detail.get("service")
+
+            charge_items[service] = MutableNamedTuple()
+
+            charge_items[service].chargegroups = []
+
+            for chargegroup in detail.findall("ub:chargegroup", {"ub":"bill"}):
+
+                chargegroup_mnt = MutableNamedTuple()
+
+                self.attr_to_prop(chargegroup, "type", str, chargegroup_mnt, "type")
+
+                for charges_child in chargegroup.find("ub:charges[@type='%s']" % (charges_type), {"ub":"bill"}):
+
+                    if charges_child.tag == "{bill}charge":
+
+                        charge_mnt = MutableNamedTuple()
+
+                        self.attr_to_prop(charges_child, "rsbinding", str, charge_mnt, "rsbinding")
+                        self.cdata_to_prop(charges_child, "description", str, charge_mnt, "description")
+                        self.cdata_to_prop(charges_child, "quantity", Decimal, charge_mnt, "quantity")
+                        self.attr_to_prop(charges_child.find("ub:quantity", {"ub":"bill"}), "units", str, charge_mnt, "quantityunits")
+                        self.cdata_to_prop(charges_child, "rate", Decimal, charge_mnt, "rate")
+                        self.attr_to_prop(charges_child.find("ub:rate", {"ub":"bill"}), "units", str, charge_mnt, "rateunits")
+                        self.cdata_to_prop(charges_child, "total", Decimal, charge_mnt, "total")
+                        self.cdata_to_prop(charges_child, "processingnote", str, charge_mnt, "processingnote")
+
+                        # initialize the charges property as an array if it has not already been done
+                        if not hasattr(chargegroup_mnt, "charges"): chargegroup_mnt.charges = []
+                        chargegroup_mnt.charges.append(charge_mnt)
+
+                    elif charges_child.tag == "{bill}total":
+                        pass
+
+                charge_items[service].chargegroups.append(chargegroup_mnt)
+
+        print "will return %s %s" % (charges_type, charge_items)
+
+        return charge_items 
+
+    def charge_items(self, charges_type):
+        """
+        """
+
+        # a dictionary with service as keys
+        charge_items = {} 
+
+        # enumerate each detail by service
+        for detail in self.xpath("/ub:bill/ub:details"):
+
+            service = detail.get("service")
+
+            charge_items[service] = MutableNamedTuple()
+
+            self.cdata_attr_to_prop(detail, "total", [("type", charges_type)], Decimal, charge_items[service], "total")
+
+            charge_items[service].chargegroups = []
+
+            for chargegroup in detail.findall("ub:chargegroup", {"ub":"bill"}):
+
+                chargegroup_mnt = MutableNamedTuple()
+
+                self.attr_to_prop(chargegroup, "type", str, chargegroup_mnt, "type")
+                # eventually chargegroups should have totals too
+                #self.cdata_to_prop(chargegroup, "total", Decimal, chargegroup_mnt, "total")
+
+
+                for charges_child in chargegroup.find("ub:charges[@type='%s']" % (charges_type), {"ub":"bill"}):
+
+                    # initialize the charges property as an array if it has not already been done
+                    if not hasattr(chargegroup_mnt, "charges"): chargegroup_mnt.charges = []
+
+                    if charges_child.tag == "{bill}charge":
+
+                        charge_mnt = MutableNamedTuple()
+
+                        self.attr_to_prop(charges_child, "rsbinding", str, charge_mnt, "rsbinding")
+                        self.cdata_to_prop(charges_child, "description", str, charge_mnt, "description")
+                        self.cdata_to_prop(charges_child, "quantity", Decimal, charge_mnt, "quantity")
+                        self.attr_to_prop(charges_child.find("ub:quantity", {"ub":"bill"}), "units", str, charge_mnt, "quantityunits")
+                        self.cdata_to_prop(charges_child, "rate", Decimal, charge_mnt, "rate")
+                        self.attr_to_prop(charges_child.find("ub:rate", {"ub":"bill"}), "units", str, charge_mnt, "rateunits")
+                        self.cdata_to_prop(charges_child, "total", Decimal, charge_mnt, "total")
+                        self.cdata_to_prop(charges_child, "processingnote", str, charge_mnt, "processingnote")
+
+                        chargegroup_mnt.charges.append(charge_mnt)
+
+                    elif charges_child.tag == "{bill}total":
+
+                        total_mnt = MutableNamedTuple()
+
+                        self.cdata_to_prop(charges_child.getparent(), "total", Decimal, total_mnt, "total")
+
+                        # TODO: why append total to the charges list? Why not chargegroup_mnt.charges.total? Would that simplify the set_details code?
+                        # because mnt's don't nest unless another mnt is initialized, and the total is a sibling to the charges, so why deviate from
+                        # the xml model?
+                        chargegroup_mnt.charges.append(total_mnt)
+
+                charge_items[service].chargegroups.append(chargegroup_mnt)
+
+        return charge_items 
+
+
+    """
+        old version
+        Return ci_type charge items by service with charges grouped by chargegroup including chargegroup and grand totals.
+        charge_items = {} 
+
+        # this is really pedantic, but incrementally building the xpath makes the code much clearer
+
+        # get each type of service present
+        for detail_service in self.xpath("/ub:bill/ub:details/@service"):
+
+            # convert lxml object to a string to act as dict key
+            detail_service = str(detail_service)
+            
+            charge_items[detail_service] = {}
+            
+            grand_total = self.xpath("/ub:bill/ub:details[@service='%s']/ub:total[@type='%s']" % (detail_service, charges_type))[0].text
+
+            charge_items[detail_service]['chargegroups'] = {}
+            charge_items[detail_service]['total'] = Decimal(grand_total)
+            #.quantize(Decimal('.0000'))
+
+            # get chargegroup types for that service
+            for cg_type in self.xpath("/ub:bill/ub:details[@service='%s']/ub:chargegroup/@type" % detail_service):
+
+                # convert lxml object to a string to act as dict key
+                cg_type = str(cg_type)
+
+                charge_items[detail_service]['chargegroups'][cg_type] = {}
+
+                # get the charges of charges_type from the chargegroup
+                for charges in self.xpath("/ub:bill/ub:details[@service='%s']/ub:chargegroup[@type='%s']/ub:charges[@type='%s']" % (detail_service, cg_type, charges_type)):
+
+                    charge_items[detail_service]['chargegroups'][cg_type]['charges'] = []
+
+                    charge_items[detail_service]['chargegroups'][cg_type]['total'] = Decimal(charges.find("ub:total", namespaces={"ub":"bill"}).text)
+                    #.quantize(Decimal('.0000'))
+                    
+                    for charge in charges.findall("ub:charge", namespaces={"ub":"bill"}):
+
+                        rsbinding = charge.get('rsbinding')
+
+                        description = charge.find("ub:description", namespaces={'ub':'bill'})
+                        description = description.text if description is not None else None
+
+                        quantity = charge.find("ub:quantity", namespaces={'ub':'bill'})
+                        quantity = quantity.text if quantity is not None else None
+
+                        # TODO review lxml api for a better method to access attributes
+                        quantity_units = charge.xpath("ub:quantity/@units", namespaces={'ub':'bill'})
+                        if (len(quantity_units)):
+                            quantity_units = quantity_units[0]
+                        else:
+                            quantity_units = ""
+
+                        # TODO helper to quantize based on units
+                        # TODO not sure we want to quantize here. think it over.
+                        if (quantity_units.lower() == 'therms'):
+                            quantity = Decimal(quantity)
+                            #.quantize(Decimal('.00'))
+                        elif (quantity_units.lower() == 'dollars'):
+                            quantity = Decimal(quantity)
+                            #.quantize(Decimal('.00'))
+                        elif (quantity_units.lower() == 'kwh'):
+                            quantity = Decimal(quantity)
+                            #.quantize(Decimal('.0'))
+
+                        rate = charge.find("ub:rate", namespaces={'ub':'bill'})
+                        rate = rate.text if rate is not None else None
+                        
+                        # TODO review lxml api for a better method to access attributes
+                        rate_units = charge.xpath("ub:rate/@units", namespaces={'ub':'bill'})
+                        if (len(rate_units)):
+                            rate_units = rate_units[0]
+                        else:
+                            rate_units = ""
+
+                        total = charge.find("ub:total", namespaces={'ub':'bill'})
+                        total = Decimal(total.text) if total is not None else None
+                        #.quantize(Decimal('.0000'))
+
+                        processingnote = charge.find("ub:processingnote", namespaces={'ub':'bill'})
+                        processingnote = processingnote.text if processingnote is not None else None
+
+                        charge_items[detail_service]['chargegroups'][cg_type]['charges'].append({
+                            'rsbinding': rsbinding,
+                            'description': description,
+                            'quantity': quantity,
+                            'quantity_units': quantity_units,
+                            'rate': rate,
+                            'rate_units': rate_units,
+                            'total': total,
+                            'processingnote': processingnote
+                        })
+
+        return charge_items
+    """
+
+    # TODO convert to helper methods
+    def set_charge_items_old(self, charges_type, charge_items):
 
         # get each service name, and associated chargegroups
         for service in charge_items:
@@ -1201,8 +1333,87 @@ class Bill(object):
             grand_total_elem.text = str(grand_total)
 
 
+    # set_details could depend on this code
+
+    def set_charge_items(self, charges_type, charge_items):
 
 
+        for service, detail_charge_items in charge_items.items():
+            """
+            The trick here is that actual and hypothetical charges live side-by-side
+            so we have to insert the charges_type in their proper xml locations.
+            """
+
+            # TODO error check this
+            details_elem = self.xpath("/ub:bill/ub:details[@service='%s']" % service)[0]
+            # handle chargegroups
+            for chargegroup in detail_charge_items.chargegroups:
+
+                # identify the chargegroup in question or create it
+                chargegroup_elem = details_elem.find("ub:chargegroup[@type='%s']" % chargegroup.type, {"ub":"bill"})
+
+                if chargegroup_elem is None:
+                    # append new chargegroup to end of list of chargegroups
+                    chargegroup_elem = details_elem.makeelement("{bill}chargegroup")
+
+                self.prop_to_attr(chargegroup, "type", chargegroup_elem, "type")
+
+                # handle charges of charges_type
+                # identify charges element
+                charges_elem = chargegroup_elem.find("ub:charges[@type='%s']" % charges_type, {"ub":"bill"})
+                if charges_elem is None:
+                    charges_elem = chargegroup_elem.makeelement("{bill}charges")
+                    # don't worry about insertion point because the order does not matter
+                    chargegroup_elem.append(charges_elem)
+                else:
+                    # clear all child charge elements of charges
+                    charges_elem.clear()
+
+                # set attribute back since clear wipes it
+                charges_elem.set("type", charges_type)
+
+                # all charges except for the last which is the total
+                # enumerate so we can track index and detect presence/absence of total tuple
+                # TODO gotta fix the charge/total sibling issue
+                for index, charge in enumerate(chargegroup.charges):
+                    if index == len(chargegroup.charges)-1 and len(charge) == 1 and charge.keys()[0] == "total":
+                        # the last element, the total for all the charges
+                        total = charge
+                        self.prop_to_cdata(total, "total", charges_elem, "total")
+                    else:
+
+                        charge_elem = charges_elem.makeelement("{bill}charge")
+
+                        self.prop_to_attr(charge, "rsbinding", charge_elem, "rsbinding")
+                        self.prop_to_cdata(charge, "description", charge_elem, "description")
+                        self.prop_to_cdata(charge, "quantity", charge_elem, "quantity")
+                        # TODO check to see if quantity exists first
+                        self.prop_to_attr(charge, "quantityunits", charge_elem.find("ub:quantity", {"ub":"bill"}), "units")
+                        self.prop_to_cdata(charge, "rate", charge_elem, "rate")
+                        # TODO check to see if rate exists first
+                        self.prop_to_attr(charge, "rateunits", charge_elem.find("ub:rate", {"ub":"bill"}), "units")
+                        self.prop_to_cdata(charge, "total", charge_elem, "total")
+                        self.prop_to_cdata(charge, "processingnote", charge_elem, "processingnote")
+
+                        charges_elem.append(charge_elem)
+
+                # TODO gotta fix the charge/total sibling issue
+                if index == len(chargegroup.charges)-1 and len(charge) != 1 and charge.keys()[0] != "total":
+                    total = MutableNamedTuple([("total", "0.00")])
+                    self.prop_to_cdata(total, "total", charges_elem, "total")
+
+
+
+            # TODO: prune remaining empty chargegroups
+
+            # TODO: chargegroup totals
+
+            # handle total of charges_type
+            # assumes type=charges_type is a mandatory element since attr is not set
+            # this won't work because details_elem is qualified by the attribute 'type' whose value is charges_type
+            # unfortunately, there are to child elements called total due to the hypothetical and actual charges living side by side
+            self.prop_to_cdata_attr(detail_charge_items, "total", details_elem, "total", [("type", charges_type)])
+    
 
     @property
     def hypotheticalecharges(self):
@@ -1396,9 +1607,15 @@ if __name__ == "__main__":
     #print bill.actual_details
 
 
-    s = bill.statistics
-    print s
-    bill.statistics = s
+    #s = bill.statistics
+    #print s
+    #bill.statistics = s
 
-    XMLUtils().save_xml_file(bill.xml(), options.outputbill, "prod", "prod")
+    c = bill.actual_charges
+    print c
+    bill.actual_charges = c
+    c = bill.actual_charges
+    print c
+
+    #XMLUtils().save_xml_file(bill.xml(), options.outputbill, "prod", "prod")
 

@@ -37,6 +37,8 @@ from skyliner.xml_utils import XMLUtils
 
 from billing.nexus_util import NexusUtil
 
+from itertools import groupby
+
 
 
 
@@ -97,8 +99,7 @@ class BillToolBridge:
     @cherrypy.expose
     def roll(self, account, sequence, **args):
         # TODO: remove this business logic to Process()
-        # check to see if this bill can be rolled
-
+        # Process() will have to increment rebill
 
         try:
 
@@ -110,8 +111,6 @@ class BillToolBridge:
                 account
             )
 
-            # TODO: Process() should implement this
-
             # last_sequence is None if no prior bills have been rolled (sequence 0)
             if last_sequence is not None and (int(sequence) < int(last_sequence)):
                 return '{success: false, errors: {reason:"Not the last sequence"}}'
@@ -119,7 +118,6 @@ class BillToolBridge:
                 # TODO: Process() should implement this
                 if (int(sequence) < int(last_sequence)):
                     return '{success: false, errors: {reason:"Not the last sequence"}}'
-
 
             process.Process().roll_bill(
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
@@ -448,6 +446,109 @@ class BillToolBridge:
     ################
 
     ################
+    # handle actual and hypothetical charges 
+
+    @cherrypy.expose
+    def actualCharges(self, service, account, sequence, **args):
+        try:
+            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+            actual_charges = the_bill.actual_charges_no_totals
+            flattened_charges = self.charges(service, account, sequence, actual_charges, **args)
+
+        except Exception as e:
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return ju.dumps({'success': True, 'rows': flattened_charges})
+
+    @cherrypy.expose
+    def hypotheticalCharges(self, service, account, sequence, **args):
+        try:
+            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+            hypothetical_charges = the_bill.hypothetical_charges_no_totals
+            flattened_charges = self.charges(service, account, sequence, hypothetical_charges, **args)
+
+        except Exception as e:
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return ju.dumps({'success': True, 'rows': flattened_charges})
+
+
+    def charges(self, service, account, sequence, charges, **args):
+
+        # flatten structure into an array of dictionaries, one for each charge
+        # this has to be done because the grid editor is  looking for a flat table
+
+        # This should probably not be done in bill.py, but rather by some helper object
+        # if we don't want this cluttering up this wsgi method
+        all_charges = []
+        for (the_service, details) in charges.items():
+            if (the_service == service):
+                for chargegroup in details.chargegroups:
+                    for charge in chargegroup.charges:
+                        a_charge = {}
+                        a_charge['chargegroup'] = chargegroup.type if hasattr(chargegroup,'type') else None
+                        a_charge['rsbinding'] = charge.rsbinding if hasattr(charge, 'rsbinding') else None
+                        a_charge['description'] = charge.description if hasattr(charge, 'description') else None
+                        a_charge['quantity'] = charge.quantity if hasattr(charge, 'quantity') else None
+                        a_charge['quantityunits'] = charge.quantityunits if hasattr(charge,'quantityunits') else None
+                        a_charge['rate'] = charge.rate if hasattr(charge, 'rate') else None
+                        a_charge['rateunits'] = charge.rateunits if hasattr(charge, 'rateunits') else None
+                        a_charge['total'] = charge.total if hasattr(charge, 'total') else None
+
+                        all_charges.append(a_charge)
+
+        return all_charges
+
+
+    @cherrypy.expose
+    def saveActualCharges(self, service, account, sequence, rows, **args):
+        try:
+            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+
+            # this code should go into process
+            from billing.mutable_named_tuple import MutableNamedTuple
+
+            the_charge_items = ju.loads(rows)
+
+            details = {}
+
+            details[service] = MutableNamedTuple()
+            details[service].chargegroups = []
+
+            for cgtype, charge_items in groupby(the_charge_items, key=lambda charge_item:charge_item['chargegroup']):
+                chargegroup_mnt = MutableNamedTuple()
+                chargegroup_mnt.type = cgtype
+                chargegroup_mnt.charges = []
+                for charge_item in charge_items:
+                    charge_mnt = MutableNamedTuple()
+                    charge_mnt.rsbinding = charge_item['rsbinding']
+                    charge_mnt.description = charge_item['description']
+                    charge_mnt.quantity = charge_item['quantity']
+                    charge_mnt.quantityunits = charge_item['quantityunits']
+                    charge_mnt.rate = charge_item['rate']
+                    charge_mnt.rateunits = charge_item['rateunits']
+                    charge_mnt.total = charge_item['total']
+                    chargegroup_mnt.charges.append(charge_mnt)
+                    
+                details[service].chargegroups.append(chargegroup_mnt)
+
+
+            the_bill.actual_charges = details
+
+            XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence),
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )
+
+        except Exception as e:
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return ju.dumps({'success': True})
+
+
+
+
+    ################
     # Handle measuredUsages
 
     @cherrypy.expose
@@ -464,6 +565,7 @@ class BillToolBridge:
 
         except Exception as e:
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
 
         return ju.dumps(ubMeasuredUsages)
 
@@ -519,9 +621,7 @@ class BillToolBridge:
 
             register.total = total
 
-            print "will set %s" % ubMeasuredUsages
             the_bill.measured_usage = ubMeasuredUsages
-            print "did set %s" % the_bill.measured_usage
 
             XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence),
                 self.config.get("xmldb", "user"),
