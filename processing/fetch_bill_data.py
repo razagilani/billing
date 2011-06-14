@@ -150,7 +150,7 @@ def usageDataToVirtualRegister(install, dom, server=None, beginAccumulation=None
     registers = bindRegisters(dom, verbose)
 
     # TODO: parameterize guru_root
-    s = splinter.Splinter(server, "tyrell", "olap")
+    s = splinter.Splinter(server, "tyrell", "dev")
     inst_obj = s.get_install_obj_for(install)
     
     # now that a list of shadow registers are initialized, accumulate energy into them for the specified date range

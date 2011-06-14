@@ -195,7 +195,7 @@ class Process(object):
         XMLUtils().save_xml_file(pay.xml(), target_bill, user, password)
 
 
-    def roll_bill(self, inputbill, targetBill, amountPaid, user=None, password=None):
+    def roll_bill(self, inputbill, targetBill, user=None, password=None):
         """
         Create rebill for next period, based on prior bill.
         This is acheived by accessing xml document for prior bill, and resetting select values.
@@ -310,7 +310,6 @@ class Process(object):
         # at which time we can just recreate the whole trend
 
         XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
-
 
     def bindrs(self, inputbill, outputbill, rsdb, hypothetical, user=None, password=None):
         """ This function binds a rate structure against the actual and hypothetical charges found """

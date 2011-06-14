@@ -72,7 +72,6 @@ def listAccounts(host, db, user, password):
     return fetch(host, db, user, password, query, None, True)
 
 def listSequences(host, db, user, password, account):
-    print "will query with %s " % account
     query = "select sequence from rebill r where r.customer_id = (select id from customer where account = %s)"
     params = (account)
     return fetch(host, db, user, password, query, params, True)

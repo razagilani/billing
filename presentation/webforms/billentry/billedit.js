@@ -700,34 +700,17 @@ function renderWidgets()
 
     // initial data loaded into the grid before a bill is loaded
     // populate with data if initial pre-loaded data is desired
-    /*var initialActualCharges = [
-        //['Charge Group 1', 'Charge Description',100,'qty units', 10,'rate units',1000],
-    ];*/
-    var JSON_initialActualCharges = {
+    var initialActualCharges = {
         rows: [
             //{chargegroup:'Distribution', rsbinding:'SOMETHING', description:'description', quantity:10, quantityunits:'kwh', rate:1, rateunits:'kwh', total:100, processingnote:'A Note'},
         ]
     };
 
-    /*var aChargesReader = new Ext.data.ArrayReader({}, [
-       {name: 'chargegroup'},
-       {name: 'rsbinding'},
-       {name: 'description'},
-       {name: 'quantity'},
-       {name: 'quantityunits'},
-       {name: 'rate'},
-       {name: 'rateunits'},
-       {name: 'total', type: 'float'},
-       {name: 'processingnote'},
-       {name: 'autototal', type: 'float'}
-    ]);*/
-
-    var JSON_aChargesReader = new Ext.data.JsonReader({
+    var aChargesReader = new Ext.data.JsonReader({
         // metadata configuration options:
+        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
         //idProperty: 'id',
         root: 'rows',
-        //totalProperty: 'results',
-        //Ext.data.DataReader.messageProperty: "msg",  // The element within the response that provides a user-feedback message (optional)
 
         // the fields config option will internally create an Ext.data.Record
         // constructor that provides mapping for reading the record data objects
@@ -745,29 +728,20 @@ function renderWidgets()
             {name: 'autototal', mapping: 'autototal', type: 'float'}
         ]
     });
-    var JSON_aChargesWriter = new Ext.data.JsonWriter({
+    var aChargesWriter = new Ext.data.JsonWriter({
         encode: true,
-        writeAllFields: true // write all fields, not just those that changed
+        // write all fields, not just those that changed
+        writeAllFields: true 
     });
-
-
-    /*var aChargesStore = new Ext.data.GroupingStore({
-        reader: aChargesReader,
-        data: initialActualCharges,
-        sortInfo:{field: 'chargegroup', direction: 'ASC'},
-        groupField:'chargegroup'
-    });*/
-
 
     // This proxy is only used for reading charge item records, not writing.
     // This is due to the necessity to batch upload all records. See Grid Editor save handler.
     // We leave the proxy here for loading data as well as if and when records have entity 
     // id's and row level CRUD can occur.
-    var JSON_aChargesStoreProxy = new Ext.data.HttpProxy({
+    var aChargesStoreProxy = new Ext.data.HttpProxy({
         method: 'GET',
         prettyUrls: false,
         // see options parameter for Ext.Ajax.request
-        //url: 'http://'+location.host+'/billtool/actualCharges?account=10002&sequence=6&service=Gas',
         url: 'http://'+location.host+'/billtool/actualCharges',
         /*api: {
             // all actions except the following will use above url
@@ -776,163 +750,19 @@ function renderWidgets()
         }*/
     });
 
-    var JSON_aChargesStore = new Ext.data.GroupingStore({
-        proxy: JSON_aChargesStoreProxy,
+    var aChargesStore = new Ext.data.GroupingStore({
+        proxy: aChargesStoreProxy,
         autoSave: false,
-        reader: JSON_aChargesReader,
-        writer: JSON_aChargesWriter,
-        data: JSON_initialActualCharges,
+        reader: aChargesReader,
+        writer: aChargesWriter,
+        data: initialActualCharges,
         sortInfo:{field: 'chargegroup', direction: 'ASC'},
         groupField:'chargegroup'
     });
 
+    var aChargesSummary = new Ext.ux.grid.GroupSummary();
 
-	// utilize custom extension for Group Summary
-    /*var aChargesSummary = new Ext.ux.grid.GroupSummary();*/
-
-    var JSON_aChargesSummary = new Ext.ux.grid.GroupSummary();
-
-    /*var aChargesColModel = new Ext.grid.ColumnModel(
-    {
-        columns: [
-            {
-                id:'chargegroup',
-                header: 'Charge Group',
-                width: 160,
-                sortable: true,
-                dataIndex: 'chargegroup',
-                hidden: true 
-            }, 
-            {
-                header: 'RS Binding',
-                width: 75,
-                sortable: true,
-                dataIndex: 'rsbinding',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },
-            {
-                header: 'Description',
-                width: 75,
-                sortable: true,
-                dataIndex: 'description',
-                editor: new Ext.form.TextField({allowBlank: false})
-            },
-            {
-                header: 'Quantity',
-                width: 75,
-                sortable: true,
-                dataIndex: 'quantity',
-                editor: new Ext.form.NumberField({decimalPrecision: 5, allowBlank: true})
-            },
-            {
-                header: 'Units',
-                width: 75,
-                sortable: true,
-                dataIndex: 'quantityunits',
-                editor: new Ext.form.ComboBox({
-                    typeAhead: true,
-                    triggerAction: 'all',
-                    // transform the data already specified in html
-                    //transform: 'light',
-                    lazyRender: true,
-                    listClass: 'x-combo-list-small',
-                    mode: 'local',
-                    store: new Ext.data.ArrayStore({
-                        fields: [
-                            'displayText'
-                        ],
-                        // TODO: externalize these units
-                        data: [['dollars'], ['kWh'], ['ccf'], ['Therms'], ['kWD'], ['KQH'], ['rkVA']]
-                    }),
-                    valueField: 'displayText',
-                    displayField: 'displayText'
-                })
-                
-            },
-            {
-                header: 'Rate',
-                width: 75,
-                sortable: true,
-                dataIndex: 'rate',
-                editor: new Ext.form.NumberField({decimalPrecision: 10, allowBlank: true})
-            },
-            {
-                header: 'Units',
-                width: 75,
-                sortable: true,
-                dataIndex: 'rateunits',
-                editor: new Ext.form.ComboBox({
-                    typeAhead: true,
-                    triggerAction: 'all',
-                    // transform the data already specified in html
-                    //transform: 'light',
-                    lazyRender: true,
-                    listClass: 'x-combo-list-small',
-                    mode: 'local',
-                    store: new Ext.data.ArrayStore({
-                        fields: [
-                            'displayText'
-                        ],
-                        // TODO: externalize these units
-                        data: [['dollars'], ['cents']]
-                    }),
-                    valueField: 'displayText',
-                    displayField: 'displayText'
-                })
-            },
-            {
-                header: 'Total', 
-                width: 75, 
-                sortable: true, 
-                dataIndex: 'total', 
-                summaryType: 'sum',
-                align: 'right',
-                editor: new Ext.form.NumberField({allowBlank: false}),
-                renderer: function(v, params, record)
-                {
-                    return Ext.util.Format.usMoney(record.data.total);
-                }
-            },
-            {
-                header: 'Auto Total', 
-                width: 75, 
-                sortable: true, 
-                dataIndex: 'autototal', 
-                summaryType: 'sum',
-                align: 'right',
-                renderer: function(v, params, record)
-                {
-                    // terrible hack allowing percentages to display as x%
-                    // yet participate as a value between 0 and 1 for
-                    // showing that charge items compute
-                    var q = record.data.quantity;
-                    var r = record.data.rate;
-
-                    if (r && record.data.quantityunits && record.data.rateunits == 'percent')
-                        r /= 100;
-
-                    if (q && r)
-                        record.data.autototal = q * r;
-                    else if (q && !r)
-                        record.data.autototal = record.data.total;
-                    else if (!q && r)
-                        record.data.autototal = record.data.total;
-                    else
-                        record.data.autototal = record.data.total;
-
-                    return Ext.util.Format.usMoney(record.data.autototal);
-                },
-                // figure out how to sum column based on a renderer
-                summaryRenderer: function(v, params, record)
-                {
-                    return Ext.util.Format.usMoney(record.data.autototal);
-                }
-            }
-        ]
-    }
-    )*/
-
-    var JSON_aChargesColModel = new Ext.grid.ColumnModel(
+    var aChargesColModel = new Ext.grid.ColumnModel(
     {
         columns: [
             {
@@ -1069,12 +899,9 @@ function renderWidgets()
                 }
             }
         ]
-    }
-    )
+    });
 
-
-    // create actual charges Grid
-    /*var aChargesGrid = new Ext.grid.EditorGridPanel({
+    var aChargesGrid = new Ext.grid.EditorGridPanel({
         tbar: [{
             // ref places a name for this component into the grid so it may be referenced as aChargesGrid.insertBtn...
             ref: '../insertBtn',
@@ -1150,12 +977,33 @@ function renderWidgets()
                 // stop grid editing so that widgets like comboboxes in rows don't stay focused
                 aChargesGrid.stopEditing();
 
-                // TODO: move this to the UI widget responsible for editing this content.
-                // take the records that are maintained in the store
-                // and update the bill document with them.
-                setActualCharges(bill, aChargesStore.getRange());
-                
-                saveToXML(billSaved, billDidNotSave);
+                // OK, a little nastiness follows: We cannot rely on the underlying Store to
+                // send records back to the server because it does so intelligently: Only
+                // dirty records go back.  Unfortunately, since there is no entity id for
+                // a record (yet), all records must be returned so that ultimately an
+                // XML grove can be produced with proper document order.
+                //aChargesStore.save(); is what we want to do
+
+                var jsonData = Ext.encode(Ext.pluck(aChargesStore.data.items, 'data'));
+
+                // TODO: refactor out into globals
+                account = accountCombo.getValue();
+                sequence = sequenceCombo.getValue();
+
+                Ext.Ajax.request({
+                    url: 'http://'+location.host+'/billtool/saveActualCharges?account=10002&sequence=6&service=Gas',
+                    params: {service: 'Gas', account: account, sequence: sequence},
+                    success: function() { 
+                        // TODO: check success status in json package
+
+                        // reload the store to clear dirty flags
+                        // Note: store params for account, sequence and service were previously set
+                        // when the store was loaded.
+                        aChargesStore.load()
+                    },
+                    failure: function() { alert("ajax fail"); },
+                    params: { rows: jsonData }
+                });
             }
         },{
             // places reference to this button in grid.  
@@ -1174,39 +1022,7 @@ function renderWidgets()
 
                 // take the records that are maintained in the store
                 // and update the bill document with them.
-                setActualCharges(bill, aChargesStore.getRange());
-
-                saveToXML(function() {
-
-                    account = accountCombo.getValue();
-                    sequence = sequenceCombo.getValue();
-
-                    // sequences come back from eXist as [seq].xml
-                    sequence = sequence;
-
-                    // now that the bill is saved, create the hypothetical charges
-                    // on the server
-
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/billtool/copyactual?'
-                            + 'account=' + account
-                            + '&sequence=' + sequence,
-                        disableCaching: true,
-                        success: function () {
-                            // loads a bill from eXistDB
-                            Ext.Ajax.request({
-                                url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + accountCombo.getValue() 
-                                    + '/' + sequenceCombo.getValue(),
-                               success: configureWidgets,
-                               failure: billLoadFailed,
-                               disableCaching: true,
-                            });
-                        },
-                        failure: function () {
-                            alert("copy actual response fail");
-                        }
-                    });
-                }, billDidNotSave);
+                //setActualCharges(bill, aChargesStore.getRange());
 
             }
         }],
@@ -1231,189 +1047,8 @@ function renderWidgets()
         // config options for stateful behavior
         //stateful: true,
         //stateId: 'grid' 
-    });*/
-
-    var JSON_aChargesGrid = new Ext.grid.EditorGridPanel({
-        tbar: [{
-            // ref places a name for this component into the grid so it may be referenced as aChargesGrid.insertBtn...
-            ref: '../insertBtn',
-            iconCls: 'icon-user-add',
-            text: 'Insert',
-            disabled: true,
-            handler: function()
-            {
-                JSON_aChargesGrid.stopEditing();
-
-                // grab the current selection - only one row may be selected per singlselect configuration
-                var selection = JSON_aChargesGrid.getSelectionModel().getSelected();
-
-                // make the new record
-                var ChargeItemType = JSON_aChargesGrid.getStore().recordType;
-                var defaultData = 
-                {
-                    // ok, this is tricky:  the newly created record is assigned the chargegroup
-                    // of the selection during the insert.  This way, the new record is added
-                    // to the proper group.  Otherwise, if the record does not have the same
-                    // chargegroup name of the adjacent record, a new group is shown in the grid
-                    // and the UI goes out of sync.  Try this by change the chargegroup below
-                    // to some other string.
-                    chargegroup: selection.data.chargegroup,
-                    description: 'enter description',
-                    quantity: 0,
-                    quantityunits: 'kWh',
-                    rate: 0,
-                    rateunits: 'dollars',
-                    total: 0,
-                    //autototal: 0
-                };
-                var c = new ChargeItemType(defaultData);
-    
-                // select newly inserted record
-                var insertionPoint = JSON_aChargesStore.indexOf(selection);
-                JSON_aChargesStore.insert(insertionPoint + 1, c);
-                JSON_aChargesGrid.getView().refresh();
-                JSON_aChargesGrid.getSelectionModel().selectRow(insertionPoint);
-                JSON_aChargesGrid.startEditing(insertionPoint +1,1);
-                
-                // An inserted record must be saved 
-                JSON_aChargesGrid.saveBtn.setDisabled(false);
-            }
-        },{
-            // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-            ref: '../removeBtn',
-            iconCls: 'icon-user-delete',
-            text: 'Remove',
-            disabled: true,
-            handler: function()
-            {
-                JSON_aChargesGrid.stopEditing();
-                var s = JSON_aChargesGrid.getSelectionModel().getSelections();
-                for(var i = 0, r; r = s[i]; i++)
-                {
-                    JSON_aChargesStore.remove(r);
-                }
-                JSON_aChargesGrid.saveBtn.setDisabled(false);
-            }
-        },{
-            // places reference to this button in grid.  
-            ref: '../saveBtn',
-            text: 'Save',
-            disabled: true,
-            handler: function()
-            {
-                // disable the save button for the save attempt.
-                // is there a closer place for this to the actual button click due to the possibility of a double
-                // clicked button submitting two ajax requests?
-                JSON_aChargesGrid.saveBtn.setDisabled(true);
-
-                // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                JSON_aChargesGrid.stopEditing();
-
-                // OK, a little nastiness follows: We cannot rely on the underlying Store to
-                // send records back to the server because it does so intelligently: Only
-                // dirty records go back.  Unfortunately, since there is no entity id for
-                // a record (yet), all records must be returned so that ultimately an
-                // XML grove can be produced with proper document order.
-                //JSON_aChargesStore.save(); is what we want to do
-
-                var jsonData = Ext.encode(Ext.pluck(JSON_aChargesStore.data.items, 'data'));
-
-                // TODO: refactor out into globals
-                account = accountCombo.getValue();
-                sequence = sequenceCombo.getValue();
-
-                Ext.Ajax.request({
-                    url: 'http://'+location.host+'/billtool/saveActualCharges?account=10002&sequence=6&service=Gas',
-                    params: {service: 'Gas', account: account, sequence: sequence},
-                    success: function() { 
-                        // TODO: check success status in json package
-
-                        // reload the store to clear dirty flags
-                        // Note: store params for account, sequence and service were previously set
-                        // when the store was loaded.
-                        JSON_aChargesStore.load()
-                    },
-                    failure: function() { alert("ajax fail"); },
-                    params: { rows: jsonData }
-                });
-            }
-        },{
-            // places reference to this button in grid.  
-            ref: '../copyActual',
-            text: 'Copy to Hypo',
-            disabled: false,
-            handler: function()
-            {
-                // disable the save button for the save attempt.
-                // is there a closer place for this to the actual button click due to the possibility of a double
-                // clicked button submitting two ajax requests?
-                JSON_aChargesGrid.saveBtn.setDisabled(true);
-
-                // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                JSON_aChargesGrid.stopEditing();
-
-                // take the records that are maintained in the store
-                // and update the bill document with them.
-                //setActualCharges(bill, aChargesStore.getRange());
-
-                /*saveToXML(function() {
-
-                    account = accountCombo.getValue();
-                    sequence = sequenceCombo.getValue();
-
-                    // sequences come back from eXist as [seq].xml
-                    sequence = sequence;
-
-                    // now that the bill is saved, create the hypothetical charges
-                    // on the server
-
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/billtool/copyactual?'
-                            + 'account=' + account
-                            + '&sequence=' + sequence,
-                        disableCaching: true,
-                        success: function () {
-                            // loads a bill from eXistDB
-                            Ext.Ajax.request({
-                                url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + accountCombo.getValue() 
-                                    + '/' + sequenceCombo.getValue(),
-                               success: configureWidgets,
-                               failure: billLoadFailed,
-                               disableCaching: true,
-                            });
-                        },
-                        failure: function () {
-                            alert("copy actual response fail");
-                        }
-                    });
-                }, billDidNotSave);*/
-
-            }
-        }],
-        colModel: JSON_aChargesColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
-        store: JSON_aChargesStore,
-        enableColumnMove: false,
-        view: new Ext.grid.GroupingView({
-            forceFit:true,
-            groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
-        }),
-        plugins: JSON_aChargesSummary,
-        frame: true,
-        collapsible: true,
-        animCollapse: false,
-        stripeRows: true,
-        autoExpandColumn: 'chargegroup',
-        height: 900,
-        width: 1000,
-        title: 'JSON Actual Charges',
-        clicksToEdit: 2
-        // config options for stateful behavior
-        //stateful: true,
-        //stateId: 'grid' 
     });
 
-    /*// selection callbacks
     aChargesGrid.getSelectionModel().on('selectionchange', function(sm){
         // if a selection is made, allow it to be removed
         // if the selection was deselected to nothing, allow no 
@@ -1423,27 +1058,12 @@ function renderWidgets()
         // if there was a selection, allow an insertion
         aChargesGrid.insertBtn.setDisabled(sm.getCount()<1);
 
-    });*/
-
-    JSON_aChargesGrid.getSelectionModel().on('selectionchange', function(sm){
-        // if a selection is made, allow it to be removed
-        // if the selection was deselected to nothing, allow no 
-        // records to be removed.
-        JSON_aChargesGrid.removeBtn.setDisabled(sm.getCount() < 1);
-
-        // if there was a selection, allow an insertion
-        JSON_aChargesGrid.insertBtn.setDisabled(sm.getCount()<1);
-
     });
   
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
-    /*aChargesStore.on('update', function(){
+    aChargesStore.on('update', function(){
         aChargesGrid.saveBtn.setDisabled(false);
-    });*/
-
-    JSON_aChargesStore.on('update', function(){
-        JSON_aChargesGrid.saveBtn.setDisabled(false);
     });
     
 
@@ -1453,33 +1073,66 @@ function renderWidgets()
 
     // initial data loaded into the grid before a bill is loaded
     // populate with data if initial pre-loaded data is desired
-    /*
-    var initialHCharges = [
-        //['Charge Group 1', 'Charge Description',100,'qty units', 10,'rate units',1000],
-    ];
+    var initialHypotheticalCharges = {
+        rows: [
+            //{chargegroup:'Distribution', rsbinding:'SOMETHING', description:'description', quantity:10, quantityunits:'kwh', rate:1, rateunits:'kwh', total:100, processingnote:'A Note'},
+        ]
+    };
 
-    var hChargesReader = new Ext.data.ArrayReader({}, [
-       {name: 'chargegroup'},
-       {name: 'rsbinding'},
-       {name: 'description'},
-       {name: 'quantity'},
-       {name: 'quantityunits'},
-       {name: 'rate'},
-       {name: 'rateunits'},
-       {name: 'total', type: 'float'},
-       {name: 'processingnote'},
-       {name: 'autototal', type: 'float'}
-    ]);
+    var hChargesReader = new Ext.data.JsonReader({
+        // metadata configuration options:
+        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
+        //idProperty: 'id',
+        root: 'rows',
 
-    var hChargesStore = new Ext.data.GroupingStore({
-            reader: hChargesReader,
-            data: initialHCharges,
-            sortInfo:{field: 'chargegroup', direction: 'ASC'},
-            groupField:'chargegroup'
+        // the fields config option will internally create an Ext.data.Record
+        // constructor that provides mapping for reading the record data objects
+        fields: [
+            // map Record's field to json object's key of same name
+            {name: 'chargegroup', mapping: 'chargegroup'},
+            {name: 'rsbinding', mapping: 'rsbinding'},
+            {name: 'description', mapping: 'description'},
+            {name: 'quantity', mapping: 'quantity'},
+            {name: 'quantityunits', mapping: 'quantityunits'},
+            {name: 'rate', mapping: 'rate'},
+            {name: 'rateunits', mapping: 'rateunits'},
+            {name: 'total', mapping: 'total', type: 'float'},
+            {name: 'processingnote', mapping:'processingnote'},
+            {name: 'autototal', mapping: 'autototal', type: 'float'}
+        ]
+    });
+    var hChargesWriter = new Ext.data.JsonWriter({
+        encode: true,
+        // write all fields, not just those that changed
+        writeAllFields: true 
     });
 
+    // This proxy is only used for reading charge item records, not writing.
+    // This is due to the necessity to batch upload all records. See Grid Editor save handler.
+    // We leave the proxy here for loading data as well as if and when records have entity 
+    // id's and row level CRUD can occur.
+    var hChargesStoreProxy = new Ext.data.HttpProxy({
+        method: 'GET',
+        prettyUrls: false,
+        // see options parameter for Ext.Ajax.request
+        url: 'http://'+location.host+'/billtool/hypotheticalCharges',
+        /*api: {
+            // all actions except the following will use above url
+            create  : '',
+            update  : ''
+        }*/
+    });
 
-	// utilize custom extension for Group Summary
+    var hChargesStore = new Ext.data.GroupingStore({
+        proxy: hChargesStoreProxy,
+        autoSave: false,
+        reader: hChargesReader,
+        writer: hChargesWriter,
+        data: initialHypotheticalCharges,
+        sortInfo:{field: 'chargegroup', direction: 'ASC'},
+        groupField:'chargegroup'
+    });
+
     var hChargesSummary = new Ext.ux.grid.GroupSummary();
 
     var hChargesColModel = new Ext.grid.ColumnModel(
@@ -1491,7 +1144,7 @@ function renderWidgets()
                 width: 160,
                 sortable: true,
                 dataIndex: 'chargegroup',
-                hidden: true 
+                //hidden: true 
             }, 
             {
                 header: 'RS Binding',
@@ -1619,11 +1272,8 @@ function renderWidgets()
                 }
             }
         ]
-    }
-    );
+    });
 
-
-    // create actual charges Grid
     var hChargesGrid = new Ext.grid.EditorGridPanel({
         tbar: [{
             // ref places a name for this component into the grid so it may be referenced as hChargesGrid.insertBtn...
@@ -1700,12 +1350,53 @@ function renderWidgets()
                 // stop grid editing so that widgets like comboboxes in rows don't stay focused
                 hChargesGrid.stopEditing();
 
-                // TODO: move this to the UI widget responsible for editing this content.
+                // OK, a little nastiness follows: We cannot rely on the underlying Store to
+                // send records back to the server because it does so intelligently: Only
+                // dirty records go back.  Unfortunately, since there is no entity id for
+                // a record (yet), all records must be returned so that ultimately an
+                // XML grove can be produced with proper document order.
+                //hChargesStore.save(); is what we want to do
+
+                var jsonData = Ext.encode(Ext.pluck(hChargesStore.data.items, 'data'));
+
+                // TODO: refactor out into globals
+                account = accountCombo.getValue();
+                sequence = sequenceCombo.getValue();
+
+                Ext.Ajax.request({
+                    url: 'http://'+location.host+'/billtool/saveActualCharges?account=10002&sequence=6&service=Gas',
+                    params: {service: 'Gas', account: account, sequence: sequence},
+                    success: function() { 
+                        // TODO: check success status in json package
+
+                        // reload the store to clear dirty flags
+                        // Note: store params for account, sequence and service were previously set
+                        // when the store was loaded.
+                        hChargesStore.load()
+                    },
+                    failure: function() { alert("ajax fail"); },
+                    params: { rows: jsonData }
+                });
+            }
+        },{
+            // places reference to this button in grid.  
+            ref: '../copyActual',
+            text: 'Copy to Hypo',
+            disabled: false,
+            handler: function()
+            {
+                // disable the save button for the save attempt.
+                // is there a closer place for this to the actual button click due to the possibility of a double
+                // clicked button submitting two ajax requests?
+                hChargesGrid.saveBtn.setDisabled(true);
+
+                // stop grid editing so that widgets like comboboxes in rows don't stay focused
+                hChargesGrid.stopEditing();
+
                 // take the records that are maintained in the store
                 // and update the bill document with them.
-                setHypotheticalCharges(bill, hChargesStore.getRange());
-                
-                saveToXML(billSaved, billDidNotSave);
+                //setActualCharges(bill, hChargesStore.getRange());
+
             }
         }],
         colModel: hChargesColModel,
@@ -1731,7 +1422,6 @@ function renderWidgets()
         //stateId: 'grid' 
     });
 
-    // selection callbacks
     hChargesGrid.getSelectionModel().on('selectionchange', function(sm){
         // if a selection is made, allow it to be removed
         // if the selection was deselected to nothing, allow no 
@@ -1747,9 +1437,7 @@ function renderWidgets()
     // when the store backing the grid is edited, enable the save button
     hChargesStore.on('update', function(){
         hChargesGrid.saveBtn.setDisabled(false);
-    });*/
-
-
+    });
 
     // end of tab widgets
     ////////////////////////////////////////////////////////////////////////////
@@ -1808,9 +1496,8 @@ function renderWidgets()
           xtype: 'panel',
           layout: 'accordion',
           items: [
-            JSON_aChargesGrid,
-            //aChargesGrid,
-            //hChargesGrid
+            aChargesGrid,
+            hChargesGrid
           ]
         }]
       });
@@ -1865,20 +1552,9 @@ function renderWidgets()
 
     // responsible for initializing all ui widget backing stores
     // called due to sequenceCombo.on() select event (see above)
-    function configureWidgets(data) {
+    function configureWidgets() {
 
-        // set the bill document to a global so that it may always be referenced
-        //bill = data.responseXML;
-
-        // 'deserialize' the bill data from XML into locally manageable data structures
-        
-        // flatten the actual charges found in the bill
-        // ToDo: do this on a per service basis
-        //actualCharges = getActualCharges(bill);
-        //hypotheticalCharges = getHypotheticalCharges(bill);
-
-
-        // which bill loaded? We need to look in the bill, or have the params
+        // TODO: which bill loaded? We need to look in the bill, or have the params
         // of the ajax call that loaded this bill.
         // by getting the current values out of the ui, a bug is created on the 
         // roll operation. 
@@ -1899,7 +1575,7 @@ function renderWidgets()
                     } 
                     configureUBPeriodsForms(account, sequence, jsonData);
                 } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Could not decode ' + data);
+                    Ext.MessageBox.alert('ERROR', 'Could not decode ' + jsonData);
                 }
             },
             failure: function() {alert("ajax failure")},
@@ -1922,69 +1598,29 @@ function renderWidgets()
                     } 
                     configureUBMeasuredUsagesForms(account, sequence, jsonData);
                 } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Could not decode ' + data);
+                    Ext.MessageBox.alert('ERROR', 'Could not decode ' + jsonData);
                 }
             },
             failure: function() {alert("ajax failure")},
             disableCaching: true,
         });
 
-        JSON_aChargesStore.load({params: {service: 'Gas', account: account, sequence: sequence}});
+        aChargesStore.load({params: {service: 'Gas', account: account, sequence: sequence}});
+        hChargesStore.load({params: {service: 'Gas', account: account, sequence: sequence}});
 
         var sb = Ext.getCmp('statusbar');
         sb.setStatus({
             text: account + "-" + sequence,
         });
-
-        // now that we have the data in locally manageable data structures
-        // tell all of the backing ui widget data stores to load the data // load the data into the charges backing data store
-        //aChargesStore.loadData(actualCharges);
-        //hChargesStore.loadData(hypotheticalCharges);
-
     }
 
-    function billLoadFailed(data) {
-        // ToDo: take corrective action
-        alert("Bill loading failed");
-        alert(data);
-    }
 
-    // the UI widgets are responsible for getting/setting data from the bill document.
-    // This methods is reponsible for the restful communication of the bill doc
-    // back to the server.
-    function saveToXML(successCallback, failCallback)
-    {
-        /*
-        // ToDo: credentials
+    // XML REFACTORING LEFTOVER THAT NEEDS TO BE FACTORED INTO GRIDS
 
-        if (bill != null)
-        {
-
-            Ext.Ajax.request({
-                url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + accountCombo.getValue() 
-                    + '/' + sequenceCombo.getValue(),
-                method: 'PUT',
-                xmlData: bill,
-                success: successCallback,
-                failure: failCallback,
-            });
-            * Seeing this bug in your FF console?
-             *   Error: no element found
-             *   Source File: http://tyrell/exist/rest/db/skyline/bills/00000/3.xml
-             *   Line: 1
-             * eXistDB returns no entity in the response body for PUTs
-             * Per http://www.w3.org/TR/XMLHttpRequest, the browser should handle this.
-             * FF does not.  
-             * http://www.sencha.com/forum/showthread.php?78777-CLOSED-3.0.1-Ext.Ajax.request-causes-firefox-error-when-no-entity-returned
-             * https://bugzilla.mozilla.org/show_bug.cgi?id=521301
-             
-        } else alert('No bill to save');
-        */
-    }
-
+    // TODO: ensure grids commit their changes on successful save, they currently 
+    // do not do this
     function billSaved(data)
     {
-        // successful PUT of bill to eXistDB.  Deflag the red dirty markers on grid
         aChargesStore.commitChanges();
         hChargesStore.commitChanges();
 
@@ -1994,6 +1630,7 @@ function renderWidgets()
 
     }
 
+    // TODO: ensure grids handle this if their save fails
     function billDidNotSave(data)
     {
         alert('Bill Save Failed ' + data);
