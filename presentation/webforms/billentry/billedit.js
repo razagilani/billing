@@ -156,36 +156,19 @@ function renderWidgets()
 
     // fired when the customer bill combo box is selected
     // because a customer account and bill has been selected, load 
-    // the bill document.  Follow billLoaded() for additional details
+    // the bill document.  Follow configureWidgets() for additional details
     // ToDo: do not allow selection change if store is unsaved
     sequenceCombo.on('select', function(combobox, record, index) {
-        billLoaded();
+        configureWidgets();
 
-        /*
-        // loads a bill from eXistDB
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + accountCombo.getValue() 
-                + '/' + record.data.sequence + ".xml",
-           success: billLoaded,
-           failure: billLoadFailed,
-           disableCaching: true,
-        });
-        */
     });
 
-    // a hack so that a newly rolled bill may be access by directly entering its sequence
+    // a hack so that a newly rolled bill may be accessed by directly entering its sequence
+    // remove this when https://www.pivotaltracker.com/story/show/14564121 completes
     sequenceCombo.on('specialkey', function(field, e) {
         if (e.getKey() == e.ENTER) {
-            // loads a bill from eXistDB
-            Ext.Ajax.request({
-                url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + accountCombo.getValue() 
-                    + '/' + sequenceCombo.getValue() + ".xml",
-               success: billLoaded,
-               failure: billLoadFailed,
-               disableCaching: true,
-            });
+            configureWidgets();
         }
-
     });
 
     // forms for calling bill process operations
@@ -223,16 +206,7 @@ function renderWidgets()
             Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
         } else {
             // do your success processing here
-            // loads a bill from eXistDB
-            account = accountCombo.getValue();
-            sequence = sequenceCombo.getValue();
-            Ext.Ajax.request({
-                url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + account
-                    + '/' + (parseInt(sequence)) + '.xml',
-               success: billLoaded,
-               failure: billLoadFailed,
-               disableCaching: true,
-            });
+            configureWidgets();
         }
     }
 
@@ -255,62 +229,53 @@ function renderWidgets()
 
     function issueToCustomerOperation()
     {
-        saveToXML(function() {
-
-            this.registerAjaxEvents()
-            Ext.Ajax.request({
-                url: 'http://'+location.host+'/billtool/issueToCustomer',
-                params: { 
-                    account: accountCombo.getValue(),
-                    sequence: sequenceCombo.getValue()
-                },
-                disableCaching: true,
-                success: successResponse,
-                failure: function () {
-                    alert("Issue to customer response fail");
-                }
-            });
-        }, billDidNotSave);
+        registerAjaxEvents()
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/billtool/issueToCustomer',
+            params: { 
+                account: accountCombo.getValue(),
+                sequence: sequenceCombo.getValue()
+            },
+            disableCaching: true,
+            success: successResponse,
+            failure: function () {
+                alert("Issue to customer response fail");
+            }
+        });
     }
 
     function calcStatsOperation()
     {
-        saveToXML(function() {
-
-            this.registerAjaxEvents()
-            Ext.Ajax.request({
-                url: 'http://'+location.host+'/billtool/calcstats',
-                params: { 
-                    account: accountCombo.getValue(),
-                    sequence: sequenceCombo.getValue()
-                },
-                disableCaching: true,
-                success: successResponse,
-                failure: function () {
-                    alert("Sum response fail");
-                }
-            });
-        }, billDidNotSave);
+        registerAjaxEvents()
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/billtool/calcstats',
+            params: { 
+                account: accountCombo.getValue(),
+                sequence: sequenceCombo.getValue()
+            },
+            disableCaching: true,
+            success: successResponse,
+            failure: function () {
+                alert("Calc response fail");
+            }
+        });
     }
 
     function sumOperation()
     {
-        saveToXML(function() {
-
-            this.registerAjaxEvents()
-            Ext.Ajax.request({
-                url: 'http://'+location.host+'/billtool/sum',
-                params: { 
-                    account: accountCombo.getValue(),
-                    sequence: sequenceCombo.getValue()
-                },
-                disableCaching: true,
-                success: successResponse,
-                failure: function () {
-                    alert("Sum response fail");
-                }
-            });
-        }, billDidNotSave);
+        registerAjaxEvents()
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/billtool/sum',
+            params: { 
+                account: accountCombo.getValue(),
+                sequence: sequenceCombo.getValue()
+            },
+            disableCaching: true,
+            success: successResponse,
+            failure: function () {
+                alert("Sum response fail");
+            }
+        });
     }
 
     function payOperation()
@@ -319,200 +284,165 @@ function renderWidgets()
         Ext.Msg.prompt('Amount Paid', 'Enter amount paid:', function(btn, text){
             if (btn == 'ok')
             {
-                this.registerAjaxEvents()
+                registerAjaxEvents()
                 var amountPaid = parseFloat(text)
-                saveToXML(function() {
 
-                    account = accountCombo.getValue();
-                    sequence = sequenceCombo.getValue();
+                account = accountCombo.getValue();
+                sequence = sequenceCombo.getValue();
 
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/billtool/pay',
-                        params: { 
-                            account: account,
-                            sequence: sequence,
-                            amount: amountPaid
-                        },
-                        disableCaching: true,
-                        // TODO refactor this
-                        success: function (response, options) {
-                            var o = {};
-                            try {o = Ext.decode(response.responseText);}
-                            catch(e) {
-                                alert("Could not decode JSON data");
-                            }
-                            if(true !== o.success) {
-                                Ext.Msg.alert('Error', o.errors.reason);
-
-                            } else {
-                                // do your success processing here
-                                // loads a bill from eXistDB
-                                Ext.Ajax.request({
-                                    url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + accountCombo.getValue() 
-                                        + '/' + sequence + '.xml',
-                                   success: billLoaded,
-                                   failure: billLoadFailed,
-                                   disableCaching: true,
-                                });
-                            }
-                        },
-                        failure: function () {
-                            alert("roll response fail");
+                Ext.Ajax.request({
+                    url: 'http://'+location.host+'/billtool/pay',
+                    params: { 
+                        account: account,
+                        sequence: sequence,
+                        amount: amountPaid
+                    },
+                    disableCaching: true,
+                    // TODO refactor this
+                    success: function (response, options) {
+                        var o = {};
+                        try {o = Ext.decode(response.responseText);}
+                        catch(e) {
+                            alert("Could not decode JSON data");
                         }
-                    });
-                }, billDidNotSave);
+                        if(true !== o.success) {
+                            Ext.Msg.alert('Error', o.errors.reason);
+
+                        } else {
+                            // do your success processing here
+                            // loads a bill from eXistDB
+                            configureWidgets();
+                        }
+                    }
+                });
             }
         });
     }
 
     function bindRSOperation()
     {
-        saveToXML(function() {
-
-            this.registerAjaxEvents()
-            Ext.Ajax.request({
-                url: 'http://'+location.host+'/billtool/bindrs',
-                params: { 
-                    account: accountCombo.getValue(),
-                    sequence: sequenceCombo.getValue()
-                },
-                disableCaching: true,
-                success: successResponse,
-                failure: function () {
-                    alert("Bind RS response fail");
-                }
-            });
-        }, billDidNotSave);
+        registerAjaxEvents()
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/billtool/bindrs',
+            params: { 
+                account: accountCombo.getValue(),
+                sequence: sequenceCombo.getValue()
+            },
+            disableCaching: true,
+            success: successResponse,
+            failure: function () {
+                alert("Bind RS response fail");
+            }
+        });
     }
 
     function bindREEOperation()
     {
-        saveToXML(function() {
 
-            this.registerAjaxEvents()
-            Ext.Ajax.request({
-                url: 'http://'+location.host+'/billtool/bindree',
-                params: { 
-                    account: accountCombo.getValue(),
-                    sequence: sequenceCombo.getValue()
-                },
-                disableCaching: true,
-                success: successResponse,
-                failure: function () {
-                    alert("Bind REE response fail");
-                }
-            });
-        }, billDidNotSave);
+        registerAjaxEvents()
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/billtool/bindree',
+            params: { 
+                account: accountCombo.getValue(),
+                sequence: sequenceCombo.getValue()
+            },
+            disableCaching: true,
+            success: successResponse,
+            failure: function () {
+                alert("Bind REE response fail");
+            }
+        });
     }
 
     function rollOperation()
     {
-        saveToXML(function() {
-
-            this.registerAjaxEvents()
-            Ext.Ajax.request({
-                url: 'http://'+location.host+'/billtool/roll',
-                params: { 
-                    account: accountCombo.getValue(),
-                    sequence: sequenceCombo.getValue()
-                },
-                disableCaching: true,
-                success: function () {
-                    // do your success processing here
-                    // loads a bill from eXistDB
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + accountCombo.getValue() 
-                            + '/' + (parseInt(sequence)+1) + '.xml',
-                    // TODO: we just loaded sequence +1, so UI widgets would need to be updated
-                       success: billLoaded,
-                       failure: billLoadFailed,
-                       disableCaching: true,
-                    });
-                },
-                failure: function () {
-                    alert("Roll response fail");
-                }
-            });
-        }, billDidNotSave);
+        registerAjaxEvents()
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/billtool/roll',
+            params: { 
+                account: accountCombo.getValue(),
+                sequence: sequenceCombo.getValue()
+            },
+            disableCaching: true,
+            success: function () {
+                // a new sequence has been made
+                sequencesStore.load();
+                // select it
+                sequenceCombo.selectByValue((parseInt(sequence)+1), true);
+                // re configure displayed data
+                configureWidgets();
+            },
+            failure: function () {
+                alert("Roll response fail");
+            }
+        });
     }
 
     function issueOperation()
     {
-        saveToXML(function() {
-
-            this.registerAjaxEvents()
-            Ext.Ajax.request({
-                url: 'http://'+location.host+'/billtool/issue',
-                params: { 
-                    account: accountCombo.getValue(),
-                    sequence: sequenceCombo.getValue()
-                },
-                disableCaching: true,
-                success: successResponse,
-                failure: function () {
-                    alert("Issue response fail");
-                }
-            });
-        }, billDidNotSave);
+        registerAjaxEvents()
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/billtool/issue',
+            params: { 
+                account: accountCombo.getValue(),
+                sequence: sequenceCombo.getValue()
+            },
+            disableCaching: true,
+            success: successResponse,
+            failure: function () {
+                alert("Issue response fail");
+            }
+        });
     }
 
     function renderOperation()
     {
-        saveToXML(function() {
-
-            this.registerAjaxEvents()
-            Ext.Ajax.request({
-                // TODO: pass in only account and sequence
-                url: 'http://'+location.host+'/billtool/render',
-                params: { 
-                    account: accountCombo.getValue(),
-                    sequence: sequenceCombo.getValue()
-                },
-                disableCaching: true,
-                success: successResponse,
-                failure: function () {
-                    alert("Render response fail");
-                }
-            });
-        }, billDidNotSave);
+        registerAjaxEvents()
+        Ext.Ajax.request({
+            // TODO: pass in only account and sequence
+            url: 'http://'+location.host+'/billtool/render',
+            params: { 
+                account: accountCombo.getValue(),
+                sequence: sequenceCombo.getValue()
+            },
+            disableCaching: true,
+            success: successResponse,
+            failure: function () {
+                alert("Render response fail");
+            }
+        });
     }
 
     function commitOperation()
     {
-        saveToXML(function() {
+        account = accountCombo.getValue();
+        sequence = sequenceCombo.getValue();
 
-            account = accountCombo.getValue();
-            sequence = sequenceCombo.getValue();
-            // sequences come back from eXist as [seq].xml
-            sequence = sequence;
+        // TODO: this is bad news.  Need a better way to handle multiple services
+        // shouldn't make two async calls to server that use same callbacks to close modal wait panel and reload bill
+        periods = getUBPeriods(bill);
+        periods.forEach(
+            function (value, index, array) {
+                registerAjaxEvents()
+                Ext.Ajax.request({
+                    // TODO: pass in only account and sequence
+                    url: 'http://'+location.host+'/billtool/commit',
+                    params: {
+                        account: accountCombo.getValue(),
+                        sequence: sequenceCombo.getValue(),
+                        begin: value.begindate,
+                        end: value.enddate,
+                    },
+                    disableCaching: true,
+                    success: successResponse,
+                    failure: function () {
+                        alert("commit response fail");
+                    }
+                });
 
+            }
+        )
 
-            // TODO: this is bad news.  Need a better way to handle multiple services
-            // shouldn't make two async calls to server that use same callbacks to close modal wait panel and reload bill
-            periods = getUBPeriods(bill);
-            periods.forEach(
-                function (value, index, array) {
-                    this.registerAjaxEvents()
-                    Ext.Ajax.request({
-                        // TODO: pass in only account and sequence
-                        url: 'http://'+location.host+'/billtool/commit',
-                        params: {
-                            account: accountCombo.getValue(),
-                            sequence: sequenceCombo.getValue(),
-                            begin: value.begindate,
-                            end: value.enddate,
-                        },
-                        disableCaching: true,
-                        success: successResponse,
-                        failure: function () {
-                            alert("commit response fail");
-                        }
-                    });
-
-                }
-            )
-
-        }, billDidNotSave);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -770,16 +700,16 @@ function renderWidgets()
 
     // initial data loaded into the grid before a bill is loaded
     // populate with data if initial pre-loaded data is desired
-    var initialActualCharges = [
+    /*var initialActualCharges = [
         //['Charge Group 1', 'Charge Description',100,'qty units', 10,'rate units',1000],
-    ];
+    ];*/
     var JSON_initialActualCharges = {
         rows: [
-            {chargegroup:'Distribution', rsbinding:'SOMETHING', description:'description', quantity:10, quantityunits:'kwh', rate:1, rateunits:'kwh', total:100, processingnote:'A Note'},
+            //{chargegroup:'Distribution', rsbinding:'SOMETHING', description:'description', quantity:10, quantityunits:'kwh', rate:1, rateunits:'kwh', total:100, processingnote:'A Note'},
         ]
     };
 
-    var aChargesReader = new Ext.data.ArrayReader({}, [
+    /*var aChargesReader = new Ext.data.ArrayReader({}, [
        {name: 'chargegroup'},
        {name: 'rsbinding'},
        {name: 'description'},
@@ -790,7 +720,7 @@ function renderWidgets()
        {name: 'total', type: 'float'},
        {name: 'processingnote'},
        {name: 'autototal', type: 'float'}
-    ]);
+    ]);*/
 
     var JSON_aChargesReader = new Ext.data.JsonReader({
         // metadata configuration options:
@@ -821,12 +751,12 @@ function renderWidgets()
     });
 
 
-    var aChargesStore = new Ext.data.GroupingStore({
+    /*var aChargesStore = new Ext.data.GroupingStore({
         reader: aChargesReader,
         data: initialActualCharges,
         sortInfo:{field: 'chargegroup', direction: 'ASC'},
         groupField:'chargegroup'
-    });
+    });*/
 
 
     // This proxy is only used for reading charge item records, not writing.
@@ -858,11 +788,11 @@ function renderWidgets()
 
 
 	// utilize custom extension for Group Summary
-    var aChargesSummary = new Ext.ux.grid.GroupSummary();
+    /*var aChargesSummary = new Ext.ux.grid.GroupSummary();*/
 
     var JSON_aChargesSummary = new Ext.ux.grid.GroupSummary();
 
-    var aChargesColModel = new Ext.grid.ColumnModel(
+    /*var aChargesColModel = new Ext.grid.ColumnModel(
     {
         columns: [
             {
@@ -1000,7 +930,7 @@ function renderWidgets()
             }
         ]
     }
-    )
+    )*/
 
     var JSON_aChargesColModel = new Ext.grid.ColumnModel(
     {
@@ -1144,7 +1074,7 @@ function renderWidgets()
 
 
     // create actual charges Grid
-    var aChargesGrid = new Ext.grid.EditorGridPanel({
+    /*var aChargesGrid = new Ext.grid.EditorGridPanel({
         tbar: [{
             // ref places a name for this component into the grid so it may be referenced as aChargesGrid.insertBtn...
             ref: '../insertBtn',
@@ -1267,7 +1197,7 @@ function renderWidgets()
                             Ext.Ajax.request({
                                 url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + accountCombo.getValue() 
                                     + '/' + sequenceCombo.getValue(),
-                               success: billLoaded,
+                               success: configureWidgets,
                                failure: billLoadFailed,
                                disableCaching: true,
                             });
@@ -1301,7 +1231,7 @@ function renderWidgets()
         // config options for stateful behavior
         //stateful: true,
         //stateId: 'grid' 
-    });
+    });*/
 
     var JSON_aChargesGrid = new Ext.grid.EditorGridPanel({
         tbar: [{
@@ -1388,8 +1318,13 @@ function renderWidgets()
 
                 var jsonData = Ext.encode(Ext.pluck(JSON_aChargesStore.data.items, 'data'));
 
+                // TODO: refactor out into globals
+                account = accountCombo.getValue();
+                sequence = sequenceCombo.getValue();
+
                 Ext.Ajax.request({
                     url: 'http://'+location.host+'/billtool/saveActualCharges?account=10002&sequence=6&service=Gas',
+                    params: {service: 'Gas', account: account, sequence: sequence},
                     success: function() { 
                         // TODO: check success status in json package
 
@@ -1442,7 +1377,7 @@ function renderWidgets()
                             Ext.Ajax.request({
                                 url: 'http://'+location.host+'/exist/rest/db/skyline/bills/' + accountCombo.getValue() 
                                     + '/' + sequenceCombo.getValue(),
-                               success: billLoaded,
+                               success: configureWidgets,
                                failure: billLoadFailed,
                                disableCaching: true,
                             });
@@ -1478,7 +1413,7 @@ function renderWidgets()
         //stateId: 'grid' 
     });
 
-    // selection callbacks
+    /*// selection callbacks
     aChargesGrid.getSelectionModel().on('selectionchange', function(sm){
         // if a selection is made, allow it to be removed
         // if the selection was deselected to nothing, allow no 
@@ -1488,7 +1423,7 @@ function renderWidgets()
         // if there was a selection, allow an insertion
         aChargesGrid.insertBtn.setDisabled(sm.getCount()<1);
 
-    });
+    });*/
 
     JSON_aChargesGrid.getSelectionModel().on('selectionchange', function(sm){
         // if a selection is made, allow it to be removed
@@ -1503,9 +1438,9 @@ function renderWidgets()
   
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
-    aChargesStore.on('update', function(){
+    /*aChargesStore.on('update', function(){
         aChargesGrid.saveBtn.setDisabled(false);
-    });
+    });*/
 
     JSON_aChargesStore.on('update', function(){
         JSON_aChargesGrid.saveBtn.setDisabled(false);
@@ -1518,6 +1453,7 @@ function renderWidgets()
 
     // initial data loaded into the grid before a bill is loaded
     // populate with data if initial pre-loaded data is desired
+    /*
     var initialHCharges = [
         //['Charge Group 1', 'Charge Description',100,'qty units', 10,'rate units',1000],
     ];
@@ -1811,14 +1747,24 @@ function renderWidgets()
     // when the store backing the grid is edited, enable the save button
     hChargesStore.on('update', function(){
         hChargesGrid.saveBtn.setDisabled(false);
-    });
+    });*/
 
 
 
     // end of tab widgets
     ////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Status bar displayed at footer of every panel in the tabpanel
+
+    var statusBar = new Ext.ux.StatusBar({
+        defaultText: 'No RE Bill',
+        id: 'statusbar',
+        statusAlign: 'right', // the magic config
+        //items: [{ text: 'A Button' }, '-', 'Plain Text', ' ', ' ']
+    });
+
+    ////////////////////////////////////////////////////////////////////////////
     // construct tabpanel for viewport
 
     var tabPanel = new Ext.TabPanel({
@@ -1829,6 +1775,7 @@ function renderWidgets()
       // necessary for child FormPanels to draw properly when dynamically changed
       layoutOnTabChange: true,
       activeTab: 0,
+      bbar: statusBar,
       items:[
         {
           title: 'Upload Utility Bill',
@@ -1862,8 +1809,8 @@ function renderWidgets()
           layout: 'accordion',
           items: [
             JSON_aChargesGrid,
-            aChargesGrid,
-            hChargesGrid
+            //aChargesGrid,
+            //hChargesGrid
           ]
         }]
       });
@@ -1918,7 +1865,7 @@ function renderWidgets()
 
     // responsible for initializing all ui widget backing stores
     // called due to sequenceCombo.on() select event (see above)
-    function billLoaded(data) {
+    function configureWidgets(data) {
 
         // set the bill document to a global so that it may always be referenced
         //bill = data.responseXML;
@@ -1982,13 +1929,15 @@ function renderWidgets()
             disableCaching: true,
         });
 
-        JSON_aChargesStore.setBaseParam({service: 'gas', account: account, sequence: sequence});
-        JSON_aChargesStore.load();
+        JSON_aChargesStore.load({params: {service: 'Gas', account: account, sequence: sequence}});
+
+        var sb = Ext.getCmp('statusbar');
+        sb.setStatus({
+            text: account + "-" + sequence,
+        });
 
         // now that we have the data in locally manageable data structures
-        // tell all of the backing ui widget data stores to load the data
-
-        // load the data into the charges backing data store
+        // tell all of the backing ui widget data stores to load the data // load the data into the charges backing data store
         //aChargesStore.loadData(actualCharges);
         //hChargesStore.loadData(hypotheticalCharges);
 
@@ -2005,6 +1954,7 @@ function renderWidgets()
     // back to the server.
     function saveToXML(successCallback, failCallback)
     {
+        /*
         // ToDo: credentials
 
         if (bill != null)
@@ -2018,7 +1968,7 @@ function renderWidgets()
                 success: successCallback,
                 failure: failCallback,
             });
-            /* Seeing this bug in your FF console?
+            * Seeing this bug in your FF console?
              *   Error: no element found
              *   Source File: http://tyrell/exist/rest/db/skyline/bills/00000/3.xml
              *   Line: 1
@@ -2027,8 +1977,9 @@ function renderWidgets()
              * FF does not.  
              * http://www.sencha.com/forum/showthread.php?78777-CLOSED-3.0.1-Ext.Ajax.request-causes-firefox-error-when-no-entity-returned
              * https://bugzilla.mozilla.org/show_bug.cgi?id=521301
-             */
+             
         } else alert('No bill to save');
+        */
     }
 
     function billSaved(data)
