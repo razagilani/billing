@@ -107,6 +107,9 @@ class BillUpload(object):
     # TODO: remove cherrypy dependency. caller should extract the actual file
     # from cherrypy's object and pass that as 'file_to_upload'
     def upload(self, account, begin_date, end_date, file_to_upload):
+        import pdb
+        pdb.set_trace()
+        
         # check account name (validate_account just checks it against a regex)
         # TODO: check that it's really an existing account against nexus
         if not validate_account(account):
@@ -165,6 +168,8 @@ class BillUpload(object):
                 save_file.close()
 
         return True
+
+    #def updateDB(self, account, begin_date, end_date):
 
 # two "external validators" for checking accounts and dates ###################
 
