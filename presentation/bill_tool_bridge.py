@@ -67,7 +67,7 @@ class BillToolBridge:
             self.config.set('billdb', 'billpath', '[root]db/skyline/bills/')
             self.config.add_section('statedb')
             self.config.set('statedb', 'host', 'localhost')
-            self.config.set('statedb', 'database', 'skyline')
+            self.config.set('statedb', 'db', 'skyline')
             self.config.set('statedb', 'user', 'dev')
             self.config.set('statedb', 'password', '[password]')
 

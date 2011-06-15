@@ -38,7 +38,7 @@ Ext.onReady(function() {
         renderTo: 'myform',
         title: 'Upload Bill',
         width: 400,
-        url: 'http://localhost:8080/upload',
+        url: 'http://localhost:8086/upload',
         frame:true,
 
         autoHeight: true,
