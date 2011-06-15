@@ -991,18 +991,15 @@ function renderWidgets()
                 sequence = sequenceCombo.getValue();
 
                 Ext.Ajax.request({
-                    url: 'http://'+location.host+'/billtool/saveActualCharges?account=10002&sequence=6&service=Gas',
-                    params: {service: 'Gas', account: account, sequence: sequence},
+                    url: 'http://'+location.host+'/billtool/saveActualCharges',
+                    params: {service: 'Gas', account: account, sequence: sequence, rows: jsonData},
                     success: function() { 
                         // TODO: check success status in json package
 
                         // reload the store to clear dirty flags
-                        // Note: store params for account, sequence and service were previously set
-                        // when the store was loaded.
-                        aChargesStore.load()
+                        aChargesStore.load({params: {service: 'Gas', account: account, sequence: sequence}})
                     },
                     failure: function() { alert("ajax fail"); },
-                    params: { rows: jsonData }
                 });
             }
         },{
@@ -1364,39 +1361,16 @@ function renderWidgets()
                 sequence = sequenceCombo.getValue();
 
                 Ext.Ajax.request({
-                    url: 'http://'+location.host+'/billtool/saveActualCharges?account=10002&sequence=6&service=Gas',
-                    params: {service: 'Gas', account: account, sequence: sequence},
+                    url: 'http://'+location.host+'/billtool/saveHypotheticalCharges',
+                    params: {service: 'Gas', account: account, sequence: sequence, rows: jsonData},
                     success: function() { 
                         // TODO: check success status in json package
 
                         // reload the store to clear dirty flags
-                        // Note: store params for account, sequence and service were previously set
-                        // when the store was loaded.
-                        hChargesStore.load()
+                        hChargesStore.load({params: {service: 'Gas', account: account, sequence: sequence}})
                     },
                     failure: function() { alert("ajax fail"); },
-                    params: { rows: jsonData }
                 });
-            }
-        },{
-            // places reference to this button in grid.  
-            ref: '../copyActual',
-            text: 'Copy to Hypo',
-            disabled: false,
-            handler: function()
-            {
-                // disable the save button for the save attempt.
-                // is there a closer place for this to the actual button click due to the possibility of a double
-                // clicked button submitting two ajax requests?
-                hChargesGrid.saveBtn.setDisabled(true);
-
-                // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                hChargesGrid.stopEditing();
-
-                // take the records that are maintained in the store
-                // and update the bill document with them.
-                //setActualCharges(bill, hChargesStore.getRange());
-
             }
         }],
         colModel: hChargesColModel,

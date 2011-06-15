@@ -152,7 +152,7 @@ class BillUpload(object):
                 self.logger.error('unable to create directory "%s": %s' \
                         % (os.path.join(SAVE_DIRECTORY, save_file_path), \
                         str(e)))
-                raise
+                raise    
         
         # write the file in SAVE_DIRECTORY
         save_file = None

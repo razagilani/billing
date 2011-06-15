@@ -453,7 +453,7 @@ class BillToolBridge:
         try:
             the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
             actual_charges = the_bill.actual_charges_no_totals
-            flattened_charges = self.charges(service, account, sequence, actual_charges, **args)
+            flattened_charges = self.flattenCharges(service, account, sequence, actual_charges, **args)
 
         except Exception as e:
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -465,7 +465,7 @@ class BillToolBridge:
         try:
             the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
             hypothetical_charges = the_bill.hypothetical_charges_no_totals
-            flattened_charges = self.charges(service, account, sequence, hypothetical_charges, **args)
+            flattened_charges = self.flattenCharges(service, account, sequence, hypothetical_charges, **args)
 
         except Exception as e:
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -473,7 +473,7 @@ class BillToolBridge:
         return ju.dumps({'success': True, 'rows': flattened_charges})
 
 
-    def charges(self, service, account, sequence, charges, **args):
+    def flattenCharges(self, service, account, sequence, charges, **args):
 
         # flatten structure into an array of dictionaries, one for each charge
         # this has to be done because the grid editor is  looking for a flat table
@@ -505,35 +505,28 @@ class BillToolBridge:
         try:
             the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
 
-            # this code should go into process
-            from billing.mutable_named_tuple import MutableNamedTuple
+            charge_items = ju.loads(rows)
 
-            the_charge_items = ju.loads(rows)
+            the_bill.actual_charges = self.nestCharges(service, account, sequence, charge_items)
 
-            details = {}
+            XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence),
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )
 
-            details[service] = MutableNamedTuple()
-            details[service].chargegroups = []
+        except Exception as e:
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-            for cgtype, charge_items in groupby(the_charge_items, key=lambda charge_item:charge_item['chargegroup']):
-                chargegroup_mnt = MutableNamedTuple()
-                chargegroup_mnt.type = cgtype
-                chargegroup_mnt.charges = []
-                for charge_item in charge_items:
-                    charge_mnt = MutableNamedTuple()
-                    charge_mnt.rsbinding = charge_item['rsbinding']
-                    charge_mnt.description = charge_item['description']
-                    charge_mnt.quantity = charge_item['quantity']
-                    charge_mnt.quantityunits = charge_item['quantityunits']
-                    charge_mnt.rate = charge_item['rate']
-                    charge_mnt.rateunits = charge_item['rateunits']
-                    charge_mnt.total = charge_item['total']
-                    chargegroup_mnt.charges.append(charge_mnt)
-                    
-                details[service].chargegroups.append(chargegroup_mnt)
+        return ju.dumps({'success': True})
 
+    @cherrypy.expose
+    def saveHypotheticalCharges(self, service, account, sequence, rows, **args):
+        try:
+            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
 
-            the_bill.actual_charges = details
+            charge_items = ju.loads(rows)
+
+            the_bill.hypothetical_charges = self.nestCharges(service, account, sequence, charge_items)
 
             XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence),
                 self.config.get("xmldb", "user"),
@@ -546,6 +539,35 @@ class BillToolBridge:
         return ju.dumps({'success': True})
 
 
+
+    def nestCharges(self, service, account, sequence, the_charge_items, **args):
+
+        # this code should go into process
+        from billing.mutable_named_tuple import MutableNamedTuple
+
+        details = {}
+
+        details[service] = MutableNamedTuple()
+        details[service].chargegroups = []
+
+        for cgtype, charge_items in groupby(the_charge_items, key=lambda charge_item:charge_item['chargegroup']):
+            chargegroup_mnt = MutableNamedTuple()
+            chargegroup_mnt.type = cgtype
+            chargegroup_mnt.charges = []
+            for charge_item in charge_items:
+                charge_mnt = MutableNamedTuple()
+                charge_mnt.rsbinding = charge_item['rsbinding']
+                charge_mnt.description = charge_item['description']
+                charge_mnt.quantity = charge_item['quantity']
+                charge_mnt.quantityunits = charge_item['quantityunits']
+                charge_mnt.rate = charge_item['rate']
+                charge_mnt.rateunits = charge_item['rateunits']
+                charge_mnt.total = charge_item['total']
+                chargegroup_mnt.charges.append(charge_mnt)
+                
+            details[service].chargegroups.append(chargegroup_mnt)
+
+        return details
 
 
     ################
@@ -644,9 +666,12 @@ class BillToolBridge:
     def upload_utility_bill(self, account, begin_date, end_date, file_to_upload, **args):
         from billing.processing.billupload import BillUpload
 
-        upload = BillUpload()
         try:
-            return upload.upload(account, begin_date, end_date, file_to_upload)
+            upload = BillUpload()
+            if upload.upload(account, begin_date, end_date, file_to_upload) is True:
+                return ju.dumps({'success':True})
+            else:
+                return ju.dumps({'success':False, 'errors':{'reason':'file upload failed', 'details':'Returned False'}})
         except Exception as e: 
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
