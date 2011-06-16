@@ -6,6 +6,8 @@ import logging
 import time
 import re
 import ConfigParser
+import MySQLdb
+sys.stdout = sys.stderr
 '''
 This was supposed to be completely independent of cherrypy, but cherrypy passes the file argument as a cherrypy object, not a string or file object. See comment on BillUpload.upload().  Note that this problem also makes it hard to write tests or a command-line interface.
 
@@ -107,9 +109,6 @@ class BillUpload(object):
     # TODO: remove cherrypy dependency. caller should extract the actual file
     # from cherrypy's object and pass that as 'file_to_upload'
     def upload(self, account, begin_date, end_date, file_to_upload):
-        import pdb
-        pdb.set_trace()
-        
         # check account name (validate_account just checks it against a regex)
         # TODO: check that it's really an existing account against nexus
         if not validate_account(account):
@@ -167,9 +166,41 @@ class BillUpload(object):
             if save_file is not None:
                 save_file.close()
 
+        # make a row in utilbill representing the bill that was uploaded.
+        self.insert_bill_in_database(account, begin_date, end_date)
+
         return True
 
-    #def updateDB(self, account, begin_date, end_date):
+    '''Inserts a a row into the utilbill table when the bill file has been uploaded.'''
+    # TODO move all database-related code into state.py?
+    # TODO use state.py fetch() function for database query
+    # TODO make pivotal tracker entries for the above
+    def insert_bill_in_database(self, account, begin_date, end_date):
+        conn = None
+        try:
+            conn = MySQLdb.connect(host='tyrell', user='dev', passwd='dev', db='skyline_dev')
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            # note that "select id from customer where account = '%s'" will be
+            # null if the account doesn't exist, but in the future the account
+            # will come from a drop-drown menu of existing accounts.
+            result = cur.execute('''INSERT INTO skyline_dev.utilbill
+                    (id, customer_id, rebill_id, period_start, period_end,
+                    estimated, received, processed) VALUES
+                    (NULL, (select id from skyline_dev.customer where account = %s),
+                    NULL, %s, %s, FALSE, TRUE, FALSE)''' , \
+                    (account, begin_date, end_date))
+            print result
+        except MySQLdb.Error:
+            # TODO log errors?
+            print "Database error"
+            raise
+        except:
+            print "Unexpected error:", sys.exc_info()[0]
+            raise
+        finally:
+            if conn is not None:
+                conn.commit()
+                conn.close()
 
 # two "external validators" for checking accounts and dates ###################
 

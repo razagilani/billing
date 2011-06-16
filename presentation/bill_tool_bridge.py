@@ -22,6 +22,8 @@ import string
 
 import ConfigParser
 
+import MySQLdb
+
 from billing.processing import process
 from billing.processing import state
 from billing.processing import fetch_bill_data as fbd
@@ -38,8 +40,6 @@ from skyliner.xml_utils import XMLUtils
 from billing.nexus_util import NexusUtil
 
 from itertools import groupby
-
-
 
 
 # TODO rename to ProcessBridge or something
@@ -665,7 +665,6 @@ class BillToolBridge:
     @cherrypy.expose
     def upload_utility_bill(self, account, begin_date, end_date, file_to_upload, **args):
         from billing.processing.billupload import BillUpload
-
         try:
             upload = BillUpload()
             if upload.upload(account, begin_date, end_date, file_to_upload) is True:
@@ -677,6 +676,60 @@ class BillToolBridge:
 
     #
     ################
+
+ 
+    @cherrypy.expose
+    def listUtilBills(self, start, limit, **args):
+        # call getrows to actually query the database; return the result in
+        # JSON format if it succeded or an error if it didn't
+        try:
+            result, totalCount = self.getUtilBillRows(int(start), int(limit))
+            return ju.dumps({'success': True, 'rows':result,
+                'results':totalCount})
+        except Exception as e:
+            # TODO: log errors?
+            print >> sys.stderr, e
+            #return '{success: false}'
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+    
+    '''Queries the 'skyline_dev' database on tyrell for account, start date, and
+    end date of bills in a slice of the utilbills table; returns the slice and the
+    total number of rows in the table (for paging).'''
+    def getUtilBillRows(self, start, limit):
+        conn = None
+        try:
+            # connect to database
+            conn = MySQLdb.connect(host='tyrell', user='dev', passwd='dev', \
+                    db='skyline_dev')
+            
+            # get appropriate slice of table
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            cur.execute('''select account, period_start, period_end 
+                    from customer, utilbill
+                    where customer.id = utilbill.customer_id
+                    limit %d,%d''' % (start, limit))
+            theSlice = cur.fetchall()
+            
+            # count total number of rows in the whole table (not just the slice)
+            # note: this must be the exact same query as above, not just "select
+            # count(*) from utilbill", which would count rows in utilbill that
+            # have null ids even though they don't show up in the query above.
+            cur.execute('''select count(*) as count from customer, utilbill
+                    where customer.id = utilbill.customer_id''')
+            totalCount = int(cur.fetchone()['count'])
+            
+            # return the slice (dictionary) and the overall count (integer)
+            return theSlice, totalCount
+        except MySQLdb.Error:
+            # TODO is this kind of error checking good enough?
+            print >> sys.stderr, "Database error"
+            raise
+        except:
+            print >> sys.stderr, "Unexpected error:", sys.exc_info()[0]
+            raise
+        finally:
+            if conn is not None:
+                conn.close()
 
 
 bridge = BillToolBridge()
