@@ -1021,6 +1021,18 @@ function renderWidgets()
                 // and update the bill document with them.
                 //setActualCharges(bill, aChargesStore.getRange());
 
+                Ext.Ajax.request({
+                    url: 'http://'+location.host+'/billtool/copyactual',
+                    params: {account: account, sequence: sequence},
+                    success: function() { 
+                        // TODO: check success status in json package
+
+                        // reload the store to clear dirty flags
+                        aChargesStore.load({params: {service: 'Gas', account: account, sequence: sequence}})
+                        hChargesStore.load({params: {service: 'Gas', account: account, sequence: sequence}})
+                    },
+                    failure: function() { alert("ajax fail"); },
+                });
             }
         }],
         colModel: aChargesColModel,
