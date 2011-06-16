@@ -68,7 +68,6 @@ function renderWidgets()
     var upload_form_panel = new Ext.form.FormPanel({
         fileUpload: true,
         title: 'Upload Bill',
-        width: 500,
         url: 'http://'+location.host+'/billtool/upload_utility_bill',
         frame:true,
         autoHeight: true,
@@ -117,19 +116,22 @@ function renderWidgets()
     
     // paging grid
     var paging_grid = new Ext.grid.GridPanel({
-        width:700,
         height:500,
         title:'Utility Bills',
         store: paging_grid_store,
         trackMouseOver:false,
         disableSelection:true,
         //loadMask: true,
+        layout: 'fit',
+        viewConfig: {
+            forceFit: true,
+        },
 
         // grid columns
         columns:[{
             header: 'Account',
             dataIndex: 'account',
-        width:80,
+            width:80,
         },{
             header: 'Start Date',
             dataIndex: 'period_start',
@@ -147,7 +149,7 @@ function renderWidgets()
             displayInfo: true,
             displayMsg: 'Displaying topics {0} - {1} of {2}',
             emptyMsg: "No topics to display",
-        })
+        }),
     });
 
     // render it
@@ -1498,11 +1500,13 @@ function renderWidgets()
         {
           title: 'Upload Utility Bill',
           xtype: 'panel',
-          //layout: 'vbox',
+          layout: 'fit',
+        /*
           layout: new Ext.layout.VBoxLayout({
               //align: 'center',
-              defaultMargins: {top:10, right:10, bottom:10, left:10},
+              //defaultMargins: {top:10, right:10, bottom:10, left:10},
           }),
+          */
           items: [
             upload_form_panel,
             paging_grid,
