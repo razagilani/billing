@@ -68,7 +68,7 @@ function renderWidgets()
     var upload_form_panel = new Ext.form.FormPanel({
         fileUpload: true,
         title: 'Upload Bill',
-        width: 400,
+        width: 500,
         url: 'http://'+location.host+'/billtool/upload_utility_bill',
         frame:true,
         autoHeight: true,
@@ -1498,7 +1498,11 @@ function renderWidgets()
         {
           title: 'Upload Utility Bill',
           xtype: 'panel',
-          layout: 'fit',
+          //layout: 'vbox',
+          layout: new Ext.layout.VBoxLayout({
+              //align: 'center',
+              defaultMargins: {top:10, right:10, bottom:10, left:10},
+          }),
           items: [
             upload_form_panel,
             paging_grid,

@@ -174,7 +174,6 @@ class BillUpload(object):
     '''Inserts a a row into the utilbill table when the bill file has been uploaded.'''
     # TODO move all database-related code into state.py?
     # TODO use state.py fetch() function for database query
-    # TODO make pivotal tracker entries for the above
     def insert_bill_in_database(self, account, begin_date, end_date):
         conn = None
         try:
