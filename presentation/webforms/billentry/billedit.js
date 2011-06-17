@@ -132,10 +132,12 @@ function renderWidgets()
         //layout: new Ext.layout.AnchorLayout() ({
             //anchorSize: {width:800, height:600},
         //}),
+        /*
         view: new Ext.grid.GroupingView({
             forceFit:true,
             //groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
         }),
+        */
 
         // grid columns
         columns:[{
@@ -228,7 +230,6 @@ function renderWidgets()
     // ToDo: do not allow selection change if store is unsaved
     sequenceCombo.on('select', function(combobox, record, index) {
         configureWidgets();
-
     });
 
     // a hack so that a newly rolled bill may be accessed by directly entering its sequence
@@ -1552,7 +1553,7 @@ function renderWidgets()
       //margins:'0 4 4 0',
       // necessary for child FormPanels to draw properly when dynamically changed
       layoutOnTabChange: true,
-      activeTab: 1,
+      activeTab: 0,
       bbar: statusBar,
       items:[
         {
@@ -1672,7 +1673,7 @@ function renderWidgets()
                     } 
                     configureUBPeriodsForms(account, sequence, jsonData);
                 } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Could not decode ' + jsonData);
+                    //Ext.MessageBox.alert('ERROR', 'Could not decode ' + jsonData);
                 }
             },
             failure: function() {alert("ajax failure")},
@@ -1695,7 +1696,7 @@ function renderWidgets()
                     } 
                     configureUBMeasuredUsagesForms(account, sequence, jsonData);
                 } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Could not decode ' + jsonData);
+                    //Ext.MessageBox.alert('ERROR', 'Could not decode ' + jsonData);
                 }
             },
             failure: function() {alert("ajax failure")},
