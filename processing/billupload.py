@@ -34,8 +34,8 @@ OUTPUT_DATE_FORMAT = '%Y%m%d'
 
 # where account directories are located (uploaded files are saved inside of
 # those)
-# TODO: eventually change this to the real location
-SAVE_DIRECTORY = '/tmp'
+# TODO: put in config file
+SAVE_DIRECTORY = '/db/skyline/bills'
 
 # default name of log file (config file can override this)
 DEFAULT_LOG_FILE_NAME = 'billupload.log'
@@ -154,6 +154,7 @@ class BillUpload(object):
                 raise    
         
         # write the file in SAVE_DIRECTORY
+        # (overwrite if it's already there)
         save_file = None
         try:
             save_file = open(save_file_path, 'w')
