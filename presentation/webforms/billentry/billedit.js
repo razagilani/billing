@@ -959,6 +959,7 @@ function renderWidgets()
     });
     var serviceComboFormPanel = new Ext.form.FormPanel({
         layout:'fit',
+        width: 100,
         items: [
             new Ext.form.ComboBox({
                 id: 'service_for_charges',
