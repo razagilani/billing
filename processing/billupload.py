@@ -35,7 +35,12 @@ OUTPUT_DATE_FORMAT = '%Y%m%d'
 # where account directories are located (uploaded files are saved inside of
 # those)
 # TODO: put in config file
-SAVE_DIRECTORY = '/db/skyline/bills'
+SAVE_DIRECTORY = '/db/skyline/utilitybills'
+
+# where bill images are temporarily saved for viewing after they're rendered
+# TODO change this to the real location
+# TODO also put in config file
+BILL_IMAGE_DIRECTORY = '/tmp/billimages'
 
 # default name of log file (config file can override this)
 DEFAULT_LOG_FILE_NAME = 'billupload.log'
@@ -118,7 +123,7 @@ class BillUpload(object):
         # convert dates into the proper format, & report error if that fails
         try:
             formatted_begin_date = format_date(begin_date)
-            formatted_end_date = format_date(begin_date)
+            formatted_end_date = format_date(end_date)
         except Exception as e:
             self.logger.error('unexpected date format(s): %s, %s: %s' \
                     % (begin_date, end_date, str(e)))
@@ -201,6 +206,55 @@ class BillUpload(object):
             if conn is not None:
                 conn.commit()
                 conn.close()
+
+    '''Given an account and dates for a bill, renders that bill as an image in
+    a certain directory, and returns a path to that directory. (The caller is
+    responsble for providing a URL to the client where that image can be accessed.)'''
+    def getBillImagePath(self, account, begin_date, end_date):
+        # check account name (validate_account just checks it against a regex)
+        if not validate_account(account):
+            self.logger.error('invalid account name: "%s"' % account)
+            raise ValueError('invalid account name: "%s"' % account)
+
+        # convert dates into the proper format, & report error if that fails
+        try:
+            formatted_begin_date = format_date(begin_date)
+            formatted_end_date = format_date(end_date)
+        except Exception as e:
+            self.logger.error('unexpected date format(s): %s, %s: %s' \
+                    % (begin_date, end_date, str(e)))
+            raise
+
+        # TODO create bill image directory if it doesn't exist already
+        
+        # name of bill file (in its original format):
+        # [begin_date]-[end_date].[extension]
+        bill_file_name = formatted_begin_date + '-' + formatted_end_date + '.pdf'
+        # TODO figure out how to detect actual file extension--for now i'll
+        # just assume it's a pdf, but it could be different and there could be
+        # multiple files with the same name but different extensions (not sure
+        # how to deal with that)
+        
+        # path to the bill file (in its original format):
+        # [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]
+        bill_file_path = os.path.join(SAVE_DIRECTORY, account, bill_file_name)
+
+        # path to the bill image:
+        # TODO change this
+        bill_image_path = os.path.join(BILL_IMAGE_DIRECTORY, 'image_' + account + '_' + bill_file_name)
+
+        # render the image
+        self.renderBillImage(bill_file_path, bill_image_path)
+
+        # return path to the image file
+        return bill_image_path
+
+    '''Converts the file at bill_file_path to a PNG image and saves it at
+    bill_image_path.'''
+    def renderBillImage(self, bill_file_path, bill_image_path):
+        # TODO don't do this with shell commands, add error checking, etc!
+        os.popen('cp %s %s' % (bill_file_path, bill_image_path))
+        
 
 # two "external validators" for checking accounts and dates ###################
 

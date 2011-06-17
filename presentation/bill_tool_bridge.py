@@ -731,6 +731,19 @@ class BillToolBridge:
             if conn is not None:
                 conn.close()
 
+    @cherrypy.expose
+    def getBillImage(self, account, begin_date, end_date, **args):
+        from billing.processing.billupload import BillUpload
+        try:
+            upload = BillUpload()
+            result = upload.getBillImagePath(account, begin_date, end_date)
+            if result is True:
+                return ju.dumps({'success':True})
+            else:
+                return ju.dumps({'success':False, 'errors':{'reason':'bill rendering failed', 'details':'Returned False'}})
+        except Exception as e: 
+             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
 
 bridge = BillToolBridge()
 
