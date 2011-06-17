@@ -753,6 +753,7 @@ function renderWidgets()
     // Charges tab
     //
 
+
     /////////////////////////////////
     // support for the actual charges
 
@@ -958,129 +959,172 @@ function renderWidgets()
             }
         ]
     });
+    var serviceComboFormPanel = new Ext.form.FormPanel({
+        layout:'fit',
+        items: [
+            new Ext.form.ComboBox({
+                id: 'service_for_charges',
+                triggerAction: 'all',
+                store: ['Gas', 'Electric'],
+                value: 'Gas',
+            })
+        ],
+    });
+
+    var aChargesToolbar = new Ext.Toolbar({
+        items: [
+            serviceComboFormPanel,
+            {
+                xtype: 'tbseparator'
+            },{
+                xtype: 'button',
+                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.insertBtn...
+                ref: '../insertBtn',
+                iconCls: 'icon-user-add',
+                text: 'Insert',
+                disabled: true,
+                handler: function()
+                {
+                    aChargesGrid.stopEditing();
+
+                    // grab the current selection - only one row may be selected per singlselect configuration
+                    var selection = aChargesGrid.getSelectionModel().getSelected();
+
+                    // make the new record
+                    var ChargeItemType = aChargesGrid.getStore().recordType;
+                    var defaultData = 
+                    {
+                        // ok, this is tricky:  the newly created record is assigned the chargegroup
+                        // of the selection during the insert.  This way, the new record is added
+                        // to the proper group.  Otherwise, if the record does not have the same
+                        // chargegroup name of the adjacent record, a new group is shown in the grid
+                        // and the UI goes out of sync.  Try this by change the chargegroup below
+                        // to some other string.
+                        chargegroup: selection.data.chargegroup,
+                        description: 'enter description',
+                        quantity: 0,
+                        quantityunits: 'kWh',
+                        rate: 0,
+                        rateunits: 'dollars',
+                        total: 0,
+                        //autototal: 0
+                    };
+                    var c = new ChargeItemType(defaultData);
+        
+                    // select newly inserted record
+                    var insertionPoint = aChargesStore.indexOf(selection);
+                    aChargesStore.insert(insertionPoint + 1, c);
+                    aChargesGrid.getView().refresh();
+                    aChargesGrid.getSelectionModel().selectRow(insertionPoint);
+                    aChargesGrid.startEditing(insertionPoint +1,1);
+                    
+                    // An inserted record must be saved 
+                    aChargesGrid.saveBtn.setDisabled(false);
+                }
+            },{
+                xtype: 'tbseparator'
+            },{
+                xtype: 'button',
+                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                ref: '../removeBtn',
+                iconCls: 'icon-user-delete',
+                text: 'Remove',
+                disabled: true,
+                handler: function()
+                {
+                    aChargesGrid.stopEditing();
+                    var s = aChargesGrid.getSelectionModel().getSelections();
+                    for(var i = 0, r; r = s[i]; i++)
+                    {
+                        aChargesStore.remove(r);
+                    }
+                    aChargesGrid.saveBtn.setDisabled(false);
+                }
+            },{
+                xtype:'tbseparator'
+            },{
+                xtype: 'button',
+                // places reference to this button in grid.  
+                ref: '../saveBtn',
+                text: 'Save',
+                disabled: true,
+                handler: function()
+                {
+                    // disable the save button for the save attempt.
+                    // is there a closer place for this to the actual button click due to the possibility of a double
+                    // clicked button submitting two ajax requests?
+                    aChargesGrid.saveBtn.setDisabled(true);
+
+                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
+                    aChargesGrid.stopEditing();
+
+                    // OK, a little nastiness follows: We cannot rely on the underlying Store to
+                    // send records back to the server because it does so intelligently: Only
+                    // dirty records go back.  Unfortunately, since there is no entity id for
+                    // a record (yet), all records must be returned so that ultimately an
+                    // XML grove can be produced with proper document order.
+                    //aChargesStore.save(); is what we want to do
+
+                    var jsonData = Ext.encode(Ext.pluck(aChargesStore.data.items, 'data'));
+
+                    // TODO: refactor out into globals
+                    account = accountCombo.getValue();
+                    sequence = sequenceCombo.getValue();
+
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/billtool/saveActualCharges',
+                        params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence, rows: jsonData},
+                        success: function() { 
+                            // TODO: check success status in json package
+
+                            // reload the store to clear dirty flags
+                            aChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}})
+                        },
+                        failure: function() { alert("ajax fail"); },
+                    });
+                }
+            },{
+                xtype:'tbseparator'
+            },{
+                xtype: 'button',
+                // places reference to this button in grid.  
+                ref: '../copyActual',
+                text: 'Copy to Hypo',
+                disabled: false,
+                handler: function()
+                {
+                    // disable the save button for the save attempt.
+                    // is there a closer place for this to the actual button click due to the possibility of a double
+                    // clicked button submitting two ajax requests?
+                    aChargesGrid.saveBtn.setDisabled(true);
+
+                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
+                    aChargesGrid.stopEditing();
+
+                    // take the records that are maintained in the store
+                    // and update the bill document with them.
+                    //setActualCharges(bill, aChargesStore.getRange());
+
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/billtool/copyactual',
+                        params: {account: account, sequence: sequence},
+                        success: function() { 
+                            // TODO: check success status in json package
+
+                            // reload the store to clear dirty flags
+                            aChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}})
+                            hChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}})
+                        },
+                        failure: function() { alert("ajax fail"); },
+                    });
+                }
+            }
+        ]
+    });
+
 
     var aChargesGrid = new Ext.grid.EditorGridPanel({
-        tbar: [{
-            // ref places a name for this component into the grid so it may be referenced as aChargesGrid.insertBtn...
-            ref: '../insertBtn',
-            iconCls: 'icon-user-add',
-            text: 'Insert',
-            disabled: true,
-            handler: function()
-            {
-                aChargesGrid.stopEditing();
-
-                // grab the current selection - only one row may be selected per singlselect configuration
-                var selection = aChargesGrid.getSelectionModel().getSelected();
-
-                // make the new record
-                var ChargeItemType = aChargesGrid.getStore().recordType;
-                var defaultData = 
-                {
-                    // ok, this is tricky:  the newly created record is assigned the chargegroup
-                    // of the selection during the insert.  This way, the new record is added
-                    // to the proper group.  Otherwise, if the record does not have the same
-                    // chargegroup name of the adjacent record, a new group is shown in the grid
-                    // and the UI goes out of sync.  Try this by change the chargegroup below
-                    // to some other string.
-                    chargegroup: selection.data.chargegroup,
-                    description: 'enter description',
-                    quantity: 0,
-                    quantityunits: 'kWh',
-                    rate: 0,
-                    rateunits: 'dollars',
-                    total: 0,
-                    //autototal: 0
-                };
-                var c = new ChargeItemType(defaultData);
-    
-                // select newly inserted record
-                var insertionPoint = aChargesStore.indexOf(selection);
-                aChargesStore.insert(insertionPoint + 1, c);
-                aChargesGrid.getView().refresh();
-                aChargesGrid.getSelectionModel().selectRow(insertionPoint);
-                aChargesGrid.startEditing(insertionPoint +1,1);
-                
-                // An inserted record must be saved 
-                aChargesGrid.saveBtn.setDisabled(false);
-            }
-        },{
-            // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-            ref: '../removeBtn',
-            iconCls: 'icon-user-delete',
-            text: 'Remove',
-            disabled: true,
-            handler: function()
-            {
-                aChargesGrid.stopEditing();
-                var s = aChargesGrid.getSelectionModel().getSelections();
-                for(var i = 0, r; r = s[i]; i++)
-                {
-                    aChargesStore.remove(r);
-                }
-                aChargesGrid.saveBtn.setDisabled(false);
-            }
-        },{
-            // places reference to this button in grid.  
-            ref: '../saveBtn',
-            text: 'Save',
-            disabled: true,
-            handler: function()
-            {
-                // disable the save button for the save attempt.
-                // is there a closer place for this to the actual button click due to the possibility of a double
-                // clicked button submitting two ajax requests?
-                aChargesGrid.saveBtn.setDisabled(true);
-
-                // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                aChargesGrid.stopEditing();
-
-                // OK, a little nastiness follows: We cannot rely on the underlying Store to
-                // send records back to the server because it does so intelligently: Only
-                // dirty records go back.  Unfortunately, since there is no entity id for
-                // a record (yet), all records must be returned so that ultimately an
-                // XML grove can be produced with proper document order.
-                //aChargesStore.save(); is what we want to do
-
-                var jsonData = Ext.encode(Ext.pluck(aChargesStore.data.items, 'data'));
-
-                // TODO: refactor out into globals
-                account = accountCombo.getValue();
-                sequence = sequenceCombo.getValue();
-
-                Ext.Ajax.request({
-                    url: 'http://'+location.host+'/billtool/saveActualCharges',
-                    params: {service: 'Gas', account: account, sequence: sequence, rows: jsonData},
-                    success: function() { 
-                        // TODO: check success status in json package
-
-                        // reload the store to clear dirty flags
-                        aChargesStore.load({params: {service: 'Gas', account: account, sequence: sequence}})
-                    },
-                    failure: function() { alert("ajax fail"); },
-                });
-            }
-        },{
-            // places reference to this button in grid.  
-            ref: '../copyActual',
-            text: 'Copy to Hypo',
-            disabled: false,
-            handler: function()
-            {
-                // disable the save button for the save attempt.
-                // is there a closer place for this to the actual button click due to the possibility of a double
-                // clicked button submitting two ajax requests?
-                aChargesGrid.saveBtn.setDisabled(true);
-
-                // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                aChargesGrid.stopEditing();
-
-                // take the records that are maintained in the store
-                // and update the bill document with them.
-                //setActualCharges(bill, aChargesStore.getRange());
-
-            }
-        }],
+        tbar: aChargesToolbar,
         colModel: aChargesColModel,
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
         store: aChargesStore,
@@ -1200,29 +1244,25 @@ function renderWidgets()
                 sortable: true,
                 dataIndex: 'chargegroup',
                 //hidden: true 
-            }, 
-            {
+            },{
                 header: 'RS Binding',
                 width: 75,
                 sortable: true,
                 dataIndex: 'rsbinding',
                 editor: new Ext.form.TextField({allowBlank: true})
-            },
-            {
+            },{
                 header: 'Description',
                 width: 75,
                 sortable: true,
                 dataIndex: 'description',
                 editor: new Ext.form.TextField({allowBlank: false})
-            },
-            {
+            },{
                 header: 'Quantity',
                 width: 75,
                 sortable: true,
                 dataIndex: 'quantity',
                 editor: new Ext.form.NumberField({decimalPrecision: 5, allowBlank: true})
-            },
-            {
+            },{
                 header: 'Units',
                 width: 75,
                 sortable: true,
@@ -1246,15 +1286,13 @@ function renderWidgets()
                     displayField: 'displayText'
                 })
                 
-            },
-            {
+            },{
                 header: 'Rate',
                 width: 75,
                 sortable: true,
                 dataIndex: 'rate',
                 editor: new Ext.form.NumberField({decimalPrecision: 10, allowBlank: true})
-            },
-            {
+            },{
                 header: 'Units',
                 width: 75,
                 sortable: true,
@@ -1277,8 +1315,7 @@ function renderWidgets()
                     valueField: 'displayText',
                     displayField: 'displayText'
                 })
-            },
-            {
+            },{
                 header: 'Total', 
                 width: 75, 
                 sortable: true, 
@@ -1290,8 +1327,7 @@ function renderWidgets()
                 {
                     return Ext.util.Format.usMoney(record.data.total);
                 }
-            },
-            {
+            },{
                 header: 'Auto Total', 
                 width: 75, 
                 sortable: true, 
@@ -1329,108 +1365,120 @@ function renderWidgets()
         ]
     });
 
-    var hChargesGrid = new Ext.grid.EditorGridPanel({
-        tbar: [{
-            // ref places a name for this component into the grid so it may be referenced as hChargesGrid.insertBtn...
-            ref: '../insertBtn',
-            iconCls: 'icon-user-add',
-            text: 'Insert',
-            disabled: true,
-            handler: function()
+    var hChargesToolbar = new Ext.Toolbar({
+        items: [
             {
-                hChargesGrid.stopEditing();
-
-                // grab the current selection - only one row may be selected per singlselect configuration
-                var selection = hChargesGrid.getSelectionModel().getSelected();
-
-                // make the new record
-                var ChargeItemType = hChargesGrid.getStore().recordType;
-                var defaultData = 
+                xtype: 'button',
+                // ref places a name for this component into the grid so it may be referenced as hChargesGrid.insertBtn...
+                ref: '../insertBtn',
+                iconCls: 'icon-user-add',
+                text: 'Insert',
+                disabled: true,
+                handler: function()
                 {
-                    // ok, this is tricky:  the newly created record is assigned the chargegroup
-                    // of the selection during the insert.  This way, the new record is added
-                    // to the proper group.  Otherwise, if the record does not have the same
-                    // chargegroup name of the adjacent record, a new group is shown in the grid
-                    // and the UI goes out of sync.  Try this by change the chargegroup below
-                    // to some other string.
-                    chargegroup: selection.data.chargegroup,
-                    description: 'enter description',
-                    quantity: 0,
-                    quantityunits: 'kWh',
-                    rate: 0,
-                    rateunits: 'dollars',
-                    total: 0,
-                    //autototal: 0
-                };
-                var c = new ChargeItemType(defaultData);
-    
-                // select newly inserted record
-                var insertionPoint = hChargesStore.indexOf(selection);
-                hChargesStore.insert(insertionPoint + 1, c);
-                hChargesGrid.getView().refresh();
-                hChargesGrid.getSelectionModel().selectRow(insertionPoint);
-                hChargesGrid.startEditing(insertionPoint +1,1);
-                
-                // An inserted record must be saved 
-                hChargesGrid.saveBtn.setDisabled(false);
-            }
-        },{
-            // ref places a name for this component into the grid so it may be referenced as hChargesGrid.removeBtn...
-            ref: '../removeBtn',
-            iconCls: 'icon-user-delete',
-            text: 'Remove',
-            disabled: true,
-            handler: function()
-            {
-                hChargesGrid.stopEditing();
-                var s = hChargesGrid.getSelectionModel().getSelections();
-                for(var i = 0, r; r = s[i]; i++)
-                {
-                    hChargesStore.remove(r);
+                    hChargesGrid.stopEditing();
+
+                    // grab the current selection - only one row may be selected per singlselect configuration
+                    var selection = hChargesGrid.getSelectionModel().getSelected();
+
+                    // make the new record
+                    var ChargeItemType = hChargesGrid.getStore().recordType;
+                    var defaultData = 
+                    {
+                        // ok, this is tricky:  the newly created record is assigned the chargegroup
+                        // of the selection during the insert.  This way, the new record is added
+                        // to the proper group.  Otherwise, if the record does not have the same
+                        // chargegroup name of the adjacent record, a new group is shown in the grid
+                        // and the UI goes out of sync.  Try this by change the chargegroup below
+                        // to some other string.
+                        chargegroup: selection.data.chargegroup,
+                        description: 'enter description',
+                        quantity: 0,
+                        quantityunits: 'kWh',
+                        rate: 0,
+                        rateunits: 'dollars',
+                        total: 0,
+                        //autototal: 0
+                    };
+                    var c = new ChargeItemType(defaultData);
+
+                    // select newly inserted record
+                    var insertionPoint = hChargesStore.indexOf(selection);
+                    hChargesStore.insert(insertionPoint + 1, c);
+                    hChargesGrid.getView().refresh();
+                    hChargesGrid.getSelectionModel().selectRow(insertionPoint);
+                    hChargesGrid.startEditing(insertionPoint +1,1);
+                    
+                    // An inserted record must be saved 
+                    hChargesGrid.saveBtn.setDisabled(false);
                 }
-                hChargesGrid.saveBtn.setDisabled(false);
-            }
-        },{
-            // places reference to this button in grid.  
-            ref: '../saveBtn',
-            text: 'Save',
-            disabled: true,
-            handler: function()
-            {
-                // disable the save button for the save attempt.
-                // is there a closer place for this to the actual button click due to the possibility of a double
-                // clicked button submitting two ajax requests?
-                hChargesGrid.saveBtn.setDisabled(true);
+            },{
+                xtype: 'tbseparator'
+            },{
+                xtype: 'button',
+                // ref places a name for this component into the grid so it may be referenced as hChargesGrid.removeBtn...
+                ref: '../removeBtn',
+                iconCls: 'icon-user-delete',
+                text: 'Remove',
+                disabled: true,
+                handler: function()
+                {
+                    hChargesGrid.stopEditing();
+                    var s = hChargesGrid.getSelectionModel().getSelections();
+                    for(var i = 0, r; r = s[i]; i++)
+                    {
+                        hChargesStore.remove(r);
+                    }
+                    hChargesGrid.saveBtn.setDisabled(false);
+                }
+            },{
+                xtype: 'tbseparator'
+            },{
+                xtype: 'button',
+                // places reference to this button in grid.  
+                ref: '../saveBtn',
+                text: 'Save',
+                disabled: true,
+                handler: function()
+                {
+                    // disable the save button for the save attempt.
+                    // is there a closer place for this to the actual button click due to the possibility of a double
+                    // clicked button submitting two ajax requests?
+                    hChargesGrid.saveBtn.setDisabled(true);
 
-                // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                hChargesGrid.stopEditing();
+                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
+                    hChargesGrid.stopEditing();
 
-                // OK, a little nastiness follows: We cannot rely on the underlying Store to
-                // send records back to the server because it does so intelligently: Only
-                // dirty records go back.  Unfortunately, since there is no entity id for
-                // a record (yet), all records must be returned so that ultimately an
-                // XML grove can be produced with proper document order.
-                //hChargesStore.save(); is what we want to do
+                    // OK, a little nastiness follows: We cannot rely on the underlying Store to
+                    // send records back to the server because it does so intelligently: Only
+                    // dirty records go back.  Unfortunately, since there is no entity id for
+                    // a record (yet), all records must be returned so that ultimately an
+                    // XML grove can be produced with proper document order.
+                    //hChargesStore.save(); is what we want to do
 
-                var jsonData = Ext.encode(Ext.pluck(hChargesStore.data.items, 'data'));
+                    var jsonData = Ext.encode(Ext.pluck(hChargesStore.data.items, 'data'));
 
-                // TODO: refactor out into globals
-                account = accountCombo.getValue();
-                sequence = sequenceCombo.getValue();
+                    // TODO: refactor out into globals
+                    account = accountCombo.getValue();
+                    sequence = sequenceCombo.getValue();
 
-                Ext.Ajax.request({
-                    url: 'http://'+location.host+'/billtool/saveHypotheticalCharges',
-                    params: {service: 'Gas', account: account, sequence: sequence, rows: jsonData},
-                    success: function() { 
-                        // TODO: check success status in json package
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/billtool/saveHypotheticalCharges',
+                        params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence, rows: jsonData},
+                        success: function() { 
+                            // TODO: check success status in json package
 
-                        // reload the store to clear dirty flags
-                        hChargesStore.load({params: {service: 'Gas', account: account, sequence: sequence}})
-                    },
-                    failure: function() { alert("ajax fail"); },
-                });
-            }
-        }],
+                            // reload the store to clear dirty flags
+                            hChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}})
+                        },
+                        failure: function() { alert("ajax fail"); },
+                    });
+                }
+            }]
+        });
+
+    var hChargesGrid = new Ext.grid.EditorGridPanel({
+        tbar: hChargesToolbar,
         colModel: hChargesColModel,
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
         store: hChargesStore,
@@ -1494,7 +1542,7 @@ function renderWidgets()
       //margins:'0 4 4 0',
       // necessary for child FormPanels to draw properly when dynamically changed
       layoutOnTabChange: true,
-      activeTab: 0,
+      activeTab: 4,
       bbar: statusBar,
       items:[
         {
@@ -1536,7 +1584,7 @@ function renderWidgets()
           layout: 'accordion',
           items: [
             aChargesGrid,
-            hChargesGrid
+            hChargesGrid,
           ]
         }]
       });
@@ -1644,8 +1692,8 @@ function renderWidgets()
             disableCaching: true,
         });
 
-        aChargesStore.load({params: {service: 'Gas', account: account, sequence: sequence}});
-        hChargesStore.load({params: {service: 'Gas', account: account, sequence: sequence}});
+        aChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
+        hChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
 
         var sb = Ext.getCmp('statusbar');
         sb.setStatus({
