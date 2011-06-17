@@ -1552,7 +1552,7 @@ function renderWidgets()
       //margins:'0 4 4 0',
       // necessary for child FormPanels to draw properly when dynamically changed
       layoutOnTabChange: true,
-      activeTab: 4,
+      activeTab: 1,
       bbar: statusBar,
       items:[
         {
