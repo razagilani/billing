@@ -110,49 +110,47 @@ function renderWidgets()
             {name: 'period_start', type: 'date'},
             {name: 'period_end', type: 'date'},
         ],
-        // TODO change this url
         url: 'http://billentry-dev/billtool/listUtilBills'
     });
     
+    // TODO maybe find a better way of dealing with date formats than this
+    var paging_grid_date_format = 'Y-m-d';
+
     // paging grid
     var paging_grid = new Ext.grid.GridPanel({
         height:500,
         title:'Utility Bills',
         store: paging_grid_store,
         trackMouseOver:false,
-        disableSelection:true,
-        //loadMask: true,
-        //layout: 'fit',
-        /*
-        viewConfig: {
-            forceFit: true,
-        },
-        */
-        //layout: 'anchor',
-        //layout: new Ext.layout.AnchorLayout() ({
-            //anchorSize: {width:800, height:600},
-        //}),
-        /*
-        view: new Ext.grid.GroupingView({
-            forceFit:true,
-            //groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
-        }),
-        */
-
+        
         // grid columns
         columns:[{
-            header: 'Account',
-            dataIndex: 'account',
-            width:80,
-        },{
-            header: 'Start Date',
-            dataIndex: 'period_start',
-            width: 300,
-        },{
-            header: 'End Date',
-            dataIndex: 'period_end',
-            width: 300,
-        }],
+                header: 'Account',
+                dataIndex: 'account',
+                width:80,
+            },
+            /*{
+                header: 'Start Date',
+                dataIndex: 'period_start',
+                width: 300,
+                dateFormat: 'Y-m-d',
+            },*/
+            new Ext.grid.DateColumn({
+                header: 'Start Date',
+                dataIndex: 'period_start',
+                dateFormat: paging_grid_date_format,
+            }),
+            /*{
+                header: 'End Date',
+                dataIndex: 'period_end',
+                width: 300,
+            }*/
+            new Ext.grid.DateColumn({
+                header: 'End Date',
+                dataIndex: 'period_end',
+                dateFormat: paging_grid_date_format,
+            })
+        ],
         
         // paging bar on the bottom
         bbar: new Ext.PagingToolbar({
@@ -164,9 +162,35 @@ function renderWidgets()
         }),
     });
 
-    // render it
-    // TODO change after updating html
-    //paging_grid.render('topic-grid');
+    // event handler for grid double-click
+    paging_grid.on('celldblclick', function(grid, rowIndex, columnIndex, e) {
+        var record = grid.getStore().getAt(rowIndex);
+        var fieldName = grid.getColumnModel().getDataIndex(columnIndex);
+        var data = record.get(fieldName);
+        account = record.get('account');
+        begin_date_string = record.get('period_start');
+        end_date_string = record.get('period_end');
+
+        // parse date strings--the format is determined by the JSONDataStore's
+        // JsonReader, but i can't figure out how to change that format, so
+        // it's horrible: e.g. "Mon Dec 07 2009 00:00:00 GMT-0500 (EST)"
+        // (built-in JS date constructor automatically detects the format)
+        var parsed_begin_date = new Date(begin_date_string);
+        var parsed_end_date = new Date(end_date_string);
+
+        // convert the parsed date into a string in the format expected by the back end
+        var formatted_begin_date_string = parsed_begin_date.format('Y-m-d');
+        var formatted_end_date_string = parsed_end_date.format('Y-m-d');
+
+        // open a new window: this is pure JavaScript, not Ext JS. (see 
+        // developer.mozilla.org/en/DOM/window.open for additional parameters)
+        window.open("http://billentry-dev/billtool/getBillImage?account=" +
+                account + "&begin_date=" + formatted_begin_date_string +
+                "&end_date=" + formatted_end_date_string,
+            "Bill Viewing Window");
+    });
+    // is it better to get account and dates from the data store or the actual text
+    // of the grid cells? i think the former.
 
     ////////////////////////////////////////////////////////////////////////////
     // Account and Bill selection tab
