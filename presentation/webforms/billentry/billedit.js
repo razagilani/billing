@@ -828,7 +828,7 @@ function renderWidgets()
                 width: 160,
                 sortable: true,
                 dataIndex: 'chargegroup',
-                //hidden: true 
+                hidden: true 
             }, 
             {
                 header: 'RS Binding',
@@ -977,8 +977,9 @@ function renderWidgets()
                 xtype: 'tbseparator'
             },{
                 xtype: 'button',
+
                 // ref places a name for this component into the grid so it may be referenced as aChargesGrid.insertBtn...
-                ref: '../insertBtn',
+                id: 'aChargesInsertBtn',
                 iconCls: 'icon-user-add',
                 text: 'Insert',
                 disabled: true,
@@ -1018,14 +1019,14 @@ function renderWidgets()
                     aChargesGrid.startEditing(insertionPoint +1,1);
                     
                     // An inserted record must be saved 
-                    aChargesGrid.saveBtn.setDisabled(false);
+                    aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
                 }
             },{
                 xtype: 'tbseparator'
             },{
                 xtype: 'button',
                 // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                ref: '../removeBtn',
+                id: 'aChargesRemoveBtn',
                 iconCls: 'icon-user-delete',
                 text: 'Remove',
                 disabled: true,
@@ -1037,14 +1038,14 @@ function renderWidgets()
                     {
                         aChargesStore.remove(r);
                     }
-                    aChargesGrid.saveBtn.setDisabled(false);
+                    aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
                 }
             },{
                 xtype:'tbseparator'
             },{
                 xtype: 'button',
                 // places reference to this button in grid.  
-                ref: '../saveBtn',
+                id: 'aChargesSaveBtn',
                 text: 'Save',
                 disabled: true,
                 handler: function()
@@ -1052,7 +1053,7 @@ function renderWidgets()
                     // disable the save button for the save attempt.
                     // is there a closer place for this to the actual button click due to the possibility of a double
                     // clicked button submitting two ajax requests?
-                    aChargesGrid.saveBtn.setDisabled(true);
+                    aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(true);
 
                     // stop grid editing so that widgets like comboboxes in rows don't stay focused
                     aChargesGrid.stopEditing();
@@ -1086,8 +1087,6 @@ function renderWidgets()
                 xtype:'tbseparator'
             },{
                 xtype: 'button',
-                // places reference to this button in grid.  
-                ref: '../copyActual',
                 text: 'Copy to Hypo',
                 disabled: false,
                 handler: function()
@@ -1095,7 +1094,7 @@ function renderWidgets()
                     // disable the save button for the save attempt.
                     // is there a closer place for this to the actual button click due to the possibility of a double
                     // clicked button submitting two ajax requests?
-                    aChargesGrid.saveBtn.setDisabled(true);
+                    aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(true);
 
                     // stop grid editing so that widgets like comboboxes in rows don't stay focused
                     aChargesGrid.stopEditing();
@@ -1151,17 +1150,17 @@ function renderWidgets()
         // if a selection is made, allow it to be removed
         // if the selection was deselected to nothing, allow no 
         // records to be removed.
-        aChargesGrid.removeBtn.setDisabled(sm.getCount() < 1);
+
+        aChargesGrid.getTopToolbar().findById('aChargesRemoveBtn').setDisabled(sm.getCount() <1);
 
         // if there was a selection, allow an insertion
-        aChargesGrid.insertBtn.setDisabled(sm.getCount()<1);
-
+        aChargesGrid.getTopToolbar().findById('aChargesInsertBtn').setDisabled(sm.getCount() <1);
     });
   
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
     aChargesStore.on('update', function(){
-        aChargesGrid.saveBtn.setDisabled(false);
+        aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
     });
     
 
@@ -1242,7 +1241,7 @@ function renderWidgets()
                 width: 160,
                 sortable: true,
                 dataIndex: 'chargegroup',
-                //hidden: true 
+                hidden: true 
             },{
                 header: 'RS Binding',
                 width: 75,
@@ -1369,7 +1368,7 @@ function renderWidgets()
             {
                 xtype: 'button',
                 // ref places a name for this component into the grid so it may be referenced as hChargesGrid.insertBtn...
-                ref: '../insertBtn',
+                id: 'hChargesInsertBtn',
                 iconCls: 'icon-user-add',
                 text: 'Insert',
                 disabled: true,
@@ -1409,14 +1408,14 @@ function renderWidgets()
                     hChargesGrid.startEditing(insertionPoint +1,1);
                     
                     // An inserted record must be saved 
-                    hChargesGrid.saveBtn.setDisabled(false);
+                    hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
                 }
             },{
                 xtype: 'tbseparator'
             },{
                 xtype: 'button',
                 // ref places a name for this component into the grid so it may be referenced as hChargesGrid.removeBtn...
-                ref: '../removeBtn',
+                id: 'hChargesRemoveBtn',
                 iconCls: 'icon-user-delete',
                 text: 'Remove',
                 disabled: true,
@@ -1428,14 +1427,14 @@ function renderWidgets()
                     {
                         hChargesStore.remove(r);
                     }
-                    hChargesGrid.saveBtn.setDisabled(false);
+                    hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
                 }
             },{
                 xtype: 'tbseparator'
             },{
                 xtype: 'button',
                 // places reference to this button in grid.  
-                ref: '../saveBtn',
+                id: 'hChargesSaveBtn',
                 text: 'Save',
                 disabled: true,
                 handler: function()
@@ -1443,7 +1442,7 @@ function renderWidgets()
                     // disable the save button for the save attempt.
                     // is there a closer place for this to the actual button click due to the possibility of a double
                     // clicked button submitting two ajax requests?
-                    hChargesGrid.saveBtn.setDisabled(true);
+                    hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(true);
 
                     // stop grid editing so that widgets like comboboxes in rows don't stay focused
                     hChargesGrid.stopEditing();
@@ -1505,17 +1504,17 @@ function renderWidgets()
         // if a selection is made, allow it to be removed
         // if the selection was deselected to nothing, allow no 
         // records to be removed.
-        hChargesGrid.removeBtn.setDisabled(sm.getCount() < 1);
+        hChargesGrid.getTopToolbar().findById('hChargesRemoveBtn').setDisabled(sm.getCount() < 1);
 
         // if there was a selection, allow an insertion
-        hChargesGrid.insertBtn.setDisabled(sm.getCount()<1);
+        hChargesGrid.getTopToolbar().findById('hChargesInsertBtn').setDisabled(sm.getCount()<1);
 
     });
   
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
     hChargesStore.on('update', function(){
-        hChargesGrid.saveBtn.setDisabled(false);
+        hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
     });
 
     // end of tab widgets
