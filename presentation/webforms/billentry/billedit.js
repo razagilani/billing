@@ -122,10 +122,20 @@ function renderWidgets()
         trackMouseOver:false,
         disableSelection:true,
         //loadMask: true,
-        layout: 'fit',
+        //layout: 'fit',
+        /*
         viewConfig: {
             forceFit: true,
         },
+        */
+        //layout: 'anchor',
+        //layout: new Ext.layout.AnchorLayout() ({
+            //anchorSize: {width:800, height:600},
+        //}),
+        view: new Ext.grid.GroupingView({
+            forceFit:true,
+            //groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
+        }),
 
         // grid columns
         columns:[{
