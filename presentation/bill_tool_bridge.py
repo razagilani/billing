@@ -126,6 +126,9 @@ class BillToolBridge:
                 self.config.get("xmldb", "password")
             )   
 
+            # if this is successful, we need to create an initial rebill record
+
+
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
@@ -301,7 +304,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def commit(self, account, sequence, begin, end, **args):
-        
+
         try:
             state.commit_bill(
                 self.config.get("statedb", "host"),
