@@ -60,6 +60,17 @@ def last_sequence(host, db, user, password, account):
     rows = fetch(host, db, user, password, query, params)
     # TODO: error checking...
     return rows[0]['maxseq']
+    
+def new_rebill(host, db, user, password, account, sequence):
+
+STOPPED HERE - INSERT AN REBILL AND THEN HAVE COMMIT BILL UPDATE IT
+
+    query = "insert into rebill (id, sequence, customer_id, issued) values (null, %s, (),false)  set issued = 1 where sequence = %s and customer_id = (select id from customer where account = %s)"
+    INSERT INTO `skyline`.`rebill` (`id` ,`uri` ,`sequence` ,`customer_id`) VALUES (NULL , 'http://tyrell/exist/rest/db/skyline/bills/10001/3.xml', '3', (select id from customer where account = '[cust account]'));
+
+    params = (sequence, account)
+    # TODO: error checking...
+    rows = fetch(host, db, user, password, query, params, False)
 
 def issue(host, db, user, password, account, sequence):
     query = "update rebill set issued = 1 where sequence = %s and customer_id = (select id from customer where account = %s)"
