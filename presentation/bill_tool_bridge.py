@@ -119,15 +119,24 @@ class BillToolBridge:
                 if (int(sequence) < int(last_sequence)):
                     return '{success: false, errors: {reason:"Not the last sequence"}}'
 
+            next_sequence = last_sequence + 1
+
             process.Process().roll_bill(
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, int(sequence)+1),
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, next_sequence),
                 self.config.get("xmldb", "user"),
                 self.config.get("xmldb", "password")
             )   
 
-            # if this is successful, we need to create an initial rebill record
-
+            # if this is successful, we need to create an initial rebill record to which the utilbills are later associated
+            state.new_rebill(
+                self.config.get("statedb", "host"),
+                self.config.get("statedb", "db"),
+                self.config.get("statedb", "user"),
+                self.config.get("statedb", "password"),
+                account,
+                next_sequence
+            )
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -303,9 +312,22 @@ class BillToolBridge:
         return json.dumps({'success': True})
 
     @cherrypy.expose
-    def commit(self, account, sequence, begin, end, **args):
+    def commit(self, account, sequence, **args):
 
         try:
+
+            #process.Process().commit_rebill(
+            #    "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence),
+            #    "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+            #    account,
+            #    sequence
+            #)
+
+            # TODO: refactor into process
+            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+            begin = the_bill.rebill_summary.begin
+            end = the_bill.rebill_summary.end
+
             state.commit_bill(
                 self.config.get("statedb", "host"),
                 self.config.get("statedb", "db"),
@@ -316,6 +338,7 @@ class BillToolBridge:
                 begin,
                 end
             )
+
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
