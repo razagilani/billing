@@ -474,30 +474,20 @@ function renderWidgets()
         account = accountCombo.getValue();
         sequence = sequenceCombo.getValue();
 
-        // TODO: this is bad news.  Need a better way to handle multiple services
-        // shouldn't make two async calls to server that use same callbacks to close modal wait panel and reload bill
-        periods = getUBPeriods(bill);
-        periods.forEach(
-            function (value, index, array) {
-                registerAjaxEvents()
-                Ext.Ajax.request({
-                    // TODO: pass in only account and sequence
-                    url: 'http://'+location.host+'/billtool/commit',
-                    params: {
-                        account: accountCombo.getValue(),
-                        sequence: sequenceCombo.getValue(),
-                        begin: value.begindate,
-                        end: value.enddate,
-                    },
-                    disableCaching: true,
-                    success: successResponse,
-                    failure: function () {
-                        alert("commit response fail");
-                    }
-                });
-
+        registerAjaxEvents();
+        Ext.Ajax.request({
+            // TODO: pass in only account and sequence
+            url: 'http://'+location.host+'/billtool/commit',
+            params: {
+                account: accountCombo.getValue(),
+                sequence: sequenceCombo.getValue(),
+            },
+            disableCaching: true,
+            success: successResponse,
+            failure: function () {
+                alert("commit response fail");
             }
-        )
+        });
 
     }
 

@@ -311,6 +311,11 @@ class Process(object):
 
         XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
 
+
+    def commit_rebill(self, inputbill, targetBill, account, sequence, user=None, password=None):
+        pass
+
+
     def bindrs(self, inputbill, outputbill, rsdb, hypothetical, user=None, password=None):
         """ This function binds a rate structure against the actual and hypothetical charges found """
         """ in a bill. If and RSI specifies information no in the bill, it is added to the bill.   """
