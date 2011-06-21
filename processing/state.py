@@ -15,6 +15,7 @@ def fetch(host, db, user, password, query, params, fetchall = True):
         conn = MySQLdb.connect(host=host, user=user, passwd=password, db=db)
 
         cur = conn.cursor(MySQLdb.cursors.DictCursor)
+
         cur.execute(query, params)
         print "Number of rows affected: %d" % cur.rowcount
 
