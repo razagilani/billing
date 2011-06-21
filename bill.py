@@ -1098,8 +1098,6 @@ class Bill(object):
 
                 charge_items[service].chargegroups.append(chargegroup_mnt)
 
-        print "will return %s %s" % (charges_type, charge_items)
-
         return charge_items 
 
     def charge_items(self, charges_type):
