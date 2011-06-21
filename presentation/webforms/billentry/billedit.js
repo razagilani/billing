@@ -238,6 +238,7 @@ function renderWidgets()
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
                 {text: 'Bind Rate Structure', handler: bindRSOperation},
+                {text: 'Calculate REPeriod', handler: calcREPeriodOperation},
                 {text: 'Pay', handler: payOperation},
                 {text: 'Sum', handler: sumOperation},
                 {text: 'CalcStats', handler: calcStatsOperation},
@@ -380,6 +381,23 @@ function renderWidgets()
         registerAjaxEvents()
         Ext.Ajax.request({
             url: 'http://'+location.host+'/billtool/bindrs',
+            params: { 
+                account: accountCombo.getValue(),
+                sequence: sequenceCombo.getValue()
+            },
+            disableCaching: true,
+            success: successResponse,
+            failure: function () {
+                alert("Bind RS response fail");
+            }
+        });
+    }
+
+    function calcREPeriodOperation()
+    {
+        registerAjaxEvents()
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/billtool/calc_reperiod',
             params: { 
                 account: accountCombo.getValue(),
                 sequence: sequenceCombo.getValue()
