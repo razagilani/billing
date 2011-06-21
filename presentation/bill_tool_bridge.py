@@ -220,6 +220,22 @@ class BillToolBridge:
         return json.dumps({'success': True})
 
     @cherrypy.expose
+    def calc_reperiod(self, account, sequence, **args):
+
+        try:
+            process.Process().calculate_reperiod(
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )
+
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return json.dumps({'success': True})
+
+    @cherrypy.expose
     def calcstats(self, account, sequence, **args):
 
         try:
