@@ -1525,6 +1525,142 @@ function renderWidgets()
         hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
     });
 
+
+
+    ///////////////////////////////////////
+    // RSI Tab
+
+    var initialRSI = {
+        rows: [
+            {rsbinding:'SOMETHING REALLY REALLY REALLY LONG', description:'description', quantity:'quantity', quantityunits:'quantityunits', rate:'rate', rateunits:'rateunits', roundrule:'roundrule', total:'total'},
+        ]
+    };
+
+    var rsiReader = new Ext.data.JsonReader({
+        // metadata configuration options:
+        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
+        //idProperty: 'id',
+        root: 'rows',
+
+        // the fields config option will internally create an Ext.data.Record
+        // constructor that provides mapping for reading the record data objects
+        fields: [
+            // map Record's field to json object's key of same name
+            {name: 'rsbinding', mapping: 'rsbinding'},
+            {name: 'description', mapping: 'description'},
+            {name: 'quantity', mapping: 'quantity'},
+            {name: 'quantityunits', mapping: 'quantityunits'},
+            {name: 'rate', mapping: 'rate'},
+            {name: 'rateunits', mapping: 'rateunits'},
+            {name: 'roundrule', mapping:'roundrule'},
+            {name: 'total', mapping: 'total'},
+        ]
+    });
+    var rsiWriter = new Ext.data.JsonWriter({
+        encode: true,
+        // write all fields, not just those that changed
+        writeAllFields: true 
+    });
+
+    var rsiStoreProxy = new Ext.data.HttpProxy({
+        method: 'GET',
+        prettyUrls: false,
+        // see options parameter for Ext.Ajax.request
+        //url: 'http://'+location.host+'/billtool/hypotheticalCharges',
+        url: 'http://'+location.host+'/billtool/something',
+        /*api: {
+            // all actions except the following will use above url
+            create  : '',
+            update  : ''
+        }*/
+    });
+
+    var rsiStore = new Ext.data.JsonStore({
+        proxy: rsiStoreProxy,
+        autoSave: false,
+        reader: rsiReader,
+        writer: rsiWriter,
+        data: initialRSI,
+        root: 'rows',
+        fields: [
+            {name: 'rsbinding'},
+            {name: 'description'},
+            {name: 'quantity'},
+            {name: 'quantityunits'},
+            {name: 'rate'},
+            {name: 'rateunits'},
+            {name: 'roundrule'},
+            {name: 'total'},
+        ],
+        //url: 'http://'+location.host+'/billtool/something',
+    });
+
+    var rsiColModel = new Ext.grid.ColumnModel(
+    {
+        columns: [
+            {
+                header: 'RS Binding',
+                sortable: true,
+                dataIndex: 'rsbinding',
+                editor: new Ext.form.TextField({allowBlank: true})
+            },{
+                header: 'Description',
+                sortable: true,
+                dataIndex: 'description',
+                editor: new Ext.form.TextField({allowBlank: false})
+            },{
+                header: 'Quantity',
+                sortable: true,
+                dataIndex: 'quantity',
+                editor: new Ext.form.TextField({allowBlank: false})
+            },{
+                header: 'Units',
+                sortable: true,
+                dataIndex: 'quantityunits',
+                editor: new Ext.form.TextField({allowBlank: false})
+            },{
+                header: 'Rate',
+                sortable: true,
+                dataIndex: 'rate',
+                editor: new Ext.form.TextField({allowBlank: false})
+            },{
+                header: 'Units',
+                sortable: true,
+                dataIndex: 'rateunits',
+                editor: new Ext.form.TextField({allowBlank: false})
+            },{
+                header: 'Round Rule',
+                sortable: true,
+                dataIndex: 'roundrule',
+                editor: new Ext.form.TextField({allowBlank: false})
+            },{
+                header: 'Total', 
+                sortable: true, 
+                dataIndex: 'total', 
+                summaryType: 'sum',
+                align: 'right',
+                editor: new Ext.form.TextField({allowBlank: false})
+            }
+        ]
+    });
+
+    var rsiGrid = new Ext.grid.EditorGridPanel({
+        colModel: rsiColModel,
+        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+        store: rsiStore,
+        enableColumnMove: false,
+        frame: true,
+        collapsible: true,
+        animCollapse: false,
+        stripeRows: true,
+        viewConfig: {
+            // doesn't seem to work
+            forceFit: true,
+        },
+        title: 'Rate Structure',
+        clicksToEdit: 2
+    });
+
     // end of tab widgets
     ////////////////////////////////////////////////////////////////////////////
 
@@ -1590,6 +1726,85 @@ function renderWidgets()
             aChargesGrid,
             hChargesGrid,
           ]
+        },{
+          id: 'rsiTab',
+          title: 'RSIs',
+          xtype: 'panel',
+          layout: 'accordion',
+          items: [rsiGrid]
+        }]
+      });
+
+    // end of tab widgets
+    ////////////////////////////////////////////////////////////////////////////
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Status bar displayed at footer of every panel in the tabpanel
+
+    var statusBar = new Ext.ux.StatusBar({
+        defaultText: 'No RE Bill',
+        id: 'statusbar',
+        statusAlign: 'right', // the magic config
+        //items: [{ text: 'A Button' }, '-', 'Plain Text', ' ', ' ']
+    });
+
+    ////////////////////////////////////////////////////////////////////////////
+    // construct tabpanel for viewport
+
+    var tabPanel = new Ext.TabPanel({
+      region:'center',
+      deferredRender:false,
+      autoScroll: true, 
+      //margins:'0 4 4 0',
+      // necessary for child FormPanels to draw properly when dynamically changed
+      layoutOnTabChange: true,
+      activeTab: 1,
+      bbar: statusBar,
+      items:[
+        {
+          title: 'Upload Utility Bill',
+          xtype: 'panel',
+          //layout: 'vbox',
+          layout: new Ext.layout.VBoxLayout({
+              //align: 'center',
+              defaultMargins: {top:10, right:10, bottom:10, left:10},
+          }),
+          items: [
+            upload_form_panel,
+            paging_grid,
+          ],
+        },{
+          title: 'Select Bill',
+          xtype: 'panel',
+          bodyStyle:'padding:10px 10px 0px 10px',
+          items: [
+            accountCombo,
+            sequenceCombo,
+            billOperationButton
+          ],
+        },{
+          id: 'ubPeriodsTab',
+          title: 'Bill Periods',
+          xtype: 'panel',
+          items: null // configureUBPeriodForm set this
+        },{
+          id: 'ubMeasuredUsagesTab',
+          title: 'Usage Periods',
+          xtype: 'panel',
+          items: null // configureUBMeasuredUsagesForm sets this
+        },{
+          title: 'Charge Items',
+          xtype: 'panel',
+          layout: 'accordion',
+          items: [
+            aChargesGrid,
+            hChargesGrid,
+          ]
+        },{
+          id: 'rsiTab',
+          title: 'RSIs',
+          xtype: 'panel',
+          items: [rsiGrid]
         }]
       });
  
@@ -1698,6 +1913,7 @@ function renderWidgets()
 
         aChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
         hChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
+        rsiStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
 
         var sb = Ext.getCmp('statusbar');
         sb.setStatus({
