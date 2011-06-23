@@ -211,6 +211,7 @@ class BillUpload(object):
     a certain directory, and returns a path to that directory. (The caller is
     responsble for providing a URL to the client where that image can be accessed.)'''
     def getBillImagePath(self, account, begin_date, end_date):
+        self.logger.error(type(account))
         # check account name (validate_account just checks that it's a string and that it matches a regex)
         if not validate_account(account):
             self.logger.error('invalid account name: "%s"' % account)
@@ -273,9 +274,12 @@ class BillUpload(object):
 '''Returns true iff the account is valid (just checks agains a regex, but this
 removes dangerous input)'''
 def validate_account(account):
-    if type(account) is not str:
+    try:
+        return re.match(ACCOUNT_NAME_REGEX, account) is not None
+    except TypeError:
+        # re.match() accepts only 'str' and 'unicode' types; if account is not
+        # even a string, it's definitely not valid
         return False
-    return re.match(ACCOUNT_NAME_REGEX, account) is not None
 
 '''Takes a date formatted according to INPUT_DATE_FORMAT and returns one
 formatted according to OUTPUT_DATE_FORMAT. if the argument dose not match

@@ -188,9 +188,12 @@ function renderWidgets()
                 //account + "&begin_date=" + formatted_begin_date_string +
                 //"&end_date=" + formatted_end_date_string,
             //"Bill Viewing Window");
-        theUrl = 'http://' + location.host + '/billtool/getBillImage?account='
+        /*
+        theurl = 'http://' + location.host + '/billtool/getbillimage?account='
             + account + '&begin_date=' + formatted_begin_date_string
             + "&end_date=" + formatted_end_date_string;
+            */
+        theUrl = 'http://' + location.host + '/billtool/getBillImage';
         console.log(theUrl);
         console.log(account);
         Ext.Ajax.request({
@@ -205,7 +208,8 @@ function renderWidgets()
                         Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                     } else {
                         // show image in a new window
-                        window.open('http://' + location.host + '/billimages/' + jsonData.imageName, "Bill Viewing Window");
+                        //window.open('http://' + location.host + '/billimages/' + jsonData.imageName, "Bill Viewing Window");
+                        console.log(result.responseText);
                     } 
                     configureUBPeriodsForms(account, sequence, jsonData);
                 } catch (err) {
