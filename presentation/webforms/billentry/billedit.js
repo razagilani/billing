@@ -170,7 +170,7 @@ function renderWidgets()
         account = record.get('account');
         begin_date_string = record.get('period_start');
         end_date_string = record.get('period_end');
-
+        
         // parse date strings--the format is determined by the JSONDataStore's
         // JsonReader, but i can't figure out how to change that format, so
         // it's horrible: e.g. "Mon Dec 07 2009 00:00:00 GMT-0500 (EST)"

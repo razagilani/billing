@@ -227,27 +227,37 @@ class BillUpload(object):
 
         # TODO create bill image directory if it doesn't exist already
         
-        # name of bill file (in its original format):
+        # name of bill file (in its original format), without extension:
         # [begin_date]-[end_date].[extension]
-        bill_file_name = formatted_begin_date + '-' + formatted_end_date + '.pdf'
-        # TODO figure out how to detect actual file extension--for now i'll
-        # just assume it's a pdf, but it could be different and there could be
-        # multiple files with the same name but different extensions (not sure
-        # how to deal with that)
-        
+        bill_file_name_without_extension = formatted_begin_date + '-' + \
+                formatted_end_date
+
         # path to the bill file (in its original format):
         # [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]
-        bill_file_path = os.path.join(SAVE_DIRECTORY, account, bill_file_name)
+        bill_file_path_without_extension = os.path.join(SAVE_DIRECTORY, \
+                account, bill_file_name_without_extension)
+         
+        # there could be multiple files with the same name but different
+        # extensions. that shouldn't happen, but if it does, look for a pdf
+        # first and html second.
+        # TODO add any other file types that might occur
+        if os.access(bill_file_path_without_extension + '.pdf', os.R_OK):
+            bill_file_path = bill_file_path_without_extension + '.pdf'
+        elif os.access(bill_file_path_without_extension + '.html', os.R_OK):
+            bill_file_path = bill_file_path_without_extension + '.html'
+        else:
+            raise IOError('Could not find a readable bill file whose path (without extension) is "%s"' % bill_file_path_without_extension)
 
-        # path to the bill image:
-        # TODO change this
-        bill_image_path = os.path.join(BILL_IMAGE_DIRECTORY, 'image_' + account + '_' + bill_file_name)
+        # name and path of bill image:
+        # TODO decide how image should actually be named
+        bill_image_name = 'image_' + account + '_' + bill_file_name_without_extension
+        bill_image_path = os.path.join(BILL_IMAGE_DIRECTORY, bill_image_name)
 
-        # render the image
+        # render the image, saving it to bill_image_path
         self.renderBillImage(bill_file_path, bill_image_path)
-
-        # return path to the image file
-        return bill_image_path
+        
+        # return name of image file (the caller should know where to find the image file)
+        return bill_image_name
 
     '''Converts the file at bill_file_path to a PNG image and saves it at
     bill_image_path.'''
