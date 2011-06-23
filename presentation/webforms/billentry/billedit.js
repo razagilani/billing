@@ -162,7 +162,8 @@ function renderWidgets()
         }),
     });
 
-    // event handler for grid double-click
+    // event handler for grid double-click: show image of utility bill
+    // associated with the row
     paging_grid.on('celldblclick', function(grid, rowIndex, columnIndex, e) {
         var record = grid.getStore().getAt(rowIndex);
         var fieldName = grid.getColumnModel().getDataIndex(columnIndex);
@@ -182,20 +183,11 @@ function renderWidgets()
         var formatted_begin_date_string = parsed_begin_date.format('Y-m-d');
         var formatted_end_date_string = parsed_end_date.format('Y-m-d');
 
-        // open a new window: this is pure JavaScript, not Ext JS. (see 
-        // developer.mozilla.org/en/DOM/window.open for additional parameters)
-        //window.open("http://billentry-dev/billtool/getBillImage?account=" +
-                //account + "&begin_date=" + formatted_begin_date_string +
-                //"&end_date=" + formatted_end_date_string,
-            //"Bill Viewing Window");
-        /*
-        theurl = 'http://' + location.host + '/billtool/getbillimage?account='
-            + account + '&begin_date=' + formatted_begin_date_string
-            + "&end_date=" + formatted_end_date_string;
-            */
+        // url for getting bill images (calls bill_tool_bridge.getBillImage())
         theUrl = 'http://' + location.host + '/billtool/getBillImage';
-        console.log(theUrl);
-        console.log(account);
+        
+        // ajax call to generate image, get the name of it, and display it in a
+        // new window
         Ext.Ajax.request({
             url: theUrl,
             params: {account: account, begin_date: formatted_begin_date_string,
@@ -205,7 +197,9 @@ function renderWidgets()
                 try {
                     jsonData = Ext.util.JSON.decode(result.responseText);
                     if (jsonData.success == false) {
-                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                        Ext.MessageBox.alert('Server Error',
+                            jsonData.errors.reason + " "
+                            + jsonData.errors.details);
                     } else {
                         // show image in a new window
                         window.open('http://' + location.host +
@@ -217,10 +211,7 @@ function renderWidgets()
                     Ext.MessageBox.alert('ERROR', err);
                 }
             },
-            //failure: function() {alert("ajax failure")},
-            failure: function() {
-                console.log("failure: " + theUrl);
-            },
+            failure: function() { Ext.MessageBox.alert('Ajax failure', theUrl); },
             disableCaching: true,
         });
 
