@@ -112,7 +112,7 @@ class BillToolBridge:
             )
 
             if (int(sequence) < int(last_sequence)):
-                return '{success: false, errors: {reason:"Not the last sequence"}}'
+                return json.dumps({'success': False, 'errors': {'reason':"Not the last sequence", 'details':"There are no details"}})
 
             next_sequence = last_sequence + 1
 
@@ -121,7 +121,7 @@ class BillToolBridge:
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, next_sequence),
                 self.config.get("xmldb", "user"),
                 self.config.get("xmldb", "password")
-            )   
+            )
 
             # if this is successful, we need to create an initial rebill record to which the utilbills are later associated
             state.new_rebill(
