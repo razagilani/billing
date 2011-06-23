@@ -111,13 +111,8 @@ class BillToolBridge:
                 account
             )
 
-            # last_sequence is None if no prior bills have been rolled (sequence 0)
-            if last_sequence is not None and (int(sequence) < int(last_sequence)):
+            if (int(sequence) < int(last_sequence)):
                 return '{success: false, errors: {reason:"Not the last sequence"}}'
-
-                # TODO: Process() should implement this
-                if (int(sequence) < int(last_sequence)):
-                    return '{success: false, errors: {reason:"Not the last sequence"}}'
 
             next_sequence = last_sequence + 1
 

@@ -252,13 +252,12 @@ class Process(object):
 
         # zero out details totals
 
+
         def zero_charges(details):
 
             for service, detail in details.items():
 
-                print "got detail.total %s " % detail.total
                 detail.total = Decimal("0.00")
-                print "set detail.total %s " % detail.total
 
                 for chargegroup in detail.chargegroups:
                     #TODO: zero out a chargegroup total when one exists
