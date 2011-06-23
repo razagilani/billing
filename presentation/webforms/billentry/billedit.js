@@ -192,6 +192,7 @@ function renderWidgets()
             + account + '&begin_date=' + formatted_begin_date_string
             + "&end_date=" + formatted_end_date_string;
         console.log(theUrl);
+        console.log(account);
         Ext.Ajax.request({
             url: theUrl,
             params: {account: account, begin_date: formatted_begin_date_string,
