@@ -184,10 +184,40 @@ function renderWidgets()
 
         // open a new window: this is pure JavaScript, not Ext JS. (see 
         // developer.mozilla.org/en/DOM/window.open for additional parameters)
-        window.open("http://billentry-dev/billtool/getBillImage?account=" +
-                account + "&begin_date=" + formatted_begin_date_string +
-                "&end_date=" + formatted_end_date_string,
-            "Bill Viewing Window");
+        //window.open("http://billentry-dev/billtool/getBillImage?account=" +
+                //account + "&begin_date=" + formatted_begin_date_string +
+                //"&end_date=" + formatted_end_date_string,
+            //"Bill Viewing Window");
+        theUrl = 'http://' + location.host + '/billtool/getBillImage?account='
+            + account + '&begin_date=' + formatted_begin_date_string
+            + "&end_date=" + formatted_end_date_string;
+        console.log(theUrl);
+        Ext.Ajax.request({
+            url: theUrl,
+            params: {account: account, begin_date: formatted_begin_date_string,
+                end_date: formatted_end_date_string},
+            success: function(result, request) {
+                var jsonData = null;
+                try {
+                    jsonData = Ext.util.JSON.decode(result.responseText);
+                    if (jsonData.success == false) {
+                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                    } else {
+                        // show image in a new window
+                        window.open('http://' + location.host + '/billimages/' + jsonData.imageName, "Bill Viewing Window");
+                    } 
+                    configureUBPeriodsForms(account, sequence, jsonData);
+                } catch (err) {
+                    //Ext.MessageBox.alert('ERROR', 'Could not decode ' + jsonData);
+                }
+            },
+            //failure: function() {alert("ajax failure")},
+            failure: function() {
+                console.log("failure: " + theUrl);
+            },
+            disableCaching: true,
+        });
+
     });
     // is it better to get account and dates from the data store or the actual text
     // of the grid cells? i think the former.
@@ -612,9 +642,6 @@ function renderWidgets()
                 labelWidth: 125,
                 bodyStyle:'padding:10px 10px 0px 10px',
                 items:[], // added by configureUBPeriodsForm()
-                baseParams: null, // added by configureUBPeriodsForm()
-                autoDestroy: true,
-                layout: 'form',
                 buttons: 
                 [
                     // TODO: the save button is generic in function, refactor

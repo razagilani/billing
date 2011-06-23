@@ -211,7 +211,7 @@ class BillUpload(object):
     a certain directory, and returns a path to that directory. (The caller is
     responsble for providing a URL to the client where that image can be accessed.)'''
     def getBillImagePath(self, account, begin_date, end_date):
-        # check account name (validate_account just checks it against a regex)
+        # check account name (validate_account just checks that it's a string and that it matches a regex)
         if not validate_account(account):
             self.logger.error('invalid account name: "%s"' % account)
             raise ValueError('invalid account name: "%s"' % account)
@@ -242,15 +242,16 @@ class BillUpload(object):
         # first and html second.
         # TODO add any other file types that might occur
         if os.access(bill_file_path_without_extension + '.pdf', os.R_OK):
-            bill_file_path = bill_file_path_without_extension + '.pdf'
+            extension = 'pdf'
         elif os.access(bill_file_path_without_extension + '.html', os.R_OK):
-            bill_file_path = bill_file_path_without_extension + '.html'
+            extension = 'html'
         else:
             raise IOError('Could not find a readable bill file whose path (without extension) is "%s"' % bill_file_path_without_extension)
+        bill_file_path = bill_file_path_without_extension + '.' + extension
 
         # name and path of bill image:
         # TODO decide how image should actually be named
-        bill_image_name = 'image_' + account + '_' + bill_file_name_without_extension
+        bill_image_name = 'image_' + account + '_' + bill_file_name_without_extension + '.' + extension
         bill_image_path = os.path.join(BILL_IMAGE_DIRECTORY, bill_image_name)
 
         # render the image, saving it to bill_image_path
@@ -264,6 +265,7 @@ class BillUpload(object):
     def renderBillImage(self, bill_file_path, bill_image_path):
         # TODO don't do this with shell commands, add error checking, etc!
         os.popen('cp %s %s' % (bill_file_path, bill_image_path))
+        os.popen('echo "%s" /tmp/billimages/out' % bill_image_path)
         
 
 # two "external validators" for checking accounts and dates ###################
@@ -271,12 +273,16 @@ class BillUpload(object):
 '''Returns true iff the account is valid (just checks agains a regex, but this
 removes dangerous input)'''
 def validate_account(account):
-    return re.match(ACCOUNT_NAME_REGEX, account)
+    if type(account) is not str:
+        return False
+    return re.match(ACCOUNT_NAME_REGEX, account) is not None
 
 '''Takes a date formatted according to INPUT_DATE_FORMAT and returns one
 formatted according to OUTPUT_DATE_FORMAT. if the argument dose not match
 INPUT_DATE_FORMAT, raises an exception.'''
 def format_date(date_string):
+    if type(account) is not str:
+        return False
     # convert to a time.struct_time object
     try:
         date_object = time.strptime(date_string, INPUT_DATE_FORMAT)
