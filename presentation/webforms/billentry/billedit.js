@@ -262,7 +262,6 @@ function renderWidgets()
         if(true !== o.success) {
             Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
         } else {
-            // do your success processing here
             configureWidgets();
         }
     }
@@ -355,22 +354,7 @@ function renderWidgets()
                         amount: amountPaid
                     },
                     disableCaching: true,
-                    // TODO refactor this
-                    success: function (response, options) {
-                        var o = {};
-                        try {o = Ext.decode(response.responseText);}
-                        catch(e) {
-                            alert("Could not decode JSON data");
-                        }
-                        if(true !== o.success) {
-                            Ext.Msg.alert('Error', o.errors.reason);
-
-                        } else {
-                            // do your success processing here
-                            // loads a bill from eXistDB
-                            configureWidgets();
-                        }
-                    }
+                    success: successResponse,
                 });
             }
         });
@@ -438,13 +422,24 @@ function renderWidgets()
                 sequence: sequenceCombo.getValue()
             },
             disableCaching: true,
-            success: function () {
-                // a new sequence has been made
-                sequencesStore.load();
-                // select it
-                sequenceCombo.selectByValue((parseInt(sequence)+1), true);
-                // re configure displayed data
-                configureWidgets();
+            success: function (response) {
+                var o = {};
+                try {
+                    o = Ext.decode(response.responseText);}
+                catch(e) {
+                    alert("Could not decode JSON data");
+                }
+                if(true !== o.success) {
+                    Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
+                } else {
+                    // TODO: pass these into successResponse somehow see 14945431
+                    // a new sequence has been made
+                    sequencesStore.load();
+                    // select it
+                    sequenceCombo.selectByValue((parseInt(sequence)+1), true);
+                    // re configure displayed data
+                    configureWidgets();
+                }
             },
             failure: function () {
                 alert("Roll response fail");
