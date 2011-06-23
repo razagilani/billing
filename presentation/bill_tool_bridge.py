@@ -735,11 +735,10 @@ class BillToolBridge:
     def getBillImage(self, account, begin_date, end_date, **args):
         from billing.processing.billupload import BillUpload
         try:
-            # TODO: generate url here
-            #billentry-dev/utilitybillimages/[filename]
+            # TODO: put url here, instead of in billentry.js?
             upload = BillUpload()
             result = upload.getBillImagePath(account, begin_date, end_date)
-            return ju.dumps({'success':True, 'path':result})
+            return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
