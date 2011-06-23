@@ -281,8 +281,6 @@ def validate_account(account):
 formatted according to OUTPUT_DATE_FORMAT. if the argument dose not match
 INPUT_DATE_FORMAT, raises an exception.'''
 def format_date(date_string):
-    if type(account) is not str:
-        return False
     # convert to a time.struct_time object
     try:
         date_object = time.strptime(date_string, INPUT_DATE_FORMAT)
