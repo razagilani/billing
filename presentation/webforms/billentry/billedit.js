@@ -1,3 +1,22 @@
+ /*
+// attempt to show a pdf using uxmedia
+// TODO remove if this doesn't work
+var pdfWindow = new Ext.ux.MediaWindow({
+    id:'PDFViewerWin',
+    //renderTo: document.body,
+    height: 400,
+    width : 600,
+    mediaCfg:{
+    mediaType   :'PDFFRAME',
+    url         :'test.pdf',//'your.pdf#page=2&pagemode=none'
+    unsupportedText : 'Acrobat Viewer is not Installed'
+    },
+    mediaMask: false,
+});
+//pdfWindow.show();
+*/
+
+
 // Configure ext js widgets and events
 function renderWidgets()
 {
@@ -216,6 +235,9 @@ function renderWidgets()
         });
 
     });
+
+
+          
     // is it better to get account and dates from the data store or the actual text
     // of the grid cells? i think the former.
 
@@ -1615,8 +1637,22 @@ function renderWidgets()
           }),
           */
           items: [
-            upload_form_panel,
-            paging_grid,
+            // test of layout with image viewer on the side
+            // TODO make this work or change it back to normal
+            new Ext.Panel({
+                title: 'This is a Panel',
+                xtype: 'panel',
+                layout: 'fit',
+                items: [
+                    upload_form_panel,
+                    paging_grid,
+                ],
+            }),
+            new Ext.BoxComponent({
+                width:500,
+                height:500,
+                    autoEl: {tag: 'img', src: 'ext-3.2.1/examples/image-organizer/images/thumbs/zack.jpg'},
+            }),
           ],
         },{
           title: 'Select Bill',
