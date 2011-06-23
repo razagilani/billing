@@ -208,12 +208,13 @@ function renderWidgets()
                         Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                     } else {
                         // show image in a new window
-                        //window.open('http://' + location.host + '/billimages/' + jsonData.imageName, "Bill Viewing Window");
+                        window.open('http://' + location.host +
+                            '/utilitybillimages/' + jsonData.imageName,
+                            "Bill Viewing Window");
                         console.log(result.responseText);
                     } 
-                    configureUBPeriodsForms(account, sequence, jsonData);
                 } catch (err) {
-                    //Ext.MessageBox.alert('ERROR', 'Could not decode ' + jsonData);
+                    Ext.MessageBox.alert('ERROR', err);
                 }
             },
             //failure: function() {alert("ajax failure")},
