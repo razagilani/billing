@@ -11,9 +11,9 @@ import MySQLdb
 sys.stdout = sys.stderr
 '''
 This was supposed to be completely independent of cherrypy, but cherrypy passes
-the file argument as a cherrypy object, not a string or file object. See
-comment on BillUpload.upload().  Note that this problem also makes it hard to
-write tests or a command-line interface.
+the file argument to upload() as a cherrypy object, not a string or file
+object. See comment on BillUpload.upload().  Note that this problem also makes
+it hard to write tests or a command-line interface.
 
 TODO:
     move some of the constants below into the config file?
@@ -272,9 +272,9 @@ class BillUpload(object):
         return bill_image_name
 
     '''Converts the file at bill_file_path to an image and saves it at
-    bill_image_path. Types are determined by file extensions. Raises an
-    exception if this fails. (This requires the 'convert' command from
-    ImageMagick, which requires html2pdf to render html files.)'''
+    bill_image_path. Types are determined automatically. (This requires the
+    'convert' command from ImageMagick, which requires html2pdf to render html
+    files.) Raises an exception if image rendering fails.'''
     def renderBillImage(self, bill_file_path, bill_image_path):
         # use the command-line version of ImageMagick to convert the file.
         # ('-quiet' suppresses warning messages. formats are determined by
@@ -311,7 +311,7 @@ def create_directory_if_necessary(path, logger):
         else:
             logger.error('unable to create directory "%s": %s' \
                     % (path, str(e)))
-            raise    
+            raise
 
 # two "external validators" for checking accounts and dates ###################
 
