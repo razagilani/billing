@@ -173,13 +173,15 @@ class BillUpload(object):
 
         return True
 
-    '''Inserts a a row into the utilbill table when the bill file has been uploaded.'''
+    '''Inserts a a row into the utilbill table when the bill file has been
+    uploaded.'''
     # TODO move all database-related code into state.py?
     # TODO use state.py fetch() function for database query
     def insert_bill_in_database(self, account, begin_date, end_date):
         conn = None
         try:
-            conn = MySQLdb.connect(host='tyrell', user='dev', passwd='dev', db='skyline_dev')
+            conn = MySQLdb.connect(host='tyrell', user='dev', passwd='dev',
+                    db='skyline_dev')
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
             # note that "select id from customer where account = '%s'" will be
             # null if the account doesn't exist, but in the future the account
@@ -187,8 +189,8 @@ class BillUpload(object):
             result = cur.execute('''INSERT INTO skyline_dev.utilbill
                     (id, customer_id, rebill_id, period_start, period_end,
                     estimated, received, processed) VALUES
-                    (NULL, (select id from skyline_dev.customer where account = %s),
-                    NULL, %s, %s, FALSE, TRUE, FALSE)''' , \
+                    (NULL, (select id from skyline_dev.customer
+                    where account = %s), NULL, %s, %s, FALSE, TRUE, FALSE)''', \
                     (account, begin_date, end_date))
             print result
         except MySQLdb.Error:
@@ -205,7 +207,8 @@ class BillUpload(object):
 
     '''Given an account and dates for a bill, renders that bill as an image in
     a certain directory, and returns a path to that directory. (The caller is
-    responsble for providing a URL to the client where that image can be accessed.)'''
+    responsble for providing a URL to the client where that image can be
+    accessed.)'''
     def getBillImagePath(self, account, begin_date, end_date):
         # check account name (validate_account just checks that it's a string
         # and that it matches a regex)
@@ -260,7 +263,8 @@ class BillUpload(object):
         # render the image, saving it to bill_image_path
         self.renderBillImage(bill_file_path, bill_image_path)
         
-        # return name of image file (the caller should know where to find the image file)
+        # return name of image file (the caller should know where to find the
+        # image file)
         return bill_image_name
 
     '''Converts the file at bill_file_path to an image and saves it at

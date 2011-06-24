@@ -1632,13 +1632,18 @@ function renderWidgets()
           layout: new Ext.layout.HBoxLayout({
               align: 'stretch',
           }),
+          // utility bill image on one side, upload form & list of bills on the
+          // other side (using 2 panels)
           items: [
-            // test of layout with image viewer on the side
+            // panel containing the image
             new Ext.BoxComponent({
                 width:500,
                     // TODO put real bill image here
-                    autoEl: {tag: 'img', src: 'http://billentry-dev/utilitybillimages/image_10002_20100311-20100413.png'},
+                    autoEl: {tag: 'img', src:
+                        'http://billentry-dev/utilitybillimages/image_10002_20100311-20100413.png'},
+                    autoScroll: true,
             }),
+            // panel containing the upload form & the utility bill list
             new Ext.Panel({
                 border: false,
                 xtype: 'panel',
