@@ -36,7 +36,7 @@ OUTPUT_DATE_FORMAT = '%Y%m%d'
 # where account directories are located (uploaded files are saved inside of
 # those)
 # TODO: put in config file
-SAVE_DIRECTORY = '/tmp/aaa' #'/db/skyline/utilitybills'
+SAVE_DIRECTORY = '/db/skyline/utilitybills'
 
 # where bill images are temporarily saved for viewing after they're rendered
 # TODO change this to the real location
