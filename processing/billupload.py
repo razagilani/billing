@@ -223,8 +223,6 @@ class BillUpload(object):
                     % (begin_date, end_date, str(e)))
             raise
 
-        # TODO create bill image directory if it doesn't exist already
-        
         # name of bill file (in its original format), without extension:
         # [begin_date]-[end_date].[extension]
         bill_file_name_without_extension = formatted_begin_date + '-' + \
@@ -244,6 +242,7 @@ class BillUpload(object):
         elif os.access(bill_file_path_without_extension + '.html', os.R_OK):
             extension = 'html'
         else:
+            # TODO log this error
             raise IOError('Could not find a readable bill file whose path (without extension) is "%s"' % bill_file_path_without_extension)
         bill_file_path = bill_file_path_without_extension + '.' + extension
 
@@ -253,6 +252,9 @@ class BillUpload(object):
                 + bill_file_name_without_extension + '.' + IMAGE_EXTENSION
         bill_image_path = os.path.join(BILL_IMAGE_DIRECTORY, bill_image_name)
 
+        # create bill image directory if it doesn't exist already
+        create_directory_if_necessary(BILL_IMAGE_DIRECTORY, self.logger)
+        
         # render the image, saving it to bill_image_path
         self.renderBillImage(bill_file_path, bill_image_path)
         
@@ -323,5 +325,4 @@ def create_directory_if_necessary(path, logger):
             logger.error('unable to create directory "%s": %s' \
                     % (path, str(e)))
             raise    
-
 
