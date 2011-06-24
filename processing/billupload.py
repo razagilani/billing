@@ -5,11 +5,15 @@ import errno
 import logging
 import time
 import re
+import subprocess
 import ConfigParser
 import MySQLdb
 sys.stdout = sys.stderr
 '''
-This was supposed to be completely independent of cherrypy, but cherrypy passes the file argument as a cherrypy object, not a string or file object. See comment on BillUpload.upload().  Note that this problem also makes it hard to write tests or a command-line interface.
+This was supposed to be completely independent of cherrypy, but cherrypy passes
+the file argument as a cherrypy object, not a string or file object. See
+comment on BillUpload.upload().  Note that this problem also makes it hard to
+write tests or a command-line interface.
 
 TODO:
     move some of the constants below into the config file?
@@ -21,7 +25,8 @@ TODO:
 #CONFIG_FILE_PATH = os.dirname(__file__)
 #CONFIG_FILE_PATH = os.path.join(os.getcwd(), 'billupload_config')
 # according to bill_tool_bridge.py, the correct way is:
-CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),'billupload_config')
+CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), \
+        'billupload_config')
 
 # strings allowed as account names
 ACCOUNT_NAME_REGEX = '[0-9]{5}'
@@ -34,14 +39,22 @@ OUTPUT_DATE_FORMAT = '%Y%m%d'
 
 # where account directories are located (uploaded files are saved inside of
 # those)
-# TODO: eventually change this to the real location
-SAVE_DIRECTORY = '/tmp'
+# TODO: put in config file
+SAVE_DIRECTORY = '/db/skyline/utilitybills'
+
+# where bill images are temporarily saved for viewing after they're rendered
+# TODO change this to the real location
+# TODO also put in config file
+BILL_IMAGE_DIRECTORY = '/tmp/billimages'
 
 # default name of log file (config file can override this)
 DEFAULT_LOG_FILE_NAME = 'billupload.log'
 
 # default format of log entries (config file can override this)
 DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
+
+# determines the format of bill image files
+IMAGE_EXTENSION = 'png'
 
 class BillUpload(object):
 
@@ -118,7 +131,7 @@ class BillUpload(object):
         # convert dates into the proper format, & report error if that fails
         try:
             formatted_begin_date = format_date(begin_date)
-            formatted_end_date = format_date(begin_date)
+            formatted_end_date = format_date(end_date)
         except Exception as e:
             self.logger.error('unexpected date format(s): %s, %s: %s' \
                     % (begin_date, end_date, str(e)))
@@ -142,18 +155,11 @@ class BillUpload(object):
                 + os.path.splitext(file_to_upload.filename)[1])
 
         # create the save directory if it doesn't exist
-        try:
-            os.makedirs(os.path.join(SAVE_DIRECTORY, account))
-        except OSError as e:
-            if e.errno == errno.EEXIST:
-                pass
-            else:
-                self.logger.error('unable to create directory "%s": %s' \
-                        % (os.path.join(SAVE_DIRECTORY, save_file_path), \
-                        str(e)))
-                raise    
+        create_directory_if_necessary(os.path.join(SAVE_DIRECTORY, account),
+                self.logger)
         
         # write the file in SAVE_DIRECTORY
+        # (overwrite if it's already there)
         save_file = None
         try:
             save_file = open(save_file_path, 'w')
@@ -171,13 +177,15 @@ class BillUpload(object):
 
         return True
 
-    '''Inserts a a row into the utilbill table when the bill file has been uploaded.'''
+    '''Inserts a a row into the utilbill table when the bill file has been
+    uploaded.'''
     # TODO move all database-related code into state.py?
     # TODO use state.py fetch() function for database query
     def insert_bill_in_database(self, account, begin_date, end_date):
         conn = None
         try:
-            conn = MySQLdb.connect(host='tyrell', user='dev', passwd='dev', db='skyline_dev')
+            conn = MySQLdb.connect(host='tyrell', user='dev', passwd='dev',
+                    db='skyline_dev')
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
             # note that "select id from customer where account = '%s'" will be
             # null if the account doesn't exist, but in the future the account
@@ -185,8 +193,8 @@ class BillUpload(object):
             result = cur.execute('''INSERT INTO skyline_dev.utilbill
                     (id, customer_id, rebill_id, period_start, period_end,
                     estimated, received, processed) VALUES
-                    (NULL, (select id from skyline_dev.customer where account = %s),
-                    NULL, %s, %s, FALSE, TRUE, FALSE)''' , \
+                    (NULL, (select id from skyline_dev.customer
+                    where account = %s), NULL, %s, %s, FALSE, TRUE, FALSE)''',\
                     (account, begin_date, end_date))
             print result
         except MySQLdb.Error:
@@ -201,12 +209,121 @@ class BillUpload(object):
                 conn.commit()
                 conn.close()
 
+    '''Given an account and dates for a bill, renders that bill as an image in
+    a certain directory, and returns a path to that directory. (The caller is
+    responsble for providing a URL to the client where that image can be
+    accessed.)'''
+    def getBillImagePath(self, account, begin_date, end_date):
+        # check account name (validate_account just checks that it's a string
+        # and that it matches a regex)
+        if not validate_account(account):
+            self.logger.error('invalid account name: "%s"' % account)
+            raise ValueError('invalid account name: "%s"' % account)
+
+        # convert dates into the proper format, & report error if that fails
+        try:
+            formatted_begin_date = format_date(begin_date)
+            formatted_end_date = format_date(end_date)
+        except Exception as e:
+            self.logger.error('unexpected date format(s): %s, %s: %s' \
+                    % (begin_date, end_date, str(e)))
+            raise
+
+        # name of bill file (in its original format), without extension:
+        # [begin_date]-[end_date].[extension]
+        bill_file_name_without_extension = formatted_begin_date + '-' + \
+                formatted_end_date
+
+        # path to the bill file (in its original format):
+        # [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]
+        bill_file_path_without_extension = os.path.join(SAVE_DIRECTORY, \
+                account, bill_file_name_without_extension)
+         
+        # there could be multiple files with the same name but different
+        # extensions. that shouldn't happen, but if it does, look for a pdf
+        # first and html second.
+        # TODO add any other file types that might occur
+        if os.access(bill_file_path_without_extension + '.pdf', os.R_OK):
+            extension = 'pdf'
+        elif os.access(bill_file_path_without_extension + '.html', os.R_OK):
+            extension = 'html'
+        else:
+            error_text = 'Could not find a readable bill file whose path \
+                    (without extension) is "%s"' \
+                    % bill_file_path_without_extension
+            self.logger.error(error_text)
+            raise IOError(error_text)
+        bill_file_path = bill_file_path_without_extension + '.' + extension
+
+        # name and path of bill image:
+        # TODO decide how image should actually be named
+        bill_image_name = 'image_' + account + '_' \
+                + bill_file_name_without_extension + '.' + IMAGE_EXTENSION
+        bill_image_path = os.path.join(BILL_IMAGE_DIRECTORY, bill_image_name)
+
+        # create bill image directory if it doesn't exist already
+        create_directory_if_necessary(BILL_IMAGE_DIRECTORY, self.logger)
+        
+        # render the image, saving it to bill_image_path
+        self.renderBillImage(bill_file_path, bill_image_path)
+        
+        # return name of image file (the caller should know where to find the
+        # image file)
+        return bill_image_name
+
+    '''Converts the file at bill_file_path to an image and saves it at
+    bill_image_path. Types are determined by file extensions. Raises an
+    exception if this fails. (This requires the 'convert' command from
+    ImageMagick, which requires html2pdf to render html files.)'''
+    def renderBillImage(self, bill_file_path, bill_image_path):
+        # use the command-line version of ImageMagick to convert the file.
+        # ('-quiet' suppresses warning messages. formats are determined by
+        # extensions.)
+        # TODO: figure out how to really suppress warning messages; '-quiet'
+        # doesn't stop it from printing "**** Warning: glyf overlaps cmap,
+        # truncating." when converting pdfs
+        result = subprocess.Popen(['convert', '-quiet', bill_file_path, \
+            bill_image_path], stderr=subprocess.PIPE)
+        
+        # wait for 'convert' to finish; this also sets result.returncode
+        result.wait()
+        
+        # if 'convert' failed, raise exception with the text that it printed to
+        # stderr
+        if result.returncode != 0:
+            print result.returncode
+            error_text = result.communicate()[1]
+            self.logger.error('"convert %s %s" failed: ' % (bill_file_path,
+                bill_image_path) + error_text)
+            raise Exception(error_text)
+        
+
+'''Creates the directory at 'path' if it does not exist and can be created.  If
+it cannot be created, logs the error using 'logger' and raises an exception.'''
+def create_directory_if_necessary(path, logger):
+    try:
+        os.makedirs(path)
+    except OSError as e:
+        # if os.makedirs() fails because 'path' already exists, that's good,
+        # but all other errors are bad
+        if e.errno == errno.EEXIST:
+            pass
+        else:
+            logger.error('unable to create directory "%s": %s' \
+                    % (path, str(e)))
+            raise    
+
 # two "external validators" for checking accounts and dates ###################
 
 '''Returns true iff the account is valid (just checks agains a regex, but this
 removes dangerous input)'''
 def validate_account(account):
-    return re.match(ACCOUNT_NAME_REGEX, account)
+    try:
+        return re.match(ACCOUNT_NAME_REGEX, account) is not None
+    except TypeError:
+        # re.match() accepts only 'str' and 'unicode' types; if account is not
+        # even a string, it's definitely not valid
+        return False
 
 '''Takes a date formatted according to INPUT_DATE_FORMAT and returns one
 formatted according to OUTPUT_DATE_FORMAT. if the argument dose not match

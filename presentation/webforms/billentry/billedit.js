@@ -1,3 +1,22 @@
+ /*
+// attempt to show a pdf using uxmedia
+// TODO remove if this doesn't work
+var pdfWindow = new Ext.ux.MediaWindow({
+    id:'PDFViewerWin',
+    //renderTo: document.body,
+    height: 400,
+    width : 600,
+    mediaCfg:{
+    mediaType   :'PDFFRAME',
+    url         :'test.pdf',//'your.pdf#page=2&pagemode=none'
+    unsupportedText : 'Acrobat Viewer is not Installed'
+    },
+    mediaMask: false,
+});
+//pdfWindow.show();
+*/
+
+
 // Configure ext js widgets and events
 function renderWidgets()
 {
@@ -31,6 +50,15 @@ function renderWidgets()
     // Upload tab
     //
     //
+    
+    // box to display bill images
+    var imageBox = new Ext.Panel({
+        width:500,
+            // TODO put real bill image here
+            autoEl: {tag: 'img', src:
+                'http://billentry-dev/utilitybillimages/image_10002_20100311-20100413.png'},
+            autoScroll: true,
+    });
 
     // account field
     var upload_account = new Ext.form.TextField({
@@ -68,7 +96,6 @@ function renderWidgets()
     var upload_form_panel = new Ext.form.FormPanel({
         fileUpload: true,
         title: 'Upload Bill',
-        width: 500,
         url: 'http://'+location.host+'/billtool/upload_utility_bill',
         frame:true,
         autoHeight: true,
@@ -111,34 +138,47 @@ function renderWidgets()
             {name: 'period_start', type: 'date'},
             {name: 'period_end', type: 'date'},
         ],
-        // TODO change this url
         url: 'http://billentry-dev/billtool/listUtilBills'
     });
     
+    // TODO maybe find a better way of dealing with date formats than this
+    var paging_grid_date_format = 'Y-m-d';
+
     // paging grid
     var paging_grid = new Ext.grid.GridPanel({
-        width:700,
         height:500,
         title:'Utility Bills',
         store: paging_grid_store,
         trackMouseOver:false,
-        disableSelection:true,
-        //loadMask: true,
-
+        
         // grid columns
         columns:[{
-            header: 'Account',
-            dataIndex: 'account',
-        width:80,
-        },{
-            header: 'Start Date',
-            dataIndex: 'period_start',
-            width: 300,
-        },{
-            header: 'End Date',
-            dataIndex: 'period_end',
-            width: 300,
-        }],
+                header: 'Account',
+                dataIndex: 'account',
+                width:80,
+            },
+            /*{
+                header: 'Start Date',
+                dataIndex: 'period_start',
+                width: 300,
+                dateFormat: 'Y-m-d',
+            },*/
+            new Ext.grid.DateColumn({
+                header: 'Start Date',
+                dataIndex: 'period_start',
+                dateFormat: paging_grid_date_format,
+            }),
+            /*{
+                header: 'End Date',
+                dataIndex: 'period_end',
+                width: 300,
+            }*/
+            new Ext.grid.DateColumn({
+                header: 'End Date',
+                dataIndex: 'period_end',
+                dateFormat: paging_grid_date_format,
+            })
+        ],
         
         // paging bar on the bottom
         bbar: new Ext.PagingToolbar({
@@ -147,12 +187,68 @@ function renderWidgets()
             displayInfo: true,
             displayMsg: 'Displaying topics {0} - {1} of {2}',
             emptyMsg: "No topics to display",
-        })
+        }),
     });
 
-    // render it
-    // TODO change after updating html
-    //paging_grid.render('topic-grid');
+    // event handler for grid double-click: show image of utility bill
+    // associated with the row
+    paging_grid.on('celldblclick', function(grid, rowIndex, columnIndex, e) {
+        var record = grid.getStore().getAt(rowIndex);
+        var fieldName = grid.getColumnModel().getDataIndex(columnIndex);
+        var data = record.get(fieldName);
+        account = record.get('account');
+        begin_date_string = record.get('period_start');
+        end_date_string = record.get('period_end');
+        
+        // parse date strings--the format is determined by the JSONDataStore's
+        // JsonReader, but i can't figure out how to change that format, so
+        // it's horrible: e.g. "Mon Dec 07 2009 00:00:00 GMT-0500 (EST)"
+        // (built-in JS date constructor automatically detects the format)
+        var parsed_begin_date = new Date(begin_date_string);
+        var parsed_end_date = new Date(end_date_string);
+
+        // convert the parsed date into a string in the format expected by the back end
+        var formatted_begin_date_string = parsed_begin_date.format('Y-m-d');
+        var formatted_end_date_string = parsed_end_date.format('Y-m-d');
+
+        // url for getting bill images (calls bill_tool_bridge.getBillImage())
+        theUrl = 'http://' + location.host + '/billtool/getBillImage';
+        
+        // ajax call to generate image, get the name of it, and display it in a
+        // new window
+        Ext.Ajax.request({
+            url: theUrl,
+            params: {account: account, begin_date: formatted_begin_date_string,
+                end_date: formatted_end_date_string},
+            success: function(result, request) {
+                var jsonData = null;
+                try {
+                    jsonData = Ext.util.JSON.decode(result.responseText);
+                    if (jsonData.success == false) {
+                        Ext.MessageBox.alert('Server Error',
+                            jsonData.errors.reason + " "
+                            + jsonData.errors.details);
+                    } else {
+                        // show image in a new window
+                        // TODO replace this with code to update the image in imageBox.
+                        window.open('http://' + location.host +
+                            '/utilitybillimages/' + jsonData.imageName,
+                            "Bill Viewing Window");
+                    } 
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', err);
+                }
+            },
+            failure: function() { Ext.MessageBox.alert('Ajax failure', theUrl); },
+            disableCaching: true,
+        });
+
+    });
+
+
+          
+    // is it better to get account and dates from the data store or the actual text
+    // of the grid cells? i think the former.
 
     ////////////////////////////////////////////////////////////////////////////
     // Account and Bill selection tab
@@ -216,7 +312,6 @@ function renderWidgets()
     // ToDo: do not allow selection change if store is unsaved
     sequenceCombo.on('select', function(combobox, record, index) {
         configureWidgets();
-
     });
 
     // a hack so that a newly rolled bill may be accessed by directly entering its sequence
@@ -578,9 +673,6 @@ function renderWidgets()
                 labelWidth: 125,
                 bodyStyle:'padding:10px 10px 0px 10px',
                 items:[], // added by configureUBPeriodsForm()
-                baseParams: null, // added by configureUBPeriodsForm()
-                autoDestroy: true,
-                layout: 'form',
                 buttons: 
                 [
                     // TODO: the save button is generic in function, refactor
@@ -1543,20 +1635,29 @@ function renderWidgets()
       //margins:'0 4 4 0',
       // necessary for child FormPanels to draw properly when dynamically changed
       layoutOnTabChange: true,
-      activeTab: 1,
+      activeTab: 0,
       bbar: statusBar,
       items:[
         {
           title: 'Upload Utility Bill',
           xtype: 'panel',
-          //layout: 'vbox',
-          layout: new Ext.layout.VBoxLayout({
-              //align: 'center',
-              defaultMargins: {top:10, right:10, bottom:10, left:10},
+          layout: new Ext.layout.HBoxLayout({
+              align: 'stretch',
           }),
+          // utility bill image on one side, upload form & list of bills on the
+          // other side (using 2 panels)
           items: [
-            upload_form_panel,
-            paging_grid,
+            imageBox,
+            // panel containing the upload form & the utility bill list
+            new Ext.Panel({
+                border: false,
+                xtype: 'panel',
+                layout: 'fit',
+                items: [
+                    upload_form_panel,
+                    paging_grid,
+                ],
+            }),
           ],
         },{
           title: 'Select Bill',
@@ -1661,7 +1762,7 @@ function renderWidgets()
                     } 
                     configureUBPeriodsForms(account, sequence, jsonData);
                 } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Could not decode ' + jsonData);
+                    //Ext.MessageBox.alert('ERROR', 'Could not decode ' + jsonData);
                 }
             },
             failure: function() {alert("ajax failure")},
@@ -1684,7 +1785,7 @@ function renderWidgets()
                     } 
                     configureUBMeasuredUsagesForms(account, sequence, jsonData);
                 } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Could not decode ' + jsonData);
+                    //Ext.MessageBox.alert('ERROR', 'Could not decode ' + jsonData);
                 }
             },
             failure: function() {alert("ajax failure")},
