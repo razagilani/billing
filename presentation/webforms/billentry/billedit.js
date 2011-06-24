@@ -50,6 +50,15 @@ function renderWidgets()
     // Upload tab
     //
     //
+    
+    // box to display bill images
+    var imageBox = new Ext.Panel({
+        width:500,
+            // TODO put real bill image here
+            autoEl: {tag: 'img', src:
+                'http://billentry-dev/utilitybillimages/image_10002_20100311-20100413.png'},
+            autoScroll: true,
+    });
 
     // account field
     var upload_account = new Ext.form.TextField({
@@ -221,10 +230,10 @@ function renderWidgets()
                             + jsonData.errors.details);
                     } else {
                         // show image in a new window
+                        // TODO replace this with code to update the image in imageBox.
                         window.open('http://' + location.host +
                             '/utilitybillimages/' + jsonData.imageName,
                             "Bill Viewing Window");
-                        console.log(result.responseText);
                     } 
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', err);
@@ -1635,14 +1644,7 @@ function renderWidgets()
           // utility bill image on one side, upload form & list of bills on the
           // other side (using 2 panels)
           items: [
-            // panel containing the image
-            new Ext.BoxComponent({
-                width:500,
-                    // TODO put real bill image here
-                    autoEl: {tag: 'img', src:
-                        'http://billentry-dev/utilitybillimages/image_10002_20100311-20100413.png'},
-                    autoScroll: true,
-            }),
+            imageBox,
             // panel containing the upload form & the utility bill list
             new Ext.Panel({
                 border: false,
