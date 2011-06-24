@@ -317,5 +317,3 @@ def format_date(date_string):
     # convert back
     return time.strftime(OUTPUT_DATE_FORMAT, date_object)
 
-b = BillUpload()
-b.getBillImagePath('10002', '2010-03-11', '2010-04-13')
