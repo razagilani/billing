@@ -5,6 +5,7 @@ import errno
 import logging
 import time
 import re
+import subprocess
 import ConfigParser
 import MySQLdb
 sys.stdout = sys.stderr
@@ -47,6 +48,9 @@ DEFAULT_LOG_FILE_NAME = 'billupload.log'
 
 # default format of log entries (config file can override this)
 DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
+
+# determines the format of bill image files
+IMAGE_EXTENSION = 'png'
 
 class BillUpload(object):
 
@@ -212,7 +216,8 @@ class BillUpload(object):
     responsble for providing a URL to the client where that image can be accessed.)'''
     def getBillImagePath(self, account, begin_date, end_date):
         self.logger.error(type(account))
-        # check account name (validate_account just checks that it's a string and that it matches a regex)
+        # check account name (validate_account just checks that it's a string
+        # and that it matches a regex)
         if not validate_account(account):
             self.logger.error('invalid account name: "%s"' % account)
             raise ValueError('invalid account name: "%s"' % account)
@@ -252,7 +257,8 @@ class BillUpload(object):
 
         # name and path of bill image:
         # TODO decide how image should actually be named
-        bill_image_name = 'image_' + account + '_' + bill_file_name_without_extension + '.' + extension
+        bill_image_name = 'image_' + account + '_' \
+                + bill_file_name_without_extension + '.' + IMAGE_EXTENSION
         bill_image_path = os.path.join(BILL_IMAGE_DIRECTORY, bill_image_name)
 
         # render the image, saving it to bill_image_path
@@ -261,12 +267,30 @@ class BillUpload(object):
         # return name of image file (the caller should know where to find the image file)
         return bill_image_name
 
-    '''Converts the file at bill_file_path to a PNG image and saves it at
-    bill_image_path.'''
+    '''Converts the file at bill_file_path to an image and saves it at
+    bill_image_path. Types are determined by file extensions. Raises an
+    exception if this fails.'''
     def renderBillImage(self, bill_file_path, bill_image_path):
-        # TODO don't do this with shell commands, add error checking, etc!
-        os.popen('cp %s %s' % (bill_file_path, bill_image_path))
-        os.popen('echo "%s" /tmp/billimages/out' % bill_image_path)
+        # use the command-line version of ImageMagick to convert the file.
+        # ('-quiet' suppresses warning messages. formats are determined by
+        # extensions.)
+        # TODO: figure out how to really suppress warning messages; '-quiet'
+        # doesn't stop it from printing "**** Warning: glyf overlaps cmap,
+        # truncating." when converting pdfs
+        result = subprocess.Popen(['convert', '-quiet', bill_file_path, \
+            bill_image_path], stderr=subprocess.PIPE)
+        
+        # wait for 'convert' to finish; this also sets result.returncode
+        result.wait()
+        
+        # if 'convert' failed, raise exception with the text that it printed to
+        # stderr
+        if result.returncode != 0:
+            print result.returncode
+            error_text = result.communicate()[1]
+            self.logger.error('"convert %s %s" failed: ' % (bill_file_path,
+                bill_image_path) + error_text)
+            raise Exception(error_text)
         
 
 # two "external validators" for checking accounts and dates ###################
@@ -293,3 +317,5 @@ def format_date(date_string):
     # convert back
     return time.strftime(OUTPUT_DATE_FORMAT, date_object)
 
+b = BillUpload()
+b.getBillImagePath('10002', '2010-03-11', '2010-04-13')
