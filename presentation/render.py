@@ -666,9 +666,10 @@ def render(inputbill, outputfile, backgrounds, verbose):
     for service, hypothetical_details in bill.hypothetical_details.items():
 
         for chargegroup in hypothetical_details.chargegroups:
+            chargeDetails.append([service, None, None, None, None, None, None])
             for idx, charge in enumerate(chargegroup.charges):
                 chargeDetails.append([
-                    service if idx == 0 else "",
+                    "%s" % (chargegroup.type) if idx == 0 else "",
                     charge.description if hasattr(charge, "description") else None,
                     charge.quantity.quantize(Decimal(".000")) if hasattr(charge, "quantity") else None,
                     charge.quantity_units if hasattr(charge, "quantity_units") else None,
@@ -683,7 +684,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
         chargeDetails.append([None, None, None, None, None, None, hypothetical_details.total.quantize(Decimal(".00"))])
 
 
-    t = Table(chargeDetails, [50, 210, 70, 40, 70, 40, 70])
+    t = Table(chargeDetails, [80, 180, 70, 40, 70, 40, 70])
 
     #('BOX', (0,0), (-1,-1), 0.25, colors.black), 
     t.setStyle(TableStyle([

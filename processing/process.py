@@ -111,21 +111,20 @@ class Process(object):
         hypothetical_charges = the_bill.hypothetical_charges
        
         for service, cg_items in hypothetical_charges.items():
-            # cg_items contains dict of chargegroups and a grand total
+            # cg_items contains mnt of chargegroups and a grand total
 
             # the grand total
-            cg_items['total'] = Decimal("0.00")
+            cg_items.total = Decimal("0.00")
 
-            for chargegroup, c_items in cg_items['chargegroups'].items():
-                # c_items contains dict of charges and a total for the chargegroup
 
-                for charge in c_items['charges']:
+            for chargegroup in cg_items.chargegroups:
 
-                    # summarize chargegroup
-                    c_items['total'] += charge['total']
+                for charge in chargegroup.charges:
+
+                    chargegroup.total += charge.total
 
                     # summarize the service
-                    cg_items['total'] += charge['total']
+                    cg_items.total += charge.total
 
         # set the newly totalized charges
         the_bill.hypothetical_charges = hypothetical_charges
@@ -142,21 +141,19 @@ class Process(object):
         actual_charges = the_bill.actual_charges
        
         for service, cg_items in actual_charges.items():
-            # cg_items contains dict of chargegroups and a grand total
+            # cg_items contains mnt of chargegroups and a grand total
 
             # the grand total
-            cg_items['total'] = Decimal("0.00")
+            cg_items.total = Decimal("0.00")
 
-            for chargegroup, c_items in cg_items['chargegroups'].items():
-                # c_items contains dict of charges and a total for the chargegroup
+            for chargegroup in cg_items.chargegroups:
 
-                for charge in c_items['charges']:
+                for charge in chargegroup.charges:
 
-                    # summarize chargegroup
-                    c_items['total'] += charge['total']
+                    chargegroup.total += charge.total
 
                     # summarize the service
-                    cg_items['total'] += charge['total']
+                    cg_items.total += charge.total
 
         # set the newly totalized charges
         the_bill.actual_charges = actual_charges
@@ -255,13 +252,12 @@ class Process(object):
 
         # zero out details totals
 
+
         def zero_charges(details):
 
             for service, detail in details.items():
 
-                print "got detail.total %s " % detail.total
                 detail.total = Decimal("0.00")
-                print "set detail.total %s " % detail.total
 
                 for chargegroup in detail.chargegroups:
                     #TODO: zero out a chargegroup total when one exists
@@ -310,6 +306,11 @@ class Process(object):
         # at which time we can just recreate the whole trend
 
         XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
+
+
+    def commit_rebill(self, inputbill, targetBill, account, sequence, user=None, password=None):
+        pass
+
 
     def bindrs(self, inputbill, outputbill, rsdb, hypothetical, user=None, password=None):
         """ This function binds a rate structure against the actual and hypothetical charges found """

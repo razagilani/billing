@@ -333,6 +333,7 @@ function renderWidgets()
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
                 {text: 'Bind Rate Structure', handler: bindRSOperation},
+                {text: 'Calculate REPeriod', handler: calcREPeriodOperation},
                 {text: 'Pay', handler: payOperation},
                 {text: 'Sum', handler: sumOperation},
                 {text: 'CalcStats', handler: calcStatsOperation},
@@ -356,7 +357,6 @@ function renderWidgets()
         if(true !== o.success) {
             Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
         } else {
-            // do your success processing here
             configureWidgets();
         }
     }
@@ -449,22 +449,7 @@ function renderWidgets()
                         amount: amountPaid
                     },
                     disableCaching: true,
-                    // TODO refactor this
-                    success: function (response, options) {
-                        var o = {};
-                        try {o = Ext.decode(response.responseText);}
-                        catch(e) {
-                            alert("Could not decode JSON data");
-                        }
-                        if(true !== o.success) {
-                            Ext.Msg.alert('Error', o.errors.reason);
-
-                        } else {
-                            // do your success processing here
-                            // loads a bill from eXistDB
-                            configureWidgets();
-                        }
-                    }
+                    success: successResponse,
                 });
             }
         });
@@ -475,6 +460,23 @@ function renderWidgets()
         registerAjaxEvents()
         Ext.Ajax.request({
             url: 'http://'+location.host+'/billtool/bindrs',
+            params: { 
+                account: accountCombo.getValue(),
+                sequence: sequenceCombo.getValue()
+            },
+            disableCaching: true,
+            success: successResponse,
+            failure: function () {
+                alert("Bind RS response fail");
+            }
+        });
+    }
+
+    function calcREPeriodOperation()
+    {
+        registerAjaxEvents()
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/billtool/calc_reperiod',
             params: { 
                 account: accountCombo.getValue(),
                 sequence: sequenceCombo.getValue()
@@ -515,13 +517,24 @@ function renderWidgets()
                 sequence: sequenceCombo.getValue()
             },
             disableCaching: true,
-            success: function () {
-                // a new sequence has been made
-                sequencesStore.load();
-                // select it
-                sequenceCombo.selectByValue((parseInt(sequence)+1), true);
-                // re configure displayed data
-                configureWidgets();
+            success: function (response) {
+                var o = {};
+                try {
+                    o = Ext.decode(response.responseText);}
+                catch(e) {
+                    alert("Could not decode JSON data");
+                }
+                if(true !== o.success) {
+                    Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
+                } else {
+                    // TODO: pass these into successResponse somehow see 14945431
+                    // a new sequence has been made
+                    sequencesStore.load();
+                    // select it
+                    sequenceCombo.selectByValue((parseInt(sequence)+1), true);
+                    // re configure displayed data
+                    configureWidgets();
+                }
             },
             failure: function () {
                 alert("Roll response fail");
@@ -569,30 +582,20 @@ function renderWidgets()
         account = accountCombo.getValue();
         sequence = sequenceCombo.getValue();
 
-        // TODO: this is bad news.  Need a better way to handle multiple services
-        // shouldn't make two async calls to server that use same callbacks to close modal wait panel and reload bill
-        periods = getUBPeriods(bill);
-        periods.forEach(
-            function (value, index, array) {
-                registerAjaxEvents()
-                Ext.Ajax.request({
-                    // TODO: pass in only account and sequence
-                    url: 'http://'+location.host+'/billtool/commit',
-                    params: {
-                        account: accountCombo.getValue(),
-                        sequence: sequenceCombo.getValue(),
-                        begin: value.begindate,
-                        end: value.enddate,
-                    },
-                    disableCaching: true,
-                    success: successResponse,
-                    failure: function () {
-                        alert("commit response fail");
-                    }
-                });
-
+        registerAjaxEvents();
+        Ext.Ajax.request({
+            // TODO: pass in only account and sequence
+            url: 'http://'+location.host+'/billtool/commit',
+            params: {
+                account: accountCombo.getValue(),
+                sequence: sequenceCombo.getValue(),
+            },
+            disableCaching: true,
+            success: successResponse,
+            failure: function () {
+                alert("commit response fail");
             }
-        )
+        });
 
     }
 
@@ -920,7 +923,7 @@ function renderWidgets()
                 width: 160,
                 sortable: true,
                 dataIndex: 'chargegroup',
-                //hidden: true 
+                hidden: true 
             }, 
             {
                 header: 'RS Binding',
@@ -1051,6 +1054,7 @@ function renderWidgets()
     });
     var serviceComboFormPanel = new Ext.form.FormPanel({
         layout:'fit',
+        width: 100,
         items: [
             new Ext.form.ComboBox({
                 id: 'service_for_charges',
@@ -1068,8 +1072,9 @@ function renderWidgets()
                 xtype: 'tbseparator'
             },{
                 xtype: 'button',
+
                 // ref places a name for this component into the grid so it may be referenced as aChargesGrid.insertBtn...
-                ref: '../insertBtn',
+                id: 'aChargesInsertBtn',
                 iconCls: 'icon-user-add',
                 text: 'Insert',
                 disabled: true,
@@ -1109,14 +1114,14 @@ function renderWidgets()
                     aChargesGrid.startEditing(insertionPoint +1,1);
                     
                     // An inserted record must be saved 
-                    aChargesGrid.saveBtn.setDisabled(false);
+                    aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
                 }
             },{
                 xtype: 'tbseparator'
             },{
                 xtype: 'button',
                 // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                ref: '../removeBtn',
+                id: 'aChargesRemoveBtn',
                 iconCls: 'icon-user-delete',
                 text: 'Remove',
                 disabled: true,
@@ -1128,14 +1133,14 @@ function renderWidgets()
                     {
                         aChargesStore.remove(r);
                     }
-                    aChargesGrid.saveBtn.setDisabled(false);
+                    aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
                 }
             },{
                 xtype:'tbseparator'
             },{
                 xtype: 'button',
                 // places reference to this button in grid.  
-                ref: '../saveBtn',
+                id: 'aChargesSaveBtn',
                 text: 'Save',
                 disabled: true,
                 handler: function()
@@ -1143,7 +1148,7 @@ function renderWidgets()
                     // disable the save button for the save attempt.
                     // is there a closer place for this to the actual button click due to the possibility of a double
                     // clicked button submitting two ajax requests?
-                    aChargesGrid.saveBtn.setDisabled(true);
+                    aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(true);
 
                     // stop grid editing so that widgets like comboboxes in rows don't stay focused
                     aChargesGrid.stopEditing();
@@ -1177,8 +1182,6 @@ function renderWidgets()
                 xtype:'tbseparator'
             },{
                 xtype: 'button',
-                // places reference to this button in grid.  
-                ref: '../copyActual',
                 text: 'Copy to Hypo',
                 disabled: false,
                 handler: function()
@@ -1186,7 +1189,7 @@ function renderWidgets()
                     // disable the save button for the save attempt.
                     // is there a closer place for this to the actual button click due to the possibility of a double
                     // clicked button submitting two ajax requests?
-                    aChargesGrid.saveBtn.setDisabled(true);
+                    aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(true);
 
                     // stop grid editing so that widgets like comboboxes in rows don't stay focused
                     aChargesGrid.stopEditing();
@@ -1242,17 +1245,17 @@ function renderWidgets()
         // if a selection is made, allow it to be removed
         // if the selection was deselected to nothing, allow no 
         // records to be removed.
-        aChargesGrid.removeBtn.setDisabled(sm.getCount() < 1);
+
+        aChargesGrid.getTopToolbar().findById('aChargesRemoveBtn').setDisabled(sm.getCount() <1);
 
         // if there was a selection, allow an insertion
-        aChargesGrid.insertBtn.setDisabled(sm.getCount()<1);
-
+        aChargesGrid.getTopToolbar().findById('aChargesInsertBtn').setDisabled(sm.getCount() <1);
     });
   
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
     aChargesStore.on('update', function(){
-        aChargesGrid.saveBtn.setDisabled(false);
+        aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
     });
     
 
@@ -1333,7 +1336,7 @@ function renderWidgets()
                 width: 160,
                 sortable: true,
                 dataIndex: 'chargegroup',
-                //hidden: true 
+                hidden: true 
             },{
                 header: 'RS Binding',
                 width: 75,
@@ -1460,7 +1463,7 @@ function renderWidgets()
             {
                 xtype: 'button',
                 // ref places a name for this component into the grid so it may be referenced as hChargesGrid.insertBtn...
-                ref: '../insertBtn',
+                id: 'hChargesInsertBtn',
                 iconCls: 'icon-user-add',
                 text: 'Insert',
                 disabled: true,
@@ -1500,14 +1503,14 @@ function renderWidgets()
                     hChargesGrid.startEditing(insertionPoint +1,1);
                     
                     // An inserted record must be saved 
-                    hChargesGrid.saveBtn.setDisabled(false);
+                    hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
                 }
             },{
                 xtype: 'tbseparator'
             },{
                 xtype: 'button',
                 // ref places a name for this component into the grid so it may be referenced as hChargesGrid.removeBtn...
-                ref: '../removeBtn',
+                id: 'hChargesRemoveBtn',
                 iconCls: 'icon-user-delete',
                 text: 'Remove',
                 disabled: true,
@@ -1519,14 +1522,14 @@ function renderWidgets()
                     {
                         hChargesStore.remove(r);
                     }
-                    hChargesGrid.saveBtn.setDisabled(false);
+                    hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
                 }
             },{
                 xtype: 'tbseparator'
             },{
                 xtype: 'button',
                 // places reference to this button in grid.  
-                ref: '../saveBtn',
+                id: 'hChargesSaveBtn',
                 text: 'Save',
                 disabled: true,
                 handler: function()
@@ -1534,7 +1537,7 @@ function renderWidgets()
                     // disable the save button for the save attempt.
                     // is there a closer place for this to the actual button click due to the possibility of a double
                     // clicked button submitting two ajax requests?
-                    hChargesGrid.saveBtn.setDisabled(true);
+                    hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(true);
 
                     // stop grid editing so that widgets like comboboxes in rows don't stay focused
                     hChargesGrid.stopEditing();
@@ -1596,17 +1599,17 @@ function renderWidgets()
         // if a selection is made, allow it to be removed
         // if the selection was deselected to nothing, allow no 
         // records to be removed.
-        hChargesGrid.removeBtn.setDisabled(sm.getCount() < 1);
+        hChargesGrid.getTopToolbar().findById('hChargesRemoveBtn').setDisabled(sm.getCount() < 1);
 
         // if there was a selection, allow an insertion
-        hChargesGrid.insertBtn.setDisabled(sm.getCount()<1);
+        hChargesGrid.getTopToolbar().findById('hChargesInsertBtn').setDisabled(sm.getCount()<1);
 
     });
   
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
     hChargesStore.on('update', function(){
-        hChargesGrid.saveBtn.setDisabled(false);
+        hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
     });
 
     // end of tab widgets

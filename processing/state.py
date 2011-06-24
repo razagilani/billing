@@ -15,6 +15,7 @@ def fetch(host, db, user, password, query, params, fetchall = True):
         conn = MySQLdb.connect(host=host, user=user, passwd=password, db=db)
 
         cur = conn.cursor(MySQLdb.cursors.DictCursor)
+
         cur.execute(query, params)
         print "Number of rows affected: %d" % cur.rowcount
 
@@ -42,8 +43,9 @@ def fetch(host, db, user, password, query, params, fetchall = True):
 
 def commit_bill(host, db, user, password, account, sequence, start, end):
 
-    query = "call commit_bill(%s, %s, %s, %s)"
-    params = (account, sequence, start, end)
+    #query = "call commit_bill(%s, %s, %s, %s)"
+    query = "update utilbill set rebill_id = (select id from rebill where customer_id = (select id from customer where account = %s) and sequence = %s), processed = true where customer_id = (select id from customer where account = %s) and period_start >= %s and period_end <= %s"
+    params = (account, sequence, account, start, end)
     return fetch(host, db, user, password, query, params, False)
 
 def discount_rate(host, db, user, password, account):
@@ -58,8 +60,19 @@ def last_sequence(host, db, user, password, account):
     query = "select max(sequence) as maxseq from rebill where customer_id = (select id from customer where account = %s)"
     params = (account)
     rows = fetch(host, db, user, password, query, params)
-    # TODO: error checking...
+    # TODO: because of the way 0.xml templates are made (they are not in the database) rebill needs to be 
+    # primed otherwise the last sequence for a new bill is None. Design a solution to this issue.
+    if rows[0]['maxseq'] is None:
+        return 0
     return rows[0]['maxseq']
+    
+def new_rebill(host, db, user, password, account, sequence):
+
+    query = "insert into rebill (id, sequence, customer_id, issued) values (null, %s, (select id from customer where account = %s),false)" 
+    params = (sequence, account)
+
+    # TODO: error checking...
+    rows = fetch(host, db, user, password, query, params, False)
 
 def issue(host, db, user, password, account, sequence):
     query = "update rebill set issued = 1 where sequence = %s and customer_id = (select id from customer where account = %s)"
