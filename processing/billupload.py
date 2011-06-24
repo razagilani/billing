@@ -36,7 +36,7 @@ OUTPUT_DATE_FORMAT = '%Y%m%d'
 # where account directories are located (uploaded files are saved inside of
 # those)
 # TODO: put in config file
-SAVE_DIRECTORY = '/db/skyline/utilitybills'
+SAVE_DIRECTORY = '/tmp/aaa' #'/db/skyline/utilitybills'
 
 # where bill images are temporarily saved for viewing after they're rendered
 # TODO change this to the real location
@@ -151,16 +151,8 @@ class BillUpload(object):
                 + os.path.splitext(file_to_upload.filename)[1])
 
         # create the save directory if it doesn't exist
-        try:
-            os.makedirs(os.path.join(SAVE_DIRECTORY, account))
-        except OSError as e:
-            if e.errno == errno.EEXIST:
-                pass
-            else:
-                self.logger.error('unable to create directory "%s": %s' \
-                        % (os.path.join(SAVE_DIRECTORY, save_file_path), \
-                        str(e)))
-                raise    
+        create_directory_if_necessary(os.path.join(SAVE_DIRECTORY, account),
+                self.logger)
         
         # write the file in SAVE_DIRECTORY
         # (overwrite if it's already there)
@@ -316,4 +308,20 @@ def format_date(date_string):
         raise
     # convert back
     return time.strftime(OUTPUT_DATE_FORMAT, date_object)
+
+'''Creates the directory at 'path' if it does not exist and can be created.  If
+it cannot be created, logs the error using 'logger' and raises an exception.'''
+def create_directory_if_necessary(path, logger):
+    try:
+        os.makedirs(path)
+    except OSError as e:
+        # if os.makedirs() fails because 'path' already exists, that's good,
+        # but all other errors are bad
+        if e.errno == errno.EEXIST:
+            pass
+        else:
+            logger.error('unable to create directory "%s": %s' \
+                    % (path, str(e)))
+            raise    
+
 
