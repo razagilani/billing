@@ -10,7 +10,10 @@ import ConfigParser
 import MySQLdb
 sys.stdout = sys.stderr
 '''
-This was supposed to be completely independent of cherrypy, but cherrypy passes the file argument as a cherrypy object, not a string or file object. See comment on BillUpload.upload().  Note that this problem also makes it hard to write tests or a command-line interface.
+This was supposed to be completely independent of cherrypy, but cherrypy passes
+the file argument as a cherrypy object, not a string or file object. See
+comment on BillUpload.upload().  Note that this problem also makes it hard to
+write tests or a command-line interface.
 
 TODO:
     move some of the constants below into the config file?
@@ -22,7 +25,8 @@ TODO:
 #CONFIG_FILE_PATH = os.dirname(__file__)
 #CONFIG_FILE_PATH = os.path.join(os.getcwd(), 'billupload_config')
 # according to bill_tool_bridge.py, the correct way is:
-CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),'billupload_config')
+CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), \
+        'billupload_config')
 
 # strings allowed as account names
 ACCOUNT_NAME_REGEX = '[0-9]{5}'
@@ -190,7 +194,7 @@ class BillUpload(object):
                     (id, customer_id, rebill_id, period_start, period_end,
                     estimated, received, processed) VALUES
                     (NULL, (select id from skyline_dev.customer
-                    where account = %s), NULL, %s, %s, FALSE, TRUE, FALSE)''', \
+                    where account = %s), NULL, %s, %s, FALSE, TRUE, FALSE)''',\
                     (account, begin_date, end_date))
             print result
         except MySQLdb.Error:
@@ -269,7 +273,8 @@ class BillUpload(object):
 
     '''Converts the file at bill_file_path to an image and saves it at
     bill_image_path. Types are determined by file extensions. Raises an
-    exception if this fails.'''
+    exception if this fails. (This requires the 'convert' command from
+    ImageMagick, which requires html2pdf to render html files.)'''
     def renderBillImage(self, bill_file_path, bill_image_path):
         # use the command-line version of ImageMagick to convert the file.
         # ('-quiet' suppresses warning messages. formats are determined by
