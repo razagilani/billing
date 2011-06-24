@@ -1640,7 +1640,7 @@ function renderWidgets()
                     autoEl: {tag: 'img', src: 'http://billentry-dev/utilitybillimages/image_10002_20100311-20100413.png'},
             }),
             new Ext.Panel({
-                title: 'This is a Panel',
+                border: false,
                 xtype: 'panel',
                 layout: 'fit',
                 items: [
