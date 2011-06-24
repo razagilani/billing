@@ -1629,16 +1629,16 @@ function renderWidgets()
         {
           title: 'Upload Utility Bill',
           xtype: 'panel',
-          layout: 'fit',
-        /*
-          layout: new Ext.layout.VBoxLayout({
-              //align: 'center',
-              //defaultMargins: {top:10, right:10, bottom:10, left:10},
+          layout: new Ext.layout.HBoxLayout({
+              align: 'stretch',
           }),
-          */
           items: [
             // test of layout with image viewer on the side
-            // TODO make this work or change it back to normal
+            new Ext.BoxComponent({
+                width:500,
+                    // TODO put real bill image here
+                    autoEl: {tag: 'img', src: 'http://billentry-dev/utilitybillimages/image_10002_20100311-20100413.png'},
+            }),
             new Ext.Panel({
                 title: 'This is a Panel',
                 xtype: 'panel',
@@ -1647,11 +1647,6 @@ function renderWidgets()
                     upload_form_panel,
                     paging_grid,
                 ],
-            }),
-            new Ext.BoxComponent({
-                width:500,
-                height:500,
-                    autoEl: {tag: 'img', src: 'ext-3.2.1/examples/image-organizer/images/thumbs/zack.jpg'},
             }),
           ],
         },{
