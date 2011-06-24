@@ -601,7 +601,10 @@ class BillToolBridge:
                 charge_mnt.rateunits = charge_item['rateunits']
                 charge_mnt.total = charge_item['total']
                 chargegroup_mnt.charges.append(charge_mnt)
-                
+
+            # TODO refactor this into bill set charge_items such that the total property is created when absent.
+            chargegroup_mnt.total = "0.00"
+
             details[service].chargegroups.append(chargegroup_mnt)
 
         return details
