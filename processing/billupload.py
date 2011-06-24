@@ -242,8 +242,11 @@ class BillUpload(object):
         elif os.access(bill_file_path_without_extension + '.html', os.R_OK):
             extension = 'html'
         else:
-            # TODO log this error
-            raise IOError('Could not find a readable bill file whose path (without extension) is "%s"' % bill_file_path_without_extension)
+            error_text = 'Could not find a readable bill file whose path \
+                    (without extension) is "%s"' \
+                    % bill_file_path_without_extension
+            self.logger.error(error_text)
+            raise IOError(error_text)
         bill_file_path = bill_file_path_without_extension + '.' + extension
 
         # name and path of bill image:
@@ -287,6 +290,21 @@ class BillUpload(object):
             raise Exception(error_text)
         
 
+'''Creates the directory at 'path' if it does not exist and can be created.  If
+it cannot be created, logs the error using 'logger' and raises an exception.'''
+def create_directory_if_necessary(path, logger):
+    try:
+        os.makedirs(path)
+    except OSError as e:
+        # if os.makedirs() fails because 'path' already exists, that's good,
+        # but all other errors are bad
+        if e.errno == errno.EEXIST:
+            pass
+        else:
+            logger.error('unable to create directory "%s": %s' \
+                    % (path, str(e)))
+            raise    
+
 # two "external validators" for checking accounts and dates ###################
 
 '''Returns true iff the account is valid (just checks agains a regex, but this
@@ -310,19 +328,4 @@ def format_date(date_string):
         raise
     # convert back
     return time.strftime(OUTPUT_DATE_FORMAT, date_object)
-
-'''Creates the directory at 'path' if it does not exist and can be created.  If
-it cannot be created, logs the error using 'logger' and raises an exception.'''
-def create_directory_if_necessary(path, logger):
-    try:
-        os.makedirs(path)
-    except OSError as e:
-        # if os.makedirs() fails because 'path' already exists, that's good,
-        # but all other errors are bad
-        if e.errno == errno.EEXIST:
-            pass
-        else:
-            logger.error('unable to create directory "%s": %s' \
-                    % (path, str(e)))
-            raise    
 
