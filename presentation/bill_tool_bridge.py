@@ -707,7 +707,11 @@ class BillToolBridge:
         from billing.processing.billupload import BillUpload
         try:
             upload = BillUpload()
-            if upload.upload(account, begin_date, end_date, file_to_upload) is True:
+            # get Python file object and file name as string from the CherryPy
+            # object 'file_to_upload', and pass those to BillUpload so it's
+            # independent of CherryPy
+            if upload.upload(account, begin_date, end_date,
+                    file_to_upload.file, file_to_upload.filename) is True:
                 return ju.dumps({'success':True})
             else:
                 return ju.dumps({'success':False, 'errors':{'reason':'file upload failed', 'details':'Returned False'}})

@@ -10,11 +10,6 @@ import ConfigParser
 import MySQLdb
 sys.stdout = sys.stderr
 '''
-This was supposed to be completely independent of cherrypy, but cherrypy passes
-the file argument to upload() as a cherrypy object, not a string or file
-object. See comment on BillUpload.upload().  Note that this problem also makes
-it hard to write tests or a command-line interface.
-
 TODO:
     move some of the constants below into the config file?
 '''
@@ -112,16 +107,12 @@ class BillUpload(object):
         self.config.read(CONFIG_FILE_PATH)
 
 
-    '''Uploads the file given by file_to_upload to the location
+    '''Uploads the file 'the_file' (whose name is 'file_name') to the location
     [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]. Returns
     True for success, or throws one of various exceptions if something doesn't
     work. (The caller takes care of reporting the error in the proper format.)
-    Note that account, begin_date, and end_date are strings, but file_to_upload
-    is a cherrypy object of class 'cherrypy._cpreqbody.Part'--so it's hard to
-    completely remove cherrypy dependency from this file. '''
-    # TODO: remove cherrypy dependency. caller should extract the actual file
-    # from cherrypy's object and pass that as 'file_to_upload'
-    def upload(self, account, begin_date, end_date, file_to_upload):
+    '''
+    def upload(self, account, begin_date, end_date, the_file, file_name):
         # check account name (validate_account just checks it against a regex)
         # TODO: check that it's really an existing account against nexus
         if not validate_account(account):
@@ -139,20 +130,20 @@ class BillUpload(object):
         
         # read whole file in one chunk
         try:
-            data = file_to_upload.file.read()
+            data = the_file.read()
         except Exception as e:
             self.logger.error('unable to read "%s": %s' % \
-                    (file_to_upload.filename, str(e)))
+                    (file_name, str(e)))
             raise
         finally:
-            file_to_upload.file.close()
+            the_file.close()
         
         # path where file will be saved:
         # [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension] (NB:
         # date format is determined by the submitter)
         save_file_path = os.path.join(SAVE_DIRECTORY, account, \
                 formatted_begin_date + '-' + formatted_end_date \
-                + os.path.splitext(file_to_upload.filename)[1])
+                + os.path.splitext(file_name)[1])
 
         # create the save directory if it doesn't exist
         create_directory_if_necessary(os.path.join(SAVE_DIRECTORY, account),
