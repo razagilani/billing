@@ -207,7 +207,6 @@ class BillUpload(object):
     a certain directory, and returns a path to that directory. (The caller is
     responsble for providing a URL to the client where that image can be accessed.)'''
     def getBillImagePath(self, account, begin_date, end_date):
-        self.logger.error(type(account))
         # check account name (validate_account just checks that it's a string
         # and that it matches a regex)
         if not validate_account(account):
