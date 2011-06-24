@@ -42,14 +42,15 @@ SAVE_DIRECTORY = '/db/skyline/utilitybills'
 # TODO also put in config file
 BILL_IMAGE_DIRECTORY = '/tmp/billimages'
 
+# determines the format of bill image files
+# TODO put in config file
+IMAGE_EXTENSION = 'png'
+
 # default name of log file (config file can override this)
 DEFAULT_LOG_FILE_NAME = 'billupload.log'
 
 # default format of log entries (config file can override this)
 DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
-
-# determines the format of bill image files
-IMAGE_EXTENSION = 'png'
 
 class BillUpload(object):
 
