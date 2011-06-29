@@ -12,7 +12,7 @@ exclude_from = 'fabexcludes.txt'
 
 def prepare_deploy():
     # grab skyline framework
-    #fabops.local('tar czvf /tmp/skyliner.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../../skyliner' % (exclude_from))
+    fabops.local('tar czvf /tmp/skyliner.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../../skyliner' % (exclude_from))
 
     # grab the ui and application code
     fabops.local('tar czvf /tmp/%s.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../%s' % (project_name, exclude_from, project_name))
@@ -23,12 +23,8 @@ def prepare_deploy():
 def deploy():
     prepare_deploy()
     fabapi.put('/tmp/%s.tar.z' % (project_name), '/tmp')
-    #fabapi.put('/tmp/skyliner.tar.z', '/tmp')
+    fabapi.put('/tmp/skyliner.tar.z', '/tmp')
     fabapi.put('/tmp/bill_framework_code.tar.z', '/tmp')
-
-    # install the ui and application code
-    #fabops.sudo('cd /var/local/ && tar xvzf /tmp/%s.tar.z' % (project_name, ), user='root')
-    #fabops.sudo('cd /var/local/%s && mv bill_tool_bridge-prod.cfg bill_tool_bridge.cfg' % (project_name), user='root')
 
     # making billing module if missing
     fabops.sudo('if [ -d /var/local/%s/lib/python2.6/site-packages/billing ]; then echo "Directory exists"; else mkdir /var/local/%s/lib/python2.6/site-packages/billing; fi' % (project_name, project_name)) 
@@ -41,7 +37,7 @@ def deploy():
     fabops.sudo('cd /var/local/%s/lib/python2.6/site-packages/billing/ && tar xvzf /tmp/bill_framework_code.tar.z' % (project_name), user='root')
 
     #  install skyline framework into site-packages
-    #fabops.sudo('cd /var/local/billtool/lib/python2.6/site-packages/ && tar xvzf /tmp/skyliner.tar.z', user='root')
+    fabops.sudo('cd /var/local/billtool/lib/python2.6/site-packages/ && tar xvzf /tmp/skyliner.tar.z', user='root')
 
     fabops.sudo('chown -R billtool:billtool /var/local/%s' % (project_name), user='root')
     fabops.sudo('service apache2 restart')
