@@ -1835,16 +1835,6 @@ function renderWidgets()
     ////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////
-    // Status bar displayed at footer of every panel in the tabpanel
-
-    var statusBar = new Ext.ux.StatusBar({
-        defaultText: 'No RE Bill',
-        id: 'statusbar',
-        statusAlign: 'right', // the magic config
-        //items: [{ text: 'A Button' }, '-', 'Plain Text', ' ', ' ']
-    });
-
-    ////////////////////////////////////////////////////////////////////////////
     // assemble all of the widgets in a tabpanel with a header section
     var viewport = new Ext.Viewport
     (
@@ -1947,7 +1937,7 @@ function renderWidgets()
 
         aChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
         hChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
-        rsiStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
+        //rsiStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
 
         var sb = Ext.getCmp('statusbar');
         sb.setStatus({
