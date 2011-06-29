@@ -116,8 +116,9 @@ class Process(object):
             # the grand total
             cg_items.total = Decimal("0.00")
 
-
             for chargegroup in cg_items.chargegroups:
+
+                chargegroup.total = Decimal("0.00")
 
                 for charge in chargegroup.charges:
 
@@ -147,6 +148,8 @@ class Process(object):
             cg_items.total = Decimal("0.00")
 
             for chargegroup in cg_items.chargegroups:
+                
+                chargegroup.total = Decimal("0.00")
 
                 for charge in chargegroup.charges:
 
