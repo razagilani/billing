@@ -1845,68 +1845,6 @@ function renderWidgets()
     });
 
     ////////////////////////////////////////////////////////////////////////////
-    // construct tabpanel for viewport
-
-    var tabPanel = new Ext.TabPanel({
-      region:'center',
-      deferredRender:false,
-      autoScroll: true, 
-      //margins:'0 4 4 0',
-      // necessary for child FormPanels to draw properly when dynamically changed
-      layoutOnTabChange: true,
-      activeTab: 1,
-      bbar: statusBar,
-      items:[
-        {
-          title: 'Upload Utility Bill',
-          xtype: 'panel',
-          //layout: 'vbox',
-          layout: new Ext.layout.VBoxLayout({
-              //align: 'center',
-              defaultMargins: {top:10, right:10, bottom:10, left:10},
-          }),
-          items: [
-            upload_form_panel,
-            paging_grid,
-          ],
-        },{
-          title: 'Select Bill',
-          xtype: 'panel',
-          bodyStyle:'padding:10px 10px 0px 10px',
-          items: [
-            accountCombo,
-            sequenceCombo,
-            billOperationButton
-          ],
-        },{
-          id: 'ubPeriodsTab',
-          title: 'Bill Periods',
-          xtype: 'panel',
-          items: null // configureUBPeriodForm set this
-        },{
-          id: 'ubMeasuredUsagesTab',
-          title: 'Usage Periods',
-          xtype: 'panel',
-          items: null // configureUBMeasuredUsagesForm sets this
-        },{
-          title: 'Charge Items',
-          xtype: 'panel',
-          layout: 'accordion',
-          items: [
-            aChargesGrid,
-            hChargesGrid,
-          ]
-        },{
-          id: 'rsiTab',
-          title: 'RSIs',
-          xtype: 'panel',
-          items: [rsiGrid]
-        }]
-      });
- 
-
-    ////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////
     // assemble all of the widgets in a tabpanel with a header section
     var viewport = new Ext.Viewport
     (
