@@ -60,7 +60,10 @@ def last_sequence(host, db, user, password, account):
     query = "select max(sequence) as maxseq from rebill where customer_id = (select id from customer where account = %s)"
     params = (account)
     rows = fetch(host, db, user, password, query, params)
-    # TODO: error checking...
+    # TODO: because of the way 0.xml templates are made (they are not in the database) rebill needs to be 
+    # primed otherwise the last sequence for a new bill is None. Design a solution to this issue.
+    if rows[0]['maxseq'] is None:
+        return 0
     return rows[0]['maxseq']
     
 def new_rebill(host, db, user, password, account, sequence):

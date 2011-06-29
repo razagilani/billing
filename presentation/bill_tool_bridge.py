@@ -111,13 +111,8 @@ class BillToolBridge:
                 account
             )
 
-            # last_sequence is None if no prior bills have been rolled (sequence 0)
-            if last_sequence is not None and (int(sequence) < int(last_sequence)):
-                return '{success: false, errors: {reason:"Not the last sequence"}}'
-
-                # TODO: Process() should implement this
-                if (int(sequence) < int(last_sequence)):
-                    return '{success: false, errors: {reason:"Not the last sequence"}}'
+            if (int(sequence) < int(last_sequence)):
+                return json.dumps({'success': False, 'errors': {'reason':"Not the last sequence", 'details':"There are no details"}})
 
             next_sequence = last_sequence + 1
 
@@ -126,7 +121,7 @@ class BillToolBridge:
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, next_sequence),
                 self.config.get("xmldb", "user"),
                 self.config.get("xmldb", "password")
-            )   
+            )
 
             # if this is successful, we need to create an initial rebill record to which the utilbills are later associated
             state.new_rebill(
@@ -606,7 +601,10 @@ class BillToolBridge:
                 charge_mnt.rateunits = charge_item['rateunits']
                 charge_mnt.total = charge_item['total']
                 chargegroup_mnt.charges.append(charge_mnt)
-                
+
+            # TODO refactor this into bill set charge_items such that the total property is created when absent.
+            chargegroup_mnt.total = "0.00"
+
             details[service].chargegroups.append(chargegroup_mnt)
 
         return details
@@ -709,7 +707,11 @@ class BillToolBridge:
         from billing.processing.billupload import BillUpload
         try:
             upload = BillUpload()
-            if upload.upload(account, begin_date, end_date, file_to_upload) is True:
+            # get Python file object and file name as string from the CherryPy
+            # object 'file_to_upload', and pass those to BillUpload so it's
+            # independent of CherryPy
+            if upload.upload(account, begin_date, end_date,
+                    file_to_upload.file, file_to_upload.filename) is True:
                 return ju.dumps({'success':True})
             else:
                 return ju.dumps({'success':False, 'errors':{'reason':'file upload failed', 'details':'Returned False'}})
@@ -772,6 +774,17 @@ class BillToolBridge:
         finally:
             if conn is not None:
                 conn.close()
+
+    @cherrypy.expose
+    def getBillImage(self, account, begin_date, end_date, **args):
+        from billing.processing.billupload import BillUpload
+        try:
+            # TODO: put url here, instead of in billentry.js?
+            upload = BillUpload()
+            result = upload.getBillImagePath(account, begin_date, end_date)
+            return ju.dumps({'success':True, 'imageName':result})
+        except Exception as e: 
+             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
 bridge = BillToolBridge()
