@@ -4,7 +4,7 @@ File: bill_tool_bridge.py
 Description: Allows bill tool to be invoked as a CGI
 '''
 import site
-site.addsitedir('/var/local/billtool/lib/python2.6/site-packages')
+site.addsitedir('/var/local/reebill/lib/python2.6/site-packages')
 
 import sys
 sys.stdout = sys.stderr
