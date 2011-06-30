@@ -30,7 +30,6 @@ function renderWidgets()
     // ToDo: state support for grid
     //Ext.state.Manager.setProvider(new Ext.state.CookieProvider());
 
-
     // set a variety of patterns for Date Pickers
     Date.patterns = {
         ISO8601Long:"Y-m-d H:i:s",
@@ -52,12 +51,14 @@ function renderWidgets()
     //
     
     // box to display bill images
+    
     var imageBox = new Ext.Panel({
         width:500,
-            // TODO put real bill image here
-            autoEl: {tag: 'img', src:
-                'http://'+ location.host + '/utilitybillimages/image_10002_20100311-20100413.png'},
-            autoScroll: true,
+        //autoEl: {tag: 'div', id: 'image-div'},
+        //contentEl: {tag: 'img', src:'no image is here', id: 'utilbillimage'},
+        //contentEl: '<img src="no image is here" id="utilbillimage"/>',
+        html: {tag: 'div', id: 'imagebox', children: [{tag: 'img', src:'http://billentry-dev/utilitybillimages/image_10001_20101202-20110104.png', id: 'utilbillimage'}] },
+        autoScroll: true,
     });
 
     // account field
@@ -230,10 +231,11 @@ function renderWidgets()
                             + jsonData.errors.details);
                     } else {
                         // show image in a new window
-                        // TODO replace this with code to update the image in imageBox.
-                        window.open('http://' + location.host +
-                            '/utilitybillimages/' + jsonData.imageName,
-                            "Bill Viewing Window");
+                        // TODO: change to append
+                        var result = Ext.DomHelper.overwrite('imagebox', {tag: 'img', src: 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName, id: 'utilbillimage'}, true);
+                        //imageBox.html = {tag: 'img', src:'no url', id: 'utilbillimage'},
+                        imageBox.doLayout();
+                        console.log(result);
                     } 
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', err);
