@@ -57,7 +57,7 @@ function renderWidgets()
         //autoEl: {tag: 'div', id: 'image-div'},
         //contentEl: {tag: 'img', src:'no image is here', id: 'utilbillimage'},
         //contentEl: '<img src="no image is here" id="utilbillimage"/>',
-        html: {tag: 'div', id: 'imagebox', children: [{tag: 'img', src:'http://billentry-dev/utilitybillimages/image_10001_20101202-20110104.png', id: 'utilbillimage'}] },
+        html: {tag: 'div', id: 'imagebox', children: [{tag: 'img', src:'http://billentry-dev/no_bill_image.png', id: 'utilbillimage'}] },
         autoScroll: true,
     });
 
@@ -229,13 +229,14 @@ function renderWidgets()
                         Ext.MessageBox.alert('Server Error',
                             jsonData.errors.reason + " "
                             + jsonData.errors.details);
+                        Ext.DomHelper.overwrite('imagebox', {tag: 'img',
+                            src: 'http://' + location.host + '/utilitybillimages/no_image.png',
+                            id: 'utilbillimage'}, true);
                     } else {
-                        // show image in a new window
-                        // TODO: change to append
-                        var result = Ext.DomHelper.overwrite('imagebox', {tag: 'img', src: 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName, id: 'utilbillimage'}, true);
-                        //imageBox.html = {tag: 'img', src:'no url', id: 'utilbillimage'},
-                        imageBox.doLayout();
-                        console.log(result);
+                        // show image in imageBox
+                        Ext.DomHelper.overwrite('imagebox', {tag: 'img',
+                            src: 'http://' + location.host + '/utilitybillimages/' 
+                            + jsonData.imageName, id: 'utilbillimage'}, true);
                     } 
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', err);
