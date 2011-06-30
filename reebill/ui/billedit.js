@@ -56,7 +56,7 @@ function renderWidgets()
         width:500,
             // TODO put real bill image here
             autoEl: {tag: 'img', src:
-                'http://billentry-dev/utilitybillimages/image_10002_20100311-20100413.png'},
+                'http://'+ location.host + '/utilitybillimages/image_10002_20100311-20100413.png'},
             autoScroll: true,
     });
 
@@ -96,7 +96,7 @@ function renderWidgets()
     var upload_form_panel = new Ext.form.FormPanel({
         fileUpload: true,
         title: 'Upload Bill',
-        url: 'http://'+location.host+'/billtool/upload_utility_bill',
+        url: 'http://'+location.host+'/reebill/upload_utility_bill',
         frame:true,
         autoHeight: true,
         bodyStyle: 'padding: 10px 10px 0 10px;',
@@ -138,7 +138,7 @@ function renderWidgets()
             {name: 'period_start', type: 'date'},
             {name: 'period_end', type: 'date'},
         ],
-        url: 'http://billentry-dev/billtool/listUtilBills'
+        url: 'http://' + location.host + '/reebill/listUtilBills'
     });
     
     // TODO maybe find a better way of dealing with date formats than this
@@ -212,7 +212,7 @@ function renderWidgets()
         var formatted_end_date_string = parsed_end_date.format('Y-m-d');
 
         // url for getting bill images (calls bill_tool_bridge.getBillImage())
-        theUrl = 'http://' + location.host + '/billtool/getBillImage';
+        theUrl = 'http://' + location.host + '/reebill/getBillImage';
         
         // ajax call to generate image, get the name of it, and display it in a
         // new window
@@ -259,7 +259,7 @@ function renderWidgets()
         // store configs
         autoDestroy: true,
         autoLoad:false,
-        url: 'http://'+location.host+'/billtool/listAccounts',
+        url: 'http://'+location.host+'/reebill/listAccounts',
         storeId: 'accountsStore',
         root: 'rows',
         idProperty: 'account',
@@ -283,7 +283,7 @@ function renderWidgets()
         // store configs
         autoDestroy: true,
         autoLoad:false,
-        url: 'http://'+location.host+'/billtool/listSequences',
+        url: 'http://'+location.host+'/reebill/listSequences',
         storeId: 'sequencesStore',
         root: 'rows',
         idProperty: 'sequence',
@@ -382,7 +382,7 @@ function renderWidgets()
     {
         registerAjaxEvents()
         Ext.Ajax.request({
-            url: 'http://'+location.host+'/billtool/issueToCustomer',
+            url: 'http://'+location.host+'/reebill/issueToCustomer',
             params: { 
                 account: accountCombo.getValue(),
                 sequence: sequenceCombo.getValue()
@@ -399,7 +399,7 @@ function renderWidgets()
     {
         registerAjaxEvents()
         Ext.Ajax.request({
-            url: 'http://'+location.host+'/billtool/calcstats',
+            url: 'http://'+location.host+'/reebill/calcstats',
             params: { 
                 account: accountCombo.getValue(),
                 sequence: sequenceCombo.getValue()
@@ -416,7 +416,7 @@ function renderWidgets()
     {
         registerAjaxEvents()
         Ext.Ajax.request({
-            url: 'http://'+location.host+'/billtool/sum',
+            url: 'http://'+location.host+'/reebill/sum',
             params: { 
                 account: accountCombo.getValue(),
                 sequence: sequenceCombo.getValue()
@@ -442,7 +442,7 @@ function renderWidgets()
                 sequence = sequenceCombo.getValue();
 
                 Ext.Ajax.request({
-                    url: 'http://'+location.host+'/billtool/pay',
+                    url: 'http://'+location.host+'/reebill/pay',
                     params: { 
                         account: account,
                         sequence: sequence,
@@ -459,7 +459,7 @@ function renderWidgets()
     {
         registerAjaxEvents()
         Ext.Ajax.request({
-            url: 'http://'+location.host+'/billtool/bindrs',
+            url: 'http://'+location.host+'/reebill/bindrs',
             params: { 
                 account: accountCombo.getValue(),
                 sequence: sequenceCombo.getValue()
@@ -476,7 +476,7 @@ function renderWidgets()
     {
         registerAjaxEvents()
         Ext.Ajax.request({
-            url: 'http://'+location.host+'/billtool/calc_reperiod',
+            url: 'http://'+location.host+'/reebill/calc_reperiod',
             params: { 
                 account: accountCombo.getValue(),
                 sequence: sequenceCombo.getValue()
@@ -494,7 +494,7 @@ function renderWidgets()
 
         registerAjaxEvents()
         Ext.Ajax.request({
-            url: 'http://'+location.host+'/billtool/bindree',
+            url: 'http://'+location.host+'/reebill/bindree',
             params: { 
                 account: accountCombo.getValue(),
                 sequence: sequenceCombo.getValue()
@@ -511,7 +511,7 @@ function renderWidgets()
     {
         registerAjaxEvents()
         Ext.Ajax.request({
-            url: 'http://'+location.host+'/billtool/roll',
+            url: 'http://'+location.host+'/reebill/roll',
             params: { 
                 account: accountCombo.getValue(),
                 sequence: sequenceCombo.getValue()
@@ -546,7 +546,7 @@ function renderWidgets()
     {
         registerAjaxEvents()
         Ext.Ajax.request({
-            url: 'http://'+location.host+'/billtool/issue',
+            url: 'http://'+location.host+'/reebill/issue',
             params: { 
                 account: accountCombo.getValue(),
                 sequence: sequenceCombo.getValue()
@@ -564,7 +564,7 @@ function renderWidgets()
         registerAjaxEvents()
         Ext.Ajax.request({
             // TODO: pass in only account and sequence
-            url: 'http://'+location.host+'/billtool/render',
+            url: 'http://'+location.host+'/reebill/render',
             params: { 
                 account: accountCombo.getValue(),
                 sequence: sequenceCombo.getValue()
@@ -585,7 +585,7 @@ function renderWidgets()
         registerAjaxEvents();
         Ext.Ajax.request({
             // TODO: pass in only account and sequence
-            url: 'http://'+location.host+'/billtool/commit',
+            url: 'http://'+location.host+'/reebill/commit',
             params: {
                 account: accountCombo.getValue(),
                 sequence: sequenceCombo.getValue(),
@@ -668,7 +668,7 @@ function renderWidgets()
             {
                 id: service + 'UBPeriodsFormPanel',
                 header: false,
-                url: 'http://'+location.host+'/billtool/setUBPeriod',
+                url: 'http://'+location.host+'/reebill/setUBPeriod',
                 border: false,
                 labelWidth: 125,
                 bodyStyle:'padding:10px 10px 0px 10px',
@@ -740,7 +740,7 @@ function renderWidgets()
                 {
                     id: service +'-'+meter.identifier+'-meterReadDateFormPanel',
                     header: false,
-                    url: 'http://'+location.host+'/billtool/setMeter',
+                    url: 'http://'+location.host+'/reebill/setMeter',
                     border: false,
                     labelWidth: 125,
                     bodyStyle:'padding:10px 10px 0px 10px',
@@ -795,7 +795,7 @@ function renderWidgets()
                         {
                             id: service +'-'+meter.identifier+'-'+ register.identifier+'-meterReadDateFormPanel',
                             header: false,
-                            url: 'http://'+location.host+'/billtool/setActualRegister',
+                            url: 'http://'+location.host+'/reebill/setActualRegister',
                             border: false,
                             labelWidth: 125,
                             bodyStyle:'padding:10px 10px 0px 10px',
@@ -894,7 +894,7 @@ function renderWidgets()
         method: 'GET',
         prettyUrls: false,
         // see options parameter for Ext.Ajax.request
-        url: 'http://'+location.host+'/billtool/actualCharges',
+        url: 'http://'+location.host+'/reebill/actualCharges',
         /*api: {
             // all actions except the following will use above url
             create  : '',
@@ -1167,7 +1167,7 @@ function renderWidgets()
                     sequence = sequenceCombo.getValue();
 
                     Ext.Ajax.request({
-                        url: 'http://'+location.host+'/billtool/saveActualCharges',
+                        url: 'http://'+location.host+'/reebill/saveActualCharges',
                         params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence, rows: jsonData},
                         success: function() { 
                             // TODO: check success status in json package
@@ -1199,7 +1199,7 @@ function renderWidgets()
                     //setActualCharges(bill, aChargesStore.getRange());
 
                     Ext.Ajax.request({
-                        url: 'http://'+location.host+'/billtool/copyactual',
+                        url: 'http://'+location.host+'/reebill/copyactual',
                         params: {account: account, sequence: sequence},
                         success: function() { 
                             // TODO: check success status in json package
@@ -1307,7 +1307,7 @@ function renderWidgets()
         method: 'GET',
         prettyUrls: false,
         // see options parameter for Ext.Ajax.request
-        url: 'http://'+location.host+'/billtool/hypotheticalCharges',
+        url: 'http://'+location.host+'/reebill/hypotheticalCharges',
         /*api: {
             // all actions except the following will use above url
             create  : '',
@@ -1556,7 +1556,7 @@ function renderWidgets()
                     sequence = sequenceCombo.getValue();
 
                     Ext.Ajax.request({
-                        url: 'http://'+location.host+'/billtool/saveHypotheticalCharges',
+                        url: 'http://'+location.host+'/reebill/saveHypotheticalCharges',
                         params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence, rows: jsonData},
                         success: function() { 
                             // TODO: check success status in json package
@@ -1653,8 +1653,8 @@ function renderWidgets()
         method: 'GET',
         prettyUrls: false,
         // see options parameter for Ext.Ajax.request
-        //url: 'http://'+location.host+'/billtool/hypotheticalCharges',
-        url: 'http://'+location.host+'/billtool/something',
+        //url: 'http://'+location.host+'/reebill/hypotheticalCharges',
+        url: 'http://'+location.host+'/reebill/something',
         /*api: {
             // all actions except the following will use above url
             create  : '',
@@ -1679,7 +1679,7 @@ function renderWidgets()
             {name: 'roundrule'},
             {name: 'total'},
         ],
-        //url: 'http://'+location.host+'/billtool/something',
+        //url: 'http://'+location.host+'/reebill/something',
     });
 
     var rsiColModel = new Ext.grid.ColumnModel(
@@ -1891,7 +1891,7 @@ function renderWidgets()
         account = accountCombo.getValue();
         sequence = sequenceCombo.getValue();
         Ext.Ajax.request({
-            url: 'http://'+location.host+'/billtool/ubPeriods',
+            url: 'http://'+location.host+'/reebill/ubPeriods',
             params: {account: account, sequence: sequence},
             success: function(result, request) {
                 var jsonData = null;
@@ -1914,7 +1914,7 @@ function renderWidgets()
 
         // get the measured usage dates for each service
         Ext.Ajax.request({
-            url: 'http://'+location.host+'/billtool/ubMeasuredUsages',
+            url: 'http://'+location.host+'/reebill/ubMeasuredUsages',
             params: {account: account, sequence: sequence},
             success: function(result, request) {
                 var jsonData = null;

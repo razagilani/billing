@@ -31,7 +31,7 @@
 
                 CustomLog ${APACHE_LOG_DIR}/access.log combined
 
-WSGIScriptAlias /billtool /home/dklothe/workspace/billing/presentation/bill_tool_bridge.py
-            WSGIDaemonProcess billtool user=dklothe group=dklothe processes=1 threads=10 python-path=/home/dklothe/workspace:/usr/lib/python2.7/dist-packages/ChartDirector/lib
-            WSGIProcessGroup billtool
+WSGIScriptAlias /reebill /home/dklothe/workspace/billing/reebill/bill_tool_bridge.py
+            WSGIDaemonProcess reebill user=dklothe group=dklothe processes=1 threads=10 python-path=/home/dklothe/workspace:/usr/lib/python2.7/dist-packages/ChartDirector/lib
+            WSGIProcessGroup reebill
         </VirtualHost>
