@@ -52,6 +52,13 @@ DEFAULT_LOG_FILE_NAME = 'billupload.log'
 # default format of log entries (config file can override this)
 DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
+# database login info
+# TODO put in config file?
+DB_HOST = 'tyrell'
+DB_NAME = 'skyline_dev'
+DB_USERNAME = 'dev'
+DB_PASSWORD = 'dev'
+
 class BillUpload(object):
 
     def __init__(self):
@@ -176,18 +183,18 @@ class BillUpload(object):
     def insert_bill_in_database(self, account, begin_date, end_date):
         conn = None
         try:
-            conn = MySQLdb.connect(host='tyrell', user='dev', passwd='dev',
-                    db='skyline_dev')
+            conn = MySQLdb.connect(host=DB_HOST, user=DB_USERNAME, passwd=DB_PASSWORD,
+                    db=DB_NAME)
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
             # note that "select id from customer where account = '%s'" will be
             # null if the account doesn't exist, but in the future the account
             # will come from a drop-drown menu of existing accounts.
-            result = cur.execute('''INSERT INTO skyline_dev.utilbill
+            result = cur.execute('''INSERT INTO %s.utilbill
                     (id, customer_id, rebill_id, period_start, period_end,
                     estimated, received, processed) VALUES
-                    (NULL, (select id from skyline_dev.customer
+                    (NULL, (select id from %s.customer
                     where account = %s), NULL, %s, %s, FALSE, TRUE, FALSE)''',\
-                    (account, begin_date, end_date))
+                    (DB_NAME, DB_NAME, account, begin_date, end_date))
             print result
         except MySQLdb.Error as e:
             self.logger.error('Database error when attempting to insert bill \
@@ -198,8 +205,7 @@ class BillUpload(object):
             # TODO: figure out how to trigger this error so it can be tested
             # (or better, finf out what other exceptions can happen besides
             # MySQLdb.Error)
-            self.logger.error('Unexpected error when attempting to insert bill
-            \
+            self.logger.error('Unexpected error when attempting to insert bill \
                     into utilbill for account %s from %s to %s: %s'
                     % (account, begin_date, end_date, str(e)))
             raise

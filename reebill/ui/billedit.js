@@ -242,6 +242,7 @@ function renderWidgets()
                     Ext.MessageBox.alert('ERROR', err);
                 }
             },
+            // this is called when the server returns 500 as well as when there's no response
             failure: function() { Ext.MessageBox.alert('Ajax failure', theUrl); },
             disableCaching: true,
         });
