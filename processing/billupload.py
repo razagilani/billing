@@ -237,6 +237,8 @@ class BillUpload(object):
         # TODO add any other file types that might occur
         if os.access(bill_file_path_without_extension + '.pdf', os.R_OK):
             extension = 'pdf'
+        if os.access(bill_file_path_without_extension + '.pdf', os.R_OK):
+            extension = 'pdf'
         elif os.access(bill_file_path_without_extension + '.html', os.R_OK):
             extension = 'html'
         else:
@@ -258,6 +260,15 @@ class BillUpload(object):
         
         # render the image, saving it to bill_image_path
         self.renderBillImage(bill_file_path, bill_image_path)
+
+        # temporary hack to get correct file name even if imagemagick splits a
+        # multi-page bill into multiple image files: replace bill_image_path with
+        # the file name of the image containing the first page
+        # TODO remove this!
+        #if os.access(BILL_IMAGE_DIRECTORY + '/' + bill_image_name + '-0.png', os.R_OK):
+        if os.access(bill_image_path[:bill_image_path.rfind('.')] + '-0.png', os.R_OK):
+            bill_image_name = bill_image_name[:bill_image_name.rfind('.')] \
+            + '-0.png'
         
         # return name of image file (the caller should know where to find the
         # image file)

@@ -1,0 +1,37 @@
+<VirtualHost *:80>
+                ServerAdmin webmaster@localhost
+                ServerName billentry-dev
+
+                DocumentRoot /home/dklothe/workspace/billing/reebill/ui
+                <Directory />
+                        DirectoryIndex billentry.html
+                        Options FollowSymLinks
+                        AllowOverride None
+                </Directory>
+
+                # directory where utility bill images are saved
+                Alias /utilitybillimages /tmp/billimages
+                <Directory /tmp/billimages>
+                    #Order deny,allow
+                    #Allow from all
+                    Options Indexes FollowSymLinks MultiViews
+                    #AllowOverride None
+                </Directory>
+                <Directory /home/dklothe/workspace/billing/presentation/webforms/billentry>
+                    Options Indexes FollowSymLinks MultiViews
+                    AllowOverride None
+                    Order allow,deny
+                    allow from all
+                </Directory>
+                ErrorLog ${APACHE_LOG_DIR}/billentry_error.log
+
+                # Possible values include: debug, info, notice, warn, error, crit,
+                # alert, emerg.
+                LogLevel warn
+
+                CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+WSGIScriptAlias /reebill /home/dklothe/workspace/billing/reebill/bill_tool_bridge.py
+            WSGIDaemonProcess reebill user=dklothe group=dklothe processes=1 threads=10 python-path=/home/dklothe/workspace:/usr/lib/python2.7/dist-packages/ChartDirector/lib
+            WSGIProcessGroup reebill
+        </VirtualHost>
