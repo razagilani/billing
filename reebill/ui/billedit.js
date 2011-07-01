@@ -59,6 +59,7 @@ function renderWidgets()
         html: {tag: 'div', id: 'imagebox', children: [{tag: 'div', html: NO_BILL_SELECTED_MESSAGE,
             id: 'utilbillimage'}] },
         autoScroll: true,
+        region: 'west',
     });
 
     // account field
@@ -1787,7 +1788,6 @@ function renderWidgets()
           // utility bill image on one side, upload form & list of bills on the
           // other side (using 2 panels)
           items: [
-            imageBox,
             // panel containing the upload form & the utility bill list
             new Ext.Panel({
                 border: false,
@@ -1844,6 +1844,10 @@ function renderWidgets()
     (
       {
         layout: 'border',
+        defaults: {
+            //collapsible: true,
+            split: true,
+        },
         items: [
           {
             region: 'north',
@@ -1858,6 +1862,7 @@ function renderWidgets()
             //autoLoad: {url:'green_stripe.jpg', scripts:true},
             contentEl: 'header',
           },
+          imageBox,
           tabPanel,
           {
             region: 'south',
