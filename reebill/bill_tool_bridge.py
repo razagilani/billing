@@ -646,9 +646,11 @@ class BillToolBridge:
             # TODO: error conditions
             meter = [meter for meter in ubMeasuredUsages[service] if meter.identifier == meter_identifier]
             meter = meter[0] if meter else None
-            if meter is None: print "Should have found a single meter"
-            meter.presentreaddate = presentreaddate
-            meter.priorreaddate = priorreaddate
+            if meter is None: 
+                print "Should have found a single meter"
+            else:
+                meter.presentreaddate = presentreaddate
+                meter.priorreaddate = priorreaddate
 
             the_bill.measured_usage = ubMeasuredUsages
 
