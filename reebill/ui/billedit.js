@@ -51,13 +51,13 @@ function renderWidgets()
     //
     
     // box to display bill images
-    
+    var NO_BILL_SELECTED_MESSAGE = 'No bill selected.';
     var imageBox = new Ext.Panel({
         width:500,
-        //autoEl: {tag: 'div', id: 'image-div'},
-        //contentEl: {tag: 'img', src:'no image is here', id: 'utilbillimage'},
-        //contentEl: '<img src="no image is here" id="utilbillimage"/>',
-        html: {tag: 'div', id: 'imagebox', children: [{tag: 'img', src:'http://billentry-dev/no_bill_image.png', id: 'utilbillimage'}] },
+        // content is initially just a message saying no image is selected
+        // (will be replaced with an image when the user chooses a bill)
+        html: {tag: 'div', id: 'imagebox', children: [{tag: 'div', html: NO_BILL_SELECTED_MESSAGE,
+            id: 'utilbillimage'}] },
         autoScroll: true,
     });
 
@@ -229,9 +229,9 @@ function renderWidgets()
                         Ext.MessageBox.alert('Server Error',
                             jsonData.errors.reason + " "
                             + jsonData.errors.details);
-                        Ext.DomHelper.overwrite('imagebox', {tag: 'img',
-                            src: 'http://' + location.host + '/utilitybillimages/no_image.png',
-                            id: 'utilbillimage'}, true);
+                        // replace bill image with a message instead
+                        Ext.DomHelper.overwrite('imagebox', {tag: 'div',
+                            html: NO_BILL_SELECTED_MESSAGE, id: 'utilbillimage'}, true);
                     } else {
                         // show image in imageBox
                         Ext.DomHelper.overwrite('imagebox', {tag: 'img',
@@ -242,6 +242,7 @@ function renderWidgets()
                     Ext.MessageBox.alert('ERROR', err);
                 }
             },
+            // this is called when the server returns 500 as well as when there's no response
             failure: function() { Ext.MessageBox.alert('Ajax failure', theUrl); },
             disableCaching: true,
         });
