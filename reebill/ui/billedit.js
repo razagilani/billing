@@ -140,10 +140,6 @@ function renderWidgets()
             {name: 'period_end', type: 'date'},
         ],
         url: 'http://' + location.host + '/reebill/listUtilBills',
-        sortInfo: {
-            field: 'account',
-            direction: 'ASC' // or 'DESC' (case sensitive for local sorting)
-        },
     });
     
     // TODO maybe find a better way of dealing with date formats than this
@@ -197,7 +193,7 @@ function renderWidgets()
 
     // event handler for grid double-click: show image of utility bill
     // associated with the row
-    paging_grid.on('celldblclick', function(grid, rowIndex, columnIndex, e) {
+    paging_grid.on('cellclick', function(grid, rowIndex, columnIndex, e) {
         var record = grid.getStore().getAt(rowIndex);
         var fieldName = grid.getColumnModel().getDataIndex(columnIndex);
         var data = record.get(fieldName);
