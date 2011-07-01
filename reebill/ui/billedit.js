@@ -59,6 +59,7 @@ function renderWidgets()
         html: {tag: 'div', id: 'imagebox', children: [{tag: 'div', html: NO_BILL_SELECTED_MESSAGE,
             id: 'utilbillimage'}] },
         autoScroll: true,
+        region: 'west',
     });
 
     // account field
@@ -139,7 +140,7 @@ function renderWidgets()
             {name: 'period_start', type: 'date'},
             {name: 'period_end', type: 'date'},
         ],
-        url: 'http://' + location.host + '/reebill/listUtilBills'
+        url: 'http://' + location.host + '/reebill/listUtilBills',
     });
     
     // TODO maybe find a better way of dealing with date formats than this
@@ -193,7 +194,7 @@ function renderWidgets()
 
     // event handler for grid double-click: show image of utility bill
     // associated with the row
-    paging_grid.on('celldblclick', function(grid, rowIndex, columnIndex, e) {
+    paging_grid.on('cellclick', function(grid, rowIndex, columnIndex, e) {
         var record = grid.getStore().getAt(rowIndex);
         var fieldName = grid.getColumnModel().getDataIndex(columnIndex);
         var data = record.get(fieldName);
@@ -1787,7 +1788,6 @@ function renderWidgets()
           // utility bill image on one side, upload form & list of bills on the
           // other side (using 2 panels)
           items: [
-            imageBox,
             // panel containing the upload form & the utility bill list
             new Ext.Panel({
                 border: false,
@@ -1844,6 +1844,10 @@ function renderWidgets()
     (
       {
         layout: 'border',
+        defaults: {
+            //collapsible: true,
+            split: true,
+        },
         items: [
           {
             region: 'north',
@@ -1858,6 +1862,7 @@ function renderWidgets()
             //autoLoad: {url:'green_stripe.jpg', scripts:true},
             contentEl: 'header',
           },
+          imageBox,
           tabPanel,
           {
             region: 'south',
