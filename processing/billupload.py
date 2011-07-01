@@ -265,7 +265,7 @@ class BillUpload(object):
         # name and path of bill image:
         # TODO decide how image should actually be named
         bill_image_name = 'image_' + account + '_' \
-                + bill_file_name_imagebox+ '.' + IMAGE_EXTENSION
+                + bill_file_name_without_extension + '.' + IMAGE_EXTENSION
         bill_image_path = os.path.join(BILL_IMAGE_DIRECTORY, bill_image_name)
 
         # create bill image directory if it doesn't exist already
