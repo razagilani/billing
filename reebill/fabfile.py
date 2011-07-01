@@ -37,7 +37,7 @@ def deploy():
     fabops.sudo('cd /var/local/%s/lib/python2.6/site-packages/billing/ && tar xvzf /tmp/bill_framework_code.tar.z' % (project_name), user='root')
 
     #  install skyline framework into site-packages
-    fabops.sudo('cd /var/local/billtool/lib/python2.6/site-packages/ && tar xvzf /tmp/skyliner.tar.z', user='root')
+    fabops.sudo('cd /var/local/%s/lib/python2.6/site-packages/ && tar xvzf /tmp/skyliner.tar.z' % (project_name), user='root')
 
     fabops.sudo('chown -R billtool:billtool /var/local/%s' % (project_name), user='root')
     fabops.sudo('service apache2 restart')
