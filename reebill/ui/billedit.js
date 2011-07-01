@@ -1850,7 +1850,7 @@ function renderWidgets()
             border: false,
             xtype: 'panel',
             layout: 'fit',
-            height: 60,
+            height: 80,
             layoutConfig:
             {
               border: false,
