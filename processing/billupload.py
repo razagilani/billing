@@ -52,18 +52,18 @@ DEFAULT_LOG_FILE_NAME = 'billupload.log'
 # default format of log entries (config file can override this)
 DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
-# database login info
-# TODO put in config file?
-DB_HOST = 'tyrell'
-DB_NAME = 'skyline_dev'
-DB_USERNAME = 'dev'
-DB_PASSWORD = 'dev'
+# default database login info (config file can override this)
+DEFAULT_DB_HOST = 'tyrell'
+DEFAULT_DB_NAME = 'skyline_dev'
+DEFAULT_DB_USERNAME = 'dev'
+DEFAULT_DB_PASSWORD = 'dev'
 
 class BillUpload(object):
 
     def __init__(self):
         # TODO: separate config-related code and use that also for 
         # bill_tool_bridge.py
+        
         # if config file doesn't exist, create default version
         # (self.config.read() can fail in 2 ways: returns None if file doesn't
         # exist, raises exception in ConfigParser if the file is malformed.)
@@ -78,6 +78,8 @@ class BillUpload(object):
             self.create_default_config_file()
         
         # get log file name and format from config file
+        # TODO: if logging section of config file is malformed, choose default
+        # values and report the error to stderr
         log_file_path = os.path.join( \
                 os.path.dirname(os.path.realpath(__file__)), \
                 self.config.get('log', 'log_file_name'))
@@ -98,14 +100,28 @@ class BillUpload(object):
         handler = logging.FileHandler(log_file_path)
         handler.setFormatter(formatter)
         self.logger.addHandler(handler) 
-
+        
+        # load database login info from config file
+        self.db_host = self.config.get('db', 'db_host')
+        self.db_name = self.config.get('db', 'db_name')
+        self.db_username = self.config.get('db', 'db_username')
+        self.db_password = self.config.get('db', 'db_password')
 
     '''Writes a config file with default values at CONFIG_FILE_PATH.'''
     def create_default_config_file(self):
         print "Creating default config file at", CONFIG_FILE_PATH
+
+        # log file info
         self.config.add_section('log')
         self.config.set('log', 'log_file_name', DEFAULT_LOG_FILE_NAME)
         self.config.set('log', 'log_format', DEFAULT_LOG_FORMAT)
+
+        # database login info
+        self.config.add_section('db')
+        self.config.set('db', 'db_host', DEFAULT_DB_HOST)
+        self.config.set('db', 'db_name', DEFAULT_DB_NAME)
+        self.config.set('db', 'db_username', DEFAULT_DB_USERNAME)
+        self.config.set('db', 'db_password', DEFAULT_DB_PASSWORD)
         
         # write the file to CONFIG_FILE_PATH
         with open(CONFIG_FILE_PATH, 'wb') as new_config_file:
@@ -183,22 +199,22 @@ class BillUpload(object):
     def insert_bill_in_database(self, account, begin_date, end_date):
         conn = None
         try:
-            conn = MySQLdb.connect(host=DB_HOST, user=DB_USERNAME, passwd=DB_PASSWORD,
-                    db=DB_NAME)
+            conn = MySQLdb.connect(host=self.db_host, user=self.db_username, \
+                    passwd=self.db_password, db=self.db_name)
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
             # note that "select id from customer where account = '%s'" will be
             # null if the account doesn't exist, but in the future the account
             # will come from a drop-drown menu of existing accounts.
-            result = cur.execute('''INSERT INTO %s.utilbill
+            result = cur.execute('''INSERT INTO utilbill
                     (id, customer_id, rebill_id, period_start, period_end,
                     estimated, received, processed) VALUES
-                    (NULL, (select id from %s.customer
+                    (NULL, (select id from customer
                     where account = %s), NULL, %s, %s, FALSE, TRUE, FALSE)''',\
-                    (DB_NAME, DB_NAME, account, begin_date, end_date))
+                    (account, begin_date, end_date))
             print result
         except MySQLdb.Error as e:
             self.logger.error('Database error when attempting to insert bill \
-                    into utilbill for account %s from %s to %s: %s'
+                    into utilbill for account %s from %s to %s: %s' \
                     % (account, begin_date, end_date, str(e)))
             raise
         except:
