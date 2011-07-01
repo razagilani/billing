@@ -19,7 +19,8 @@
 				marquee.setOnUpdateCallback(onMarqueeUpdate);
 
 				billThumbnail = new Image();
-				billThumbnail.src = "/db/skyline/utilitybills/00000/SERVICE/YYYYMMDD-YYYYMMDD/P/thumb.png";
+				//billThumbnail.src = "/db/skyline/utilitybills/00000/SERVICE/YYYYMMDD-YYYYMMDD/P/thumb.png";
+				billThumbnail.src = "/static/workingimages/test0.png"
 				billThumbnail.onload =
 					function ()
 					{
@@ -99,7 +100,7 @@
 					alert(e)
 				}
 
-				$(result.imgId).replace("<img style=\"height: 80px;\" src=\"/static/workingimages/"+result.imgId+"\"/><pre>" + result.text + "</pre");
+				$(result.imgId).replace("<img style=\"height: 80px;\" src=\"/static/workingimages/"+result.imgId+"\"/><pre>" + result.text + "</pre>");
 			}
 
 			function cropFail(transport)
