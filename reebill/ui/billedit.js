@@ -139,7 +139,11 @@ function renderWidgets()
             {name: 'period_start', type: 'date'},
             {name: 'period_end', type: 'date'},
         ],
-        url: 'http://' + location.host + '/reebill/listUtilBills'
+        url: 'http://' + location.host + '/reebill/listUtilBills',
+        sortInfo: {
+            field: 'account',
+            direction: 'ASC' // or 'DESC' (case sensitive for local sorting)
+        },
     });
     
     // TODO maybe find a better way of dealing with date formats than this
