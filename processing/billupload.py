@@ -189,12 +189,19 @@ class BillUpload(object):
                     where account = %s), NULL, %s, %s, FALSE, TRUE, FALSE)''',\
                     (account, begin_date, end_date))
             print result
-        except MySQLdb.Error:
-            # TODO log errors?
-            print "Database error"
+        except MySQLdb.Error as e:
+            self.logger.error('Database error when attempting to insert bill \
+                    into utilbill for account %s from %s to %s: %s'
+                    % (account, begin_date, end_date, str(e)))
             raise
         except:
-            print "Unexpected error:", sys.exc_info()[0]
+            # TODO: figure out how to trigger this error so it can be tested
+            # (or better, finf out what other exceptions can happen besides
+            # MySQLdb.Error)
+            self.logger.error('Unexpected error when attempting to insert bill
+            \
+                    into utilbill for account %s from %s to %s: %s'
+                    % (account, begin_date, end_date, str(e)))
             raise
         finally:
             if conn is not None:
@@ -252,7 +259,7 @@ class BillUpload(object):
         # name and path of bill image:
         # TODO decide how image should actually be named
         bill_image_name = 'image_' + account + '_' \
-                + bill_file_name_without_extension + '.' + IMAGE_EXTENSION
+                + bill_file_name_imagebox+ '.' + IMAGE_EXTENSION
         bill_image_path = os.path.join(BILL_IMAGE_DIRECTORY, bill_image_name)
 
         # create bill image directory if it doesn't exist already
