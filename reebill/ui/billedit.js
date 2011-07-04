@@ -1780,7 +1780,7 @@ function renderWidgets()
       bbar: statusBar,
       items:[
         {
-          title: 'Upload Utility Bill',
+          title: 'Upload UtilBill',
           xtype: 'panel',
           layout: new Ext.layout.HBoxLayout({
               align: 'stretch',
@@ -1800,7 +1800,7 @@ function renderWidgets()
             }),
           ],
         },{
-          title: 'Select Bill',
+          title: 'Select ReeBill',
           xtype: 'panel',
           bodyStyle:'padding:10px 10px 0px 10px',
           items: [
