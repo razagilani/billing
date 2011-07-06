@@ -1624,7 +1624,7 @@ function renderWidgets()
 
     var initialRSI = {
         rows: [
-            {rsbinding:'SOMETHING REALLY REALLY REALLY LONG', description:'description', quantity:'quantity', quantityunits:'quantityunits', rate:'rate', rateunits:'rateunits', roundrule:'roundrule', total:'total'},
+            {descriptor:'SOMETHING REALLY REALLY REALLY LONG', description:'description', quantity:'quantity', quantityunits:'quantityunits', rate:'rate', rateunits:'rateunits', roundrule:'roundrule', total:'total'},
         ]
     };
 
@@ -1638,7 +1638,7 @@ function renderWidgets()
         // constructor that provides mapping for reading the record data objects
         fields: [
             // map Record's field to json object's key of same name
-            {name: 'rsbinding', mapping: 'rsbinding'},
+            {name: 'descriptor', mapping: 'descriptor'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
             {name: 'quantityunits', mapping: 'quantityunits'},
@@ -1658,8 +1658,7 @@ function renderWidgets()
         method: 'GET',
         prettyUrls: false,
         // see options parameter for Ext.Ajax.request
-        //url: 'http://'+location.host+'/reebill/hypotheticalCharges',
-        url: 'http://'+location.host+'/reebill/something',
+        url: 'http://'+location.host+'/reebill/listRSIs',
         /*api: {
             // all actions except the following will use above url
             create  : '',
@@ -1675,7 +1674,7 @@ function renderWidgets()
         data: initialRSI,
         root: 'rows',
         fields: [
-            {name: 'rsbinding'},
+            {name: 'descriptor'},
             {name: 'description'},
             {name: 'quantity'},
             {name: 'quantityunits'},
@@ -1693,7 +1692,7 @@ function renderWidgets()
             {
                 header: 'RS Binding',
                 sortable: true,
-                dataIndex: 'rsbinding',
+                dataIndex: 'descriptor',
                 editor: new Ext.form.TextField({allowBlank: true})
             },{
                 header: 'Description',
@@ -1946,7 +1945,7 @@ function renderWidgets()
 
         aChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
         hChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
-        //rsiStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
+        rsiStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
 
         var sb = Ext.getCmp('statusbar');
         sb.setStatus({

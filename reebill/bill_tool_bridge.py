@@ -50,6 +50,7 @@ class BillToolBridge:
 
     config = None
 
+    # TODO: refactor config and share it between btb and bt 15413411
     def __init__(self):
         self.config = ConfigParser.RawConfigParser()
         config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'bill_tool_bridge.cfg')
@@ -183,6 +184,7 @@ class BillToolBridge:
 
         try:
             # actual
+            # TODO pass in bill object
             process.Process().bindrs(
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
@@ -194,6 +196,7 @@ class BillToolBridge:
 
 
             #hypothetical
+            # TODO pass in bill object
             process.Process().bindrs(
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
@@ -335,7 +338,6 @@ class BillToolBridge:
             #    sequence
             #)
 
-            # TODO: refactor into process
             the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
             begin = the_bill.rebill_summary.begin
             end = the_bill.rebill_summary.end
@@ -423,6 +425,35 @@ class BillToolBridge:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
         return json.dumps({'success': True, 'rows':sequences})
+
+    @cherrypy.expose
+    # TODO see 15415625 about the problem passing in service to get at a set of RSIs
+    def listRSIs(self, account, sequence, service, **kwargs):
+        # TODO move into bill_tool
+        try:
+            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+            billdb = self.config.get("billdb", "rspath")
+            # ok, this is the nasty - rsbinding is in utilbill and probably should be in details
+            utilbills = the_bill.utilbill_summary_charges
+            for (s, utilbill) in utilbills.items():
+                rsbinding = utilbill.rsbinding
+                if (s == service):
+                    import yaml
+                    import billing.processing.rate_structure as rs
+                    rs_yaml = yaml.load(file(os.path.join(billdb, rsbinding, account, sequence+".yaml")))
+                    # TODO: we can't json dumps RSIs, but the yaml is readily dumpable to JSON
+                    # figure out best way to represent RSIs for web
+                    #rate_structure = rs.RateStructure(rs_yaml)
+                    break
+
+            #rsis = rate_structure.rsis()
+            print json.dumps({'success': True, 'rows':rs_yaml["rates"]})
+
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+
+        return json.dumps({'success': True, 'rows':rs_yaml["rates"]})
 
 
     ################
