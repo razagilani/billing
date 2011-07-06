@@ -428,6 +428,7 @@ class Bill(object):
 
                 u = MutableNamedTuple()
 
+                self.attr_to_prop(utilbill_elem, "rsbinding", str, u, "rsbinding")
                 self.cdata_to_prop(utilbill_elem, "billperiodbegin", date, u, "begin" )
                 self.cdata_to_prop(utilbill_elem, "billperiodend", date, u, "end" )
                 self.cdata_to_prop(utilbill_elem, "hypotheticalecharges", Decimal, u, "hypotheticalecharges" )
@@ -852,6 +853,8 @@ class Bill(object):
 
 
     # consider merging the charge_items code in here
+    # TODO api is sloppy - what if we want details for all charges types? Or, just the rsbindings 
+    # for all services? Why then should we have to pass a charges_type?
     def details(self, charges_type):
         """
         Return details by service
@@ -1422,11 +1425,14 @@ if __name__ == "__main__":
     #print s
     #bill.statistics = s
 
-    c = bill.actual_charges
-    print c
+    #c = bill.actual_charges
+    #print c
     #bill.actual_charges = c
     #c = bill.actual_charges
     #print c
+
+    u = bill.utilbill_summary_charges
+    print u
 
     #XMLUtils().save_xml_file(bill.xml(), options.outputbill, "prod", "prod")
 
