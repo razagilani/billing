@@ -86,12 +86,8 @@ class BillToolBridge:
     def copyactual(self, account, sequence, **args):
 
         try:
-            process.Process().copy_actual_charges(
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
+            p = process.Process(self.config)
+            p.copy_actual(account, sequence)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -100,40 +96,10 @@ class BillToolBridge:
 
     @cherrypy.expose
     def roll(self, account, sequence, **args):
-        # TODO: remove this business logic to Process()
-        # Process() will have to increment rebill
 
         try:
-
-            last_sequence = state.last_sequence(
-                self.config.get("statedb", "host"),
-                self.config.get("statedb", "db"),
-                self.config.get("statedb", "user"),
-                self.config.get("statedb", "password"),
-                account
-            )
-
-            if (int(sequence) < int(last_sequence)):
-                return json.dumps({'success': False, 'errors': {'reason':"Not the last sequence", 'details':"There are no details"}})
-
-            next_sequence = last_sequence + 1
-
-            process.Process().roll_bill(
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, next_sequence),
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
-
-            # if this is successful, we need to create an initial rebill record to which the utilbills are later associated
-            state.new_rebill(
-                self.config.get("statedb", "host"),
-                self.config.get("statedb", "db"),
-                self.config.get("statedb", "user"),
-                self.config.get("statedb", "password"),
-                account,
-                next_sequence
-            )
+            p = process.Process(self.config)
+            p.roll_bill(account, sequence)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -144,14 +110,8 @@ class BillToolBridge:
     def pay(self, account, sequence, amount, **args):
 
         try:
-
-            process.Process().pay_bill(
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-                amount,
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )   
+            p = process.Process(self.config)
+            p.pay_bill(account, sequence, amount)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -183,35 +143,8 @@ class BillToolBridge:
     def bindrs(self, account, sequence, **args):
 
         try:
-            # actual
-            # TODO pass in bill object
-            process.Process().bindrs(
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-                self.config.get("billdb", "rspath"),
-                False, 
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
-
-
-            #hypothetical
-            # TODO pass in bill object
-            process.Process().bindrs(
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-                self.config.get("billdb", "rspath"),
-                True, 
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
-
-            process.Process().calculate_reperiod(
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
+            p = process.Process(self.config)
+            p.bind_rate_structure(account, sequence)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -222,12 +155,8 @@ class BillToolBridge:
     def calc_reperiod(self, account, sequence, **args):
 
         try:
-            process.Process().calculate_reperiod(
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
+            p = process.Process(self.config)
+            p.calculate_reperiod(account, sequence)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -238,12 +167,9 @@ class BillToolBridge:
     def calcstats(self, account, sequence, **args):
 
         try:
-            process.Process().calculate_statistics(
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, int(sequence)-1), 
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
+            p = process.Process(self.config)
+            p.calculate_statistics(account, sequence)
+
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
@@ -253,39 +179,9 @@ class BillToolBridge:
     def sum(self, account, sequence, **args):
 
         try:
-            # sum actual
-            process.Process().sum_actual_charges(
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
+            p = process.Process(self.config)
+            p.sum_bill(account, sequence)
 
-            # sum hypothetical
-            process.Process().sum_hypothetical_charges(
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
-        
-            # get discount rate
-            discount_rate = state.discount_rate(
-                self.config.get("statedb", "host"),
-                self.config.get("statedb", "db"),
-                self.config.get("statedb", "user"),
-                self.config.get("statedb", "password"),
-                account
-            )
-
-            process.Process().sumbill(
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, int(sequence)-1), 
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-                discount_rate,
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
@@ -294,16 +190,10 @@ class BillToolBridge:
     @cherrypy.expose
     def issue(self, account, sequence, **args):
 
-        # only sets the issue date
 
         try:
-            process.Process().issue(
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-                None,
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
+            process.Process().issue(None)
+
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
@@ -331,27 +221,8 @@ class BillToolBridge:
 
         try:
 
-            #process.Process().commit_rebill(
-            #    "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence),
-            #    "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-            #    account,
-            #    sequence
-            #)
-
-            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
-            begin = the_bill.rebill_summary.begin
-            end = the_bill.rebill_summary.end
-
-            state.commit_bill(
-                self.config.get("statedb", "host"),
-                self.config.get("statedb", "db"),
-                self.config.get("statedb", "user"),
-                self.config.get("statedb", "password"),
-                account,
-                sequence,
-                begin,
-                end
-            )
+            p = process.Process(self.config)
+            p.commit_rebill(account, sequence)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -362,14 +233,9 @@ class BillToolBridge:
     def issueToCustomer(self, account, sequence, **args):
 
         try:
-            state.issue(
-                self.config.get("statedb", "host"),
-                self.config.get("statedb", "db"),
-                self.config.get("statedb", "user"),
-                self.config.get("statedb", "password"),
-                account,
-                sequence
-            )
+            p = process.Process(self.config)
+            p.issue_to_customer(account, sequence)
+
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
@@ -381,12 +247,12 @@ class BillToolBridge:
         accounts = []
         try:
             # eventually, this data will have to support pagination
-            accounts = state.listAccounts(
-                self.config.get("statedb", "host"),
-                self.config.get("statedb", "db"),
-                self.config.get("statedb", "user"),
-                self.config.get("statedb", "password"),
-            )
+
+            # instantiate stateDB
+            statedb_config_section = self.config.items("statedb")
+            state_db = state.StateDB(dict(statedb_config_section)) 
+
+            accounts = state_db.listAccounts()
 
             # now get associated names from Nexus and add them to each account dictionary
             nu = NexusUtil()
@@ -413,14 +279,12 @@ class BillToolBridge:
     def listSequences(self, account, **kwargs):
         sequences = []
         try:
+            # instantiate stateDB
+            statedb_config_section = self.config.items("statedb")
+            state_db = state.StateDB(dict(statedb_config_section)) 
+
             # eventually, this data will have to support pagination
-            sequences = state.listSequences(
-                self.config.get("statedb", "host"),
-                self.config.get("statedb", "db"),
-                self.config.get("statedb", "user"),
-                self.config.get("statedb", "password"),
-                account
-            )
+            sequences = state_db.listSequences(account)
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
@@ -429,7 +293,7 @@ class BillToolBridge:
     @cherrypy.expose
     # TODO see 15415625 about the problem passing in service to get at a set of RSIs
     def listRSIs(self, account, sequence, service, **kwargs):
-        # TODO move into bill_tool
+
         try:
             the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
             billdb = self.config.get("billdb", "rspath")

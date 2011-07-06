@@ -9,85 +9,92 @@ import MySQLdb
 
 from optparse import OptionParser
 
+class StateDB:
 
-def fetch(host, db, user, password, query, params, fetchall = True):
-    try:
-        conn = MySQLdb.connect(host=host, user=user, passwd=password, db=db)
+    config = None
 
-        cur = conn.cursor(MySQLdb.cursors.DictCursor)
+    def __init__(self, config):
+        self.config = config
+        pass
 
-        cur.execute(query, params)
-        print "Number of rows affected: %d" % cur.rowcount
+    def fetch(self, query, params, fetchall = True):
+        try:
+            conn = MySQLdb.connect(host=self.config["host"], user=self.config["user"], passwd=self.config["password"], db=self.config["db"])
 
-        # TODO: print some sane message about failures
-        if fetchall is True:
-            return cur.fetchall()
-        else:
-            return cur.fetchone()
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
 
-    except MySQLdb.Error:
-        print "Database error"
-        raise
+            cur.execute(query, params)
+            print "Number of rows affected: %d" % cur.rowcount
 
-    except:
-        print "Unexpected error:", sys.exc_info()[0]
-        raise
+            # TODO: print some sane message about failures
+            if fetchall is True:
+                return cur.fetchall()
+            else:
+                return cur.fetchone()
 
-    finally:
-        if (vars().has_key('cur') is True and type(cur) is MySQLdb.cursors.Cursor):
-            cur.close()
+        except MySQLdb.Error:
+            print "Database error"
+            raise
 
-        if (vars().has_key('conn') is True and type(conn) is MySQLdb.connections.Connection): 
-            conn.commit()
-            conn.close()
+        except:
+            print "Unexpected error:", sys.exc_info()[0]
+            raise
 
-def commit_bill(host, db, user, password, account, sequence, start, end):
+        finally:
+            if (vars().has_key('cur') is True and type(cur) is MySQLdb.cursors.Cursor):
+                cur.close()
 
-    #query = "call commit_bill(%s, %s, %s, %s)"
-    query = "update utilbill set rebill_id = (select id from rebill where customer_id = (select id from customer where account = %s) and sequence = %s), processed = true where customer_id = (select id from customer where account = %s) and period_start >= %s and period_end <= %s"
-    params = (account, sequence, account, start, end)
-    return fetch(host, db, user, password, query, params, False)
+            if (vars().has_key('conn') is True and type(conn) is MySQLdb.connections.Connection): 
+                conn.commit()
+                conn.close()
 
-def discount_rate(host, db, user, password, account):
+    def commit_bill(self, account, sequence, start, end):
 
-    query = "select discountrate from customer where account = %s"
-    params = (account)
-    rows = fetch(host, db, user, password, query, params)
-    # TODO: error checking...
-    return rows[0]['discountrate']
+        #query = "call commit_bill(%s, %s, %s, %s)"
+        query = "update utilbill set rebill_id = (select id from rebill where customer_id = (select id from customer where account = %s) and sequence = %s), processed = true where customer_id = (select id from customer where account = %s) and period_start >= %s and period_end <= %s"
+        params = (account, sequence, account, start, end)
+        return self.fetch(query, params, False)
 
-def last_sequence(host, db, user, password, account):
-    query = "select max(sequence) as maxseq from rebill where customer_id = (select id from customer where account = %s)"
-    params = (account)
-    rows = fetch(host, db, user, password, query, params)
-    # TODO: because of the way 0.xml templates are made (they are not in the database) rebill needs to be 
-    # primed otherwise the last sequence for a new bill is None. Design a solution to this issue.
-    if rows[0]['maxseq'] is None:
-        return 0
-    return rows[0]['maxseq']
-    
-def new_rebill(host, db, user, password, account, sequence):
+    def discount_rate(self, account):
 
-    query = "insert into rebill (id, sequence, customer_id, issued) values (null, %s, (select id from customer where account = %s),false)" 
-    params = (sequence, account)
+        query = "select discountrate from customer where account = %s"
+        params = (account)
+        rows = fetch(query, params)
+        # TODO: error checking...
+        return rows[0]['discountrate']
 
-    # TODO: error checking...
-    rows = fetch(host, db, user, password, query, params, False)
+    def last_sequence(self, account):
+        query = "select max(sequence) as maxseq from rebill where customer_id = (select id from customer where account = %s)"
+        params = (account)
+        rows = fetch(host, db, user, password, query, params)
+        # TODO: because of the way 0.xml templates are made (they are not in the database) rebill needs to be 
+        # primed otherwise the last sequence for a new bill is None. Design a solution to this issue.
+        if rows[0]['maxseq'] is None:
+            return 0
+        return rows[0]['maxseq']
+        
+    def new_rebill(self, account, sequence):
 
-def issue(host, db, user, password, account, sequence):
-    query = "update rebill set issued = 1 where sequence = %s and customer_id = (select id from customer where account = %s)"
-    params = (sequence, account)
-    # TODO: error checking...
-    rows = fetch(host, db, user, password, query, params, False)
+        query = "insert into rebill (id, sequence, customer_id, issued) values (null, %s, (select id from customer where account = %s),false)" 
+        params = (sequence, account)
 
-def listAccounts(host, db, user, password):
-    query = "select account from customer"
-    return fetch(host, db, user, password, query, None, True)
+        # TODO: error checking...
+        rows = self.fetch(query, params, False)
 
-def listSequences(host, db, user, password, account):
-    query = "select sequence from rebill r where r.customer_id = (select id from customer where account = %s)"
-    params = (account)
-    return fetch(host, db, user, password, query, params, True)
+    def issue(self, account, sequence):
+        query = "update rebill set issued = 1 where sequence = %s and customer_id = (select id from customer where account = %s)"
+        params = (sequence, account)
+        # TODO: error checking...
+        rows = self.fetch(query, params, False)
+
+    def listAccounts(self):
+        query = "select account from customer"
+        return self.fetch(query, None, True)
+
+    def listSequences(self, account):
+        query = "select sequence from rebill r where r.customer_id = (select id from customer where account = %s)"
+        params = (account)
+        return self.fetch(query, params, True)
 
 if __name__ == "__main__":
 

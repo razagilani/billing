@@ -35,9 +35,11 @@ import rate_structure
 
 class Process(object):
     """ Class with a variety of utility procedures for processing bills """
+
+    config = None
     
-    def __init__(self):
-        pass
+    def __init__(self, config):
+        self.config = config
 
     #TODO better function name to reflect the return types of XPath - not just elements, but sums, etc...
     #TODO function to return a single element vs list - that will clean up lots of code
@@ -47,13 +49,36 @@ class Process(object):
 
 
     # TODO convert to property access
-    # TODO rename to sum_bill
     # compute the value, charges and savings of renewable energy
-    def sumbill(self, prior_bill, unprocessedBill, targetBill, discount_rate = None, user=None, password=None):
-        # TODO discount_rate should be a decimal so that it doesn't have to be converted below.
+    def sum_bill(self, account, sequence):
 
-        prior_bill = bill.Bill(prior_bill)
-        the_bill = bill.Bill(unprocessedBill)
+        # sum actual
+        self.sum_actual_charges(
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+            self.config.get("xmldb", "user"),
+            self.config.get("xmldb", "password")
+        )
+
+        # sum hypothetical
+        self.sum_hypothetical_charges(
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+            self.config.get("xmldb", "user"),
+            self.config.get("xmldb", "password")
+        )
+    
+        # get discount rate
+        # instantiate stateDB
+        statedb_config_section = self.config.get("statedb")
+        state_db = StateDB(dict(statedb_config_section)) 
+
+        # TODO discount_rate should be a decimal so that it doesn't have to be converted below.
+        discount_rate = state_db.discount_rate(account)
+
+
+        prior_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, int(sequence)-1))
+        the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
 
         # get data from the bill
         ub_summary_charges = the_bill.utilbill_summary_charges;
@@ -101,7 +126,8 @@ class Process(object):
         the_bill.rebill_summary = rebill_summary
         the_bill.utilbill_summary_charges = ub_summary_charges
 
-        XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
+        XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), 
+            self.config.get("xmldb", "user"), self.config.get("xmldb", "user")))
 
     # TODO cover method that accepts charges_type of hypo or actual
     def sum_hypothetical_charges(self, unprocessedBill, targetBill, user=None, password=None):
@@ -166,16 +192,18 @@ class Process(object):
 
         XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
 
-    def copy_actual_charges(self, unprocessedBill, targetBill, user=None, password=None):
-        the_bill = bill.Bill(unprocessedBill)
+    def copy_actual_charges(self, account, sequence):
+
+        the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
 
         #TODO: this actually deletes all existing hypothetical charges.  This is ok unless for some reason the set of hypothetical charges could be larger than the actual
         actual_charges = the_bill.actual_charges
         the_bill.hypothetical_charges = actual_charges
 
-        XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
+        XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), self.config.get("xmldb", "user"),
+            self.config.get("xmldb", "password"))
 
-    def pay_bill(self, source_bill, target_bill, amountPaid, user=None, password=None):
+    def pay_bill(self, account, sequence, amountPaid):
         """
         Accepts the prior bill, so that the total due can be obtained.
         Sets the payment in the targetbill.
@@ -184,7 +212,7 @@ class Process(object):
         """
 
         #prior = bill.Bill(prior_bill)
-        pay = bill.Bill(source_bill)
+        pay = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
 
         pay_rebill = pay.rebill_summary
 
@@ -195,16 +223,32 @@ class Process(object):
         # set rebill back to bill
         pay.rebill_summary = pay_rebill
 
-        XMLUtils().save_xml_file(pay.xml(), target_bill, user, password)
+        XMLUtils().save_xml_file(pay.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), self.config.get("xmldb", "user"), 
+            self.config.get("xmldb", "password"))
 
 
-    def roll_bill(self, inputbill, targetBill, user=None, password=None):
+    def roll_bill(self, account, sequence, rspath):
         """
         Create rebill for next period, based on prior bill.
         This is acheived by accessing xml document for prior bill, and resetting select values.
         """
 
-        the_bill = bill.Bill(inputbill)
+        # instantiate stateDB
+        statedb_config_section = self.config.get("statedb")
+        state_db = StateDB(dict(statedb_config_section)) 
+
+        # obtain the last Rebill sequence
+        last_sequence = state_db.last_sequence(account)
+
+        if (int(sequence) < int(last_sequence)):
+            raise Exception("Not the last sequence")
+
+        next_sequence = last_sequence + 1
+
+        rspath = self.config.get("billdb", "rspath")
+        #rsfrom = os.path.join(rspath, 
+
+        the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
 
         # increment sequence
         the_bill.id = int(the_bill.id)+1
@@ -258,7 +302,6 @@ class Process(object):
 
         # zero out details totals
 
-
         def zero_charges(details):
 
             for service, detail in details.items():
@@ -310,16 +353,63 @@ class Process(object):
 
         # leave consumption trend alone since we want to carry it forward until it is based on the cubes
         # at which time we can just recreate the whole trend
+                
+        XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"),
+            account, next_sequence), self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
 
-        XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
+        # create an initial rebill record to which the utilbills are later associated
+        state_db.new_rebill(
+            account,
+            next_sequence
+        )
 
 
-    def commit_rebill(self, inputbill, targetBill, account, sequence, user=None, password=None):
-        pass
+    def commit_rebill(self, account, sequence):
+
+            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+            begin = the_bill.rebill_summary.begin
+            end = the_bill.rebill_summary.end
+
+            # instantiate stateDB
+            statedb_config_section = self.config.get("statedb")
+            state_db = StateDB(dict(statedb_config_section)) 
+
+            state_db.commit_bill(
+                account,
+                sequence,
+                begin,
+                end
+            )
 
     def load_rs(self, rsdb, rsbinding, account, sequence):
         rs = yaml.load(file(os.path.join(rsdb, rsbinding, account, sequence+".yaml")))
         return rate_structure.RateStructure(rs)
+
+
+    def bind_rate_structure(self, account, sequence):
+
+            # actual
+            self.bindrs(
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+                self.config.get("billdb", "rspath"),
+                False, 
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )
+
+            #hypothetical
+            self.bindrs(
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+                self.config.get("billdb", "rspath"),
+                True, 
+                self.config.get("xmldb", "user"),
+                self.config.get("xmldb", "password")
+            )
+
+            self.calculate_reperiod(account, sequence)
+
 
     def bindrs(self, inputbill, outputbill, rsdb, hypothetical, user=None, password=None):
         """ This function binds a rate structure against the actual and hypothetical charges found """
@@ -478,11 +568,12 @@ class Process(object):
         """ contained in the registers. Cumulative statistics are determined by adding period statistics """
         """ to the past cumulative statistics """ 
 
+
         # the trailing bill where totals are obtained
-        prev_bill = bill.Bill(input_bill)
+        prev_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, int(sequence)-1))
 
         # the current bill where accumulated values are stored
-        next_bill = bill.Bill(output_bill)
+        next_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
 
         # determine the renewable and conventional energy across all services by converting all registers to BTUs
         # TODO these conversions should be treated in a utility class
@@ -580,14 +671,15 @@ class Process(object):
 
         next_bill.statistics = next_stats
 
-        XMLUtils().save_xml_file(next_bill.xml(), output_bill, user, password)
+        XMLUtils().save_xml_file(next_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
+            self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
 
 
-    def calculate_reperiod(self, inputbill, outputbill, user=None, password=None):
+    def calculate_reperiod(self, account, sequence):
         """ Set the Renewable Energy bill Period """
 
-        inputtree = etree.parse(inputbill)
-        outputtree = etree.parse(outputbill)
+        inputtree = etree.parse("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+        outputtree = etree.parse("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
 
         # TODO: refactor out xml code to depend on bill.py
         utilbill_begin_periods = self.get_elem(inputtree, "/ub:bill/ub:utilbill/ub:billperiodbegin")
@@ -610,13 +702,14 @@ class Process(object):
         rebillperiodbegin = self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:billperiodbegin")[0].text = rebill_periodbegindate.strftime("%Y-%m-%d")
         rebillperiodend = self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:billperiodend")[0].text = rebill_periodenddate.strftime("%Y-%m-%d")
 
-        XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), outputbill, user, password)
+        XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
+            self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
 
-    def issue(self, inputbill, outputbill, issuedate=None, user=None, password=None):
+    def issue(self, issuedate=None):
         """ Set the Renewable Energy bill Period """
 
-        inputtree = etree.parse(inputbill)
-        outputtree = etree.parse(outputbill)
+        inputtree = etree.parse("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+        outputtree = etree.parse("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
 
         if issuedate is None:
             issuedate = datetime.date.today()
@@ -630,4 +723,13 @@ class Process(object):
         self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:duedate")[0].text = duedate.strftime("%Y-%m-%d")
 
         XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), outputbill, user, password)
+
+    def issue_to_customer(self, account, sequence):
+
+        # instantiate stateDB
+        statedb_config_section = self.config.get("statedb")
+        state_db = StateDB(dict(statedb_config_section)) 
+
+        # issue to customer
+        state_db.issue(account, sequence)
 
