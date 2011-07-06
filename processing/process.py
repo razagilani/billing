@@ -30,6 +30,9 @@ from billing import bill
 
 import pprint
 
+import yaml
+import rate_structure
+
 class Process(object):
     """ Class with a variety of utility procedures for processing bills """
     
@@ -314,6 +317,9 @@ class Process(object):
     def commit_rebill(self, inputbill, targetBill, account, sequence, user=None, password=None):
         pass
 
+    def load_rs(self, rsdb, rsbinding, account, sequence):
+        rs = yaml.load(file(os.path.join(rsdb, rsbinding, account, sequence+".yaml")))
+        return rate_structure.RateStructure(rs)
 
     def bindrs(self, inputbill, outputbill, rsdb, hypothetical, user=None, password=None):
         """ This function binds a rate structure against the actual and hypothetical charges found """
@@ -321,9 +327,6 @@ class Process(object):
         """ If the bill specifies information in a charge that is not in the RSI, the charge is """
         """ left untouched."""
         """ """
-
-        import yaml
-        import rate_structure
 
         # given a bill that has its actual or shadow registers populated, apply a rate structure.
 
@@ -348,23 +351,7 @@ class Process(object):
             # get service
             service = utilbill.get("service")
 
-            # get name of the rate structure
-            # rateschedule rsbinding is deprecated
-            #rsbinding_rateschedule = self.get_elem(tree, "/ub:bill/ub:details[@service='" + 
-            #    service + "']/ub:rateschedule/@rsbinding")[0]
-
-            # now load the rate structure and configure it
-            # load all the documents contained within the single specified RS file
-            # old style yaml files
-            #for rs in yaml.load_all(file(rsdb + os.sep + os.path.join(rsbinding_utilbill, os.path.join(account, id)) + ".yaml")):
-
-                # print "*** Loaded Rate Structure for " + service
-                # print rs
-            
-            rs = yaml.load(file(os.path.join(rsdb, rsbinding_utilbill, account, id+".yaml")))
-            # TODO: Check ratestructure valid date ranges
-            rs = rate_structure.RateStructure(rs)
-            #rs.configure()
+            rs = self.load_rs(rsdb, rsbinding_utilbill, account, id)
 
             # acquire actual meter registers for this service
             actual_registers = self.get_elem(utilbill, "/ub:bill/ub:measuredusage[@service='" + 
