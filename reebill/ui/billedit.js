@@ -105,7 +105,7 @@ function renderWidgets()
         //autoHeight: true,
         bodyStyle: 'padding: 10px 10px 0 10px;',
         //labelWidth: 50,
-        flex:1,
+        //height: 200,
         defaults: {
             anchor: '95%',
             allowBlank: false,
@@ -155,11 +155,13 @@ function renderWidgets()
         title:'Utility Bills',
         store: paging_grid_store,
         trackMouseOver:false,
-        flex:2,
-        layout: 'fit',
+        //flex:1,
+        //layout: 'fit',
+        autoExpandColumn: 'account',
         
         // grid columns
         columns:[{
+                id: 'account',
                 header: 'Account',
                 dataIndex: 'account',
                 width:80,
@@ -1775,15 +1777,19 @@ function renderWidgets()
       items:[
         {
           title: 'Upload UtilBill',
-          xtype: 'panel',
-          layout: new Ext.layout.HBoxLayout({
+          //xtype: 'panel',
+          //layout: 'vbox',
+          //align: 'stretch',
+          /*layout: new Ext.layout.HBoxLayout({
               align: 'stretch',
-          }),
+          }),*/
           // utility bill image on one side, upload form & list of bills on the
           // other side (using 2 panels)
           items: [
+                    upload_form_panel,
+                    paging_grid,
             // panel containing the upload form & the utility bill list
-            new Ext.Panel({
+            /*new Ext.Panel({
                 border: false,
                 xtype: 'panel',
                 layout: 'vbox',
@@ -1792,7 +1798,7 @@ function renderWidgets()
                     upload_form_panel,
                     paging_grid,
                 ],
-            }),
+            }),*/
           ],
         },{
           title: 'Select ReeBill',
