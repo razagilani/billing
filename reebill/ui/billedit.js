@@ -53,15 +53,14 @@ function renderWidgets()
     // box to display bill images
     var NO_BILL_SELECTED_MESSAGE = 'No bill selected.';
     var imageBox = new Ext.Panel({
-        //width:500,
+        collapsible: true,
         // content is initially just a message saying no image is selected
         // (will be replaced with an image when the user chooses a bill)
         html: {tag: 'div', id: 'imagebox', children: [{tag: 'div', html: NO_BILL_SELECTED_MESSAGE,
             id: 'utilbillimage'}] },
         autoScroll: true,
         region: 'west',
-        width: 400,
-        minSize: 300,
+        width: 600,
     });
 
     // account field
@@ -102,10 +101,7 @@ function renderWidgets()
         title: 'Upload Bill',
         url: 'http://'+location.host+'/reebill/upload_utility_bill',
         frame:true,
-        //autoHeight: true,
         bodyStyle: 'padding: 10px 10px 0 10px;',
-        //labelWidth: 50,
-        flex:1,
         defaults: {
             anchor: '95%',
             allowBlank: false,
@@ -151,15 +147,16 @@ function renderWidgets()
 
     // paging grid
     var paging_grid = new Ext.grid.GridPanel({
-        //height:500,
         title:'Utility Bills',
         store: paging_grid_store,
         trackMouseOver:false,
-        flex:2,
+        flex:1,
         layout: 'fit',
+        //autoExpandColumn: 'account',
         
         // grid columns
         columns:[{
+                id: 'account',
                 header: 'Account',
                 dataIndex: 'account',
                 width:80,
@@ -1771,19 +1768,25 @@ function renderWidgets()
       layoutOnTabChange: true,
       activeTab: 0,
       bbar: statusBar,
-    border:true,
+      border:true,
       items:[
         {
           title: 'Upload UtilBill',
           xtype: 'panel',
-          layout: new Ext.layout.HBoxLayout({
-              align: 'stretch',
-          }),
+          layout: 'vbox',
+          layoutConfig : {
+            //type : 'vbox',
+            align : 'stretch',
+            pack : 'start'
+          },
           // utility bill image on one side, upload form & list of bills on the
           // other side (using 2 panels)
           items: [
+            upload_form_panel,
+            paging_grid,
             // panel containing the upload form & the utility bill list
-            new Ext.Panel({
+            // EVIL DIE DIE DIE!!!!
+            /*new Ext.Panel({
                 border: false,
                 xtype: 'panel',
                 layout: 'vbox',
@@ -1792,7 +1795,7 @@ function renderWidgets()
                     upload_form_panel,
                     paging_grid,
                 ],
-            }),
+            }),*/
           ],
         },{
           title: 'Select ReeBill',
@@ -1840,20 +1843,19 @@ function renderWidgets()
       {
         layout: 'border',
         defaults: {
-            //collapsible: true,
+            collapsible: false,
             split: true,
+            border: true,
         },
         items: [
           {
             region: 'north',
-            border: false,
             xtype: 'panel',
             layout: 'fit',
             height: 80,
-            layoutConfig:
-            {
-              border: false,
-            },
+            // default overrides
+            split: false,
+            border: false,
             //autoLoad: {url:'green_stripe.jpg', scripts:true},
             contentEl: 'header',
           },
@@ -1861,14 +1863,12 @@ function renderWidgets()
           tabPanel,
           {
             region: 'south',
-            border: false,
             xtype: 'panel',
             layout: 'fit',
             height: 30,
-            layoutConfig:
-            {
-              border: false,
-            },
+            // default overrides
+            split: false,
+            border: false,
             //autoLoad: {url:'green_stripe.jpg', scripts:true},
             contentEl: 'footer',
           },
