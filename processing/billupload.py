@@ -7,6 +7,7 @@ import time
 import re
 import subprocess
 import glob
+import shutil
 import ConfigParser
 import MySQLdb
 sys.stdout = sys.stderr
@@ -109,14 +110,20 @@ class BillUpload(object):
         self.db_password = self.config.get('db', 'db_password')
 
         # clear out bill images directory
+        # (if it fails, just log the error because it's not a critical problem)
         for root, dirs, files in os.walk(BILL_IMAGE_DIRECTORY):
-            for f in files:
+            for aFile in files:
                 try:
-                    os.remove(os.path.join(root, f))
-                except Exception as e:
-                    # this is not critical, so if it fails, just log the error
+                    os.remove(os.path.join(root, aFile))
+                except exception as e:
                     self.logger.warning('couldn\'t remove "%s" when clearing \
-                            "%s"' % (f, BILL_IMAGE_DIRECTORY))
+                            "%s"' % (aFile, BILL_IMAGE_DIRECTORY))
+            for aDir in dirs:
+                try:
+                    shutil.rmtree(aDir)
+                except:
+                    self.logger.warning('couldn\'t remove "%s" when clearing \
+                            "%s"' % (aDir, BILL_IMAGE_DIRECTORY))
 
     '''Writes a config file with default values at CONFIG_FILE_PATH.'''
     def create_default_config_file(self):
