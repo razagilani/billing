@@ -108,6 +108,16 @@ class BillUpload(object):
         self.db_username = self.config.get('db', 'db_username')
         self.db_password = self.config.get('db', 'db_password')
 
+        # clear out bill images directory
+        for root, dirs, files in os.walk(BILL_IMAGE_DIRECTORY):
+            for f in files:
+                try:
+                    os.remove(os.path.join(root, f))
+                except Exception as e:
+                    # this is not critical, so if it fails, just log the error
+                    self.logger.warning('couldn\'t remove "%s" when clearing \
+                            "%s"' % (f, BILL_IMAGE_DIRECTORY))
+
     '''Writes a config file with default values at CONFIG_FILE_PATH.'''
     def create_default_config_file(self):
         print "Creating default config file at", CONFIG_FILE_PATH
