@@ -53,13 +53,15 @@ function renderWidgets()
     // box to display bill images
     var NO_BILL_SELECTED_MESSAGE = 'No bill selected.';
     var imageBox = new Ext.Panel({
-        width:500,
+        //width:500,
         // content is initially just a message saying no image is selected
         // (will be replaced with an image when the user chooses a bill)
         html: {tag: 'div', id: 'imagebox', children: [{tag: 'div', html: NO_BILL_SELECTED_MESSAGE,
             id: 'utilbillimage'}] },
         autoScroll: true,
         region: 'west',
+        width: 400,
+        minSize: 300,
     });
 
     // account field
@@ -100,9 +102,10 @@ function renderWidgets()
         title: 'Upload Bill',
         url: 'http://'+location.host+'/reebill/upload_utility_bill',
         frame:true,
-        autoHeight: true,
+        //autoHeight: true,
         bodyStyle: 'padding: 10px 10px 0 10px;',
-        labelWidth: 50,
+        //labelWidth: 50,
+        flex:1,
         defaults: {
             anchor: '95%',
             allowBlank: false,
@@ -148,10 +151,12 @@ function renderWidgets()
 
     // paging grid
     var paging_grid = new Ext.grid.GridPanel({
-        height:500,
+        //height:500,
         title:'Utility Bills',
         store: paging_grid_store,
         trackMouseOver:false,
+        flex:2,
+        layout: 'fit',
         
         // grid columns
         columns:[{
@@ -159,22 +164,11 @@ function renderWidgets()
                 dataIndex: 'account',
                 width:80,
             },
-            /*{
-                header: 'Start Date',
-                dataIndex: 'period_start',
-                width: 300,
-                dateFormat: 'Y-m-d',
-            },*/
             new Ext.grid.DateColumn({
                 header: 'Start Date',
                 dataIndex: 'period_start',
                 dateFormat: paging_grid_date_format,
             }),
-            /*{
-                header: 'End Date',
-                dataIndex: 'period_end',
-                width: 300,
-            }*/
             new Ext.grid.DateColumn({
                 header: 'End Date',
                 dataIndex: 'period_end',
@@ -1777,6 +1771,7 @@ function renderWidgets()
       layoutOnTabChange: true,
       activeTab: 0,
       bbar: statusBar,
+    border:true,
       items:[
         {
           title: 'Upload UtilBill',
@@ -1791,7 +1786,8 @@ function renderWidgets()
             new Ext.Panel({
                 border: false,
                 xtype: 'panel',
-                layout: 'fit',
+                layout: 'vbox',
+                align: 'stretch',
                 items: [
                     upload_form_panel,
                     paging_grid,
