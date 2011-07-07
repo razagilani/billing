@@ -32,6 +32,7 @@ import pprint
 
 import yaml
 import rate_structure
+from billing.processing import state
 
 class Process(object):
     """ Class with a variety of utility procedures for processing bills """
@@ -70,8 +71,8 @@ class Process(object):
     
         # get discount rate
         # instantiate stateDB
-        statedb_config_section = self.config.get("statedb")
-        state_db = StateDB(dict(statedb_config_section)) 
+        statedb_config_section = self.config.items("statedb")
+        state_db = state.StateDB(dict(statedb_config_section)) 
 
         # TODO discount_rate should be a decimal so that it doesn't have to be converted below.
         discount_rate = state_db.discount_rate(account)
@@ -227,15 +228,15 @@ class Process(object):
             self.config.get("xmldb", "password"))
 
 
-    def roll_bill(self, account, sequence, rspath):
+    def roll_bill(self, account, sequence):
         """
         Create rebill for next period, based on prior bill.
         This is acheived by accessing xml document for prior bill, and resetting select values.
         """
 
         # instantiate stateDB
-        statedb_config_section = self.config.get("statedb")
-        state_db = StateDB(dict(statedb_config_section)) 
+        statedb_config_section = self.config.items("statedb")
+        state_db = state.StateDB(dict(statedb_config_section)) 
 
         # obtain the last Rebill sequence
         last_sequence = state_db.last_sequence(account)
@@ -243,15 +244,24 @@ class Process(object):
         if (int(sequence) < int(last_sequence)):
             raise Exception("Not the last sequence")
 
-        next_sequence = last_sequence + 1
+        next_sequence = int(last_sequence + 1)
 
-        rspath = self.config.get("billdb", "rspath")
-        #rsfrom = os.path.join(rspath, 
-
+        # duplicate the rate structure(s) so that it may be edited
+        # first, we must get the bill and introspect it to determine what rate structures it is bound to
         the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
 
+        utilbills = the_bill.utilbill_summary_charges
+        rsbindings = [utilbill.rsbinding for (s, utilbill) in utilbills.items()]
+
+        rspath = self.config.get("billdb", "rspath")
+
+        for rsbinding in rsbindings:
+            rs = yaml.load(file(os.path.join(rspath, rsbinding, account, sequence+".yaml")))
+            yaml.dump(rs,open(os.path.join(rspath, rsbinding, account, str(next_sequence)+".yaml"), "w"), default_flow_style=False)
+            
+
         # increment sequence
-        the_bill.id = int(the_bill.id)+1
+        the_bill.id = next_sequence
 
         # get the rebill and zero it out
         r = the_bill.rebill_summary
@@ -371,8 +381,8 @@ class Process(object):
             end = the_bill.rebill_summary.end
 
             # instantiate stateDB
-            statedb_config_section = self.config.get("statedb")
-            state_db = StateDB(dict(statedb_config_section)) 
+            statedb_config_section = self.config.items("statedb")
+            state_db = state.StateDB(dict(statedb_config_section)) 
 
             state_db.commit_bill(
                 account,
@@ -727,8 +737,8 @@ class Process(object):
     def issue_to_customer(self, account, sequence):
 
         # instantiate stateDB
-        statedb_config_section = self.config.get("statedb")
-        state_db = StateDB(dict(statedb_config_section)) 
+        statedb_config_section = self.config.items("statedb")
+        state_db = state.StateDB(dict(statedb_config_section)) 
 
         # issue to customer
         state_db.issue(account, sequence)
