@@ -59,14 +59,14 @@ class StateDB:
 
         query = "select discountrate from customer where account = %s"
         params = (account)
-        rows = fetch(query, params)
+        rows = self.fetch(query, params)
         # TODO: error checking...
         return rows[0]['discountrate']
 
     def last_sequence(self, account):
         query = "select max(sequence) as maxseq from rebill where customer_id = (select id from customer where account = %s)"
         params = (account)
-        rows = fetch(host, db, user, password, query, params)
+        rows = self.fetch(query, params)
         # TODO: because of the way 0.xml templates are made (they are not in the database) rebill needs to be 
         # primed otherwise the last sequence for a new bill is None. Design a solution to this issue.
         if rows[0]['maxseq'] is None:
