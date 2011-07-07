@@ -237,7 +237,7 @@ function renderWidgets()
                         // show image in imageBox
                         Ext.DomHelper.overwrite('imagebox', {tag: 'img',
                             src: 'http://' + location.host + '/utilitybillimages/' 
-                            + jsonData.imageName, id: 'utilbillimage'}, true);
+                            + jsonData.imageName, width: '100%', id: 'utilbillimage'}, true);
                     } 
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', err);
