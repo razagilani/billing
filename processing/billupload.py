@@ -6,6 +6,7 @@ import logging
 import time
 import re
 import subprocess
+import glob
 import ConfigParser
 import MySQLdb
 sys.stdout = sys.stderr
@@ -279,55 +280,89 @@ class BillUpload(object):
         bill_file_path = bill_file_path_without_extension + '.' + extension
 
         # name and path of bill image:
-        # TODO decide how image should actually be named
-        bill_image_name = 'image_' + account + '_' \
-                + bill_file_name_without_extension + '.' + IMAGE_EXTENSION
-        bill_image_path = os.path.join(BILL_IMAGE_DIRECTORY, bill_image_name)
+        bill_image_name_without_extension = 'image_' + account + '_' \
+                + bill_file_name_without_extension
+        bill_image_path_without_extension = os.path.join(BILL_IMAGE_DIRECTORY,\
+                bill_image_name_without_extension)
 
         # create bill image directory if it doesn't exist already
         create_directory_if_necessary(BILL_IMAGE_DIRECTORY, self.logger)
         
         # render the image, saving it to bill_image_path
-        self.renderBillImage(bill_file_path, bill_image_path)
+        self.renderBillImage(bill_file_path, bill_image_path_without_extension)
 
-        # temporary hack to get correct file name even if imagemagick splits a
-        # multi-page bill into multiple image files: replace bill_image_path with
-        # the file name of the image containing the first page
-        # TODO remove this!
-        #if os.access(BILL_IMAGE_DIRECTORY + '/' + bill_image_name + '-0.png', os.R_OK):
-        if os.access(bill_image_path[:bill_image_path.rfind('.')] + '-0.png', os.R_OK):
-            bill_image_name = bill_image_name[:bill_image_name.rfind('.')] \
-            + '-0.png'
-        
         # return name of image file (the caller should know where to find the
         # image file)
-        return bill_image_name
+        return bill_image_name_without_extension + '.' + IMAGE_EXTENSION
 
-    '''Converts the file at bill_file_path to an image and saves it at
-    bill_image_path. Types are determined automatically. (This requires the
-    'convert' command from ImageMagick, which requires html2pdf to render html
-    files.) Raises an exception if image rendering fails.'''
-    def renderBillImage(self, bill_file_path, bill_image_path):
+    '''Converts the file at [bill_file_path_without_extension].[extension] to
+    an image and saves it at bill_image_path. Types are determined
+    by extensions. (This requires the 'convert' command from ImageMagick, which
+    itself requires html2pdf to render html files, and the 'montage' command
+    from ImageMagick to join multi-page documents into a single image.) Raises
+    an exception if image rendering fails.'''
+    def renderBillImage(self, bill_file_path, \
+            bill_image_path_without_extension):
         # use the command-line version of ImageMagick to convert the file.
         # ('-quiet' suppresses warning messages. formats are determined by
         # extensions.)
         # TODO: figure out how to really suppress warning messages; '-quiet'
         # doesn't stop it from printing "**** Warning: glyf overlaps cmap,
         # truncating." when converting pdfs
-        result = subprocess.Popen(['convert', '-quiet', bill_file_path, \
-            bill_image_path], stderr=subprocess.PIPE)
-        
-        # wait for 'convert' to finish; this also sets result.returncode
-        result.wait()
-        
+        convert_result = subprocess.Popen(['convert', '-quiet', \
+                bill_file_path, bill_image_path_without_extension + '.' \
+                + IMAGE_EXTENSION], stderr=subprocess.PIPE)
+
+        # wait for 'convert' to finish (also sets convert_result.returncode)
+        convert_result.wait()
+
         # if 'convert' failed, raise exception with the text that it printed to
         # stderr
-        if result.returncode != 0:
-            print result.returncode
-            error_text = result.communicate()[1]
-            self.logger.error('"convert %s %s" failed: ' % (bill_file_path,
-                bill_image_path) + error_text)
+        if convert_result.returncode != 0:
+            error_text = convert_result.communicate()[1]
+            self.logger.error('"convert %s %s" failed: ' % (bill_file_path, \
+                bill_image_path_without_extension + '.' + IMAGE_EXTENSION) + \
+                error_text)
             raise Exception(error_text)
+        
+        # if the original was a multi-page PDF, 'convert' may have produced
+        # multiple images named bill_image_path-0.png, bill_image_path-1.png,
+        # etc. get names of those
+        # sorted() is necessary because glob doesn't guarantee order
+        # TODO: possible bug: if there are leftover files whose names happen to
+        # start with bill_image_path_without_extension, they'll be included
+        # even if they shouldn't
+        bill_image_names = sorted(glob.glob(bill_image_path_without_extension \
+                + '-*.' + IMAGE_EXTENSION))
+        
+        # use ImageMagick's 'montage' command to join them
+        if (len(bill_image_names) > 1):
+            montage_command = ['montage'] + bill_image_names + \
+                    ['-geometry', '+1+1', '-tile', '1x', \
+                    bill_image_path_without_extension + '.' + IMAGE_EXTENSION]
+            montage_result = subprocess.Popen(montage_command, \
+                    stderr=subprocess.PIPE)
+        
+            # wait for 'montage' to finish (also sets
+            # montage_result.returncode)
+            montage_result.wait()
+        
+            # if 'montage' failed, raise exception with the text that
+            # it printed to stderr
+            if montage_result.returncode != 0:
+                error_text = montage_result.communicate()[1]
+                self.logger.error('"%s" failed: ' % (montage_command, \
+                        bill_file_path, bill_image_path) + error_text)
+                raise Exception(error_text)
+        
+            # delete the individual page images now that they've been joined
+            for bill_image_name in bill_image_names:
+                try:
+                    os.remove(bill_image_name)
+                except Exception as e:
+                    # this is not critical, so if it fails, just log the error
+                    self.logger.warning(('couldn\'t remove bill image file \
+                            "%s": ' % bill_image_name) + str(e))
         
 
 '''Creates the directory at 'path' if it does not exist and can be created.  If
