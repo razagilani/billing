@@ -308,16 +308,12 @@ class BillToolBridge:
                     # TODO: we can't json dumps RSIs, but the yaml is readily dumpable to JSON
                     # figure out best way to represent RSIs for web
                     #rate_structure = rs.RateStructure(rs_yaml)
-                    break
-
-            #rsis = rate_structure.rsis()
-            print json.dumps({'success': True, 'rows':rs_yaml["rates"]})
+                    return json.dumps({'success': True, 'rows':rs_yaml["rates"]})
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
-        return json.dumps({'success': True, 'rows':rs_yaml["rates"]})
 
 
     ################
