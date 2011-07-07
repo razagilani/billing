@@ -1624,7 +1624,7 @@ function renderWidgets()
 
     var initialRSI = {
         rows: [
-            {descriptor:'SOMETHING REALLY REALLY REALLY LONG', description:'description', quantity:'quantity', quantityunits:'quantityunits', rate:'rate', rateunits:'rateunits', roundrule:'roundrule', total:'total'},
+            //{descriptor:'SOMETHING REALLY REALLY REALLY LONG', description:'description', quantity:'quantity', quantityunits:'quantityunits', rate:'rate', rateunits:'rateunits', roundrule:'roundrule', total:'total'},
         ]
     };
 
