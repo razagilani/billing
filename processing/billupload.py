@@ -116,14 +116,14 @@ class BillUpload(object):
                 try:
                     os.remove(os.path.join(root, aFile))
                 except exception as e:
-                    self.logger.warning('couldn\'t remove "%s" when clearing \
-                            "%s"' % (aFile, BILL_IMAGE_DIRECTORY))
+                    self.logger.warning(('couldn\'t remove "%s" when clearing \
+                            "%s"' % (aFile, BILL_IMAGE_DIRECTORY)) + str(e))
             for aDir in dirs:
                 try:
                     shutil.rmtree(aDir)
-                except:
-                    self.logger.warning('couldn\'t remove "%s" when clearing \
-                            "%s"' % (aDir, BILL_IMAGE_DIRECTORY))
+                except Exception as e:
+                    self.logger.warning(('couldn\'t remove "%s" when clearing \
+                            "%s"' % (aDir, BILL_IMAGE_DIRECTORY)) + str(e))
 
     '''Writes a config file with default values at CONFIG_FILE_PATH.'''
     def create_default_config_file(self):
