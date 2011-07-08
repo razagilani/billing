@@ -66,8 +66,8 @@ function renderWidgets()
         collapsible: true,
         // content is initially just a message saying no image is selected
         // (will be replaced with an image when the user chooses a bill)
-        html: {tag: 'div', id: 'rebillimagebox', children: [{tag: 'div', html: NO_BILL_SELECTED_MESSAGE,
-            id: 'utilbillimage'}] },
+        html: {tag: 'div', id: 'reebillimagebox', children: [{tag: 'div', html: NO_BILL_SELECTED_MESSAGE,
+            id: 'reebillimage'}] },
         autoscroll: true,
         region: 'east',
         width: 600,
@@ -196,57 +196,58 @@ function renderWidgets()
     // event handler for grid double-click: show image of utility bill
     // associated with the row
     paging_grid.on('cellclick', function(grid, rowIndex, columnIndex, e) {
-        var record = grid.getStore().getAt(rowIndex);
-        var fieldName = grid.getColumnModel().getDataIndex(columnIndex);
-        var data = record.get(fieldName);
+        // TODO fix capitalization throughout this function
+        var record = grid.getStore().getat(rowindex);
+        var fieldname = grid.getcolumnmodel().getdataindex(columnindex);
+        var data = record.get(fieldname);
         account = record.get('account');
         begin_date_string = record.get('period_start');
         end_date_string = record.get('period_end');
         
-        // parse date strings--the format is determined by the JSONDataStore's
-        // JsonReader, but i can't figure out how to change that format, so
-        // it's horrible: e.g. "Mon Dec 07 2009 00:00:00 GMT-0500 (EST)"
-        // (built-in JS date constructor automatically detects the format)
-        var parsed_begin_date = new Date(begin_date_string);
-        var parsed_end_date = new Date(end_date_string);
+        // parse date strings--the format is determined by the jsondatastore's
+        // jsonreader, but i can't figure out how to change that format, so
+        // it's horrible: e.g. "mon dec 07 2009 00:00:00 gmt-0500 (est)"
+        // (built-in js date constructor automatically detects the format)
+        var parsed_begin_date = new date(begin_date_string);
+        var parsed_end_date = new date(end_date_string);
 
         // convert the parsed date into a string in the format expected by the back end
-        var formatted_begin_date_string = parsed_begin_date.format('Y-m-d');
-        var formatted_end_date_string = parsed_end_date.format('Y-m-d');
+        var formatted_begin_date_string = parsed_begin_date.format('y-m-d');
+        var formatted_end_date_string = parsed_end_date.format('y-m-d');
 
-        // url for getting bill images (calls bill_tool_bridge.getBillImage())
-        theUrl = 'http://' + location.host + '/reebill/getUtilBillImage';
+        // url for getting bill images (calls bill_tool_bridge.getbillimage())
+        theurl = 'http://' + location.host + '/reebill/getutilbillimage';
         
         // ajax call to generate image, get the name of it, and display it in a
         // new window
-        Ext.Ajax.request({
-            url: theUrl,
+        ext.ajax.request({
+            url: theurl,
             params: {account: account, begin_date: formatted_begin_date_string,
                 end_date: formatted_end_date_string},
             success: function(result, request) {
-                var jsonData = null;
+                var jsondata = null;
                 try {
-                    jsonData = Ext.util.JSON.decode(result.responseText);
-                    if (jsonData.success == false) {
-                        Ext.MessageBox.alert('Server Error',
-                            jsonData.errors.reason + " "
-                            + jsonData.errors.details);
+                    jsondata = ext.util.json.decode(result.responsetext);
+                    if (jsondata.success == false) {
+                        ext.messagebox.alert('server error',
+                            jsondata.errors.reason + " "
+                            + jsondata.errors.details);
                         // replace bill image with a message instead
-                        Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
-                            html: NO_BILL_SELECTED_MESSAGE, id: 'utilbillimage'}, true);
+                        ext.domhelper.overwrite('utilbillimagebox', {tag: 'div',
+                            html: no_bill_selected_message, id: 'utilbillimage'}, true);
                     } else {
-                        // show image in utilbillimageBox
-                        Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'img',
+                        // show image in utilbillimagebox
+                        ext.domhelper.overwrite('utilbillimagebox', {tag: 'img',
                             src: 'http://' + location.host + '/utilitybillimages/' 
-                            + jsonData.imageName, width: '100%', id: 'utilbillimage'}, true);
+                            + jsondata.imagename, width: '100%', id: 'utilbillimage'}, true);
                     } 
                 } catch (err) {
-                    Ext.MessageBox.alert('ERROR', err);
+                    ext.messagebox.alert('error', err);
                 }
             },
             // this is called when the server returns 500 as well as when there's no response
-            failure: function() { Ext.MessageBox.alert('Ajax failure', theUrl); },
-            disableCaching: true,
+            failure: function() { ext.messagebox.alert('ajax failure', theurl); },
+            disablecaching: true,
         });
 
     });
@@ -304,6 +305,47 @@ function renderWidgets()
         emptyText:'Select...',
         width: 350,
         selectOnFocus:true,
+    });
+
+    sequenceCombo.on('select', function(combobox, record, index) {
+        var account = accountsStore.getAt(0).get('account');
+        var sequence = sequencesStore.getAt(0).get('sequence');
+        console.log(account);
+        console.log(sequence);
+        
+        // url for getting bill images (calls bill_tool_bridge.getbillimage())
+        reeBillImageURL = 'http://' + location.host + '/reebill/getReeBillImage';
+        
+        // ajax call to generate image, get the name of it, and display it in a
+        // new window
+        Ext.Ajax.request({
+            url: reeBillImageURL,
+            params: {account: account, sequence: sequence},
+            success: function(result, request) {
+                var jsonData = null;
+                try {
+                    jsonData = Ext.util.JSON.decode(result.responseText);
+                    if (jsonData.success == false) {
+                        Ext.MessageBox.alert('server error',
+                            jsonData.errors.reason + " "
+                            + jsonData.errors.details);
+                        // replace reebill image with a message instead
+                        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
+                            html: NO_BILL_SELECTED_MESSAGE, id: 'reebillimage'}, true);
+                    } else {
+                        // show image in utilbillimagebox
+                        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'img',
+                            src: 'http://' + location.host + '/utilitybillimages/' 
+                            + jsonData.imageName, width: '100%', id: 'reebillimage'}, true);
+                    } 
+                } catch (err) {
+                    Ext.MessageBox.alert('error', err);
+                }
+            },
+            // this is called when the server returns 500 as well as when there's no response
+            failure: function() { Ext.MessageBox.alert('ajax failure', reeBillImageURL); },
+            disablecaching: true,
+        });
     });
 
     // event to link the account to the bill combo box
