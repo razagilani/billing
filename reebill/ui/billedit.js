@@ -204,8 +204,7 @@ function renderWidgets()
         var formatted_begin_date_string = parsed_begin_date.format('Y-m-d');
         var formatted_end_date_string = parsed_end_date.format('Y-m-d');
 
-        // url for getting bill images (calls
-        // bill_tool_bridge.getUtilBillImage())
+        // url for getting bill images (calls bill_tool_bridge.getBillImage())
         theUrl = 'http://' + location.host + '/reebill/getUtilBillImage';
         
         // ajax call to generate image, get the name of it, and display it in a
