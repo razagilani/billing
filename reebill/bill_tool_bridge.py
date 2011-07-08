@@ -87,7 +87,7 @@ class BillToolBridge:
 
         try:
             p = process.Process(self.config)
-            p.copy_actual(account, sequence)
+            p.copy_actual_charges(account, sequence)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -192,7 +192,7 @@ class BillToolBridge:
 
 
         try:
-            process.Process().issue(None)
+            process.Process(self.config).issue(account, sequence)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -637,8 +637,8 @@ class BillToolBridge:
         conn = None
         try:
             # connect to database
-            conn = MySQLdb.connect(host='tyrell', user='dev', passwd='dev', \
-                    db='skyline_dev')
+            conn = MySQLdb.connect(host='localhost', user='prod', passwd='JCnvgUOTxHzEasKUBNv3', \
+                    db='skyline')
             
             # get appropriate slice of table
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
@@ -670,12 +670,12 @@ class BillToolBridge:
                 conn.close()
 
     @cherrypy.expose
-    def getUtilBillImage(self, account, begin_date, end_date, **args):
+    def getBillImage(self, account, begin_date, end_date, **args):
         from billing.processing.billupload import BillUpload
         try:
             # TODO: put url here, instead of in billentry.js?
             upload = BillUpload()
-            result = upload.getUtilBillImagePath(account, begin_date, end_date)
+            result = upload.getBillImagePath(account, begin_date, end_date)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
