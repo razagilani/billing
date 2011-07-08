@@ -246,7 +246,7 @@ class BillUpload(object):
             raise
         except:
             # TODO: figure out how to trigger this error so it can be tested
-            # (or better, finf out what other exceptions can happen besides
+            # (or better, find out what other exceptions can happen besides
             # MySQLdb.Error)
             self.logger.error('Unexpected error when attempting to insert bill \
                     into utilbill for account %s from %s to %s: %s'
@@ -257,11 +257,11 @@ class BillUpload(object):
                 conn.commit()
                 conn.close()
 
-    '''Given an account and dates for a bill, renders that bill as an image in
-    a certain directory, and returns a path to that directory. (The caller is
-    responsble for providing a URL to the client where that image can be
-    accessed.)'''
-    def getBillImagePath(self, account, begin_date, end_date):
+    '''Given an account and dates for a utility bill, renders that bill as an
+    image in BILL_IMAGE_DIRECTORY, and returns a path to that directory. (The
+    caller is responsble for providing a URL to the client where that image can
+    be accessed.)'''
+    def getUtilBillImagePath(self, account, begin_date, end_date):
         # check account name (validate_account just checks that it's a string
         # and that it matches a regex)
         if not validate_account(account):
@@ -305,7 +305,7 @@ class BillUpload(object):
         bill_file_path = bill_file_path_without_extension + '.' + extension
 
         # name and path of bill image:
-        bill_image_name_without_extension = 'image_' + account + '_' \
+        bill_image_name_without_extension = 'utilbill_' + account + '_' \
                 + bill_file_name_without_extension
         bill_image_path_without_extension = os.path.join(BILL_IMAGE_DIRECTORY,\
                 bill_image_name_without_extension)
@@ -319,6 +319,7 @@ class BillUpload(object):
         # return name of image file (the caller should know where to find the
         # image file)
         return bill_image_name_without_extension + '.' + IMAGE_EXTENSION
+
 
     '''Converts the file at [bill_file_path_without_extension].[extension] to
     an image and saves it at bill_image_path. Types are determined
