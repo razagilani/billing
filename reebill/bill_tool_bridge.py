@@ -690,7 +690,6 @@ class BillToolBridge:
         except Exception as e: 
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-
 bridge = BillToolBridge()
 
 if __name__ == '__main__':

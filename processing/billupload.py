@@ -325,6 +325,11 @@ class BillUpload(object):
         
         # render the image, saving it to bill_image_path
         self.renderBillImage(bill_file_path, bill_image_path_without_extension)
+        
+        # return name of image file (the caller should know where to find the
+        # image file)
+        return bill_image_name_without_extension + '.' + IMAGE_EXTENSION
+        
 
     '''Given an account number and sequence number of a reebill, remnders that
     bill as an image in BILL_IMAGE_DIRECTORY, and returns the name of the image
@@ -367,10 +372,6 @@ class BillUpload(object):
         self.renderBillImage(reebill_file_path, \
                 bill_image_path_without_extension)
 
-        # return name of image file (the caller should know where to find the
-        # image file)
-        return bill_image_name_without_extension + '.' + IMAGE_EXTENSION
-        
         # return name of image file (the caller should know where to find the
         # image file)
         return bill_image_name_without_extension + '.' + IMAGE_EXTENSION
