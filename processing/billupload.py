@@ -39,6 +39,9 @@ OUTPUT_DATE_FORMAT = '%Y%m%d'
 # TODO: put in config file
 SAVE_DIRECTORY = '/db-dev/skyline/utilitybills'
 
+# extensions of utility bill formats we know we can convert into an image
+UTILBILL_EXTENSIONS = ['pdf', 'html', 'htm', 'tif', 'tiff']
+
 # where bill images are temporarily saved for viewing after they're rendered
 # TODO change this to the real location
 # TODO also put in config file
@@ -50,7 +53,9 @@ IMAGE_EXTENSION = 'png'
 
 # sampling density (pixels per inch?) for converting bills in a vector format
 # (like PDF) to raster images
-IMAGE_RENDERING_DENSITY = 300
+# if this is too big, rendering can be slow
+# TODO put in config gile
+IMAGE_RENDERING_DENSITY = 200
 
 # default name of log file (config file can override this)
 DEFAULT_LOG_FILE_NAME = 'billupload.log'
@@ -283,16 +288,15 @@ class BillUpload(object):
                 account, bill_file_name_without_extension)
          
         # there could be multiple files with the same name but different
-        # extensions. that shouldn't happen, but if it does, look for a pdf
-        # first and html second.
-        # TODO add any other file types that might occur
-        if os.access(bill_file_path_without_extension + '.pdf', os.R_OK):
-            extension = 'pdf'
-        if os.access(bill_file_path_without_extension + '.pdf', os.R_OK):
-            extension = 'pdf'
-        elif os.access(bill_file_path_without_extension + '.html', os.R_OK):
-            extension = 'html'
-        else:
+        # extensions. pick the one whose extension comes first in
+        # UTILBILL_EXTENSIONS, if there is one. if not, it's an error
+        i = 0
+        for ext in UTILBILL_EXTENSIONS:
+            if os.access(bill_file_path_without_extension+'.'+ext, os.R_OK):
+                extension = ext
+                break
+            i += 1
+        if i == len(UTILBILL_EXTENSIONS):
             error_text = 'Could not find a readable bill file whose path \
                     (without extension) is "%s"' \
                     % bill_file_path_without_extension
