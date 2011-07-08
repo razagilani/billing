@@ -127,8 +127,8 @@ class Process(object):
         the_bill.rebill_summary = rebill_summary
         the_bill.utilbill_summary_charges = ub_summary_charges
 
-        XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), 
-            self.config.get("xmldb", "user"), self.config.get("xmldb", "user")))
+        XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), self.config.get("xmldb", "user"),
+            self.config.get("xmldb", "password"))
 
     # TODO cover method that accepts charges_type of hypo or actual
     def sum_hypothetical_charges(self, unprocessedBill, targetBill, user=None, password=None):
@@ -573,7 +573,7 @@ class Process(object):
 
         XMLUtils().save_xml_file(etree.tostring(tree, pretty_print=True), outputbill, user, password)
 
-    def calculate_statistics(self, input_bill, output_bill, user=None, password=None):
+    def calculate_statistics(self, account, sequence):
         """ Period Statistics for the input bill period are determined here from the total energy usage """
         """ contained in the registers. Cumulative statistics are determined by adding period statistics """
         """ to the past cumulative statistics """ 
@@ -715,7 +715,7 @@ class Process(object):
         XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
             self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
 
-    def issue(self, issuedate=None):
+    def issue(self, account, sequence, issuedate=None):
         """ Set the Renewable Energy bill Period """
 
         inputtree = etree.parse("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
@@ -732,7 +732,8 @@ class Process(object):
         self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:issued")[0].text = issuedate.strftime("%Y-%m-%d")
         self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:duedate")[0].text = duedate.strftime("%Y-%m-%d")
 
-        XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), outputbill, user, password)
+        XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
+            self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
 
     def issue_to_customer(self, account, sequence):
 
