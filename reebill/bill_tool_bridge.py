@@ -670,12 +670,12 @@ class BillToolBridge:
                 conn.close()
 
     @cherrypy.expose
-    def getBillImage(self, account, begin_date, end_date, **args):
+    def getUtilBillImage(self, account, begin_date, end_date, **args):
         from billing.processing.billupload import BillUpload
         try:
             # TODO: put url here, instead of in billentry.js?
             upload = BillUpload()
-            result = upload.getBillImagePath(account, begin_date, end_date)
+            result = upload.getUtilBillImagePath(account, begin_date, end_date)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
