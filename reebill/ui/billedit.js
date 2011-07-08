@@ -58,8 +58,18 @@ function renderWidgets()
         // (will be replaced with an image when the user chooses a bill)
         html: {tag: 'div', id: 'utilbillimagebox', children: [{tag: 'div', html: NO_BILL_SELECTED_MESSAGE,
             id: 'utilbillimage'}] },
-        autoScroll: true,
+        autoscroll: true,
         region: 'west',
+        width: 600,
+    });
+    var reeBillImageBox = new Ext.Panel({
+        collapsible: true,
+        // content is initially just a message saying no image is selected
+        // (will be replaced with an image when the user chooses a bill)
+        html: {tag: 'div', id: 'rebillimagebox', children: [{tag: 'div', html: NO_BILL_SELECTED_MESSAGE,
+            id: 'utilbillimage'}] },
+        autoscroll: true,
+        region: 'east',
         width: 600,
     });
 
@@ -1861,6 +1871,7 @@ function renderWidgets()
           },
           utilBillImageBox,
           tabPanel,
+          reeBillImageBox,
           {
             region: 'south',
             xtype: 'panel',
