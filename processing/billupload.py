@@ -48,6 +48,10 @@ BILL_IMAGE_DIRECTORY = '/tmp/billimages'
 # TODO put in config file
 IMAGE_EXTENSION = 'png'
 
+# sampling density (pixels per inch?) for converting bills in a vector format
+# (like PDF) to raster images
+IMAGE_RENDERING_DENSITY = 300
+
 # default name of log file (config file can override this)
 DEFAULT_LOG_FILE_NAME = 'billupload.log'
 
@@ -326,9 +330,11 @@ class BillUpload(object):
         # TODO: figure out how to really suppress warning messages; '-quiet'
         # doesn't stop it from printing "**** Warning: glyf overlaps cmap,
         # truncating." when converting pdfs
-        convert_result = subprocess.Popen(['convert', '-quiet', \
-                bill_file_path, bill_image_path_without_extension + '.' \
-                + IMAGE_EXTENSION], stderr=subprocess.PIPE)
+        convert_command = ['convert', '-quiet', '-density', \
+                str(IMAGE_RENDERING_DENSITY), bill_file_path, \
+                bill_image_path_without_extension + '.' + IMAGE_EXTENSION]
+        convert_result = subprocess.Popen(convert_command, \
+                stderr=subprocess.PIPE)
 
         # wait for 'convert' to finish (also sets convert_result.returncode)
         convert_result.wait()
@@ -337,9 +343,8 @@ class BillUpload(object):
         # stderr
         if convert_result.returncode != 0:
             error_text = convert_result.communicate()[1]
-            self.logger.error('"convert %s %s" failed: ' % (bill_file_path, \
-                bill_image_path_without_extension + '.' + IMAGE_EXTENSION) + \
-                error_text)
+            self.logger.error('"%s" failed: %s' % (' '.join(convert_command), \
+                    error_text))
             raise Exception(error_text)
         
         # if the original was a multi-page PDF, 'convert' may have produced
