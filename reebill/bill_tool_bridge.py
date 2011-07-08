@@ -680,6 +680,15 @@ class BillToolBridge:
         except Exception as e: 
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
+    @cherrypy.expose
+    def getReeBillImage(self, account, sequence, **args):
+        from billing.processing.billupload import BillUpload
+        try:
+            upload = BillUpload()
+            result = upload.getReeBillImagePath(account, sequence)
+            return ju.dumps({'success':True, 'imageName':result})
+        except Exception as e: 
+             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 bridge = BillToolBridge()
 
