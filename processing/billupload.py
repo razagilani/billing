@@ -258,7 +258,7 @@ class BillUpload(object):
                 conn.close()
 
     '''Given an account and dates for a utility bill, renders that bill as an
-    image in a certain directory, and returns a path to that directory. (The
+    image in BILL_IMAGE_DIRECTORY, and returns a path to that directory. (The
     caller is responsble for providing a URL to the client where that image can
     be accessed.)'''
     def getUtilBillImagePath(self, account, begin_date, end_date):
@@ -305,7 +305,7 @@ class BillUpload(object):
         bill_file_path = bill_file_path_without_extension + '.' + extension
 
         # name and path of bill image:
-        bill_image_name_without_extension = 'image_' + account + '_' \
+        bill_image_name_without_extension = 'utilbill_' + account + '_' \
                 + bill_file_name_without_extension
         bill_image_path_without_extension = os.path.join(BILL_IMAGE_DIRECTORY,\
                 bill_image_name_without_extension)
@@ -319,6 +319,7 @@ class BillUpload(object):
         # return name of image file (the caller should know where to find the
         # image file)
         return bill_image_name_without_extension + '.' + IMAGE_EXTENSION
+
 
     '''Converts the file at [bill_file_path_without_extension].[extension] to
     an image and saves it at bill_image_path. Types are determined
