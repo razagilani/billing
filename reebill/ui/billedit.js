@@ -52,11 +52,11 @@ function renderWidgets()
     
     // box to display bill images
     var NO_BILL_SELECTED_MESSAGE = 'No bill selected.';
-    var imageBox = new Ext.Panel({
+    var utilBillImageBox = new Ext.Panel({
         collapsible: true,
         // content is initially just a message saying no image is selected
         // (will be replaced with an image when the user chooses a bill)
-        html: {tag: 'div', id: 'imagebox', children: [{tag: 'div', html: NO_BILL_SELECTED_MESSAGE,
+        html: {tag: 'div', id: 'utilbillimagebox', children: [{tag: 'div', html: NO_BILL_SELECTED_MESSAGE,
             id: 'utilbillimage'}] },
         autoScroll: true,
         region: 'west',
@@ -222,11 +222,11 @@ function renderWidgets()
                             jsonData.errors.reason + " "
                             + jsonData.errors.details);
                         // replace bill image with a message instead
-                        Ext.DomHelper.overwrite('imagebox', {tag: 'div',
+                        Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
                             html: NO_BILL_SELECTED_MESSAGE, id: 'utilbillimage'}, true);
                     } else {
-                        // show image in imageBox
-                        Ext.DomHelper.overwrite('imagebox', {tag: 'img',
+                        // show image in utilbillimageBox
+                        Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'img',
                             src: 'http://' + location.host + '/utilitybillimages/' 
                             + jsonData.imageName, width: '100%', id: 'utilbillimage'}, true);
                     } 
@@ -1859,7 +1859,7 @@ function renderWidgets()
             //autoLoad: {url:'green_stripe.jpg', scripts:true},
             contentEl: 'header',
           },
-          imageBox,
+          utilBillImageBox,
           tabPanel,
           {
             region: 'south',
