@@ -246,7 +246,7 @@ class BillUpload(object):
             raise
         except:
             # TODO: figure out how to trigger this error so it can be tested
-            # (or better, finf out what other exceptions can happen besides
+            # (or better, find out what other exceptions can happen besides
             # MySQLdb.Error)
             self.logger.error('Unexpected error when attempting to insert bill \
                     into utilbill for account %s from %s to %s: %s'
@@ -257,11 +257,11 @@ class BillUpload(object):
                 conn.commit()
                 conn.close()
 
-    '''Given an account and dates for a bill, renders that bill as an image in
-    a certain directory, and returns a path to that directory. (The caller is
-    responsble for providing a URL to the client where that image can be
-    accessed.)'''
-    def getBillImagePath(self, account, begin_date, end_date):
+    '''Given an account and dates for a utility bill, renders that bill as an
+    image in a certain directory, and returns a path to that directory. (The
+    caller is responsble for providing a URL to the client where that image can
+    be accessed.)'''
+    def getUtilBillImagePath(self, account, begin_date, end_date):
         # check account name (validate_account just checks that it's a string
         # and that it matches a regex)
         if not validate_account(account):
