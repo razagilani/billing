@@ -34,13 +34,22 @@ INPUT_DATE_FORMAT ='%Y-%m-%d'
 # date format that goes in names of saved files
 OUTPUT_DATE_FORMAT = '%Y%m%d'
 
+# strings allowed as sequence numbers
+SEQUENCE_NUMBER_REGEX = '[0-9]+'
+
 # where account directories are located (uploaded files are saved inside of
 # those)
 # TODO: put in config file
 SAVE_DIRECTORY = '/db-dev/skyline/utilitybills'
 
+# directory where reebills are stored
+REEBILL_DIRECTORY = '/db-dev/skyline/bills'
+
 # extensions of utility bill formats we know we can convert into an image
 UTILBILL_EXTENSIONS = ['pdf', 'html', 'htm', 'tif', 'tiff']
+
+# extension of reebills (there probably won't be more than one format)
+REEBILL_EXTENSION = 'pdf'
 
 # where bill images are temporarily saved for viewing after they're rendered
 # TODO change this to the real location
@@ -258,9 +267,10 @@ class BillUpload(object):
                 conn.close()
 
     '''Given an account and dates for a utility bill, renders that bill as an
-    image in BILL_IMAGE_DIRECTORY, and returns a path to that directory. (The
+    image in BILL_IMAGE_DIRECTORY, and returns the name of the image file. (The
     caller is responsble for providing a URL to the client where that image can
     be accessed.)'''
+    # TODO rename: ImagePath -> ImageName
     def getUtilBillImagePath(self, account, begin_date, end_date):
         # check account name (validate_account just checks that it's a string
         # and that it matches a regex)
@@ -316,6 +326,51 @@ class BillUpload(object):
         # render the image, saving it to bill_image_path
         self.renderBillImage(bill_file_path, bill_image_path_without_extension)
 
+    '''Given an account number and sequence number of a reebill, remnders that
+    bill as an image in BILL_IMAGE_DIRECTORY, and returns the name of the image
+    file. ("Sequence" means the position of that bill in the sequence of bills
+    issued to a particular customer.) The caller is responsble for providing
+    a URL to the client where that image can be accessed.'''
+    # TODO rename: ImagePath -> ImageName
+    def getReeBillImagePath(self, account, sequence):
+        # check account name (validate_account just checks that it's a string
+        # and that it matches a regex)
+        if not validate_account(account):
+            self.logger.error('invalid account name: "%s"' % account)
+            raise ValueError('invalid account name: "%s"' % account)
+
+        # check sequence number
+        if not validate_sequence_number(sequence):
+            self.logger.error('invalid sequence number: "%s"' % sequence)
+            raise ValueError('invalid sequence number: "%s"' % account)
+
+        # get path of reebill
+        reebill_file_path = os.path.join(REEBILL_DIRECTORY, account, \
+                sequence + '.' + REEBILL_EXTENSION)
+
+        # make sure it exists and can be read
+        if not os.access(reebill_file_path, os.R_OK):
+            error_text = 'Could not find the reebill "%s"' % reebill_file_path
+            self.logger.error(error_text)
+            raise IOError(error_text)
+
+        # name and path of bill image:
+        bill_image_name_without_extension = 'reebill_' + account + '_' \
+                + sequence
+        bill_image_path_without_extension = os.path.join(BILL_IMAGE_DIRECTORY,\
+                bill_image_name_without_extension)
+
+        # create bill image directory if it doesn't exist already
+        create_directory_if_necessary(BILL_IMAGE_DIRECTORY, self.logger)
+        
+        # render the image, saving it to bill_image_path
+        self.renderBillImage(reebill_file_path, \
+                bill_image_path_without_extension)
+
+        # return name of image file (the caller should know where to find the
+        # image file)
+        return bill_image_name_without_extension + '.' + IMAGE_EXTENSION
+        
         # return name of image file (the caller should know where to find the
         # image file)
         return bill_image_name_without_extension + '.' + IMAGE_EXTENSION
@@ -407,7 +462,7 @@ def create_directory_if_necessary(path, logger):
                     % (path, str(e)))
             raise
 
-# two "external validators" for checking accounts and dates ###################
+# validators for checking parameter values #####################################
 
 '''Returns true iff the account is valid (just checks agains a regex, but this
 removes dangerous input)'''
@@ -431,3 +486,12 @@ def format_date(date_string):
     # convert back
     return time.strftime(OUTPUT_DATE_FORMAT, date_object)
 
+'''Returns true iff the sequence number is valid (just checks against a
+regex).'''
+def validate_sequence_number(sequence):
+    try:
+        return re.match(SEQUENCE_NUMBER_REGEX, sequence) is not None
+    except TypeError:
+        # re.match() accepts only 'str' and 'unicode' types; if account is not
+        # even a string, it's definitely not valid
+        return False
