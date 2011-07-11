@@ -28,6 +28,7 @@ from billing.processing import process
 from billing.processing import state
 from billing.processing import fetch_bill_data as fbd
 from billing.reebill import render
+from billing.processing.billupload import BillUpload
 
 # TODO fixme
 from billing import nexus_util as nu
@@ -74,12 +75,14 @@ class BillToolBridge:
             self.config.set('statedb', 'password', '[password]')
 
 
-            # Writing our configuration file to 'example.cfg'
-            with open(config_file_path, 'wb') as new_config_file:
-                self.config.write(new_config_file)
+        # Writing our configuration file to 'example.cfg'
+        with open(config_file_path, 'wb') as new_config_file:
+            self.config.write(new_config_file)
 
-            self.config.read(config_file_path)
-
+        self.config.read(config_file_path)
+    
+        # create one BillUpload object to use for all BillUpload-related methods
+        self.billUpload = BillUpload()
 
 
     @cherrypy.expose
@@ -598,14 +601,11 @@ class BillToolBridge:
 
     @cherrypy.expose
     def upload_utility_bill(self, account, begin_date, end_date, file_to_upload, **args):
-        from billing.processing.billupload import BillUpload
         try:
-            upload = BillUpload()
             # get Python file object and file name as string from the CherryPy
             # object 'file_to_upload', and pass those to BillUpload so it's
             # independent of CherryPy
-            if upload.upload(account, begin_date, end_date,
-                    file_to_upload.file, file_to_upload.filename) is True:
+            if self.billUpload.upload(account, begin_date, end_date, file_to_upload.file, file_to_upload.filename) is True:
                 return ju.dumps({'success':True})
             else:
                 return ju.dumps({'success':False, 'errors':{'reason':'file upload failed', 'details':'Returned False'}})
@@ -637,8 +637,8 @@ class BillToolBridge:
         conn = None
         try:
             # connect to database
-            conn = MySQLdb.connect(host='localhost', user='prod', passwd='JCnvgUOTxHzEasKUBNv3', \
-                    db='skyline')
+            conn = MySQLdb.connect(host='tyrell', user='dev', passwd='dev', \
+                    db='skyline_dev')
             
             # get appropriate slice of table
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
@@ -670,22 +670,18 @@ class BillToolBridge:
                 conn.close()
 
     @cherrypy.expose
-    def getBillImage(self, account, begin_date, end_date, **args):
-        from billing.processing.billupload import BillUpload
+    def getUtilBillImage(self, account, begin_date, end_date, **args):
         try:
             # TODO: put url here, instead of in billentry.js?
-            upload = BillUpload()
-            result = upload.getBillImagePath(account, begin_date, end_date)
+            result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
     def getReeBillImage(self, account, sequence, **args):
-        from billing.processing.billupload import BillUpload
         try:
-            upload = BillUpload()
-            result = upload.getReeBillImagePath(account, sequence)
+            result = self.billUpload.getReeBillImagePath(account, sequence)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
