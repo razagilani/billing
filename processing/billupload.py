@@ -4,6 +4,7 @@ import sys
 import errno
 import logging
 import time
+import datetime
 import re
 import subprocess
 import glob
@@ -127,21 +128,6 @@ class BillUpload(object):
         self.db_username = self.config.get('db', 'db_username')
         self.db_password = self.config.get('db', 'db_password')
 
-        # clear out bill images directory
-        # (if it fails, just log the error because it's not a critical problem)
-        for root, dirs, files in os.walk(BILL_IMAGE_DIRECTORY):
-            for aFile in files:
-                try:
-                    os.remove(os.path.join(root, aFile))
-                except exception as e:
-                    self.logger.warning(('couldn\'t remove "%s" when clearing \
-                            "%s"' % (aFile, BILL_IMAGE_DIRECTORY)) + str(e))
-            for aDir in dirs:
-                try:
-                    shutil.rmtree(aDir)
-                except Exception as e:
-                    self.logger.warning(('couldn\'t remove "%s" when clearing \
-                            "%s"' % (aDir, BILL_IMAGE_DIRECTORY)) + str(e))
 
     '''Writes a config file with default values at CONFIG_FILE_PATH.'''
     def create_default_config_file(self):
@@ -314,9 +300,11 @@ class BillUpload(object):
             raise IOError(error_text)
         bill_file_path = bill_file_path_without_extension + '.' + extension
 
-        # name and path of bill image:
+        # name and path of bill image: name includes date so it's always unique
         bill_image_name_without_extension = 'utilbill_' + account + '_' \
-                + bill_file_name_without_extension
+                + bill_file_name_without_extension + '_' + \
+                str(datetime.datetime.today()).replace(' ', '').replace('.','') \
+                .replace(':','')
         bill_image_path_without_extension = os.path.join(BILL_IMAGE_DIRECTORY,\
                 bill_image_name_without_extension)
 
@@ -359,9 +347,10 @@ class BillUpload(object):
             self.logger.error(error_text)
             raise IOError(error_text)
 
-        # name and path of bill image:
+        # name and path of bill image: name includes date so it's always unique
         bill_image_name_without_extension = 'reebill_' + account + '_' \
-                + sequence
+                + sequence + str(datetime.datetime.today()).replace(' ', '') \
+                .replace('.','').replace(':','')
         bill_image_path_without_extension = os.path.join(BILL_IMAGE_DIRECTORY,\
                 bill_image_name_without_extension)
 
