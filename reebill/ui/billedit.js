@@ -58,7 +58,7 @@ function renderWidgets()
         // (will be replaced with an image when the user chooses a bill)
         html: {tag: 'div', id: 'utilbillimagebox', children: [{tag: 'div', html: NO_BILL_SELECTED_MESSAGE,
             id: 'utilbillimage'}] },
-        autoscroll: true,
+        autoScroll: true,
         region: 'west',
         width: 600,
     });
@@ -68,7 +68,7 @@ function renderWidgets()
         // (will be replaced with an image when the user chooses a bill)
         html: {tag: 'div', id: 'reebillimagebox', children: [{tag: 'div', html: NO_BILL_SELECTED_MESSAGE,
             id: 'reebillimage'}] },
-        autoscroll: true,
+        autoScroll: true,
         region: 'east',
         width: 600,
     });
