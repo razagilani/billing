@@ -306,47 +306,6 @@ function renderWidgets()
         selectOnFocus:true,
     });
 
-    sequenceCombo.on('select', function(combobox, record, index) {
-        var account = accountsStore.getAt(0).get('account');
-        var sequence = sequencesStore.getAt(0).get('sequence');
-        console.log(account);
-        console.log(sequence);
-        
-        // url for getting bill images (calls bill_tool_bridge.getbillimage())
-        reeBillImageURL = 'http://' + location.host + '/reebill/getReeBillImage';
-        
-        // ajax call to generate image, get the name of it, and display it in a
-        // new window
-        Ext.Ajax.request({
-            url: reeBillImageURL,
-            params: {account: account, sequence: sequence},
-            success: function(result, request) {
-                var jsonData = null;
-                try {
-                    jsonData = Ext.util.JSON.decode(result.responseText);
-                    if (jsonData.success == false) {
-                        Ext.MessageBox.alert('server error',
-                            jsonData.errors.reason + " "
-                            + jsonData.errors.details);
-                        // replace reebill image with a message instead
-                        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
-                            html: NO_BILL_SELECTED_MESSAGE, id: 'reebillimage'}, true);
-                    } else {
-                        // show image in utilbillimagebox
-                        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'img',
-                            src: 'http://' + location.host + '/utilitybillimages/' 
-                            + jsonData.imageName, width: '100%', id: 'reebillimage'}, true);
-                    } 
-                } catch (err) {
-                    Ext.MessageBox.alert('error', err);
-                }
-            },
-            // this is called when the server returns 500 as well as when there's no response
-            failure: function() { Ext.MessageBox.alert('ajax failure', reeBillImageURL); },
-            disablecaching: true,
-        });
-    });
-
     // event to link the account to the bill combo box
     accountCombo.on('select', function(combobox, record, index) {
         sequencesStore.setBaseParam('account', record.data.account);
@@ -1998,6 +1957,41 @@ function renderWidgets()
         var sb = Ext.getCmp('statusbar');
         sb.setStatus({
             text: account + "-" + sequence,
+        });
+
+
+        // url for getting bill images (calls bill_tool_bridge.getbillimage())
+        reeBillImageURL = 'http://' + location.host + '/reebill/getReeBillImage';
+        
+        // ajax call to generate image, get the name of it, and display it in a
+        // new window
+        Ext.Ajax.request({
+            url: reeBillImageURL,
+            params: {account: account, sequence: sequence},
+            success: function(result, request) {
+                var jsonData = null;
+                try {
+                    jsonData = Ext.util.JSON.decode(result.responseText);
+                    if (jsonData.success == false) {
+                        Ext.MessageBox.alert('server error',
+                            jsonData.errors.reason + " "
+                            + jsonData.errors.details);
+                        // replace reebill image with a message instead
+                        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
+                            html: NO_BILL_SELECTED_MESSAGE, id: 'reebillimage'}, true);
+                    } else {
+                        // show image in utilbillimagebox
+                        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'img',
+                            src: 'http://' + location.host + '/utilitybillimages/' 
+                            + jsonData.imageName, width: '100%', id: 'reebillimage'}, true);
+                    } 
+                } catch (err) {
+                    Ext.MessageBox.alert('error', err);
+                }
+            },
+            // this is called when the server returns 500 as well as when there's no response
+            failure: function() { Ext.MessageBox.alert('ajax failure', reeBillImageURL); },
+            disablecaching: true,
         });
     }
 
