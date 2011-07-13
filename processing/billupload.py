@@ -12,19 +12,6 @@ import shutil
 import ConfigParser
 import MySQLdb
 sys.stdout = sys.stderr
-'''
-TODO:
-    move some of the constants below into the config file?
-'''
-# config file should always be in same directory as this file: set it to the
-# path to the directory containing this file, relative to the program's current
-# directory (which will be different if the code in this file is called from a
-# different file
-#CONFIG_FILE_PATH = os.dirname(__file__)
-#CONFIG_FILE_PATH = os.path.join(os.getcwd(), 'billupload_config')
-# according to bill_tool_bridge.py, the correct way is:
-CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), \
-        'billupload_config')
 
 # strings allowed as account names
 ACCOUNT_NAME_REGEX = '[0-9]{5}'
@@ -37,14 +24,6 @@ OUTPUT_DATE_FORMAT = '%Y%m%d'
 
 # strings allowed as sequence numbers
 SEQUENCE_NUMBER_REGEX = '[0-9]+'
-
-# where account directories are located (uploaded files are saved inside of
-# those)
-# TODO: put in config file
-SAVE_DIRECTORY = '/db-dev/skyline/utilitybills'
-
-# directory where reebills are stored
-REEBILL_DIRECTORY = '/db-dev/skyline/bills'
 
 # extensions of utility bill formats we know we can convert into an image
 UTILBILL_EXTENSIONS = ['pdf', 'html', 'htm', 'tif', 'tiff']
@@ -103,6 +82,10 @@ class BillUpload(object):
         self.db_username = self.config.get('statedb', 'user')
         self.db_password = self.config.get('statedb', 'password')
 
+        # load save directory info from config file
+        self.save_directory = self.config.get('billdb', 'utilitybillpath')
+        self.reebill_directory = self.config.get('billdb', 'billpath')
+
     '''Uploads the file 'the_file' (whose name is 'file_name') to the location
     [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]. Returns
     True for success, or throws one of various exceptions if something doesn't
@@ -137,12 +120,12 @@ class BillUpload(object):
         # path where file will be saved:
         # [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension] (NB:
         # date format is determined by the submitter)
-        save_file_path = os.path.join(SAVE_DIRECTORY, account, \
+        save_file_path = os.path.join(self.save_directory, account, \
                 formatted_begin_date + '-' + formatted_end_date \
                 + os.path.splitext(file_name)[1])
 
         # create the save directory if it doesn't exist
-        create_directory_if_necessary(os.path.join(SAVE_DIRECTORY, account),
+        create_directory_if_necessary(os.path.join(self.save_directory, account),
                 self.logger)
         
         # write the file in SAVE_DIRECTORY
@@ -230,7 +213,7 @@ class BillUpload(object):
 
         # path to the bill file (in its original format):
         # [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]
-        bill_file_path_without_extension = os.path.join(SAVE_DIRECTORY, \
+        bill_file_path_without_extension = os.path.join(self.save_directory, \
                 account, bill_file_name_without_extension)
          
         # there could be multiple files with the same name but different
@@ -288,7 +271,7 @@ class BillUpload(object):
             raise ValueError('invalid sequence number: "%s"' % account)
 
         # get path of reebill
-        reebill_file_path = os.path.join(REEBILL_DIRECTORY, account, \
+        reebill_file_path = os.path.join(self.reebill_directory, account, \
                 sequence + '.' + REEBILL_EXTENSION)
 
         # make sure it exists and can be read
