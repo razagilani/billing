@@ -67,6 +67,7 @@ class BillToolBridge:
             self.config.set('http', 'socket_host', '10.0.0.250')
             self.config.add_section('billdb')
             self.config.set('billdb', 'rspath', '[root]db/skyline/ratestructure/')
+            self.config.set('billdb', 'utilitybillpath', '[root]db/skyline/utilitybills/')
             self.config.set('billdb', 'billpath', '[root]db/skyline/bills/')
             self.config.add_section('statedb')
             self.config.set('statedb', 'host', 'localhost')
@@ -80,6 +81,7 @@ class BillToolBridge:
 
             # default format of log entries (config file can override this)
             DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
+
             # log file info
             self.config.add_section('log')
             self.config.set('log', 'log_file_name', DEFAULT_LOG_FILE_NAME)
