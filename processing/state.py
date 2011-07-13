@@ -4,6 +4,7 @@ Utility functions to interact with state database
 """
 
 import os, sys
+sys.stdout = sys.stderr
 import MySQLdb
 
 
@@ -95,6 +96,29 @@ class StateDB:
         query = "select sequence from rebill r where r.customer_id = (select id from customer where account = %s)"
         params = (account)
         return self.fetch(query, params, True)
+
+    '''Queries the database for account, start date, and
+    end date of bills in a slice of the utilbills table; returns the slice and the
+    total number of rows in the table (for paging).'''
+    def getUtilBillRows(self, start, limit):
+            
+        # get appropriate slice of table
+        query = "select account, period_start, period_end from customer, utilbill where customer.id = utilbill.customer_id limit %s,%s"
+        params = (start, limit)
+
+        theSlice = self.fetch(query, params, True)
+        
+        # count total number of rows in the whole table (not just the slice)
+        # note: this must be the exact same query as above, not just "select
+        # count(*) from utilbill", which would count rows in utilbill that
+        # have null ids even though they don't show up in the query above.
+        query = '''select count(*) as count from customer, utilbill where customer.id = utilbill.customer_id'''
+
+        # TODO any one thing goes wrong, this statement will fail - test values/types more diligently
+        totalCount = int(self.fetch(query, None)[0]['count'])
+        
+        # return the slice (dictionary) and the overall count (integer)
+        return theSlice, totalCount
 
 if __name__ == "__main__":
 
