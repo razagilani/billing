@@ -67,36 +67,11 @@ IMAGE_EXTENSION = 'png'
 # TODO put in config gile
 IMAGE_RENDERING_DENSITY = 200
 
-# default name of log file (config file can override this)
-DEFAULT_LOG_FILE_NAME = 'billupload.log'
-
-# default format of log entries (config file can override this)
-DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
-
-# default database login info (config file can override this)
-DEFAULT_DB_HOST = 'tyrell'
-DEFAULT_DB_NAME = 'skyline_dev'
-DEFAULT_DB_USERNAME = 'dev'
-DEFAULT_DB_PASSWORD = 'dev'
 
 class BillUpload(object):
 
-    def __init__(self):
-        # TODO: separate config-related code and use that also for 
-        # bill_tool_bridge.py
-        
-        # if config file doesn't exist, create default version
-        # (self.config.read() can fail in 2 ways: returns None if file doesn't
-        # exist, raises exception in ConfigParser if the file is malformed.)
-        self.config = ConfigParser.RawConfigParser()
-        try:
-            result = self.config.read(CONFIG_FILE_PATH)
-            if not result:
-                self.create_default_config_file()
-        except:
-            print >> sys.stderr, 'Config file at %s is malformed.' \
-                    % CONFIG_FILE_PATH
-            self.create_default_config_file()
+    def __init__(self, config):
+        self.config = config
         
         # get log file name and format from config file
         # TODO: if logging section of config file is malformed, choose default
@@ -123,35 +98,10 @@ class BillUpload(object):
         self.logger.addHandler(handler) 
         
         # load database login info from config file
-        self.db_host = self.config.get('db', 'db_host')
-        self.db_name = self.config.get('db', 'db_name')
-        self.db_username = self.config.get('db', 'db_username')
-        self.db_password = self.config.get('db', 'db_password')
-
-
-    '''Writes a config file with default values at CONFIG_FILE_PATH.'''
-    def create_default_config_file(self):
-        print "Creating default config file at", CONFIG_FILE_PATH
-
-        # log file info
-        self.config.add_section('log')
-        self.config.set('log', 'log_file_name', DEFAULT_LOG_FILE_NAME)
-        self.config.set('log', 'log_format', DEFAULT_LOG_FORMAT)
-
-        # database login info
-        self.config.add_section('db')
-        self.config.set('db', 'db_host', DEFAULT_DB_HOST)
-        self.config.set('db', 'db_name', DEFAULT_DB_NAME)
-        self.config.set('db', 'db_username', DEFAULT_DB_USERNAME)
-        self.config.set('db', 'db_password', DEFAULT_DB_PASSWORD)
-        
-        # write the file to CONFIG_FILE_PATH
-        with open(CONFIG_FILE_PATH, 'wb') as new_config_file:
-            self.config.write(new_config_file)
-        
-        # read from config file now that it must exist
-        self.config.read(CONFIG_FILE_PATH)
-
+        self.db_host = self.config.get('statedb', 'host')
+        self.db_name = self.config.get('statedb', 'db')
+        self.db_username = self.config.get('statedb', 'user')
+        self.db_password = self.config.get('statedb', 'password')
 
     '''Uploads the file 'the_file' (whose name is 'file_name') to the location
     [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]. Returns

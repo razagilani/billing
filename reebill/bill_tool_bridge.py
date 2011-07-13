@@ -74,6 +74,16 @@ class BillToolBridge:
             self.config.set('statedb', 'user', 'dev')
             self.config.set('statedb', 'password', '[password]')
 
+            # For BillUpload
+            # default name of log file (config file can override this)
+            DEFAULT_LOG_FILE_NAME = 'billupload.log'
+
+            # default format of log entries (config file can override this)
+            DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
+            # log file info
+            self.config.add_section('log')
+            self.config.set('log', 'log_file_name', DEFAULT_LOG_FILE_NAME)
+            self.config.set('log', 'log_format', DEFAULT_LOG_FORMAT)
 
         # Writing our configuration file to 'example.cfg'
         with open(config_file_path, 'wb') as new_config_file:
@@ -82,7 +92,7 @@ class BillToolBridge:
         self.config.read(config_file_path)
     
         # create one BillUpload object to use for all BillUpload-related methods
-        self.billUpload = BillUpload()
+        self.billUpload = BillUpload(self.config)
 
 
     @cherrypy.expose
