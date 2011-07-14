@@ -188,8 +188,8 @@ function renderWidgets()
             pageSize: 25,
             store: paging_grid_store,
             displayInfo: true,
-            displayMsg: 'Displaying topics {0} - {1} of {2}',
-            emptyMsg: "No topics to display",
+            displayMsg: 'Displaying {0} - {1} of {2}',
+            emptyMsg: "No utility bills to display",
         }),
     });
 
