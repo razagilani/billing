@@ -255,9 +255,9 @@ class Process(object):
 
         rspath = self.config.get("billdb", "rspath")
 
+        import shutil 
         for rsbinding in rsbindings:
-            rs = yaml.load(file(os.path.join(rspath, rsbinding, account, sequence+".yaml")))
-            yaml.dump(rs,open(os.path.join(rspath, rsbinding, account, str(next_sequence)+".yaml"), "w"), default_flow_style=False)
+            shutil.copyfile(os.path.join(rspath, rsbinding, account, sequence+".yaml"), os.path.join(rspath, rsbinding, account, str(next_sequence)+".yaml"))
             
 
         # increment sequence
