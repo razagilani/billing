@@ -2,10 +2,7 @@
 <head>
 
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Skyline ReeBill</title>
-
-    <head profile="http://www.w3.org/2005/10/profile">
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <title>Bill charge entry</title>
 
     <script type="text/javascript" src="jquery-1.4.2.js"></script>
 
@@ -68,12 +65,11 @@
 
 </head>
 <body>
-    <div id="header" style="height:100%; background-image:url('green_stripe.jpg'); background-repeat: repeat;">
-        <table style="border-collapse: collapse;"><tr><td><img src="skyline_logo.png"/></td><td><img src="reebill_logo.png"/></td><td style="width: 85%; text-align: right;"><img src="money_chaser.png"/></td></tr></table>
+    <!--div id="header" style="height:100%; background-image:url('green_stripe.jpg'); background-repeat: repeat;">
+        <img src="skyline_logo.png"/><img src="reebill_logo.png"/>
     </div>
     <div id="footer" style="height:100%; background-image:url('green_stripe.jpg'); background-repeat: repeat;">
         &nbsp;
-        <p style="">&#169;2009-2011 <a href="http://www.skylineinnovations.com">Skyline Innovations Inc.</a></p>
-    </div>
+    </div-->
 </body>
 </html>
