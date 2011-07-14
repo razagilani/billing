@@ -234,7 +234,7 @@ function renderWidgets()
                             + jsonData.errors.details);
                         // replace bill image with a message instead
                         Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
-                            html: NO_BILL_SELECTED_MESSAGE, id: 'utilbillimage'}, true);
+                            html: NO_BILL_UTILBILL_SELECTED_MESSAGE, id: 'utilbillimage'}, true);
                     } else {
                         // show image in utilbillimageBox
                         Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'img',
@@ -1979,7 +1979,7 @@ function renderWidgets()
                             + jsonData.errors.details);
                         // replace reebill image with a message instead
                         Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
-                            html: NO_BILL_SELECTED_MESSAGE, id: 'reebillimage'}, true);
+                            html: NO_BILL_REEBILL_SELECTED_MESSAGE, id: 'reebillimage'}, true);
                     } else {
                         // show image in utilbillimagebox
                         Ext.DomHelper.overwrite('reebillimagebox', {tag: 'img',
