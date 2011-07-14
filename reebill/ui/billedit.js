@@ -1772,7 +1772,7 @@ function renderWidgets()
     var tabPanel = new Ext.TabPanel({
       region:'center',
       deferredRender:false,
-      autoScroll: true, 
+      autoScroll: false, 
       //margins:'0 4 4 0',
       // necessary for child FormPanels to draw properly when dynamically changed
       layoutOnTabChange: true,
