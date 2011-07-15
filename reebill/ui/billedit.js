@@ -1570,12 +1570,13 @@ function renderWidgets()
         method: 'GET',
         prettyUrls: false,
         // see options parameter for Ext.Ajax.request
-        url: 'http://'+location.host+'/reebill/listRSIs',
-        /*api: {
-            // all actions except the following will use above url
-            create  : '',
-            update  : ''
-        }*/
+        //url: 'http://'+location.host+'/reebill/listRSIs',
+        api: {
+            create :  '/reebill/newRSI',  // Server MUST return idProperty of new record
+            read :    '/reebill/listRSIs',
+            update :    '/reebill/updateRSI',
+            destroy : '/reebill/deleteRSI'
+        }
     });
 
     var rsiStore = new Ext.data.JsonStore({
@@ -1583,8 +1584,13 @@ function renderWidgets()
         autoSave: false,
         reader: rsiReader,
         writer: rsiWriter,
+        restful: true,
+        // won't be updated when combos change, so do this in event
+        // perhaps also can be put in the options param for the ajax request
+        baseParams: { account:accountCombo.getValue(), sequence: sequenceCombo.getValue()},
         data: initialRSI,
         root: 'rows',
+        idProperty: 'descriptor',
         fields: [
             {name: 'descriptor'},
             {name: 'description'},
@@ -1595,7 +1601,6 @@ function renderWidgets()
             {name: 'roundrule'},
             {name: 'total'},
         ],
-        //url: 'http://'+location.host+'/reebill/something',
     });
 
     var rsiColModel = new Ext.grid.ColumnModel(
@@ -1647,7 +1652,84 @@ function renderWidgets()
         ]
     });
 
+    var rsiToolbar = new Ext.Toolbar({
+        items: [
+            {
+                xtype: 'button',
+                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.insertBtn...
+                id: 'rsiInsertBtn',
+                iconCls: 'icon-user-add',
+                text: 'Insert',
+                disabled: true,
+                handler: function()
+                {
+                    rsiGrid.stopEditing();
+
+                    // grab the current selection - only one row may be selected per singlselect configuration
+                    var selection = rsiGrid.getSelectionModel().getSelected();
+
+                    // make the new record
+                    var rsiType = rsiGrid.getStore().recordType;
+                    var defaultData = 
+                    {
+                    };
+                    var r = new rsiType(defaultData);
+        
+                    // select newly inserted record
+                    var insertionPoint = rsiStore.indexOf(selection);
+                    rsiStore.insert(insertionPoint + 1, r);
+                    rsiStore.getView().refresh();
+                    rsiStore.getSelectionModel().selectRow(insertionPoint);
+                    rsiStore.startEditing(insertionPoint +1,1);
+                    
+                    // An inserted record must be saved 
+                    rsiGrid.getTopToolbar().findById('rsiSaveBtn').setDisabled(false);
+                }
+            },{
+                xtype: 'tbseparator'
+            },{
+                xtype: 'button',
+                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                id: 'rsiRemoveBtn',
+                iconCls: 'icon-user-delete',
+                text: 'Remove',
+                disabled: true,
+                handler: function()
+                {
+                    rsiGrid.stopEditing();
+                    var s = rsiGrid.getSelectionModel().getSelections();
+                    for(var i = 0, r; r = s[i]; i++)
+                    {
+                        rsiStore.remove(r);
+                    }
+                    rsiGrid.getTopToolbar().findById('rsiSaveBtn').setDisabled(false);
+                }
+            },{
+                xtype:'tbseparator'
+            },{
+                xtype: 'button',
+                // places reference to this button in grid.  
+                id: 'rsiSaveBtn',
+                text: 'Save',
+                disabled: true,
+                handler: function()
+                {
+                    // disable the save button for the save attempt.
+                    // is there a closer place for this to the actual button click due to the possibility of a double
+                    // clicked button submitting two ajax requests?
+                    rsiGrid.getTopToolbar().findById('rsiSaveBtn').setDisabled(true);
+
+                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
+                    rsiGrid.stopEditing();
+
+                    rsiStore.save(); 
+                }
+            }
+        ]
+    });
+
     var rsiGrid = new Ext.grid.EditorGridPanel({
+        tbar: rsiToolbar,
         colModel: rsiColModel,
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
         store: rsiStore,
@@ -1662,6 +1744,23 @@ function renderWidgets()
         },
         title: 'Rate Structure',
         clicksToEdit: 2
+    });
+
+    rsiGrid.getSelectionModel().on('selectionchange', function(sm){
+        // if a selection is made, allow it to be removed
+        // if the selection was deselected to nothing, allow no 
+        // records to be removed.
+
+        rsiGrid.getTopToolbar().findById('rsiRemoveBtn').setDisabled(sm.getCount() <1);
+
+        // if there was a selection, allow an insertion
+        rsiGrid.getTopToolbar().findById('rsiInsertBtn').setDisabled(sm.getCount() <1);
+    });
+  
+    // grid's data store callback for when data is edited
+    // when the store backing the grid is edited, enable the save button
+    rsiStore.on('update', function(){
+        rsiGrid.getTopToolbar().findById('rsiSaveBtn').setDisabled(false);
     });
 
     // end of tab widgets
