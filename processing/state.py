@@ -6,9 +6,9 @@ Utility functions to interact with state database
 import os, sys
 sys.stdout = sys.stderr
 import MySQLdb
-
-
 from optparse import OptionParser
+import db
+from db import Customer, UtilBill, ReeBill
 
 class StateDB:
 
@@ -20,7 +20,9 @@ class StateDB:
 
     def fetch(self, query, params, fetchall = True):
         try:
-            conn = MySQLdb.connect(host=self.config["host"], user=self.config["user"], passwd=self.config["password"], db=self.config["db"])
+            conn = MySQLdb.connect(host=self.config["host"], \
+                    user=self.config["user"], passwd=self.config["password"], \
+                    db=self.config["db"])
 
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
 
@@ -57,12 +59,8 @@ class StateDB:
         return self.fetch(query, params, False)
 
     def discount_rate(self, account):
-
-        query = "select discountrate from customer where account = %s"
-        params = (account)
-        rows = self.fetch(query, params)
-        # TODO: error checking...
-        return rows[0]['discountrate']
+        # one() raises an exception if more than one row was found
+        return db.session.query(Customer).filter_by(account=account).one().discountrate
 
     def last_sequence(self, account):
         query = "select max(sequence) as maxseq from rebill where customer_id = (select id from customer where account = %s)"
@@ -89,8 +87,11 @@ class StateDB:
         rows = self.fetch(query, params, False)
 
     def listAccounts(self):
+        '''
         query = "select account from customer"
         return self.fetch(query, None, True)
+        '''
+        return map((lambda x: x[0]), db.session.query(Customer.account).all())
 
     def listSequences(self, account):
         query = "select sequence from rebill r where r.customer_id = (select id from customer where account = %s)"
