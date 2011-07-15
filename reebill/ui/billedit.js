@@ -1995,34 +1995,6 @@ function renderWidgets()
             disablecaching: true,
         });
     }
-
-
-    // XML REFACTORING LEFTOVER THAT NEEDS TO BE FACTORED INTO GRIDS
-
-    // TODO: ensure grids commit their changes on successful save, they currently 
-    // do not do this
-    function billSaved(data)
-    {
-        aChargesStore.commitChanges();
-        hChargesStore.commitChanges();
-
-        // disable the save button until the next edit to the grid store
-        aChargesGrid.saveBtn.setDisabled(true);
-        hChargesGrid.saveBtn.setDisabled(true);
-
-    }
-
-    // TODO: ensure grids handle this if their save fails
-    function billDidNotSave(data)
-    {
-        alert('Bill Save Failed ' + data);
-
-        // reenable the save button because of the failed save attempt
-        aChargesGrid.saveBtn.setDisabled(false);
-        hChargesGrid.saveBtn.setDisabled(false);
-    }
-
-
 }
 
 
