@@ -638,7 +638,13 @@ class BillToolBridge:
             statedb_config_section = self.config.items("statedb")
             state_db = state.StateDB(dict(statedb_config_section)) 
             result, totalCount = state_db.getUtilBillRows(int(start), int(limit))
-            return ju.dumps({'success': True, 'rows':result,
+            
+            # convert the result into a list of dictionaries for returning as
+            # JSON to the browser
+            rows = [{'account': row[0], 'period_start': row[1],
+                'period_end':row[2]} for row in result]
+
+            return ju.dumps({'success': True, 'rows':rows,
                 'results':totalCount})
         except Exception as e:
             # TODO: log errors?
