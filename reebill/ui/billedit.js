@@ -1776,18 +1776,6 @@ function renderWidgets()
           items: [
             upload_form_panel,
             paging_grid,
-            // panel containing the upload form & the utility bill list
-            // EVIL DIE DIE DIE!!!!
-            /*new Ext.Panel({
-                border: false,
-                xtype: 'panel',
-                layout: 'vbox',
-                align: 'stretch',
-                items: [
-                    upload_form_panel,
-                    paging_grid,
-                ],
-            }),*/
           ],
         },{
           title: 'Select ReeBill',
