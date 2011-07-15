@@ -865,7 +865,6 @@ function renderWidgets()
             {name: 'rateunits', mapping: 'rateunits'},
             {name: 'total', mapping: 'total', type: 'float'},
             {name: 'processingnote', mapping:'processingnote'},
-            {name: 'autototal', mapping: 'autototal', type: 'float'}
         ]
     });
     var aChargesWriter = new Ext.data.JsonWriter({
@@ -1003,41 +1002,6 @@ function renderWidgets()
                     return Ext.util.Format.usMoney(record.data.total);
                 }
             },
-            {
-                header: 'Auto Total', 
-                width: 75, 
-                sortable: true, 
-                dataIndex: 'autototal', 
-                summaryType: 'sum',
-                align: 'right',
-                renderer: function(v, params, record)
-                {
-                    // terrible hack allowing percentages to display as x%
-                    // yet participate as a value between 0 and 1 for
-                    // showing that charge items compute
-                    var q = record.data.quantity;
-                    var r = record.data.rate;
-
-                    if (r && record.data.quantityunits && record.data.rateunits == 'percent')
-                        r /= 100;
-
-                    if (q && r)
-                        record.data.autototal = q * r;
-                    else if (q && !r)
-                        record.data.autototal = record.data.total;
-                    else if (!q && r)
-                        record.data.autototal = record.data.total;
-                    else
-                        record.data.autototal = record.data.total;
-
-                    return Ext.util.Format.usMoney(record.data.autototal);
-                },
-                // figure out how to sum column based on a renderer
-                summaryRenderer: function(v, params, record)
-                {
-                    return Ext.util.Format.usMoney(record.data.autototal);
-                }
-            }
         ]
     });
     var serviceComboFormPanel = new Ext.form.FormPanel({
@@ -1278,7 +1242,6 @@ function renderWidgets()
             {name: 'rateunits', mapping: 'rateunits'},
             {name: 'total', mapping: 'total', type: 'float'},
             {name: 'processingnote', mapping:'processingnote'},
-            {name: 'autototal', mapping: 'autototal', type: 'float'}
         ]
     });
     var hChargesWriter = new Ext.data.JsonWriter({
@@ -1408,41 +1371,7 @@ function renderWidgets()
                 {
                     return Ext.util.Format.usMoney(record.data.total);
                 }
-            },{
-                header: 'Auto Total', 
-                width: 75, 
-                sortable: true, 
-                dataIndex: 'autototal', 
-                summaryType: 'sum',
-                align: 'right',
-                renderer: function(v, params, record)
-                {
-                    // terrible hack allowing percentages to display as x%
-                    // yet participate as a value between 0 and 1 for
-                    // showing that charge items compute
-                    var q = record.data.quantity;
-                    var r = record.data.rate;
-
-                    if (r && record.data.quantityunits && record.data.rateunits == 'percent')
-                        r /= 100;
-
-                    if (q && r)
-                        record.data.autototal = q * r;
-                    else if (q && !r)
-                        record.data.autototal = record.data.total;
-                    else if (!q && r)
-                        record.data.autototal = record.data.total;
-                    else
-                        record.data.autototal = record.data.total;
-
-                    return Ext.util.Format.usMoney(record.data.autototal);
-                },
-                // figure out how to sum column based on a renderer
-                summaryRenderer: function(v, params, record)
-                {
-                    return Ext.util.Format.usMoney(record.data.autototal);
-                }
-            }
+            },
         ]
     });
 
