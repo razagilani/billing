@@ -1,22 +1,3 @@
- /*
-// attempt to show a pdf using uxmedia
-// TODO remove if this doesn't work
-var pdfWindow = new Ext.ux.MediaWindow({
-    id:'PDFViewerWin',
-    //renderTo: document.body,
-    height: 400,
-    width : 600,
-    mediaCfg:{
-    mediaType   :'PDFFRAME',
-    url         :'test.pdf',//'your.pdf#page=2&pagemode=none'
-    unsupportedText : 'Acrobat Viewer is not Installed'
-    },
-    mediaMask: false,
-});
-//pdfWindow.show();
-*/
-
-
 // Configure ext js widgets and events
 function renderWidgets()
 {
