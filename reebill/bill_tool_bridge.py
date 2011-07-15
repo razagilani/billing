@@ -270,25 +270,25 @@ class BillToolBridge:
             accounts = state_db.listAccounts()
 
             # now get associated names from Nexus and add them to each account dictionary
-            nu = NexusUtil()
+            rows = []
             for account in accounts:
-                all_names = NexusUtil().all("billing", account['account'])
-                display_name = [account['account']]
+                row = {'account':account}
+                display_name = [account]
+                all_names = NexusUtil().all("billing", account)
                 if 'codename' in all_names:
                     display_name.append(all_names['codename'])
                 if 'casualname' in all_names:
                     display_name.append(all_names['casualname'])
                 if 'primus' in all_names:
                     display_name.append(all_names['primus'])
-
-                account['name'] = string.join(display_name, ' - ')
-
-
+                #account['name'] = string.join(display_name, ' - ')
+                row['name'] = ' - '.join(display_name)
+                rows += [row]
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return json.dumps({'success': True, 'rows':accounts})
+        return json.dumps({'success': True, 'rows':rows})
 
     @cherrypy.expose
     def listSequences(self, account, **kwargs):
@@ -304,6 +304,8 @@ class BillToolBridge:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
         return json.dumps({'success': True, 'rows':sequences})
+        
+        
 
     @cherrypy.expose
     # TODO see 15415625 about the problem passing in service to get at a set of RSIs
@@ -636,7 +638,13 @@ class BillToolBridge:
             statedb_config_section = self.config.items("statedb")
             state_db = state.StateDB(dict(statedb_config_section)) 
             result, totalCount = state_db.getUtilBillRows(int(start), int(limit))
-            return ju.dumps({'success': True, 'rows':result,
+            
+            # convert the result into a list of dictionaries for returning as
+            # JSON to the browser
+            rows = [{'account': row[0], 'period_start': row[1],
+                'period_end':row[2]} for row in result]
+
+            return ju.dumps({'success': True, 'rows':rows,
                 'results':totalCount})
         except Exception as e:
             # TODO: log errors?
