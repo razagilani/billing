@@ -109,10 +109,17 @@ class StateDB:
         '''Apparently this is called only by Process.zero_charges(), which is never called by anybody. Remove it?'''
 
     def issue(self, account, sequence):
+        '''
         query = "update rebill set issued = 1 where sequence = %s and customer_id = (select id from customer where account = %s)"
         params = (sequence, account)
         # TODO: error checking...
         rows = self.fetch(query, params, False)
+        '''
+        customer_id = db.session.query(Customer.id).filter(Customer.account==account).one()[0]
+        reeBill = db.session.query(ReeBill).filter(ReeBill.customer_id==customer_id).filter(ReeBill.sequence==sequence).one()
+        reeBill.issued = 1
+        db.session.commit()
+
 
     def listAccounts(self):
         '''

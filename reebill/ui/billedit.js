@@ -325,7 +325,7 @@ function renderWidgets()
                 {text: 'Pay', handler: payOperation},
                 {text: 'Sum', handler: sumOperation},
                 {text: 'CalcStats', handler: calcStatsOperation},
-                {text: 'Issue', handler: issueOperation},
+                {text: 'Set Issue Date', handler: issueOperation},
                 {text: 'Render', handler: renderOperation},
                 {text: 'Commit', handler: commitOperation},
                 {text: 'Issue to Customer', handler: issueToCustomerOperation},

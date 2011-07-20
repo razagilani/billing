@@ -300,7 +300,7 @@ class BillToolBridge:
             
             # eventually, this data will have to support pagination
             sequences = state_db.listSequences(account)
-            rows = [{'sequence:': sequence} for sequence in sequences]
+            rows = [{'sequence': sequence} for sequence in sequences]
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
