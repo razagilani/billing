@@ -1,0 +1,205 @@
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
+<ub:bill xmlns:ub="bill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" account="10002" xsi:schemaLocation="bill ../UtilityBill.xsd" id="7">
+	<ub:rebill>
+		<ub:car>
+			<ub:serviceaddress>
+				<ub:addressee>PENICK VILLAGE</ub:addressee>
+				<ub:street>100 E RHODE ISLAND AVE</ub:street>
+				<ub:city>SOUTHERN PINES</ub:city>
+				<ub:state>NC</ub:state>
+				<ub:country/>
+				<ub:postalcode>28387</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>PENICK VILLAGE  </ub:addressee>
+				<ub:street>100 E RHODE ISLAND AVE</ub:street>
+				<ub:city>SOUTHERN PINES</ub:city>
+				<ub:state>NC </ub:state>
+				<ub:country/>
+				<ub:postalcode>28387-4935</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
+		<ub:billperiodbegin>2010-08-11</ub:billperiodbegin>
+		<ub:billperiodend>2010-09-14</ub:billperiodend>
+		<ub:priorbalance>80.59</ub:priorbalance>
+		<ub:paymentreceived>0.00</ub:paymentreceived>
+		<ub:totaladjustment>0.00</ub:totaladjustment>
+		<ub:balanceforward>80.59</ub:balanceforward>
+		<ub:hypotheticalecharges>75.9795814641</ub:hypotheticalecharges>
+		<ub:actualecharges>35.34761</ub:actualecharges>
+		<ub:revalue>40.6319714641</ub:revalue>
+		<ub:recharges>26.41</ub:recharges>
+		<ub:resavings>14.23</ub:resavings>
+		<ub:currentcharges>0.00</ub:currentcharges>
+		<ub:totaldue>107.0</ub:totaldue>
+		<ub:duedate>2010-11-15</ub:duedate>
+		<ub:issued>2010-10-30</ub:issued>
+		<ub:message/>
+	</ub:rebill>
+	<ub:utilbill rsbinding="piedmont" service="Gas">
+		<ub:car>
+			<ub:accountnumber>0003020641001</ub:accountnumber>
+			<ub:serviceaddress>
+				<ub:addressee>PENICK VILLAGE</ub:addressee>
+				<ub:street>100 E RHODE ISLAND AVE</ub:street>
+				<ub:city>SOUTHERN PINES</ub:city>
+				<ub:state>NC</ub:state>
+				<ub:country/>
+				<ub:postalcode>28387</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>PENICK VILLAGE  </ub:addressee>
+				<ub:street>100 E RHODE ISLAND AVE</ub:street>
+				<ub:city>SOUTHERN PINES</ub:city>
+				<ub:state>NC </ub:state>
+				<ub:country/>
+				<ub:postalcode>28387-4935</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
+		<ub:billperiodbegin>2010-08-11</ub:billperiodbegin>
+		<ub:billperiodend>2010-09-14</ub:billperiodend>
+		<ub:hypotheticalecharges>75.9795814641</ub:hypotheticalecharges>
+		<ub:actualecharges>35.34761</ub:actualecharges>
+		<ub:revalue>40.6319714641</ub:revalue>
+		<ub:recharges>26.41</ub:recharges>
+		<ub:resavings>14.23</ub:resavings>
+	</ub:utilbill>
+	<ub:details service="Gas">
+		<ub:rateschedule rsbinding="101_residential_service_rate">
+			<ub:name/>
+		</ub:rateschedule>
+		<ub:chargegroup type="All Charges">
+			<ub:charges type="actual">
+				<ub:charge rsbinding="PER_THERM_RATE">
+					<ub:description>Rate per Therm</ub:description>
+					<ub:quantity units="Therms">23.0</ub:quantity>
+					<ub:rate units="dollars">1.05507</ub:rate>
+					<ub:total>24.26661</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="EXCISE_TAX">
+					<ub:description>Declining block tax</ub:description>
+					<ub:quantity units="Therms">23.0</ub:quantity>
+					<ub:rate units="dollars">0.047</ub:rate>
+					<ub:total>1.081</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="CUSTOMER_CHARGE">
+					<ub:description>Monthly flat charge</ub:description>
+					<ub:total>10.0</ub:total>
+				</ub:charge>
+				<ub:total>35.34761</ub:total>
+			</ub:charges>
+			<ub:charges type="hypothetical">
+				<ub:charge rsbinding="PER_THERM_RATE">
+					<ub:description>Rate per Therm</ub:description>
+					<ub:quantity units="Therms">59.8687755443</ub:quantity>
+					<ub:rate units="dollars">1.05507</ub:rate>
+					<ub:total>63.1657490135</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="EXCISE_TAX">
+					<ub:description>Declining block tax</ub:description>
+					<ub:quantity units="Therms">59.8687755443</ub:quantity>
+					<ub:rate units="dollars">0.047</ub:rate>
+					<ub:total>2.81383245058</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="CUSTOMER_CHARGE">
+					<ub:description>Monthly flat charge</ub:description>
+					<ub:total>10.0</ub:total>
+				</ub:charge>
+				<ub:total>75.9795814641</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:total type="actual">35.34761</ub:total>
+		<ub:total type="hypothetical">75.9795814641</ub:total>
+	</ub:details>
+	<ub:billableusage service="Gas">
+		<ub:rateschedule>
+			<ub:name/>
+		</ub:rateschedule>
+		<ub:usage>
+			<ub:description>Therms Used</ub:description>
+			<ub:quantity>0</ub:quantity>
+		</ub:usage>
+		<ub:total>0</ub:total>
+	</ub:billableusage>
+	<ub:measuredusage service="Gas">
+		<ub:meter>
+			<ub:estimated>false</ub:estimated>
+			<ub:priorreaddate>2010-08-11</ub:priorreaddate>
+			<ub:presentreaddate>2010-09-14</ub:presentreaddate>
+			<ub:identifier/>
+			<ub:register rsbinding="REG_THERMS" shadow="false">
+				<ub:identifier>803497</ub:identifier>
+				<ub:description>Therms consumed</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>therms</ub:units>
+				<ub:total>23</ub:total>
+			</ub:register>
+			<ub:register rsbinding="REG_THERMS" shadow="true">
+				<ub:identifier>803497</ub:identifier>
+				<ub:description>Therms consumed</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>therms</ub:units>
+				<ub:total>36.8687755443</ub:total>
+			</ub:register>
+		</ub:meter>
+	</ub:measuredusage>
+	<ub:statistics>
+		<ub:conventionalconsumed>900000</ub:conventionalconsumed>
+		<ub:renewableconsumed>3686877</ub:renewableconsumed>
+		<ub:renewableutilization>.62</ub:renewableutilization>
+		<ub:conventionalutilization>.38</ub:conventionalutilization>
+		<ub:renewableproduced>0</ub:renewableproduced>
+		<ub:co2offset>495</ub:co2offset>
+		<ub:totalsavings>54.92</ub:totalsavings>
+		<ub:totalrenewableconsumed>10984992</ub:totalrenewableconsumed>
+		<ub:totalrenewableproduced>0</ub:totalrenewableproduced>
+		<ub:totaltrees>1.52</ub:totaltrees>
+		<ub:totalco2offset>1973</ub:totalco2offset>
+		<ub:consumptiontrend>
+			<ub:period quantity="7.9" month="Mar"/>
+			<ub:period quantity="10.8" month="Apr"/>
+			<ub:period quantity="28.4" month="May"/>
+			<ub:period quantity="37.4" month="Jun"/>
+			<ub:period quantity="25.4" month="Jul"/>
+			<ub:period quantity="36.9" month="Aug"/>
+			<ub:period quantity="0" month="Sep"/>
+			<ub:period quantity="0" month="Oct"/>
+			<ub:period quantity="0" month="Nov"/>
+			<ub:period quantity="0" month="Dec"/>
+			<ub:period quantity="0" month="Jan"/>
+			<ub:period quantity="0" month="Feb"/>
+		</ub:consumptiontrend>
+	</ub:statistics>
+</ub:bill>
