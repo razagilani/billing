@@ -80,10 +80,18 @@ class StateDB:
         return rows[0]['maxseq']
         
     def new_rebill(self, account, sequence):
+        '''
         query = "insert into rebill (id, sequence, customer_id, issued) values (null, %s, (select id from customer where account = %s),false)" 
         params = (sequence, account)
         # TODO: error checking...
         rows = self.fetch(query, params, False)
+        '''
+        # TODO: is there a way to do this without multiple database transactions?
+        customer_id = db.session.query(Customer.id).filter(Customer.account==account)
+        new_reebill = ReeBill(sequence, customer_id, issued)
+        db.session.add(new_reebill)
+        db.commit()
+        '''Apparently this is called only by Process.zero_charges(), which is never called by anybody. Remove it?'''
 
     def issue(self, account, sequence):
         query = "update rebill set issued = 1 where sequence = %s and customer_id = (select id from customer where account = %s)"
@@ -99,9 +107,15 @@ class StateDB:
         return map((lambda x: x[0]), db.session.query(Customer.account).all())
 
     def listSequences(self, account):
-        query = "select sequence from rebill r where r.customer_id = (select id from customer where account = %s)"
-        params = (account)
-        return self.fetch(query, params, True)
+        # TODO: figure out how to do this all in one query. many SQLAlchemy
+        # subquery examples use multiple queries but that shouldn't be
+        # necessary
+        customer_id = db.session.query(Customer.id).filter(Customer.account==account).one()[0]
+        sequences = db.session.query(ReeBill.sequence).filter(ReeBill.customer_id==customer_id).all()
+
+        # sequences is a list of tuples of numbers, so convert it into a plain list of strings
+        return map((lambda x: x[0]), sequences)
+
 
     '''Queries the database for account, start date, and
     end date of bills in a slice of the utilbills table; returns the slice and the

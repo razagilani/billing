@@ -297,13 +297,14 @@ class BillToolBridge:
             # instantiate stateDB
             statedb_config_section = self.config.items("statedb")
             state_db = state.StateDB(dict(statedb_config_section)) 
-
+            
             # eventually, this data will have to support pagination
             sequences = state_db.listSequences(account)
+            rows = [{'sequence:': sequence} for sequence in sequences]
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return json.dumps({'success': True, 'rows':sequences})
+        return json.dumps({'success': True, 'rows':rows})
         
         
 

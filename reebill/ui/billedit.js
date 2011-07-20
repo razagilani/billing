@@ -1961,6 +1961,8 @@ function renderWidgets()
         // url for getting bill images (calls bill_tool_bridge.getbillimage())
         reeBillImageURL = 'http://' + location.host + '/reebill/getReeBillImage';
         
+        console.log(account);
+        console.log(sequence);
         // ajax call to generate image, get the name of it, and display it in a
         // new window
         Ext.Ajax.request({

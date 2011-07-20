@@ -6,12 +6,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import mapper, sessionmaker
 from sqlalchemy.orm import relationship, backref
 
-# global variable for the database session: SQLAlchemy will give an error if
-# this is created more than once, so don't call _getSession() anywhere else
-session = _getSession()
-
-'''These classes represent the database tables 'customer', 'ledger', 'rebill',
-and 'utilbill' respectively.'''
+'''These classes represent the database tables 'customer', 'rebill', and
+'utilbill' respectively.'''
 class Customer(object):
     def __init__(self, name, account, discountrate):
         self.name = name
@@ -63,3 +59,8 @@ def _getSession():
 
     # session
     return sessionmaker(bind=engine)()
+
+# global variable for the database session: SQLAlchemy will give an error if
+# this is created more than once, so don't call _getSession() anywhere else
+session = _getSession()
+
