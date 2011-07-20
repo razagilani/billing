@@ -40,9 +40,7 @@ from billing import json_util as ju
 
 from skyliner.xml_utils import XMLUtils
 
-
-from itertools import groupby
-
+import itertools as it
 
 # TODO rename to ProcessBridge or something
 class BillToolBridge:
@@ -309,23 +307,83 @@ class BillToolBridge:
 
     @cherrypy.expose
     # TODO see 15415625 about the problem passing in service to get at a set of RSIs
-    def listRSIs(self, account, sequence, service, **kwargs):
+
+    # experiment to see how using one URL for all operations works
+    def rsi(self, xaction, account, sequence, service, **kwargs):
 
         try:
+            # get a hold of the bill to find rate structure
             the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
             billdb = self.config.get("billdb", "rspath")
             # ok, this is the nasty - rsbinding is in utilbill and probably should be in details
             utilbills = the_bill.utilbill_summary_charges
+            rs_yaml = None
             for (s, utilbill) in utilbills.items():
                 rsbinding = utilbill.rsbinding
                 if (s == service):
                     import yaml
                     import billing.processing.rate_structure as rs
                     rs_yaml = yaml.load(file(os.path.join(billdb, rsbinding, account, sequence+".yaml")))
-                    # TODO: we can't json dumps RSIs, but the yaml is readily dumpable to JSON
-                    # figure out best way to represent RSIs for web
-                    #rate_structure = rs.RateStructure(rs_yaml)
-                    return json.dumps({'success': True, 'rows':rs_yaml["rates"]})
+
+            rates = rs_yaml["rates"]
+
+            if xaction == "read":
+                return json.dumps({'success': True, 'rows':rates})
+
+            elif xaction == "update":
+
+                # all grid editor changes must be batched since yaml file cannot be written asynchronously 
+                # convert json to python
+                rows = json.loads(kwargs["rows"])
+
+                # single edit comes in not in a list
+                if type(rows) is dict: rows = [rows]
+
+                # process list of edits
+                for row in rows:
+
+                    # identify the RSI descriptor of the posted data
+                    descriptor = row["descriptor"]
+
+                    # identify the rsi in the rs_yaml, and update it with posted data
+                    # python is totally evil
+                    #If there is more than one returned, this is an exception so break the above statement out later
+                    [result for result in it.ifilter(lambda x: x["descriptor"]==descriptor, rates)][0].update(row)
+
+                yaml.safe_dump(rs_yaml, open(os.path.join(billdb, rsbinding, account, sequence+".yaml"), "w"), default_flow_style=False)
+
+                return json.dumps({'success':True})
+
+            elif xaction == "create":
+                # create operations require the server to return the initial record, initialized with key
+
+                new_rate = {"descriptor":"NEW"}
+                rates.append(new_rate)
+
+                yaml.safe_dump(rs_yaml, open(os.path.join(billdb, rsbinding, account, sequence+".yaml"), "w"), default_flow_style=False)
+
+                return json.dumps({'success':True, 'rows':new_rate})
+
+            elif xaction == "destroy":
+
+                descriptors = json.loads(kwargs["rows"])
+
+                # single edit comes in not in a list
+                # TODO: understand why this is a unicode coming up from browser
+                if type(descriptors) is unicode: descriptors = [descriptors]
+
+                # process list of removals
+                for descriptor in descriptors:
+
+                    # identify the rsi in the rs_yaml, and update it with posted data
+                    # python is totally evil
+                    #If there is more than one returned, this is an exception so break the above statement out later
+                    rates.remove([result for result in it.ifilter(lambda x: x["descriptor"]==descriptor, rates)][0])
+                    #print [result for result in it.ifilter(lambda x: x["descriptor"]==descriptor, rates)]
+
+                yaml.safe_dump(rs_yaml, open(os.path.join(billdb, rsbinding, account, sequence+".yaml"), "w"), default_flow_style=False)
+
+                return json.dumps({'success':True})
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -496,7 +554,7 @@ class BillToolBridge:
         details[service] = MutableNamedTuple()
         details[service].chargegroups = []
 
-        for cgtype, charge_items in groupby(the_charge_items, key=lambda charge_item:charge_item['chargegroup']):
+        for cgtype, charge_items in it.groupby(the_charge_items, key=lambda charge_item:charge_item['chargegroup']):
             chargegroup_mnt = MutableNamedTuple()
             chargegroup_mnt.type = cgtype
             chargegroup_mnt.charges = []
