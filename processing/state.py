@@ -57,11 +57,31 @@ class StateDB:
                 conn.close()
 
     def commit_bill(self, account, sequence, start, end):
-
+        '''
         #query = "call commit_bill(%s, %s, %s, %s)"
         query = "update utilbill set rebill_id = (select id from rebill where customer_id = (select id from customer where account = %s) and sequence = %s), processed = true where customer_id = (select id from customer where account = %s) and period_start >= %s and period_end <= %s"
         params = (account, sequence, account, start, end)
         return self.fetch(query, params, False)
+        '''
+
+        # get customer id from account and the reebill from account and sequence
+        customer_id = db.session.query(Customer.id).filter(Customer.account==account).one()[0]
+        reebill_id = db.session.query(ReeBill.id).filter(ReeBill.customer_id==customer_id)\
+                .filter(ReeBill.sequence==sequence).one()[0]
+
+        # get all utilbills for this customer whose dates are between 'start'
+        # and 'end' (inclusive)
+        utilbills = db.session.query(UtilBill) \
+                .filter(UtilBill.customer_id==customer_id)\
+                .filter(UtilBill.period_start>=start)\
+                .filter(UtilBill.period_end<=end).all()
+        
+        # update 'reebill_id' and 'processed' for each utilbill found
+        for utilbill in utilbills:
+            utilbill.reebill_id = reebill_id
+            utilbill.processed = True
+        db.session.commit()
+
 
     def discount_rate(self, account):
         '''
