@@ -1560,6 +1560,7 @@ function renderWidgets()
             {name: 'total', mapping: 'total'},
         ]
     });
+
     var rsiWriter = new Ext.data.JsonWriter({
         encode: true,
         // write all fields, not just those that changed
@@ -1569,14 +1570,7 @@ function renderWidgets()
     var rsiStoreProxy = new Ext.data.HttpProxy({
         method: 'GET',
         prettyUrls: false,
-        // see options parameter for Ext.Ajax.request
-        //url: 'http://'+location.host+'/reebill/listRSIs',
-        api: {
-            create :  '/reebill/newRSI',  // Server MUST return idProperty of new record
-            read :    '/reebill/listRSIs',
-            update :    '/reebill/updateRSI',
-            destroy : '/reebill/deleteRSI'
-        }
+        url: 'http://'+location.host+'/reebill/rsi',
     });
 
     var rsiStore = new Ext.data.JsonStore({
@@ -1584,7 +1578,11 @@ function renderWidgets()
         autoSave: false,
         reader: rsiReader,
         writer: rsiWriter,
-        restful: true,
+        //restful: true,
+        // batching must be done because server code not reentrant due to writing YAML file
+        //batch: true,
+        // or, autosave must be used to save each action
+        autoSave: true,
         // won't be updated when combos change, so do this in event
         // perhaps also can be put in the options param for the ajax request
         baseParams: { account:accountCombo.getValue(), sequence: sequenceCombo.getValue()},
@@ -1678,8 +1676,10 @@ function renderWidgets()
                     // select newly inserted record
                     var insertionPoint = rsiStore.indexOf(selection);
                     rsiStore.insert(insertionPoint + 1, r);
-                    rsiStore.getView().refresh();
-                    rsiStore.getSelectionModel().selectRow(insertionPoint);
+                    // TODO throwing exception - find out why
+                    // because there is no grouping view?
+                    //rsiStore.getView().refresh();
+                    //rsiStore.getSelectionModel().selectRow(insertionPoint);
                     rsiStore.startEditing(insertionPoint +1,1);
                     
                     // An inserted record must be saved 
@@ -1697,12 +1697,18 @@ function renderWidgets()
                 handler: function()
                 {
                     rsiGrid.stopEditing();
+                    rsiStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+                    rsiStore.setBaseParam("account", account);
+                    rsiStore.setBaseParam("sequence", sequence);
+
+                    // TODO single row selection only, test allowing multirow selection
                     var s = rsiGrid.getSelectionModel().getSelections();
                     for(var i = 0, r; r = s[i]; i++)
                     {
                         rsiStore.remove(r);
                     }
-                    rsiGrid.getTopToolbar().findById('rsiSaveBtn').setDisabled(false);
+                    rsiStore.save(); 
+                    rsiGrid.getTopToolbar().findById('rsiSaveBtn').setDisabled(true);
                 }
             },{
                 xtype:'tbseparator'
@@ -1721,6 +1727,10 @@ function renderWidgets()
 
                     // stop grid editing so that widgets like comboboxes in rows don't stay focused
                     rsiGrid.stopEditing();
+
+                    rsiStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+                    rsiStore.setBaseParam("account", account);
+                    rsiStore.setBaseParam("sequence", sequence);
 
                     rsiStore.save(); 
                 }
@@ -1761,6 +1771,12 @@ function renderWidgets()
     // when the store backing the grid is edited, enable the save button
     rsiStore.on('update', function(){
         rsiGrid.getTopToolbar().findById('rsiSaveBtn').setDisabled(false);
+    });
+
+    rsiStore.on('beforesave', function() {
+        rsiStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+        rsiStore.setBaseParam("account", account);
+        rsiStore.setBaseParam("sequence", sequence);
     });
 
     // end of tab widgets
