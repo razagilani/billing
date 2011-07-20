@@ -2,13 +2,18 @@
 """
 Utility functions to interact with state database
 """
-
 import os, sys
 sys.stdout = sys.stderr
 import MySQLdb
 from optparse import OptionParser
 import db
 from db import Customer, UtilBill, ReeBill
+import sqlalchemy
+
+# TODO: make configurable
+# TODO: clean up commented-out raw SQL code
+
+# c = {'host':'tyrell', 'user':'dev', 'password':'dev', 'db':'skyline_dev'}
 
 class StateDB:
 
@@ -70,6 +75,7 @@ class StateDB:
         return db.session.query(Customer).filter_by(account=account).one().discountrate
 
     def last_sequence(self, account):
+        '''
         query = "select max(sequence) as maxseq from rebill where customer_id = (select id from customer where account = %s)"
         params = (account)
         rows = self.fetch(query, params)
@@ -78,6 +84,15 @@ class StateDB:
         if rows[0]['maxseq'] is None:
             return 0
         return rows[0]['maxseq']
+        '''
+        customer_id = db.session.query(Customer.id).filter(Customer.account==account).one()[0]
+        max_sequence = db.session.query(sqlalchemy.func.max(ReeBill.sequence)) \
+                .filter(ReeBill.customer_id==customer_id).one()[0]
+        # TODO: because of the way 0.xml templates are made (they are not in the database) rebill needs to be 
+        # primed otherwise the last sequence for a new bill is None. Design a solution to this issue.
+        if max_sequence is None:
+            return 0
+        return max_sequence
         
     def new_rebill(self, account, sequence):
         '''
@@ -161,5 +176,5 @@ if __name__ == "__main__":
 
     (options, args) = parser.parse_args()
 
-    issue(options.host, options.db, options.user, options.password, options.account, options.sequence)
+    #issue(options.host, options.db, options.user, options.password, options.account, options.sequence)
 
