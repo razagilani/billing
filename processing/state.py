@@ -82,7 +82,6 @@ class StateDB:
     def new_rebill(self, account, sequence):
         query = "insert into rebill (id, sequence, customer_id, issued) values (null, %s, (select id from customer where account = %s),false)" 
         params = (sequence, account)
-
         # TODO: error checking...
         rows = self.fetch(query, params, False)
 
