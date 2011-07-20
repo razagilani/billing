@@ -13,8 +13,6 @@ import sqlalchemy
 # TODO: make configurable
 # TODO: clean up commented-out raw SQL code
 
-# c = {'host':'tyrell', 'user':'dev', 'password':'dev', 'db':'skyline_dev'}
-
 class StateDB:
 
     config = None
@@ -22,39 +20,6 @@ class StateDB:
     def __init__(self, config):
         self.config = config
         pass
-
-    def fetch(self, query, params, fetchall = True):
-        try:
-            conn = MySQLdb.connect(host=self.config["host"], \
-                    user=self.config["user"], passwd=self.config["password"], \
-                    db=self.config["db"])
-
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-
-            cur.execute(query, params)
-            print "Number of rows affected: %d" % cur.rowcount
-
-            # TODO: print some sane message about failures
-            if fetchall is True:
-                return cur.fetchall()
-            else:
-                return cur.fetchone()
-
-        except MySQLdb.Error:
-            print "Database error"
-            raise
-
-        except:
-            print "Unexpected error:", sys.exc_info()[0]
-            raise
-
-        finally:
-            if (vars().has_key('cur') is True and type(cur) is MySQLdb.cursors.Cursor):
-                cur.close()
-
-            if (vars().has_key('conn') is True and type(conn) is MySQLdb.connections.Connection): 
-                conn.commit()
-                conn.close()
 
     def commit_bill(self, account, sequence, start, end):
         '''
@@ -202,6 +167,6 @@ if __name__ == "__main__":
     parser.add_option("--end", dest="end", help="RE bill period end")
 
     (options, args) = parser.parse_args()
-
+    # some testing code that no longer works
     #issue(options.host, options.db, options.user, options.password, options.account, options.sequence)
 
