@@ -10,7 +10,9 @@ import subprocess
 import glob
 import shutil
 import ConfigParser
-import MySQLdb
+import db
+from db import Customer, UtilBill
+
 sys.stdout = sys.stderr
 
 # strings allowed as account names
@@ -152,38 +154,22 @@ class BillUpload(object):
     # TODO move all database-related code into state.py?
     # TODO use state.py fetch() function for database query
     def insert_bill_in_database(self, account, begin_date, end_date):
-        conn = None
-        try:
-            conn = MySQLdb.connect(host=self.db_host, user=self.db_username, \
-                    passwd=self.db_password, db=self.db_name)
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            # note that "select id from customer where account = '%s'" will be
-            # null if the account doesn't exist, but in the future the account
-            # will come from a drop-drown menu of existing accounts.
-            result = cur.execute('''INSERT INTO utilbill
-                    (id, customer_id, rebill_id, period_start, period_end,
-                    estimated, received, processed) VALUES
-                    (NULL, (select id from customer
-                    where account = %s), NULL, %s, %s, FALSE, TRUE, FALSE)''',\
-                    (account, begin_date, end_date))
-            print result
-        except MySQLdb.Error as e:
-            self.logger.error('Database error when attempting to insert bill \
-                    into utilbill for account %s from %s to %s: %s' \
-                    % (account, begin_date, end_date, str(e)))
-            raise
-        except:
-            # TODO: figure out how to trigger this error so it can be tested
-            # (or better, find out what other exceptions can happen besides
-            # MySQLdb.Error)
-            self.logger.error('Unexpected error when attempting to insert bill \
-                    into utilbill for account %s from %s to %s: %s'
-                    % (account, begin_date, end_date, str(e)))
-            raise
-        finally:
-            if conn is not None:
-                conn.commit()
-                conn.close()
+        # get customer id from account number
+        customer_id = db.session.query(Customer.id).filter(Customer.account==account).one()[0]
+
+        # make a new UtilBill with the customer id and dates:
+        # reebill_id is NULL in the database because there's no ReeBill
+        # associated with this UtilBill yet; estimated is false (0) by default;
+        # processed is false because this is a newly updated bill; recieved is
+        # true because it's assumed that all bills have been recieved except in
+        # unusual cases
+        utilbill = UtilBill(customer_id=customer_id, reebill_id=None, 
+                period_start=begin_date, period_end=end_date, estimated=False,
+                processed=False, received=True)
+
+        # put the new UtilBill in the database
+        db.session.add(utilbill)
+        db.session.commit()
 
     '''Given an account and dates for a utility bill, renders that bill as an
     image in BILL_IMAGE_DIRECTORY, and returns the name of the image file. (The

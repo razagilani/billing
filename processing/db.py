@@ -32,7 +32,7 @@ class UtilBill(object):
         self.period_start = period_start
         self.period_end = period_end
         self.estimated = estimated
-        self.received = recieved
+        self.received = received
     def __repr__(self):
         return '<UtilBill(%s, %s, %s)>' \
                 % (self.customer_id, self.period_start, str(self.period_end))
