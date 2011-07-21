@@ -42,7 +42,7 @@ function renderWidgets()
             id: 'utilbillimage'}] },
         autoScroll: true,
         region: 'west',
-        width: 600,
+        width: 300,
     });
     var reeBillImageBox = new Ext.Panel({
         collapsible: true,
@@ -52,7 +52,7 @@ function renderWidgets()
             id: 'reebillimage'}] },
         autoScroll: true,
         region: 'east',
-        width: 600,
+        width: 300,
     });
 
     // account field
