@@ -10,7 +10,7 @@ Ext.ux.ImageCrop = Ext.extend(Ext.Component, {
   quadratic: false,
   minWidth: 50,
   minHeight: 50,
-  preserveRatio: true,
+  preserveRatio: false,
   cropData: {
     x: 0,
     y: 0,
