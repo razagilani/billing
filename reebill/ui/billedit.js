@@ -214,13 +214,35 @@ function renderWidgets()
                             jsonData.errors.reason + " "
                             + jsonData.errors.details);
                         // replace bill image with a message instead
-                        Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
+                        Ext.DomHelper.overwrite('utilbillimage', {tag: 'div',
                             html: NO_UTILBILL_SELECTED_MESSAGE, id: 'utilbillimage'}, true);
                     } else {
-                        // show image in utilbillimageBox
-                        Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'img',
+                        // show image in utilbillimage
+                        /*Ext.DomHelper.overwrite('utilbillimage', {tag: 'img',
                             src: 'http://' + location.host + '/utilitybillimages/' 
-                            + jsonData.imageName, width: '100%', id: 'utilbillimage'}, true);
+                            + jsonData.imageName, width: '100%', id: 'utilbillimage'}, true);*/
+
+                btn1 = new Ext.Button({
+                    renderTo: 'utilbillimagebox',
+                    text: "instantiate cropper",
+                    handler: function() {
+                        img = Ext.DomQuery.selectNode("div[id=utilbillimage]>img");
+
+                        // probably want to initialize the crop rect here
+                        var crop = new Ext.ux.ImageCrop({
+                          initialHeight: 400, //img.height, 
+                          initialWidth: 300, //img.width,
+                          imageUrl: 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName,
+                          // the cropper can also be quadratic
+                          //quadratic: true,
+                          renderTo: 'utilbillimagebox'
+                        });
+                        crop.on('change', function(foo,x) {console.dir(x);});
+                    }
+                });
+
+
+
                     } 
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', err);
