@@ -1608,6 +1608,7 @@ function renderWidgets()
                 header: 'RS Binding',
                 sortable: true,
                 dataIndex: 'descriptor',
+                editable: false,
                 editor: new Ext.form.TextField({allowBlank: false})
             },{
                 header: 'Description',
