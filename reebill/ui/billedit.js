@@ -1608,44 +1608,44 @@ function renderWidgets()
                 header: 'RS Binding',
                 sortable: true,
                 dataIndex: 'descriptor',
-                editor: new Ext.form.TextField({allowBlank: true})
+                editor: new Ext.form.TextField({allowBlank: false})
             },{
                 header: 'Description',
                 sortable: true,
                 dataIndex: 'description',
-                editor: new Ext.form.TextField({allowBlank: false})
+                editor: new Ext.form.TextField({allowBlank: true})
             },{
                 header: 'Quantity',
                 sortable: true,
                 dataIndex: 'quantity',
-                editor: new Ext.form.TextField({allowBlank: false})
+                editor: new Ext.form.TextField({allowBlank: true})
             },{
                 header: 'Units',
                 sortable: true,
                 dataIndex: 'quantityunits',
-                editor: new Ext.form.TextField({allowBlank: false})
+                editor: new Ext.form.TextField({allowBlank: true})
             },{
                 header: 'Rate',
                 sortable: true,
                 dataIndex: 'rate',
-                editor: new Ext.form.TextField({allowBlank: false})
+                editor: new Ext.form.TextField({allowBlank: true})
             },{
                 header: 'Units',
                 sortable: true,
                 dataIndex: 'rateunits',
-                editor: new Ext.form.TextField({allowBlank: false})
+                editor: new Ext.form.TextField({allowBlank: true})
             },{
                 header: 'Round Rule',
                 sortable: true,
                 dataIndex: 'roundrule',
-                editor: new Ext.form.TextField({allowBlank: false})
+                editor: new Ext.form.TextField({allowBlank: true})
             },{
                 header: 'Total', 
                 sortable: true, 
                 dataIndex: 'total', 
                 summaryType: 'sum',
                 align: 'right',
-                editor: new Ext.form.TextField({allowBlank: false})
+                editor: new Ext.form.TextField({allowBlank: true})
             }
         ]
     });
