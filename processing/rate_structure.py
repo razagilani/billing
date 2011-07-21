@@ -158,8 +158,9 @@ class RateStructureItem():
 
             # if a value exists in the rate
             value = props[key]
-            if (value is not None):
-                # make sure everything is a string for the eval() function
+            # if not None, and is a string with contents
+            if (value):
+                # make sure everything is a string, with contents,  for the eval() function
                 value = str(value)
                 # place these propery values in self, but prepend the _ so @property methods of self
                 # do not access them since @property methods are used for expression evaluation
@@ -208,7 +209,6 @@ class RateStructureItem():
             raise re
 
         except NameError as ne:
-            print str(ne)
             raise NoSuchRSIError(self.descriptor, rsi_value)
 
         except SyntaxError as se:
@@ -226,8 +226,7 @@ class RateStructureItem():
 
         if hasattr(self, "_total"):
 
-            result = self.evaluate_rsi(self._total)
-            return result if result is not None else None
+            return self.evaluate_rsi(self._total)
 
         # total isn't defined in by RSI, so it must be computed
         else:
