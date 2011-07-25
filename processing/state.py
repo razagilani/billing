@@ -37,6 +37,7 @@ class StateDB:
         for utilbill in utilbills:
             utilbill.reebill_id = reebill_id
             utilbill.processed = True
+        # TODO commit has to come out of here
         db.session.commit()
 
 
@@ -45,27 +46,33 @@ class StateDB:
         return db.session.query(Customer).filter_by(account=account).one().discountrate
 
     def last_sequence(self, account):
-        customer_id = db.session.query(Customer.id).filter(Customer.account==account).one()[0]
+
+        customer = db.session.query(Customer).filter(Customer.account==account).one()
+
         max_sequence = db.session.query(sqlalchemy.func.max(ReeBill.sequence)) \
-                .filter(ReeBill.customer_id==customer_id).one()[0]
+                .filter(ReeBill.customer_id==customer.id).one()[0]
+
         # TODO: because of the way 0.xml templates are made (they are not in the database) rebill needs to be 
         # primed otherwise the last sequence for a new bill is None. Design a solution to this issue.
         if max_sequence is None:
             return 0
+
         return max_sequence
         
     def new_rebill(self, account, sequence):
-        # TODO: is there a way to do this without multiple database transactions?
-        customer_id = db.session.query(Customer.id).filter(Customer.account==account)
-        new_reebill = ReeBill(sequence, customer_id, issued)
+
+        customer = db.session.query(Customer).filter(Customer.account==account).one()
+        new_reebill = ReeBill(customer, sequence)
+
         db.session.add(new_reebill)
-        db.commit()
-        '''Apparently this is called only by Process.zero_charges(), which is never called by anybody. TODO: remove it?'''
+        # TODO commit has to come out of here
+        db.session.commit()
 
     def issue(self, account, sequence):
-        customer_id = db.session.query(Customer.id).filter(Customer.account==account).one()[0]
-        reeBill = db.session.query(ReeBill).filter(ReeBill.customer_id==customer_id).filter(ReeBill.sequence==sequence).one()
+        customer = db.session.query(Customer).filter(Customer.account==account).one()
+        reeBill = db.session.query(ReeBill).filter(ReeBill.customer_id==customer.id).filter(ReeBill.sequence==sequence).one()
         reeBill.issued = 1
+        # TODO commit has to come out of here
         db.session.commit()
 
     def listAccounts(self):
@@ -76,8 +83,8 @@ class StateDB:
         # TODO: figure out how to do this all in one query. many SQLAlchemy
         # subquery examples use multiple queries but that shouldn't be
         # necessary
-        customer_id = db.session.query(Customer.id).filter(Customer.account==account).one()[0]
-        sequences = db.session.query(ReeBill.sequence).filter(ReeBill.customer_id==customer_id).all()
+        customer = db.session.query(Customer).filter(Customer.account==account).one()
+        sequences = db.session.query(ReeBill.sequence).filter(ReeBill.customer_id==customer.id).all()
 
         # sequences is a list of tuples of numbers, so convert it into a plain list
         return map((lambda x: x[0]), sequences)
