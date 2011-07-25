@@ -8,6 +8,7 @@ Description: Various utility procedures to process bills
 # runtime support
 #
 import sys
+sys.stdout = sys.stderr
 import os  
 from optparse import OptionParser
 
