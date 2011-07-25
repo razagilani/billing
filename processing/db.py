@@ -17,31 +17,30 @@ class Customer(object):
         return '<Customer(%s, %s, %s)>' \
                 % (self.name, self.account, self.discountrate)
 class ReeBill(object):
-    def __init__(self, sequence, customer_id, issued):
-        self.sequence = sequence,
-        self.customer_id = customer_id,
-        self.issued = issued
+    def __init__(self, customer, sequence):
+        self.customer = customer
+        self.sequence = sequence
+        self.issued = 0
     def __repr__(self):
         return '<ReeBill(%s, %s, %s)>' \
-                % (self.customer_id, self.sequence, str(self.issued))
+                % (self.customer, self.sequence, self.issued)
 class UtilBill(object):
-    def __init__(self, customer_id, reebill_id, period_start, period_end, \
+    def __init__(self, customer, period_start, period_end, \
             estimated, processed, received):
-        self.customer_id = customer_id
-        self.reebill_id = reebill_id
+        self.customer = customer
         self.period_start = period_start
         self.period_end = period_end
         self.estimated = estimated
         self.received = received
     def __repr__(self):
         return '<UtilBill(%s, %s, %s)>' \
-                % (self.customer_id, self.period_start, str(self.period_end))
+                % (self.customer, self.period_start, self.period_end)
 
 '''This returns a database session object for querying the database. Don't call
 it from outside this file, because the session should only be created
 once. Instead, use the global variable 'session' above.'''
 def _getSession():
-    engine = create_engine('mysql://dev:dev@tyrell:3306/skyline_dev')
+    engine = create_engine('mysql://dev:dev@localhost:3306/skyline')
     #metadata = MetaData() 
     metadata = MetaData(engine)
 
@@ -52,10 +51,15 @@ def _getSession():
 
     # mappings
     mapper(Customer, customer_table, \
-            properties={'utilbills': relationship(UtilBill, backref='customer'), \
-                        'reebills': relationship(ReeBill, backref='customer')})
+            properties={
+                'utilbills': relationship(UtilBill, backref='customer'), \
+                'reebills': relationship(ReeBill, backref='customer')
+            })
     mapper(ReeBill, reebill_table)
-    mapper(UtilBill, utilbill_table)
+    mapper(UtilBill, utilbill_table, \
+            properties={
+                'reebill': relationship(ReeBill, backref='utilbill')
+            })
 
     # session
     return sessionmaker(bind=engine)()
