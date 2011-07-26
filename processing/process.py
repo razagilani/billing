@@ -592,7 +592,7 @@ class Process(object):
             if (units.lower() == "kwh"):
                 # 1 kWh = 3413 BTU
                 return total * 3413 
-            elif (units.lower() == "therms"):
+            elif (units.lower() == "therms" or units.lower() == "ccf"):
                 # 1 therm = 100000 BTUs
                 return total * 100000
             else:
