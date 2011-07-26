@@ -441,7 +441,6 @@ class Process(object):
         # TODO: much of the code below to be refactored when register definitions are 
         # placed in the rate structure
 
-
         # obtain utilbill groves to determine what services are present
         # identify the per service rate structures for each utilbill
         for utilbill in tree.findall("{bill}utilbill"):
@@ -494,7 +493,6 @@ class Process(object):
             
             # process each individual charge and bind it to the rate structure
             for charge in charges:
-                print etree.tostring(charge)
                 # a charge may not have a binding because it is not meant to be bound
                 charge_binding = charge.get("rsbinding")
                 if (charge_binding is None):
@@ -562,10 +560,8 @@ class Process(object):
                     # total is always last child
                     charge.append(total)
                     print "*** updated charge with total because it was absent in the bill and present in the RSI"
+
                 total.text = str(rsi.total)
-
-
-
 
             for rsi in rs.rates:
                 if (hasattr(rsi, 'bound') == False):
