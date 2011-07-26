@@ -481,20 +481,13 @@ class Bill(object):
 
             measured_usages[service] = []
 
-            #meter_mnt = MutableNamedTuple()
-
-            # a meter
-            m = MutableNamedTuple()
-
-            # TODO: do not initialize MNT fields if they do not exist in XML
-            #meter_mnt.identifier = None
-            #meter_mnt.estimated = None
-            #meter_mnt.priorreaddate = None
-            #meter_mnt.presentreaddate = None
-            # child collections must be initialized
-            m.registers = []
-
             for meter_elem in self.xpath("/ub:bill/ub:measuredusage[@service='"+service+"']/ub:meter"):
+
+                # a meter
+                m = MutableNamedTuple()
+
+                # child collections must be initialized
+                m.registers = []
                 
                 self.cdata_to_prop(meter_elem, "identifier", str, m, "identifier" )
                 self.cdata_to_prop(meter_elem, "estimated", bool, m, "estimated" )
@@ -639,6 +632,7 @@ class Bill(object):
 
             measuredusage_elem = self.xpath("/ub:bill/ub:measuredusage[@service='%s']" % service)[0]
             measuredusage_elem.clear()
+
             measuredusage_elem.set('service', service)
 
             for meter in meters:
@@ -647,7 +641,7 @@ class Bill(object):
                 measuredusage_elem.append(meter_elem)
 
                 self.prop_to_cdata(meter, "identifier", meter_elem, "identifier")
-                self.prop_to_cdata(meter, "identifier", meter_elem, "identifier")
+                self.prop_to_cdata(meter, "estimated", meter_elem, "estimated")
                 self.prop_to_cdata(meter, "priorreaddate", meter_elem, "priorreaddate")
                 self.prop_to_cdata(meter, "presentreaddate", meter_elem, "presentreaddate")
 
@@ -721,7 +715,6 @@ class Bill(object):
                             self.prop_to_cdata(exclusion, "holiday", exclusion_elem, "holiday")
 
                 #print lxml.etree.tostring(measuredusage_elem, pretty_print=True)
-                #print lxml.etree.tostring(self.inputtree, pretty_print=True)
 
     # TODO rename to rebill, and send entire grove
     @property
