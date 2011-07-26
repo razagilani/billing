@@ -54,7 +54,7 @@ class RateStructure():
                 print "RSI descriptor required.\n%s" % rsi
                 continue
 
-            print "Got rsi.descriptor %s for rsi %s" % (rsi.descriptor, rsi)
+            #print "Got rsi.descriptor %s for rsi %s" % (rsi.descriptor, rsi)
             self.__dict__[rsi.descriptor] = rsi
 
     def __bind_yaml(self, rs_yaml):
@@ -168,14 +168,12 @@ class RateStructureItem():
                     # place these propery values in self, but prepend the _ so @property methods of self
                     # do not access them since @property methods are used for expression evaluation
                     setattr(self, "_"+key, value)
-                    #print "%s - %s:%s" % (key, props[key], str(type(value)))
                 else:
                     print "Warning: %s %s is an empty property" % (props["descriptor"], key)
             else:
                 print "Warning: %s %s is an empty property" % (props["descriptor"], key)
                 # Don't add the attr the property since it has no value and its only contribution 
                 # would be to make for None type checking all over the place.
-
 
     @property
     def descriptor(self):
@@ -230,10 +228,9 @@ class RateStructureItem():
         """
 
         if hasattr(self, "_total"):
-
             return self.evaluate_rsi(self._total)
 
-        # total isn't defined in by RSI, so it must be computed
+        # total isn't defined by RSI, so it must be computed
         else:
 
             # total must be computed from rate and/or quantity.
@@ -252,7 +249,6 @@ class RateStructureItem():
                 
             # A quantity and rate must be set to evaluate total.
             if q is not None:
-                print "%s: %s %s (%s)" % (self.descriptor, q, r, self.description)
                 #print "%s: %s = %s * %s (%s)" % (self.descriptor, self._total, q, r, self.description)
                 self._total = str(q * r)
 
