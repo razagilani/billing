@@ -610,7 +610,7 @@ class Process(object):
         def calcco2(units, total):
             if (units.lower() == "kwh"):
                 return total * Decimal("1.297")
-            elif (units.lower() == "therms"):
+            elif (units.lower() == "therms" or units.lower() == "ccf"):
                 return total * Decimal("13.46")
             else:
                 raise Exception("Units '" + units + "' not supported")
