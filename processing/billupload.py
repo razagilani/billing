@@ -151,11 +151,11 @@ class BillUpload(object):
 
     '''Inserts a a row into the utilbill table when the bill file has been
     uploaded.'''
-    # TODO move all database-related code into state.py?
+    # TODO move all database-related code into state.py? Yes.
     # TODO use state.py fetch() function for database query
     def insert_bill_in_database(self, account, begin_date, end_date):
         # get customer id from account number
-        customer_id = db.session.query(Customer.id).filter(Customer.account==account).one()[0]
+        customer = db.session.query(Customer).filter(Customer.account==account).one()
 
         # make a new UtilBill with the customer id and dates:
         # reebill_id is NULL in the database because there's no ReeBill
@@ -163,9 +163,8 @@ class BillUpload(object):
         # processed is false because this is a newly updated bill; recieved is
         # true because it's assumed that all bills have been recieved except in
         # unusual cases
-        utilbill = UtilBill(customer_id=customer_id, reebill_id=None, 
-                period_start=begin_date, period_end=end_date, estimated=False,
-                processed=False, received=True)
+        utilbill = UtilBill(customer, period_start=begin_date, period_end=end_date, 
+            estimated=False, processed=False, received=True)
 
         # put the new UtilBill in the database
         db.session.add(utilbill)
