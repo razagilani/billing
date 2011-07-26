@@ -349,7 +349,22 @@ class BillToolBridge:
                     # identify the rsi in the rs_yaml, and update it with posted data
                     # python is totally evil
                     #If there is more than one returned, this is an exception so break the above statement out later
-                    [result for result in it.ifilter(lambda x: x["descriptor"]==descriptor, rates)][0].update(row)
+                    matches = [rsi_match for rsi_match in it.ifilter(lambda x: x["descriptor"]==descriptor, rates)]
+                    if (len(matches) > 1):
+                        raise Exception("matched more than one RSI which should not be possible")
+                    rsi = matches[0]
+
+                    # eliminate attributes that have empty strings or None as these mustn't 
+                    # be added to the RSI so the RSI knows to compute for those values
+                    for k,v in row.items():
+                        if v is None or v == "":
+                            del row[k]
+
+                    # now take the legitimate values from the posted data and update the RSI
+                    # clear it so that the old emptied attributes are removed
+                    rsi.clear()
+                    rsi.update(row)
+                    
 
                 yaml.safe_dump(rs_yaml, open(os.path.join(billdb, rsbinding, account, sequence+".yaml"), "w"), default_flow_style=False)
 
