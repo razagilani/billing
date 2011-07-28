@@ -472,8 +472,12 @@ class Process(object):
                 if (hypothetical):
                     # acquire shadow register and add its value to the actual register to sum re and ce
                     shadow_reg_total = self.get_elem(actual_register,"../ub:register[@shadow='true' and @rsbinding='"
-                        +rsbinding_register+"']/ub:total")[0]
-                    register_quantity += float(shadow_reg_total.text)
+                        +rsbinding_register+"']/ub:total")
+
+                    # it is possible a shadow register does not exist, because we may be showing all meters for a
+                    # given service and only one of those meters services hot water and is offset by renewable
+                    if len(shadow_reg_total) > 0:
+                        register_quantity += float(shadow_reg_total[0].text)
 
                 # populate rate structure with meter quantities read from XML
                 rs.__dict__[rsbinding_register].quantity = register_quantity

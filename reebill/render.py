@@ -608,7 +608,8 @@ def render(inputbill, outputfile, backgrounds, verbose):
                     #usage.identifier if hasattr(usage, "identifier") else "" ,
                     register.identifier,
                     register.description if hasattr(register, "description") else "",
-                    shadow_total.quantize(Decimal("0.00")) ,
+                    # as in the case of a second meter that doesn't have a shadow register (see family laundry)
+                    shadow_total.quantize(Decimal("0.00")) if shadow_total is not None else "",
                     utility_total,
                     total.quantize(Decimal("0.00")),
                     register.units,
