@@ -22,20 +22,20 @@ class StateDB:
 
     def commit_bill(self, account, sequence, start, end):
         # get customer id from account and the reebill from account and sequence
-        customer_id = db.session.query(Customer.id).filter(Customer.account==account).one()[0]
-        reebill_id = db.session.query(ReeBill.id).filter(ReeBill.customer_id==customer_id)\
-                .filter(ReeBill.sequence==sequence).one()[0]
+        customer = db.session.query(Customer).filter(Customer.account==account).one()
+        reebill = db.session.query(ReeBill).filter(ReeBill.customer==customer)\
+                .filter(ReeBill.sequence==sequence).one()
 
         # get all utilbills for this customer whose dates are between 'start'
         # and 'end' (inclusive)
         utilbills = db.session.query(UtilBill) \
-                .filter(UtilBill.customer_id==customer_id)\
+                .filter(UtilBill.customer==customer)\
                 .filter(UtilBill.period_start>=start)\
                 .filter(UtilBill.period_end<=end).all()
         
         # update 'reebill_id' and 'processed' for each utilbill found
         for utilbill in utilbills:
-            utilbill.reebill_id = reebill_id
+            utilbill.reebill = reebill
             utilbill.processed = True
         # TODO commit has to come out of here
         db.session.commit()
