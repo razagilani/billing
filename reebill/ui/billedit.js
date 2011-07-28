@@ -33,7 +33,9 @@ function renderWidgets()
     
     // box to display bill images
     var NO_UTILBILL_SELECTED_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill.png"/></td></tr></table></div>';
+    var NO_UTILBILL_FOUND_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill_notfound.png"/></td></tr></table></div>';
     var NO_REEBILL_SELECTED_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_reebill.png"/></td></tr></table></div>';
+    var NO_REEBILL_FOUND_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_reebill_notfound.png"/></td></tr></table></div>';
     var utilBillImageBox = new Ext.Panel({
         collapsible: true,
         // content is initially just a message saying no image is selected
@@ -210,12 +212,12 @@ function renderWidgets()
                 try {
                     jsonData = Ext.util.JSON.decode(result.responseText);
                     if (jsonData.success == false) {
-                        Ext.MessageBox.alert('Server Error',
+                        /*Ext.MessageBox.alert('Server Error',
                             jsonData.errors.reason + " "
-                            + jsonData.errors.details);
+                            + jsonData.errors.details);*/
                         // replace bill image with a message instead
                         Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
-                            html: NO_UTILBILL_SELECTED_MESSAGE, id: 'utilbillimage'}, true);
+                            html: NO_UTILBILL_FOUND_MESSAGE, id: 'utilbillimage'}, true);
                     } else {
                         // show image in utilbillimageBox
                         Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'img',
@@ -1978,8 +1980,6 @@ function renderWidgets()
         // url for getting bill images (calls bill_tool_bridge.getbillimage())
         reeBillImageURL = 'http://' + location.host + '/reebill/getReeBillImage';
         
-        console.log(account);
-        console.log(sequence);
         // ajax call to generate image, get the name of it, and display it in a
         // new window
         Ext.Ajax.request({
@@ -1990,12 +1990,12 @@ function renderWidgets()
                 try {
                     jsonData = Ext.util.JSON.decode(result.responseText);
                     if (jsonData.success == false) {
-                        Ext.MessageBox.alert('server error',
+                        /*Ext.MessageBox.alert('server error',
                             jsonData.errors.reason + " "
-                            + jsonData.errors.details);
+                            + jsonData.errors.details);*/
                         // replace reebill image with a message instead
                         Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
-                            html: NO_REEBILL_SELECTED_MESSAGE, id: 'reebillimage'}, true);
+                            html: NO_REEBILL_FOUND_MESSAGE, id: 'reebillimage'}, true);
                     } else {
                         // show image in utilbillimagebox
                         Ext.DomHelper.overwrite('reebillimagebox', {tag: 'img',
