@@ -27,7 +27,12 @@ class StateDB:
         '''This returns a database session object for querying the database. Don't call
         it from outside this file, because the session should only be created
         once. Instead, use the global variable 'session' above.'''
-        engine = create_engine('mysql://dev:dev@localhost:3306/skyline')
+        host = config['host']
+        db = config['db']
+        user = config['user']
+        password = config['password']
+
+        engine = create_engine('mysql://%s:%s@%s:3306/%s' % (user, password, host, db))
         #metadata = MetaData() 
         metadata = MetaData(engine)
 
