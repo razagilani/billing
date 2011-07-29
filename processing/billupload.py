@@ -10,8 +10,8 @@ import subprocess
 import glob
 import shutil
 import ConfigParser
-import db
-from db import Customer, UtilBill
+from db_objects import Customer, UtilBill
+
 
 sys.stdout = sys.stderr
 
@@ -51,7 +51,8 @@ IMAGE_RENDERING_DENSITY = 200
 
 class BillUpload(object):
 
-    def __init__(self, config):
+    def __init__(self, config, state_db):
+        self.state_db = state_db
         self.config = config
         
         # get log file name and format from config file
@@ -78,12 +79,6 @@ class BillUpload(object):
         handler.setFormatter(formatter)
         self.logger.addHandler(handler) 
         
-        # load database login info from config file
-        self.db_host = self.config.get('statedb', 'host')
-        self.db_name = self.config.get('statedb', 'db')
-        self.db_username = self.config.get('statedb', 'user')
-        self.db_password = self.config.get('statedb', 'password')
-
         # load save directory info from config file
         self.save_directory = self.config.get('billdb', 'utilitybillpath')
         self.reebill_directory = self.config.get('billdb', 'billpath')
@@ -145,30 +140,10 @@ class BillUpload(object):
                 save_file.close()
 
         # make a row in utilbill representing the bill that was uploaded.
-        self.insert_bill_in_database(account, begin_date, end_date)
+        self.state_db.insert_bill_in_database(account, begin_date, end_date)
 
         return True
 
-    '''Inserts a a row into the utilbill table when the bill file has been
-    uploaded.'''
-    # TODO move all database-related code into state.py? Yes.
-    # TODO use state.py fetch() function for database query
-    def insert_bill_in_database(self, account, begin_date, end_date):
-        # get customer id from account number
-        customer = db.session.query(Customer).filter(Customer.account==account).one()
-
-        # make a new UtilBill with the customer id and dates:
-        # reebill_id is NULL in the database because there's no ReeBill
-        # associated with this UtilBill yet; estimated is false (0) by default;
-        # processed is false because this is a newly updated bill; recieved is
-        # true because it's assumed that all bills have been recieved except in
-        # unusual cases
-        utilbill = UtilBill(customer, period_start=begin_date, period_end=end_date, 
-            estimated=False, processed=False, received=True)
-
-        # put the new UtilBill in the database
-        db.session.add(utilbill)
-        db.session.commit()
 
     '''Given an account and dates for a utility bill, renders that bill as an
     image in BILL_IMAGE_DIRECTORY, and returns the name of the image file. (The

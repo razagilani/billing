@@ -22,7 +22,7 @@ import string
 
 import ConfigParser
 
-import MySQLdb
+#import MySQLdb
 
 from billing.processing import process
 from billing.processing import state
@@ -85,15 +85,19 @@ class BillToolBridge:
             self.config.set('log', 'log_file_name', DEFAULT_LOG_FILE_NAME)
             self.config.set('log', 'log_format', DEFAULT_LOG_FORMAT)
 
+
         # Writing our configuration file to 'example.cfg'
         with open(config_file_path, 'wb') as new_config_file:
             self.config.write(new_config_file)
 
         self.config.read(config_file_path)
+
+        # create an instance representing the database
+        statedb_config_section = self.config.items("statedb")
+        self.state_db = state.StateDB(dict(statedb_config_section)) 
     
         # create one BillUpload object to use for all BillUpload-related methods
-        self.billUpload = BillUpload(self.config)
-
+        self.billUpload = BillUpload(self.config, self.state_db)
 
     @cherrypy.expose
     def copyactual(self, account, sequence, **args):
@@ -261,11 +265,7 @@ class BillToolBridge:
         try:
             # eventually, this data will have to support pagination
 
-            # instantiate stateDB
-            statedb_config_section = self.config.items("statedb")
-            state_db = state.StateDB(dict(statedb_config_section)) 
-
-            accounts = state_db.listAccounts()
+            accounts = self.state_db.listAccounts()
 
             # now get associated names from Nexus and add them to each account dictionary
             rows = []
@@ -292,12 +292,9 @@ class BillToolBridge:
     def listSequences(self, account, **kwargs):
         sequences = []
         try:
-            # instantiate stateDB
-            statedb_config_section = self.config.items("statedb")
-            state_db = state.StateDB(dict(statedb_config_section)) 
             
             # eventually, this data will have to support pagination
-            sequences = state_db.listSequences(account)
+            sequences = self.state_db.listSequences(account)
             rows = [{'sequence': sequence} for sequence in sequences]
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -709,9 +706,7 @@ class BillToolBridge:
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
-            statedb_config_section = self.config.items("statedb")
-            state_db = state.StateDB(dict(statedb_config_section)) 
-            result, totalCount = state_db.getUtilBillRows(int(start), int(limit))
+            result, totalCount = self.state_db.getUtilBillRows(int(start), int(limit))
             
             # convert the result into a list of dictionaries for returning as
             # JSON to the browser
