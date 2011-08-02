@@ -99,12 +99,15 @@ class BillToolBridge:
         # create one BillUpload object to use for all BillUpload-related methods
         self.billUpload = BillUpload(self.config, self.state_db)
 
+        # create one Process object to use for all related bill processing
+        self.process = process.Process(self.config, self.state_db)
+
+
     @cherrypy.expose
     def copyactual(self, account, sequence, **args):
 
         try:
-            p = process.Process(self.config)
-            p.copy_actual_charges(account, sequence)
+            self.process.copy_actual_charges(account, sequence)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -115,8 +118,7 @@ class BillToolBridge:
     def roll(self, account, sequence, **args):
 
         try:
-            p = process.Process(self.config)
-            p.roll_bill(account, sequence)
+            self.process.roll_bill(account, sequence)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -127,8 +129,7 @@ class BillToolBridge:
     def pay(self, account, sequence, amount, **args):
 
         try:
-            p = process.Process(self.config)
-            p.pay_bill(account, sequence, amount)
+            self.process.pay_bill(account, sequence, amount)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -160,8 +161,7 @@ class BillToolBridge:
     def bindrs(self, account, sequence, **args):
 
         try:
-            p = process.Process(self.config)
-            p.bind_rate_structure(account, sequence)
+            self.process.bind_rate_structure(account, sequence)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -172,8 +172,7 @@ class BillToolBridge:
     def calc_reperiod(self, account, sequence, **args):
 
         try:
-            p = process.Process(self.config)
-            p.calculate_reperiod(account, sequence)
+            self.process.calculate_reperiod(account, sequence)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -184,8 +183,7 @@ class BillToolBridge:
     def calcstats(self, account, sequence, **args):
 
         try:
-            p = process.Process(self.config)
-            p.calculate_statistics(account, sequence)
+            self.process.calculate_statistics(account, sequence)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -196,8 +194,7 @@ class BillToolBridge:
     def sum(self, account, sequence, **args):
 
         try:
-            p = process.Process(self.config)
-            p.sum_bill(account, sequence)
+            self.process.sum_bill(account, sequence)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -209,7 +206,7 @@ class BillToolBridge:
 
 
         try:
-            process.Process(self.config).issue(account, sequence)
+            self.process.issue(account, sequence)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -238,8 +235,7 @@ class BillToolBridge:
 
         try:
 
-            p = process.Process(self.config)
-            p.commit_rebill(account, sequence)
+            self.process.commit_rebill(account, sequence)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -250,8 +246,7 @@ class BillToolBridge:
     def issueToCustomer(self, account, sequence, **args):
 
         try:
-            p = process.Process(self.config)
-            p.issue_to_customer(account, sequence)
+            self.process.issue_to_customer(account, sequence)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})

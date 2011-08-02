@@ -40,8 +40,9 @@ class Process(object):
 
     config = None
     
-    def __init__(self, config):
+    def __init__(self, config, state_db):
         self.config = config
+        self.state_db = state_db
 
     #TODO better function name to reflect the return types of XPath - not just elements, but sums, etc...
     #TODO function to return a single element vs list - that will clean up lots of code
@@ -71,12 +72,8 @@ class Process(object):
         )
     
         # get discount rate
-        # instantiate stateDB
-        statedb_config_section = self.config.items("statedb")
-        state_db = state.StateDB(dict(statedb_config_section)) 
-
         # TODO discount_rate should be a decimal so that it doesn't have to be converted below.
-        discount_rate = state_db.discount_rate(account)
+        discount_rate = self.state_db.discount_rate(account)
 
 
         prior_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, int(sequence)-1))
@@ -235,12 +232,8 @@ class Process(object):
         This is acheived by accessing xml document for prior bill, and resetting select values.
         """
 
-        # instantiate stateDB
-        statedb_config_section = self.config.items("statedb")
-        state_db = state.StateDB(dict(statedb_config_section)) 
-
         # obtain the last Rebill sequence
-        last_sequence = state_db.last_sequence(account)
+        last_sequence = self.state_db.last_sequence(account)
 
         if (int(sequence) < int(last_sequence)):
             raise Exception("Not the last sequence")
@@ -369,7 +362,7 @@ class Process(object):
             account, next_sequence), self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
 
         # create an initial rebill record to which the utilbills are later associated
-        state_db.new_rebill(
+        self.state_db.new_rebill(
             account,
             next_sequence
         )
@@ -381,11 +374,7 @@ class Process(object):
             begin = the_bill.rebill_summary.begin
             end = the_bill.rebill_summary.end
 
-            # instantiate stateDB
-            statedb_config_section = self.config.items("statedb")
-            state_db = state.StateDB(dict(statedb_config_section)) 
-
-            state_db.commit_bill(
+            self.state_db.commit_bill(
                 account,
                 sequence,
                 begin,
@@ -738,10 +727,6 @@ class Process(object):
 
     def issue_to_customer(self, account, sequence):
 
-        # instantiate stateDB
-        statedb_config_section = self.config.items("statedb")
-        state_db = state.StateDB(dict(statedb_config_section)) 
-
         # issue to customer
-        state_db.issue(account, sequence)
+        self.state_db.issue(account, sequence)
 
