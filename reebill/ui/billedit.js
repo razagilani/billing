@@ -294,6 +294,8 @@ function renderWidgets()
     accountCombo.on('select', function(combobox, record, index) {
         sequencesStore.setBaseParam('account', record.data.account);
         sequencesStore.load();
+        // TODO: global account selection for util bills, reebills and payments
+        paymentStore.load({params: {account: record.data.account}});
     });
 
     // fired when the customer bill combo box is selected
@@ -1683,7 +1685,7 @@ function renderWidgets()
                     // because there is no grouping view?
                     //rsiStore.getView().refresh();
                     //rsiStore.getSelectionModel().selectRow(insertionPoint);
-                    rsiStore.startEditing(insertionPoint +1,1);
+                    rsiGrid.startEditing(insertionPoint +1,1);
                     
                     // An inserted record must be saved 
                     rsiGrid.getTopToolbar().findById('rsiSaveBtn').setDisabled(false);
@@ -1782,6 +1784,159 @@ function renderWidgets()
         rsiStore.setBaseParam("sequence", sequence);
     });
 
+    ///////////////////////////////////////
+    // Payments Tab
+
+    var initialPayment =  {
+        rows: [
+        ]
+    };
+
+    var paymentReader = new Ext.data.JsonReader({
+        // metadata configuration options:
+        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
+        //idProperty: 'id',
+        root: 'rows',
+
+        // the fields config option will internally create an Ext.data.Record
+        // constructor that provides mapping for reading the record data objects
+        fields: [
+            // map Record's field to json object's key of same name
+            {name: 'id', mapping: 'id'},
+            {name: 'date', mapping: 'date'},
+            {name: 'description', mapping: 'description'},
+            {name: 'credit', mapping: 'credit'},
+            {name: 'debit', mapping: 'debit'},
+        ]
+    });
+
+    var paymentWriter = new Ext.data.JsonWriter({
+        encode: true,
+        // write all fields, not just those that changed
+        writeAllFields: true 
+    });
+
+    var paymentStoreProxy = new Ext.data.HttpProxy({
+        method: 'GET',
+        prettyUrls: false,
+        url: 'http://'+location.host+'/reebill/payment',
+    });
+
+    var paymentStore = new Ext.data.JsonStore({
+        proxy: paymentStoreProxy,
+        autoSave: false,
+        reader: paymentReader,
+        writer: paymentWriter,
+        autoSave: true,
+        // won't be updated when combos change, so do this in event
+        // perhaps also can be put in the options param for the ajax request
+        baseParams: { account:accountCombo.getValue(), sequence: sequenceCombo.getValue()},
+        data: initialPayment,
+        root: 'rows',
+        idProperty: 'id',
+        fields: [
+            {name: 'date'},
+            {name: 'description'},
+            {name: 'credit'},
+            {name: 'debit'},
+        ],
+    });
+
+    var paymentColModel = new Ext.grid.ColumnModel(
+    {
+        columns: [
+            {
+                header: 'Date',
+                sortable: true,
+                dataIndex: 'date',
+                editor: new Ext.form.DateField({allowBlank: false})
+            },{
+                header: 'Description',
+                sortable: true,
+                dataIndex: 'description',
+                editor: new Ext.form.TextField({allowBlank: true})
+            },{
+                header: 'Credit',
+                sortable: true,
+                dataIndex: 'credit',
+                editor: new Ext.form.TextField({allowBlank: true})
+            },{
+                header: 'Debit',
+                sortable: true,
+                dataIndex: 'debit',
+                editor: new Ext.form.TextField({allowBlank: true})
+            },
+        ]
+    });
+
+    var paymentToolbar = new Ext.Toolbar({
+        items: [
+            {
+                xtype: 'button',
+                id: 'paymentInsertBtn',
+                iconCls: 'icon-user-add',
+                text: 'Insert',
+                disabled: true,
+                handler: function()
+                {
+                    paymentGrid.stopEditing();
+
+                    // grab the current selection - only one row may be selected per singlselect configuration
+                    var selection = paymentGrid.getSelectionModel().getSelected();
+
+                    // make the new record
+                    var paymentType = paymentGrid.getStore().recordType;
+                    var defaultData = 
+                    {
+                        description: "New Payment"
+                    };
+                    var r = new paymentType(defaultData);
+        
+                    // select newly inserted record
+                    var insertionPoint = paymentStore.indexOf(selection);
+                    paymentStore.insert(insertionPoint + 1, r);
+                    paymentGrid.startEditing(insertionPoint +1,1);
+                    
+                }
+            },{
+                xtype: 'tbseparator'
+            },
+        ]
+    });
+
+    var paymentGrid = new Ext.grid.EditorGridPanel({
+        tbar: paymentToolbar,
+        colModel: paymentColModel,
+        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+        store: paymentStore,
+        enableColumnMove: false,
+        frame: true,
+        collapsible: true,
+        animCollapse: false,
+        stripeRows: true,
+        viewConfig: {
+            // doesn't seem to work
+            forceFit: true,
+        },
+        title: 'Rate Structure',
+        clicksToEdit: 2
+    });
+
+    paymentGrid.getSelectionModel().on('selectionchange', function(sm){
+        // if there was a selection, allow an insertion
+        paymentGrid.getTopToolbar().findById('paymentInsertBtn').setDisabled(sm.getCount() <1);
+    });
+  
+    // grid's data store callback for when data is edited
+    // when the store backing the grid is edited, enable the save button
+    paymentStore.on('update', function(){
+        paymentGrid.getTopToolbar().findById('paymentSaveBtn').setDisabled(false);
+    });
+
+    paymentStore.on('beforesave', function() {
+        paymentStore.setBaseParam("account", account);
+    });
+
     // end of tab widgets
     ////////////////////////////////////////////////////////////////////////////
 
@@ -1857,6 +2012,12 @@ function renderWidgets()
           xtype: 'panel',
           layout: 'accordion',
           items: [rsiGrid]
+        },{
+          id: 'paymentTab',
+          title: 'Pay',
+          xtype: 'panel',
+          layout: 'accordion',
+          items: [paymentGrid]
         }]
       });
 
