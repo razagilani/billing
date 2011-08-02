@@ -95,7 +95,7 @@ class BillToolBridge:
         # create an instance representing the database
         statedb_config_section = self.config.items("statedb")
         self.state_db = state.StateDB(dict(statedb_config_section)) 
-    
+
         # create one BillUpload object to use for all BillUpload-related methods
         self.billUpload = BillUpload(self.config, self.state_db)
 
@@ -392,6 +392,58 @@ class BillToolBridge:
                 yaml.safe_dump(rs_yaml, open(os.path.join(billdb, rsbinding, account, sequence+".yaml"), "w"), default_flow_style=False)
 
                 return json.dumps({'success':True})
+
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+
+    @cherrypy.expose
+    def payment(self, xaction, account, sequence, **kwargs):
+
+        try:
+
+            if xaction == "read":
+
+                payments = self.state_db.payments(account)
+
+                payments = [{
+                    'id': payment.id, 
+                    'description': payment.description, 
+                    'date': str(payment.date),
+                    'credit': str(payment.credit),
+                    'debit': str(payment.debit),
+                } for payment in payments]
+                
+                return json.dumps({'success': True, 'rows':payments})
+
+            elif xaction == "update":
+
+                rows = json.loads(kwargs["rows"])
+
+                # single edit comes in not in a list
+                if type(rows) is dict: rows = [rows]
+
+                # process list of edits
+                for row in rows:
+                    pass
+
+                return json.dumps({'success':True})
+
+            elif xaction == "create":
+
+                from datetime import date
+
+                new_payment = self.state_db.new_payment(account, date.today(), "New Entry", "0.00", "000")
+                # TODO: is there a better way to populate a dictionary from an ORM object dict?
+                row = [ {'id': new_payment.id, 'date': new_payment.date, 'description': new_payment.description} ]
+
+                return json.dumps({'success':True, 'rows':row})
+
+            elif xaction == "destroy":
+                # disallow record deletion - correction come in the form of credits until
+                # a good journal of corrections can be made
+
+                return json.dumps({'success':False})
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})

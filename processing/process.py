@@ -225,7 +225,6 @@ class Process(object):
         XMLUtils().save_xml_file(pay.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), self.config.get("xmldb", "user"), 
             self.config.get("xmldb", "password"))
 
-
     def roll_bill(self, account, sequence):
         """
         Create rebill for next period, based on prior bill.
