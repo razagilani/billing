@@ -1,0 +1,71 @@
+<html>
+<head>
+
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Skyline ReeBill</title>
+
+    <head profile="http://www.w3.org/2005/10/profile">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+    <script type="text/javascript" src="jquery-1.4.2.js"></script>
+
+
+    <!-- overrides to base library -->
+
+    <!-- page specific -->
+    <link rel="stylesheet" type="text/css" href="billedit.css" />
+
+    <script type="text/javascript" src="DateFormat-minified.js"></script>
+
+    <style type=text/css>
+        /* style rows on mouseover */
+        .x-grid3-row-over .x-grid3-cell-inner {
+            font-weight: bold;
+        }
+    </style>
+
+    <!-- ** CSS ** -->
+    <!-- base library -->
+    <link rel="stylesheet" type="text/css" href="ext-3.2.1/resources/css/ext-all.css" />
+
+    <!-- ** Javascript ** -->
+    <!-- ExtJS library: base/adapter -->
+    <script type="text/javascript" src="ext-3.2.1/adapter/ext/ext-base.js"></script>
+
+    <!-- ExtJS library: all widgets -->
+    <script type="text/javascript" src="ext-3.2.1/ext-all-debug.js"></script>
+    <!--script type="text/javascript" src="ext-3.2.1/ext-all.js"></script-->
+
+    <!-- extensions -->
+
+    <!-- ToDo: move group summary out of examples -->
+    <script type="text/javascript" src="ext-3.2.1/examples/ux/GroupSummary.js"></script>
+    <link rel="stylesheet" type="text/css" href="fileuploadfield.css"/> 
+    <script type="text/javascript" src="FileUploadField.js"></script>
+
+    <!-- ext status bar -->
+    <script type="text/javascript" src="statusbar/StatusBar.js"></script>
+
+    <!-- overrides to base library -->
+
+    <!-- page specific -->
+    <script type="text/javascript" src="billedit.js"></script>
+
+    <!-- start the execution of javascript code -->
+    <script type="text/javascript">
+        $(document).ready(function() {
+            renderWidgets();
+          });
+    </script>
+
+</head>
+<body>
+    <div id="header" style="height:100%; background-image:url('green_stripe.jpg'); background-repeat: repeat;">
+        <table style="border-collapse: collapse;"><tr><td><img src="skyline_logo.png"/></td><td><img src="reebill_logo.png"/></td><td style="width: 85%; text-align: right;"><img src="money_chaser.png"/></td></tr></table>
+    </div>
+    <div id="footer" style="height:100%; background-image:url('green_stripe.jpg'); background-repeat: repeat;">
+        &nbsp;
+        <p style="">&#169;2009-2011 <a href="http://www.skylineinnovations.com">Skyline Innovations Inc.</a></p>
+    </div>
+</body>
+</html>
