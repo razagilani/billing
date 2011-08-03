@@ -1806,7 +1806,6 @@ function renderWidgets()
             {name: 'date', mapping: 'date'},
             {name: 'description', mapping: 'description'},
             {name: 'credit', mapping: 'credit'},
-            {name: 'debit', mapping: 'debit'},
         ]
     });
 
@@ -1835,10 +1834,13 @@ function renderWidgets()
         root: 'rows',
         idProperty: 'id',
         fields: [
-            {name: 'date'},
+            {
+                name: 'date',
+                type: 'date',
+                dateFormat: 'Y-m-d'
+            },
             {name: 'description'},
             {name: 'credit'},
-            {name: 'debit'},
         ],
     });
 
@@ -1849,7 +1851,11 @@ function renderWidgets()
                 header: 'Date',
                 sortable: true,
                 dataIndex: 'date',
-                editor: new Ext.form.DateField({allowBlank: false})
+                renderer: function(date) { if (date) return date.format("Y-m-d"); },
+                editor: new Ext.form.DateField({
+                    allowBlank: false,
+                    format: 'Y-m-d',
+               }),
             },{
                 header: 'Description',
                 sortable: true,
@@ -1859,11 +1865,6 @@ function renderWidgets()
                 header: 'Credit',
                 sortable: true,
                 dataIndex: 'credit',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Debit',
-                sortable: true,
-                dataIndex: 'debit',
                 editor: new Ext.form.TextField({allowBlank: true})
             },
         ]
@@ -1876,7 +1877,7 @@ function renderWidgets()
                 id: 'paymentInsertBtn',
                 iconCls: 'icon-user-add',
                 text: 'Insert',
-                disabled: true,
+                disabled: false,
                 handler: function()
                 {
                     paymentGrid.stopEditing();
@@ -1893,14 +1894,35 @@ function renderWidgets()
                     var r = new paymentType(defaultData);
         
                     // select newly inserted record
-                    var insertionPoint = paymentStore.indexOf(selection);
-                    paymentStore.insert(insertionPoint + 1, r);
-                    paymentGrid.startEditing(insertionPoint +1,1);
+                    //var insertionPoint = paymentStore.indexOf(selection);
+                    //paymentStore.insert(insertionPoint + 1, r);
+                    paymentStore.add([r]);
+                    //paymentGrid.startEditing(insertionPoint +1,1);
                     
                 }
             },{
                 xtype: 'tbseparator'
-            },
+            },{
+                xtype: 'button',
+                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                id: 'paymentRemoveBtn',
+                iconCls: 'icon-user-delete',
+                text: 'Remove',
+                disabled: true,
+                handler: function()
+                {
+                    paymentGrid.stopEditing();
+                    paymentStore.setBaseParam("account", account);
+
+                    // TODO single row selection only, test allowing multirow selection
+                    var s = paymentGrid.getSelectionModel().getSelections();
+                    for(var i = 0, r; r = s[i]; i++)
+                    {
+                        paymentStore.remove(r);
+                    }
+                    paymentStore.save(); 
+                }
+            }
         ]
     });
 
@@ -1923,8 +1945,8 @@ function renderWidgets()
     });
 
     paymentGrid.getSelectionModel().on('selectionchange', function(sm){
-        // if there was a selection, allow an insertion
-        paymentGrid.getTopToolbar().findById('paymentInsertBtn').setDisabled(sm.getCount() <1);
+        //paymentGrid.getTopToolbar().findById('paymentInsertBtn').setDisabled(sm.getCount() <1);
+        paymentGrid.getTopToolbar().findById('paymentRemoveBtn').setDisabled(sm.getCount() <1);
     });
   
     // grid's data store callback for when data is edited

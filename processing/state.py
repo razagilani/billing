@@ -178,11 +178,11 @@ class StateDB:
         session.add(utilbill)
         session.commit()
 
-    def new_payment(self, account, date, description, credit, debit):
+    def create_payment(self, account, date, description, credit):
 
         session = self.session()
         customer = session.query(Customer).filter(Customer.account==account).one()
-        new_payment = Payment(customer, date, description, credit, debit)
+        new_payment = Payment(customer, date, description, credit)
 
         session.add(new_payment)
         # TODO commit has to come out of here
@@ -190,7 +190,7 @@ class StateDB:
 
         return new_payment
 
-    def update_payment(self, oid, date, description, credit, debit):
+    def update_payment(self, oid, date, description, credit):
 
         session = self.session()
 
@@ -202,10 +202,22 @@ class StateDB:
         # TODO: this type parsing should definitely be done in Payment
         from datetime import datetime
         from decimal import Decimal
-        payment.date = datetime.strptime(date, "%Y-%m-%d").date()
+        # TODO: EXT posts in this format - figure out how to control dates better
+        payment.date = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S").date()
         payment.description = description
         payment.credit = Decimal(credit)
-        payment.debit = Decimal(debit)
+
+        # TODO commit has to come out of here
+        session.commit()
+
+    def delete_payment(self, oid):
+
+        session = self.session()
+
+        # get the object
+        payment = session.query(Payment).filter(Payment.id == oid).one()
+
+        session.delete(payment)
 
         # TODO commit has to come out of here
         session.commit()

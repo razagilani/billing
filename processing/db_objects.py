@@ -31,14 +31,12 @@ class UtilBill(object):
                 % (self.customer, self.period_start, self.period_end)
 
 class Payment(object):
-    def __init__(self, customer, date, description, credit, \
-            debit):
+    def __init__(self, customer, date, description, credit):
         self.customer = customer
         self.date = date
         self.description = description
         self.credit = credit
-        self.debit = debit
     def __repr__(self):
-        return '<Payment(%s, %s, %s, %s, %s)>' \
+        return '<Payment(%s, %s, %s, %s)>' \
                 % (self.customer, self.date, \
-                        self.description, self.credit, self.debit)
+                        self.description, self.credit)
