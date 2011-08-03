@@ -62,14 +62,17 @@ class StateDB:
         self.session = sessionmaker(bind=engine)
 
     def commit_bill(self, account, sequence, start, end):
+
+        session = self.session()
+
         # get customer id from account and the reebill from account and sequence
-        customer = self.session().query(Customer).filter(Customer.account==account).one()
-        reebill = self.session().query(ReeBill).filter(ReeBill.customer==customer)\
+        customer = session.query(Customer).filter(Customer.account==account).one()
+        reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
                 .filter(ReeBill.sequence==sequence).one()
 
         # get all utilbills for this customer whose dates are between 'start'
         # and 'end' (inclusive)
-        utilbills = self.session().query(UtilBill) \
+        utilbills = session.query(UtilBill) \
                 .filter(UtilBill.customer==customer)\
                 .filter(UtilBill.period_start>=start)\
                 .filter(UtilBill.period_end<=end).all()
@@ -79,7 +82,7 @@ class StateDB:
             utilbill.reebill = reebill
             utilbill.processed = True
         # TODO commit has to come out of here
-        self.session().commit()
+        session.commit()
 
 
     def discount_rate(self, account):
@@ -88,9 +91,11 @@ class StateDB:
 
     def last_sequence(self, account):
 
-        customer = self.session().query(Customer).filter(Customer.account==account).one()
+        session = self.session()
 
-        max_sequence = self.session().query(sqlalchemy.func.max(ReeBill.sequence)) \
+        customer = session.query(Customer).filter(Customer.account==account).one()
+
+        max_sequence = session.query(sqlalchemy.func.max(ReeBill.sequence)) \
                 .filter(ReeBill.customer_id==customer.id).one()[0]
 
         # TODO: because of the way 0.xml templates are made (they are not in the database) rebill needs to be 
@@ -102,30 +107,34 @@ class StateDB:
         
     def new_rebill(self, account, sequence):
 
-        customer = self.session().query(Customer).filter(Customer.account==account).one()
+        session = self.session()
+
+        customer = session.query(Customer).filter(Customer.account==account).one()
         new_reebill = ReeBill(customer, sequence)
 
-        self.session().add(new_reebill)
+        session.add(new_reebill)
         # TODO commit has to come out of here
-        self.session().commit()
+        session.commit()
 
     def issue(self, account, sequence):
-        customer = self.session().query(Customer).filter(Customer.account==account).one()
-        reeBill = self.session().query(ReeBill).filter(ReeBill.customer_id==customer.id).filter(ReeBill.sequence==sequence).one()
+        session = self.session()
+        customer = session.query(Customer).filter(Customer.account==account).one()
+        reeBill = session.query(ReeBill).filter(ReeBill.customer_id==customer.id).filter(ReeBill.sequence==sequence).one()
         reeBill.issued = 1
         # TODO commit has to come out of here
-        self.session().commit()
+        session.commit()
 
     def listAccounts(self):
         # SQLAlchemy returns a list of tuples, so convert it into a plain list
         return map((lambda x: x[0]), self.session().query(Customer.account).all())
 
     def listSequences(self, account):
+        session = self.session()
         # TODO: figure out how to do this all in one query. many SQLAlchemy
         # subquery examples use multiple queries but that shouldn't be
         # necessary
-        customer = self.session().query(Customer).filter(Customer.account==account).one()
-        sequences = self.session().query(ReeBill.sequence).filter(ReeBill.customer_id==customer.id).all()
+        customer = session.query(Customer).filter(Customer.account==account).one()
+        sequences = session.query(ReeBill.sequence).filter(ReeBill.customer_id==customer.id).all()
 
         # sequences is a list of tuples of numbers, so convert it into a plain list
         return map((lambda x: x[0]), sequences)
@@ -150,6 +159,9 @@ class StateDB:
     '''Inserts a a row into the utilbill table when the bill file has been
     uploaded.'''
     def insert_bill_in_database(self, account, begin_date, end_date):
+
+        session = self.session()
+
         # get customer id from account number
         customer = self.session().query(Customer).filter(Customer.account==account).one()
 
@@ -163,19 +175,40 @@ class StateDB:
             estimated=False, processed=False, received=True)
 
         # put the new UtilBill in the database
-        self.session().add(utilbill)
-        self.session().commit()
+        session.add(utilbill)
+        session.commit()
 
     def new_payment(self, account, date, description, credit, debit):
 
-        customer = self.session().query(Customer).filter(Customer.account==account).one()
+        session = self.session()
+        customer = session.query(Customer).filter(Customer.account==account).one()
         new_payment = Payment(customer, date, description, credit, debit)
 
-        self.session().add(new_reebill)
+        session.add(new_payment)
         # TODO commit has to come out of here
-        self.session().commit()
+        session.commit()
 
-        return new_reebill
+        return new_payment
+
+    def update_payment(self, oid, date, description, credit, debit):
+
+        session = self.session()
+
+        # get the object
+        payment = session.query(Payment).filter(Payment.id == oid).one()
+
+        # update the object
+        # TODO: is there a better way to update an object from a dict from the post?
+        # TODO: this type parsing should definitely be done in Payment
+        from datetime import datetime
+        from decimal import Decimal
+        payment.date = datetime.strptime(date, "%Y-%m-%d").date()
+        payment.description = description
+        payment.credit = Decimal(credit)
+        payment.debit = Decimal(debit)
+
+        # TODO commit has to come out of here
+        session.commit()
 
     def payments(self, account):
 
