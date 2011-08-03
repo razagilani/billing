@@ -1930,7 +1930,7 @@ function renderWidgets()
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
     paymentStore.on('update', function(){
-        paymentGrid.getTopToolbar().findById('paymentSaveBtn').setDisabled(false);
+        //paymentGrid.getTopToolbar().findById('paymentSaveBtn').setDisabled(false);
     });
 
     paymentStore.on('beforesave', function() {

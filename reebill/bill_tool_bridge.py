@@ -408,8 +408,8 @@ class BillToolBridge:
 
                 payments = [{
                     'id': payment.id, 
-                    'description': payment.description, 
                     'date': str(payment.date),
+                    'description': payment.description, 
                     'credit': str(payment.credit),
                     'debit': str(payment.debit),
                 } for payment in payments]
@@ -425,7 +425,16 @@ class BillToolBridge:
 
                 # process list of edits
                 for row in rows:
-                    pass
+                    print "being asked to update %s" % row
+                    self.state_db.update_payment(
+                        row['id'],
+                        row['date'],
+                        row['description'],
+                        row['credit'],
+                        row['debit']
+                    )
+                         
+
 
                 return json.dumps({'success':True})
 
@@ -435,7 +444,13 @@ class BillToolBridge:
 
                 new_payment = self.state_db.new_payment(account, date.today(), "New Entry", "0.00", "000")
                 # TODO: is there a better way to populate a dictionary from an ORM object dict?
-                row = [ {'id': new_payment.id, 'date': new_payment.date, 'description': new_payment.description} ]
+                row = [{
+                    'id': new_payment.id, 
+                    'date': str(new_payment.date),
+                    'description': new_payment.description,
+                    'credit': str(new_payment.credit),
+                    'debit': str(new_payment.debit),
+                    }]
 
                 return json.dumps({'success':True, 'rows':row})
 
