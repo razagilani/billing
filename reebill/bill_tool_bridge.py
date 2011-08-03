@@ -411,7 +411,6 @@ class BillToolBridge:
                     'date': str(payment.date),
                     'description': payment.description, 
                     'credit': str(payment.credit),
-                    'debit': str(payment.debit),
                 } for payment in payments]
                 
                 return json.dumps({'success': True, 'rows':payments})
@@ -425,13 +424,11 @@ class BillToolBridge:
 
                 # process list of edits
                 for row in rows:
-                    print "being asked to update %s" % row
                     self.state_db.update_payment(
                         row['id'],
                         row['date'],
                         row['description'],
                         row['credit'],
-                        row['debit']
                     )
                          
 
@@ -442,23 +439,28 @@ class BillToolBridge:
 
                 from datetime import date
 
-                new_payment = self.state_db.new_payment(account, date.today(), "New Entry", "0.00", "000")
+                new_payment = self.state_db.create_payment(account, date.today(), "New Entry", "0.00")
                 # TODO: is there a better way to populate a dictionary from an ORM object dict?
                 row = [{
                     'id': new_payment.id, 
                     'date': str(new_payment.date),
                     'description': new_payment.description,
                     'credit': str(new_payment.credit),
-                    'debit': str(new_payment.debit),
                     }]
 
                 return json.dumps({'success':True, 'rows':row})
 
             elif xaction == "destroy":
-                # disallow record deletion - correction come in the form of credits until
-                # a good journal of corrections can be made
 
-                return json.dumps({'success':False})
+                rows = json.loads(kwargs["rows"])
+
+                # single delete comes in not in a list
+                if type(rows) is int: rows = [rows]
+
+                for oid in rows:
+                    self.state_db.delete_payment(oid)
+                         
+                return json.dumps({'success':True})
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
