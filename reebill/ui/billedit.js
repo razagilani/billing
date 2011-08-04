@@ -1953,7 +1953,7 @@ function renderWidgets()
             // doesn't seem to work
             forceFit: true,
         },
-        title: 'Rate Structure',
+        title: 'Payments',
         clicksToEdit: 2
     });
 
