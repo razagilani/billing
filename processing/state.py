@@ -164,7 +164,7 @@ class StateDB:
         session = self.session()
 
         # get customer id from account number
-        customer = self.session().query(Customer).filter(Customer.account==account).one()
+        customer = session.query(Customer).filter(Customer.account==account).one()
 
         # make a new UtilBill with the customer id and dates:
         # reebill_id is NULL in the database because there's no ReeBill
