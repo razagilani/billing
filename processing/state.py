@@ -12,6 +12,7 @@ from sqlalchemy import Table, Integer, String, Float, MetaData, ForeignKey
 from sqlalchemy import create_engine
 from sqlalchemy.orm import mapper, sessionmaker
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy import and_
 from db_objects import Customer, UtilBill, ReeBill, Payment
 
 class StateDB:
@@ -221,6 +222,23 @@ class StateDB:
 
         # TODO commit has to come out of here
         session.commit()
+
+    '''periodbegin and periodend must be non-overlapping between bills.  This is in
+    direct opposition to the reebill period concept, which is a period that covers
+    all services for a given reebill and thus overlap between bills.  Therefore, 
+    a non overlapping period could be just the first utility service on the reebill.
+    If the periods overlap, payments will be applied more than once. See 11093293'''
+    def find_payment(self, account, periodbegin, periodend):
+
+        session = self.session()
+
+        payments = session.query(Payment).filter(Payment.customer_id == Customer.id) \
+            .filter(Customer.account == account) \
+            .filter(and_(Payment.date >= periodbegin, Payment.date < periodend)) \
+            .all()
+
+        return payments
+        
 
     def payments(self, account):
 
