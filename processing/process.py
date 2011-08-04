@@ -202,22 +202,18 @@ class Process(object):
         XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), self.config.get("xmldb", "user"),
             self.config.get("xmldb", "password"))
 
-    def pay_bill(self, account, sequence, amountPaid):
-        """
-        Accepts the prior bill, so that the total due can be obtained.
-        Sets the payment in the targetbill.
-        Prior bills can be recomputed, which may change the past total due.
-        Therefore current bills must pull that value forward.
-        """
+    def pay_bill(self, account, sequence):
 
-        #prior = bill.Bill(prior_bill)
         pay = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
 
         pay_rebill = pay.rebill_summary
 
-        # do this in sumBill
-        #pay_rebill.priorbalance = prior.rebill_summary.totaldue
-        pay_rebill.paymentreceived = Decimal(amountPaid)
+        # depend on first ub period to be the date range for which a payment is seeked.
+        # this is a wrong design because there may be more than on ub period and
+        # these periods come back in document order, which could change.
+        ubperiod = pay.utilbill_summary_charges.itervalues().next()
+        payments = self.state_db.find_payment(account, pay_rebill.begin, pay_rebill.end)
+        pay_rebill.paymentreceived = sum([payment.credit for payment in payments])
 
         # set rebill back to bill
         pay.rebill_summary = pay_rebill

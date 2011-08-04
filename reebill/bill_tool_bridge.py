@@ -126,10 +126,10 @@ class BillToolBridge:
         return json.dumps({'success': True})
 
     @cherrypy.expose
-    def pay(self, account, sequence, amount, **args):
+    def pay(self, account, sequence, **args):
 
         try:
-            self.process.pay_bill(account, sequence, amount)
+            self.process.pay_bill(account, sequence)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})

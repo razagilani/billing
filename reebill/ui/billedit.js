@@ -423,7 +423,8 @@ function renderWidgets()
 
     function payOperation()
     {
-        // modal to accept amount paid
+        // example modal pattern. 
+        /*
         Ext.Msg.prompt('Amount Paid', 'Enter amount paid:', function(btn, text){
             if (btn == 'ok')
             {
@@ -444,7 +445,20 @@ function renderWidgets()
                     success: successResponse,
                 });
             }
+        });*/
+
+        registerAjaxEvents()
+
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/reebill/pay',
+            params: { 
+                account: accountCombo.getValue(),
+                sequence: sequenceCombo.getValue(),
+            },
+            disableCaching: true,
+            success: successResponse,
         });
+
     }
 
     function bindRSOperation()
