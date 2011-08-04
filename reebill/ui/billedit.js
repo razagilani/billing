@@ -1889,7 +1889,6 @@ function renderWidgets()
                     var paymentType = paymentGrid.getStore().recordType;
                     var defaultData = 
                     {
-                        description: "New Payment"
                     };
                     var r = new paymentType(defaultData);
         
