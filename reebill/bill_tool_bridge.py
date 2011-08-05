@@ -72,6 +72,11 @@ class BillToolBridge:
             self.config.set('statedb', 'db', 'skyline')
             self.config.set('statedb', 'user', 'dev')
             self.config.set('statedb', 'password', '[password]')
+            self.config.add_section('mailer')
+            self.config.set('mailer', 'smtp_host', 'smtp.gmail.com')
+            self.config.set('mailer', 'smtp_port', '587')
+            self.config.set('mailer', 'originator', 'jwatson@skylineinnovations.com')
+            self.config.set('mailer', 'password', 'gkjtiNnpv85HhWjKue8w')
 
             # For BillUpload
             # default name of log file (config file can override this)
