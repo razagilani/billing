@@ -42,6 +42,8 @@ from skyliner.xml_utils import XMLUtils
 
 import itertools as it
 
+import bill_mailer
+
 # TODO rename to ProcessBridge or something
 class BillToolBridge:
     """ A monolithic class encapsulating the behavior to:  handle an incoming http request """
@@ -76,6 +78,7 @@ class BillToolBridge:
             self.config.set('mailer', 'smtp_host', 'smtp.gmail.com')
             self.config.set('mailer', 'smtp_port', '587')
             self.config.set('mailer', 'originator', 'jwatson@skylineinnovations.com')
+            self.config.set('mailer', 'from', '"Jules Watson" <jwatson@skylineinnovations.com>')
             self.config.set('mailer', 'password', 'gkjtiNnpv85HhWjKue8w')
 
             # For BillUpload
@@ -106,6 +109,9 @@ class BillToolBridge:
 
         # create one Process object to use for all related bill processing
         self.process = process.Process(self.config, self.state_db)
+
+        # configure mailer
+        bill_mailer.config = self.config
 
 
     @cherrypy.expose
