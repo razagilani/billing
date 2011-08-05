@@ -1,27 +1,66 @@
 #!/usr/bin/python
 import datetime as dt
-
+import os
 import time, argparse, jinja2
+import pdb
 
-def bind_email():
+def bind_template(template_values):
         
-    template_values = {
-        "customer_email":"randrews@skylineinnovations.com",
-        "customer_service":"My Location",
-        "total_due":"100.00"
-        }
-
     template_plaintext = jinja2.Template("""\
-Total Due {{ total_due}}
+Please find attached your bills for the dates ending {{ bill_dates }}.
+
+The attached file, {{ last_bill }} reflects the current balance and is the only bill that should be paid.
+
+Total Due {{total_due}}
+
+Best Regards,
+Jules Watson
+Skyline Innovations
+
+--
+SKYLINE INNOVATIONS
+Guaranteed Savings Through Green Energy
+1752 Columbia Rd, NW Suite 200, Washington DC 20009
+Phone: (202) 719-5297  Fax: (888) 907-5996
+http://www.skylineinnovations.com
 """)
 
     template_html = jinja2.Template("""\
-<p>Total Due {{ total_due}}</p>
+
+<p>Please find attached your bills for the dates ending {{ bill_dates }}.</p>
+
+<p>The attached file, {{ last_bill }} reflects the current balance and is the only bill that should be paid.</p>
+
+<p>Total Due {{total_due}}</p>
+
+<p>Best Regards,<br/>
+Jules Watson<br/>
+Skyline Innovations</p>
+<br/>--
+<div style="text-align:center">
+    <b>SKYLINE INNOVATIONS</b>
+</div>
+<div style="text-align:center">
+    <font color="#33CC00" size="1"><b>Guaranteed Savings Through Green Energy</b></font>
+</div>
+<div style="text-align:center">
+    <font size="1">1752 Columbia Rd, NW Suite 200, Washington DC 20009</font>
+</div>
+<div style="text-align:center">
+    <font size="1">Phone: (202) 719-5297  Fax: (888) 907-5996</font>
+</div>
+<div style="text-align:center">
+    <font size="1">
+        <a href="http://www.skylineinnovations.com" target="_blank">
+            <b>http://www.skylineinnovations.com</b>
+        </a>
+    </font>
+</div>
 """)
 
     return (template_plaintext.render(template_values), template_html.render(template_values))
 
-def mail(message, recipients): 
+def mail(recipients, merge_fields, bill_path, bill_file): 
     import smtplib
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
@@ -32,20 +71,21 @@ def mail(message, recipients):
     from email.mime.base import MIMEBase
     from email.mime.image import MIMEImage
 
-    originator = 'jwatson@skylineinnovations.com'
-    password = 'gkjtiNnpv85HhWjKue8w'
+    from_user = config.get("mailer", "from")
+    originator = config.get("mailer", "originator")
+    password = config.get("mailer", "password")
 
     # Create message container - the correct MIME type is multipart/alternative.
     container = MIMEMultipart('alternative')
-    container['Subject'] = "Skyline Innovations: Your Monthly Bill for %s" % "[service locations]"
-    container['From'] = originator
+    container['Subject'] = "Skyline Innovations: Your Monthly Bill"
+    container['From'] = from_user
     container['To'] = recipients
 
-    (text, html) = bind_email()
+    (text, html) = bind_template(merge_fields)
 
-    path = "/tmp/1.pdf"
+    path = os.path.join(bill_path, bill_file)
+
     ctype, encoding = mimetypes.guess_type(path)
-    print ctype, encoding
     if ctype is None or encoding is not None:
         # No guess could be made, or the file is encoded (compressed), so
         # use a generic bag-of-bits type.
@@ -72,7 +112,7 @@ def mail(message, recipients):
         # Encode the payload using Base64
         encoders.encode_base64(attachment)
     # Set the filename parameter
-    attachment.add_header('Content-Disposition', 'attachment', filename="1.pdf")
+    attachment.add_header('Content-Disposition', 'attachment', filename=bill_file)
     container.attach(attachment)
 
     # Record the MIME types of both parts - text/plain and text/html.
@@ -85,7 +125,7 @@ def mail(message, recipients):
     container.attach(part1)
     container.attach(part2)
 
-    server = smtplib.SMTP("smtp.gmail.com", 587)
+    server = smtplib.SMTP(config.get("mailer","smtp_host"), int(config.get("mailer", "smtp_port")))
     server.ehlo()
     server.starttls()
     server.ehlo()
@@ -98,15 +138,27 @@ def parse_args():
         description="Test interface for mailing bills." )
 
     parser.add_argument("-r", "--recipients", dest="recipients", nargs='+',
-                        default=["randrews@skylineinnovations.com"], 
-                        help="List of recipients.  Default: %(default)r")
+                        default="randrews@skylineinnovations.com", 
+                        help="Comma separated list of recipients.  Default: %(default)r")
+
+    parser.add_argument("-p", "--path", dest="bill_path", nargs='+',
+                        default="/tmp", 
+                        help="Path to a bill file.  Default: %(default)r")
+
+    parser.add_argument("-b", "--bill", dest="bill_file", nargs='+',
+                        default="1.pdf", 
+                        help="Filename of bill pdf.  Default: %(default)r")
 
     return parser.parse_args()
 
 if __name__ == '__main__':
+
     args = parse_args() 
 
-    message = bind_email()
-    print message
+    import ConfigParser
+    config = ConfigParser.RawConfigParser()
+    config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'bill_mailer.cfg')
+    config.read(config_file_path)
 
-    mail(message, args.recipients)
+    fields = { "total_due": "140.00" } 
+    mail(args.recipients, fields, args.bill_path, args.bill_file)
