@@ -42,7 +42,7 @@ from skyliner.xml_utils import XMLUtils
 
 import itertools as it
 
-import bill_mailer
+from billing.reebill import bill_mailer
 
 # TODO rename to ProcessBridge or something
 class BillToolBridge:
@@ -79,7 +79,7 @@ class BillToolBridge:
             self.config.set('mailer', 'smtp_port', '587')
             self.config.set('mailer', 'originator', 'jwatson@skylineinnovations.com')
             self.config.set('mailer', 'from', '"Jules Watson" <jwatson@skylineinnovations.com>')
-            self.config.set('mailer', 'password', 'gkjtiNnpv85HhWjKue8w')
+            self.config.set('mailer', 'password', 'password')
 
             # For BillUpload
             # default name of log file (config file can override this)
@@ -266,6 +266,39 @@ class BillToolBridge:
 
 
     @cherrypy.expose
+    def mail(self, account, sequences, recipients, **args):
+
+        try:
+
+            # acquire the most recent reebill from the sequence list and use its values for the merge
+            sequences = [int(sequence) for sequence in sequences]
+            sequences.sort()
+
+            all_bills = [bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence)) for sequence in sequences]
+
+            # the last element
+            most_recent_bill = all_bills[-1]
+
+            bill_file_names = ["%s.pdf" % sequence for sequence in sequences]
+            bill_dates = ["%s" % (b.rebill_summary.end) for b in all_bills]
+            bill_dates = ", ".join(bill_dates)
+
+            merge_fields = {}
+            merge_fields["street"] = most_recent_bill.service_address["street"]
+            merge_fields["total_due"] = most_recent_bill.rebill_summary["totaldue"]
+            merge_fields["bill_dates"] = bill_dates
+            merge_fields["last_bill"] = bill_file_names[-1]
+
+            bill_mailer.mail(recipients, merge_fields, os.path.join(self.config.get("billdb", "billpath"), account), bill_file_names);
+
+
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        return json.dumps({'success': True})
+
+
+    @cherrypy.expose
     def listAccounts(self, **kwargs):
         accounts = []
         try:
@@ -306,8 +339,6 @@ class BillToolBridge:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
         return json.dumps({'success': True, 'rows':rows})
-        
-        
 
     @cherrypy.expose
     # TODO see 15415625 about the problem passing in service to get at a set of RSIs
@@ -476,7 +507,35 @@ class BillToolBridge:
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
+    @cherrypy.expose
+    def reebill(self, xaction, start, limit, account, **kwargs):
 
+        try:
+
+            if xaction == "read":
+
+                reebills, totalCount = self.state_db.listReebills(int(start), int(limit), account)
+                
+                # convert the result into a list of dictionaries for returning as
+                # JSON to the browser
+                rows = [{'sequence': reebill.sequence} for reebill in reebills]
+
+                return json.dumps({'success': True, 'rows':rows, 'results':totalCount})
+
+            elif xaction == "update":
+
+                return json.dumps({'success':False})
+
+            elif xaction == "create":
+
+                return json.dumps({'success':False})
+
+            elif xaction == "destroy":
+
+                return json.dumps({'success':False})
+
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
     ################
