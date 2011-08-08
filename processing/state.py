@@ -10,7 +10,7 @@ from optparse import OptionParser
 import sqlalchemy
 from sqlalchemy import Table, Integer, String, Float, MetaData, ForeignKey
 from sqlalchemy import create_engine
-from sqlalchemy.orm import mapper, sessionmaker
+from sqlalchemy.orm import mapper, sessionmaker, scoped_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy import and_
 from db_objects import Customer, UtilBill, ReeBill, Payment
@@ -60,7 +60,8 @@ class StateDB:
         # session
         # global variable for the database session: SQLAlchemy will give an error if
         # this is created more than once, so don't call _getSession() anywhere else
-        self.session = sessionmaker(bind=engine)
+        # wrapped by scoped_session for thread contextualization
+        self.session = scoped_session(sessionmaker(bind=engine, autoflush=True))
 
     def commit_bill(self, account, sequence, start, end):
 
@@ -82,13 +83,24 @@ class StateDB:
         for utilbill in utilbills:
             utilbill.reebill = reebill
             utilbill.processed = True
+
         # TODO commit has to come out of here
         session.commit()
 
 
     def discount_rate(self, account):
+
+        session = self.session()
+
         # one() raises an exception if more than one row was found
-        return self.session().query(Customer).filter_by(account=account).one().discountrate
+        result = session.query(Customer).filter_by(account=account).one().discountrate
+
+        # TODO commit has to come out of here
+        session.commit()
+
+        return result
+
+        
 
     def last_sequence(self, account):
 
@@ -104,6 +116,8 @@ class StateDB:
         if max_sequence is None:
             return 0
 
+        session.commit()
+
         return max_sequence
         
     def new_rebill(self, account, sequence):
@@ -114,23 +128,37 @@ class StateDB:
         new_reebill = ReeBill(customer, sequence)
 
         session.add(new_reebill)
+
         # TODO commit has to come out of here
         session.commit()
 
     def issue(self, account, sequence):
+
         session = self.session()
+
         customer = session.query(Customer).filter(Customer.account==account).one()
         reeBill = session.query(ReeBill).filter(ReeBill.customer_id==customer.id).filter(ReeBill.sequence==sequence).one()
         reeBill.issued = 1
+
         # TODO commit has to come out of here
         session.commit()
 
     def listAccounts(self):
+        
+        session = self.session()
+
         # SQLAlchemy returns a list of tuples, so convert it into a plain list
-        return map((lambda x: x[0]), self.session().query(Customer.account).all())
+
+        result = map((lambda x: x[0]), session.query(Customer.account).all())
+
+        session.commit()
+
+        return result
 
     def listSequences(self, account):
+
         session = self.session()
+
         # TODO: figure out how to do this all in one query. many SQLAlchemy
         # subquery examples use multiple queries but that shouldn't be
         # necessary
@@ -138,15 +166,35 @@ class StateDB:
         sequences = session.query(ReeBill.sequence).filter(ReeBill.customer_id==customer.id).all()
 
         # sequences is a list of tuples of numbers, so convert it into a plain list
-        return map((lambda x: x[0]), sequences)
+        result = map((lambda x: x[0]), sequences)
+
+        session.commit()
+
+        return result
+
+    def listReebills(self, start, limit, account):
+
+        session = self.session()
+
+        query = session.query(ReeBill).join(Customer).filter(Customer.account==account)
+
+        slice = query[start:start + limit]
+        count = query.count()
+
+        session.commit()
+
+        return slice, count
 
 
     '''Queries the database for account, start date, and
     end date of bills in a slice of the utilbills table; returns the slice and the
     total number of rows in the table (for paging).'''
     def getUtilBillRows(self, start, limit):
+
+        session = self.session()
+
         # SQLAlchemy query to get account & dates for all utilbills
-        query = self.session().query(Customer.account, UtilBill.period_start, \
+        query = session.query(Customer.account, UtilBill.period_start, \
                 UtilBill.period_end).filter(UtilBill.customer_id==Customer.id)
 
         # SQLAlchemy does SQL 'limit' with Python list slicing
@@ -155,6 +203,9 @@ class StateDB:
         # count total number of utilbills (note that some rows in utilbill may
         # have null customer_ids, even though that's not supposed to happen)
         count = query.count()
+
+        session.commit()
+
         return slice, count
 
     '''Inserts a a row into the utilbill table when the bill file has been
@@ -177,15 +228,18 @@ class StateDB:
 
         # put the new UtilBill in the database
         session.add(utilbill)
+
         session.commit()
 
     def create_payment(self, account, date, description, credit):
 
         session = self.session()
+
         customer = session.query(Customer).filter(Customer.account==account).one()
         new_payment = Payment(customer, date, description, credit)
 
         session.add(new_payment)
+
         # TODO commit has to come out of here
         session.commit()
 
@@ -237,30 +291,17 @@ class StateDB:
             .filter(and_(Payment.date >= periodbegin, Payment.date < periodend)) \
             .all()
 
+        session.commit()
+
         return payments
         
 
     def payments(self, account):
 
-        payments = self.session().query(Payment).join(Customer).filter(Customer.account==account).all()
+        session = self.session()
+
+        payments = session.query(Payment).join(Customer).filter(Customer.account==account).all()
+
+        session.commit()
 
         return payments
-
-
-if __name__ == "__main__":
-
-    parser = OptionParser()
-
-    parser.add_option("--host", dest="host", help="Database Host")
-    parser.add_option("--db", dest="db", help="Database")
-    parser.add_option("--user", dest="user", help="User")
-    parser.add_option("--password", dest="password", help="Password")
-    parser.add_option("--account", dest="account", help="Customer billing account")
-    parser.add_option("--sequence", dest="sequence", help="Bill sequence number")
-    parser.add_option("--start", dest="start", help="RE bill period start")
-    parser.add_option("--end", dest="end", help="RE bill period end")
-
-    (options, args) = parser.parse_args()
-    # some testing code that no longer works
-    #issue(options.host, options.db, options.user, options.password, options.account, options.sequence)
-
