@@ -296,6 +296,10 @@ function renderWidgets()
         sequencesStore.load();
         // TODO: global account selection for util bills, reebills and payments
         paymentStore.load({params: {account: record.data.account}});
+
+        reebillStore.setBaseParam("account", record.data.account)
+        // paging tool bar params must be passed in to keep store in sync with toolbar paging calls - autoload params lost after autoload
+        reebillStore.load({params:{start:0, limit:25}});
     });
 
     // fired when the customer bill combo box is selected
@@ -603,6 +607,42 @@ function renderWidgets()
             }
         });
 
+    }
+
+    function mailReebillOperation(sequences)
+    {
+        Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', function(btn, recipients){
+            if (btn == 'ok')
+            {
+                registerAjaxEvents();
+
+                Ext.Ajax.request({
+                    url: 'http://'+location.host+'/reebill/mail',
+                    params: {
+                        account: accountCombo.getValue(),
+                        recipients: recipients,
+                        sequences: sequences,
+                    },
+                    disableCaching: true,
+                    success: function(response, options) {
+                        var o = {};
+                        try {
+                            o = Ext.decode(response.responseText);}
+                        catch(e) {
+                            alert("Could not decode JSON data");
+                        }
+                        if(true !== o.success) {
+                            Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
+                        } else {
+                            Ext.Msg.alert('Success', "mail successfully sent");
+                        }
+                    },
+                    failure: function () {
+                        alert("mail response fail");
+                    }
+                });
+            }
+        });
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1972,6 +2012,139 @@ function renderWidgets()
         paymentStore.setBaseParam("account", account);
     });
 
+    ///////////////////////////////////////
+    // reebills Tab
+
+    var initialreebill =  {
+        rows: [
+        ]
+    };
+
+    var reebillReader = new Ext.data.JsonReader({
+        // metadata configuration options:
+        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
+        //idProperty: 'id',
+        root: 'rows',
+
+        // the fields config option will internally create an Ext.data.Record
+        // constructor that provides mapping for reading the record data objects
+        fields: [
+            // map Record's field to json object's key of same name
+            {name: 'sequence', mapping: 'sequence'},
+        ]
+    });
+
+    var reebillWriter = new Ext.data.JsonWriter({
+        encode: true,
+        // write all fields, not just those that changed
+        writeAllFields: true 
+    });
+
+    var reebillStoreProxy = new Ext.data.HttpProxy({
+        method: 'GET',
+        prettyUrls: false,
+        url: 'http://'+location.host+'/reebill/reebill',
+    });
+
+    var reebillStore = new Ext.data.JsonStore({
+        proxy: reebillStoreProxy,
+        autoSave: false,
+        reader: reebillReader,
+        writer: reebillWriter,
+        autoSave: true,
+        autoLoad: {params:{start: 0, limit: 25}},
+        // won't be updated when combos change, so do this in event
+        // perhaps also can be put in the options param for the ajax request
+        baseParams: { account:"none"},
+        paramNames: {start: 'start', limit: 'limit'},
+        data: initialreebill,
+        root: 'rows',
+        totalProperty: 'results',
+        idProperty: 'sequence',
+        fields: [
+            {name: 'sequence'},
+        ],
+    });
+
+    var reebillColModel = new Ext.grid.ColumnModel(
+    {
+        columns: [
+            {
+                header: 'Sequence',
+                sortable: true,
+                dataIndex: 'sequence',
+                editor: new Ext.form.TextField({allowBlank: true})
+            },
+        ]
+    });
+
+    var reebillToolbar = new Ext.Toolbar({
+        items: [
+            {
+                xtype: 'button',
+                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                id: 'reebillMailBtn',
+                iconCls: 'icon-user-mail',
+                text: 'Mail',
+                disabled: false,
+                handler: function()
+                {
+                    //reebillStore.setBaseParam("account", account);
+
+                    reebill_sequences = []
+                    var s = reebillGrid.getSelectionModel().getSelections();
+                    for(var i = 0, r; r = s[i]; i++)
+                    {
+                        reebill_sequences.push(r.data.sequence);
+                    }
+
+                    mailReebillOperation(reebill_sequences);
+                }
+            }
+        ]
+    });
+
+    var reebillGrid = new Ext.grid.EditorGridPanel({
+        flex: 1,
+        tbar: reebillToolbar,
+        bbar: new Ext.PagingToolbar({
+            // TODO: constant
+            pageSize: 25,
+            store: reebillStore,
+            displayInfo: true,
+            displayMsg: 'Displaying {0} - {1} of {2}',
+            emptyMsg: "No ReeBills to display",
+        }),
+        colModel: reebillColModel,
+        selModel: new Ext.grid.RowSelectionModel({singleSelect: false}),
+        store: reebillStore,
+        enableColumnMove: false,
+        frame: true,
+        collapsible: true,
+        animCollapse: false,
+        stripeRows: true,
+        viewConfig: {
+            // doesn't seem to work
+            forceFit: true,
+        },
+        title: 'reebills',
+        clicksToEdit: 2
+    });
+
+    reebillGrid.getSelectionModel().on('selectionchange', function(sm){
+        //reebillGrid.getTopToolbar().findById('reebillInsertBtn').setDisabled(sm.getCount() <1);
+    });
+  
+    // grid's data store callback for when data is edited
+    // when the store backing the grid is edited, enable the save button
+    reebillStore.on('update', function(){
+        //reebillGrid.getTopToolbar().findById('reebillSaveBtn').setDisabled(false);
+    });
+
+    reebillStore.on('beforesave', function() {
+        reebillStore.setBaseParam("account", account);
+    });
+
     // end of tab widgets
     ////////////////////////////////////////////////////////////////////////////
 
@@ -2053,6 +2226,17 @@ function renderWidgets()
           xtype: 'panel',
           layout: 'accordion',
           items: [paymentGrid]
+        },{
+          id: 'mailTab',
+          title: 'Mail',
+          xtype: 'panel',
+          layout: 'vbox',
+          layoutConfig : {
+            //type : 'vbox',
+            align : 'stretch',
+            pack : 'start'
+          },
+          items: [reebillGrid]
         }]
       });
 

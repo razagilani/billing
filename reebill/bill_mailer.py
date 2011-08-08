@@ -29,7 +29,7 @@ http://www.skylineinnovations.com
 
 <p>Please find attached your bills for the dates ending {{ bill_dates }}.</p>
 
-<p>The attached file, {{ last_bill }} reflects the current balance and is the only bill that should be paid.</p>
+<p>The attached file, {{ last_bill }} reflects the current balance and is the only bill that should be paid.
 
 <p>Total Due {{total_due}}</p>
 
@@ -60,7 +60,7 @@ Skyline Innovations</p>
 
     return (template_plaintext.render(template_values), template_html.render(template_values))
 
-def mail(recipients, merge_fields, bill_path, bill_file): 
+def mail(recipients, merge_fields, bill_path, bill_files): 
     import smtplib
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
@@ -77,43 +77,44 @@ def mail(recipients, merge_fields, bill_path, bill_file):
 
     # Create message container - the correct MIME type is multipart/alternative.
     container = MIMEMultipart('alternative')
-    container['Subject'] = "Skyline Innovations: Your Monthly Bill"
+    container['Subject'] = "Skyline Innovations: Your Monthly Bill for %s" % (merge_fields["street"])
     container['From'] = from_user
     container['To'] = recipients
 
     (text, html) = bind_template(merge_fields)
 
-    path = os.path.join(bill_path, bill_file)
+    for bill_file in bill_files:
+        path = os.path.join(bill_path, bill_file)
 
-    ctype, encoding = mimetypes.guess_type(path)
-    if ctype is None or encoding is not None:
-        # No guess could be made, or the file is encoded (compressed), so
-        # use a generic bag-of-bits type.
-        ctype = 'application/octet-stream'
-    maintype, subtype = ctype.split('/', 1)
-    if maintype == 'text':
-        fp = open(path)
-        # Note: we should handle calculating the charset
-        attachment = MIMEText(fp.read(), _subtype=subtype)
-        fp.close()
-    elif maintype == 'image':
-        fp = open(path, 'rb')
-        attachment = MIMEImage(fp.read(), _subtype=subtype)
-        fp.close()
-    elif maintype == 'audio':
-        fp = open(path, 'rb')
-        attachment = MIMEAudio(fp.read(), _subtype=subtype)
-        fp.close()
-    else:
-        fp = open(path, 'rb')
-        attachment = MIMEBase(maintype, subtype)
-        attachment.set_payload(fp.read())
-        fp.close()
-        # Encode the payload using Base64
-        encoders.encode_base64(attachment)
-    # Set the filename parameter
-    attachment.add_header('Content-Disposition', 'attachment', filename=bill_file)
-    container.attach(attachment)
+        ctype, encoding = mimetypes.guess_type(path)
+        if ctype is None or encoding is not None:
+            # No guess could be made, or the file is encoded (compressed), so
+            # use a generic bag-of-bits type.
+            ctype = 'application/octet-stream'
+        maintype, subtype = ctype.split('/', 1)
+        if maintype == 'text':
+            fp = open(path)
+            # Note: we should handle calculating the charset
+            attachment = MIMEText(fp.read(), _subtype=subtype)
+            fp.close()
+        elif maintype == 'image':
+            fp = open(path, 'rb')
+            attachment = MIMEImage(fp.read(), _subtype=subtype)
+            fp.close()
+        elif maintype == 'audio':
+            fp = open(path, 'rb')
+            attachment = MIMEAudio(fp.read(), _subtype=subtype)
+            fp.close()
+        else:
+            fp = open(path, 'rb')
+            attachment = MIMEBase(maintype, subtype)
+            attachment.set_payload(fp.read())
+            fp.close()
+            # Encode the payload using Base64
+            encoders.encode_base64(attachment)
+        # Set the filename parameter
+        attachment.add_header('Content-Disposition', 'attachment', filename=bill_file)
+        container.attach(attachment)
 
     # Record the MIME types of both parts - text/plain and text/html.
     part1 = MIMEText(text, 'plain')
