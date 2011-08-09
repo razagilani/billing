@@ -2207,6 +2207,12 @@ function renderWidgets()
           xtype: 'panel',
           items: null // configureUBMeasuredUsagesForm sets this
         },{
+          id: 'rsiTab',
+          title: 'RSIs',
+          xtype: 'panel',
+          layout: 'accordion',
+          items: [rsiGrid]
+        },{
           title: 'Charge Items',
           xtype: 'panel',
           layout: 'accordion',
@@ -2214,12 +2220,6 @@ function renderWidgets()
             aChargesGrid,
             hChargesGrid,
           ]
-        },{
-          id: 'rsiTab',
-          title: 'RSIs',
-          xtype: 'panel',
-          layout: 'accordion',
-          items: [rsiGrid]
         },{
           id: 'paymentTab',
           title: 'Pay',
