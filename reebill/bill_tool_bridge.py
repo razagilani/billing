@@ -270,6 +270,9 @@ class BillToolBridge:
 
         try:
 
+            # sequences will come in as a string if there is one element in post data. 
+            # If there are more, it will come in as a list of strings
+            if type(sequences) is not list: sequences = [sequences]
             # acquire the most recent reebill from the sequence list and use its values for the merge
             sequences = [int(sequence) for sequence in sequences]
             sequences.sort()
