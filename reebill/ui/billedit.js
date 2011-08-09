@@ -122,7 +122,7 @@ function renderWidgets()
 
 
     // data store for paging grid
-    var paging_grid_store = new Ext.data.JsonStore({
+    var utilbillGridStore = new Ext.data.JsonStore({
         root: 'rows',
         totalProperty: 'results',
         pageSize: 25,
@@ -132,17 +132,18 @@ function renderWidgets()
             {name: 'account'},
             {name: 'period_start', type: 'date'},
             {name: 'period_end', type: 'date'},
+            {name: 'reebill_sequence'},
         ],
         url: 'http://' + location.host + '/reebill/listUtilBills',
     });
     
     // TODO maybe find a better way of dealing with date formats than this
-    var paging_grid_date_format = 'Y-m-d';
+    var utilbillGridDateFormat = 'Y-m-d';
 
     // paging grid
-    var paging_grid = new Ext.grid.GridPanel({
+    var utilbillGrid = new Ext.grid.GridPanel({
         title:'Utility Bills',
-        store: paging_grid_store,
+        store: utilbillGridStore,
         trackMouseOver:false,
         flex:1,
         layout: 'fit',
@@ -158,19 +159,24 @@ function renderWidgets()
             new Ext.grid.DateColumn({
                 header: 'Start Date',
                 dataIndex: 'period_start',
-                dateFormat: paging_grid_date_format,
+                dateFormat: utilbillGridDateFormat,
             }),
             new Ext.grid.DateColumn({
                 header: 'End Date',
                 dataIndex: 'period_end',
-                dateFormat: paging_grid_date_format,
-            })
+                dateFormat: utilbillGridDateFormat,
+            }),{
+                id: 'reebill_sequence',
+                header: 'ReeBill Sequence',
+                dataIndex: 'reebill_sequence',
+            },
+
         ],
         
         // paging bar on the bottom
         bbar: new Ext.PagingToolbar({
             pageSize: 25,
-            store: paging_grid_store,
+            store: utilbillGridStore,
             displayInfo: true,
             displayMsg: 'Displaying {0} - {1} of {2}',
             emptyMsg: "No utility bills to display",
@@ -179,7 +185,7 @@ function renderWidgets()
 
     // event handler for grid double-click: show image of utility bill
     // associated with the row
-    paging_grid.on('cellclick', function(grid, rowIndex, columnIndex, e) {
+    utilbillGrid.on('cellclick', function(grid, rowIndex, columnIndex, e) {
         var record = grid.getStore().getAt(rowIndex);
         var fieldName = grid.getColumnModel().getDataIndex(columnIndex);
         var data = record.get(fieldName);
@@ -2185,7 +2191,7 @@ function renderWidgets()
           // other side (using 2 panels)
           items: [
             upload_form_panel,
-            paging_grid,
+            utilbillGrid,
           ],
         },{
           title: 'Select ReeBill',
