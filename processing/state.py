@@ -189,19 +189,16 @@ class StateDB:
     '''Queries the database for account, start date, and
     end date of bills in a slice of the utilbills table; returns the slice and the
     total number of rows in the table (for paging).'''
-    def getUtilBillRows(self, start, limit):
+    def list_utilbills(self, start, limit):
 
         session = self.session()
 
         # SQLAlchemy query to get account & dates for all utilbills
-        query = session.query(Customer.account, UtilBill.period_start, \
-                UtilBill.period_end).filter(UtilBill.customer_id==Customer.id)
+        query = session.query(UtilBill).join(Customer).order_by(Customer.account, UtilBill.period_start)
 
         # SQLAlchemy does SQL 'limit' with Python list slicing
         slice = query[start:start + limit]
 
-        # count total number of utilbills (note that some rows in utilbill may
-        # have null customer_ids, even though that's not supposed to happen)
         count = query.count()
 
         session.commit()

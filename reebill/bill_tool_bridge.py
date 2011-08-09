@@ -843,12 +843,17 @@ class BillToolBridge:
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
-            result, totalCount = self.state_db.getUtilBillRows(int(start), int(limit))
+            utilbills, totalCount = self.state_db.list_utilbills(int(start), int(limit))
             
             # convert the result into a list of dictionaries for returning as
             # JSON to the browser
-            rows = [{'account': row[0], 'period_start': row[1],
-                'period_end':row[2]} for row in result]
+            rows = []
+            for utilbill in utilbills:
+                # wouldn't it be nice if the db_objects dealt with the lack of relationship better? Not sure.
+                sequence = utilbill.reebill.sequence if utilbill.reebill else None
+                account = utilbill.customer.account if utilbill.customer else None
+                rows.append({'account': account, 'period_start': utilbill.period_start,
+                'period_end':utilbill.period_end, 'reebill_sequence':sequence})
 
             return ju.dumps({'success': True, 'rows':rows,
                 'results':totalCount})
