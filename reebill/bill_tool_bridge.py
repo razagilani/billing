@@ -853,7 +853,7 @@ class BillToolBridge:
                 sequence = utilbill.reebill.sequence if utilbill.reebill else None
                 account = utilbill.customer.account if utilbill.customer else None
                 rows.append({'account': account, 'period_start': utilbill.period_start,
-                'period_end':utilbill.period_end, 'reebill_sequence':sequence})
+                'period_end':utilbill.period_end, 'sequence':sequence})
 
             return ju.dumps({'success': True, 'rows':rows,
                 'results':totalCount})

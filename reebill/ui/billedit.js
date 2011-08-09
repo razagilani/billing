@@ -1,10 +1,6 @@
 // Configure ext js widgets and events
 function renderWidgets()
 {
-    // global to access xml bill for saving changes
-    // The DOM containing an XML representation of a bill
-    var bill = null;
-
     // global ajax timeout
     Ext.Ajax.timeout = 960000; //16 minutes
 
@@ -132,7 +128,7 @@ function renderWidgets()
             {name: 'account'},
             {name: 'period_start', type: 'date'},
             {name: 'period_end', type: 'date'},
-            {name: 'reebill_sequence'},
+            {name: 'sequence'},
         ],
         url: 'http://' + location.host + '/reebill/listUtilBills',
     });
@@ -147,8 +143,64 @@ function renderWidgets()
         trackMouseOver:false,
         flex:1,
         layout: 'fit',
-        //autoExpandColumn: 'account',
-        
+        selModel: new Ext.grid.RowSelectionModel({
+            singleSelect: true,
+            listeners: {
+                rowselect: function (selModel, index, record) {
+
+                    // a row was slected in the UI
+                    // update the current account and sequence
+                    loadReeBillUI(record.data.account, record.data.sequence)
+
+                    // update utilbill
+                    // parse date strings--the format is determined by the JSONDataStore's
+                    // JsonReader, but i can't figure out how to change that format, so
+                    // it's horrible: e.g. "Mon Dec 07 2009 00:00:00 GMT-0500 (EST)"
+                    // (built-in JS date constructor automatically detects the format)
+                    var parsed_begin_date = new Date(record.data.period_start);
+                    var parsed_end_date = new Date(record.data.period_end);
+
+                    // convert the parsed date into a string in the format expected by the back end
+                    var formatted_begin_date_string = parsed_begin_date.format('Y-m-d');
+                    var formatted_end_date_string = parsed_end_date.format('Y-m-d');
+
+                    // url for getting bill images (calls bill_tool_bridge.getBillImage())
+                    theUrl = 'http://' + location.host + '/reebill/getUtilBillImage';
+                    
+                    // ajax call to generate image, get the name of it, and display it in a
+                    // new window
+                    Ext.Ajax.request({
+                        url: theUrl,
+                        params: {account: record.data.account, begin_date: formatted_begin_date_string,
+                            end_date: formatted_end_date_string},
+                        success: function(result, request) {
+                            var jsonData = null;
+                            try {
+                                jsonData = Ext.util.JSON.decode(result.responseText);
+                                if (jsonData.success == false) {
+                                    /*Ext.MessageBox.alert('Server Error',
+                                        jsonData.errors.reason + " "
+                                        + jsonData.errors.details);*/
+                                    // replace bill image with a message instead
+                                    Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
+                                        html: NO_UTILBILL_FOUND_MESSAGE, id: 'utilbillimage'}, true);
+                                } else {
+                                    // show image in utilbillimageBox
+                                    Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'img',
+                                        src: 'http://' + location.host + '/utilitybillimages/' 
+                                        + jsonData.imageName, width: '100%', id: 'utilbillimage'}, true);
+                                } 
+                            } catch (err) {
+                                Ext.MessageBox.alert('ERROR', err);
+                            }
+                        },
+                        // this is called when the server returns 500 as well as when there's no response
+                        failure: function() { Ext.MessageBox.alert('Ajax failure', theUrl); },
+                        disableCaching: true,
+                    });
+                }
+            }
+        }),
         // grid columns
         columns:[{
                 id: 'account',
@@ -166,9 +218,9 @@ function renderWidgets()
                 dataIndex: 'period_end',
                 dateFormat: utilbillGridDateFormat,
             }),{
-                id: 'reebill_sequence',
-                header: 'ReeBill Sequence',
-                dataIndex: 'reebill_sequence',
+                id: 'sequence',
+                header: 'Sequence',
+                dataIndex: 'sequence',
             },
 
         ],
@@ -183,69 +235,7 @@ function renderWidgets()
         }),
     });
 
-    // event handler for grid double-click: show image of utility bill
-    // associated with the row
-    utilbillGrid.on('cellclick', function(grid, rowIndex, columnIndex, e) {
-        var record = grid.getStore().getAt(rowIndex);
-        var fieldName = grid.getColumnModel().getDataIndex(columnIndex);
-        var data = record.get(fieldName);
-        account = record.get('account');
-        begin_date_string = record.get('period_start');
-        end_date_string = record.get('period_end');
-        
-        // parse date strings--the format is determined by the JSONDataStore's
-        // JsonReader, but i can't figure out how to change that format, so
-        // it's horrible: e.g. "Mon Dec 07 2009 00:00:00 GMT-0500 (EST)"
-        // (built-in JS date constructor automatically detects the format)
-        var parsed_begin_date = new Date(begin_date_string);
-        var parsed_end_date = new Date(end_date_string);
-
-        // convert the parsed date into a string in the format expected by the back end
-        var formatted_begin_date_string = parsed_begin_date.format('Y-m-d');
-        var formatted_end_date_string = parsed_end_date.format('Y-m-d');
-
-        // url for getting bill images (calls bill_tool_bridge.getBillImage())
-        theUrl = 'http://' + location.host + '/reebill/getUtilBillImage';
-        
-        // ajax call to generate image, get the name of it, and display it in a
-        // new window
-        Ext.Ajax.request({
-            url: theUrl,
-            params: {account: account, begin_date: formatted_begin_date_string,
-                end_date: formatted_end_date_string},
-            success: function(result, request) {
-                var jsonData = null;
-                try {
-                    jsonData = Ext.util.JSON.decode(result.responseText);
-                    if (jsonData.success == false) {
-                        /*Ext.MessageBox.alert('Server Error',
-                            jsonData.errors.reason + " "
-                            + jsonData.errors.details);*/
-                        // replace bill image with a message instead
-                        Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
-                            html: NO_UTILBILL_FOUND_MESSAGE, id: 'utilbillimage'}, true);
-                    } else {
-                        // show image in utilbillimageBox
-                        Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'img',
-                            src: 'http://' + location.host + '/utilitybillimages/' 
-                            + jsonData.imageName, width: '100%', id: 'utilbillimage'}, true);
-                    } 
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', err);
-                }
-            },
-            // this is called when the server returns 500 as well as when there's no response
-            failure: function() { Ext.MessageBox.alert('Ajax failure', theUrl); },
-            disableCaching: true,
-        });
-
-    });
-
-
           
-    // is it better to get account and dates from the data store or the actual text
-    // of the grid cells? i think the former.
-
     ////////////////////////////////////////////////////////////////////////////
     // Account and Bill selection tab
     //
@@ -254,7 +244,7 @@ function renderWidgets()
     var accountsStore = new Ext.data.JsonStore({
         // store configs
         autoDestroy: true,
-        autoLoad:false,
+        autoLoad: true,
         url: 'http://'+location.host+'/reebill/listAccounts',
         storeId: 'accountsStore',
         root: 'rows',
@@ -300,27 +290,21 @@ function renderWidgets()
     accountCombo.on('select', function(combobox, record, index) {
         sequencesStore.setBaseParam('account', record.data.account);
         sequencesStore.load();
-        // TODO: global account selection for util bills, reebills and payments
-        paymentStore.load({params: {account: record.data.account}});
-
-        reebillStore.setBaseParam("account", record.data.account)
-        // paging tool bar params must be passed in to keep store in sync with toolbar paging calls - autoload params lost after autoload
-        reebillStore.load({params:{start:0, limit:25}});
     });
 
     // fired when the customer bill combo box is selected
     // because a customer account and bill has been selected, load 
-    // the bill document.  Follow configureWidgets() for additional details
+    // the bill document.  Follow loadReeBillUI() for additional details
     // ToDo: do not allow selection change if store is unsaved
     sequenceCombo.on('select', function(combobox, record, index) {
-        configureWidgets();
+        loadReeBillUI(accountCombo.getValue(), sequenceCombo.getValue());
     });
 
     // a hack so that a newly rolled bill may be accessed by directly entering its sequence
     // remove this when https://www.pivotaltracker.com/story/show/14564121 completes
     sequenceCombo.on('specialkey', function(field, e) {
         if (e.getKey() == e.ENTER) {
-            configureWidgets();
+            loadReeBillUI(accountCombo.getValue(), sequenceCombo.getValue());
         }
     });
 
@@ -359,7 +343,7 @@ function renderWidgets()
         if(true !== o.success) {
             Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
         } else {
-            configureWidgets();
+            loadReeBillUI(accountCombo.getValue(), sequenceCombo.getValue());
         }
     }
 
@@ -544,12 +528,16 @@ function renderWidgets()
                     Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
                 } else {
                     // TODO: pass these into successResponse somehow see 14945431
-                    // a new sequence has been made
-                    sequencesStore.load();
+
+                    // a new sequence has been made, so load it for the currently selected account
+                    //sequencesStore.load();
+                    //sequencesStore.reload();
                     // select it
-                    sequenceCombo.selectByValue((parseInt(sequence)+1), true);
+                    //sequenceCombo.selectByValue((parseInt(sequenceCombo.getValue())+1), true);
                     // re configure displayed data
-                    configureWidgets();
+                    alert("Make sure this is working and selecting the proper sequence")
+                    //loadReeBillUI(accountCombo.getValue(), parseInt(sequenceCombo.getValue()));
+                    find out why sequencecombo is not reloading the rolled sequence
                 }
             },
             failure: function () {
@@ -2097,14 +2085,14 @@ function renderWidgets()
                 {
                     //reebillStore.setBaseParam("account", account);
 
-                    reebill_sequences = []
+                    sequences = []
                     var s = reebillGrid.getSelectionModel().getSelections();
                     for(var i = 0, r; r = s[i]; i++)
                     {
-                        reebill_sequences.push(r.data.sequence);
+                        sequences.push(r.data.sequence);
                     }
 
-                    mailReebillOperation(reebill_sequences);
+                    mailReebillOperation(sequences);
                 }
             }
         ]
@@ -2298,16 +2286,24 @@ function renderWidgets()
     // using the restful interface of eXist DB
 
 
-    // responsible for initializing all ui widget backing stores
-    // called due to sequenceCombo.on() select event (see above)
-    function configureWidgets() {
+    // called by the utilbillGrid selection model
+    // this function then sets the account and sequence values into the rebill account and sequence comboboxes
+    // which in turn can be used to override a selection made by the utilbillGrid sel Model
+    // this is because #1 a utility bill is initially selected for processing which may have an reebill which
+    // is then displayed and #2, the user may wish to see several reebills without changing the utility bill.
+    // in other words, utilbillgrid selects both a utilbill and reebill and the reebill combos
+    // override the selection of the reebill.
+    function loadReeBillUI(account, sequence) {
+        
+        accountCombo.setValue(account);
+        sequenceCombo.setValue(sequence);
 
-        // TODO: which bill loaded? We need to look in the bill, or have the params
-        // of the ajax call that loaded this bill.
-        // by getting the current values out of the ui, a bug is created on the 
-        // roll operation. 
-        account = accountCombo.getValue();
-        sequence = sequenceCombo.getValue();
+        // if there is no reebill, don't attempt to load one
+        // TODO: I don't want this kind of checking in the UI.  How do we design
+        // in such a way that we never have to test sequence?
+        if (sequence == null || sequence == "")
+            return;
+
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/ubPeriods',
             params: {account: account, sequence: sequence},
@@ -2357,6 +2353,12 @@ function renderWidgets()
         hChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
         rsiStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
 
+        paymentStore.load({params: {account: account}});
+
+        reebillStore.setBaseParam("account", account)
+        // paging tool bar params must be passed in to keep store in sync with toolbar paging calls - autoload params lost after autoload
+        reebillStore.load({params:{start:0, limit:25}});
+
         var sb = Ext.getCmp('statusbar');
         sb.setStatus({
             text: account + "-" + sequence,
@@ -2376,10 +2378,7 @@ function renderWidgets()
                 try {
                     jsonData = Ext.util.JSON.decode(result.responseText);
                     if (jsonData.success == false) {
-                        /*Ext.MessageBox.alert('server error',
-                            jsonData.errors.reason + " "
-                            + jsonData.errors.details);*/
-                        // replace reebill image with a message instead
+                        // replace reebill image with a missing graphic
                         Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
                             html: NO_REEBILL_FOUND_MESSAGE, id: 'reebillimage'}, true);
                     } else {
@@ -2393,7 +2392,13 @@ function renderWidgets()
                 }
             },
             // this is called when the server returns 500 as well as when there's no response
-            failure: function() { Ext.MessageBox.alert('ajax failure', reeBillImageURL); },
+            failure: function() { 
+                Ext.MessageBox.alert('ajax failure', reeBillImageURL); 
+
+                // replace reebill image with a missing graphic
+                Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
+                    html: NO_REEBILL_FOUND_MESSAGE, id: 'reebillimage'}, true);
+            },
             disablecaching: true,
         });
     }
