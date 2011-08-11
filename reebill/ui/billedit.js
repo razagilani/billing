@@ -527,17 +527,9 @@ function renderWidgets()
                 if(true !== o.success) {
                     Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
                 } else {
-                    // TODO: pass these into successResponse somehow see 14945431
-
+                    // TODO: pass  functions such as the ones below into successResponse somehow see 14945431 (for being able to re-use successResponse)
                     // a new sequence has been made, so load it for the currently selected account
-                    //sequencesStore.load();
-                    //sequencesStore.reload();
-                    // select it
-                    //sequenceCombo.selectByValue((parseInt(sequenceCombo.getValue())+1), true);
-                    // re configure displayed data
-                    alert("Make sure this is working and selecting the proper sequence")
-                    //loadReeBillUI(accountCombo.getValue(), parseInt(sequenceCombo.getValue()));
-                    find out why sequencecombo is not reloading the rolled sequence
+                    sequencesStore.load();
                 }
             },
             failure: function () {
