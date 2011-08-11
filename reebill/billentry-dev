@@ -2,7 +2,7 @@
                 ServerAdmin webmaster@localhost
                 ServerName billentry-dev
 
-                DocumentRoot /home/dklothe/workspace/billing/reebill/ui
+                DocumentRoot /home/dklothe/skyline/billing/reebill/ui
                 <Directory />
                         DirectoryIndex billentry.html
                         Options FollowSymLinks
@@ -17,7 +17,7 @@
                     Options Indexes FollowSymLinks MultiViews
                     #AllowOverride None
                 </Directory>
-                <Directory /home/dklothe/workspace/billing/presentation/webforms/billentry>
+                <Directory /home/dklothe/skyline/billing/presentation/webforms/billentry>
                     Options Indexes FollowSymLinks MultiViews
                     AllowOverride None
                     Order allow,deny
@@ -31,7 +31,7 @@
 
                 CustomLog ${APACHE_LOG_DIR}/access.log combined
 
-WSGIScriptAlias /reebill /home/dklothe/workspace/billing/reebill/bill_tool_bridge.py
-            WSGIDaemonProcess reebill user=dklothe group=dklothe processes=1 threads=10 python-path=/home/dklothe/workspace:/usr/lib/python2.7/dist-packages/ChartDirector/lib
+WSGIScriptAlias /reebill /home/dklothe/skyline/billing/reebill/bill_tool_bridge.py
+            WSGIDaemonProcess reebill user=dklothe group=dklothe processes=1 threads=10 python-path=/home/dklothe/skyline:/usr/lib/python2.7/dist-packages/ChartDirector/lib
             WSGIProcessGroup reebill
         </VirtualHost>

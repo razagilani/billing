@@ -87,8 +87,7 @@ class Bill(object):
     def remove_children_named(self, root_elem, names):
         for name in names:
             child_elem = root_elem.find("ub:%s" % name, {"ub":"bill"})
-            if child_elem is not None:
-                root_elem.remove(child_elem)
+            if child_elem is not None: root_elem.remove(child_elem)
 
     def remove_attrs_named(self, elem, names):
         for name in names:

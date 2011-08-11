@@ -55,6 +55,7 @@ class BillToolBridge:
     def __init__(self):
         self.config = ConfigParser.RawConfigParser()
         config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'bill_tool_bridge.cfg')
+        print config_file_path
         if not self.config.read(config_file_path):
             print "Creating config file"
             self.config.add_section('xmldb')
@@ -72,8 +73,8 @@ class BillToolBridge:
             self.config.add_section('statedb')
             self.config.set('statedb', 'host', 'localhost')
             self.config.set('statedb', 'db', 'skyline')
-            self.config.set('statedb', 'user', 'dev')
-            self.config.set('statedb', 'password', '[password]')
+            self.config.set('statedb', 'user', 'devTEST7')
+            self.config.set('statedb', 'password', '[password]TEST8')
             self.config.add_section('mailer')
             self.config.set('mailer', 'smtp_host', 'smtp.gmail.com')
             self.config.set('mailer', 'smtp_port', '587')
