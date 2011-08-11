@@ -57,6 +57,11 @@ class StateDB:
                     'customer': relationship(Customer, backref='payment')
                 })
 
+        # To turn logging on
+        #import logging
+        #logging.basicConfig()
+        #logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
+
         # session
         # global variable for the database session: SQLAlchemy will give an error if
         # this is created more than once, so don't call _getSession() anywhere else
@@ -114,7 +119,7 @@ class StateDB:
         # TODO: because of the way 0.xml templates are made (they are not in the database) rebill needs to be 
         # primed otherwise the last sequence for a new bill is None. Design a solution to this issue.
         if max_sequence is None:
-            return 0
+            max_sequence =  0
 
         session.commit()
 
@@ -163,7 +168,7 @@ class StateDB:
         # subquery examples use multiple queries but that shouldn't be
         # necessary
         customer = session.query(Customer).filter(Customer.account==account).one()
-        sequences = session.query(ReeBill.sequence).filter(ReeBill.customer_id==customer.id).all()
+        sequences = session.query(ReeBill.sequence).with_lockmode("read").filter(ReeBill.customer_id==customer.id).all()
 
         # sequences is a list of tuples of numbers, so convert it into a plain list
         result = map((lambda x: x[0]), sequences)
