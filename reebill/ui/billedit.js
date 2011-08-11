@@ -1,4 +1,3 @@
-// Configure ext js widgets and events
 function renderWidgets()
 {
     // global ajax timeout
