@@ -335,7 +335,6 @@ class BillToolBridge:
     def listSequences(self, account, **kwargs):
         sequences = []
         try:
-            
             # eventually, this data will have to support pagination
             sequences = self.state_db.listSequences(account)
             rows = [{'sequence': sequence} for sequence in sequences]

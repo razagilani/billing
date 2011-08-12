@@ -31,6 +31,8 @@ function renderWidgets()
     var NO_UTILBILL_FOUND_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill_notfound.png"/></td></tr></table></div>';
     var NO_REEBILL_SELECTED_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_reebill.png"/></td></tr></table></div>';
     var NO_REEBILL_FOUND_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_reebill_notfound.png"/></td></tr></table></div>';
+    var LOADING_MESSAGE = 'Loading...';
+
     var utilBillImageBox = new Ext.Panel({
         collapsible: true,
         // content is initially just a message saying no image is selected
@@ -197,6 +199,9 @@ function renderWidgets()
                         failure: function() { Ext.MessageBox.alert('Ajax failure', theUrl); },
                         disableCaching: true,
                     });
+
+                    // while waiting for the ajax request to finish, show a loading message in the utilbill image box
+                    Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div', html: LOADING_MESSAGE, id: 'utilbillimage'}, true);
                 }
             }
         }),
