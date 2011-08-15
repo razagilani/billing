@@ -126,8 +126,16 @@ function renderWidgets()
         autoLoad: {params:{start: 0, limit: 25}},
         fields: [
             {name: 'account'},
-            {name: 'period_start', type: 'date'},
-            {name: 'period_end', type: 'date'},
+            {
+                name: 'period_start', 
+                type: 'date',
+                dateFormat: 'Y-m-d'
+            },
+            {   
+                name: 'period_end',
+                type: 'date',
+                dateFormat: 'Y-m-d'
+            },
             {name: 'sequence'},
         ],
         url: 'http://' + location.host + '/reebill/listUtilBills',
@@ -152,17 +160,9 @@ function renderWidgets()
                     // update the current account and sequence
                     loadReeBillUI(record.data.account, record.data.sequence)
 
-                    // update utilbill
-                    // parse date strings--the format is determined by the JSONDataStore's
-                    // JsonReader, but i can't figure out how to change that format, so
-                    // it's horrible: e.g. "Mon Dec 07 2009 00:00:00 GMT-0500 (EST)"
-                    // (built-in JS date constructor automatically detects the format)
-                    var parsed_begin_date = new Date(record.data.period_start);
-                    var parsed_end_date = new Date(record.data.period_end);
-
                     // convert the parsed date into a string in the format expected by the back end
-                    var formatted_begin_date_string = parsed_begin_date.format('Y-m-d');
-                    var formatted_end_date_string = parsed_end_date.format('Y-m-d');
+                    var formatted_begin_date_string = record.data.period_start.format('Y-m-d');
+                    var formatted_end_date_string = record.data.period_end.format('Y-m-d');
 
                     // url for getting bill images (calls bill_tool_bridge.getBillImage())
                     theUrl = 'http://' + location.host + '/reebill/getUtilBillImage';
