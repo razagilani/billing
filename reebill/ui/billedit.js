@@ -200,8 +200,10 @@ function renderWidgets()
                         disableCaching: true,
                     });
 
-                    // while waiting for the ajax request to finish, show a loading message in the utilbill image box
-                    Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div', html: LOADING_MESSAGE, id: 'utilbillimage'}, true);
+                    // while waiting for the ajax request to finish, show a
+                    // loading message in the utilbill image box
+                    Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
+                            html: LOADING_MESSAGE, id: 'utilbillimage'}, true);
                 }
             }
         }),
@@ -2397,6 +2399,10 @@ function renderWidgets()
             },
             disablecaching: true,
         });
+        // while waiting for the ajax request to finish, show a loading message
+        // in the utilbill image box
+        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div', html:
+            LOADING_MESSAGE, id: 'reebillimage'}, true);
     }
 }
 
