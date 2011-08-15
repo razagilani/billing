@@ -35,6 +35,9 @@ class StateDB:
         #metadata = MetaData() 
         metadata = MetaData(engine)
 
+        print '*************************************************'
+        print 'mysql://%s:%s@%s:3306/%s' % (user, password, host, db)
+
         # table objects loaded automatically from database
         utilbill_table = Table('utilbill', metadata, autoload=True)
         reebill_table = Table('rebill', metadata, autoload=True)
