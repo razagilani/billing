@@ -1200,6 +1200,9 @@ function renderWidgets()
                     // and update the bill document with them.
                     //setActualCharges(bill, aChargesStore.getRange());
 
+                    account = accountCombo.getValue();
+                    sequence = sequenceCombo.getValue();
+
                     Ext.Ajax.request({
                         url: 'http://'+location.host+'/reebill/copyactual',
                         params: {account: account, sequence: sequence},
@@ -1749,8 +1752,8 @@ function renderWidgets()
                 {
                     rsiGrid.stopEditing();
                     rsiStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    rsiStore.setBaseParam("account", account);
-                    rsiStore.setBaseParam("sequence", sequence);
+                    rsiStore.setBaseParam("account", accountCombo.getValue());
+                    rsiStore.setBaseParam("sequence", sequenceCombo.getValue());
 
                     // TODO single row selection only, test allowing multirow selection
                     var s = rsiGrid.getSelectionModel().getSelections();
@@ -1780,8 +1783,8 @@ function renderWidgets()
                     rsiGrid.stopEditing();
 
                     rsiStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    rsiStore.setBaseParam("account", account);
-                    rsiStore.setBaseParam("sequence", sequence);
+                    rsiStore.setBaseParam("account", accountCombo.getValue());
+                    rsiStore.setBaseParam("sequence", sequenceCombo.getValue());
 
                     rsiStore.save(); 
                 }
@@ -1826,8 +1829,8 @@ function renderWidgets()
 
     rsiStore.on('beforesave', function() {
         rsiStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        rsiStore.setBaseParam("account", account);
-        rsiStore.setBaseParam("sequence", sequence);
+        rsiStore.setBaseParam("account", accountCombo.getValue());
+        rsiStore.setBaseParam("sequence", sequenceCombo.getValue());
     });
 
     ///////////////////////////////////////
