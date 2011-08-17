@@ -75,8 +75,8 @@ def mail(recipients, merge_fields, bill_path, bill_files):
     originator = config.get("mailer", "originator")
     password = config.get("mailer", "password")
 
-    # Create message container - the correct MIME type is multipart/alternative.
-    container = MIMEMultipart('alternative')
+    # outer container, attachments declare their type
+    container = MIMEMultipart()
     container['Subject'] = "Skyline Innovations: Your Monthly Bill for %s" % (merge_fields["street"])
     container['From'] = from_user
     container['To'] = recipients
