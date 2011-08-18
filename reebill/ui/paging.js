@@ -56,7 +56,7 @@ Ext.onReady(function(){
                 cls: 'x-btn-text-icon details',
                 toggleHandler: function(btn, pressed){
                     var view = grid.getView();
-                    view.showPreview = pressed;
+                    //view.showPreview = pressed;
                     view.refresh();
                 }
             }]

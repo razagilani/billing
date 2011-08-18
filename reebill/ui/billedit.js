@@ -669,7 +669,7 @@ function renderWidgets()
                     }
                 },
                 success: function(form, action) {
-                    //alert(action.success);
+                    utilbillGrid.getBottomToolbar().doRefresh();
                 }
             })
 
