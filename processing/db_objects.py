@@ -1,7 +1,5 @@
 #!/usr/bin/python
 
-'''These classes represent the database tables 'customer', 'rebill', and
-'utilbill' respectively.'''
 class Customer(object):
     def __init__(self, name, account, discountrate):
         self.name = name
@@ -40,3 +38,19 @@ class Payment(object):
         return '<Payment(%s, %s, %s, %s)>' \
                 % (self.customer, self.date, \
                         self.description, self.credit)
+
+class StatusUnbilled(object):
+    def __init__(self, account):
+        self.account = account
+    def __repr__(self):
+        return '<StatusUnbilled(%s)>' \
+                % (self.account)
+
+class StatusDaysSince(object):
+    def __init__(self, account, dayssince):
+        self.account = account
+        self.dayssince = dayssince
+    def __repr__(self):
+        return '<StatusDaysSince(%s, %s)>' \
+                % (self.account, self.dayssince)
+
