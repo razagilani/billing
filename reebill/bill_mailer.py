@@ -75,8 +75,8 @@ def mail(recipients, merge_fields, bill_path, bill_files):
     originator = config.get("mailer", "originator")
     password = config.get("mailer", "password")
 
-    # Create message container - the correct MIME type is multipart/alternative.
-    container = MIMEMultipart('alternative')
+    # outer container, attachments declare their type
+    container = MIMEMultipart()
     container['Subject'] = "Skyline Innovations: Your Monthly Bill for %s" % (merge_fields["street"])
     container['From'] = from_user
     container['To'] = recipients
@@ -117,13 +117,15 @@ def mail(recipients, merge_fields, bill_path, bill_files):
         container.attach(attachment)
 
     # Record the MIME types of both parts - text/plain and text/html.
-    part1 = MIMEText(text, 'plain')
+    #part1 = MIMEText(text, 'plain')
+    # grr... outlook seems to display the plain message first. wtf.
     part2 = MIMEText(html, 'html')
 
     # Attach parts into message container.
     # According to RFC 2046, the last part of a multipart message, in this case
     # the HTML message, is best and preferred.
-    container.attach(part1)
+    #container.attach(part1)
+    # grr... outlook seems to display the plain message first. wtf.
     container.attach(part2)
 
     server = smtplib.SMTP(config.get("mailer","smtp_host"), int(config.get("mailer", "smtp_port")))

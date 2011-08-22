@@ -13,7 +13,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import mapper, sessionmaker, scoped_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy import and_
-from db_objects import Customer, UtilBill, ReeBill, Payment
+from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, StatusUnbilled
 
 class StateDB:
 
@@ -39,26 +39,36 @@ class StateDB:
         print 'mysql://%s:%s@%s:3306/%s' % (user, password, host, db)
 
         # table objects loaded automatically from database
+        status_days_since_view = Table('status_days_since', metadata, autoload=True)
+        status_unbilled_view = Table('status_unbilled', metadata, autoload=True)
         utilbill_table = Table('utilbill', metadata, autoload=True)
         reebill_table = Table('rebill', metadata, autoload=True)
         customer_table = Table('customer', metadata, autoload=True)
         payment_table = Table('payment', metadata, autoload=True)
 
         # mappings
+        mapper(StatusDaysSince, status_days_since_view,primary_key=[status_days_since_view.c.account])
+        mapper(StatusUnbilled, status_unbilled_view, primary_key=[status_unbilled_view.c.account])
+
         mapper(Customer, customer_table, \
                 properties={
                     'utilbills': relationship(UtilBill, backref='customer'), \
                     'reebills': relationship(ReeBill, backref='customer')
                 })
+
         mapper(ReeBill, reebill_table)
+
         mapper(UtilBill, utilbill_table, \
                 properties={
                     'reebill': relationship(ReeBill, backref='utilbill')
                 })
+
         mapper(Payment, payment_table, \
                 properties={
                     'customer': relationship(Customer, backref='payment')
                 })
+
+
 
         # To turn logging on
         #import logging
@@ -310,3 +320,35 @@ class StateDB:
         session.commit()
 
         return payments
+
+    def retrieve_status_days_since(self, start, limit):
+
+        session = self.session()
+
+        # SQLAlchemy query to get account & dates for all utilbills
+        query = session.query(StatusDaysSince)
+
+        # SQLAlchemy does SQL 'limit' with Python list slicing
+        slice = query[start:start + limit]
+
+        count = query.count()
+
+        session.commit()
+
+        return slice, count
+
+    def retrieve_status_unbilled(self, start, limit):
+
+        session = self.session()
+
+        # SQLAlchemy query to get account & dates for all utilbills
+        query = session.query(StatusUnbilled)
+
+        # SQLAlchemy does SQL 'limit' with Python list slicing
+        slice = query[start:start + limit]
+
+        count = query.count()
+
+        session.commit()
+
+        return slice, count
