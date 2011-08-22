@@ -487,6 +487,10 @@ class Bill(object):
             self.prop_to_cdata(utilbill, "recharges", utilbill_elem, "recharges")
             self.prop_to_cdata(utilbill, "resavings", utilbill_elem, "resavings")
 
+    @property
+    def rateschedule(self):
+        return self.xpath("/ub:bill/ub:billableusage/ub:rateschedule/ub:name")[0].text
+
 
     # TODO: pluralize method name
     # TODO: prefix with ub?
