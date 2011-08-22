@@ -301,6 +301,25 @@ class BillToolBridge:
 
         return json.dumps({'success': True})
 
+    def prettyify_account_numbers(self, accounts):
+        # now get associated names from Nexus and add them to each account dictionary
+        rows = []
+        for account in accounts:
+            row = {'account':account}
+            display_name = [account]
+
+            all_names = NexusUtil().all("billing", account)
+            if 'codename' in all_names:
+                display_name.append(all_names['codename'])
+            if 'casualname' in all_names:
+                display_name.append(all_names['casualname'])
+            if 'primus' in all_names:
+                display_name.append(all_names['primus'])
+            #account['name'] = string.join(display_name, ' - ')
+            row['name'] = ' - '.join(display_name)
+            rows += [row]
+
+        return rows
 
     @cherrypy.expose
     def listAccounts(self, **kwargs):
@@ -310,21 +329,7 @@ class BillToolBridge:
 
             accounts = self.state_db.listAccounts()
 
-            # now get associated names from Nexus and add them to each account dictionary
-            rows = []
-            for account in accounts:
-                row = {'account':account}
-                display_name = [account]
-                all_names = NexusUtil().all("billing", account)
-                if 'codename' in all_names:
-                    display_name.append(all_names['codename'])
-                if 'casualname' in all_names:
-                    display_name.append(all_names['casualname'])
-                if 'primus' in all_names:
-                    display_name.append(all_names['primus'])
-                #account['name'] = string.join(display_name, ' - ')
-                row['name'] = ' - '.join(display_name)
-                rows += [row]
+            rows = self.prettyify_account_numbers(accounts)
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -349,6 +354,8 @@ class BillToolBridge:
         # JSON format if it succeded or an error if it didn't
         try:
             statuses, totalCount = self.state_db.retrieve_status_days_since(int(start), int(limit))
+
+            # TODO: refactor nexus lookup 
             
             # convert the result into a list of dictionaries for returning as
             # JSON to the browser
@@ -902,10 +909,22 @@ class BillToolBridge:
             # JSON to the browser
             rows = []
             for utilbill in utilbills:
+
                 # wouldn't it be nice if the db_objects dealt with the lack of relationship better? Not sure.
                 sequence = utilbill.reebill.sequence if utilbill.reebill else None
                 account = utilbill.customer.account if utilbill.customer else None
-                rows.append({'account': account, 'period_start': utilbill.period_start,
+
+                all_names = NexusUtil().all("billing", account)
+                display_name = [account]
+
+                if 'codename' in all_names:
+                    display_name.append(all_names['codename'])
+                if 'casualname' in all_names:
+                    display_name.append(all_names['casualname'])
+                if 'primus' in all_names:
+                    display_name.append(all_names['primus'])
+
+                rows.append({'account': string.join(display_name, '-'), 'period_start': utilbill.period_start,
                 'period_end':utilbill.period_end, 'sequence':sequence})
 
             return ju.dumps({'success': True, 'rows':rows,
