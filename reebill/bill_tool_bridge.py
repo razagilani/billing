@@ -344,8 +344,61 @@ class BillToolBridge:
         return json.dumps({'success': True, 'rows':rows})
 
     @cherrypy.expose
-    # TODO see 15415625 about the problem passing in service to get at a set of RSIs
+    def retrieve_status_days_since(self, start, limit, **args):
+        # call getrows to actually query the database; return the result in
+        # JSON format if it succeded or an error if it didn't
+        try:
+            statuses, totalCount = self.state_db.retrieve_status_days_since(int(start), int(limit))
+            
+            # convert the result into a list of dictionaries for returning as
+            # JSON to the browser
+            rows = []
+            for status in statuses:
+                all_names = NexusUtil().all("billing", status.account)
+                display_name = [status.account]
+                if 'codename' in all_names:
+                    display_name.append(all_names['codename'])
+                if 'casualname' in all_names:
+                    display_name.append(all_names['casualname'])
+                if 'primus' in all_names:
+                    display_name.append(all_names['primus'])
+                rows.append({'account': string.join(display_name, '-'), 'dayssince':status.dayssince})
 
+            return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
+        except Exception as e:
+            # TODO: log errors?
+            print >> sys.stderr, e
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+    @cherrypy.expose
+    def retrieve_status_unbilled(self, start, limit, **args):
+        # call getrows to actually query the database; return the result in
+        # JSON format if it succeded or an error if it didn't
+        try:
+            statuses, totalCount = self.state_db.retrieve_status_unbilled(int(start), int(limit))
+            
+            # convert the result into a list of dictionaries for returning as
+            # JSON to the browser
+            rows = []
+            for status in statuses:
+                all_names = NexusUtil().all("billing", status.account)
+                display_name = [status.account]
+                if 'codename' in all_names:
+                    display_name.append(all_names['codename'])
+                if 'casualname' in all_names:
+                    display_name.append(all_names['casualname'])
+                if 'primus' in all_names:
+                    display_name.append(all_names['primus'])
+                rows.append({'account': string.join(display_name, '-')})
+
+            return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
+        except Exception as e:
+            # TODO: log errors?
+            print >> sys.stderr, e
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+    @cherrypy.expose
+    # TODO see 15415625 about the problem passing in service to get at a set of RSIs
     # experiment to see how using one URL for all operations works
     def rsi(self, xaction, account, sequence, service, **kwargs):
 

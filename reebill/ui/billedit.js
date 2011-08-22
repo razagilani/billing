@@ -1200,6 +1200,9 @@ function renderWidgets()
                     // and update the bill document with them.
                     //setActualCharges(bill, aChargesStore.getRange());
 
+                    account = accountCombo.getValue();
+                    sequence = sequenceCombo.getValue();
+
                     Ext.Ajax.request({
                         url: 'http://'+location.host+'/reebill/copyactual',
                         params: {account: account, sequence: sequence},
@@ -1749,8 +1752,8 @@ function renderWidgets()
                 {
                     rsiGrid.stopEditing();
                     rsiStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    rsiStore.setBaseParam("account", account);
-                    rsiStore.setBaseParam("sequence", sequence);
+                    rsiStore.setBaseParam("account", accountCombo.getValue());
+                    rsiStore.setBaseParam("sequence", sequenceCombo.getValue());
 
                     // TODO single row selection only, test allowing multirow selection
                     var s = rsiGrid.getSelectionModel().getSelections();
@@ -1780,8 +1783,8 @@ function renderWidgets()
                     rsiGrid.stopEditing();
 
                     rsiStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    rsiStore.setBaseParam("account", account);
-                    rsiStore.setBaseParam("sequence", sequence);
+                    rsiStore.setBaseParam("account", accountCombo.getValue());
+                    rsiStore.setBaseParam("sequence", sequenceCombo.getValue());
 
                     rsiStore.save(); 
                 }
@@ -1826,8 +1829,8 @@ function renderWidgets()
 
     rsiStore.on('beforesave', function() {
         rsiStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        rsiStore.setBaseParam("account", account);
-        rsiStore.setBaseParam("sequence", sequence);
+        rsiStore.setBaseParam("account", accountCombo.getValue());
+        rsiStore.setBaseParam("sequence", sequenceCombo.getValue());
     });
 
     ///////////////////////////////////////
@@ -2137,6 +2140,159 @@ function renderWidgets()
         reebillStore.setBaseParam("account", account);
     });
 
+    ///////////////////////////////////////
+    // Status Days Since 
+
+    var initialStatusDaysSince = {
+        rows: []
+    };
+
+    var statusDaysSinceReader = new Ext.data.JsonReader({
+        // metadata configuration options:
+        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
+        //idProperty: 'id',
+        root: 'rows',
+
+        // the fields config option will internally create an Ext.data.Record
+        // constructor that provides mapping for reading the record data objects
+        fields: [
+            // map Record's field to json object's key of same name
+            {name: 'account', mapping: 'account'},
+            {name: 'dayssince', mapping: 'dayssince'}
+        ]
+    });
+
+    var statusDaysSinceStore = new Ext.data.JsonStore({
+        root: 'rows',
+        totalProperty: 'results',
+        pageSize: 25,
+        paramNames: {start: 'start', limit: 'limit'},
+        autoLoad: {params:{start: 0, limit: 25}},
+        reader: statusDaysSinceReader,
+        fields: [
+            {name: 'account'},
+            {name: 'dayssince'},
+        ],
+        url: 'http://' + location.host + '/reebill/retrieve_status_days_since',
+    });
+
+
+    var statusDaysSinceColModel = new Ext.grid.ColumnModel(
+    {
+        columns: [
+            {
+                header: 'Account',
+                sortable: true,
+                dataIndex: 'account',
+                editable: false,
+            },{
+                header: 'Days since last bill',
+                sortable: true,
+                dataIndex: 'dayssince',
+                editable: false,
+            },
+        ]
+    });
+
+
+    var statusDaysSinceGrid = new Ext.grid.GridPanel({
+        //tbar: statusToolbar,
+        colModel: statusDaysSinceColModel,
+        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+        store: statusDaysSinceStore,
+        enableColumnMove: false,
+        frame: true,
+        collapsible: true,
+        animCollapse: false,
+        stripeRows: true,
+        viewConfig: {
+            // doesn't seem to work
+            forceFit: true,
+        },
+        title: 'Processing Status',
+        // paging bar on the bottom
+        bbar: new Ext.PagingToolbar({
+            pageSize: 25,
+            store: statusDaysSinceStore,
+            displayInfo: true,
+            displayMsg: 'Displaying {0} - {1} of {2}',
+            emptyMsg: "No statuses to display",
+        }),
+    });
+
+    ///////////////////////////////////////
+    // Status Unbilled
+
+    var initialStatusUnbilled = {
+        rows: []
+    };
+
+    var statusUnbilledReader = new Ext.data.JsonReader({
+        // metadata configuration options:
+        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
+        //idProperty: 'id',
+        root: 'rows',
+
+        // the fields config option will internally create an Ext.data.Record
+        // constructor that provides mapping for reading the record data objects
+        fields: [
+            // map Record's field to json object's key of same name
+            {name: 'account', mapping: 'account'},
+        ]
+    });
+
+    var statusUnbilledStore = new Ext.data.JsonStore({
+        root: 'rows',
+        totalProperty: 'results',
+        pageSize: 25,
+        paramNames: {start: 'start', limit: 'limit'},
+        autoLoad: {params:{start: 0, limit: 25}},
+        reader: statusUnbilledReader,
+        fields: [
+            {name: 'account'},
+        ],
+        url: 'http://' + location.host + '/reebill/retrieve_status_unbilled',
+    });
+
+
+    var statusUnbilledColModel = new Ext.grid.ColumnModel(
+    {
+        columns: [
+            {
+                header: 'Account',
+                sortable: true,
+                dataIndex: 'account',
+                editable: false,
+            }
+        ]
+    });
+
+
+    var statusUnbilledGrid = new Ext.grid.GridPanel({
+        //tbar: statusToolbar,
+        colModel: statusUnbilledColModel,
+        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+        store: statusUnbilledStore,
+        enableColumnMove: false,
+        frame: true,
+        collapsible: true,
+        animCollapse: false,
+        stripeRows: true,
+        viewConfig: {
+            // doesn't seem to work
+            forceFit: true,
+        },
+        title: 'Unbilled Status',
+        // paging bar on the bottom
+        bbar: new Ext.PagingToolbar({
+            pageSize: 25,
+            store: statusUnbilledStore,
+            displayInfo: true,
+            displayMsg: 'Displaying {0} - {1} of {2}',
+            emptyMsg: "No statuses to display",
+        }),
+    });
+
     // end of tab widgets
     ////////////////////////////////////////////////////////////////////////////
 
@@ -2160,11 +2316,17 @@ function renderWidgets()
       //margins:'0 4 4 0',
       // necessary for child FormPanels to draw properly when dynamically changed
       layoutOnTabChange: true,
-      activeTab: 0,
+      activeTab: 1,
       bbar: statusBar,
       border:true,
       items:[
         {
+          id: 'statusTab',
+          title: 'Status',
+          xtype: 'panel',
+          layout: 'accordion',
+          items: [statusDaysSinceGrid, statusUnbilledGrid]
+        },{
           title: 'Upload UtilBill',
           xtype: 'panel',
           layout: 'vbox',
