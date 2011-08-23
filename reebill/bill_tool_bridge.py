@@ -301,6 +301,7 @@ class BillToolBridge:
 
         return json.dumps({'success': True})
 
+    #TODO make this generic enough that all other account listing functions can return pretty names
     def prettyify_account_numbers(self, accounts):
         # now get associated names from Nexus and add them to each account dictionary
         rows = []
@@ -924,7 +925,7 @@ class BillToolBridge:
                 if 'primus' in all_names:
                     display_name.append(all_names['primus'])
 
-                rows.append({'account': string.join(display_name, '-'), 'period_start': utilbill.period_start,
+                rows.append({'account':account, 'name': string.join(display_name, '-'), 'period_start': utilbill.period_start,
                 'period_end':utilbill.period_end, 'sequence':sequence})
 
             return ju.dumps({'success': True, 'rows':rows,

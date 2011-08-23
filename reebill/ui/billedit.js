@@ -126,6 +126,7 @@ function renderWidgets()
         paramNames: {start: 'start', limit: 'limit'},
         autoLoad: {params:{start: 0, limit: 25}},
         fields: [
+            {name: 'name'},
             {name: 'account'},
             {
                 name: 'period_start', 
@@ -209,10 +210,10 @@ function renderWidgets()
         }),
         // grid columns
         columns:[{
-                id: 'account',
-                header: 'Account',
-                dataIndex: 'account',
-                width:80,
+                id: 'name',
+                header: 'Name',
+                dataIndex: 'name',
+                width:300,
             },
             new Ext.grid.DateColumn({
                 header: 'Start Date',
