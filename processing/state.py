@@ -31,7 +31,7 @@ class StateDB:
         user = config['user']
         password = config['password']
 
-        engine = create_engine('mysql://%s:%s@%s:3306/%s' % (user, password, host, db))
+        engine = create_engine('mysql://%s:%s@%s:3306/%s' % (user, password, host, db), pool_recycle=3600)
         #metadata = MetaData() 
         metadata = MetaData(engine)
 
