@@ -410,7 +410,7 @@ class Bill(object):
     @property
     def utilbill_summary_charges(self):
         """
-        Returns a dictionary whose keys are service and values are a MutableNamedTuple excluding the CARs.
+        Returns a dictionary whose keys are service and values are a MutableNamedTuple.
         """
         utilbill_elem_list = self.xpath("/ub:bill/ub:utilbill")
 
@@ -434,6 +434,25 @@ class Bill(object):
                 self.cdata_to_prop(utilbill_elem, "actualecharges", Decimal, u, "actualecharges" )
                 self.cdata_to_prop(utilbill_elem, "revalue", Decimal, u, "revalue" )
                 self.cdata_to_prop(utilbill_elem, "recharges", Decimal, u, "recharges" )
+                self.cdata_to_prop(utilbill_elem, 'resavings', Decimal, u, 'resavings') # added
+
+                # CAR data (added)
+                service_address = {}
+                service_address['addressee'] = self.xpath("/ub:bill/ub:utilbill/ub:car/ub:serviceaddress/ub:addressee")[0].text
+                service_address['street'] = self.xpath("/ub:bill/ub:utilbill/ub:car/ub:serviceaddress/ub:street")[0].text
+                service_address['city'] = self.xpath("/ub:bill/ub:utilbill/ub:car/ub:serviceaddress/ub:city")[0].text
+                service_address['state'] = self.xpath("/ub:bill/ub:utilbill/ub:car/ub:serviceaddress/ub:state")[0].text
+                service_address['country'] = self.xpath("/ub:bill/ub:utilbill/ub:car/ub:serviceaddress/ub:country")[0].text
+                service_address['postalcode'] = self.xpath("/ub:bill/ub:utilbill/ub:car/ub:serviceaddress/ub:postalcode")[0].text
+                u.serviceaddress = service_address
+                billing_address = {}
+                billing_address['addressee'] = self.xpath("/ub:bill/ub:utilbill/ub:car/ub:billingaddress/ub:addressee")[0].text
+                billing_address['street'] = self.xpath("/ub:bill/ub:utilbill/ub:car/ub:billingaddress/ub:street")[0].text
+                billing_address['city'] = self.xpath("/ub:bill/ub:utilbill/ub:car/ub:billingaddress/ub:city")[0].text
+                billing_address['state'] = self.xpath("/ub:bill/ub:utilbill/ub:car/ub:billingaddress/ub:state")[0].text
+                billing_address['country'] = self.xpath("/ub:bill/ub:utilbill/ub:car/ub:billingaddress/ub:country")[0].text
+                billing_address['postalcode'] = self.xpath("/ub:bill/ub:utilbill/ub:car/ub:billingaddress/ub:postalcode")[0].text
+                u.billingaddress = billing_address
 
                 # TODO error check absence of attr
                 service = utilbill_elem.get("service")
@@ -467,6 +486,10 @@ class Bill(object):
             self.prop_to_cdata(utilbill, "revalue", utilbill_elem, "revalue")
             self.prop_to_cdata(utilbill, "recharges", utilbill_elem, "recharges")
             self.prop_to_cdata(utilbill, "resavings", utilbill_elem, "resavings")
+
+    @property
+    def rateschedule(self):
+        return self.xpath("/ub:bill/ub:billableusage/ub:rateschedule/ub:name")[0].text
 
 
     # TODO: pluralize method name

@@ -212,7 +212,7 @@ class StateDB:
         session = self.session()
 
         # SQLAlchemy query to get account & dates for all utilbills
-        query = session.query(UtilBill).join(Customer).order_by(Customer.account, UtilBill.period_start)
+        query = session.query(UtilBill).with_lockmode('read').join(Customer).order_by(Customer.account, UtilBill.period_start)
 
         # SQLAlchemy does SQL 'limit' with Python list slicing
         slice = query[start:start + limit]
