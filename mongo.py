@@ -99,141 +99,213 @@ def dict_merge(*dicts, **kwargs):
         result.update(d)
     return result
 
-def mongo_convert(url):
-	'''Returns a dictionary that is the Mongo document representation of the XML reebill at 'url'.'''
-	b = bill.Bill(url)
+class MongoReebill:
+	'''Class representing the reebill data structure stored in MongoDB. All
+	data is stored in 'dictionary', which is a Python dict that PyMongo could
+	read/write directly from/to the database. Provides methods for extracting
+	pieces of bill information.'''
 
-	# top-level reebill information:
-	reebill = dict_merge({
-			'account': b.account,
-			'sequence': b.id,
-			# "car" in XML flattened in Mongo (and only 1 billing address allowed)
-			'service_address': b.service_address,
-			'billing_address': b.billing_address
-		},
-		rename_keys(bson_convert(b.rebill_summary))
-	)
+	def __init__(self, url):
+		# initialization with a string: URL of an XML reebill in Exist. use
+		# bill.py to extract information from it into self.dictionary.
+		if type(arg) is not str:
+			raise ValueError("can't initialize MongoReebill with type ***%s###"
+					% str(type(arg)))
+		
+		# make a Bill object from the XML document
+		b = bill.Bill(arg)
 
-	# TODO
-	'''
-	replacement for utilbill.rate_structure_binding:
-		utility_name: e.g. "washgas",
-		rate_schedule: "DC_NONRESIDENTIAL_NONHEAT",
-	'''
+		# top-level reebill information:
+		self.dictionary = dict_merge({
+				'account': b.account,
+				'sequence': b.id,
+				'service_address': b.service_address,
+				'billing_address': b.billing_address
+			},
+			rename_keys(bson_convert(b.rebill_summary))
+		)
 
-	'''
-	A reebill has a list containing 1 or more utilbills, each of which is
-	structured as follows:
-	   {
-		----- utilbill section -----
-		service: "",  <--moved into the utilbill itself
-		actual_e_charges: #,
-		hypothetical_e_charges: #,
-		ree_charges: #,
-		ree_value: #,
-		----- details section -----
-		actual_chargegroups: [
-		  chargegroup_type: [
-				   {    
-					   description: ""
-					   quantity: #
-					   quantity_units: ""
-					   rate: #
-					   rate_schedule_binding: ""
-					   rate_units: ""
-					   total: #
-				   },
-			   ]
-		   ...
-		  ],
-		  ...
-		]
-		actual_total: #
-		hypothetical_chargegroups: (just like actual_chargegroups)
-		hypothetical_total: #
-		----- measuredusages section -----
-		meters: {
-		  {service_name:
-			  [identifier: "",
-			   present_read_date: date,
-			   prior_read_date: date,
-			   registers: [
-				  {description: ""
-				   identifier: ""
-				   presentreading: #
-				   rate_schedule_binding: ""
-				   shadow: boolean
-				   total: #
-				   type: ""
-				   units: ""
-				   }
-				   ...
-			   ]
+		# TODO
+		'''
+		replacement for utilbill.rate_structure_binding:
+			utility_name: e.g. "washgas",
+			rate_schedule: "DC_NONRESIDENTIAL_NONHEAT",
+		'''
+
+		'''
+		A reebill has a list containing 1 or more utilbills, each of which is
+		structured as follows:
+		   {
+			----- utilbill section -----
+			service: "",  <--moved into the utilbill itself
+			actual_e_charges: #,
+			hypothetical_e_charges: #,
+			ree_charges: #,
+			ree_value: #,
+			----- details section -----
+			actual_chargegroups: [
+			  chargegroup_type: [
+					   {    
+						   description: ""
+						   quantity: #
+						   quantity_units: ""
+						   rate: #
+						   rate_schedule_binding: ""
+						   rate_units: ""
+						   total: #
+					   },
+				   ]
 			   ...
-			 }
-		  }
-		----- statistics section -----
-		(exactly the same as XML)
-	   }
-	'''
+			  ],
+			  ...
+			]
+			actual_total: #
+			hypothetical_chargegroups: (just like actual_chargegroups)
+			hypothetical_total: #
+			----- measuredusages section -----
+			meters: {
+			  {service_name:
+				  [identifier: "",
+				   present_read_date: date,
+				   prior_read_date: date,
+				   registers: [
+					  {description: ""
+					   identifier: ""
+					   presentreading: #
+					   rate_schedule_binding: ""
+					   shadow: boolean
+					   total: #
+					   type: ""
+					   units: ""
+					   }
+					   ...
+				   ]
+				   ...
+				 }
+			  }
+			----- statistics section -----
+			(exactly the same as XML)
+		   }
+		'''
 
-	# utilbill info from the actual "utilbill" section
-	# (service names moved from keys of the utilbill_summary_charges dict into the
-	# utilbills themselves)
-	reebill['utilbills'] = [dict_merge({'service':service}, 
-			rename_keys(bson_convert(b.utilbill_summary_charges[service])))
-			for service in b.utilbill_summary_charges.keys()]
+		# utilbill info from the actual "utilbill" section (service names
+		# moved from keys of the utilbill_summary_charges dict into the
+		# utilbills themselves)
+		self.dictionary['utilbills'] = [dict_merge({'service':service}, 
+				rename_keys(bson_convert(b.utilbill_summary_charges[service])))
+				for service in b.utilbill_summary_charges.keys()]
 
-	# utilbill info from "details", "measuredusage", and "statistics" sections of
-	# XML ("billableusage" section is completely ignored)
-	actual_details = b.actual_details
-	hypothetical_details = b.hypothetical_details
-	measured_usages = b.measured_usage
-	for utilbill in reebill['utilbills']:
-		# get hypothetical details and actual details from bill.py
-		this_bill_actual_details = actual_details[utilbill['service']]
-		this_bill_hypothetical_details = hypothetical_details[utilbill['service']]
+		# utilbill info from "details", "measuredusage", and "statistics"
+		# sections of XML ("billableusage" section is completely ignored)
+		actual_details = b.actual_details
+		hypothetical_details = b.hypothetical_details
+		measured_usages = b.measured_usage
+		for utilbill in self.dictionary['utilbills']:
+			# get hypothetical details and actual details from bill.py
+			this_bill_actual_details = actual_details[utilbill['service']]
+			this_bill_hypothetical_details = \
+					hypothetical_details[utilbill['service']]
 
-		# fill in utilbill
-		utilbill.update({
-			'rate_schedule_name': this_bill_actual_details.rateschedule.name,
-			
-			# fail if this bill doesn't have an rsbinding
-			'rate_schedule_binding': this_bill_actual_details. \
-					rateschedule.rsbinding,
-			# so-called rate structure/schedule binding ("rsbinding") in utilbill
-			# is actually the name of the utility
-			'utility_name': this_bill_actual_details.rateschedule.rsbinding,
-			# TODO add rate schedule (not all xml files have this)
-			# 'rate_schedule': bson_convert(b.rateschedule),
+			# fill in utilbill
+			utilbill.update({
+				'rate_schedule_name': this_bill_actual_details.rateschedule.name,
+				
+				# fail if this bill doesn't have an rsbinding
+				'rate_schedule_binding': this_bill_actual_details. \
+						rateschedule.rsbinding,
+				# so-called rate structure/schedule binding ("rsbinding") in utilbill
+				# is actually the name of the utility
+				'utility_name': this_bill_actual_details.rateschedule.rsbinding,
+				# TODO add rate schedule (not all xml files have this)
+				# 'rate_schedule': bson_convert(b.rateschedule),
 
-			# chargegroups are divided between actual and hypothetical; these are
-			# stored in 2 dictionaries mapping the name of each chargegroup to a
-			# list of its charges. totals (in the format {total: #}) are removed
-			# from each list of charges and placed at the root of the utilbill.
-			'actual_chargegroups': {
-				chargegroup.type: [rename_keys(bson_convert(charge))
-				for charge in chargegroup.charges if charge.keys() != ['total']]
-				for chargegroup in this_bill_actual_details.chargegroups
-			},
-			'actual_total': bson_convert(this_bill_actual_details.total),
-			'hypothetical_chargegroups': {
-				chargegroup.type: [rename_keys(bson_convert(charge))
-				for charge in chargegroup.charges if charge.keys() != ['total']]
-				for chargegroup in this_bill_hypothetical_details.chargegroups
-			},
-			'hypothetical_total': bson_convert(this_bill_hypothetical_details.total)
+				# chargegroups are divided between actual and hypothetical; these are
+				# stored in 2 dictionaries mapping the name of each chargegroup to a
+				# list of its charges. totals (in the format {total: #}) are removed
+				# from each list of charges and placed at the root of the utilbill.
+				'actual_chargegroups': {
+					chargegroup.type: [rename_keys(bson_convert(charge))
+					for charge in chargegroup.charges if charge.keys() != ['total']]
+					for chargegroup in this_bill_actual_details.chargegroups
+				},
+				'actual_total': bson_convert(this_bill_actual_details.total),
+				'hypothetical_chargegroups': {
+					chargegroup.type: [rename_keys(bson_convert(charge))
+					for charge in chargegroup.charges if charge.keys() != ['total']]
+					for chargegroup in this_bill_hypothetical_details.chargegroups
+				},
+				'hypothetical_total': bson_convert(this_bill_hypothetical_details.total)
+			})
+
+			# measured usages: each utility has one or more meters, each of which has
+			# one or more registers (which are like sub-meters)
+			meters = measured_usages[utilbill['service']]
+			# TODO replace register.inclusions/exclusions with a "descriptor"
+			# (a name) that matches the value of 'descriptor' for a register in
+			# the 'registers' section of the monthly rate structure yaml file. 
+			utilbill.update({'meters': rename_keys(bson_convert(meters))})
+
+		# statistics: exactly the same as in XML
+		self.dictionary.update(rename_keys(bson_convert(b.statistics)))
+		
+	
+	def insert(self):
+		'''Inserts this document into the database. If a document with this
+		account & sequence number already exists, the existing document is
+		replaced with this one.'''
+		# TODO don't use hard-coded database info
+		
+		# connect to mongo
+		connection = None
+		try:
+			connection = pymongo.Connection('localhost', 27017) 
+		except Exception as e: 
+			print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
+			raise e
+		finally:
+			if connection is not None:
+				connection.disconnect()
+
+		# if there's an existing document with the same account and sequence
+		# numbers, remove it
+		# TODO is it bad to replace the document instead of updating it?
+		existing_document = connection.skyline.reebills.find_one({
+			'account': self.account_number(),
+			'sequence': self.sequence_number()
 		})
+		if existing_document is not None:
+			# note that existing_document is a dict
+			connection.skyline.reebills.remove(existing_document['_id'], save=True)
 
-		# measured usages: each utility has one or more meters, each of which has
-		# one or more registers (which are like sub-meters)
-		meters = measured_usages[utilbill['service']]
-		# TODO replace register.inclusions/exclusions with a "descriptor" (a
-		# name) that matches the value of 'descriptor' for a register in the 'registers' section of the monthly rate structure yaml file. 
-		utilbill.update({'meters': rename_keys(bson_convert(meters))})
+		# now insert the new document
+		connection.skyline.reebills.insert(self.dictionary)
+	
+	# methods for getting data out of the mongo document: return values are
+	# strings unless otherwise noted.
+	def account_number(self):
+		return self.dictionary['account']
+	
+	def sequence_number(self):
+		return self.dictionary['sequence']
+	
+	def issue_date(self):
+		return self.dictionary['issue_date']
 
-	# statistics: exactly the same as in XML
-	reebill.update(rename_keys(bson_convert(b.statistics)))
+	def due_date(self):
+		return self.dictionary['due_date']
+	
+	def balance_due(self):
+		'''Returns a float.'''
+		return self.dictionary['total_due']
 
-	return reebill
+	def billing_address(self):
+		'''Returns a dict.'''
+		return self.dictionary['billing_address']
 
+	def service_address(self):
+		'''Returns a dict.'''
+		return self.dictionary['service_address']
+
+	def statistics(self):
+		# TODO
+		pass 
