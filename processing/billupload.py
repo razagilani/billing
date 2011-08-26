@@ -205,7 +205,7 @@ class BillUpload(object):
         create_directory_if_necessary(BILL_IMAGE_DIRECTORY, self.logger)
         
         # render the image, saving it to bill_image_path
-        self.renderBillImage(bill_file_path, bill_image_path_without_extension)
+        self.renderBillImage(bill_file_path, bill_image_path_without_extension, extension)
         
         # return name of image file (the caller should know where to find the
         # image file)
@@ -266,16 +266,29 @@ class BillUpload(object):
     from ImageMagick to join multi-page documents into a single image.) Raises
     an exception if image rendering fails.'''
     def renderBillImage(self, bill_file_path, \
-            bill_image_path_without_extension):
-        # use the command-line version of ImageMagick to convert the file.
-        # ('-quiet' suppresses warning messages. formats are determined by
-        # extensions.)
-        # TODO: figure out how to really suppress warning messages; '-quiet'
-        # doesn't stop it from printing "**** Warning: glyf overlaps cmap,
-        # truncating." when converting pdfs
-        convert_command = ['convert', '-quiet', '-density', \
-                str(IMAGE_RENDERING_DENSITY), bill_file_path, \
-                bill_image_path_without_extension + '.' + IMAGE_EXTENSION]
+            bill_image_path_without_extension, extension):
+
+        # TODO: this needs to be reimplemented so as to be command line command oriented
+        # It is not possible to make a generic function for N command line programs
+
+        if extension == "pdf".lower():
+            print "here"
+            convert_command = ['pdftoppm', '-png', '-rx', \
+                    str(IMAGE_RENDERING_DENSITY), '-ry', str(IMAGE_RENDERING_DENSITY), bill_file_path, \
+                    bill_image_path_without_extension]
+            self.logger.error('Invoking %s' % (' '.join(convert_command)))
+
+        else:
+            # use the command-line version of ImageMagick to convert the file.
+            # ('-quiet' suppresses warning messages. formats are determined by
+            # extensions.)
+            # TODO: figure out how to really suppress warning messages; '-quiet'
+            # doesn't stop it from printing "**** Warning: glyf overlaps cmap,
+            # truncating." when converting pdfs
+            convert_command = ['convert', '-quiet', '-density', \
+                    str(IMAGE_RENDERING_DENSITY), bill_file_path, \
+                    bill_image_path_without_extension + '.' + IMAGE_EXTENSION]
+
         convert_result = subprocess.Popen(convert_command, \
                 stderr=subprocess.PIPE)
 
@@ -299,35 +312,37 @@ class BillUpload(object):
         # even if they shouldn't
         bill_image_names = sorted(glob.glob(bill_image_path_without_extension \
                 + '-*.' + IMAGE_EXTENSION))
-        
-        # use ImageMagick's 'montage' command to join them
-        if (len(bill_image_names) > 1):
-            montage_command = ['montage'] + bill_image_names + \
-                    ['-geometry', '+1+1', '-tile', '1x', \
-                    bill_image_path_without_extension + '.' + IMAGE_EXTENSION]
-            montage_result = subprocess.Popen(montage_command, \
-                    stderr=subprocess.PIPE)
-        
-            # wait for 'montage' to finish (also sets
-            # montage_result.returncode)
-            montage_result.wait()
-        
-            # if 'montage' failed, raise exception with the text that
-            # it printed to stderr
-            if montage_result.returncode != 0:
-                error_text = montage_result.communicate()[1]
-                self.logger.error('"%s" failed: ' % (montage_command, \
-                        bill_file_path, bill_image_path) + error_text)
-                raise Exception(error_text)
-        
-            # delete the individual page images now that they've been joined
-            for bill_image_name in bill_image_names:
-                try:
-                    os.remove(bill_image_name)
-                except Exception as e:
-                    # this is not critical, so if it fails, just log the error
-                    self.logger.warning(('couldn\'t remove bill image file \
-                            "%s": ' % bill_image_name) + str(e))
+
+        # always use ImageMagick's 'montage' command to join them
+        # since pdftoppm always outputs a '-1' even if there is only one page
+        # convert will only output a '-N' if there are more than one page
+        #if (len(bill_image_names) > 1):
+        montage_command = ['montage'] + bill_image_names + \
+                ['-geometry', '+1+1', '-tile', '1x', \
+                bill_image_path_without_extension + '.' + IMAGE_EXTENSION]
+        montage_result = subprocess.Popen(montage_command, \
+                stderr=subprocess.PIPE)
+    
+        # wait for 'montage' to finish (also sets
+        # montage_result.returncode)
+        montage_result.wait()
+    
+        # if 'montage' failed, raise exception with the text that
+        # it printed to stderr
+        if montage_result.returncode != 0:
+            error_text = montage_result.communicate()[1]
+            self.logger.error('"%s" failed: ' % (montage_command, \
+                    bill_file_path, bill_image_path) + error_text)
+            raise Exception(error_text)
+    
+        # delete the individual page images now that they've been joined
+        for bill_image_name in bill_image_names:
+            try:
+                os.remove(bill_image_name)
+            except Exception as e:
+                # this is not critical, so if it fails, just log the error
+                self.logger.warning(('couldn\'t remove bill image file \
+                        "%s": ' % bill_image_name) + str(e))
         
 
 '''Creates the directory at 'path' if it does not exist and can be created.  If
