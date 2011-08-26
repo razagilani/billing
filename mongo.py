@@ -7,7 +7,7 @@ import billing.bill as bill
 from billing.mutable_named_tuple import MutableNamedTuple
 
 # this dictionary maps XML element names to MongoDB document keys, for use in
-# rename_keys. element names that map to None will be removed instead of
+# rename_keys(). element names that map to None will be removed instead of
 # renamed.
 # TODO maybe break into separate dictionaries used for each call to
 # rename_keys()
@@ -43,9 +43,10 @@ name_changes = {
     # statistics section
     'co2offset': 'co2_offset',
     'consumptiontrend': 'consumption_trend',
-    'conventional_consumed': 'conventional_consumed',
+    'conventionalconsumed': 'conventional_consumed',
     'conventionalutilization': 'conventional_utilization',
     'renewableconsumed': 'renewable_consumed',
+    'renewableproduced': 'renewable_produced',
     'renewableutilization': 'renewable_utilization',
     'totalco2offset': 'total_co2_offset',
     'totalrenewableconsumed': 'total_renewable_consumed',
@@ -99,6 +100,13 @@ def dict_merge(*dicts, **kwargs):
         result.update(d)
     return result
 
+def subdict(d, keys, ignore_missing=True):
+	'''Returns the "sub-dictionary" of 'd' consisting only of items whose keys
+	are in 'keys'. If 'ignore_missing' is False, a KeyError will be raised if
+	'd' is missing any key in 'keys'; otherwise missing keys are just
+	ignored.'''
+	return {key:d[key] for key in keys if not ignore_missing or (key in d)}
+
 class MongoReebill:
 	'''Class representing the reebill data structure stored in MongoDB. All
 	data is stored in 'dictionary', which is a Python dict that PyMongo could
@@ -108,12 +116,9 @@ class MongoReebill:
 	def __init__(self, url):
 		# initialization with a string: URL of an XML reebill in Exist. use
 		# bill.py to extract information from it into self.dictionary.
-		if type(arg) is not str:
-			raise ValueError("can't initialize MongoReebill with type ***%s###"
-					% str(type(arg)))
 		
 		# make a Bill object from the XML document
-		b = bill.Bill(arg)
+		b = bill.Bill(url)
 
 		# top-level reebill information:
 		self.dictionary = dict_merge({
@@ -280,8 +285,12 @@ class MongoReebill:
 		# now insert the new document
 		connection.skyline.reebills.insert(self.dictionary)
 	
-	# methods for getting data out of the mongo document: return values are
+
+
+	# methods for getting data out of the mongo document: these could change
+	# depending on needs in render.py or other consumers. return values are
 	# strings unless otherwise noted.
+	
 	def account_number(self):
 		return self.dictionary['account']
 	
@@ -307,5 +316,29 @@ class MongoReebill:
 		return self.dictionary['service_address']
 
 	def statistics(self):
-		# TODO
-		pass 
+		'''Returns a dictionary of the information that goes in the "statistics" section of reebill.'''
+		return subdict(self.dictionary, ['conventional_consumed',
+			'renewable_consumed', 'renewable_utilization',
+			'conventional_utilization', 'co2_offset',
+			'total_savings', 'total_renewable_consumed',
+			'total_renewable_produced', 'total_trees', 'total_co2_offset', 'consumption_trend'])
+		return self.dictionary
+
+	def actual_chargegroups(self):
+		'''Returns a dictionary.'''
+		return self.dictionary['actual_chargegroups']
+
+	def actual_total(self):
+		'''Returns a float.'''
+		return self.dictionary['actual_total']
+	
+	def hypothetical_chargegroups(self):
+		'''Returns a dictionary.'''
+		return self.dictionary['hypothetical_chargegroups']
+
+	def hypothetical_total(self):
+		'''Returns a float.'''
+		return self.dictionary['hypothetical_total']
+
+rb = MongoReebill('http://localhost:8080/exist/rest/db/skyline/bills/10003/10.xml')
+print rb.statistics()
