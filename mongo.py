@@ -291,30 +291,60 @@ class MongoReebill:
 	# depending on needs in render.py or other consumers. return values are
 	# strings unless otherwise noted.
 	
+	@property
 	def account_number(self):
 		return self.dictionary['account']
+	@account_number.setter
+	def account_number(self, value):
+		self.dictionary['account'] = bson_convert(value)
 	
+	@property
 	def sequence_number(self):
 		return self.dictionary['sequence']
+	@sequence_number.setter
+	def sequence_number(self, value):
+		self.dictionary['sequence'] = bson_convert(value)
 	
+	@property
 	def issue_date(self):
 		return self.dictionary['issue_date']
+	@issue_date.setter
+	def issue_date(self, value):
+		self.dictionary['issue_date'] = bson_convert(value)
 
+	@property
 	def due_date(self):
 		return self.dictionary['due_date']
+	@due_date.setter
+	def due_date(self, value):
+		self.dictionary['due_date'] = bson_convert(value)
 	
+	@property
 	def balance_due(self):
 		'''Returns a float.'''
 		return self.dictionary['total_due']
+	@balance_due.setter
+	def balance_due(self, value):
+		self.dictionary['balance_due'] = bson_convert(value)
 
+	@property
 	def billing_address(self):
 		'''Returns a dict.'''
 		return self.dictionary['billing_address']
+	@billing_address.setter
+	def billing_address(self):
+		'''Returns a dict.'''
+		self.dictionary['billing_address'] = bson_convert(value)
 
+	@property
 	def service_address(self):
 		'''Returns a dict.'''
 		return self.dictionary['service_address']
+	@service_address.setter
+	def service_address(self, value):
+		self.dictionary['service_address'] = bson_convert(value)
 
+	@property
 	def statistics(self):
 		'''Returns a dictionary of the information that goes in the "statistics" section of reebill.'''
 		return subdict(self.dictionary, ['conventional_consumed',
@@ -323,22 +353,23 @@ class MongoReebill:
 			'total_savings', 'total_renewable_consumed',
 			'total_renewable_produced', 'total_trees', 'total_co2_offset', 'consumption_trend'])
 		return self.dictionary
+	@statistics.setter
+	def statistics(self, value):
+		self.dictionary['statistics'].update(bson_convert(value))
 
-	def actual_chargegroups(self):
+	def actual_chargegroups_for_service(self, service_name):
 		'''Returns a dictionary.'''
-		return self.dictionary['actual_chargegroups']
-
-	def actual_total(self):
-		'''Returns a float.'''
-		return self.dictionary['actual_total']
-	
-	def hypothetical_chargegroups(self):
+		return [ub['actual_chargegroups'] for ub in self.dictionary['utilbills']
+				if ub['service'] == service_name]
+	def actual_totals_for_service(self, service_name):
+		return [ub['actual_total'] for ub in self.dictionary['utilbills']
+				if ub['service'] == service_name]
+	def hypothetical_chargegroups_for_service(self, service_name):
 		'''Returns a dictionary.'''
-		return self.dictionary['hypothetical_chargegroups']
+		return [ub['hypothetical_chargegroups'] for ub in self.dictionary['utilbills']
+				if ub['service'] == service_name]
+	def hypothetical_totals_for_service(self, service_name):
+		return [ub['hypothetical_total'] for ub in self.dictionary['utilbills']
+				if ub['service'] == service_name]
 
-	def hypothetical_total(self):
-		'''Returns a float.'''
-		return self.dictionary['hypothetical_total']
 
-rb = MongoReebill('http://localhost:8080/exist/rest/db/skyline/bills/10003/10.xml')
-print rb.statistics()
