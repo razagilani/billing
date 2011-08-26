@@ -14,8 +14,9 @@ from pprint import pprint
 from types import NoneType
 import math
 from decimal import *
-
 from itertools import groupby
+
+from billing import mongo
 
 #
 # Types for ReportLab
@@ -284,6 +285,10 @@ def render(inputbill, outputfile, backgrounds, verbose):
     from billing import bill
     bill = bill.Bill(inputbill)
 
+    # create a mongo bill as well, so it can be used to get some of the reebill
+    # data instead of the XML bill
+    mongo_bill = mongo.MongoReebill(inputbill)
+
     Elements = []
 
     # grab the backgrounds that were passed in
@@ -300,8 +305,8 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     # populate account number, bill id & issue date
     accountNumber = [
-        [Paragraph("Account Number", styles['BillLabelRight']),Paragraph(bill.account + " " + bill.id,styles['BillField'])], 
-        [Paragraph("Issue Date", styles['BillLabelRight']), Paragraph(str(bill.issue_date), styles['BillField'])]
+        [Paragraph("Account Number", styles['BillLabelRight']),Paragraph(mongo_bill.account_number + " " + mongo_bill.sequence_number,styles['BillField'])], 
+        [Paragraph("Issue Date", styles['BillLabelRight']), Paragraph(str(mongo_bill.issue_date), styles['BillField'])]
     ]
 
     t = Table(accountNumber, [135,85])
@@ -313,7 +318,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     # populate due date and amount
     dueDateAndAmount = [
         [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(str(bill.rebill_summary.duedate), styles['BillFieldRight'])], 
-        [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(bill.total_due), styles['BillFieldRight'])]
+        [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(mongo_bill.balance_due), styles['BillFieldRight'])]
     ]
     
     t = Table(dueDateAndAmount, [135,85])
@@ -325,7 +330,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(Spacer(100,10))
     Elements.append(Paragraph("Service Location", styles['BillLabel']))
 
-    sa = stringify(bill.service_address)
+    sa = stringify(mongo_bill.service_address)
     Elements.append(Paragraph(sa['addressee'], styles['BillField']))
     Elements.append(Paragraph(sa['street'], styles['BillField']))
     Elements.append(Paragraph(sa['city'] + " " + sa['state'] + " " + sa['postalcode'], styles['BillField']))
@@ -337,7 +342,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     
     # populate billing address
     Elements.append(Spacer(100,20))
-    ba = stringify(bill.billing_address)
+    ba = stringify(mongo_bill.billing_address)
     Elements.append(Paragraph(ba['addressee'], styles['BillFieldLg']))
     Elements.append(Paragraph(ba['street'], styles['BillFieldLg']))
     Elements.append(Paragraph(ba['city'] + " " + ba['state'] + " " + ba['postalcode'], styles['BillFieldLg']))
@@ -346,13 +351,13 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     # statistics
 
-    st = bill.statistics
+    st = mongo_bill.statistics
 
     # populate graph one
 
     # Construct period consumption/production ratio graph
-    renewableUtilization = st['renewableutilization']
-    conventionalUtilization = st['conventionalutilization']
+    renewableUtilization = st['renewable_utilization']
+    conventionalUtilization = st['conventional_utilization']
     data = [renewableUtilization, conventionalUtilization]
     labels = ["Renewable", "Conventional"]
     c = PieChart(10*270, 10*127)
@@ -378,8 +383,8 @@ def render(inputbill, outputfile, backgrounds, verbose):
     
     # construct period environmental benefit
 
-    periodRenewableConsumed = str(st['renewableconsumed'].quantize(Decimal("0")))
-    periodPoundsCO2Offset = str(st['co2offset'].quantize(Decimal("0")))
+    periodRenewableConsumed = str(st['renewable_consumed'].quantize(Decimal("0")))
+    periodPoundsCO2Offset = str(st['co2_offset'].quantize(Decimal("0")))
     
     environmentalBenefit = [
         [Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
@@ -400,12 +405,12 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     systemLife = [
         [Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph(str(st['totalsavings']), styles['BillFieldSm'])],
-        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(str(st['totalrenewableconsumed'].quantize(Decimal("0"))) + " BTUs", styles['BillFieldSm'])],
+        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph(str(st['total_savings']), styles['BillFieldSm'])],
+        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(str(st['total_renewable_consumed'].quantize(Decimal("0"))) + " BTUs", styles['BillFieldSm'])],
         # for next bill period
         #[Paragraph("Total Renewable Energy Produced", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
-        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(str(st['totalco2offset'].quantize(Decimal("0"))), styles['BillFieldSm'])],
-        [Paragraph("Tens of Trees to Date", styles['BillLabelSm']), Paragraph(str(st['totaltrees'].quantize(Decimal("0.0"))), styles['BillFieldSm'])]
+        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(str(st['total_co2_offset'].quantize(Decimal("0"))), styles['BillFieldSm'])],
+        [Paragraph("Tens of Trees to Date", styles['BillLabelSm']), Paragraph(str(st['total_trees'].quantize(Decimal("0.0"))), styles['BillFieldSm'])]
     ]
 
     t = Table(systemLife, [180,90])
@@ -415,8 +420,8 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(Spacer(100,20))
     
     # build string for trees
-    numTrees = math.modf(float(st['totaltrees']))[1]
-    fracTree = str(math.modf(float(st['totaltrees']))[0])[2:3]
+    numTrees = math.modf(float(st['total_trees']))[1]
+    fracTree = str(math.modf(float(st['total_trees']))[0])[2:3]
     
     treeString = ""
     while (numTrees) > 0:
@@ -438,7 +443,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     # construct annual production graph
     data = []
     labels = []
-    for period in (st['consumptiontrend']):
+    for period in (st['consumption_trend']):
         labels.append(str(period.get("month")))
         data.append(float(period.get("quantity")))
 
@@ -716,7 +721,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(t)
     Elements.append(UseUpSpace())
 
-    # render the document	
+    # render the document    
     doc.setProgressCallBack(progress)
     try:
         doc.build(Elements)
