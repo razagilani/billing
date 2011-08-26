@@ -1,10 +1,14 @@
 #!/usr/bin/python
 import sys
 import datetime
+from datetime import date, time, datetime
 from decimal import Decimal
 import pymongo
 import billing.bill as bill
 from billing.mutable_named_tuple import MutableNamedTuple
+
+# date format for returning parsing date strings read out of Mongo
+DATE_FORMAT = '%Y-%m-%d'
 
 # this dictionary maps XML element names to MongoDB document keys, for use in
 # rename_keys(). element names that map to None will be removed instead of
@@ -28,7 +32,7 @@ name_changes = {
     'resavings': None,
     'totaldue': 'total_due',
     'duedate': 'due_date',
-    'issued': 'issued',
+    'issued': 'issue_date',
     # utilbill section
     'periodstart': 'periodend',
     'periodend': 'periodstart',
@@ -60,7 +64,7 @@ def bson_convert(x):
         return x
     if type(x) is Decimal:
         return float(x)
-    if type(x) in [datetime.date, datetime.time]:
+    if type(x) in [date, time]:
         return str(x)
     if type(x) is dict or type(x) is MutableNamedTuple:
         return dict([(item[0], bson_convert(item[1])) for item in x.iteritems()
@@ -69,6 +73,22 @@ def bson_convert(x):
         return map(bson_convert, x)
     raise ValueError("type(%s) is %s: can't convert that into bson" \
             % (x, type(x)))
+
+def deep_map(func, x):
+	'''Applies the function 'func' througout the data structure x, or just
+	applies it to x if x is a scalar.wUsed for type conversions from Mongo
+	types back into the appropriate Python types.'''
+	if type(x) is list:
+		return [deep_map(func, item) for item in x]
+	if type(x) is dict:
+		return {deep_map(func, key): deep_map(func, value) for key, value in x.iteritems()}
+	return func(x)
+
+def float_to_decimal(x):
+	'''Converts float into Decimal. Used in getter methods.'''
+	# str() tells Decimal to automatically figure out how many digts of
+	# precision we want
+	return Decimal(str(x)) if type(x) is float else x
 
 def rename_keys(x):
     '''If x is a dictionary or list, recursively replaces keys in x according
@@ -159,7 +179,7 @@ class MongoReebill:
 						   rate_units: ""
 						   total: #
 					   },
-				   ]
+				   ]most recent call last): File "/home/dklothe/skyline/billing/reebill/bill_tool_bridge.py", line 238, in render None, File "/home/dklothe/skyline/billing/reebill/render.py", line 386, in render periodRenewableC
 			   ...
 			  ],
 			  ...
@@ -307,22 +327,22 @@ class MongoReebill:
 	
 	@property
 	def issue_date(self):
-		return self.dictionary['issue_date']
+		return datetime.strptime(self.dictionary['issue_date'], DATE_FORMAT).date()
 	@issue_date.setter
 	def issue_date(self, value):
 		self.dictionary['issue_date'] = bson_convert(value)
 
 	@property
 	def due_date(self):
-		return self.dictionary['due_date']
+		return datetime.strptime(self.dictionary['due_date'], DATE_FORMAT).date()
 	@due_date.setter
 	def due_date(self, value):
 		self.dictionary['due_date'] = bson_convert(value)
 	
 	@property
 	def balance_due(self):
-		'''Returns a float.'''
-		return self.dictionary['total_due']
+		'''Returns a Decimal.'''
+		return float_to_decimal(self.dictionary['total_due'])
 	@balance_due.setter
 	def balance_due(self, value):
 		self.dictionary['balance_due'] = bson_convert(value)
@@ -347,16 +367,16 @@ class MongoReebill:
 	@property
 	def statistics(self):
 		'''Returns a dictionary of the information that goes in the "statistics" section of reebill.'''
-		return subdict(self.dictionary, ['conventional_consumed',
+		return deep_map(float_to_decimal, subdict(self.dictionary, ['conventional_consumed',
 			'renewable_consumed', 'renewable_utilization',
 			'conventional_utilization', 'co2_offset',
 			'total_savings', 'total_renewable_consumed',
-			'total_renewable_produced', 'total_trees', 'total_co2_offset', 'consumption_trend'])
-		return self.dictionary
+			'total_renewable_produced', 'total_trees', 'total_co2_offset', 'consumption_trend']))
 	@statistics.setter
 	def statistics(self, value):
 		self.dictionary['statistics'].update(bson_convert(value))
 
+	# TODO: convert float into Decimal in these methods
 	def actual_chargegroups_for_service(self, service_name):
 		'''Returns a dictionary.'''
 		return [ub['actual_chargegroups'] for ub in self.dictionary['utilbills']
@@ -371,5 +391,3 @@ class MongoReebill:
 	def hypothetical_totals_for_service(self, service_name):
 		return [ub['hypothetical_total'] for ub in self.dictionary['utilbills']
 				if ub['service'] == service_name]
-
-
