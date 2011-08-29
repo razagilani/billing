@@ -20,20 +20,23 @@ name_changes = {
     'serviceaddress': 'service_address',
     'billingaddress': 'billing_address',
     'priorbalance': 'prior_balance',
-    'paymentrecieved': 'payment_recieved',
+    'paymentreceived': 'payment_received',
     'totaladjustment': 'total_adjustment',
     'balanceforward': 'balance_forward',
-    'hypotheticalecharges': None, # identical to hypothetical_total
-    'actualecharges': None, # identical to actual_total
+    # same name for total of hypothetical/actual charges within a particular
+    # utilbill and for over all utilbills in the whole reebill (so these are
+    # also in the utilbill section)
+    'hypotheticalecharges': 'hypothetical_total',
+    'actualecharges': 'actual_total',
     'revalue': 'ree_value',
     'recharges': 'ree_charges',
-    'resavings': None,
+    'resavings': 'ree_savings',
     'totaldue': 'total_due',
     'duedate': 'due_date',
     'issued': 'issue_date',
     # utilbill section
-    'periodstart': 'periodend',
-    'periodend': 'periodstart',
+    'begin': 'period_start',
+    'end': 'period_end',
     'rsbinding': 'rate_structure_binding', # also in measuredusage section
     'rateunits': 'rate_units',
     'quantityunits': 'rate_units',
@@ -364,60 +367,63 @@ class MongoReebill:
     def prior_balance(self):
         return float_to_decimal(self.dictionary['prior_balance'])
     @prior_balance.setter
-    def prior_balance(self, vlaue):
+    def prior_balance(self, value):
         self.dictionary['prior_balance'] = bson_convert(value)
 
     @property
     def payment_received(self):
         return float_to_decimal(self.dictionary['payment_received'])
     @payment_received.setter
-    def payment_received(self, vlaue):
+    def payment_received(self, value):
         self.dictionary['payment_received'] = bson_convert(value)
 
     @property
     def total_adjustment(self):
         return float_to_decimal(self.dictionary['total_adjustment'])
     @total_adjustment.setter
-    def total_adjustment(self, vlaue):
+    def total_adjustment(self, value):
         self.dictionary['total_adjustment'] = bson_convert(value)
 
     @property
     def ree_charges(self):
         return float_to_decimal(self.dictionary['ree_charges'])
     @ree_charges.setter
-    def total_adjustment(self, vlaue):
+    def ree_charges(self, value):
         self.dictionary['ree_charges'] = bson_convert(value)
 
     @property
     def ree_savings(self):
         return float_to_decimal(self.dictionary['ree_savings'])
     @ree_savings.setter
-    def total_adjustment(self, vlaue):
+    def ree_savings(self, value):
         self.dictionary['ree_savings'] = bson_convert(value)
 
     @property
     def balance_forward(self):
         return float_to_decimal(self.dictionary['balance_forward'])
     @balance_forward.setter
-    def total_adjustment(self, value):
+    def balance_forward(self, value):
         self.dictionary['balance_forward'] = bson_convert(value)
 
     @property
     def motd(self):
-        '''Apparently "motd" stands for "message of the day".'''
-        return self.dictionary['message']
+        '''"motd" = "message of the day"; it's optional, so the reebill may not
+        have one.'''
+        return self.dictionary.get('message', '')
     @motd.setter
-    def total_adjustment(self, value):
+    def motd(self, value):
         self.dictionary['message'] = bson_convert(value)
 
     @property
     def statistics(self):
-        '''Returns a dictionary of the information that goes in the "statistics" section of reebill.'''
-        return deep_map(float_to_decimal, subdict(self.dictionary, ['conventional_consumed',
-            'renewable_consumed', 'renewable_utilization',
-            'conventional_utilization', 'co2_offset',
-            'total_savings', 'total_renewable_consumed',
-            'total_renewable_produced', 'total_trees', 'total_co2_offset', 'consumption_trend']))
+        '''Returns a dictionary of the information that goes in the
+        "statistics" section of reebill.'''
+        return deep_map(float_to_decimal, subdict(self.dictionary,
+            ['conventional_consumed', 'renewable_consumed',
+                'renewable_utilization', 'conventional_utilization',
+                'co2_offset', 'total_savings', 'total_renewable_consumed',
+                'total_renewable_produced', 'total_trees', 'total_co2_offset',
+                'consumption_trend']))
     @statistics.setter
     def statistics(self, value):
         self.dictionary['statistics'].update(bson_convert(value))
@@ -438,7 +444,8 @@ class MongoReebill:
 
     @property
     def ree_value(self):
-        return float_to_decimal(self.dictionary['ree_value'])
+        # TODO change back
+        return float_to_decimal(999.999) #float_to_decimal(self.dictionary['ree_value'])
     @ree_value.setter
     def ree_value(self):
         self.dictionary['ree_value'] = bson_convert(value)
@@ -469,10 +476,12 @@ class MongoReebill:
         is 'service_name'. There's not supposed to be more than one utilbill
         per service, so an exception is raised if that happens (or if there's
         no utilbill for that service).'''
-        dates = [(u['period_begin'], u['period_end'])
-                for u in utilbills if u['service'] == service_name]
-        if dates == []:
+        date_string_pairs = [(u['period_start'], u['period_end'])
+                for u in self.dictionary['utilbills'] if u['service'] == service_name]
+        if date_string_pairs == []:
             raise Exception('No utilbills for service "%s"' % service_name)
-        if len(dates) > 1:
+        if len(date_string_pairs) > 1:
             raise Exception('Multiple utilbills for service "%s"' % service_name)
-        return datetime.strptime(dates[0], DATE_FORMAT)
+        start, end = date_string_pairs[0]
+        return (datetime.strptime(start, DATE_FORMAT),
+                datetime.strptime(end, DATE_FORMAT))
