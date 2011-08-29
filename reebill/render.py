@@ -282,8 +282,8 @@ def render(inputbill, outputfile, backgrounds, verbose):
     doc.addPageTemplates([firstPage, secondPage])
 
     # instantiate a bill which will be bound to reportlab
-    from billing import bill
-    bill = bill.Bill(inputbill)
+    #from billing import bill
+    #bill = bill.Bill(inputbill)
 
     # create a mongo bill as well, so it can be used to get some of the reebill
     # data instead of the XML bill
