@@ -470,16 +470,27 @@ def render(inputbill, outputfile, backgrounds, verbose):
     # populate billPeriodTableF
     # spacer so rows can line up with those in summarChargesTableF rows
     #ub_periods = bill.utilbill_periods
-    ub_periods = bill.utilbill_summary_charges
+    #ub_periods = bill.utilbill_summary_charges
+    #serviceperiod = [
+            #[Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake'])],
+            #[Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
+        #] + [
+            #[
+                #Paragraph(service + u' service',styles['BillLabelSmRight']), 
+                #Paragraph(str(ub_periods[service]['begin']), styles['BillFieldRight']), 
+                #Paragraph(str(ub_periods[service]['end']), styles['BillFieldRight'])
+            #] for service in ub_periods
+        #]
+    services = mongo_reebill.all_services
     serviceperiod = [
             [Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake'])],
             [Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
         ] + [
             [
                 Paragraph(service + u' service',styles['BillLabelSmRight']), 
-                Paragraph(str(ub_periods[service]['begin']), styles['BillFieldRight']), 
-                Paragraph(str(ub_periods[service]['end']), styles['BillFieldRight'])
-            ] for service in ub_periods
+                Paragraph(mongo_reebill.utilbill_periods(service)[0], styles['BillFieldRight']), 
+                Paragraph(mongo_reebill.utilbill_periods(service)[1], styles['BillFieldRight'])
+            ] for service in services
         ]
 
     t = Table(serviceperiod, colWidths=[115,63,63])
