@@ -252,7 +252,7 @@ class BillUpload(object):
         
         # render the image, saving it to bill_image_path
         self.renderBillImage(reebill_file_path, \
-                bill_image_path_without_extension)
+                bill_image_path_without_extension, REEBILL_EXTENSION)
 
         # return name of image file (the caller should know where to find the
         # image file)
@@ -272,7 +272,6 @@ class BillUpload(object):
         # It is not possible to make a generic function for N command line programs
 
         if extension == "pdf".lower():
-            print "here"
             convert_command = ['pdftoppm', '-png', '-rx', \
                     str(IMAGE_RENDERING_DENSITY), '-ry', str(IMAGE_RENDERING_DENSITY), bill_file_path, \
                     bill_image_path_without_extension]
