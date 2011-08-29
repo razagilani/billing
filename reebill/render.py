@@ -476,8 +476,8 @@ def render(inputbill, outputfile, backgrounds, verbose):
         ] + [
             [
                 Paragraph(service + u' service',styles['BillLabelSmRight']), 
-                Paragraph(mongo_bill.utilbill_periods(service)[0], styles['BillFieldRight']), 
-                Paragraph(mongo_bill.utilbill_periods(service)[1], styles['BillFieldRight'])
+                Paragraph(str(mongo_bill.utilbill_periods(service)[0]), styles['BillFieldRight']), 
+                Paragraph(str(mongo_bill.utilbill_periods(service)[1]), styles['BillFieldRight'])
             ] for service in services
         ]
 
@@ -505,9 +505,9 @@ def render(inputbill, outputfile, backgrounds, verbose):
         [Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
     ]+[
         [
-            Paragraph(str(mongo_reebill.hypothetical_total.quantize(Decimal(".00"))),styles['BillFieldRight']), 
-            Paragraph(str(mongo_reebill.actual_total.quantize(Decimal(".00"))),styles['BillFieldRight']), 
-            Paragraph(str(mongo_reebill.ree_value.quantize(Decimal(".00"))),styles['BillFieldRight'])
+            Paragraph(str(mongo_bill.hypothetical_total.quantize(Decimal(".00"))),styles['BillFieldRight']), 
+            Paragraph(str(mongo_bill.actual_total.quantize(Decimal(".00"))),styles['BillFieldRight']), 
+            Paragraph(str(mongo_bill.ree_value.quantize(Decimal(".00"))),styles['BillFieldRight'])
         ] for service, charges in ub_summary.items()
     ]
 
@@ -556,7 +556,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     # populate balanceDueFrame
     balanceDue = [
-        [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph(str(mongo_reebill.balance_due.quantize(Decimal(".00"))), styles['BillFieldRight'])]
+        [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph(str(mongo_bill.balance_due.quantize(Decimal(".00"))), styles['BillFieldRight'])]
     ]
 
     t = Table(balanceDue, [135,85])
