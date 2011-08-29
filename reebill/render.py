@@ -608,9 +608,8 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
                 measuredUsage.append([
                     # TODO unless some wrapper class exists (pivotal 13643807) check for errors
-                    #usage.identifier if hasattr(usage, "identifier") else "" ,
                     register['identifier'],
-                    register['descriptions'] if hasattr(register, "description") else "",
+                    register['description'],
                     # as in the case of a second meter that doesn't have a shadow register (see family laundry)
                     shadow_total.quantize(Decimal("0.00")) if shadow_total is not None else "",
                     utility_total,
