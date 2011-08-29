@@ -317,7 +317,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     # populate due date and amount
     dueDateAndAmount = [
-        [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(str(bill.rebill_summary.duedate), styles['BillFieldRight'])], 
+        [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(str(mongo_bill.due_date), styles['BillFieldRight'])], 
         [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(mongo_bill.balance_due), styles['BillFieldRight'])]
     ]
     
