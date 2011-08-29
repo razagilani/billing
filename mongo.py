@@ -39,7 +39,7 @@ name_changes = {
     'end': 'period_end',
     'rsbinding': 'rate_structure_binding', # also in measuredusage section
     'rateunits': 'rate_units',
-    'quantityunits': 'rate_units',
+    'quantityunits': 'quantity_units',
     # measuredusage section
     'presentreaddate': 'present_read_date',
     'priorreaddate': 'prior_read_date',
@@ -494,14 +494,20 @@ class MongoReebill:
             raise Exception('Multiple utilbills found for service "%s"' % service_name)
         return totals[0]
 
-    def actual_chargegroups_for_service(self, service_name):
-        '''Returns a dictionary.'''
-        return [ub['actual_chargegroups'] for ub in self.dictionary['utilbills']
-                if ub['service'] == service_name]
     def hypothetical_chargegroups_for_service(self, service_name):
-        '''Returns a dictionary.'''
-        return [ub['hypothetical_chargegroups'] for ub in self.dictionary['utilbills']
+        '''Returns the list of hypothetical chargegroups for the utilbill whose
+        service is 'service_name'. There's not supposed to be more than one
+        utilbill per service, so an exception is raised if that happens (or if
+        there's no utilbill for that service).'''
+        chargegroup_lists = [ub['hypothetical_chargegroups']
+                for ub in self.dictionary['utilbills']
                 if ub['service'] == service_name]
+        if chargegroup_lists == []:
+            raise Exception('No utilbills found for service "%s"' % service_name)
+        if len(chargegroup_lists) > 1:
+            raise Exception('Multiple utilbills found for service "%s"' % service_name)
+        return deep_map(float_to_decimal, chargegroup_lists[0])
+
     
 
     @property
@@ -523,3 +529,4 @@ class MongoReebill:
         start, end = date_string_pairs[0]
         return (datetime.strptime(start, DATE_FORMAT),
                 datetime.strptime(end, DATE_FORMAT))
+
