@@ -664,27 +664,32 @@ def render(inputbill, outputfile, backgrounds, verbose):
         [None, None, None, None, None, None, None]
     ]
 
-
-    for service, hypothetical_details in bill.hypothetical_details.items():
-
-        for chargegroup in hypothetical_details.chargegroups:
+    for service in mongo_bill.all_services:
+        # MongoReebill.hypothetical_chargegroups_for_service() returns a dict
+        # mapping charge types (e.g. "All Charges") to lists of chargegroups.
+        # we don't care about the charge types so just get the chargegroups for
+        # all types merged together in one big list:
+        #all_chargegroups_for_service = reduce(lambda x,y:x+y,
+        #        mongo_bill.hypothetical_chargegroups_for_service(service).values()
+        chargegroups_dict = mongo_bill.hypothetical_chargegroups_for_service(service)
+        for charge_type in chargegroups_dict.keys():
             chargeDetails.append([service, None, None, None, None, None, None])
-            for idx, charge in enumerate(chargegroup.charges):
+            for i, charge in enumerate(chargegroups_dict[charge_type]):
+                print >> sys.stderr, charge
                 chargeDetails.append([
-                    "%s" % (chargegroup.type) if idx == 0 else "",
-                    charge.description if hasattr(charge, "description") else None,
-                    charge.quantity.quantize(Decimal(".000")) if hasattr(charge, "quantity") else None,
-                    charge.quantity_units if hasattr(charge, "quantity_units") else None,
-                    charge.rate.quantize(Decimal(".00000")) if hasattr(charge, "rate") else None,
-                    charge.rate_units if hasattr(charge, "rate_units") else None,
-                    charge.total.quantize(Decimal(".00")) if hasattr(charge, "total") else None,
+                    charge_type if i == 0 else "",
+                    charge['description'],
+                    charge['quantity'].quantize(Decimal(".000")),
+                    charge['quantity_units'],
+                    charge['rate'].quantize(Decimal(".00000")),
+                    charge['rate_units'],
+                    charge['total'].quantize(Decimal(".00")),
                 ])
 
 
         # spacer
         chargeDetails.append([None, None, None, None, None, None, None])
-        chargeDetails.append([None, None, None, None, None, None, hypothetical_details.total.quantize(Decimal(".00"))])
-
+        chargeDetails.append([None, None, None, None, None, None, mongo_bill.hypothetical_total_for_service(service).quantize(Decimal(".00"))])
 
     t = Table(chargeDetails, [80, 180, 70, 40, 70, 40, 70])
 
