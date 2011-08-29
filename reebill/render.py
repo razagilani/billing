@@ -722,6 +722,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
         doc.build(Elements)
     except Exception as e:
         print str(e)
+        raise e
 
 # remove all calculations to helpers
 def poundsCarbonFromGas(therms = 0):
