@@ -469,27 +469,15 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     # populate billPeriodTableF
     # spacer so rows can line up with those in summarChargesTableF rows
-    #ub_periods = bill.utilbill_periods
-    #ub_periods = bill.utilbill_summary_charges
-    #serviceperiod = [
-            #[Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake'])],
-            #[Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
-        #] + [
-            #[
-                #Paragraph(service + u' service',styles['BillLabelSmRight']), 
-                #Paragraph(str(ub_periods[service]['begin']), styles['BillFieldRight']), 
-                #Paragraph(str(ub_periods[service]['end']), styles['BillFieldRight'])
-            #] for service in ub_periods
-        #]
-    services = mongo_reebill.all_services
+    services = mongo_bill.all_services
     serviceperiod = [
             [Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake'])],
             [Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
         ] + [
             [
                 Paragraph(service + u' service',styles['BillLabelSmRight']), 
-                Paragraph(mongo_reebill.utilbill_periods(service)[0], styles['BillFieldRight']), 
-                Paragraph(mongo_reebill.utilbill_periods(service)[1], styles['BillFieldRight'])
+                Paragraph(mongo_bill.utilbill_periods(service)[0], styles['BillFieldRight']), 
+                Paragraph(mongo_bill.utilbill_periods(service)[1], styles['BillFieldRight'])
             ] for service in services
         ]
 
@@ -521,9 +509,12 @@ def render(inputbill, outputfile, backgrounds, verbose):
     # populate balances
     re_summary = bill.rebill_summary
     balances = [
-        [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(re_summary['priorbalance'].quantize(Decimal(".00"))),styles['BillFieldRight'])],
-        [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(re_summary['paymentreceived'].quantize(Decimal(".00"))), styles['BillFieldRight'])],
-        [Paragraph("Adjustments", styles['BillLabelRight']), Paragraph(str(re_summary['totaladjustment'].quantize(Decimal(".00"))), styles['BillFieldRight'])],
+        #[Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(re_summary['priorbalance'].quantize(Decimal(".00"))),styles['BillFieldRight'])],
+        #[Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(re_summary['paymentreceived'].quantize(Decimal(".00"))), styles['BillFieldRight'])],
+        #[Paragraph("Adjustments", styles['BillLabelRight']), Paragraph(str(re_summary['totaladjustment'].quantize(Decimal(".00"))), styles['BillFieldRight'])],
+        [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(mongo_bill.prior_balance.quantize(Decimal(".00"))),styles['BillFieldRight'])],
+        [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(mongo_bill.payment_received.quantize(Decimal(".00"))), styles['BillFieldRight'])],
+        [Paragraph("Adjustments", styles['BillLabelRight']), Paragraph(str(mongo_bill.total_adjustment.quantize(Decimal(".00"))), styles['BillFieldRight'])],
     ]
 
     t = Table(balances, [180,85])
@@ -535,8 +526,8 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     # populate current charges
     currentCharges = [
-        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(re_summary['resavings'].quantize(Decimal(".00"))), styles['BillFieldRight'])],
-        [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(re_summary['recharges'].quantize(Decimal(".00"))), styles['BillFieldRight'])]
+        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(mongo_bill.ree_savings.quantize(Decimal(".00"))), styles['BillFieldRight'])],
+        [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(mongo_bill.ree_charges.quantize(Decimal(".00"))), styles['BillFieldRight'])]
     ]
 
     t = Table(currentCharges, [135,85])
@@ -546,7 +537,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     # populate balanceForward
     balance = [
-        [Paragraph("Balance Forward", styles['BillLabelRight']), Paragraph(str(re_summary['balanceforward'].quantize(Decimal(".00"))), styles['BillFieldRight'])]
+        [Paragraph("Balance Forward", styles['BillLabelRight']), Paragraph(str(mongo_bill.balance_forward.quantize(Decimal(".00"))), styles['BillFieldRight'])]
     ]
 
     t = Table(balance, [135,85])
