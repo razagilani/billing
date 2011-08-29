@@ -451,20 +451,58 @@ class MongoReebill:
         self.dictionary['ree_value'] = bson_convert(value)
 
     # TODO: convert float into Decimal in these methods
+    def hypothetical_total_for_service(self, service_name):
+        '''Returns the total of hypothetical charges for the utilbill whose
+        service is 'service_name'. There's not supposed to be more than one
+        utilbill per service, so an exception is raised if that happens (or if
+        there's no utilbill for that service).'''
+        totals = [float_to_decimal(ub['hypothetical_total'])
+                for ub in self.dictionary['utilbills']
+                if ub['service'] == service_name]
+        if totals == []:
+            raise Exception('No utilbills found for service "%s"' % service_name)
+        if len(totals) > 1:
+            raise Exception('Multiple utilbills found for service "%s"' % service_name)
+        return totals[0]
+
+    def actual_total_for_service(self, service_name):
+        '''Returns the total of actual charges for the utilbill whose
+        service is 'service_name'. There's not supposed to be more than one
+        utilbill per service, so an exception is raised if that happens (or if
+        there's no utilbill for that service).'''
+        totals = [float_to_decimal(ub['actual_total'])
+                for ub in self.dictionary['utilbills']
+                if ub['service'] == service_name]
+        if totals == []:
+            raise Exception('No utilbills found for service "%s"' % service_name)
+        if len(totals) > 1:
+            raise Exception('Multiple utilbills found for service "%s"' % service_name)
+        return totals[0]
+
+    def ree_value_for_service(self, service_name):
+        '''Returns the total of 'ree_value' (renewable energy value offsetting
+        hypothetical charges) for the utilbill whose service is 'service_name'.
+        There's not supposed to be more than one utilbill per service, so an
+        exception is raised if that happens (or if there's no utilbill for that
+        service).'''
+        totals = [float_to_decimal(ub['ree_value'])
+                for ub in self.dictionary['utilbills']
+                if ub['service'] == service_name]
+        if totals == []:
+            raise Exception('No utilbills found for service "%s"' % service_name)
+        if len(totals) > 1:
+            raise Exception('Multiple utilbills found for service "%s"' % service_name)
+        return totals[0]
+
     def actual_chargegroups_for_service(self, service_name):
         '''Returns a dictionary.'''
         return [ub['actual_chargegroups'] for ub in self.dictionary['utilbills']
-                if ub['service'] == service_name]
-    def actual_totals_for_service(self, service_name):
-        return [ub['actual_total'] for ub in self.dictionary['utilbills']
                 if ub['service'] == service_name]
     def hypothetical_chargegroups_for_service(self, service_name):
         '''Returns a dictionary.'''
         return [ub['hypothetical_chargegroups'] for ub in self.dictionary['utilbills']
                 if ub['service'] == service_name]
-    def hypothetical_totals_for_service(self, service_name):
-        return [ub['hypothetical_total'] for ub in self.dictionary['utilbills']
-                if ub['service'] == service_name]
+    
 
     @property
     def all_services(self):
