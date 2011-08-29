@@ -422,6 +422,27 @@ class MongoReebill:
     def statistics(self, value):
         self.dictionary['statistics'].update(bson_convert(value))
 
+    @property
+    def actual_total(self):
+        return float_to_decimal(self.dictionary['actual_total'])
+    @actual_total.setter
+    def actual_total(self):
+        self.dictionary['actual_total'] = bson_convert(value)
+
+    @property
+    def hypothetical_total(self):
+        return float_to_decimal(self.dictionary['hypothetical_total'])
+    @hypothetical_total.setter
+    def hypothetical_total(self):
+        self.dictionary['hypothetical_total'] = bson_convert(value)
+
+    @property
+    def ree_value(self):
+        return float_to_decimal(self.dictionary['ree_value'])
+    @ree_value.setter
+    def ree_value(self):
+        self.dictionary['ree_value'] = bson_convert(value)
+
     # TODO: convert float into Decimal in these methods
     def actual_chargegroups_for_service(self, service_name):
         '''Returns a dictionary.'''
