@@ -667,10 +667,6 @@ def render(inputbill, outputfile, backgrounds, verbose):
     for service in mongo_bill.all_services:
         # MongoReebill.hypothetical_chargegroups_for_service() returns a dict
         # mapping charge types (e.g. "All Charges") to lists of chargegroups.
-        # we don't care about the charge types so just get the chargegroups for
-        # all types merged together in one big list:
-        #all_chargegroups_for_service = reduce(lambda x,y:x+y,
-        #        mongo_bill.hypothetical_chargegroups_for_service(service).values()
         chargegroups_dict = mongo_bill.hypothetical_chargegroups_for_service(service)
         for charge_type in chargegroups_dict.keys():
             chargeDetails.append([service, None, None, None, None, None, None])
@@ -685,8 +681,6 @@ def render(inputbill, outputfile, backgrounds, verbose):
                     charge['rate_units'],
                     charge['total'].quantize(Decimal(".00")),
                 ])
-
-
         # spacer
         chargeDetails.append([None, None, None, None, None, None, None])
         chargeDetails.append([None, None, None, None, None, None, mongo_bill.hypothetical_total_for_service(service).quantize(Decimal(".00"))])
