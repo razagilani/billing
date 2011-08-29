@@ -23,9 +23,7 @@ name_changes = {
     'paymentrecieved': 'payment_recieved',
     'totaladjustment': 'total_adjustment',
     'balanceforward': 'balance_forward',
-    #'hypotheticalecharges': 'hypothetical_e_charges',
-    'hypothetical_total': None, # identical to hypothetical_total
-    #'actualecharges': 'actual_e_charges',
+    'hypotheticalecharges': None, # identical to hypothetical_total
     'actualecharges': None, # identical to actual_total
     'revalue': 'ree_value',
     'recharges': 'ree_charges',
@@ -163,8 +161,6 @@ class MongoReebill:
            {
             ----- from utilbill section -----
             service: "",  <--moved into the utilbill itself
-            actual_e_charges: #,
-            hypothetical_e_charges: #,
             ree_charges: #,
             ree_value: #,
             ----- from details section -----
