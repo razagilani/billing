@@ -438,7 +438,7 @@ function renderWidgets()
                 Ext.Ajax.request({
                     url: 'http://'+location.host+'/reebill/pay',
                     params: { 
-                        account: account,
+                        account: accountCombo.getValue(),
                         sequence: sequence,
                         amount: amountPaid
                     },
@@ -1961,7 +1961,7 @@ function renderWidgets()
                 handler: function()
                 {
                     paymentGrid.stopEditing();
-                    paymentStore.setBaseParam("account", account);
+                    paymentStore.setBaseParam("account", accountCombo.getValue());
 
                     // TODO single row selection only, test allowing multirow selection
                     var s = paymentGrid.getSelectionModel().getSelections();
@@ -2085,8 +2085,6 @@ function renderWidgets()
                 disabled: false,
                 handler: function()
                 {
-                    //reebillStore.setBaseParam("account", account);
-
                     sequences = []
                     var s = reebillGrid.getSelectionModel().getSelections();
                     for(var i = 0, r; r = s[i]; i++)
@@ -2138,7 +2136,7 @@ function renderWidgets()
     });
 
     reebillStore.on('beforesave', function() {
-        reebillStore.setBaseParam("account", account);
+        reebillStore.setBaseParam("account", accountCombo.getValue());
     });
 
     ///////////////////////////////////////
