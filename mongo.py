@@ -530,3 +530,15 @@ class MongoReebill:
         return (datetime.strptime(start, DATE_FORMAT),
                 datetime.strptime(end, DATE_FORMAT))
 
+    def meters(self, service_name):
+        '''Returns the meters (a list of dictionaries) for the utilbill whose
+        service is 'service_name'. There's not supposed to be more than one
+        utilbill per service, so an exception is raised if that happens (or if
+        there's no utilbill for that service).'''
+        meters_lists = [ub['meters'] for ub in self.dictionary['utilbills'] if
+                ub['service'] == service_name]
+        if meters_lists == []:
+            raise Exception('No utilbills found for service "%s"' % service_name)
+        if len(meters_lists) > 1:
+            raise Exception('Multiple utilbills found for service "%s"' % service_name)
+        return deep_map(float_to_decimal, meters_lists[0])
