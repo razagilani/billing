@@ -549,7 +549,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     # populate balanceDueFrame
     balanceDue = [
-        [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph(str(re_summary['totaldue'].quantize(Decimal(".00"))), styles['BillFieldRight'])]
+        [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph(str(mongo_reebill.balance_due.quantize(Decimal(".00"))), styles['BillFieldRight'])]
     ]
 
     t = Table(balanceDue, [135,85])
