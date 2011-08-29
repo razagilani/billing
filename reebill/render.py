@@ -580,13 +580,15 @@ def render(inputbill, outputfile, backgrounds, verbose):
         [None, None, None, None,  None, None,]
     ]
 
-    #usage = bill.measured_usage
+    # make a dictionary like Bill.measured_usage() using data from MongoReeBill:
+    mongo_measured_usage = {service:mongo_bill.meters(service) for service in mongo_bill.all_services}
+
     # TODO: show both the utilty and shadow register as separate line items such that both their descriptions and rules could be shown
-    for service, meters in bill.measured_usage.items():
+    for service, meters in mongo_measured_usage.items():
         for meter in meters:
-            keyfunc = lambda register:register.identifier
+            keyfunc = lambda register:register['identifier']
             # sort the registers by identifier to ensure similar identifiers are adjacent
-            registers = sorted(meter.registers, key=keyfunc )
+            registers = sorted(meter['registers'], key=keyfunc )
 
             # group by the identifier attribute of each register
             for identifier, register_group in groupby(registers, key=keyfunc):
@@ -597,23 +599,23 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
                 # TODO validate that there is only a utility and shadow register
                 for register in register_group:
-                    if register.shadow is True:
-                        shadow_total = register.total
-                        total += register.total
-                    if register.shadow is False:
-                        utility_total = register.total
-                        total += register.total
+                    if register['shadow'] is True:
+                        shadow_total = register['total']
+                        total += register['total']
+                    if register['shadow'] is False:
+                        utility_total = register['total']
+                        total += register['total']
 
                 measuredUsage.append([
                     # TODO unless some wrapper class exists (pivotal 13643807) check for errors
                     #usage.identifier if hasattr(usage, "identifier") else "" ,
-                    register.identifier,
-                    register.description if hasattr(register, "description") else "",
+                    register['identifier'],
+                    register['descriptions'] if hasattr(register, "description") else "",
                     # as in the case of a second meter that doesn't have a shadow register (see family laundry)
                     shadow_total.quantize(Decimal("0.00")) if shadow_total is not None else "",
                     utility_total,
                     total.quantize(Decimal("0.00")),
-                    register.units,
+                    register['units'],
                 ])
 
     measuredUsage.append([None, None, None, None, None, None])
@@ -671,7 +673,6 @@ def render(inputbill, outputfile, backgrounds, verbose):
         for charge_type in chargegroups_dict.keys():
             chargeDetails.append([service, None, None, None, None, None, None])
             for i, charge in enumerate(chargegroups_dict[charge_type]):
-                print >> sys.stderr, charge
                 chargeDetails.append([
                     charge_type if i == 0 else "",
                     charge['description'],
