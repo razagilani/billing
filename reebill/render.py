@@ -507,11 +507,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(UseUpSpace())
 
     # populate balances
-    re_summary = bill.rebill_summary
     balances = [
-        #[Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(re_summary['priorbalance'].quantize(Decimal(".00"))),styles['BillFieldRight'])],
-        #[Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(re_summary['paymentreceived'].quantize(Decimal(".00"))), styles['BillFieldRight'])],
-        #[Paragraph("Adjustments", styles['BillLabelRight']), Paragraph(str(re_summary['totaladjustment'].quantize(Decimal(".00"))), styles['BillFieldRight'])],
         [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(mongo_bill.prior_balance.quantize(Decimal(".00"))),styles['BillFieldRight'])],
         [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(mongo_bill.payment_received.quantize(Decimal(".00"))), styles['BillFieldRight'])],
         [Paragraph("Adjustments", styles['BillLabelRight']), Paragraph(str(mongo_bill.total_adjustment.quantize(Decimal(".00"))), styles['BillFieldRight'])],
@@ -558,7 +554,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(UseUpSpace())
 
     # populate motd
-    Elements.append(Paragraph(bill.motd, styles['BillFieldSm']))
+    Elements.append(Paragraph(mongo_bill.motd, styles['BillFieldSm']))
     Elements.append(UseUpSpace())
 
 

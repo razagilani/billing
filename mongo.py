@@ -403,8 +403,16 @@ class MongoReebill:
     def balance_forward(self):
         return float_to_decimal(self.dictionary['balance_forward'])
     @balance_forward.setter
-    def total_adjustment(self, vlaue):
+    def total_adjustment(self, value):
         self.dictionary['balance_forward'] = bson_convert(value)
+
+    @property
+    def motd(self):
+        '''Apparently "motd" stands for "message of the day".'''
+        return self.dictionary['message']
+    @motd.setter
+    def total_adjustment(self, value):
+        self.dictionary['message'] = bson_convert(value)
 
     @property
     def statistics(self):
