@@ -365,6 +365,48 @@ class MongoReebill:
         self.dictionary['service_address'] = bson_convert(value)
 
     @property
+    def prior_balance(self):
+        return float_to_decimal(self.dictionary['prior_balance'])
+    @prior_balance.setter
+    def prior_balance(self, vlaue):
+        self.dictionary['prior_balance'] = bson_convert(value)
+
+    @property
+    def payment_received(self):
+        return float_to_decimal(self.dictionary['payment_received'])
+    @payment_received.setter
+    def payment_received(self, vlaue):
+        self.dictionary['payment_received'] = bson_convert(value)
+
+    @property
+    def total_adjustment(self):
+        return float_to_decimal(self.dictionary['total_adjustment'])
+    @total_adjustment.setter
+    def total_adjustment(self, vlaue):
+        self.dictionary['total_adjustment'] = bson_convert(value)
+
+    @property
+    def ree_charges(self):
+        return float_to_decimal(self.dictionary['ree_charges'])
+    @ree_charges.setter
+    def total_adjustment(self, vlaue):
+        self.dictionary['ree_charges'] = bson_convert(value)
+
+    @property
+    def ree_savings(self):
+        return float_to_decimal(self.dictionary['ree_savings'])
+    @ree_savings.setter
+    def total_adjustment(self, vlaue):
+        self.dictionary['ree_savings'] = bson_convert(value)
+
+    @property
+    def balance_forward(self):
+        return float_to_decimal(self.dictionary['balance_forward'])
+    @balance_forward.setter
+    def total_adjustment(self, vlaue):
+        self.dictionary['balance_forward'] = bson_convert(value)
+
+    @property
     def statistics(self):
         '''Returns a dictionary of the information that goes in the "statistics" section of reebill.'''
         return deep_map(float_to_decimal, subdict(self.dictionary, ['conventional_consumed',
