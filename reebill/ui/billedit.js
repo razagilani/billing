@@ -2005,7 +2005,7 @@ function renderWidgets()
     });
 
     paymentStore.on('beforesave', function() {
-        paymentStore.setBaseParam("account", account);
+        paymentStore.setBaseParam("account", accountCombo.getValue());
     });
 
     ///////////////////////////////////////
