@@ -488,6 +488,17 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(UseUpSpace())
 
     # populate summaryChargesTableF
+    #ub_summary = bill.utilbill_summary_charges
+    #utilitycharges = [
+        #[Paragraph("Your Utility Charges", styles['BillLabelSmCenter']),Paragraph("", styles['BillLabelSm']),Paragraph("Green Energy", styles['BillLabelSmCenter'])],
+        #[Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
+    #]+[
+        #[
+            #Paragraph(str(charges.hypotheticalecharges.quantize(Decimal(".00"))),styles['BillFieldRight']), 
+            #Paragraph(str(charges.actualecharges.quantize(Decimal(".00"))),styles['BillFieldRight']), 
+            #Paragraph(str(charges.revalue.quantize(Decimal(".00"))),styles['BillFieldRight'])
+        #] for service, charges in ub_summary.items()
+    #]
     ub_summary = bill.utilbill_summary_charges
     utilitycharges = [
         [Paragraph("Your Utility Charges", styles['BillLabelSmCenter']),Paragraph("", styles['BillLabelSm']),Paragraph("Green Energy", styles['BillLabelSmCenter'])],
