@@ -505,9 +505,9 @@ def render(inputbill, outputfile, backgrounds, verbose):
         [Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
     ]+[
         [
-            Paragraph(str(charges.hypotheticalecharges.quantize(Decimal(".00"))),styles['BillFieldRight']), 
-            Paragraph(str(charges.actualecharges.quantize(Decimal(".00"))),styles['BillFieldRight']), 
-            Paragraph(str(charges.revalue.quantize(Decimal(".00"))),styles['BillFieldRight'])
+            Paragraph(str(mongo_reebill.hypothetical_total.quantize(Decimal(".00"))),styles['BillFieldRight']), 
+            Paragraph(str(mongo_reebill.actual_total.quantize(Decimal(".00"))),styles['BillFieldRight']), 
+            Paragraph(str(mongo_reebill.ree_value.quantize(Decimal(".00"))),styles['BillFieldRight'])
         ] for service, charges in ub_summary.items()
     ]
 
