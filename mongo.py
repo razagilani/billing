@@ -527,8 +527,8 @@ class MongoReebill:
         if len(date_string_pairs) > 1:
             raise Exception('Multiple utilbills for service "%s"' % service_name)
         start, end = date_string_pairs[0]
-        return (datetime.strptime(start, DATE_FORMAT),
-                datetime.strptime(end, DATE_FORMAT))
+        return (datetime.strptime(start, DATE_FORMAT).date(),
+                datetime.strptime(end, DATE_FORMAT).date())
 
     def meters(self, service_name):
         '''Returns the meters (a list of dictionaries) for the utilbill whose
