@@ -487,7 +487,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     ub_summary = bill.utilbill_summary_charges
     utilitycharges = [
         [Paragraph("Your Utility Charges", styles['BillLabelSmCenter']),Paragraph("", styles['BillLabelSm']),Paragraph("Green Energy", styles['BillLabelSmCenter'])],
-        [Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
+        [Paragraph("w/o Skyline", styles['BillLabelSmCenter']),Paragraph("Actual", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
     ]+[
         [
             Paragraph(str(charges.hypotheticalecharges.quantize(Decimal(".00"))),styles['BillFieldRight']), 
