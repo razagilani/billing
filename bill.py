@@ -41,26 +41,7 @@ class Bill(object):
      deleting properties in the MutableNamedTuples based on the results in the post.
 
     XML coding practices/design issues:
-    - Tags must b---> 23 from skyliner.xml_utils import XMLUtils
-     24 
-     25 
-
-/home/dklothe/skyline/skyliner/xml_utils.py in <module>()
-     10 import pymongo
-     11 import sys
----> 12 import mongo
-     13 
-     14 class XMLUtils():
-
-/home/dklothe/skyline/mongo.py in <module>()
-      4 from decimal import Decimal
-      5 import pymongo
-----> 6 import billing.bill as bill
-      7 from billing.mutable_named_tuple import MutableNamedTuple
-      8 import pprint
-
-AttributeError: 'module' object has no attribute 'bill'
-e prepended with namespace because {ns} (James Clark notation) is not supported in .xpath()
+    - Tags must be prepended with namespace because {ns} (James Clark notation) is not supported in .xpath()
     - Only use Clark notation for creating elements, if at all
     - Updating the xml document is tricky, this is because updates must delete xml data. How does one know what xml data to delete based on data missing from a passed tuple?
         - One option is to clear the entire grove. This is a poor option, because the grove may contain data that was not originally returned. (see how hypothetical and actual details or how the rebill and utilbill w/ CARs work)
@@ -1465,5 +1446,4 @@ if __name__ == "__main__":
     u = bill.utilbill_summary_charges
     print u
 
-    #XMLUtils().save_xml_file(bill.xml(), options.outputbill, "prod", "prod")
 
