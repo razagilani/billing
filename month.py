@@ -5,11 +5,11 @@ from datetime import date
 import unittest
 
 def days_in_month(year, month, start_date, end_date):
-    '''Returns the number of days in 'month' of 'year' between start_date and
-    end_date (inclusive).'''
-    # check that start_date <= end_date
-    if start_date > end_date:
-        raise ValueError("start_date can't be later than end_date")
+    '''Returns the number of days in 'month' of 'year' between start_date
+    (inclusive) and end_date (exclusive).'''
+    # check that start_date < end_date
+    if start_date >= end_date:
+        raise ValueError("end date must be later than start date")
 
     # if the month is before start_date's month or after end_date's month,
     # there are no days
@@ -21,17 +21,17 @@ def days_in_month(year, month, start_date, end_date):
 
     # if start_date and end_date are both in month, subtract their days
     if month == start_date.month and month == end_date.month:
-        return end_date.day - start_date.day + 1
+        return end_date.day - start_date.day
     
     # if month is the same as the start month, return number of days
-    # between start_date and end of month
+    # between start_date and end of month (inclusive)
     if year == start_date.year and month == start_date.month:
         return calendar.monthrange(year, month)[1] - start_date.day + 1
 
     # if month is the same as the end month, return number of days between
-    # beginning of moth and end_date
+    # beginning of moth and end_date (exclusive)
     if year == end_date.year and month == end_date.month:
-        return end_date.day
+        return end_date.day - 1
 
     # otherwise just return number of days in the month
     return calendar.monthrange(year, month)[1]
@@ -63,6 +63,7 @@ class MonthTest(unittest.TestCase):
     def test_days_in_month(self):
         jul15 = date(2011,7,15)
         aug5 = date(2011,8,5)
+        aug6 = date(2011,8,6)
         aug12 = date(2011,8,12)
         sep1 = date(2011,9,1)
         aug122012 = date(2012,8,12)
@@ -80,25 +81,28 @@ class MonthTest(unittest.TestCase):
         self.assertEqual(days_in_month(2012, 8, jul15, sep1), 0)
 
         # start_date & end_date in same month
-        self.assertEqual(days_in_month(2011, 8, aug5, aug12), 8)
+        self.assertEqual(days_in_month(2011, 8, aug5, aug12), 7)
 
-        # start_date & end_date equal
-        self.assertEqual(days_in_month(2011, 8, aug12, aug12), 1)
+        # start_date & end_date equal: error
+        self.assertRaises(ValueError, days_in_month, 2011, 8, aug12, aug12)
 
-        # start_date before end_date
+        # start_date before end_date: error
         self.assertRaises(ValueError, days_in_month, 2011, 8, aug12, aug5)
+
+        # start_date & end_date 1 day apart
+        self.assertEqual(days_in_month(2011, 8, aug5, aug6), 1)
 
         # start_date & end_date in successive months
         self.assertEquals(days_in_month(2011, 6, jul15, aug12), 0)
         self.assertEquals(days_in_month(2011, 7, jul15, aug12), 17)
-        self.assertEquals(days_in_month(2011, 8, jul15, aug12), 12)
+        self.assertEquals(days_in_month(2011, 8, jul15, aug12), 11)
         self.assertEquals(days_in_month(2011, 9, jul15, aug12), 0)
         
         # start_date & end_date in non-successive months
         self.assertEquals(days_in_month(2011, 6, jul15, sep1), 0)
         self.assertEquals(days_in_month(2011, 7, jul15, sep1), 17)
         self.assertEquals(days_in_month(2011, 8, jul15, sep1), 31)
-        self.assertEquals(days_in_month(2011, 9, jul15, sep1), 1)
+        self.assertEquals(days_in_month(2011, 9, jul15, sep1), 0)
         
         # start_date & end_date in different years
         self.assertEquals(days_in_month(2011, 6, jul15, aug122012), 0)
@@ -109,20 +113,23 @@ class MonthTest(unittest.TestCase):
         for month in range(1,8):
             self.assertEquals(days_in_month(2012, month, jul15, aug122012), \
                     calendar.monthrange(2012, month)[1])
-        self.assertEquals(days_in_month(2012, 8, jul15, aug122012), 12)
+        self.assertEquals(days_in_month(2012, 8, jul15, aug122012), 11)
 
     def test_estimate_month(self):
         jul15 = date(2011,7,15)
         aug5 = date(2011,8,5)
         aug31 = date(2011,8,31)
-        sep1 = date(2011,9,1)
+        sep2 = date(2011,9,2)
         aug122012 = date(2012,8,12)
 
         # start_date before end_date
         self.assertRaises(ValueError, days_in_month, 2011, 8, aug31, aug5)
 
+        # start_date & end_date equal
+        self.assertRaises(ValueError, days_in_month, 2011, 8, aug5, aug5)
+        
         # start & end in same month
-        self.assertEquals(estimate_month(jul15, jul15), (2011, 7))
+        self.assertEquals(estimate_month(aug5, aug31), (2011, 8))
 
         # start & end in successive months, more days in the first
         self.assertEquals(estimate_month(jul15, aug5), (2011, 7))
@@ -132,10 +139,10 @@ class MonthTest(unittest.TestCase):
         
         # start & end in successive months, same number of days: prefer the
         # first month
-        self.assertEquals(estimate_month(aug31, sep1), (2011, 8))
+        self.assertEquals(estimate_month(aug31, sep2), (2011, 8))
 
         # start & end in non-successive months
-        self.assertEquals(estimate_month(jul15, sep1), (2011, 8))
+        self.assertEquals(estimate_month(jul15, sep2), (2011, 8))
 
         # start & end very far apart: prefer first month with 31 days
         self.assertEquals(estimate_month(jul15, aug122012), (2011, 8))
