@@ -29,6 +29,7 @@ from skyliner import splinter
 from skyliner import sky_objects
 from skyliner.sky_errors import DataHandlerError
 from billing.xml_utils import XMLUtils
+from billing import mongo
 
 #
 # Globals
@@ -284,6 +285,10 @@ def fetch_bill_data(server, user, password, olap_id, bill, period_begin, period_
         print "Updating bill %s" % (bill)
 
         XMLUtils().save_xml_file(xml, bill, user, password)
+        # save in mongo
+        # (no conifg here to pass in)
+        reebill = mongo.MongoReebill(bill)
+        mongo.MongoReebillDAO(None).insert_reebill(reebill)
     return dom
 
 if __name__ == "__main__":
