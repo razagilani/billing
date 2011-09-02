@@ -130,7 +130,8 @@ class Process(object):
             self.config.get("xmldb", "password"))
         # save in mongo
         reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
-        MongoReebillDAO(config).insert_reebill(reebill)
+        MongoReebillDAO(self.config).insert_reebill(reebill)
+
     # TODO cover method that accepts charges_type of hypo or actual
     def sum_hypothetical_charges(self, unprocessedBill, targetBill, user=None, password=None):
         """ 
@@ -162,6 +163,9 @@ class Process(object):
         the_bill.hypothetical_charges = hypothetical_charges
 
         XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
+        # save in mongo
+        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), the_bill.account, the_bill.id))
+        MongoReebillDAO(self.config).insert_reebill(reebill)
 
     def sum_actual_charges(self, unprocessedBill, targetBill, user=None, password=None):
         """ 
@@ -193,6 +197,9 @@ class Process(object):
         the_bill.actual_charges = actual_charges
 
         XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
+        # save in mongo
+        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), the_bill.account, the_bill.id))
+        MongoReebillDAO(self.config).insert_reebill(reebill)
 
     def copy_actual_charges(self, account, sequence):
 
@@ -204,6 +211,9 @@ class Process(object):
 
         XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), self.config.get("xmldb", "user"),
             self.config.get("xmldb", "password"))
+        # save in mongo
+        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        MongoReebillDAO(self.config).insert_reebill(reebill)
 
     def pay_bill(self, account, sequence):
 
@@ -223,6 +233,9 @@ class Process(object):
 
         XMLUtils().save_xml_file(pay.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), self.config.get("xmldb", "user"), 
             self.config.get("xmldb", "password"))
+        # save in mongo
+        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        MongoReebillDAO(self.config).insert_reebill(reebill)
 
     def roll_bill(self, account, sequence):
         """
@@ -358,6 +371,9 @@ class Process(object):
                 
         XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"),
             account, next_sequence), self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
+        # save in mongo
+        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        MongoReebillDAO(self.config).insert_reebill(reebill)
 
         # create an initial rebill record to which the utilbills are later associated
         self.state_db.new_rebill(
@@ -560,6 +576,9 @@ class Process(object):
 
 
         XMLUtils().save_xml_file(etree.tostring(tree, pretty_print=True), outputbill, user, password)
+        # save in mongo
+        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, id))
+        MongoReebillDAO(self.config).insert_reebill(reebill)
 
     def calculate_statistics(self, account, sequence):
         """ Period Statistics for the input bill period are determined here from the total energy usage """
@@ -671,6 +690,9 @@ class Process(object):
 
         XMLUtils().save_xml_file(next_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
             self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
+        # save in mongo
+        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        MongoReebillDAO(self.config).insert_reebill(reebill)
 
 
     def calculate_reperiod(self, account, sequence):
@@ -702,6 +724,9 @@ class Process(object):
 
         XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
             self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
+        # save in mongo
+        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        MongoReebillDAO(self.config).insert_reebill(reebill)
 
     def issue(self, account, sequence, issuedate=None):
         """ Set the Renewable Energy bill Period """
@@ -722,6 +747,9 @@ class Process(object):
 
         XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
             self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
+        # save in mongo
+        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        MongoReebillDAO(self.config).insert_reebill(reebill)
 
     def issue_to_customer(self, account, sequence):
 
