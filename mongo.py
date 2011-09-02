@@ -273,39 +273,6 @@ class MongoReebill:
         self.dictionary.update(rename_keys(bson_convert(b.statistics)))
         
     
-    def insert(self):
-        '''Inserts this document into the database. If a document with this
-        account & sequence number already exists, the existing document is
-        replaced with this one.'''
-        # TODO don't use hard-coded database info
-        
-        # connect to mongo
-        connection = None
-        try:
-            connection = pymongo.Connection('localhost', 27017) 
-        except Exception as e: 
-            print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
-            raise e
-        finally:
-            if connection is not None:
-                connection.disconnect()
-
-        # if there's an existing document with the same account and sequence
-        # numbers, remove it
-        # TODO is it bad to replace the document instead of updating it?
-        existing_document = connection.skyline.reebills.find_one({
-            'account': self.account_number,
-            'sequence': self.sequence_number
-        })
-        if existing_document is not None:
-            # note that existing_document is a dict
-            connection.skyline.reebills.remove(existing_document['_id'], save=True)
-
-        # now insert the new document
-        connection.skyline.reebills.insert(self.dictionary)
-    
-
-
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
     # strings unless otherwise noted.
@@ -542,3 +509,46 @@ class MongoReebill:
         if len(meters_lists) > 1:
             raise Exception('Multiple utilbills found for service "%s"' % service_name)
         return deep_map(float_to_decimal, meters_lists[0])
+
+
+class MongoReebillDAO:
+    '''A "data access object" for reading and writing reebills in MongoDB.'''
+
+    def __init__(self):
+        # connect to mongo
+        # TODO get db info from config, not hard-coded values
+        self.connection = None
+        try:
+            self.connection = pymongo.Connection('localhost', 27017) 
+        except Exception as e: 
+            print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
+            raise e
+        finally:
+            if self.connection is not None:
+                self.connection.disconnect()
+        
+        db_name = 'skyline'
+        collection_name = 'reebills'
+        self.collection = self.connection[db_name][collection_name]
+
+    def insert_reebill(self, reebill):
+        '''Inserts the MongoReebill 'reebill' into the database. If a document
+        with the same account & sequence number already exists, the existing
+        document is replaced with this one.'''
+        # if there's an existing document with the same account and sequence
+        # numbers, remove it
+        existing_document = self.collection.find_one({
+            'account': reebill.account_number,
+            'sequence': reebill.sequence_number
+        })
+        if existing_document is not None:
+            # note that existing_document is a dict
+            self.collection.remove(existing_document['_id'], save=True)
+
+        # now insert the new document
+        self.collection.insert(reebill.dictionary)
+    
+    '''
+    def get_reebill(self, account, sequence):
+        self.collection.find_one({'account': account, 'sequence': sequence})
+    '''
