@@ -650,6 +650,9 @@ class BillToolBridge:
                 self.config.get("xmldb", "user"),
                 self.config.get("xmldb", "password")
             )
+            # save in mongo
+            reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_preifx"), account, sequence))
+            MongoReebillDAO(self.config).insert_reebill(reebill)
 
 
         except Exception as e:
@@ -728,6 +731,9 @@ class BillToolBridge:
                 self.config.get("xmldb", "user"),
                 self.config.get("xmldb", "password")
             )
+            # save in mongo
+            reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_preifx"), account, sequence))
+            MongoReebillDAO(self.config).insert_reebill(reebill)
 
         except Exception as e:
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -747,6 +753,9 @@ class BillToolBridge:
                 self.config.get("xmldb", "user"),
                 self.config.get("xmldb", "password")
             )
+            # save in mongo
+            reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_preifx"), account, sequence))
+            MongoReebillDAO(self.config).insert_reebill(reebill)
 
         except Exception as e:
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -835,6 +844,9 @@ class BillToolBridge:
                 self.config.get("xmldb", "user"),
                 self.config.get("xmldb", "password")
             )
+            # save in mongo
+            reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_preifx"), account, sequence))
+            MongoReebillDAO(self.config).insert_reebill(reebill)
 
         except Exception as e:
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -869,6 +881,9 @@ class BillToolBridge:
                 self.config.get("xmldb", "user"),
                 self.config.get("xmldb", "password")
             )
+            # save in mongo
+            reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_preifx"), account, sequence))
+            MongoReebillDAO(self.config).insert_reebill(reebill)
 
         except Exception as e:
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
