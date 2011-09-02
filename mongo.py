@@ -514,7 +514,7 @@ class MongoReebill:
 class MongoReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
-    def __init__(self):
+    def __init__(self, config):
         # connect to mongo
         # TODO get db info from config, not hard-coded values
         self.connection = None
@@ -525,8 +525,11 @@ class MongoReebillDAO:
             raise e
         finally:
             if self.connection is not None:
-                self.connection.disconnect()
+                #self.connection.disconnect()
+                # TODO when to disconnect from the database?
+                pass
         
+        # temporary hard-coded database info
         db_name = 'skyline'
         collection_name = 'reebills'
         self.collection = self.connection[db_name][collection_name]

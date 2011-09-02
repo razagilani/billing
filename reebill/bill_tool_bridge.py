@@ -38,7 +38,7 @@ from billing import bill
 
 from billing import json_util as ju
 
-from skyliner.xml_utils import XMLUtils
+from billing.xml_utils import XMLUtils
 
 import itertools as it
 

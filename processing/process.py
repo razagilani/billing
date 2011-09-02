@@ -20,7 +20,7 @@ import copy
 
 from billing import bill
 
-from skyliner.xml_utils import XMLUtils
+from billing.xml_utils import XMLUtils
 
 # for testing
 #import StringIO
@@ -34,6 +34,7 @@ import pprint
 import yaml
 import rate_structure
 from billing.processing import state
+from billing.mongo import MongoReebill, MongoReebillDAO
 
 class Process(object):
     """ Class with a variety of utility procedures for processing bills """
@@ -127,7 +128,9 @@ class Process(object):
 
         XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), self.config.get("xmldb", "user"),
             self.config.get("xmldb", "password"))
-
+        # save in mongo
+        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        MongoReebillDAO(config).insert_reebill(reebill)
     # TODO cover method that accepts charges_type of hypo or actual
     def sum_hypothetical_charges(self, unprocessedBill, targetBill, user=None, password=None):
         """ 

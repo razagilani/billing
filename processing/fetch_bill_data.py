@@ -16,7 +16,7 @@ from datetime import date, datetime,timedelta, time
 import random
 from optparse import OptionParser
 
-from skyliner import xml_utils
+from billing import xml_utils
 
 # for xml processing
 import amara
@@ -28,7 +28,7 @@ from skyliner import sky_install
 from skyliner import splinter
 from skyliner import sky_objects
 from skyliner.sky_errors import DataHandlerError
-from skyliner.xml_utils import XMLUtils
+from billing.xml_utils import XMLUtils
 
 #
 # Globals
