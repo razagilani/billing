@@ -515,11 +515,17 @@ class MongoReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
     def __init__(self, config):
+        # get db connection info from config object (utimately derived from
+        # bill_tool_bridge config file)
+        db_name = config.get('mongodb', 'db_name')
+        collection_name = config.get('mongodb', 'collection_name')
+        host = config.get('mongodb', 'host')
+        port = config.get('mongodb', 'port')
+        
         # connect to mongo
-        # TODO get db info from config, not hard-coded values
         self.connection = None
         try:
-            self.connection = pymongo.Connection('localhost', 27017) 
+            self.connection = pymongo.Connection(host, port)
         except Exception as e: 
             print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
             raise e
@@ -529,9 +535,7 @@ class MongoReebillDAO:
                 # TODO when to disconnect from the database?
                 pass
         
-        # temporary hard-coded database info
-        db_name = 'skyline'
-        collection_name = 'reebills'
+        # database collection where reebills are stored
         self.collection = self.connection[db_name][collection_name]
 
     def insert_reebill(self, reebill):
