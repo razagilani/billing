@@ -162,7 +162,8 @@ class BillToolBridge:
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
                 None,
                 None,
-                True
+                True,
+                self.config # pass along config object through fetch_bill_data to mongo, so the bill can be saved in mongodb
             )
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
