@@ -550,7 +550,7 @@ class MongoReebillDAO:
 
         # now insert the new document
         self.collection.insert(reebill.dictionary)
-    
+
     '''
     def get_reebill(self, account, sequence):
         self.collection.find_one({'account': account, 'sequence': sequence})
