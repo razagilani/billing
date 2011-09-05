@@ -149,7 +149,7 @@ class BillUpload(object):
     caller is responsble for providing a URL to the client where that image can
     be accessed.)'''
     # TODO rename: ImagePath -> ImageName
-    def getUtilBillImagePath(self, account, begin_date, end_date):
+    def getUtilBillImagePath(self, account, begin_date, end_date, resolution):
         # check account name (validate_account just checks that it's a string
         # and that it matches a regex)
         if not validate_account(account):
@@ -205,7 +205,7 @@ class BillUpload(object):
         
         # render the image, saving it to bill_image_path
         self.renderBillImage(bill_file_path, bill_image_path_without_extension,
-                extension, IMAGE_RENDERING_DENSITY)
+                extension, resolution)
         
         # return name of image file (the caller should know where to find the
         # image file)
@@ -218,7 +218,7 @@ class BillUpload(object):
     issued to a particular customer.) The caller is responsble for providing
     a URL to the client where that image can be accessed.'''
     # TODO rename: ImagePath -> ImageName
-    def getReeBillImagePath(self, account, sequence):
+    def getReeBillImagePath(self, account, sequence, resolution):
         # check account name (validate_account just checks that it's a string
         # and that it matches a regex)
         if not validate_account(account):
@@ -253,7 +253,7 @@ class BillUpload(object):
         # render the image, saving it to bill_image_path
         self.renderBillImage(reebill_file_path, 
                 bill_image_path_without_extension, REEBILL_EXTENSION,
-                IMAGE_RENDERING_DENSITY)
+                resolution)
 
         # return name of image file (the caller should know where to find the
         # image file)
