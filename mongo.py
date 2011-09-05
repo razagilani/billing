@@ -144,7 +144,7 @@ class MongoReebill:
         # top-level reebill information:
         self.dictionary = dict_merge({
                 'account': b.account,
-                'sequence': b.id,
+                'sequence': int(b.id),
                 'service_address': b.service_address,
                 'billing_address': b.billing_address
             },
@@ -289,7 +289,7 @@ class MongoReebill:
         return self.dictionary['sequence']
     @sequence_number.setter
     def sequence_number(self, value):
-        self.dictionary['sequence'] = bson_convert(value)
+        self.dictionary['sequence'] = int(value)
     
     @property
     def issue_date(self):
@@ -521,6 +521,7 @@ class MongoReebillDAO:
         collection_name = config.get('mongodb', 'collection_name')
         host = config.get('mongodb', 'host')
         port = int(config.get('mongodb', 'port'))
+        print >> sys.stderr, "%s:%s/%s.%s" % (host, port, db_name, collection_name)
         
         # connect to mongo
         self.connection = None
