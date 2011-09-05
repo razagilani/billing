@@ -520,7 +520,7 @@ class MongoReebillDAO:
         db_name = config.get('mongodb', 'db_name')
         collection_name = config.get('mongodb', 'collection_name')
         host = config.get('mongodb', 'host')
-        port = config.get('mongodb', 'port')
+        port = int(config.get('mongodb', 'port'))
         
         # connect to mongo
         self.connection = None
