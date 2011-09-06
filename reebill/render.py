@@ -331,9 +331,9 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(Paragraph("Service Location", styles['BillLabel']))
 
     sa = stringify(mongo_bill.service_address)
-    Elements.append(Paragraph(sa['addressee'], styles['BillField']))
-    Elements.append(Paragraph(sa['street'], styles['BillField']))
-    Elements.append(Paragraph(sa['city'] + " " + sa['state'] + " " + sa['postalcode'], styles['BillField']))
+    Elements.append(Paragraph(sa.get('addressee', ""), styles['BillField']))
+    Elements.append(Paragraph(sa.get('street',""), styles['BillField']))
+    Elements.append(" ".join((Paragraph(sa.get('city', ""), sa.get('state', ""), sa.get('postalcode', ""))), styles['BillField']))
     Elements.append(UseUpSpace())
 
     # populate special instructions
@@ -343,9 +343,9 @@ def render(inputbill, outputfile, backgrounds, verbose):
     # populate billing address
     Elements.append(Spacer(100,20))
     ba = stringify(mongo_bill.billing_address)
-    Elements.append(Paragraph(ba['addressee'], styles['BillFieldLg']))
-    Elements.append(Paragraph(ba['street'], styles['BillFieldLg']))
-    Elements.append(Paragraph(ba['city'] + " " + ba['state'] + " " + ba['postalcode'], styles['BillFieldLg']))
+    Elements.append(Paragraph(ba.get('addressee', ""), styles['BillFieldLg']))
+    Elements.append(Paragraph(ba.get('street', ""), styles['BillFieldLg']))
+    Elements.append(" ".join((Paragraph(ba.get('city', ""), ba.get('state', ""), ba.get('postalcode',""))), styles['BillFieldLg']))
     Elements.append(UseUpSpace())
 
 
@@ -356,8 +356,8 @@ def render(inputbill, outputfile, backgrounds, verbose):
     # populate graph one
 
     # Construct period consumption/production ratio graph
-    renewableUtilization = st['renewable_utilization']
-    conventionalUtilization = st['conventional_utilization']
+    renewableUtilization = st.get('renewable_utilization', "n/a")
+    conventionalUtilization = st.get('conventional_utilization', "n/a")
     data = [renewableUtilization, conventionalUtilization]
     labels = ["Renewable", "Conventional"]
     c = PieChart(10*270, 10*127)
@@ -383,8 +383,8 @@ def render(inputbill, outputfile, backgrounds, verbose):
     
     # construct period environmental benefit
 
-    periodRenewableConsumed = str(st['renewable_consumed'].quantize(Decimal("0")))
-    periodPoundsCO2Offset = str(st['co2_offset'].quantize(Decimal("0")))
+    periodRenewableConsumed = str(st.get('renewable_consumed', Decimal("0")).quantize(Decimal("0")))
+    periodPoundsCO2Offset = str(st.get('co2_offset', Decimal("0")).quantize(Decimal("0")))
     
     environmentalBenefit = [
         [Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
@@ -405,12 +405,10 @@ def render(inputbill, outputfile, backgrounds, verbose):
 
     systemLife = [
         [Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph(str(st['total_savings']), styles['BillFieldSm'])],
-        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(str(st['total_renewable_consumed'].quantize(Decimal("0"))) + " BTUs", styles['BillFieldSm'])],
-        # for next bill period
-        #[Paragraph("Total Renewable Energy Produced", styles['BillLabelSm']), Paragraph("0.0", styles['BillFieldSm'])],
-        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(str(st['total_co2_offset'].quantize(Decimal("0"))), styles['BillFieldSm'])],
-        [Paragraph("Tens of Trees to Date", styles['BillLabelSm']), Paragraph(str(st['total_trees'].quantize(Decimal("0.0"))), styles['BillFieldSm'])]
+        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph(str(st.get('total_savings', "n/a")), styles['BillFieldSm'])],
+        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(str(st.get('total_renewable_consumed', Decimal("0")).quantize(Decimal("0"))) + " BTUs", styles['BillFieldSm'])],
+        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(str(st.get('total_co2_offset', Decimal("0")).quantize(Decimal("0"))), styles['BillFieldSm'])],
+        [Paragraph("Tens of Trees to Date", styles['BillLabelSm']), Paragraph(str(st.get('total_trees', Decimal("0.0")).quantize(Decimal("0.0"))), styles['BillFieldSm'])]
     ]
 
     t = Table(systemLife, [180,90])
@@ -420,8 +418,8 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(Spacer(100,20))
     
     # build string for trees
-    numTrees = math.modf(float(st['total_trees']))[1]
-    fracTree = str(math.modf(float(st['total_trees']))[0])[2:3]
+    numTrees = math.modf(float(st.get('total_trees', Decimal("0.0"))))[1]
+    fracTree = str(math.modf(float(st.get('total_trees', Decimal("0.0"))))[0])[2:3]
     
     treeString = ""
     while (numTrees) > 0:
@@ -443,7 +441,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     # construct annual production graph
     data = []
     labels = []
-    for period in (st['consumption_trend']):
+    for period in (st.get('consumption_trend',[])):
         labels.append(str(period.get("month")))
         data.append(float(period.get("quantity")))
 
@@ -581,7 +579,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     ]
 
     # make a dictionary like Bill.measured_usage() using data from MongoReeBill:
-    mongo_measured_usage = {service:mongo_bill.meters(service) for service in mongo_bill.all_services}
+    mongo_measured_usage = dict((service,mongo_bill.meters(service)) for service in mongo_bill.all_services)
 
     # TODO: show both the utilty and shadow register as separate line items such that both their descriptions and rules could be shown
     for service, meters in mongo_measured_usage.items():
