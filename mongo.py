@@ -7,6 +7,8 @@ import pymongo
 import billing.bill as bill
 from billing.mutable_named_tuple import MutableNamedTuple
 
+
+
 # date format for returning parsing date strings read out of Mongo
 DATE_FORMAT = '%Y-%m-%d'
 
@@ -82,7 +84,7 @@ def deep_map(func, x):
     if type(x) is list:
         return [deep_map(func, item) for item in x]
     if type(x) is dict:
-        return {deep_map(func, key): deep_map(func, value) for key, value in x.iteritems()}
+        return dict((deep_map(func, key), deep_map(func, value)) for key, value in x.iteritems())
     return func(x)
 
 def float_to_decimal(x):
@@ -126,13 +128,31 @@ def subdict(d, keys, ignore_missing=True):
     are in 'keys'. If 'ignore_missing' is False, a KeyError will be raised if
     'd' is missing any key in 'keys'; otherwise missing keys are just
     ignored.'''
-    return {key:d[key] for key in keys if not ignore_missing or (key in d)}
+    return dict((key,d[key]) for key in keys if not ignore_missing or (key in d))
 
 class MongoReebill:
     '''Class representing the reebill data structure stored in MongoDB. All
     data is stored in 'dictionary', which is a Python dict that PyMongo could
     read/write directly from/to the database. Provides methods for extracting
-    pieces of bill information.'''
+    pieces of bill information.
+
+    Design matters to work through:
+
+        dictionary style access: e.g. bill.statistics() - dict returned, key access
+            In this case, consumer needs to select a default if the key is missing
+            which is good because a missing key means different things to 
+            different consumers. Dict.get(key, default) allows consumers to nicely
+            contextulize a missing value.
+            Consumers that need a missing key to be exceptional, than should 
+            directly access they key.
+
+        property style access: e.g. bill.account_number - scalar returned
+            In this case, this code needs to select a default if the key is missing
+            probably wan't some consistency
+
+        property style access that returns a dictionary:
+            Not sure this ever happens.
+    '''
 
     def __init__(self, url):
         # initialization with a string: URL of an XML reebill in Exist. use
@@ -247,17 +267,17 @@ class MongoReebill:
                 # stored in 2 dictionaries mapping the name of each chargegroup to a
                 # list of its charges. totals (in the format {total: #}) are removed
                 # from each list of charges and placed at the root of the utilbill.
-                'actual_chargegroups': {
-                    chargegroup.type: [rename_keys(bson_convert(charge))
-                    for charge in chargegroup.charges if charge.keys() != ['total']]
+                'actual_chargegroups': dict( 
+                    (chargegroup.type, [rename_keys(bson_convert(charge))
+                    for charge in chargegroup.charges if charge.keys() != ['total']])
                     for chargegroup in this_bill_actual_details.chargegroups
-                },
+                ),
                 'actual_total': bson_convert(this_bill_actual_details.total),
-                'hypothetical_chargegroups': {
-                    chargegroup.type: [rename_keys(bson_convert(charge))
-                    for charge in chargegroup.charges if charge.keys() != ['total']]
+                'hypothetical_chargegroups': dict(
+                    (chargegroup.type, [rename_keys(bson_convert(charge))
+                    for charge in chargegroup.charges if charge.keys() != ['total']])
                     for chargegroup in this_bill_hypothetical_details.chargegroups
-                },
+                ),
                 'hypothetical_total': bson_convert(this_bill_hypothetical_details.total)
             })
 
