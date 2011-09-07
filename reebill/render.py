@@ -428,7 +428,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(Paragraph("<para leftIndent=\"6\">"+treeString+"</para>", styles['BillLabel']))
 
     Elements.append(Spacer(100,5))
-    Elements.append(Paragraph("<para leftIndent=\"50\">Ten's of Trees</para>", styles['GraphLabel']))
+    Elements.append(Paragraph("<para leftIndent=\"50\">Tens of Trees</para>", styles['GraphLabel']))
 
     Elements.append(UseUpSpace())
 
@@ -487,7 +487,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     ub_summary = bill.utilbill_summary_charges
     utilitycharges = [
         [Paragraph("Your Utility Charges", styles['BillLabelSmCenter']),Paragraph("", styles['BillLabelSm']),Paragraph("Green Energy", styles['BillLabelSmCenter'])],
-        [Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
+        [Paragraph("w/o Skyline", styles['BillLabelSmCenter']),Paragraph("Actual", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
     ]+[
         [
             Paragraph(str(charges.hypotheticalecharges.quantize(Decimal(".00"))),styles['BillFieldRight']), 
@@ -520,7 +520,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     # populate current charges
     currentCharges = [
         [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(re_summary['resavings'].quantize(Decimal(".00"))), styles['BillFieldRight'])],
-        [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(re_summary['recharges'].quantize(Decimal(".00"))), styles['BillFieldRight'])]
+        [Paragraph("Charges", styles['BillLabelRight']), Paragraph(str(re_summary['recharges'].quantize(Decimal(".00"))), styles['BillFieldRight'])]
     ]
 
     t = Table(currentCharges, [135,85])
@@ -568,14 +568,14 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(pageTwoBackground)
 
     #populate measured usage header frame
-    Elements.append(Paragraph("Measured renewable and conventional energy.", styles['BillLabel']))
+    Elements.append(Paragraph("Measured benefit and utility actual energy.", styles['BillLabel']))
     Elements.append(UseUpSpace())
 
 
     # list of the rows
     measuredUsage = [
         ["Utility Register", "Description", "Quantity", "", "",""],
-        [None, None, "Renewable", "Utility", "Total", None],
+        [None, None, "Benefit", "Utility", "Total", None],
         [None, None, None, None,  None, None,]
     ]
 
@@ -653,7 +653,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     Elements.append(UseUpSpace())
 
 
-    Elements.append(Paragraph("Original utility charges prior to renewable energy.", styles['BillLabel']))
+    Elements.append(Paragraph("Without Skyline, your utility charges would have been:", styles['BillLabel']))
     Elements.append(UseUpSpace())
 
     # list of the rows
