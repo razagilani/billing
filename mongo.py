@@ -254,9 +254,12 @@ class MongoReebill:
             utilbill.update({
                 'rate_schedule_name': this_bill_actual_details.rateschedule.name,
                 
+                # Don't fail here, since the rsbinding has already 
+                # been placed in self.dictionary['utilbills']
+
                 # fail if this bill doesn't have an rsbinding
-                'rate_schedule_binding': this_bill_actual_details. \
-                        rateschedule.rsbinding,
+                #'rate_schedule_binding': this_bill_actual_details. \
+                #        rateschedule.rsbinding,
                 # so-called rate structure/schedule binding ("rsbinding") in utilbill
                 # is actually the name of the utility
                 'utility_name': this_bill_actual_details.rateschedule.rsbinding,
@@ -530,6 +533,22 @@ class MongoReebill:
             raise Exception('Multiple utilbills found for service "%s"' % service_name)
         return deep_map(float_to_decimal, meters_lists[0])
 
+    def rsbinding_for_service(self, service_name):
+        '''
+        Return the rate structure binding for a given service
+        '''
+
+        rs_bindings = [
+            ub['rate_structure_binding'] 
+            for ub in self.dictionary['utilbills']
+            if ub['service'] == service_name
+        ]
+
+        if rs_bindings == []:
+            raise Exception('No rate structure binding found for service "%s"' % service_name)
+        if len(rs_bindings) > 1:
+            raise Exception('Multiple rate structure bindings found for service "%s"' % service_name)
+        return rs_bindings[0]
 
 class MongoReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
