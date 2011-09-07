@@ -45,8 +45,7 @@ IMAGE_EXTENSION = 'png'
 # sampling density (pixels per inch?) for converting bills in a vector format
 # (like PDF) to raster images
 # if this is too big, rendering can be slow
-# TODO put in config gile
-IMAGE_RENDERING_DENSITY = 200
+IMAGE_RENDERING_DENSITY = 100
 
 
 class BillUpload(object):
@@ -205,7 +204,8 @@ class BillUpload(object):
         create_directory_if_necessary(BILL_IMAGE_DIRECTORY, self.logger)
         
         # render the image, saving it to bill_image_path
-        self.renderBillImage(bill_file_path, bill_image_path_without_extension, extension)
+        self.renderBillImage(bill_file_path, bill_image_path_without_extension,
+                extension, IMAGE_RENDERING_DENSITY)
         
         # return name of image file (the caller should know where to find the
         # image file)
@@ -251,8 +251,9 @@ class BillUpload(object):
         create_directory_if_necessary(BILL_IMAGE_DIRECTORY, self.logger)
         
         # render the image, saving it to bill_image_path
-        self.renderBillImage(reebill_file_path, \
-                bill_image_path_without_extension, REEBILL_EXTENSION)
+        self.renderBillImage(reebill_file_path, 
+                bill_image_path_without_extension, REEBILL_EXTENSION,
+                IMAGE_RENDERING_DENSITY)
 
         # return name of image file (the caller should know where to find the
         # image file)
@@ -260,20 +261,22 @@ class BillUpload(object):
 
 
     '''Converts the file at [bill_file_path_without_extension].[extension] to
-    an image and saves it at bill_image_path. Types are determined
-    by extensions. (This requires the 'convert' command from ImageMagick, which
-    itself requires html2pdf to render html files, and the 'montage' command
-    from ImageMagick to join multi-page documents into a single image.) Raises
-    an exception if image rendering fails.'''
+    an image and saves it at bill_image_path. Types are determined by
+    extensions. For non-raster input formats like PDF, the resolution of the
+    output image is determined by 'density' (in pixels per inch?). (This
+    requires the 'convert' command from ImageMagick, which itself requires
+    html2pdf to render html files, and the 'montage' command from ImageMagick
+    to join multi-page documents into a single image.) Raises an exception if
+    image rendering fails.'''
     def renderBillImage(self, bill_file_path, \
-            bill_image_path_without_extension, extension):
+            bill_image_path_without_extension, extension, density):
 
         # TODO: this needs to be reimplemented so as to be command line command oriented
         # It is not possible to make a generic function for N command line programs
 
         if extension == "pdf".lower():
             convert_command = ['pdftoppm', '-png', '-rx', \
-                    str(IMAGE_RENDERING_DENSITY), '-ry', str(IMAGE_RENDERING_DENSITY), bill_file_path, \
+                    str(density), '-ry', str(density), bill_file_path, \
                     bill_image_path_without_extension]
             self.logger.error('Invoking %s' % (' '.join(convert_command)))
 
@@ -285,7 +288,7 @@ class BillUpload(object):
             # doesn't stop it from printing "**** Warning: glyf overlaps cmap,
             # truncating." when converting pdfs
             convert_command = ['convert', '-quiet', '-density', \
-                    str(IMAGE_RENDERING_DENSITY), bill_file_path, \
+                    str(density), bill_file_path, \
                     bill_image_path_without_extension + '.' + IMAGE_EXTENSION]
 
         convert_result = subprocess.Popen(convert_command, \
