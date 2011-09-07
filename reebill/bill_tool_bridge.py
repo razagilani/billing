@@ -44,6 +44,10 @@ import itertools as it
 
 from billing.reebill import bill_mailer
 
+from billing import mongo
+
+import billing.processing.rate_structure as rs
+
 # TODO rename to ProcessBridge or something
 class BillToolBridge:
     """ A monolithic class encapsulating the behavior to:  handle an incoming http request """
@@ -66,8 +70,9 @@ class BillToolBridge:
             self.config.add_section('http')
             self.config.set('http', 'socket_port', '8185')
             self.config.set('http', 'socket_host', '10.0.0.250')
+            self.config.add_section('rsdb')
+            self.config.set('rsdb', 'rspath', '[root]db/skyline/ratestructure/')
             self.config.add_section('billdb')
-            self.config.set('billdb', 'rspath', '[root]db/skyline/ratestructure/')
             self.config.set('billdb', 'utilitybillpath', '[root]db/skyline/utilitybills/')
             self.config.set('billdb', 'billpath', '[root]db/skyline/bills/')
             self.config.add_section('statedb')
@@ -113,6 +118,11 @@ class BillToolBridge:
 
         # configure mailer
         bill_mailer.config = self.config
+
+        # create on RateStructureDAO to user for all ratestructure queries
+        rsdb_config_section = self.config.items("rsdb")
+        self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
+
 
 
     @cherrypy.expose
@@ -411,20 +421,11 @@ class BillToolBridge:
     def rsi(self, xaction, account, sequence, service, **kwargs):
 
         try:
-            # get a hold of the bill to find rate structure
-            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
-            billdb = self.config.get("billdb", "rspath")
-            # ok, this is the nasty - rsbinding is in utilbill and probably should be in details
-            utilbills = the_bill.utilbill_summary_charges
-            rs_yaml = None
-            for (s, utilbill) in utilbills.items():
-                rsbinding = utilbill.rsbinding
-                if (s == service):
-                    import yaml
-                    import billing.processing.rate_structure as rs
-                    rs_yaml = yaml.load(file(os.path.join(billdb, rsbinding, account, sequence+".yaml")))
 
-            rates = rs_yaml["rates"]
+            reebill = mongo.MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+            rsbinding = reebill.rsbinding_for_service(service)
+            rate_structure = self.ratestructure_dao.load_rs(account, sequence, rsbinding)
+            rates = rate_structure["rates"]
 
             if xaction == "read":
                 return json.dumps({'success': True, 'rows':rates})
@@ -464,7 +465,7 @@ class BillToolBridge:
                     rsi.update(row)
                     
 
-                yaml.safe_dump(rs_yaml, open(os.path.join(billdb, rsbinding, account, sequence+".yaml"), "w"), default_flow_style=False)
+                self.ratestructure_dao.save_rs(account, sequence, rsbinding, rate_structure)
 
                 return json.dumps({'success':True})
 
@@ -474,7 +475,7 @@ class BillToolBridge:
                 new_rate = {"descriptor":"NEW"}
                 rates.append(new_rate)
 
-                yaml.safe_dump(rs_yaml, open(os.path.join(billdb, rsbinding, account, sequence+".yaml"), "w"), default_flow_style=False)
+                self.ratestructure_dao.save_rs(account, sequence, rsbinding, rate_structure)
 
                 return json.dumps({'success':True, 'rows':new_rate})
 
@@ -495,7 +496,7 @@ class BillToolBridge:
                     rates.remove([result for result in it.ifilter(lambda x: x["descriptor"]==descriptor, rates)][0])
                     #print [result for result in it.ifilter(lambda x: x["descriptor"]==descriptor, rates)]
 
-                yaml.safe_dump(rs_yaml, open(os.path.join(billdb, rsbinding, account, sequence+".yaml"), "w"), default_flow_style=False)
+                self.ratestructure_dao.save_rs(account, sequence, rsbinding, rate_structure)
 
                 return json.dumps({'success':True})
 

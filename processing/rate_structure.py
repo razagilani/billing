@@ -6,6 +6,24 @@ import os
 from decimal import Decimal
 import traceback
 
+from billing import mongo
+import yaml
+
+class RateStructureDAO():
+
+    def __init__(self, config):
+        self.config = config
+
+    def load_rs(self, account, sequence, rsbinding):
+
+        rate_structure = yaml.load(file(os.path.join(self.config["rspath"], rsbinding, account, sequence+".yaml")))
+        return rate_structure
+
+    def save_rs(self, account, sequence, rsbinding, rate_structure):
+
+        yaml.safe_dump(rate_structure, open(os.path.join(self.config["rspath"], rsbinding, account, sequence+".yaml"), "w"), default_flow_style=False)
+
+
 class RateStructure():
     """ 
     A RateStructure consist of Registers and RateStructureItems.
