@@ -35,9 +35,6 @@ class StateDB:
         #metadata = MetaData() 
         metadata = MetaData(engine)
 
-        print '*************************************************'
-        print 'mysql://%s:%s@%s:3306/%s' % (user, password, host, db)
-
         # table objects loaded automatically from database
         status_days_since_view = Table('status_days_since', metadata, autoload=True)
         status_unbilled_view = Table('status_unbilled', metadata, autoload=True)
