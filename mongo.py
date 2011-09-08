@@ -67,7 +67,7 @@ def bson_convert(x):
         return x
     if type(x) is Decimal:
         return float(x)
-    if type(x) in [date, time]:
+    if type(x) in [date, time, unicode]:
         return str(x)
     if type(x) is dict or type(x) is MutableNamedTuple:
         return dict([(item[0], bson_convert(item[1])) for item in x.iteritems()
@@ -262,7 +262,7 @@ class MongoReebill:
                 #        rateschedule.rsbinding,
                 # so-called rate structure/schedule binding ("rsbinding") in utilbill
                 # is actually the name of the utility
-                'utility_name': this_bill_actual_details.rateschedule.rsbinding,
+                #'utility_name': this_bill_actual_details.rateschedule.rsbinding,
                 # TODO add rate schedule (not all xml files have this)
                 # 'rate_schedule': bson_convert(b.rateschedule),
 
