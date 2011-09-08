@@ -424,7 +424,7 @@ class BillToolBridge:
 
             reebill = mongo.MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
             rsbinding = reebill.rsbinding_for_service(service)
-            rate_structure = self.ratestructure_dao.load_rs(account, sequence, rsbinding)
+            rate_structure = self.ratestructure_dao.load_rs(account, sequence, rsbinding, 0)
             rates = rate_structure["rates"]
 
             if xaction == "read":

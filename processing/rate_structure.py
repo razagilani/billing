@@ -1,10 +1,12 @@
 #!/usr/bin/python
-
+import sys
 import yaml
 import jinja2
 import os
 from decimal import Decimal
 import traceback
+
+import pymongo
 
 from billing import mongo
 import yaml
@@ -12,16 +14,69 @@ import yaml
 class RateStructureDAO():
 
     def __init__(self, config):
-        self.config = config
 
-    def load_rs(self, account, sequence, rsbinding):
+        self.config = config
+        self.connection = None
+        self.database = None
+        self.collection = None
+
+        try:
+            self.connection = pymongo.Connection(self.config['host'], int(self.config['port']))
+        except Exception as e: 
+            print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
+            raise e
+        
+        self.database = self.connection[self.config['database']]
+        self.collection = self.database[self.config['collection']]
+
+    def __del__(self):
+        # TODO: clean up mongo resources here?
+        pass
+
+
+    def load_rs(self, account, sequence, rsbinding, branch):
 
         rate_structure = yaml.load(file(os.path.join(self.config["rspath"], rsbinding, account, sequence+".yaml")))
+
+        # no mongo doc? make one to populate mongo.
+        if self.load_rs_mongo(account, sequence, rsbinding, branch) is None:
+            self.save_rs_mongo(account, sequence, rsbinding, branch, rate_structure)
+
         return rate_structure
+
+    def load_rs_mongo(self, account, sequence, rsbinding, branch):
+
+        mongo_rate_structure = self.collection.find_one({
+            '_id': {
+                    'account': account,
+                    'sequence': sequence,
+                    'branch': branch,
+                    'rsbinding': rsbinding
+            }
+        })
+
+        return mongo_rate_structure
+
+
+
+    def save_rs_mongo(self, account, sequence, rsbinding, branch, rate_structure):
+
+        rate_structure['_id'] = { 
+            'account': account,
+            'sequence': sequence,
+            'branch': branch,
+            'rsbinding': rsbinding
+        }
+
+        rate_structure = mongo.bson_convert(rate_structure)
+
+        self.collection.save(rate_structure)
 
     def save_rs(self, account, sequence, rsbinding, rate_structure):
 
         yaml.safe_dump(rate_structure, open(os.path.join(self.config["rspath"], rsbinding, account, sequence+".yaml"), "w"), default_flow_style=False)
+        self.save_rs_mongo(account, sequence, rsbinding, 0, rate_structure)
+
 
 
 class RateStructure():
@@ -113,8 +168,6 @@ class RateStructure():
         return s
 
 
-
-
 class Register():
 
     def __init__(self, props):
@@ -132,7 +185,6 @@ class Register():
         s += '%s\t' % (self.quantityunits if hasattr(self, 'quantityunits') else '')
         s += '\n'
         return s
-
 
 
 class RateStructureItem():
