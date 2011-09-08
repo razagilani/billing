@@ -333,7 +333,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     sa = stringify(mongo_bill.service_address)
     Elements.append(Paragraph(sa.get('addressee', ""), styles['BillField']))
     Elements.append(Paragraph(sa.get('street',""), styles['BillField']))
-    Elements.append(" ".join((Paragraph(sa.get('city', ""), sa.get('state', ""), sa.get('postalcode', ""))), styles['BillField']))
+    Elements.append(Paragraph(" ".join((sa.get('city', ""), sa.get('state', ""), sa.get('postalcode', ""))), styles['BillField']))
     Elements.append(UseUpSpace())
 
     # populate special instructions
@@ -345,7 +345,7 @@ def render(inputbill, outputfile, backgrounds, verbose):
     ba = stringify(mongo_bill.billing_address)
     Elements.append(Paragraph(ba.get('addressee', ""), styles['BillFieldLg']))
     Elements.append(Paragraph(ba.get('street', ""), styles['BillFieldLg']))
-    Elements.append(" ".join((Paragraph(ba.get('city', ""), ba.get('state', ""), ba.get('postalcode',""))), styles['BillFieldLg']))
+    Elements.append(Paragraph(" ".join((ba.get('city', ""), ba.get('state', ""), ba.get('postalcode',""))), styles['BillFieldLg']))
     Elements.append(UseUpSpace())
 
 
@@ -672,12 +672,12 @@ def render(inputbill, outputfile, backgrounds, verbose):
             for i, charge in enumerate(chargegroups_dict[charge_type]):
                 chargeDetails.append([
                     charge_type if i == 0 else "",
-                    charge['description'],
-                    charge['quantity'].quantize(Decimal(".000")),
-                    charge['quantity_units'],
-                    charge['rate'].quantize(Decimal(".00000")),
-                    charge['rate_units'],
-                    charge['total'].quantize(Decimal(".00")),
+                    charge.get('description', "No description"),
+                    charge['quantity'].quantize(Decimal(".000")) if 'quantity' in charge else Decimal("1"),
+                    charge.get('quantity_units', ""),
+                    charge['rate'].quantize(Decimal(".00000")) if 'rate' in charge else "",
+                    charge.get('rate_units', ""), 
+                    charge['total'].quantize(Decimal(".00")) if 'total' in charge else "",
                 ])
         # spacer
         chargeDetails.append([None, None, None, None, None, None, None])
