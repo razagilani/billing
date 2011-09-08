@@ -61,6 +61,8 @@ name_changes = {
     'totaltrees': 'total_trees'
 }
 
+
+
 def bson_convert(x):
     '''Returns x converted into a type suitable for Mongo.'''
     if type(x) in [str, float, int, bool]:
@@ -93,13 +95,13 @@ def float_to_decimal(x):
     # precision we want
     return Decimal(str(x)) if type(x) is float else x
 
-def rename_keys(x):
+def rename_keys(x,d=name_changes ):
     '''If x is a dictionary or list, recursively replaces keys in x according
     to 'name_changes' above.'''
     if type(x) is dict:
-        return dict([(name_changes.get(key,key), rename_keys(value)) \
+        return dict([(d.get(key,key), rename_keys(value)) \
                 for (key,value) in x.iteritems() \
-                if not (key in name_changes and name_changes[key] is None)])
+                if not (key in d and d[key] is None)])
     if type(x) is list:
         #return map(rename_keys, x)
         return [rename_keys(element) for element in x]
@@ -157,6 +159,9 @@ class MongoReebill:
     def __init__(self, url):
         # initialization with a string: URL of an XML reebill in Exist. use
         # bill.py to extract information from it into self.dictionary.
+
+        if url is None:
+            return
         
         # make a Bill object from the XML document
         b = bill.Bill(url)
@@ -164,20 +169,16 @@ class MongoReebill:
         # top-level reebill information:
         self.dictionary = dict_merge({
                 'account': b.account,
-                'sequence': b.id,
+                'sequence': int(b.id),
+                'branch': int(0),
                 'service_address': b.service_address,
                 'billing_address': b.billing_address
             },
             rename_keys(bson_convert(b.rebill_summary))
         )
 
-        # TODO
-        '''
-        replacement for utilbill.rate_structure_binding:
-            utility_name: e.g. "washgas",
-            rate_schedule: "DC_NONRESIDENTIAL_NONHEAT",
-        '''
 
+        # TODO UPDATE ME!!
         '''
         A reebill has a list containing 1 or more utilbills, each of which is
         structured as follows:
@@ -235,8 +236,20 @@ class MongoReebill:
         # utilbill info from the actual "utilbill" section (service names
         # moved from keys of the utilbill_summary_charges dict into the
         # utilbills themselves)
-        self.dictionary['utilbills'] = [dict_merge({'service':service}, 
-                rename_keys(bson_convert(b.utilbill_summary_charges[service])))
+        self.dictionary['utilbills'] = [dict_merge({'service':service},
+                rename_keys(bson_convert(b.utilbill_summary_charges[service]), d= {
+                    # utilbill section
+                    'begin': 'period_start',
+                    'end': 'period_end',
+                    'rsbinding': 'utility_name', # also in measuredusage section
+                    'rateunits': 'rate_units',
+                    'quantityunits': 'quantity_units',
+                    'revalue':'ree_value',
+                    'recharges':'ree_charges',
+                    'resavings':'ree_savings',
+                    'actualecharges': 'actual_total',
+                    'hypotheticalecharges': 'hypothetical_total'
+                }))
                 for service in b.utilbill_summary_charges.keys()]
 
         # utilbill info from "details", "measuredusage", and "statistics"
@@ -252,14 +265,15 @@ class MongoReebill:
 
             # fill in utilbill
             utilbill.update({
-                'rate_schedule_name': this_bill_actual_details.rateschedule.name,
+                # this is the <name/> element in <rateschedule/> and is not used.
+                #'rate_schedule_name': this_bill_actual_details.rateschedule.name,
                 
                 # Don't fail here, since the rsbinding has already 
                 # been placed in self.dictionary['utilbills']
 
                 # fail if this bill doesn't have an rsbinding
-                #'rate_schedule_binding': this_bill_actual_details. \
-                #        rateschedule.rsbinding,
+                'rate_schedule_binding': this_bill_actual_details. \
+                        rateschedule.rsbinding,
                 # so-called rate structure/schedule binding ("rsbinding") in utilbill
                 # is actually the name of the utility
                 #'utility_name': this_bill_actual_details.rateschedule.rsbinding,
@@ -294,8 +308,7 @@ class MongoReebill:
 
         # statistics: exactly the same as in XML
         self.dictionary.update(rename_keys(bson_convert(b.statistics)))
-        
-    
+
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
     # strings unless otherwise noted.
@@ -312,7 +325,7 @@ class MongoReebill:
         return self.dictionary['sequence']
     @sequence_number.setter
     def sequence_number(self, value):
-        self.dictionary['sequence'] = bson_convert(value)
+        self.dictionary['sequence'] = int(value)
     
     @property
     def issue_date(self):
@@ -573,24 +586,29 @@ class MongoReebillDAO:
         collection_name = 'reebills'
         self.collection = self.connection[db_name][collection_name]
 
-    def insert_reebill(self, reebill):
-        '''Inserts the MongoReebill 'reebill' into the database. If a document
+    def load_reebill(self, account, sequence, branch=0):
+
+        reebill = self.collection.find_one({"_id": {
+            "account":account, 
+            "branch":branch,
+            "sequence": sequence
+        }})
+
+        mongo_reebill = MongoReebill(None)
+        mongo_reebill.dictionary = reebill
+
+        return mongo_reebill
+        
+
+    def save_reebill(self, reebill):
+        '''Saves the MongoReebill 'reebill' into the database. If a document
         with the same account & sequence number already exists, the existing
         document is replaced with this one.'''
-        # if there's an existing document with the same account and sequence
-        # numbers, remove it
-        existing_document = self.collection.find_one({
-            'account': reebill.account_number,
-            'sequence': reebill.sequence_number
-        })
-        if existing_document is not None:
-            # note that existing_document is a dict
-            self.collection.remove(existing_document['_id'], save=True)
 
-        # now insert the new document
-        self.collection.insert(reebill.dictionary)
+        reebill.dictionary['_id'] = {'account': reebill.account_number,
+            'sequence': reebill.sequence_number,
+            'branch': 0}
 
-    '''
-    def get_reebill(self, account, sequence):
-        self.collection.find_one({'account': account, 'sequence': sequence})
-    '''
+        self.collection.save(reebill.dictionary)
+
+
