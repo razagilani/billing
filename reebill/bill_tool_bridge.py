@@ -48,6 +48,12 @@ from billing import mongo
 
 import billing.processing.rate_structure as rs
 
+from datetime import datetime
+from datetime import date
+
+import pprint
+pp = pprint.PrettyPrinter(indent=4)
+
 # TODO rename to ProcessBridge or something
 class BillToolBridge:
     """ A monolithic class encapsulating the behavior to:  handle an incoming http request """
@@ -114,7 +120,11 @@ class BillToolBridge:
         self.billUpload = BillUpload(self.config, self.state_db)
 
         # create a MongoReeBillDAO
-        self.reebill_dao = mongo.MongoReebillDAO(self.config)
+        billdb_config_section = self.config.items("billdb")
+        xmldb_config_section = self.config.items("xmldb")
+        reebill_dao_configs = dict(billdb_config_section + xmldb_config_section)
+        #billdb_config_section.update(xmldb_config_section)
+        self.reebill_dao = mongo.ReebillDAO(reebill_dao_configs)
 
         # create one Process object to use for all related bill processing
         self.process = process.Process(self.config, self.state_db, self.reebill_dao)
@@ -125,8 +135,6 @@ class BillToolBridge:
         # create on RateStructureDAO to user for all ratestructure queries
         rsdb_config_section = self.config.items("rsdb")
         self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
-
-
 
 
     @cherrypy.expose
@@ -245,7 +253,7 @@ class BillToolBridge:
     def render(self, account, sequence, **args):
 
         try:
-            reebill = self.reebill_dao.load_reebill(account, int(sequence))
+            reebill = self.reebill_dao.load_reebill(account, sequence)
             render.render(reebill, 
                 self.config.get("billdb", "billpath")+ "%s/%s.pdf" % (account, sequence),
                 "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
@@ -289,21 +297,21 @@ class BillToolBridge:
             # If there are more, it will come in as a list of strings
             if type(sequences) is not list: sequences = [sequences]
             # acquire the most recent reebill from the sequence list and use its values for the merge
-            sequences = [int(sequence) for sequence in sequences]
+            sequences = [sequence for sequence in sequences]
             sequences.sort()
 
-            all_bills = [bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence)) for sequence in sequences]
+            all_bills = [self.reebill_dao.load_reebill(account, sequence) for sequence in sequences]
 
             # the last element
             most_recent_bill = all_bills[-1]
 
             bill_file_names = ["%s.pdf" % sequence for sequence in sequences]
-            bill_dates = ["%s" % (b.rebill_summary.end) for b in all_bills]
+            bill_dates = ["%s" % (b.period_end) for b in all_bills]
             bill_dates = ", ".join(bill_dates)
 
             merge_fields = {}
             merge_fields["street"] = most_recent_bill.service_address["street"]
-            merge_fields["total_due"] = most_recent_bill.rebill_summary["totaldue"]
+            merge_fields["balance_due"] = most_recent_bill.balance_due
             merge_fields["bill_dates"] = bill_dates
             merge_fields["last_bill"] = bill_file_names[-1]
 
@@ -426,8 +434,10 @@ class BillToolBridge:
 
         try:
 
-            reebill = mongo.MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+
             rsbinding = reebill.rsbinding_for_service(service)
+
             rate_structure = self.ratestructure_dao.load_rs(account, sequence, rsbinding, 0)
             rates = rate_structure["rates"]
 
@@ -616,24 +626,24 @@ class BillToolBridge:
         Return all of the utilbill periods on a per service basis so that the forms may be
         dynamically created.
         """
-        utilbill_periods = {}
 
         try:
-            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
-
-            ubSummary = the_bill.utilbill_summary_charges
-
-            # TODO: just return utilbill summary charges and let extjs render the form
-            for service, summary in ubSummary.items():
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            
+            # TODO: consider re-writing client code to not rely on labels,
+            # then the reebill datastructure itself can be shipped to client.
+            utilbill_periods = {}
+            for service in reebill.services:
+                (begin, end) = reebill.utilbill_periods[service]
                 utilbill_periods[service] = {
-                    'begin':summary.begin,
-                    'end':summary.end
+                    'begin': begin,
+                    'end': end
                     }
+
+            return ju.dumps(utilbill_periods)
 
         except Exception as e:
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
-        return ju.dumps(utilbill_periods)
 
     @cherrypy.expose
     def setUBPeriod(self, account, sequence, service, begin, end, **args):
@@ -642,28 +652,15 @@ class BillToolBridge:
         """ 
 
         try:
-            the_bill = bill.Bill( "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
-
-            ubSummary = the_bill.utilbill_summary_charges
-
-            ubSummary[service].begin = begin
-            ubSummary[service].end = end
-
-            the_bill.utilbill_summary_charges = ubSummary
-
-            XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence),
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
-            # save in mongo
-            reebill = mongo.MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            reebill.set_utilbill_period_for_service(service, (datetime.strptime(begin, "%Y-%m-%d").date(),datetime.strptime(end, "%Y-%m-%d").date()))
             self.reebill_dao.save_reebill(reebill)
 
+            return ju.dumps({'success':True})
 
         except Exception as e:
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return ju.dumps({'success':True})
 
     #
     ################
@@ -813,15 +810,14 @@ class BillToolBridge:
         """
 
         try:
-            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
-
-            ubMeasuredUsages = the_bill.measured_usage
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            meters = reebill.meters
+            return ju.dumps(meters)
 
         except Exception as e:
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
-        return ju.dumps(ubMeasuredUsages)
 
 
     @cherrypy.expose
@@ -829,41 +825,26 @@ class BillToolBridge:
 
         try:
 
-            the_bill = bill.Bill( "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
-
-            ubMeasuredUsages = the_bill.measured_usage
-
-            # TODO: better way to filter for meter? The list comprehension should always be a list of one element
-            # TODO: error conditions
-            meter = [meter for meter in ubMeasuredUsages[service] if meter.identifier == meter_identifier]
-            meter = meter[0] if meter else None
-            if meter is None: 
-                print "Should have found a single meter"
-            else:
-                meter.presentreaddate = presentreaddate
-                meter.priorreaddate = priorreaddate
-
-            the_bill.measured_usage = ubMeasuredUsages
-
-            XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence),
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
-            # save in mongo
-            reebill = mongo.MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            reebill.set_meter_read_date(service, meter_identifier, presentreaddate, priorreaddate)
             self.reebill_dao.save_reebill(reebill)
+
+            return ju.dumps({'success':True})
 
         except Exception as e:
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return ju.dumps({'success':True})
 
     @cherrypy.expose
     def setActualRegister(self, account, sequence, service, register_identifier, meter_identifier, total):
 
         try:
 
-            the_bill = bill.Bill( "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+            #the_bill = bill.Bill( "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+
+
+            PICKUP HERE
 
             ubMeasuredUsages = the_bill.measured_usage
 

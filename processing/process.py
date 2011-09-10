@@ -34,7 +34,7 @@ import pprint
 import yaml
 import rate_structure
 from billing.processing import state
-from billing.mongo import MongoReebill, MongoReebillDAO
+from billing.mongo import MongoReebill
 
 class Process(object):
     """ Class with a variety of utility procedures for processing bills """
