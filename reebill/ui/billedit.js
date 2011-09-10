@@ -808,13 +808,13 @@ function renderWidgets()
                     new Ext.form.DateField({
                         fieldLabel: service + ' Prior Read',
                         name: 'priorreaddate',
-                        value: meter.priorreaddate,
+                        value: meter.prior_read_date,
                         format: 'Y-m-d'
                     }),
                     new Ext.form.DateField({
                         fieldLabel: service + ' Present Read',
                         name: 'presentreaddate',
-                        value: meter.presentreaddate,
+                        value: meter.present_read_date,
                         format: 'Y-m-d'
                     })
                 );

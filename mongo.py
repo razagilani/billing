@@ -7,6 +7,15 @@ import pymongo
 import billing.bill as bill
 from billing.mutable_named_tuple import MutableNamedTuple
 
+from lxml import etree
+from exceptions import TypeError
+from urlparse import urlparse
+import httplib
+import string
+import base64
+
+import pprint
+pp = pprint.PrettyPrinter(indent=1)
 
 
 # date format for returning parsing date strings read out of Mongo
@@ -37,7 +46,7 @@ name_changes = {
     'duedate': 'due_date',
     'issued': 'issue_date',
     # utilbill section
-    'begin': 'period_start',
+    'begin': 'period_begin',
     'end': 'period_end',
     'rsbinding': 'rate_structure_binding', # also in measuredusage section
     'rateunits': 'rate_units',
@@ -148,7 +157,7 @@ class MongoReebill:
             Consumers that need a missing key to be exceptional, than should 
             directly access they key.
 
-        property style access: e.g. bill.account_number - scalar returned
+        property style access: e.g. bill.account - scalar returned
             In this case, this code needs to select a default if the key is missing
             probably wan't some consistency
 
@@ -156,16 +165,16 @@ class MongoReebill:
             Not sure this ever happens.
     '''
 
-    def __init__(self, url):
-        # initialization with a string: URL of an XML reebill in Exist. use
-        # bill.py to extract information from it into self.dictionary.
+    def __init__(self, xml_reebill):
 
-        if url is None:
+        # if no xml_reebill is passed in, assume we are
+        # having self.dictionary set externally because
+        # the bill was found in mongo
+        if xml_reebill is None:
             return
-        
-        # make a Bill object from the XML document
-        b = bill.Bill(url)
 
+        b = xml_reebill
+        
         # top-level reebill information:
         self.dictionary = dict_merge({
                 'account': b.account,
@@ -239,7 +248,7 @@ class MongoReebill:
         self.dictionary['utilbills'] = [dict_merge({'service':service},
                 rename_keys(bson_convert(b.utilbill_summary_charges[service]), d= {
                     # utilbill section
-                    'begin': 'period_start',
+                    'begin': 'period_begin',
                     'end': 'period_end',
                     'rsbinding': 'utility_name', # also in measuredusage section
                     'rateunits': 'rate_units',
@@ -314,17 +323,17 @@ class MongoReebill:
     # strings unless otherwise noted.
     
     @property
-    def account_number(self):
+    def account(self):
         return self.dictionary['account']
-    @account_number.setter
-    def account_number(self, value):
+    @account.setter
+    def account(self, value):
         self.dictionary['account'] = bson_convert(value)
     
     @property
-    def sequence_number(self):
+    def sequence(self):
         return self.dictionary['sequence']
-    @sequence_number.setter
-    def sequence_number(self, value):
+    @sequence.setter
+    def sequence(self, value):
         self.dictionary['sequence'] = int(value)
     
     @property
@@ -340,6 +349,20 @@ class MongoReebill:
     @due_date.setter
     def due_date(self, value):
         self.dictionary['due_date'] = bson_convert(value)
+
+    @property
+    def period_begin(self):
+        return datetime.strptime(self.dictionary['period_begin'], DATE_FORMAT).date()
+    @period_begin.setter
+    def period_begin(self, value):
+        self.dictionary['period_begin'] = bson_convert(value)
+
+    @property
+    def period_end(self):
+        return datetime.strptime(self.dictionary['period_end'], DATE_FORMAT).date()
+    @period_end.setter
+    def period_end(self, value):
+        self.dictionary['period_end'] = bson_convert(value)
     
     @property
     def balance_due(self):
@@ -514,16 +537,16 @@ class MongoReebill:
     
 
     @property
-    def all_services(self):
+    def services(self):
         '''Returns a list of all services for which there are utilbills.'''
         return list(set([u['service'] for u in self.dictionary['utilbills']]))
 
-    def utilbill_periods(self, service_name):
+    def utilbill_period_for_service(self, service_name):
         '''Returns start & end dates of the first utilbill found whose service
         is 'service_name'. There's not supposed to be more than one utilbill
         per service, so an exception is raised if that happens (or if there's
         no utilbill for that service).'''
-        date_string_pairs = [(u['period_start'], u['period_end'])
+        date_string_pairs = [(u['period_begin'], u['period_end'])
                 for u in self.dictionary['utilbills'] if u['service'] == service_name]
         if date_string_pairs == []:
             raise Exception('No utilbills for service "%s"' % service_name)
@@ -533,18 +556,61 @@ class MongoReebill:
         return (datetime.strptime(start, DATE_FORMAT).date(),
                 datetime.strptime(end, DATE_FORMAT).date())
 
-    def meters(self, service_name):
+    def set_utilbill_period_for_service(self, service_name, period):
+
+        if service_name not in self.services:
+            raise Exception('No such service "%s"' % service_name)
+
+        if len(period) != 2:
+            raise Exception('Utilbill period malformed "%s"' % period)
+        
+        for utilbill in self.dictionary['utilbills']:
+            if utilbill['service'] == service_name:
+                utilbill['period_begin'] = bson_convert(period[0])
+                utilbill['period_end'] = bson_convert(period[1])
+
+    @property
+    def utilbill_periods(self):
+        '''Return a dictionary whose keys are service and values the utilbill period.'''
+        return dict([(service, self.utilbill_period_for_service(service)) for service in self.services])
+
+    @utilbill_periods.setter
+    def utilbill_periods(self, value):
+        '''Set the utilbill periods based on a dictionary whose keys are service and values utilbill periods.'''
+
+        for (service, period) in value.iteritems():
+            self.set_utilbill_period_for_service(service, period)
+        
+    def meters_for_service(self, service_name):
         '''Returns the meters (a list of dictionaries) for the utilbill whose
         service is 'service_name'. There's not supposed to be more than one
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
+
         meters_lists = [ub['meters'] for ub in self.dictionary['utilbills'] if
                 ub['service'] == service_name]
+
         if meters_lists == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
         if len(meters_lists) > 1:
             raise Exception('Multiple utilbills found for service "%s"' % service_name)
+
         return deep_map(float_to_decimal, meters_lists[0])
+
+    def set_meter_read_date(self, service, identifier, present_read_date, prior_read_date):
+        ''' Set the read date for a specified meter.'''
+
+        for utilbill in self.dictionary['utilbills']:
+            if utilbill['service'] == service:
+                for meter in utilbill['meters']:
+                    if meter['identifier'] == identifier:
+                        meter['present_read_date'] = bson_convert(present_read_date)
+                        meter['prior_read_date'] = bson_convert(prior_read_date)
+
+    @property
+    def meters(self):
+        print "will return %s" %  dict([(service, self.meters_for_service(service)) for service in self.services])
+        return dict([(service, self.meters_for_service(service)) for service in self.services])
 
     def rsbinding_for_service(self, service_name):
         '''
@@ -552,7 +618,7 @@ class MongoReebill:
         '''
 
         rs_bindings = [
-            ub['rate_structure_binding'] 
+            ub['utility_name'] 
             for ub in self.dictionary['utilbills']
             if ub['service'] == service_name
         ]
@@ -563,15 +629,17 @@ class MongoReebill:
             raise Exception('Multiple rate structure bindings found for service "%s"' % service_name)
         return rs_bindings[0]
 
-class MongoReebillDAO:
+class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
     def __init__(self, config):
-        # connect to mongo
-        # TODO get db info from config, not hard-coded values
+
+        self.config = config
+
         self.connection = None
+
         try:
-            self.connection = pymongo.Connection('localhost', 27017) 
+            self.connection = pymongo.Connection(self.config['host'], int(self.config['port'])) 
         except Exception as e: 
             print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
             raise e
@@ -581,34 +649,85 @@ class MongoReebillDAO:
                 # TODO when to disconnect from the database?
                 pass
         
-        # temporary hard-coded database info
-        db_name = 'skyline'
-        collection_name = 'reebills'
-        self.collection = self.connection[db_name][collection_name]
+        self.collection = self.connection[self.config['database']][self.config['collection']]
+    
 
     def load_reebill(self, account, sequence, branch=0):
 
         reebill = self.collection.find_one({"_id": {
-            "account":account, 
-            "branch":branch,
-            "sequence": sequence
+            "account": str(account), 
+            "branch": int(branch),
+            "sequence": int(sequence)
         }})
 
-        mongo_reebill = MongoReebill(None)
-        mongo_reebill.dictionary = reebill
+        # didn't find one in mongo, so let's grab it from eXist
+        # TODO: why not also save it into mongo and reload from mongo? for migration?
 
-        return mongo_reebill
+        if reebill is None:
+            print "********* Reebill not found in Mongo, loading from exist"
+            b = self.load_xml_reebill(account, sequence)
+            xml_reebill = MongoReebill(b)
+            return xml_reebill
+        else:
+            print "********* Reebill found in Mongo"
+            mongo_reebill = MongoReebill(None)
+            mongo_reebill.dictionary = reebill
+            return mongo_reebill
         
+    def load_xml_reebill(self, account, sequence, branch=0):
+        # initialization with a string: URL of an XML reebill in Exist. use
+        # bill.py to extract information from it into self.dictionary.
+
+        url = "%s/%s/%s.xml" % (self.config['destination_prefix'], account, sequence)
+
+        # make a Bill object from the XML document
+        b = bill.Bill(url)
+
+        return b
 
     def save_reebill(self, reebill):
         '''Saves the MongoReebill 'reebill' into the database. If a document
         with the same account & sequence number already exists, the existing
         document is replaced with this one.'''
 
-        reebill.dictionary['_id'] = {'account': reebill.account_number,
-            'sequence': reebill.sequence_number,
+        reebill.dictionary['_id'] = {'account': reebill.account,
+            'sequence': reebill.sequence,
             'branch': 0}
+
+        print "*************** will save this bill"
+
+        pp.pprint(reebill.dictionary)
+
 
         self.collection.save(reebill.dictionary)
 
+    def save_xml_reebill(self, xml_reebill, account, sequence):
+
+        url = "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence)
+
+        parts = urlparse(url)
+
+        xml = xml_reebill.xml()
+
+        if (parts.scheme == 'http'): 
+            # http scheme URL, PUT to eXistDB
+
+            con = httplib.HTTPConnection(parts.netloc)
+            con.putrequest('PUT', '%s' % url)
+            con.putheader('Content-Type', 'text/xml')
+
+            auth = 'Basic ' + string.strip(base64.encodestring(self.config['user'] + ':' + self.config['password']))
+            con.putheader('Authorization', auth )
+
+            clen = len(xml) 
+            con.putheader('Content-Length', clen)
+            con.endheaders() 
+            con.send(xml)
+            response = con.getresponse()
+            print str(response.status) + " " + response.reason
+
+            print >> sys.stderr, url
+
+        else:
+            pass
 

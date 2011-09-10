@@ -11,7 +11,7 @@ Please find attached your bills for the dates ending {{ bill_dates }}.
 
 The attached file, {{ last_bill }} reflects the current balance and is the only bill that should be paid.
 
-Total Due {{total_due}}
+Total Due {{balance_due}}
 
 Best Regards,
 Jules Watson
@@ -31,7 +31,7 @@ http://www.skylineinnovations.com
 
 <p>The attached file, {{ last_bill }} reflects the current balance and is the only bill that should be paid.
 
-<p>Total Due {{total_due}}</p>
+<p>Total Due {{balance_due}}</p>
 
 <p>Best Regards,<br/>
 Jules Watson<br/>
@@ -163,5 +163,5 @@ if __name__ == '__main__':
     config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'bill_mailer.cfg')
     config.read(config_file_path)
 
-    fields = { "total_due": "140.00" } 
+    fields = { "balance_due": "140.00" } 
     mail(args.recipients, fields, args.bill_path, args.bill_file)
