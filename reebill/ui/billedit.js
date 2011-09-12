@@ -893,7 +893,6 @@ function renderWidgets()
     // populate with data if initial pre-loaded data is desired
     var initialActualCharges = {
         rows: [
-            //{chargegroup:'Distribution', rsbinding:'SOMETHING', description:'description', quantity:10, quantityunits:'kwh', rate:1, rateunits:'kwh', total:100, processingnote:'A Note'},
         ]
     };
 
@@ -908,12 +907,12 @@ function renderWidgets()
         fields: [
             // map Record's field to json object's key of same name
             {name: 'chargegroup', mapping: 'chargegroup'},
-            {name: 'rsbinding', mapping: 'rsbinding'},
+            {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
-            {name: 'quantityunits', mapping: 'quantityunits'},
+            {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
-            {name: 'rateunits', mapping: 'rateunits'},
+            {name: 'rate_units', mapping: 'rate_units'},
             {name: 'total', mapping: 'total', type: 'float'},
             {name: 'processingnote', mapping:'processingnote'},
         ]
@@ -964,10 +963,10 @@ function renderWidgets()
                 hidden: true 
             }, 
             {
-                header: 'RS Binding',
+                header: 'RSI Binding',
                 width: 75,
                 sortable: true,
-                dataIndex: 'rsbinding',
+                dataIndex: 'rsi_binding',
                 editor: new Ext.form.TextField({allowBlank: true})
             },
             {
@@ -988,7 +987,7 @@ function renderWidgets()
                 header: 'Units',
                 width: 75,
                 sortable: true,
-                dataIndex: 'quantityunits',
+                dataIndex: 'quantity_units',
                 editor: new Ext.form.ComboBox({
                     typeAhead: true,
                     triggerAction: 'all',
@@ -1020,7 +1019,7 @@ function renderWidgets()
                 header: 'Units',
                 width: 75,
                 sortable: true,
-                dataIndex: 'rateunits',
+                dataIndex: 'rate_units',
                 editor: new Ext.form.ComboBox({
                     typeAhead: true,
                     triggerAction: 'all',
@@ -1101,9 +1100,9 @@ function renderWidgets()
                         chargegroup: selection.data.chargegroup,
                         description: 'enter description',
                         quantity: 0,
-                        quantityunits: 'kWh',
+                        quantity_units: 'kWh',
                         rate: 0,
-                        rateunits: 'dollars',
+                        rate_units: 'dollars',
                         total: 0,
                         //autototal: 0
                     };
@@ -1273,7 +1272,6 @@ function renderWidgets()
     // populate with data if initial pre-loaded data is desired
     var initialHypotheticalCharges = {
         rows: [
-            //{chargegroup:'Distribution', rsbinding:'SOMETHING', description:'description', quantity:10, quantityunits:'kwh', rate:1, rateunits:'kwh', total:100, processingnote:'A Note'},
         ]
     };
 
@@ -1288,12 +1286,12 @@ function renderWidgets()
         fields: [
             // map Record's field to json object's key of same name
             {name: 'chargegroup', mapping: 'chargegroup'},
-            {name: 'rsbinding', mapping: 'rsbinding'},
+            {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
-            {name: 'quantityunits', mapping: 'quantityunits'},
+            {name: 'quantity_units', mapping: 'quantity_units'},
             {name: 'rate', mapping: 'rate'},
-            {name: 'rateunits', mapping: 'rateunits'},
+            {name: 'rate_units', mapping: 'rate_units'},
             {name: 'total', mapping: 'total', type: 'float'},
             {name: 'processingnote', mapping:'processingnote'},
         ]
@@ -1343,10 +1341,10 @@ function renderWidgets()
                 dataIndex: 'chargegroup',
                 hidden: true 
             },{
-                header: 'RS Binding',
+                header: 'RSI Binding',
                 width: 75,
                 sortable: true,
-                dataIndex: 'rsbinding',
+                dataIndex: 'rsi_binding',
                 editor: new Ext.form.TextField({allowBlank: true})
             },{
                 header: 'Description',
@@ -1364,7 +1362,7 @@ function renderWidgets()
                 header: 'Units',
                 width: 75,
                 sortable: true,
-                dataIndex: 'quantityunits',
+                dataIndex: 'quantity_units',
                 editor: new Ext.form.ComboBox({
                     typeAhead: true,
                     triggerAction: 'all',
@@ -1394,7 +1392,7 @@ function renderWidgets()
                 header: 'Units',
                 width: 75,
                 sortable: true,
-                dataIndex: 'rateunits',
+                dataIndex: 'rate_units',
                 editor: new Ext.form.ComboBox({
                     typeAhead: true,
                     triggerAction: 'all',
@@ -1458,9 +1456,9 @@ function renderWidgets()
                         chargegroup: selection.data.chargegroup,
                         description: 'enter description',
                         quantity: 0,
-                        quantityunits: 'kWh',
+                        quantity_units: 'kWh',
                         rate: 0,
-                        rateunits: 'dollars',
+                        rate_units: 'dollars',
                         total: 0,
                         //autototal: 0
                     };

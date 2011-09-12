@@ -13,6 +13,7 @@ from urlparse import urlparse
 import httplib
 import string
 import base64
+import itertools as it
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1)
@@ -48,7 +49,7 @@ name_changes = {
     # utilbill section
     'begin': 'period_begin',
     'end': 'period_end',
-    'rsbinding': 'rate_structure_binding', # also in measuredusage section
+    'rsbinding': 'rsi_binding', # also in measuredusage section
     'rateunits': 'rate_units',
     'quantityunits': 'quantity_units',
     # measuredusage section
@@ -88,6 +89,10 @@ def bson_convert(x):
     raise ValueError("type(%s) is %s: can't convert that into bson" \
             % (x, type(x)))
 
+#TODO: looks like this makes a by value copy of a dictionary causing references to be lost
+# making difficult returning references to data that needs to be modified. (e.g. we return
+# a meter dict which might have an identifier changed)
+# See set_meter_read_date()
 def deep_map(func, x):
     '''Applies the function 'func' througout the data structure x, or just
     applies it to x if x is a scalar.wUsed for type conversions from Mongo
@@ -600,16 +605,33 @@ class MongoReebill:
     def set_meter_read_date(self, service, identifier, present_read_date, prior_read_date):
         ''' Set the read date for a specified meter.'''
 
-        for utilbill in self.dictionary['utilbills']:
-            if utilbill['service'] == service:
-                for meter in utilbill['meters']:
+        # Would like to call meters_of_service but deep_map or someone seems to return copies
+        # breaking reference to self.dictionary
+        for ub in self.dictionary['utilbills']:
+            if ub['service'] == service:
+                for meter in ub['meters']:
                     if meter['identifier'] == identifier:
                         meter['present_read_date'] = bson_convert(present_read_date)
                         meter['prior_read_date'] = bson_convert(prior_read_date)
 
+    def set_meter_actual_register(self, service, meter_identifier, register_identifier, total):
+        ''' Set the total for a specified meter register.'''
+
+        # Would like to call meters_of_service but deep_map or someone seems to return copies
+        # breaking reference to self.dictionary
+        for ub in self.dictionary['utilbills']:
+            if ub['service'] == service:
+                for meter in ub['meters']:
+                    if meter['identifier'] == meter_identifier:
+                        print "Matched meter %s " % meter
+                        for register in meter['registers']:
+                            print "visiting register %s" % register
+                            if (register['shadow'] == False) and (register['identifier'] == register_identifier):
+                                print "matched actual register %s %s" % (register_identifier, register)
+                                register['total'] = bson_convert(total)
+
     @property
     def meters(self):
-        print "will return %s" %  dict([(service, self.meters_for_service(service)) for service in self.services])
         return dict([(service, self.meters_for_service(service)) for service in self.services])
 
     def rsbinding_for_service(self, service_name):
@@ -628,6 +650,57 @@ class MongoReebill:
         if len(rs_bindings) > 1:
             raise Exception('Multiple rate structure bindings found for service "%s"' % service_name)
         return rs_bindings[0]
+
+    #
+    # Helper functions
+    #
+
+    def hypothetical_chargegroups_flattened(self, service, chargegroups='hypothetical_chargegroups'):
+        return self.chargegroups_flattened(service, chargegroups)
+
+    def actual_chargegroups_flattened(self, service, chargegroups='actual_chargegroups'):
+        return self.chargegroups_flattened(service, chargegroups)
+
+    def chargegroups_flattened(self, service, chargegroups):
+
+        # flatten structure into an array of dictionaries, one for each charge
+        # this has to be done because the grid editor is  looking for a flat table
+        # This should probably not be done in here, but rather by some helper object?
+
+        flat_charges = []
+        for ub in self.dictionary['utilbills']:
+            if ub['service'] == service:
+                for (chargegroup, charges) in ub[chargegroups].items(): 
+                    for charge in charges:
+                        charge['chargegroup'] = chargegroup
+                        flat_charges.append(charge)
+
+        return deep_map(float_to_decimal, flat_charges)
+
+    def set_hypothetical_chargegroups_flattened(self, service, flat_charges, chargegroups='hypothetical_chargegroups'):
+        return self.set_chargegroups_flattened(service, flat_charges, chargegroups)
+
+    def set_actual_chargegroups_flattened(self, service, flat_charges, chargegroups='actual_chargegroups'):
+        return self.set_chargegroups_flattened(service, flat_charges, chargegroups)
+
+    def set_chargegroups_flattened(self, service, flat_charges, chargegroups):
+
+        for ub in self.dictionary['utilbills']:
+            if ub['service'] == service:
+                # TODO sort flat_charges before groupby
+                # They post sorted, but that is no guarantee...
+
+                new_chargegroups = {}
+                for cg, charges in it.groupby(flat_charges, key=lambda charge:charge['chargegroup']):
+                    new_chargegroups[cg] = []
+                    for charge in charges:
+                        del charge['chargegroup']
+                        charge['quantity'] = bson_convert(charge['quantity'])
+                        charge['rate'] = bson_convert(charge['rate'])
+                        charge['total'] = bson_convert(charge['total'])
+                        new_chargegroups[cg].append(charge)
+
+                ub[chargegroups] = new_chargegroups
 
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
