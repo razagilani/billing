@@ -46,7 +46,8 @@ def dumps(obj):
     return json.dumps(obj, default=__encode_date__, use_decimal=True)
 
 def loads(obj):
-    return json.loads(obj, object_pairs_hook=__convert_to_mnt__, use_decimal=True)
+    #return json.loads(obj, object_pairs_hook=__convert_to_mnt__, use_decimal=True)
+    return json.loads(obj, object_hook=__decode_date__, use_decimal=True)
 
 
 if __name__ == "__main__":

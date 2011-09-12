@@ -670,133 +670,61 @@ class BillToolBridge:
 
     @cherrypy.expose
     def actualCharges(self, service, account, sequence, **args):
+
         try:
-            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
-            actual_charges = the_bill.actual_charges_no_totals
-            flattened_charges = self.flattenCharges(service, account, sequence, actual_charges, **args)
+
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            flattened_charges = reebill.actual_chargegroups_flattened(service)
+            return ju.dumps({'success': True, 'rows': flattened_charges})
 
         except Exception as e:
+
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return ju.dumps({'success': True, 'rows': flattened_charges})
 
     @cherrypy.expose
     def hypotheticalCharges(self, service, account, sequence, **args):
+
         try:
-            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
-            hypothetical_charges = the_bill.hypothetical_charges_no_totals
-            flattened_charges = self.flattenCharges(service, account, sequence, hypothetical_charges, **args)
+
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            flattened_charges = reebill.hypothetical_chargegroups_flattened(service)
+            return ju.dumps({'success': True, 'rows': flattened_charges})
 
         except Exception as e:
+
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
-        return ju.dumps({'success': True, 'rows': flattened_charges})
-
-
-    def flattenCharges(self, service, account, sequence, charges, **args):
-
-        # flatten structure into an array of dictionaries, one for each charge
-        # this has to be done because the grid editor is  looking for a flat table
-
-        # This should probably not be done in bill.py, but rather by some helper object
-        # if we don't want this cluttering up this wsgi method
-        all_charges = []
-        for (the_service, details) in charges.items():
-            if (the_service == service):
-                for chargegroup in details.chargegroups:
-                    for charge in chargegroup.charges:
-                        a_charge = {}
-                        a_charge['chargegroup'] = chargegroup.type if hasattr(chargegroup,'type') else None
-                        a_charge['rsbinding'] = charge.rsbinding if hasattr(charge, 'rsbinding') else None
-                        a_charge['description'] = charge.description if hasattr(charge, 'description') else None
-                        a_charge['quantity'] = charge.quantity if hasattr(charge, 'quantity') else None
-                        a_charge['quantityunits'] = charge.quantityunits if hasattr(charge,'quantityunits') else None
-                        a_charge['rate'] = charge.rate if hasattr(charge, 'rate') else None
-                        a_charge['rateunits'] = charge.rateunits if hasattr(charge, 'rateunits') else None
-                        a_charge['total'] = charge.total if hasattr(charge, 'total') else None
-
-                        all_charges.append(a_charge)
-
-        return all_charges
 
 
     @cherrypy.expose
     def saveActualCharges(self, service, account, sequence, rows, **args):
+    
         try:
-            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+            flattened_charges = ju.loads(rows)
 
-            charge_items = ju.loads(rows)
-
-            the_bill.actual_charges = self.nestCharges(service, account, sequence, charge_items)
-
-            XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence),
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
-            # save in mongo
-            reebill = mongo.MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            reebill.set_actual_chargegroups_flattened(service, flattened_charges)
             self.reebill_dao.save_reebill(reebill)
+
+            return ju.dumps({'success': True})
 
         except Exception as e:
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return ju.dumps({'success': True})
 
     @cherrypy.expose
     def saveHypotheticalCharges(self, service, account, sequence, rows, **args):
         try:
-            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+            flattened_charges = ju.loads(rows)
 
-            charge_items = ju.loads(rows)
-
-            the_bill.hypothetical_charges = self.nestCharges(service, account, sequence, charge_items)
-
-            XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence),
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
-            # save in mongo
-            reebill = mongo.MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            reebill.set_hypothetical_chargegroups_flattened(service, flattened_charges)
             self.reebill_dao.save_reebill(reebill)
+        
+            return ju.dumps({'success': True})
 
         except Exception as e:
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
-        return ju.dumps({'success': True})
-
-
-
-    def nestCharges(self, service, account, sequence, the_charge_items, **args):
-
-        # this code should go into process
-        from billing.mutable_named_tuple import MutableNamedTuple
-
-        details = {}
-
-        details[service] = MutableNamedTuple()
-        details[service].chargegroups = []
-
-        for cgtype, charge_items in it.groupby(the_charge_items, key=lambda charge_item:charge_item['chargegroup']):
-            chargegroup_mnt = MutableNamedTuple()
-            chargegroup_mnt.type = cgtype
-            chargegroup_mnt.charges = []
-            for charge_item in charge_items:
-                charge_mnt = MutableNamedTuple()
-                charge_mnt.rsbinding = charge_item['rsbinding']
-                charge_mnt.description = charge_item['description']
-                charge_mnt.quantity = charge_item['quantity']
-                charge_mnt.quantityunits = charge_item['quantityunits']
-                charge_mnt.rate = charge_item['rate']
-                charge_mnt.rateunits = charge_item['rateunits']
-                charge_mnt.total = charge_item['total']
-                chargegroup_mnt.charges.append(charge_mnt)
-
-            # TODO refactor this into bill set charge_items such that the total property is created when absent.
-            chargegroup_mnt.total = "0.00"
-
-            details[service].chargegroups.append(chargegroup_mnt)
-
-        return details
 
 
     ################
@@ -816,9 +744,6 @@ class BillToolBridge:
 
         except Exception as e:
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
-
-
 
     @cherrypy.expose
     def setMeter(self, account, sequence, service, meter_identifier, presentreaddate, priorreaddate):
@@ -840,41 +765,15 @@ class BillToolBridge:
 
         try:
 
-            #the_bill = bill.Bill( "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
             reebill = self.reebill_dao.load_reebill(account, sequence)
-
-
-            PICKUP HERE
-
-            ubMeasuredUsages = the_bill.measured_usage
-
-            # TODO: better way to filter for register and meter? The list comprehension should always be a list of one element
-            # TODO: error conditions
-            meter = [meter for meter in ubMeasuredUsages[service] if meter.identifier == meter_identifier]
-            meter = meter[0] if meter else None
-            if meter is None: print "Should have found a single meter"
-            # TODO: raise exception if no meter
-
-            register = [register for register in meter.registers if register.identifier == register_identifier and register.shadow is False]
-            register = register[0] if register else None
-            if register is None: print "Should have found a single register"
-
-            register.total = total
-
-            the_bill.measured_usage = ubMeasuredUsages
-
-            XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence),
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
-            # save in mongo
-            reebill = mongo.MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+            reebill.set_meter_actual_register(service, meter_identifier, register_identifier, total)
             self.reebill_dao.save_reebill(reebill)
+
+            return ju.dumps({'success':True})
 
         except Exception as e:
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return ju.dumps({'success':True})
 
 
     #
