@@ -228,12 +228,15 @@ class BillToolBridge:
     def sum(self, account, sequence, **args):
 
         try:
-            self.process.sum_bill(account, sequence)
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            self.process.sum_bill(reebill)
+            self.reebill_dao.save_reebill(reebill)
+
+            return json.dumps({'success': True})
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return json.dumps({'success': True})
         
     @cherrypy.expose
     def issue(self, account, sequence, **args):
@@ -435,9 +438,7 @@ class BillToolBridge:
         try:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
-
             rsbinding = reebill.rsbinding_for_service(service)
-
             rate_structure = self.ratestructure_dao.load_rs(account, sequence, rsbinding, 0)
             rates = rate_structure["rates"]
 
@@ -853,6 +854,7 @@ class BillToolBridge:
         except Exception as e: 
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
+# TODO: place instantiation in main, so this module can be loaded without btb being instantiated
 bridge = BillToolBridge()
 
 if __name__ == '__main__':

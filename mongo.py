@@ -84,7 +84,6 @@ def convert_old_types(x):
         return x
     # lxml gives us string_result types for strings
     if type(x) is _ElementStringResult:
-        print "matched ElementStringResult '%s' and converted it to string" % x
         return str(x)
     if type(x) is unicode:
         return str(x)
@@ -98,17 +97,21 @@ def convert_old_types(x):
 
 def bson_convert(x):
     '''Returns x converted into a type suitable for Mongo.'''
-    if type(x) in [str, float, int, bool]:
+
+    if type(x) in [str, float, int, bool, datetime, unicode]:
         return x
     if type(x) is Decimal:
         return float(x)
-    if type(x) in [date, time, unicode]:
+    if type(x) is time:
         return str(x)
+    if type(x) is date:
+        return datetime(x.year, x.month, x.day)
     if type(x) is dict or type(x) is MutableNamedTuple:
         return dict([(item[0], bson_convert(item[1])) for item in x.iteritems()
                 if item[1] is not None])
     if type(x) is list:
         return map(bson_convert, x)
+
     raise ValueError("type(%s) is %s: can't convert that into bson" \
             % (x, type(x)))
 
@@ -137,9 +140,10 @@ def rename_keys(x,d=name_changes ):
     '''If x is a dictionary or list, recursively replaces keys in x according
     to 'name_changes' above.'''
     if type(x) is dict:
-        return dict([(d.get(key,key), rename_keys(value)) \
+        the_dict = dict([(d.get(key,key), rename_keys(value)) \
                 for (key,value) in x.iteritems() \
                 if not (key in d and d[key] is None)])
+        return the_dict 
     if type(x) is list:
         #return map(rename_keys, x)
         return [rename_keys(element) for element in x]
@@ -214,25 +218,24 @@ class MongoReebill:
 
         b = xml_reebill
 
-
         # Load, binding to xml data and renaming keys
         
         # top-level reebill information:
         self.dictionary = dict_merge({
-                'account': b.account,
+                'account': convert_old_types(b.account),
                 'sequence': int(b.id),
                 'branch': int(0),
                 'service_address': b.service_address,
                 'billing_address': b.billing_address
             },
-            rename_keys(b.rebill_summary)
+            rename_keys(convert_old_types(b.rebill_summary))
         )
 
         # utilbill info from the actual "utilbill" section (service names
         # moved from keys of the utilbill_summary_charges dict into the
         # utilbills themselves)
         self.dictionary['utilbills'] = [dict_merge({'service':service},
-                rename_keys(b.utilbill_summary_charges[service], d= {
+                rename_keys(convert_old_types(b.utilbill_summary_charges[service]), d= {
                     # utilbill section
                     'begin': 'period_begin',
                     'end': 'period_end',
@@ -246,6 +249,7 @@ class MongoReebill:
                     'hypotheticalecharges': 'hypothetical_total'
                 }))
                 for service in b.utilbill_summary_charges.keys()]
+
 
         # utilbill info from "details", "measuredusage", and "statistics"
         # sections of XML ("billableusage" section is completely ignored)
@@ -261,7 +265,7 @@ class MongoReebill:
             # fill in utilbill
             utilbill.update({
                 # this is the <name/> element in <rateschedule/> and is not used.
-                #'rate_schedule_name': this_bill_actual_details.rateschedule.name,
+                #'rate_schedule_name': convert_old_types(this_bill_actual_details.rateschedule.name),
                 
                 # Don't fail here, since the rsbinding has already 
                 # been placed in self.dictionary['utilbills']
@@ -273,24 +277,24 @@ class MongoReebill:
                 # is actually the name of the utility
                 #'utility_name': this_bill_actual_details.rateschedule.rsbinding,
                 # TODO add rate schedule (not all xml files have this)
-                # 'rate_schedule': b.rateschedule,
+                # 'rate_schedule': convert_old_types(b.rateschedule),
 
                 # chargegroups are divided between actual and hypothetical; these are
                 # stored in 2 dictionaries mapping the name of each chargegroup to a
                 # list of its charges. totals (in the format {total: #}) are removed
                 # from each list of charges and placed at the root of the utilbill.
                 'actual_chargegroups': dict( 
-                    (chargegroup.type, [rename_keys(charge)
+                    (chargegroup.type, [rename_keys(convert_old_types(charge))
                     for charge in chargegroup.charges if charge.keys() != ['total']])
                     for chargegroup in this_bill_actual_details.chargegroups
                 ),
-                'actual_total': this_bill_actual_details.total,
+                'actual_total': convert_old_types(this_bill_actual_details.total),
                 'hypothetical_chargegroups': dict(
-                    (chargegroup.type, [rename_keys(charge)
+                    (chargegroup.type, [rename_keys(convert_old_types(charge))
                     for charge in chargegroup.charges if charge.keys() != ['total']])
                     for chargegroup in this_bill_hypothetical_details.chargegroups
                 ),
-                'hypothetical_total': this_bill_hypothetical_details.total
+                'hypothetical_total': convert_old_types(this_bill_hypothetical_details.total)
             })
 
             # measured usages: each utility has one or more meters, each of which has
@@ -299,19 +303,15 @@ class MongoReebill:
             # TODO replace register.inclusions/exclusions with a "descriptor"
             # (a name) that matches the value of 'descriptor' for a register in
             # the 'registers' section of the monthly rate structure yaml file. 
-            utilbill.update({'meters': rename_keys(meters)})
+            utilbill.update({'meters': rename_keys(convert_old_types(meters))})
 
         # statistics: exactly the same as in XML
-        self.dictionary.update(rename_keys(b.statistics))
+        self.dictionary['statistics'] = rename_keys(convert_old_types(b.statistics))
 
-
-        # strip out the old MutableNamedTuples, creating loss of being able to access data
-        # via dot-notation
-        print "stripping mnts"
-        pdb.set_trace()
-        new_dictionary = convert_old_types(self.dictionary)
-        self.dictionary = new_dictionary
-
+        # strip out the old types including  MutableNamedTuples, creating loss 
+        # of being able to access data via dot-notation
+        #new_dictionary = convert_old_types(self.dictionary)
+        #self.dictionary = new_dictionary
 
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
@@ -439,12 +439,7 @@ class MongoReebill:
     def statistics(self):
         '''Returns a dictionary of the information that goes in the
         "statistics" section of reebill.'''
-        return deep_map(float_to_decimal, subdict(self.dictionary,
-            ['conventional_consumed', 'renewable_consumed',
-                'renewable_utilization', 'conventional_utilization',
-                'co2_offset', 'total_savings', 'total_renewable_consumed',
-                'total_renewable_produced', 'total_trees', 'total_co2_offset',
-                'consumption_trend']))
+        return self.dictionary['statistics']
     @statistics.setter
     def statistics(self, value):
         self.dictionary['statistics'].update(value)
@@ -466,7 +461,8 @@ class MongoReebill:
     @property
     def ree_value(self):
         # TODO change back
-        return float_to_decimal(999.999) #float_to_decimal(self.dictionary['ree_value'])
+        #return float_to_decimal(999.999) #float_to_decimal(self.dictionary['ree_value'])
+        return float_to_decimal(self.dictionary['ree_value'])
     @ree_value.setter
     def ree_value(self):
         self.dictionary['ree_value'] = value
@@ -527,7 +523,7 @@ class MongoReebill:
             raise Exception('No utilbills found for service "%s"' % service_name)
         if len(chargegroup_lists) > 1:
             raise Exception('Multiple utilbills found for service "%s"' % service_name)
-        return deep_map(float_to_decimal, chargegroup_lists[0])
+        return chargegroup_lists[0]
 
     
 
@@ -548,8 +544,9 @@ class MongoReebill:
         if len(date_string_pairs) > 1:
             raise Exception('Multiple utilbills for service "%s"' % service_name)
         start, end = date_string_pairs[0]
-        return (datetime.strptime(start, DATE_FORMAT).date(),
-                datetime.strptime(end, DATE_FORMAT).date())
+        #return (datetime.strptime(start, DATE_FORMAT).date(),
+        #        datetime.strptime(end, DATE_FORMAT).date())
+        return (start, end)
 
     def set_utilbill_period_for_service(self, service_name, period):
 
@@ -584,28 +581,27 @@ class MongoReebill:
 
         meters_lists = [ub['meters'] for ub in self.dictionary['utilbills'] if
                 ub['service'] == service_name]
-        print "*** meters_lists %s" % map(id, meters_lists)
-        print "*** registers list id for first meter %s" % id(meters_lists[0][0]['registers'])
-        print "*** register ids for first meter %s" % map(id, meters_lists[0][0]['registers'])
 
         if meters_lists == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
         if len(meters_lists) > 1:
             raise Exception('Multiple utilbills found for service "%s"' % service_name)
 
-        return deep_map(float_to_decimal, meters_lists[0])
+        return meters_lists[0]
 
     def set_meter_read_date(self, service, identifier, present_read_date, prior_read_date):
         ''' Set the read date for a specified meter.'''
 
         # Would like to call meters_of_service but deep_map or someone seems to return copies
         # breaking reference to self.dictionary
-        for ub in self.dictionary['utilbills']:
-            if ub['service'] == service:
-                for meter in ub['meters']:
-                    if meter['identifier'] == identifier:
-                        meter['present_read_date'] = present_read_date
-                        meter['prior_read_date'] = prior_read_date
+        #for ub in self.dictionary['utilbills']:
+        #    if ub['service'] == service:
+        #for meter in ub['meters']:
+
+        for meter in self.meters_for_service(service):
+            if meter['identifier'] == identifier:
+                meter['present_read_date'] = present_read_date
+                meter['prior_read_date'] = prior_read_date
 
     def set_meter_actual_register(self, service, meter_identifier, register_identifier, total):
         ''' Set the total for a specified meter register.'''
@@ -616,11 +612,8 @@ class MongoReebill:
             if ub['service'] == service:
                 for meter in ub['meters']:
                     if meter['identifier'] == meter_identifier:
-                        print "Matched meter %s " % meter
                         for register in meter['registers']:
-                            print "visiting register %s" % register
                             if (register['shadow'] == False) and (register['identifier'] == register_identifier):
-                                print "matched actual register %s %s" % (register_identifier, register)
                                 register['total'] = total
 
     @property
@@ -668,7 +661,7 @@ class MongoReebill:
                         charge['chargegroup'] = chargegroup
                         flat_charges.append(charge)
 
-        return deep_map(float_to_decimal, flat_charges)
+        return flat_charges
 
     def set_hypothetical_chargegroups_flattened(self, service, flat_charges, chargegroups='hypothetical_chargegroups'):
         return self.set_chargegroups_flattened(service, flat_charges, chargegroups)
@@ -730,14 +723,13 @@ class ReebillDAO:
         # TODO: why not also save it into mongo and reload from mongo? for migration?
 
         if reebill is None:
-            print "********* Reebill not found in Mongo, loading from exist"
             b = self.load_xml_reebill(account, sequence)
             xml_reebill = MongoReebill(b)
             return xml_reebill
         else:
-            print "********* Reebill found in Mongo"
+            # TODO: constructor
             mongo_reebill = MongoReebill(None)
-            mongo_reebill.dictionary = reebill
+            mongo_reebill.dictionary = deep_map(float_to_decimal, reebill)
             return mongo_reebill
         
     def load_xml_reebill(self, account, sequence, branch=0):
@@ -760,13 +752,7 @@ class ReebillDAO:
             'sequence': reebill.sequence,
             'branch': 0}
 
-        print "before mongo conversion"
-        pp.pprint(reebill.dictionary)
-
         reebill.dictionary = bson_convert(reebill.dictionary)
-
-        print "after mongo conversion"
-        pp.pprint(reebill.dictionary)
 
         self.collection.save(reebill.dictionary)
 
@@ -810,24 +796,13 @@ if __name__ == '__main__':
         "destination_prefix":"http://localhost:8080/exist/rest/db/skyline/bills"
     })
 
-    reebill = dao.load_reebill("10002","10")
+    reebill = dao.load_reebill("10002","16")
 
-    meters = reebill.meters_for_service("Gas")
-    registers = meters[0]['registers']
+    pp.pprint(reebill)
 
-    pp.pprint(meters)
+    print reebill.utilbill_period_for_service("Gas")
 
-    print "Meter ids"
-    pp.pprint(map(id, meters))
-    
-    print "Register ids"
-    pp.pprint(map(id, registers))
-
-    pp.pprint(reebill.dictionary)
-
-
-
-    dao.save_reebill(reebill)
+    #dao.save_reebill(reebill)
 
 
 

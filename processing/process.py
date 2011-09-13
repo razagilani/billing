@@ -53,25 +53,34 @@ class Process(object):
         return tree.xpath(xpath, namespaces={"ub":"bill"})
 
 
-    # TODO convert to property access
     # compute the value, charges and savings of renewable energy
-    def sum_bill(self, account, sequence):
+    def sum_bill(self, reebill):
 
-        # sum actual
-        self.sum_actual_charges(
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-            self.config.get("xmldb", "user"),
-            self.config.get("xmldb", "password")
-        )
+        # sum actual charges
 
-        # sum hypothetical
-        self.sum_hypothetical_charges(
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-            "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-            self.config.get("xmldb", "user"),
-            self.config.get("xmldb", "password")
-        )
+
+
+        for service, cg_items in actual_charges.items():
+            # cg_items contains mnt of chargegroups and a grand total
+
+            # the grand total
+            cg_items.total = Decimal("0.00")
+
+            for chargegroup in cg_items.chargegroups:
+                
+                chargegroup.total = Decimal("0.00")
+
+                for charge in chargegroup.charges:
+
+                    chargegroup.total += charge.total
+
+                    # summarize the service
+                    cg_items.total += charge.total
+
+        # set the newly totalized charges
+        the_bill.actual_charges = actual_charges
+
+        # sum hypothetical charges
     
         # get discount rate
         # TODO discount_rate should be a decimal so that it doesn't have to be converted below.
