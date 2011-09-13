@@ -8,6 +8,7 @@ import billing.bill as bill
 from billing.mutable_named_tuple import MutableNamedTuple
 
 from lxml import etree
+from lxml.etree import _ElementStringResult
 from exceptions import TypeError
 from urlparse import urlparse
 import httplib
@@ -15,6 +16,7 @@ import string
 import base64
 import itertools as it
 
+import pdb
 import pprint
 pp = pprint.PrettyPrinter(indent=1)
 
@@ -72,6 +74,27 @@ name_changes = {
 }
 
 
+def convert_old_types(x):
+    '''Strip out the MutableNamedTuples since they are no longer 
+    needed to preserve document order and provide dot-access notation.'''
+
+    if type(x) in [str, float, int, bool]:
+        return x
+    if type(x) is Decimal:
+        return x
+    # lxml gives us string_result types for strings
+    if type(x) is _ElementStringResult:
+        print "matched ElementStringResult '%s' and converted it to string" % x
+        return str(x)
+    if type(x) is unicode:
+        return str(x)
+    if type(x) in [date, time]:
+        return x
+    if type(x) is dict or type(x) is MutableNamedTuple:
+        return dict([(item[0], convert_old_types(item[1])) for item in x.iteritems()
+                if item[1] is not None])
+    if type(x) is list:
+        return map(convert_old_types, x)
 
 def bson_convert(x):
     '''Returns x converted into a type suitable for Mongo.'''
@@ -155,6 +178,16 @@ class MongoReebill:
 
     Design matters to work through:
 
+        where type conversions occur - 
+            Should only happen on load/save so that object references are not
+            lost. Moreover, initial xml load provides preferred types such
+            as Decimal and datetime.  
+            The lifecycle should be:  load from source converting to preferred
+            python types.  Use class.  save to source converting to preferred
+            source types.  
+            This is in opposition to doing type conversion on getter/setter
+            invocation.
+
         dictionary style access: e.g. bill.statistics() - dict returned, key access
             In this case, consumer needs to select a default if the key is missing
             which is good because a missing key means different things to 
@@ -180,6 +213,9 @@ class MongoReebill:
             return
 
         b = xml_reebill
+
+
+        # Load, binding to xml data and renaming keys
         
         # top-level reebill information:
         self.dictionary = dict_merge({
@@ -189,70 +225,14 @@ class MongoReebill:
                 'service_address': b.service_address,
                 'billing_address': b.billing_address
             },
-            rename_keys(bson_convert(b.rebill_summary))
+            rename_keys(b.rebill_summary)
         )
-
-
-        # TODO UPDATE ME!!
-        '''
-        A reebill has a list containing 1 or more utilbills, each of which is
-        structured as follows:
-           {
-            ----- from utilbill section -----
-            service: "",  <--moved into the utilbill itself
-            ree_charges: #,
-            ree_value: #,
-            ----- from details section -----
-            actual_chargegroups: [
-              chargegroup_type: [
-                       {    
-                           description: ""
-                           quantity: #
-                           quantity_units: ""
-                           rate: #
-                           rate_schedule_binding: ""
-                           rate_units: ""
-                           total: #
-                       },
-                   ]
-               ...
-              ],
-              ...
-            ]
-            actual_total: #
-            hypothetical_chargegroups: (just like actual_chargegroups)
-            hypothetical_total: #
-            ----- from measuredusages section -----
-            meters: {
-              {service_name:
-                  [identifier: "",
-                   present_read_date: date,
-                   prior_read_date: date,
-                   registers: [
-                      {description: ""
-                       identifier: ""
-                       presentreading: #
-                       rate_schedule_binding: ""
-                       shadow: boolean
-                       total: #
-                       type: ""
-                       units: ""
-                       }
-                       ...
-                   ]
-                   ...
-                 }
-              }
-            ----- statistics section -----
-            (exactly the same as XML)
-           }
-        '''
 
         # utilbill info from the actual "utilbill" section (service names
         # moved from keys of the utilbill_summary_charges dict into the
         # utilbills themselves)
         self.dictionary['utilbills'] = [dict_merge({'service':service},
-                rename_keys(bson_convert(b.utilbill_summary_charges[service]), d= {
+                rename_keys(b.utilbill_summary_charges[service], d= {
                     # utilbill section
                     'begin': 'period_begin',
                     'end': 'period_end',
@@ -293,24 +273,24 @@ class MongoReebill:
                 # is actually the name of the utility
                 #'utility_name': this_bill_actual_details.rateschedule.rsbinding,
                 # TODO add rate schedule (not all xml files have this)
-                # 'rate_schedule': bson_convert(b.rateschedule),
+                # 'rate_schedule': b.rateschedule,
 
                 # chargegroups are divided between actual and hypothetical; these are
                 # stored in 2 dictionaries mapping the name of each chargegroup to a
                 # list of its charges. totals (in the format {total: #}) are removed
                 # from each list of charges and placed at the root of the utilbill.
                 'actual_chargegroups': dict( 
-                    (chargegroup.type, [rename_keys(bson_convert(charge))
+                    (chargegroup.type, [rename_keys(charge)
                     for charge in chargegroup.charges if charge.keys() != ['total']])
                     for chargegroup in this_bill_actual_details.chargegroups
                 ),
-                'actual_total': bson_convert(this_bill_actual_details.total),
+                'actual_total': this_bill_actual_details.total,
                 'hypothetical_chargegroups': dict(
-                    (chargegroup.type, [rename_keys(bson_convert(charge))
+                    (chargegroup.type, [rename_keys(charge)
                     for charge in chargegroup.charges if charge.keys() != ['total']])
                     for chargegroup in this_bill_hypothetical_details.chargegroups
                 ),
-                'hypothetical_total': bson_convert(this_bill_hypothetical_details.total)
+                'hypothetical_total': this_bill_hypothetical_details.total
             })
 
             # measured usages: each utility has one or more meters, each of which has
@@ -319,10 +299,19 @@ class MongoReebill:
             # TODO replace register.inclusions/exclusions with a "descriptor"
             # (a name) that matches the value of 'descriptor' for a register in
             # the 'registers' section of the monthly rate structure yaml file. 
-            utilbill.update({'meters': rename_keys(bson_convert(meters))})
+            utilbill.update({'meters': rename_keys(meters)})
 
         # statistics: exactly the same as in XML
-        self.dictionary.update(rename_keys(bson_convert(b.statistics)))
+        self.dictionary.update(rename_keys(b.statistics))
+
+
+        # strip out the old MutableNamedTuples, creating loss of being able to access data
+        # via dot-notation
+        print "stripping mnts"
+        pdb.set_trace()
+        new_dictionary = convert_old_types(self.dictionary)
+        self.dictionary = new_dictionary
+
 
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
@@ -333,7 +322,7 @@ class MongoReebill:
         return self.dictionary['account']
     @account.setter
     def account(self, value):
-        self.dictionary['account'] = bson_convert(value)
+        self.dictionary['account'] = value
     
     @property
     def sequence(self):
@@ -347,28 +336,28 @@ class MongoReebill:
         return datetime.strptime(self.dictionary['issue_date'], DATE_FORMAT).date()
     @issue_date.setter
     def issue_date(self, value):
-        self.dictionary['issue_date'] = bson_convert(value)
+        self.dictionary['issue_date'] = value
 
     @property
     def due_date(self):
         return datetime.strptime(self.dictionary['due_date'], DATE_FORMAT).date()
     @due_date.setter
     def due_date(self, value):
-        self.dictionary['due_date'] = bson_convert(value)
+        self.dictionary['due_date'] = value
 
     @property
     def period_begin(self):
         return datetime.strptime(self.dictionary['period_begin'], DATE_FORMAT).date()
     @period_begin.setter
     def period_begin(self, value):
-        self.dictionary['period_begin'] = bson_convert(value)
+        self.dictionary['period_begin'] = value
 
     @property
     def period_end(self):
         return datetime.strptime(self.dictionary['period_end'], DATE_FORMAT).date()
     @period_end.setter
     def period_end(self, value):
-        self.dictionary['period_end'] = bson_convert(value)
+        self.dictionary['period_end'] = value
     
     @property
     def balance_due(self):
@@ -376,7 +365,7 @@ class MongoReebill:
         return float_to_decimal(self.dictionary['total_due'])
     @balance_due.setter
     def balance_due(self, value):
-        self.dictionary['balance_due'] = bson_convert(value)
+        self.dictionary['balance_due'] = value
 
     @property
     def billing_address(self):
@@ -385,7 +374,7 @@ class MongoReebill:
     @billing_address.setter
     def billing_address(self):
         '''Returns a dict.'''
-        self.dictionary['billing_address'] = bson_convert(value)
+        self.dictionary['billing_address'] = value
 
     @property
     def service_address(self):
@@ -393,49 +382,49 @@ class MongoReebill:
         return self.dictionary['service_address']
     @service_address.setter
     def service_address(self, value):
-        self.dictionary['service_address'] = bson_convert(value)
+        self.dictionary['service_address'] = value
 
     @property
     def prior_balance(self):
         return float_to_decimal(self.dictionary['prior_balance'])
     @prior_balance.setter
     def prior_balance(self, value):
-        self.dictionary['prior_balance'] = bson_convert(value)
+        self.dictionary['prior_balance'] = value
 
     @property
     def payment_received(self):
         return float_to_decimal(self.dictionary['payment_received'])
     @payment_received.setter
     def payment_received(self, value):
-        self.dictionary['payment_received'] = bson_convert(value)
+        self.dictionary['payment_received'] = value
 
     @property
     def total_adjustment(self):
         return float_to_decimal(self.dictionary['total_adjustment'])
     @total_adjustment.setter
     def total_adjustment(self, value):
-        self.dictionary['total_adjustment'] = bson_convert(value)
+        self.dictionary['total_adjustment'] = value
 
     @property
     def ree_charges(self):
         return float_to_decimal(self.dictionary['ree_charges'])
     @ree_charges.setter
     def ree_charges(self, value):
-        self.dictionary['ree_charges'] = bson_convert(value)
+        self.dictionary['ree_charges'] = value
 
     @property
     def ree_savings(self):
         return float_to_decimal(self.dictionary['ree_savings'])
     @ree_savings.setter
     def ree_savings(self, value):
-        self.dictionary['ree_savings'] = bson_convert(value)
+        self.dictionary['ree_savings'] = value
 
     @property
     def balance_forward(self):
         return float_to_decimal(self.dictionary['balance_forward'])
     @balance_forward.setter
     def balance_forward(self, value):
-        self.dictionary['balance_forward'] = bson_convert(value)
+        self.dictionary['balance_forward'] = value
 
     @property
     def motd(self):
@@ -444,7 +433,7 @@ class MongoReebill:
         return self.dictionary.get('message', '')
     @motd.setter
     def motd(self, value):
-        self.dictionary['message'] = bson_convert(value)
+        self.dictionary['message'] = value
 
     @property
     def statistics(self):
@@ -458,21 +447,21 @@ class MongoReebill:
                 'consumption_trend']))
     @statistics.setter
     def statistics(self, value):
-        self.dictionary['statistics'].update(bson_convert(value))
+        self.dictionary['statistics'].update(value)
 
     @property
     def actual_total(self):
         return float_to_decimal(self.dictionary['actual_total'])
     @actual_total.setter
     def actual_total(self):
-        self.dictionary['actual_total'] = bson_convert(value)
+        self.dictionary['actual_total'] = value
 
     @property
     def hypothetical_total(self):
         return float_to_decimal(self.dictionary['hypothetical_total'])
     @hypothetical_total.setter
     def hypothetical_total(self):
-        self.dictionary['hypothetical_total'] = bson_convert(value)
+        self.dictionary['hypothetical_total'] = value
 
     @property
     def ree_value(self):
@@ -480,7 +469,7 @@ class MongoReebill:
         return float_to_decimal(999.999) #float_to_decimal(self.dictionary['ree_value'])
     @ree_value.setter
     def ree_value(self):
-        self.dictionary['ree_value'] = bson_convert(value)
+        self.dictionary['ree_value'] = value
 
     # TODO: convert float into Decimal in these methods
     def hypothetical_total_for_service(self, service_name):
@@ -572,8 +561,8 @@ class MongoReebill:
         
         for utilbill in self.dictionary['utilbills']:
             if utilbill['service'] == service_name:
-                utilbill['period_begin'] = bson_convert(period[0])
-                utilbill['period_end'] = bson_convert(period[1])
+                utilbill['period_begin'] = period[0]
+                utilbill['period_end'] = period[1]
 
     @property
     def utilbill_periods(self):
@@ -615,8 +604,8 @@ class MongoReebill:
             if ub['service'] == service:
                 for meter in ub['meters']:
                     if meter['identifier'] == identifier:
-                        meter['present_read_date'] = bson_convert(present_read_date)
-                        meter['prior_read_date'] = bson_convert(prior_read_date)
+                        meter['present_read_date'] = present_read_date
+                        meter['prior_read_date'] = prior_read_date
 
     def set_meter_actual_register(self, service, meter_identifier, register_identifier, total):
         ''' Set the total for a specified meter register.'''
@@ -632,7 +621,7 @@ class MongoReebill:
                             print "visiting register %s" % register
                             if (register['shadow'] == False) and (register['identifier'] == register_identifier):
                                 print "matched actual register %s %s" % (register_identifier, register)
-                                register['total'] = bson_convert(total)
+                                register['total'] = total
 
     @property
     def meters(self):
@@ -699,9 +688,9 @@ class MongoReebill:
                     new_chargegroups[cg] = []
                     for charge in charges:
                         del charge['chargegroup']
-                        charge['quantity'] = bson_convert(charge['quantity'])
-                        charge['rate'] = bson_convert(charge['rate'])
-                        charge['total'] = bson_convert(charge['total'])
+                        charge['quantity'] = charge['quantity']
+                        charge['rate'] = charge['rate']
+                        charge['total'] = charge['total']
                         new_chargegroups[cg].append(charge)
 
                 ub[chargegroups] = new_chargegroups
@@ -771,6 +760,12 @@ class ReebillDAO:
             'sequence': reebill.sequence,
             'branch': 0}
 
+        print "before mongo conversion"
+        pp.pprint(reebill.dictionary)
+
+        reebill.dictionary = bson_convert(reebill.dictionary)
+
+        print "after mongo conversion"
         pp.pprint(reebill.dictionary)
 
         self.collection.save(reebill.dictionary)
@@ -815,7 +810,7 @@ if __name__ == '__main__':
         "destination_prefix":"http://localhost:8080/exist/rest/db/skyline/bills"
     })
 
-    reebill = dao.load_reebill("10002","12")
+    reebill = dao.load_reebill("10002","10")
 
     meters = reebill.meters_for_service("Gas")
     registers = meters[0]['registers']
@@ -828,10 +823,11 @@ if __name__ == '__main__':
     print "Register ids"
     pp.pprint(map(id, registers))
 
-    #pp.pprint(reebill.dictionary)
+    pp.pprint(reebill.dictionary)
 
 
 
+    dao.save_reebill(reebill)
 
 
 
