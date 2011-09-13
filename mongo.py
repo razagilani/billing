@@ -95,11 +95,12 @@ def bson_convert(x):
 # See set_meter_read_date()
 def deep_map(func, x):
     '''Applies the function 'func' througout the data structure x, or just
-    applies it to x if x is a scalar.wUsed for type conversions from Mongo
+    applies it to x if x is a scalar. Used for type conversions from Mongo
     types back into the appropriate Python types.'''
     if type(x) is list:
         return [deep_map(func, item) for item in x]
     if type(x) is dict:
+        # this creates a new dictionary, we wish to use the one in place? Only if references are lost
         return dict((deep_map(func, key), deep_map(func, value)) for key, value in x.iteritems())
     return func(x)
 
@@ -594,6 +595,9 @@ class MongoReebill:
 
         meters_lists = [ub['meters'] for ub in self.dictionary['utilbills'] if
                 ub['service'] == service_name]
+        print "*** meters_lists %s" % map(id, meters_lists)
+        print "*** registers list id for first meter %s" % id(meters_lists[0][0]['registers'])
+        print "*** register ids for first meter %s" % map(id, meters_lists[0][0]['registers'])
 
         if meters_lists == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
@@ -767,16 +771,13 @@ class ReebillDAO:
             'sequence': reebill.sequence,
             'branch': 0}
 
-        print "*************** will save this bill"
-
         pp.pprint(reebill.dictionary)
-
 
         self.collection.save(reebill.dictionary)
 
     def save_xml_reebill(self, xml_reebill, account, sequence):
 
-        url = "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence)
+        url = "%s/%s/%s.xml" % (self.config["destination_prefix"], account, sequence)
 
         parts = urlparse(url)
 
@@ -803,4 +804,34 @@ class ReebillDAO:
 
         else:
             pass
+
+if __name__ == '__main__':
+
+    dao = ReebillDAO({
+        "host":"localhost", 
+        "port":27017, 
+        "database":"skyline", 
+        "collection":"reebills", 
+        "destination_prefix":"http://localhost:8080/exist/rest/db/skyline/bills"
+    })
+
+    reebill = dao.load_reebill("10002","12")
+
+    meters = reebill.meters_for_service("Gas")
+    registers = meters[0]['registers']
+
+    pp.pprint(meters)
+
+    print "Meter ids"
+    pp.pprint(map(id, meters))
+    
+    print "Register ids"
+    pp.pprint(map(id, registers))
+
+    #pp.pprint(reebill.dictionary)
+
+
+
+
+
 
