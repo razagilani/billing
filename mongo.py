@@ -212,18 +212,18 @@ class MongoReebill:
             Not sure this ever happens.
     '''
 
-    def __init__(self, reebill):
+    def __init__(self, reebill_data):
 
         # if no xml_reebill is passed in, assume we are
         # having self.dictionary set externally because
         # the bill was found in mongo
-        if reebill is dict:
-            self.dictionary = reebill
+        if type(reebill_data) is dict:
+            self.dictionary = reebill_data
             return
 
         # ok, it is the old bill.py, and when we are no longer needing XML
         # all code below DIES!!!
-        b = reebill
+        b = reebill_data
 
         # Load, binding to xml data and renaming keys
         
@@ -500,6 +500,11 @@ class MongoReebill:
             raise Exception('Multiple utilbills found for service "%s"' % service_name)
         return totals[0]
 
+    def set_actual_total_for_service(self, service_name, new_total):
+
+        old_total = self.actual_total_for_service(service_name)
+        total = new_total
+
     def ree_value_for_service(self, service_name):
         '''Returns the total of 'ree_value' (renewable energy value offsetting
         hypothetical charges) for the utilbill whose service is 'service_name'.
@@ -731,7 +736,7 @@ class ReebillDAO:
 
     def load_reebill(self, account, sequence, branch=0):
 
-        reebill = self.collection.find_one({"_id": {
+        mongo_doc = self.collection.find_one({"_id": {
             "account": str(account), 
             "branch": int(branch),
             "sequence": int(sequence)
@@ -740,12 +745,13 @@ class ReebillDAO:
         # didn't find one in mongo, so let's grab it from eXist
         # TODO: why not also save it into mongo and reload from mongo? for migration?
 
-        if reebill is None:
+        if mongo_doc is None:
             b = self.load_xml_reebill(account, sequence)
             xml_reebill = MongoReebill(b)
             return xml_reebill
-        else
-            mongo_reebill = MongoReebill(deep_map(float_to_decimal, reebill))
+        else:
+            mongo_doc = copy.deepcopy(deep_map(float_to_decimal, mongo_doc))
+            mongo_reebill = MongoReebill(mongo_doc)
             return mongo_reebill
         
     def load_xml_reebill(self, account, sequence, branch=0):

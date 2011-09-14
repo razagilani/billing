@@ -70,7 +70,7 @@ class Process(object):
             
             old_total = reebill.actual_total_for_service(service)
             print "old total %s" % old_total
-            old_total = total
+            reebill.set_actual_total_for_service(service, total)
             old_total = reebill.actual_total_for_service(service)
             print "old total after set %s" % old_total
 
