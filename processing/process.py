@@ -56,10 +56,25 @@ class Process(object):
     # compute the value, charges and savings of renewable energy
     def sum_bill(self, reebill):
 
-        # sum actual charges
+        # sum up actual chargegroups into grand total per service
+        for service in reebill.services:
+            total = Decimal("0")
+            for chargegroup, charges in reebill.actual_chargegroups_for_service(service).items():
+                subtotal = Decimal("0")
+                for charge in charges:
+                    subtotal += charge["total"]
+                    total += charge["total"]
 
+                #TODO: subtotals for chargegroups?
+                print "subtotal %s" % subtotal
+            
+            old_total = reebill.actual_total_for_service(service)
+            print "old total %s" % old_total
+            old_total = total
+            old_total = reebill.actual_total_for_service(service)
+            print "old total after set %s" % old_total
 
-
+        '''
         for service, cg_items in actual_charges.items():
             # cg_items contains mnt of chargegroups and a grand total
 
@@ -141,6 +156,8 @@ class Process(object):
         # save in mongo
         reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
         self.reebill_dao.save_reebill(reebill)
+
+        '''
 
     # TODO cover method that accepts charges_type of hypo or actual
     def sum_hypothetical_charges(self, unprocessedBill, targetBill, user=None, password=None):
