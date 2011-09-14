@@ -38,6 +38,16 @@ class NexusUtil(object):
         else:
             return {}
 
+    def all_ids_for_accounts(self, system, id_objects, key=lambda x:x):
+        '''Returns a list of all customer names for all the customers specified
+        in the list 'id_objects': an id_object can be just a customer id (as a
+        string), or it can be any object from which the function 'key' can
+        extract a customer id. ('key' is the identity function by default.)
+        Intended to simplify and speed up bill_tool_bridge functions by not
+        requiring them to call NexusUtil.all() for each customer
+        individually.'''
+        return [self.all(system, key(id_object)) for id_object in id_objects]
+
 if __name__ == "__main__":
     parser = OptionParser()
 
