@@ -826,13 +826,25 @@ if __name__ == '__main__':
         "destination_prefix":"http://localhost:8080/exist/rest/db/skyline/bills"
     })
 
-    reebill = dao.load_reebill("10002","16")
-
-    pp.pprint(reebill)
-
-    print reebill.utilbill_period_for_service("Gas")
-
+    #reebill = dao.load_reebill("10002","16")
+    #pp.pprint(reebill)
+    #print reebill.utilbill_period_for_service("Gas")
     #dao.save_reebill(reebill)
-
-
-
+    
+    # import as many xml bills as possible into mongo and report errors
+    success_count = 0
+    error_count = 0
+    for account in range(10001, 10025):
+        for sequence in range(1,20):
+            try:
+                reebill = dao.load_reebill(account, sequence)
+                dao.save_reebill(reebill)
+                success_count += 1
+            except AttributeError as e:
+                print '%s %s: %s' % (account, sequence,
+                        'AttributeError ' + str(e))
+                error_count += 1
+            except IOError:
+                pass
+    print 'imported %s bills' % success_count
+    print error_count, 'errors'
