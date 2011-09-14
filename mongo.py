@@ -16,6 +16,7 @@ import string
 import base64
 import itertools as it
 import copy
+import uuid
 
 import pdb
 import pprint
@@ -303,6 +304,14 @@ class MongoReebill:
                 ),
                 'hypothetical_total': convert_old_types(this_bill_hypothetical_details.total)
             })
+
+            # add GUIDs to each charge in both actual and hypothetical chargegroups
+            for chargegroup in utilbill['actual_chargegroups'].values():
+                for charge in chargegroup:
+                    charge['uuid'] = str(uuid.uuid4())
+            for chargegroup in utilbill['hypothetical_chargegroups'].values():
+                for charge in chargegroup:
+                    charge['uuid'] = str(uuid.uuid4())
 
             # measured usages: each utility has one or more meters, each of which has
             # one or more registers (which are like sub-meters)
