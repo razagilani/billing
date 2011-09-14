@@ -15,6 +15,7 @@ import httplib
 import string
 import base64
 import itertools as it
+import copy
 
 import pdb
 import pprint
@@ -97,6 +98,8 @@ def convert_old_types(x):
 
 def bson_convert(x):
     '''Returns x converted into a type suitable for Mongo.'''
+    # TODO:  copy all or convert all in place?  Or, don't care and just keep doing both
+    # scalars are converted in place, dicts are copied.
 
     if type(x) in [str, float, int, bool, datetime, unicode]:
         return x
@@ -107,6 +110,7 @@ def bson_convert(x):
     if type(x) is date:
         return datetime(x.year, x.month, x.day)
     if type(x) is dict or type(x) is MutableNamedTuple:
+        #TODO: don't copy dict
         return dict([(item[0], bson_convert(item[1])) for item in x.iteritems()
                 if item[1] is not None])
     if type(x) is list:
@@ -208,15 +212,18 @@ class MongoReebill:
             Not sure this ever happens.
     '''
 
-    def __init__(self, xml_reebill):
+    def __init__(self, reebill):
 
         # if no xml_reebill is passed in, assume we are
         # having self.dictionary set externally because
         # the bill was found in mongo
-        if xml_reebill is None:
+        if reebill is dict:
+            self.dictionary = reebill
             return
 
-        b = xml_reebill
+        # ok, it is the old bill.py, and when we are no longer needing XML
+        # all code below DIES!!!
+        b = reebill
 
         # Load, binding to xml data and renaming keys
         
@@ -362,7 +369,7 @@ class MongoReebill:
     @property
     def balance_due(self):
         '''Returns a Decimal.'''
-        return float_to_decimal(self.dictionary['total_due'])
+        return self.dictionary['total_due']
     @balance_due.setter
     def balance_due(self, value):
         self.dictionary['balance_due'] = value
@@ -386,42 +393,42 @@ class MongoReebill:
 
     @property
     def prior_balance(self):
-        return float_to_decimal(self.dictionary['prior_balance'])
+        return self.dictionary['prior_balance']
     @prior_balance.setter
     def prior_balance(self, value):
         self.dictionary['prior_balance'] = value
 
     @property
     def payment_received(self):
-        return float_to_decimal(self.dictionary['payment_received'])
+        return self.dictionary['payment_received']
     @payment_received.setter
     def payment_received(self, value):
         self.dictionary['payment_received'] = value
 
     @property
     def total_adjustment(self):
-        return float_to_decimal(self.dictionary['total_adjustment'])
+        return self.dictionary['total_adjustment']
     @total_adjustment.setter
     def total_adjustment(self, value):
         self.dictionary['total_adjustment'] = value
 
     @property
     def ree_charges(self):
-        return float_to_decimal(self.dictionary['ree_charges'])
+        return self.dictionary['ree_charges']
     @ree_charges.setter
     def ree_charges(self, value):
         self.dictionary['ree_charges'] = value
 
     @property
     def ree_savings(self):
-        return float_to_decimal(self.dictionary['ree_savings'])
+        return self.dictionary['ree_savings']
     @ree_savings.setter
     def ree_savings(self, value):
         self.dictionary['ree_savings'] = value
 
     @property
     def balance_forward(self):
-        return float_to_decimal(self.dictionary['balance_forward'])
+        return self.dictionary['balance_forward']
     @balance_forward.setter
     def balance_forward(self, value):
         self.dictionary['balance_forward'] = value
@@ -446,34 +453,31 @@ class MongoReebill:
 
     @property
     def actual_total(self):
-        return float_to_decimal(self.dictionary['actual_total'])
+        return self.dictionary['actual_total']
     @actual_total.setter
     def actual_total(self):
         self.dictionary['actual_total'] = value
 
     @property
     def hypothetical_total(self):
-        return float_to_decimal(self.dictionary['hypothetical_total'])
+        return self.dictionary['hypothetical_total']
     @hypothetical_total.setter
     def hypothetical_total(self):
         self.dictionary['hypothetical_total'] = value
 
     @property
     def ree_value(self):
-        # TODO change back
-        #return float_to_decimal(999.999) #float_to_decimal(self.dictionary['ree_value'])
-        return float_to_decimal(self.dictionary['ree_value'])
+        return self.dictionary['ree_value']
     @ree_value.setter
     def ree_value(self):
         self.dictionary['ree_value'] = value
 
-    # TODO: convert float into Decimal in these methods
     def hypothetical_total_for_service(self, service_name):
         '''Returns the total of hypothetical charges for the utilbill whose
         service is 'service_name'. There's not supposed to be more than one
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
-        totals = [float_to_decimal(ub['hypothetical_total'])
+        totals = [ub['hypothetical_total']
                 for ub in self.dictionary['utilbills']
                 if ub['service'] == service_name]
         if totals == []:
@@ -487,7 +491,7 @@ class MongoReebill:
         service is 'service_name'. There's not supposed to be more than one
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
-        totals = [float_to_decimal(ub['actual_total'])
+        totals = [ub['actual_total']
                 for ub in self.dictionary['utilbills']
                 if ub['service'] == service_name]
         if totals == []:
@@ -502,7 +506,7 @@ class MongoReebill:
         There's not supposed to be more than one utilbill per service, so an
         exception is raised if that happens (or if there's no utilbill for that
         service).'''
-        totals = [float_to_decimal(ub['ree_value'])
+        totals = [ub['ree_value']
                 for ub in self.dictionary['utilbills']
                 if ub['service'] == service_name]
         if totals == []:
@@ -517,6 +521,20 @@ class MongoReebill:
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
         chargegroup_lists = [ub['hypothetical_chargegroups']
+                for ub in self.dictionary['utilbills']
+                if ub['service'] == service_name]
+        if chargegroup_lists == []:
+            raise Exception('No utilbills found for service "%s"' % service_name)
+        if len(chargegroup_lists) > 1:
+            raise Exception('Multiple utilbills found for service "%s"' % service_name)
+        return chargegroup_lists[0]
+
+    def actual_chargegroups_for_service(self, service_name):
+        '''Returns the list of actual chargegroups for the utilbill whose
+        service is 'service_name'. There's not supposed to be more than one
+        utilbill per service, so an exception is raised if that happens (or if
+        there's no utilbill for that service).'''
+        chargegroup_lists = [ub['actual_chargegroups']
                 for ub in self.dictionary['utilbills']
                 if ub['service'] == service_name]
         if chargegroup_lists == []:
@@ -726,10 +744,8 @@ class ReebillDAO:
             b = self.load_xml_reebill(account, sequence)
             xml_reebill = MongoReebill(b)
             return xml_reebill
-        else:
-            # TODO: constructor
-            mongo_reebill = MongoReebill(None)
-            mongo_reebill.dictionary = deep_map(float_to_decimal, reebill)
+        else
+            mongo_reebill = MongoReebill(deep_map(float_to_decimal, reebill))
             return mongo_reebill
         
     def load_xml_reebill(self, account, sequence, branch=0):
@@ -748,13 +764,12 @@ class ReebillDAO:
         with the same account & sequence number already exists, the existing
         document is replaced with this one.'''
 
-        reebill.dictionary['_id'] = {'account': reebill.account,
+        mongo_doc = bson_convert(copy.deepcopy(reebill.dictionary))
+        mongo_doc['_id'] = {'account': reebill.account,
             'sequence': reebill.sequence,
             'branch': 0}
 
-        reebill.dictionary = bson_convert(reebill.dictionary)
-
-        self.collection.save(reebill.dictionary)
+        self.collection.save(mongo_doc)
 
     def save_xml_reebill(self, xml_reebill, account, sequence):
 
