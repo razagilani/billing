@@ -460,8 +460,6 @@ class MongoReebill:
 
     @property
     def ree_value(self):
-        # TODO change back
-        #return float_to_decimal(999.999) #float_to_decimal(self.dictionary['ree_value'])
         return float_to_decimal(self.dictionary['ree_value'])
     @ree_value.setter
     def ree_value(self):
