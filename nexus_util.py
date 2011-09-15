@@ -1,9 +1,8 @@
 #!/usr/bin/python
-
 import urllib, urllib2
 import json
-
 from optparse import OptionParser
+from scripts.nexus import nexus
 
 class NexusUtil(object):
 
@@ -38,6 +37,23 @@ class NexusUtil(object):
         else:
             return {}
 
+    def fast_all(self, system, system_id):
+        '''Same as all(), but looks up the data directly from nexus instead of
+        via the HTTP interface.'''
+        result = nexus.NexusQuery().mongo_find({system:system_id})
+
+        # 'result' is normally a list of dictionaries, containing various
+        # customer id types and their values for a given customer. it may be
+        # empty if the nexus database does not have an id of type 'system' for
+        # the customer being looked up (e.g. if 'system' is "billing", and the
+        # customer has an "olap" name or "casualname", but not a billing name).
+        # fast_all() is only used to display customer names, so returning an
+        # empty dict in that situation is OK.
+        if result == []:
+            return {}
+        
+        return result[0]
+
     def all_ids_for_accounts(self, system, id_objects, key=lambda x:x):
         '''Returns a list of all customer names for all the customers specified
         in the list 'id_objects': an id_object can be just a customer id (as a
@@ -46,7 +62,8 @@ class NexusUtil(object):
         Intended to simplify and speed up bill_tool_bridge functions by not
         requiring them to call NexusUtil.all() for each customer
         individually.'''
-        return [self.all(system, key(id_object)) for id_object in id_objects]
+        result = [self.fast_all(system, key(id_object)) for id_object in id_objects]
+        return result
 
 if __name__ == "__main__":
     parser = OptionParser()
