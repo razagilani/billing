@@ -309,13 +309,12 @@ class BillToolBridge:
         for account, all_names in zip(accounts, all_accounts_all_names):
             row = {'account':account}
             display_name = [account]
-
-            if 'codename' in all_names:
-                display_name.append(all_names['codename'])
-            if 'casualname' in all_names:
-                display_name.append(all_names['casualname'])
-            if 'primus' in all_names:
-                display_name.append(all_names['primus'])
+            if u'codename' in all_names:
+                display_name.append(all_names[u'codename'])
+            if u'casualname' in all_names:
+                display_name.append(all_names[u'casualname'])
+            if u'primus' in all_names:
+                display_name.append(all_names[u'primus'])
             #account['name'] = string.join(display_name, ' - ')
             row['name'] = ' - '.join(display_name)
             rows += [row]
@@ -339,6 +338,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def listSequences(self, account, **kwargs):
+        print 'listSequences'
         sequences = []
         try:
             # eventually, this data will have to support pagination
