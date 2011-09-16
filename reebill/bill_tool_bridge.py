@@ -137,16 +137,20 @@ class BillToolBridge:
         self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
 
 
+    # TODO: do this on a per service basis 18311877
     @cherrypy.expose
     def copyactual(self, account, sequence, **args):
 
         try:
-            self.process.copy_actual_charges(account, sequence)
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            self.process.copy_actual_charges(reebill)
+            self.reebill_dao.save_reebill(reebill)
+
+            return json.dumps({'success': True})
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return json.dumps({'success': True})
 
     @cherrypy.expose
     def roll(self, account, sequence, **args):
@@ -228,9 +232,10 @@ class BillToolBridge:
     def sum(self, account, sequence, **args):
 
         try:
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-            self.process.sum_bill(reebill)
-            self.reebill_dao.save_reebill(reebill)
+            present_reebill = self.reebill_dao.load_reebill(account, sequence)
+            prior_reebill = self.reebill_dao.load_reebill(account, int(sequence)-1)
+            self.process.sum_bill(prior_reebill, present_reebill)
+            self.reebill_dao.save_reebill(present_reebill)
 
             return json.dumps({'success': True})
 
@@ -284,11 +289,11 @@ class BillToolBridge:
 
         try:
             self.process.issue_to_customer(account, sequence)
+            return json.dumps({'success': True})
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return json.dumps({'success': True})
 
 
     @cherrypy.expose
@@ -635,7 +640,7 @@ class BillToolBridge:
             # then the reebill datastructure itself can be shipped to client.
             utilbill_periods = {}
             for service in reebill.services:
-                (begin, end) = reebill.utilbill_periods[service]
+                (begin, end) = reebill.utilbill_period_for_service(service)
                 utilbill_periods[service] = {
                     'begin': begin,
                     'end': end

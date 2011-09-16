@@ -54,193 +54,75 @@ class Process(object):
 
 
     # compute the value, charges and savings of renewable energy
-    def sum_bill(self, reebill):
+    def sum_bill(self, prior_reebill, present_reebill):
 
-        # sum up actual chargegroups into grand total per service
-        for service in reebill.services:
-            total = Decimal("0")
-            for chargegroup, charges in reebill.actual_chargegroups_for_service(service).items():
-                subtotal = Decimal("0")
-                for charge in charges:
-                    subtotal += charge["total"]
-                    total += charge["total"]
-
-                #TODO: subtotals for chargegroups?
-                print "subtotal %s" % subtotal
-            
-            old_total = reebill.actual_total_for_service(service)
-            print "old total %s" % old_total
-            reebill.set_actual_total_for_service(service, total)
-            old_total = reebill.actual_total_for_service(service)
-            print "old total after set %s" % old_total
-
-        '''
-        for service, cg_items in actual_charges.items():
-            # cg_items contains mnt of chargegroups and a grand total
-
-            # the grand total
-            cg_items.total = Decimal("0.00")
-
-            for chargegroup in cg_items.chargegroups:
-                
-                chargegroup.total = Decimal("0.00")
-
-                for charge in chargegroup.charges:
-
-                    chargegroup.total += charge.total
-
-                    # summarize the service
-                    cg_items.total += charge.total
-
-        # set the newly totalized charges
-        the_bill.actual_charges = actual_charges
-
-        # sum hypothetical charges
-    
         # get discount rate
-        # TODO discount_rate should be a decimal so that it doesn't have to be converted below.
-        discount_rate = self.state_db.discount_rate(account)
+        discount_rate = Decimal(str(self.state_db.discount_rate(present_reebill.account)))
+
+        # reset ree_charges, ree_value, ree_savings so we can accumulate across all services
+        present_reebill.ree_value = Decimal("0")
+        present_reebill.ree_charges = Decimal("0")
+        present_reebill.ree_savings = Decimal("0")
+
+        # reset hypothetical and actual totals so we can accumulate across all services
+        present_reebill.hypothetical_total = Decimal("0")
+        present_reebill.actual_total = Decimal("0")
 
 
-        prior_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, int(sequence)-1))
-        the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+        # sum up chargegroups into total per utility bill and accumulate reebill values
+        for service in present_reebill.services:
 
-        # get data from the bill
-        ub_summary_charges = the_bill.utilbill_summary_charges;
-        rebill_summary = the_bill.rebill_summary
+            actual_total = Decimal("0")
+            hypothetical_total = Decimal("0")
 
-        # get the total actual energy charges per service
-        actualecharges = the_bill.actualecharges
+            for chargegroup, charges in present_reebill.actual_chargegroups_for_service(service).items():
+                actual_subtotal = Decimal("0")
+                for charge in charges:
+                    actual_subtotal += charge["total"]
+                    actual_total += charge["total"]
+                #TODO: subtotals for chargegroups?
 
-        # get the total hypothetical energy charges per service
-        hypotheticalecharges = the_bill.hypotheticalecharges
+            for chargegroup, charges in present_reebill.hypothetical_chargegroups_for_service(service).items():
+                hypothetical_subtotal = Decimal("0")
+                for charge in charges:
+                    hypothetical_subtotal += charge["total"]
+                    hypothetical_total += charge["total"]
+                #TODO: subtotals for chargegroups?
 
-        # eventually track total revalue
-        rebill_summary['revalue'] = Decimal("0.00")
-        rebill_summary['recharges'] = Decimal("0.00")
-        rebill_summary['resavings'] = Decimal("0.00")
-        rebill_summary['actualecharges'] = Decimal("0.00")
-        rebill_summary['hypotheticalecharges'] = Decimal("0.00")
+            # calculate utilbill level numbers
+            present_reebill.set_actual_total_for_service(service, actual_total)
+            present_reebill.set_hypothetical_total_for_service(service, hypothetical_total)
 
-        for (service, charges) in ub_summary_charges.items():
-            # grab the charges totals and update the summary rollup of them
-            charges['hypotheticalecharges'] = hypotheticalecharges[service]
-            charges['actualecharges'] = actualecharges[service]
+            ree_value = hypothetical_total - actual_total
+            ree_charges = (Decimal("1") - discount_rate) * (hypothetical_total - actual_total)
+            ree_savings = discount_rate * (hypothetical_total - actual_total)
 
-            charges['revalue'] = charges['hypotheticalecharges'] - charges['actualecharges']
-            charges['recharges'] = (charges['revalue'] * Decimal(str(1.0 -float(discount_rate)))).quantize(Decimal('.00'), rounding=ROUND_DOWN)
-            charges['resavings'] = (charges['revalue'] * Decimal(str(float(discount_rate)))).quantize(Decimal('.00'), rounding=ROUND_UP)
+            present_reebill.set_ree_value_for_service(service, ree_value.quantize(Decimal('.00')))
+            present_reebill.set_ree_charges_for_service(service, Decimal(ree_charges).quantize(Decimal('.00'),rounding=ROUND_DOWN))
+            present_reebill.set_ree_savings_for_service(service, Decimal(ree_savings).quantize(Decimal('.00'),rounding=ROUND_UP))
 
-            # accumulate charges across all services
-            # eventually track total revalue
-            rebill_summary['revalue'] += charges['revalue']
-            rebill_summary['recharges'] += charges['recharges']
-            rebill_summary['resavings'] += charges['resavings']
 
-            rebill_summary['actualecharges'] += charges['actualecharges']
-            rebill_summary['hypotheticalecharges'] += charges['hypotheticalecharges']
+            # accumulate at the reebill level
+            present_reebill.hypothetical_total = present_reebill.hypothetical_total + hypothetical_total
+            present_reebill.actual_total = present_reebill.actual_total + actual_total
 
-        # from old roll bill
-        #r.balanceforward = r.priorbalance - r.paymentreceived
-        rebill_summary.priorbalance = prior_bill.rebill_summary.totaldue
-        rebill_summary['balanceforward'] = rebill_summary['priorbalance'] - rebill_summary['paymentreceived']
+            present_reebill.ree_value = present_reebill.ree_value + ree_value
+            present_reebill.ree_charges = present_reebill.ree_charges + ree_charges
+            present_reebill.ree_savings = present_reebill.ree_savings + ree_savings
 
-        rebill_summary['totaldue'] = rebill_summary['totaladjustment'] + rebill_summary['balanceforward'] + rebill_summary['recharges']
+            # now grab the prior bill and pull values forward
+            present_reebill.prior_balance = prior_reebill.balance_due
+            present_reebill.balance_forward = present_reebill.prior_balance - present_reebill.payment_received
+            present_reebill.balance_due = present_reebill.balance_forward + present_reebill.ree_charges
 
-        # set data into the bill
-        the_bill.rebill_summary = rebill_summary
-        the_bill.utilbill_summary_charges = ub_summary_charges
+            # TODO total_adjustment
 
-        XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), self.config.get("xmldb", "user"),
-            self.config.get("xmldb", "password"))
-        # save in mongo
-        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
-        self.reebill_dao.save_reebill(reebill)
 
-        '''
+    def copy_actual_charges(self, reebill):
 
-    # TODO cover method that accepts charges_type of hypo or actual
-    def sum_hypothetical_charges(self, unprocessedBill, targetBill, user=None, password=None):
-        """ 
-        After a rate structure has been bound, sum up the totals, by chargegroup.
-        """
-
-        the_bill = bill.Bill(unprocessedBill)
-
-        hypothetical_charges = the_bill.hypothetical_charges
-       
-        for service, cg_items in hypothetical_charges.items():
-            # cg_items contains mnt of chargegroups and a grand total
-
-            # the grand total
-            cg_items.total = Decimal("0.00")
-
-            for chargegroup in cg_items.chargegroups:
-
-                chargegroup.total = Decimal("0.00")
-
-                for charge in chargegroup.charges:
-
-                    chargegroup.total += charge.total
-
-                    # summarize the service
-                    cg_items.total += charge.total
-
-        # set the newly totalized charges
-        the_bill.hypothetical_charges = hypothetical_charges
-
-        XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
-        # save in mongo
-        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), the_bill.account, the_bill.id))
-        self.reebill_dao.save_reebill(reebill)
-
-    def sum_actual_charges(self, unprocessedBill, targetBill, user=None, password=None):
-        """ 
-        After a rate structure has been bound, sum up the totals, by chargegroup.
-        """
-
-        the_bill = bill.Bill(unprocessedBill)
-
-        actual_charges = the_bill.actual_charges
-       
-        for service, cg_items in actual_charges.items():
-            # cg_items contains mnt of chargegroups and a grand total
-
-            # the grand total
-            cg_items.total = Decimal("0.00")
-
-            for chargegroup in cg_items.chargegroups:
-                
-                chargegroup.total = Decimal("0.00")
-
-                for charge in chargegroup.charges:
-
-                    chargegroup.total += charge.total
-
-                    # summarize the service
-                    cg_items.total += charge.total
-
-        # set the newly totalized charges
-        the_bill.actual_charges = actual_charges
-
-        XMLUtils().save_xml_file(the_bill.xml(), targetBill, user, password)
-        # save in mongo
-        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), the_bill.account, the_bill.id))
-        self.reebill_dao.save_reebill(reebill)
-
-    def copy_actual_charges(self, account, sequence):
-
-        the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
-
-        #TODO: this actually deletes all existing hypothetical charges.  This is ok unless for some reason the set of hypothetical charges could be larger than the actual
-        actual_charges = the_bill.actual_charges
-        the_bill.hypothetical_charges = actual_charges
-
-        XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), self.config.get("xmldb", "user"),
-            self.config.get("xmldb", "password"))
-        # save in mongo
-        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
-        self.reebill_dao.save_reebill(reebill)
+        for service in reebill.services:
+            actual_chargegroups = reebill.actual_chargegroups_for_service(service)
+            reebill.set_hypothetical_chargegroups_for_service(service, actual_chargegroups)
 
     def pay_bill(self, account, sequence):
 
