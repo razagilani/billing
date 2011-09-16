@@ -21,16 +21,14 @@ import pdb
 import pprint
 pp = pprint.PrettyPrinter(indent=1)
 
-
-
 def python_convert(x):
     '''Strip out the MutableNamedTuples since they are no longer 
     needed to preserve document order and provide dot-access notation.'''
 
     if type(x) in [str, float, int, bool]:
         return x
-    if type(x) is Decimal:
-        return x
+    if type(x) is float:
+        return Decimal(x)
     # lxml gives us string_result types for strings
     if type(x) is _ElementStringResult:
         return str(x)
@@ -38,13 +36,21 @@ def python_convert(x):
         return str(x)
     if type(x) is time:
         return x
-    if type(x) is date:
-        return x
     if type(x) is dict or type(x) is MutableNamedTuple:
+        # TODO don't copy dict. also, MutableNamedTuple should not ever occur
+        # when converting from Mongo to Python.
         return dict([(item[0], python_convert(item[1])) for item in x.iteritems()
                 if item[1] is not None])
     if type(x) is list:
         return map(python_convert, x)
+
+    # TODO: remove these 2 cases, because if they occur something has gone wrong (?)
+    # or don't remove them if this function is called after float_to_decimal()
+    # and convert_datetimes())
+    if type(x) is Decimal:
+        return x
+    if type(x) is date:
+        return x
 
     raise ValueError("type(%s) is %s: did not convert" % (x, type(x)))
 
@@ -77,8 +83,10 @@ def bson_convert(x):
 # See set_meter_read_date()
 def deep_map(func, x):
     '''Applies the function 'func' througout the data structure x, or just
-    applies it to x if x is a scalar. Used for type conversions from Mongo
-    types back into the appropriate Python types.'''
+    applies it to x if x is a scalar. Used for type conversions from Mongo types
+    back into the appropriate Python types.'''
+    # TODO don't return anything from this function, if there is really no
+    # copying going on
     if type(x) is list:
         for item in x:
             deep_map(func, item)
@@ -93,10 +101,38 @@ def deep_map(func, x):
     return func(x)
 
 def float_to_decimal(x):
+    # TODO combine into python_convert()
     '''Converts float into Decimal. Used in getter methods.'''
     # str() tells Decimal to automatically figure out how many digts of
     # precision we want
     return Decimal(str(x)) if type(x) is float else x
+
+def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
+    # TODO combine this into python_convert(), and include the ancestor_key
+    # argument, and datetime_keys (or maybe a dictionary mapping key names to
+    # types in general, so any type conversion could be done according to key
+    # name)
+    '''If x is a datetime, returns the date part of x unless ancestor_key is in
+    in datetime_keys. If x is a dictionary, convert_datetimes() is recursively
+    applied to all values in dictionary, with ancestor_key set to the key of
+    each value. If x is a list, convert_datetimes() is recursively applied to
+    all values with ancestor_key unchanged (so each item in the list or any
+    descendant list is converted according to the key of its closest ancestor
+    that was a dictionary). In the root call of this function, x should be a
+    dictionary and the ancestor_key argument should be omitted; an ancestor_key
+    must be given if x is anything other than a dictionary.'''
+    if type(x) is not dict and ancestor_key is None:
+        raise ValueError(("Can't convert %s into a date or datetime without"
+            "an ancestor key.") % x)
+    if type(x) is datetime:
+        return x if ancestor_key in datetime_keys else x.date()
+    if type(x) is dict:
+        return dict((key, convert_datetimes(value, datetime_keys, key))
+            for key, value in x.iteritems())
+    if type(x) is list:
+        return [convert_datetimes(element, datetime_keys, ancestor_key) for element in x]
+    return x
+
 
 # this dictionary maps XML element names to MongoDB document keys, for use in
 # rename_keys(). element names that map to None will be removed instead of
@@ -311,6 +347,7 @@ class MongoReebill:
                 # TODO add rate schedule (not all xml files have this)
                 # 'rate_schedule': python_convert(b.rateschedule),
 
+                #
                 # chargegroups are divided between actual and hypothetical; these are
                 # stored in 2 dictionaries mapping the name of each chargegroup to a
                 # list of its charges. totals (in the format {total: #}) are removed
@@ -348,7 +385,8 @@ class MongoReebill:
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
     # strings unless otherwise noted.
-    
+
+
     @property
     def account(self):
         return self.dictionary['account']
@@ -361,32 +399,32 @@ class MongoReebill:
         return self.dictionary['sequence']
     @sequence.setter
     def sequence(self, value):
-        self.dictionary['sequence'] = int(value)
+        self.dictionary['sequence'] = value
     
     @property
     def issue_date(self):
-        return self.dictionary['issue_date'].date()
+        return python_convert(self.dictionary['issue_date'])
     @issue_date.setter
     def issue_date(self, value):
         self.dictionary['issue_date'] = value
 
     @property
     def due_date(self):
-        return self.dictionary['due_date'].date()
+        return python_convert(self.dictionary['due_date'])
     @due_date.setter
     def due_date(self, value):
         self.dictionary['due_date'] = value
 
     @property
     def period_begin(self):
-        return self.dictionary['period_begin'].date()
+        return python_convert(dictionary['period_begin'])
     @period_begin.setter
     def period_begin(self, value):
         self.dictionary['period_begin'] = value
 
     @property
     def period_end(self):
-        return self.dictionary['period_end'].date()
+        return python_convert(self.dictionary['period_end'])
     @period_end.setter
     def period_end(self, value):
         self.dictionary['period_end'] = value
@@ -630,6 +668,7 @@ class MongoReebill:
 
     @property
     def services(self):
+        print [u['service'] for u in self.dictionary['utilbills']]
         '''Returns a list of all services for which there are utilbills.'''
         return list(set([u['service'] for u in self.dictionary['utilbills']]))
 
@@ -647,7 +686,7 @@ class MongoReebill:
         start, end = date_string_pairs[0]
 
         # remember, mongo stores datetimes, but we only wish to treat dates here
-        return (start.date(), end.date())
+        return (start, end)
 
     def set_utilbill_period_for_service(self, service_name, period):
 
@@ -832,7 +871,8 @@ class ReebillDAO:
             return xml_reebill
         else:
             print "*** loaded from mongo"
-            mongo_doc = deep_map(float_to_decimal, mongo_doc)
+            mongo_doc = deep_map(float_to_decimal, mongo_doc) # this shouldn't be an assignment if it's modifying in place
+            mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
             mongo_reebill = MongoReebill(mongo_doc)
             return mongo_reebill
         

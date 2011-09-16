@@ -640,6 +640,7 @@ class BillToolBridge:
             # then the reebill datastructure itself can be shipped to client.
             utilbill_periods = {}
             for service in reebill.services:
+                print '&&&&&', service
                 (begin, end) = reebill.utilbill_period_for_service(service)
                 utilbill_periods[service] = {
                     'begin': begin,
