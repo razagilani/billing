@@ -443,9 +443,14 @@ class BillToolBridge:
         try:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
-            rsbinding = reebill.rsbinding_for_service(service)
-            rate_structure = self.ratestructure_dao.load_rs(account, sequence, rsbinding, 0)
+            utility_name = reebill.utility_name_for_service(service)
+            rate_structure = self.ratestructure_dao.load_rs(account, sequence, 0, utility_name)
+
+            print "probable rate structure is"
+            pp.pprint(self.ratestructure_dao.load_probable_rs(reebill, service))
             rates = rate_structure["rates"]
+
+            print "got rates %s " % rates
 
             if xaction == "read":
                 return json.dumps({'success': True, 'rows':rates})
