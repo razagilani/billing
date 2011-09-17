@@ -303,7 +303,7 @@ class MongoReebill:
                 # been placed in self.dictionary['utilbills']
 
                 # fail if this bill doesn't have an rsbinding
-                'rate_schedule_binding': this_bill_actual_details. \
+                'rate_structure_binding': this_bill_actual_details. \
                         rateschedule.rsbinding,
                 # so-called rate structure/schedule binding ("rsbinding") in utilbill
                 # is actually the name of the utility
@@ -362,6 +362,13 @@ class MongoReebill:
     @sequence.setter
     def sequence(self, value):
         self.dictionary['sequence'] = int(value)
+
+    @property
+    def branch(self):
+        return self.dictionary['branch']
+    @branch.setter
+    def branch(self, value):
+        self.dictionary['branch'] = int(value)
     
     @property
     def issue_date(self):
@@ -647,7 +654,7 @@ class MongoReebill:
         start, end = date_string_pairs[0]
 
         # remember, mongo stores datetimes, but we only wish to treat dates here
-        return (start.date(), end.date())
+        return (start, end)
 
     def set_utilbill_period_for_service(self, service_name, period):
 
@@ -682,8 +689,6 @@ class MongoReebill:
 
         meters_lists = [ub['meters'] for ub in self.dictionary['utilbills'] if
                 ub['service'] == service_name]
-
-        print "**** meters_lists has %s" % meters_lists
 
         if meters_lists == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
@@ -723,13 +728,23 @@ class MongoReebill:
     def meters(self):
         return dict([(service, self.meters_for_service(service)) for service in self.services])
 
-    def rsbinding_for_service(self, service_name):
-        '''
-        Return the rate structure binding for a given service
-        '''
+    def utility_name_for_service(self, service_name):
+        utility_names = [
+            ub['utility_name'] 
+            for ub in self.dictionary['utilbills']
+            if ub['service'] == service_name
+        ]
+
+        if utility_names == []:
+            raise Exception('No utility name found for service "%s"' % service_name)
+        if len(utility_names) > 1:
+            raise Exception('Multiple utility names for service "%s"' % service_name)
+        return utility_names[0]
+
+    def rate_structure_name_for_service(self, service_name):
 
         rs_bindings = [
-            ub['utility_name'] 
+            ub['rate_structure_binding'] 
             for ub in self.dictionary['utilbills']
             if ub['service'] == service_name
         ]
