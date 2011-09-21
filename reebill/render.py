@@ -301,7 +301,7 @@ def render(reebill, outputfile, backgrounds, verbose):
 
     # populate account number, bill id & issue date
     accountNumber = [
-        [Paragraph("Account Number", styles['BillLabelRight']),Paragraph(reebill.account_number + " " + str(reebill.sequence_number),styles['BillField'])], 
+        [Paragraph("Account Number", styles['BillLabelRight']),Paragraph(reebill.account + " " + str(reebill.sequence),styles['BillField'])], 
         [Paragraph("Issue Date", styles['BillLabelRight']), Paragraph(str(reebill.issue_date), styles['BillField'])]
     ]
 
