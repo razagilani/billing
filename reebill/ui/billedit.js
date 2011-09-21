@@ -1,3 +1,11 @@
+var NO_UTILBILL_SELECTED_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill.png"/></td></tr></table></div>';
+var NO_UTILBILL_FOUND_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill_notfound.png"/></td></tr></table></div>';
+var NO_REEBILL_SELECTED_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_reebill.png"/></td></tr></table></div>';
+var NO_REEBILL_FOUND_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_reebill_notfound.png"/></td></tr></table></div>';
+var LOADING_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="rotologo_white.gif"/></td></tr></table></div>';
+
+var DEFAULT_RESOLUTION = 70; // TODO for testing; make bigger
+
 function renderWidgets()
 {
     // global ajax timeout
@@ -27,12 +35,6 @@ function renderWidgets()
     //
     
     // box to display bill images
-    var NO_UTILBILL_SELECTED_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill.png"/></td></tr></table></div>';
-    var NO_UTILBILL_FOUND_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill_notfound.png"/></td></tr></table></div>';
-    var NO_REEBILL_SELECTED_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_reebill.png"/></td></tr></table></div>';
-    var NO_REEBILL_FOUND_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_reebill_notfound.png"/></td></tr></table></div>';
-    var LOADING_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="rotologo.gif"/></td></tr></table></div>';
-
     var utilBillImageBox = new Ext.Panel({
         collapsible: true,
         // content is initially just a message saying no image is selected
@@ -168,30 +170,46 @@ function renderWidgets()
 
                     // url for getting bill images (calls bill_tool_bridge.getBillImage())
                     theUrl = 'http://' + location.host + '/reebill/getUtilBillImage';
+
+                    // image rendering resolution
+                    var menu = document.getElementById('utilbillresolutionmenu');
+                    if (menu) {
+                        resolution = menu.value;
+                    } else {
+                        resolution = DEFAULT_RESOLUTION;
+                    }
                     
                     // ajax call to generate image, get the name of it, and display it in a
                     // new window
                     Ext.Ajax.request({
                         url: theUrl,
                         params: {account: record.data.account, begin_date: formatted_begin_date_string,
-                            end_date: formatted_end_date_string},
+                            end_date: formatted_end_date_string, resolution: resolution},
                         success: function(result, request) {
                             var jsonData = null;
                             try {
                                 jsonData = Ext.util.JSON.decode(result.responseText);
-                                if (jsonData.success == false) {
-                                    /*Ext.MessageBox.alert('Server Error',
-                                        jsonData.errors.reason + " "
-                                        + jsonData.errors.details);*/
-                                    // replace bill image with a message instead
-                                    Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
-                                        html: NO_UTILBILL_FOUND_MESSAGE, id: 'utilbillimage'}, true);
-                                } else {
-                                    // show image in utilbillimageBox
-                                    Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'img',
-                                        src: 'http://' + location.host + '/utilitybillimages/' 
-                                        + jsonData.imageName, width: '100%', id: 'utilbillimage'}, true);
-                                } 
+                                var imageUrl = '';
+                                if (jsonData.success == true) {
+                                    imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
+                                }
+                                Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(imageUrl, 'Utility bill', 'utilbill'), true);
+                                //if (jsonData.success == false) {
+                                    //[>Ext.MessageBox.alert('Server Error',
+                                        //jsonData.errors.reason + " "
+                                        //+ jsonData.errors.details);*/
+                                    //// replace bill image with a message instead
+                                    ////Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
+                                        ////html: NO_UTILBILL_FOUND_MESSAGE, id: 'utilbillimage'}, true);
+                                    //Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML('', 'Utility bill', 'utilbill'), true);
+                                //} else {
+                                    //// show image in utilbillimageBox
+                                    ////Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'img',
+                                        ////src: 'http://' + location.host + '/utilitybillimages/' 
+                                        ////+ jsonData.imageName, width: '100%', id: 'utilbillimage'}, true);
+                                        //var url = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName
+                                        //Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(url, 'Utility bill', 'utilbill'), true);
+                                //} 
                             } catch (err) {
                                 Ext.MessageBox.alert('ERROR', err);
                             }
@@ -438,7 +456,7 @@ function renderWidgets()
                 Ext.Ajax.request({
                     url: 'http://'+location.host+'/reebill/pay',
                     params: { 
-                        account: account,
+                        account: accountCombo.getValue(),
                         sequence: sequence,
                         amount: amountPaid
                     },
@@ -1959,7 +1977,7 @@ function renderWidgets()
                 handler: function()
                 {
                     paymentGrid.stopEditing();
-                    paymentStore.setBaseParam("account", account);
+                    paymentStore.setBaseParam("account", accountCombo.getValue());
 
                     // TODO single row selection only, test allowing multirow selection
                     var s = paymentGrid.getSelectionModel().getSelections();
@@ -2003,7 +2021,7 @@ function renderWidgets()
     });
 
     paymentStore.on('beforesave', function() {
-        paymentStore.setBaseParam("account", account);
+        paymentStore.setBaseParam("account", accountCombo.getValue());
     });
 
     ///////////////////////////////////////
@@ -2083,8 +2101,6 @@ function renderWidgets()
                 disabled: false,
                 handler: function()
                 {
-                    //reebillStore.setBaseParam("account", account);
-
                     sequences = []
                     var s = reebillGrid.getSelectionModel().getSelections();
                     for(var i = 0, r; r = s[i]; i++)
@@ -2136,7 +2152,7 @@ function renderWidgets()
     });
 
     reebillStore.on('beforesave', function() {
-        reebillStore.setBaseParam("account", account);
+        reebillStore.setBaseParam("account", accountCombo.getValue());
     });
 
     ///////////////////////////////////////
@@ -2526,26 +2542,40 @@ function renderWidgets()
 
         // url for getting bill images (calls bill_tool_bridge.getbillimage())
         reeBillImageURL = 'http://' + location.host + '/reebill/getReeBillImage';
+
+
+        // image rendering resolution
+        var menu = document.getElementById('reebillresolutionmenu');
+        if (menu) {
+            resolution = menu.value;
+        } else {
+            resolution = DEFAULT_RESOLUTION;
+        }
         
         // ajax call to generate image, get the name of it, and display it in a
         // new window
         Ext.Ajax.request({
             url: reeBillImageURL,
-            params: {account: account, sequence: sequence},
+            params: {account: account, sequence: sequence, resolution:resolution},
             success: function(result, request) {
                 var jsonData = null;
                 try {
                     jsonData = Ext.util.JSON.decode(result.responseText);
-                    if (jsonData.success == false) {
-                        // replace reebill image with a missing graphic
-                        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
-                            html: NO_REEBILL_FOUND_MESSAGE, id: 'reebillimage'}, true);
-                    } else {
-                        // show image in utilbillimagebox
-                        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'img',
-                            src: 'http://' + location.host + '/utilitybillimages/' 
-                            + jsonData.imageName, width: '100%', id: 'reebillimage'}, true);
-                    } 
+                    var imageUrl = '';
+                    if (jsonData.success == true) {
+                        imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
+                    }
+                    Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML(imageUrl, 'Reebill', 'reebill'), true);
+                    //if (jsonData.success == false) {
+                        //// replace reebill image with a missing graphic
+                        //Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
+                            //html: NO_REEBILL_FOUND_MESSAGE, id: 'reebillimage'}, true);
+                    //} else {
+                        //// show image in utilbillimagebox
+                        //Ext.DomHelper.overwrite('reebillimagebox', {tag: 'img',
+                            //src: 'http://' + location.host + '/utilitybillimages/' 
+                            //+ jsonData.imageName, width: '100%', id: 'reebillimage'}, true);
+                    //} 
                 } catch (err) {
                     Ext.MessageBox.alert('error', err);
                 }
@@ -2619,3 +2649,32 @@ function unregisterAjaxEvents()
     Ext.Ajax.removeListener('requestcomplete', this.hideSpinner, this);
     Ext.Ajax.removeListener('requestexception', this.hideSpinner, this);
 }
+
+function getImageBoxHTML(url, label, idPrefix) {
+    // TODO default menu selection
+    if (url) {
+        return {tag: 'div', id: idPrefix + 'imagebox', children: [
+                // label
+                label + ' resolution: ',
+                // resolution menu
+                {tag: 'select', id: idPrefix + 'resolutionmenu', onchange: idPrefix + 'Reload()', children: [
+                    {tag: 'option', html:'50'},
+                    {tag: 'option', html:'100'},
+                    {tag: 'option', html:'150'},
+                    {tag: 'option', html:'200'},
+                ]},
+             // image
+            {tag: 'img', src: url, width: '100%', id: idPrefix + 'image'},
+        ]};
+    } else {
+        return {tag: 'div', id: idPrefix + 'imagebox', children: [{tag: 'div', html: NO_UTILBILL_SELECTED_MESSAGE,
+            id: 'utilbillimage'}] };
+    }
+}
+function utilbillReload() {
+    console.log('reloading utilbill image');
+}
+function reebillReload() {
+    console.log('reloading reebill image');
+}
+
