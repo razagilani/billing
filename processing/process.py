@@ -33,18 +33,21 @@ import pprint
 
 import yaml
 import rate_structure
+from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state
 from billing.mongo import MongoReebill
+from billing.mongo import ReebillDAO
 
 class Process(object):
     """ Class with a variety of utility procedures for processing bills """
 
     config = None
     
-    def __init__(self, config, state_db, reebill_dao):
+    def __init__(self, config, state_db, reebill_dao, rate_structure_dao):
         self.config = config
         self.state_db = state_db
         self.reebill_dao = reebill_dao
+        self.rate_structure_dao = rate_structure_dao
 
     #TODO better function name to reflect the return types of XPath - not just elements, but sums, etc...
     #TODO function to return a single element vs list - that will clean up lots of code
@@ -309,29 +312,82 @@ class Process(object):
         return rate_structure.RateStructure(rs)
 
 
-    def bind_rate_structure(self, account, sequence):
+    def bind_rate_structure(self, reebill):
 
-            # actual
-            self.bindrs(
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-                self.config.get("billdb", "rspath"),
-                False, 
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
+            # process the actual charges across all services
+            self.bindrsnew(reebill, self.rate_structure_dao, False)
+            #self.bindrs( "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+            #    "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+            #    self.config.get("billdb", "rspath"),
+            #    False, 
+            #    self.config.get("xmldb", "user"),
+            #    self.config.get("xmldb", "password")
+            #)
 
-            #hypothetical
-            self.bindrs(
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-                self.config.get("billdb", "rspath"),
-                True, 
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password")
-            )
+            # process the hypothetical charges across all services
+            self.bindrsnew(reebill, ratestructure_dao, True)
+            #self.bindrs(
+            #    "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+            #    "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
+            #    self.config.get("billdb", "rspath"),
+            #    True, 
+            #    self.config.get("xmldb", "user"),
+            #    self.config.get("xmldb", "password")
+            #)
 
             self.calculate_reperiod(account, sequence)
+
+    def bindrsnew(self, reebill, ratestructure_db, do_hypothetical):
+        """ This function binds a rate structure against the actual and hypothetical charges found """
+        """ in a bill. If and RSI specifies information no in the bill, it is added to the bill.   """
+        """ If the bill specifies information in a charge that is not in the RSI, the charge is """
+        """ left untouched."""
+
+        account = reebill.account
+        sequence = reebill.sequence
+
+        # process rate structures for all services
+        for service in reebill.services:
+
+
+            import pdb
+            pdb.set_trace()
+            # get a RateStructure
+            rate_structure = self.rate_structure_dao.load_rate_structure(reebill, service)
+
+            # find out what registers are needed to process this rate structure
+            register_needs = rate_structure.register_needs()
+
+            #
+            # All registers for all meters in a given service are made available
+            # to the rate structure for the given service.
+            # Registers that are not to be used by the rate structure should
+            # simply not have an rsi_binding.
+            #
+            # get metered energy from all meter registers in the reebill
+            actual_register_readings = reebill.actual_registers(service)
+
+            # apply the registers from the reebill to the probable rate structure
+            rate_structure.bind_register_readings(actual_register_readings)
+
+            # process actual charges with non-shadow meter register totals
+            actual_chargegroups = reebill.actual_chargegroups_for_service(service)
+
+            # iterate over the charge groups, binding the reebill charges to its associated RSI
+
+            for chargegroup, charges in actual_chargegroups.items():
+                rate_structure.bind_charges(charges)
+
+            reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
+
+
+            # process hypothetical charges with non-shadow + shadow meter register totals
+            #shadow_register_readings = reebill.shadow_registers(service)
+
+            # add the shadow register totals to the actual register, and re-process
+
+
+            #hypothetical_chargegroups = reebill.hypothetical_chargegroups_for_service(service)
 
 
     def bindrs(self, inputbill, outputbill, rsdb, hypothetical, user=None, password=None):
@@ -664,4 +720,25 @@ class Process(object):
 
         # issue to customer
         self.state_db.issue(account, sequence)
+
+if __name__ == '__main__':
+
+    reebill_dao = ReebillDAO({
+        "host":"localhost", 
+        "port":27017, 
+        "database":"skyline", 
+        "collection":"reebills", 
+        "destination_prefix":"http://localhost:8080/exist/rest/db/skyline/bills"
+    })
+
+    ratestructure_dao = RateStructureDAO({
+        "database":"skyline",
+        "rspath":"/db-dev/skyline/ratestructure/",
+        "host":"localhost",
+        "collection":"ratestructure",
+        "port": 27017
+    })
+
+    reebill = reebill_dao.load_reebill("10002","12")
+    Process(None, None, reebill_dao, ratestructure_dao).bind_rate_structure(reebill)
 

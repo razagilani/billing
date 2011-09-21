@@ -222,6 +222,17 @@ class MongoReebill:
         property style access that returns a dictionary:
             Not sure this ever happens.
 
+        This class should not include business logic, rather a helper should.
+        This helper is process.py atm.
+
+        This class should:
+        - marshal and unmarshal data (e.g. flatten and nest charges)
+        - convert types
+        - localize
+        - hide the underlying mongo document organization
+        - return cross cutting sets of data (e.g. all registers when registers are grouped by meter)
+
+
 
     '''
 
@@ -633,6 +644,14 @@ class MongoReebill:
             raise Exception('Multiple utilbills found for service "%s"' % service_name)
         return chargegroup_lists[0]
 
+    def set_actual_chargegroups_for_service(self, service_name, new_chargegroups):
+        '''Set hypothetical chargegroups, based on actual chargegroups.  This is used
+        because it is customary to define the actual charges and base the hypothetical
+        charges on them.'''
+        for ub in self.dictionary['utilbills']:
+            if ub['service'] == service_name:
+                ub['actual_chargegroups'] = new_chargegroups
+
     
 
     @property
@@ -680,7 +699,8 @@ class MongoReebill:
 
         for (service, period) in value.iteritems():
             self.set_utilbill_period_for_service(service, period)
-        
+
+    # TODO: consider calling this meter readings
     def meters_for_service(self, service_name):
         '''Returns the meters (a list of dictionaries) for the utilbill whose
         service is 'service_name'. There's not supposed to be more than one
@@ -700,12 +720,6 @@ class MongoReebill:
     def set_meter_read_date(self, service, identifier, present_read_date, prior_read_date):
         ''' Set the read date for a specified meter.'''
 
-        # Would like to call meters_of_service but deep_map or someone seems to return copies
-        # breaking reference to self.dictionary
-        #for ub in self.dictionary['utilbills']:
-        #    if ub['service'] == service:
-        #for meter in ub['meters']:
-
         for meter in self.meters_for_service(service):
             if meter['identifier'] == identifier:
                 meter['present_read_date'] = present_read_date
@@ -714,8 +728,6 @@ class MongoReebill:
     def set_meter_actual_register(self, service, meter_identifier, register_identifier, total):
         ''' Set the total for a specified meter register.'''
 
-        # Would like to call meters_of_service but deep_map or someone seems to return copies
-        # breaking reference to self.dictionary
         for ub in self.dictionary['utilbills']:
             if ub['service'] == service:
                 for meter in ub['meters']:
@@ -806,6 +818,33 @@ class MongoReebill:
 
                 ub[chargegroups] = new_chargegroups
 
+
+    def actual_registers(self, service):
+        ''' For all meters of a given service, return all the actual registers.
+        Registers have rate structure bindings that are used to make the actual
+        registers available to rate structure items.
+        '''
+
+        all_actual = []
+
+        for meter in self.meters_for_service(service):
+            all_actual.extend(filter(
+                lambda register: register if register['shadow'] is False else False, meter['registers']
+            ))
+
+        return all_actual
+
+    def shadow_registers(self, service):
+
+        all_shadow = []
+
+        for meter in self.meters_for_service(service):
+            all_shadow.extend(filter(
+                lambda register: register if register['shadow'] is True else False, meter['registers']
+            ))
+
+        return all_shadow
+
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
@@ -831,11 +870,18 @@ class ReebillDAO:
 
     def load_reebill(self, account, sequence, branch=0):
 
-        mongo_doc = self.collection.find_one({"_id": {
-            "account": str(account), 
-            "branch": int(branch),
-            "sequence": int(sequence)
-        }})
+        query = {
+            "_id.account": str(account),
+            "_id.branch": int(branch),
+            "_id.sequence": int(sequence)
+        }
+        mongo_doc = self.collection.find_one(query)
+
+        #{"_id": {
+        #    "account": str(account), 
+        #    "branch": int(branch),
+        #    "sequence": int(sequence)
+        #}})
 
         # didn't find one in mongo, so let's grab it from eXist
         # TODO: why not also save it into mongo and reload from mongo? for migration?

@@ -199,12 +199,13 @@ class BillToolBridge:
     def bindrs(self, account, sequence, **args):
 
         try:
-            self.process.bind_rate_structure(account, sequence)
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            self.process.bind_rate_structure(reebill, ratestructure_dao)
+            return json.dumps({'success': True})
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return json.dumps({'success': True})
 
     @cherrypy.expose
     def calc_reperiod(self, account, sequence, **args):
@@ -437,20 +438,16 @@ class BillToolBridge:
 
     @cherrypy.expose
     # TODO see 15415625 about the problem passing in service to get at a set of RSIs
+    # TODO make this support new URS, UPRS and CPRS structure
     # experiment to see how using one URL for all operations works
     def rsi(self, xaction, account, sequence, service, **kwargs):
 
         try:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
-            utility_name = reebill.utility_name_for_service(service)
-            rate_structure = self.ratestructure_dao.load_rs(account, sequence, 0, utility_name)
 
-            print "probable rate structure is"
-            pp.pprint(self.ratestructure_dao.load_probable_rs(reebill, service))
+            rate_structure = self.ratestructure_dao.load_rs(reebill, service)
             rates = rate_structure["rates"]
-
-            print "got rates %s " % rates
 
             if xaction == "read":
                 return json.dumps({'success': True, 'rows':rates})
