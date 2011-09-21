@@ -16,6 +16,8 @@ import string
 import base64
 import itertools as it
 import copy
+from skyliner.mongo_utils import bson_convert, python_convert
+import uuid
 
 import pdb
 import pprint
@@ -23,63 +25,22 @@ pp = pprint.PrettyPrinter(indent=1)
 
 
 
-def python_convert(x):
-    '''Strip out the MutableNamedTuples since they are no longer 
-    needed to preserve document order and provide dot-access notation.'''
-
-    if type(x) in [str, float, int, bool]:
-        return x
-    if type(x) is Decimal:
-        return x
-    # lxml gives us string_result types for strings
-    if type(x) is _ElementStringResult:
-        return str(x)
-    if type(x) is unicode:
-        return str(x)
-    if type(x) is time:
-        return x
-    if type(x) is date:
-        return x
-    if type(x) is dict or type(x) is MutableNamedTuple:
-        return dict([(item[0], python_convert(item[1])) for item in x.iteritems()
-                if item[1] is not None])
-    if type(x) is list:
-        return map(python_convert, x)
-
-    raise ValueError("type(%s) is %s: did not convert" % (x, type(x)))
-
-def bson_convert(x):
-    '''Returns x converted into a type suitable for Mongo.'''
-    # TODO:  copy all or convert all in place?  Or, don't care and just keep doing both
-    # scalars are converted in place, dicts are copied.
-
-    if type(x) in [str, float, int, bool, datetime, unicode]:
-        return x
-    if type(x) is Decimal:
-        return float(x)
-    if type(x) is time:
-        return str(x)
-    if type(x) is date:
-        return datetime(x.year, x.month, x.day)
-    if type(x) is dict or type(x) is MutableNamedTuple:
-        #TODO: don't copy dict
-        return dict([(item[0], bson_convert(item[1])) for item in x.iteritems()
-                if item[1] is not None])
-    if type(x) is list:
-        return map(bson_convert, x)
-
-    raise ValueError("type(%s) is %s: can't convert that into bson" \
-            % (x, type(x)))
-
+#TODO: looks like this makes a by value copy of a dictionary causing references to be lost
+# making difficult returning references to data that needs to be modified. (e.g. we return
+# a meter dict which might have an identifier changed)
+# See set_meter_read_date()
 def deep_map(func, x):
     '''Applies the function 'func' througout the data structure x, or just
     applies it to x if x is a scalar. Used for type conversions from Mongo
     types back into the appropriate Python types.'''
     if type(x) is list:
         return [deep_map(func, item) for item in x]
+        #return [deep_map(func, item) for item in x]
+        #return [deep_map(func, item) for item in x]
     if type(x) is dict:
         return dict((deep_map(func, key), deep_map(func, value)) for key, value in x.iteritems())
-
+        # this creates a new dictionary, we wish to use the one in place? Only if references are lost
+        #return dict((deep_map(func, key), deep_map(func, value)) for key, value in x.iteritems())
     return func(x)
 
 def float_to_decimal(x):
@@ -87,6 +48,33 @@ def float_to_decimal(x):
     # str() tells Decimal to automatically figure out how many digts of
     # precision we want
     return Decimal(str(x)) if type(x) is float else x
+
+def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
+    # TODO combine this into python_convert(), and include the ancestor_key
+    # argument, and datetime_keys (or maybe a dictionary mapping key names to
+    # types in general, so any type conversion could be done according to key
+    # name)
+    '''If x is a datetime, returns the date part of x unless ancestor_key is in
+    in datetime_keys. If x is a dictionary, convert_datetimes() is recursively
+    applied to all values in dictionary, with ancestor_key set to the key of
+    each value. If x is a list, convert_datetimes() is recursively applied to
+    all values with ancestor_key unchanged (so each item in the list or any
+    descendant list is converted according to the key of its closest ancestor
+    that was a dictionary). In the root call of this function, x should be a
+    dictionary and the ancestor_key argument should be omitted; an ancestor_key
+    must be given if x is anything other than a dictionary.'''
+    if type(x) is not dict and ancestor_key is None:
+        raise ValueError(("Can't convert %s into a date or datetime without"
+            "an ancestor key.") % x)
+    if type(x) is datetime:
+        return x if ancestor_key in datetime_keys else x.date()
+    if type(x) is dict:
+        return dict((key, convert_datetimes(value, datetime_keys, key))
+            for key, value in x.iteritems())
+    if type(x) is list:
+        return [convert_datetimes(element, datetime_keys, ancestor_key) for element in x]
+    return x
+
 
 # this dictionary maps XML element names to MongoDB document keys, for use in
 # rename_keys(). element names that map to None will be removed instead of
@@ -330,6 +318,14 @@ class MongoReebill:
                 'hypothetical_total': python_convert(this_bill_hypothetical_details.total)
             })
 
+            # add GUIDs to each charge in both actual and hypothetical chargegroups
+            for chargegroup in utilbill['actual_chargegroups'].values():
+                for charge in chargegroup:
+                    charge['uuid'] = str(uuid.uuid4())
+            for chargegroup in utilbill['hypothetical_chargegroups'].values():
+                for charge in chargegroup:
+                    charge['uuid'] = str(uuid.uuid4())
+
             # measured usages: each utility has one or more meters, each of which has
             # one or more registers (which are like sub-meters)
             meters = measured_usages[utilbill['service']]
@@ -362,7 +358,7 @@ class MongoReebill:
         return self.dictionary['sequence']
     @sequence.setter
     def sequence(self, value):
-        self.dictionary['sequence'] = int(value)
+        self.dictionary['sequence'] = value
 
     @property
     def branch(self):
@@ -373,28 +369,28 @@ class MongoReebill:
     
     @property
     def issue_date(self):
-        return self.dictionary['issue_date'].date()
+        return python_convert(self.dictionary['issue_date'])
     @issue_date.setter
     def issue_date(self, value):
         self.dictionary['issue_date'] = value
 
     @property
     def due_date(self):
-        return self.dictionary['due_date'].date()
+        return python_convert(self.dictionary['due_date'])
     @due_date.setter
     def due_date(self, value):
         self.dictionary['due_date'] = value
 
     @property
     def period_begin(self):
-        return self.dictionary['period_begin'].date()
+        return python_convert(dictionary['period_begin'])
     @period_begin.setter
     def period_begin(self, value):
         self.dictionary['period_begin'] = value
 
     @property
     def period_end(self):
-        return self.dictionary['period_end'].date()
+        return python_convert(self.dictionary['period_end'])
     @period_end.setter
     def period_end(self, value):
         self.dictionary['period_end'] = value
@@ -884,6 +880,7 @@ class ReebillDAO:
         else:
             print "*** loaded from mongo"
             mongo_doc = deep_map(float_to_decimal, mongo_doc)
+            mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
             mongo_reebill = MongoReebill(mongo_doc)
             return mongo_reebill
         
@@ -895,7 +892,6 @@ class ReebillDAO:
 
         # make a Bill object from the XML document
         b = bill.Bill(url)
-
         return b
 
     def save_reebill(self, reebill):
@@ -926,7 +922,8 @@ class ReebillDAO:
             con.putrequest('PUT', '%s' % url)
             con.putheader('Content-Type', 'text/xml')
 
-            auth = 'Basic ' + string.strip(base64.encodestring(self.config['user'] + ':' + self.config['password']))
+            auth = 'Basic ' + string.strip(base64.encodestring(
+                self.config['user'] + ':' + self.config['password']))
             con.putheader('Authorization', auth )
 
             clen = len(xml) 
@@ -956,3 +953,19 @@ if __name__ == '__main__':
 
 
 
+    success_count = 0
+    error_count = 0
+    for account in range(10001, 10025):
+        for sequence in range(1,20):
+            try:
+                reebill = dao.load_reebill(account, sequence)
+                dao.save_reebill(reebill)
+                success_count += 1
+            except AttributeError as e:
+                print '%s %s: %s' % (account, sequence,
+                        'AttributeError ' + str(e))
+                error_count += 1
+            except IOError:
+                pass
+    print 'imported %s bills' % success_count
+    print error_count, 'errors'

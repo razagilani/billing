@@ -73,6 +73,11 @@ class BillToolBridge:
             self.config.set('xmldb', 'source_prefix', 'http://[host]:8080/exist/rest/db/skyline/bills')
             self.config.set('xmldb', 'password', '[password]')
             self.config.set('xmldb', 'user', 'prod')
+            self.config.add_section('mongodb')
+            self.config.set('mongodb', 'host', 'localhost')
+            self.config.set('mongodb', 'port', '27017')
+            self.config.set('mongodb', 'db_name', 'skyline')
+            self.config.set('mongodb', 'collection_name', 'reebills')
             self.config.add_section('http')
             self.config.set('http', 'socket_port', '8185')
             self.config.set('http', 'socket_host', '10.0.0.250')
@@ -188,7 +193,8 @@ class BillToolBridge:
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
                 None,
                 None,
-                True
+                True,
+                self.config # pass along config object through fetch_bill_data to mongo, so the bill can be saved in mongodb
             )
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -336,17 +342,16 @@ class BillToolBridge:
     def prettyify_account_numbers(self, accounts):
         # now get associated names from Nexus and add them to each account dictionary
         rows = []
-        for account in accounts:
+        all_accounts_all_names = NexusUtil().all_ids_for_accounts("billing", accounts)
+        for account, all_names in zip(accounts, all_accounts_all_names):
             row = {'account':account}
             display_name = [account]
-
-            all_names = NexusUtil().all("billing", account)
-            if 'codename' in all_names:
-                display_name.append(all_names['codename'])
-            if 'casualname' in all_names:
-                display_name.append(all_names['casualname'])
-            if 'primus' in all_names:
-                display_name.append(all_names['primus'])
+            if u'codename' in all_names:
+                display_name.append(all_names[u'codename'])
+            if u'casualname' in all_names:
+                display_name.append(all_names[u'casualname'])
+            if u'primus' in all_names:
+                display_name.append(all_names[u'primus'])
             #account['name'] = string.join(display_name, ' - ')
             row['name'] = ' - '.join(display_name)
             rows += [row]
@@ -370,6 +375,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def listSequences(self, account, **kwargs):
+        print 'listSequences'
         sequences = []
         try:
             # eventually, this data will have to support pagination
@@ -387,12 +393,11 @@ class BillToolBridge:
         try:
             statuses, totalCount = self.state_db.retrieve_status_days_since(int(start), int(limit))
 
-            # TODO: refactor nexus lookup 
-            
             # convert the result into a list of dictionaries for returning as
             # JSON to the browser
             rows = []
-            for status in statuses:
+            all_statuses_all_names = NexusUtil().all_ids_for_accounts("billing", statuses, key=lambda status:status.account)
+            for status, all_names in zip(statuses, all_statuses_all_names):
                 all_names = NexusUtil().all("billing", status.account)
                 display_name = [status.account]
                 if 'codename' in all_names:
@@ -419,8 +424,8 @@ class BillToolBridge:
             # convert the result into a list of dictionaries for returning as
             # JSON to the browser
             rows = []
-            for status in statuses:
-                all_names = NexusUtil().all("billing", status.account)
+            all_statuses_all_names = NexusUtil().all_ids_for_accounts("billing", statuses, key=lambda status:status.account)
+            for status, all_names in zip(statuses, all_statuses_all_names):
                 display_name = [status.account]
                 if 'codename' in all_names:
                     display_name.append(all_names['codename'])
@@ -642,6 +647,7 @@ class BillToolBridge:
             # then the reebill datastructure itself can be shipped to client.
             utilbill_periods = {}
             for service in reebill.services:
+                print '&&&&&', service
                 (begin, end) = reebill.utilbill_period_for_service(service)
                 utilbill_periods[service] = {
                     'begin': begin,
@@ -817,7 +823,9 @@ class BillToolBridge:
             # convert the result into a list of dictionaries for returning as
             # JSON to the browser
             rows = []
-            for utilbill in utilbills:
+            # TODO: eager loading of utilbills' customers, to prevent nexus from triggering many mysql queries when it applies the key function below
+            all_utilbills_all_names = NexusUtil().all_ids_for_accounts("billing", utilbills, key=lambda utilbill:utilbill.customer.account)
+            for utilbill, all_names in zip(utilbills, all_utilbills_all_names):
 
                 # wouldn't it be nice if the db_objects dealt with the lack of relationship better? Not sure.
                 sequence = utilbill.reebill.sequence if utilbill.reebill else None
@@ -845,18 +853,18 @@ class BillToolBridge:
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
     
     @cherrypy.expose
-    def getUtilBillImage(self, account, begin_date, end_date, **args):
+    def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
         try:
             # TODO: put url here, instead of in billentry.js?
-            result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date)
+            result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date, resolution)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
-    def getReeBillImage(self, account, sequence, **args):
+    def getReeBillImage(self, account, sequence, resolution, **args):
         try:
-            result = self.billUpload.getReeBillImagePath(account, sequence)
+            result = self.billUpload.getReeBillImagePath(account, sequence, resolution)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})

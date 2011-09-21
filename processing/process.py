@@ -33,9 +33,10 @@ import pprint
 
 import yaml
 import rate_structure
-from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state
 from billing.mongo import MongoReebill
+from billing.processing.rate_structure import RateStructureDAO
+from billing.processing import state
 from billing.mongo import ReebillDAO
 
 class Process(object):
@@ -146,7 +147,7 @@ class Process(object):
         XMLUtils().save_xml_file(pay.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), self.config.get("xmldb", "user"), 
             self.config.get("xmldb", "password"))
         # save in mongo
-        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        reebill = self.reebill_dao.load_reebill(account, sequence)
         self.reebill_dao.save_reebill(reebill)
 
     def roll_bill(self, account, sequence):
@@ -284,7 +285,7 @@ class Process(object):
         XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"),
             account, next_sequence), self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
         # save in mongo
-        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        reebill = self.reebill_dao.load_reebill(account, sequence)
         self.reebill_dao.save_reebill(reebill)
 
         # create an initial rebill record to which the utilbills are later associated
@@ -334,7 +335,6 @@ class Process(object):
             #    self.config.get("xmldb", "user"),
             #    self.config.get("xmldb", "password")
             #)
-
             self.calculate_reperiod(account, sequence)
 
     def bindrsnew(self, reebill, ratestructure_db, do_hypothetical):
@@ -542,7 +542,7 @@ class Process(object):
 
         XMLUtils().save_xml_file(etree.tostring(tree, pretty_print=True), outputbill, user, password)
         # save in mongo
-        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, id))
+        reebill = self.reebill_dao.load_reebill(account, id)
         self.reebill_dao.save_reebill(reebill)
 
     def calculate_statistics(self, account, sequence):
@@ -656,7 +656,7 @@ class Process(object):
         XMLUtils().save_xml_file(next_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
             self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
         # save in mongo
-        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        reebill = self.reebill_dao.load_reebill(account, sequence)
         self.reebill_dao.save_reebill(reebill)
 
 
@@ -690,7 +690,7 @@ class Process(object):
         XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
             self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
         # save in mongo
-        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        reebill = self.reebill_dao.load_reebill(account, sequence)
         self.reebill_dao.save_reebill(reebill)
 
     def issue(self, account, sequence, issuedate=None):
@@ -713,7 +713,7 @@ class Process(object):
         XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
             self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
         # save in mongo
-        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        reebill = self.reebill_dao.load_reebill(account, sequence)
         self.reebill_dao.save_reebill(reebill)
 
     def issue_to_customer(self, account, sequence):
@@ -741,4 +741,5 @@ if __name__ == '__main__':
 
     reebill = reebill_dao.load_reebill("10002","12")
     Process(None, None, reebill_dao, ratestructure_dao).bind_rate_structure(reebill)
+
 

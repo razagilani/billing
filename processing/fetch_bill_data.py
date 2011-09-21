@@ -258,7 +258,8 @@ def bindRegisters(dom, verbose=False):
 
     return registers
 
-def fetch_bill_data(server, user, password, olap_id, bill, period_begin, period_end, verbose):
+def fetch_bill_data(server, user, password, olap_id, bill, period_begin, period_end, verbose, config):
+    # 'config' argument is mongodb connection info for saving bill as a mongo document
     """
     """
 
@@ -288,7 +289,7 @@ def fetch_bill_data(server, user, password, olap_id, bill, period_begin, period_
         # save in mongo
         # (no conifg here to pass in)
         reebill = mongo.MongoReebill(bill)
-        mongo.MongoReebillDAO(None).insert_reebill(reebill)
+        mongo.MongoReebillDAO(config).insert_reebill(reebill)
     return dom
 
 if __name__ == "__main__":

@@ -45,12 +45,6 @@ class XMLUtils():
             print str(response.status) + " " + response.reason
 
             print >> sys.stderr, file
-            # convert XML into mongo document and insert into mongo:
-            # TODO: instantiate MongoReebillDAO with config data
-            #reebill = mongo.MongoReebill(file)
-            #dao = mongo.MongoReebillDAO(None)
-            #dao.insert_reebill(reebill)
-
         else:
             # plain files are never actually used
 
