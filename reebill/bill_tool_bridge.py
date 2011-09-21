@@ -938,18 +938,18 @@ class BillToolBridge:
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
     
     @cherrypy.expose
-    def getUtilBillImage(self, account, begin_date, end_date, **args):
+    def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
         try:
             # TODO: put url here, instead of in billentry.js?
-            result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date)
+            result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date, resolution)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
-    def getReeBillImage(self, account, sequence, **args):
+    def getReeBillImage(self, account, sequence, resolution, **args):
         try:
-            result = self.billUpload.getReeBillImagePath(account, sequence)
+            result = self.billUpload.getReeBillImagePath(account, sequence, resolution)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
