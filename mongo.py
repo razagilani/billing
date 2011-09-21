@@ -812,7 +812,6 @@ class ReebillDAO:
 
         # make a Bill object from the XML document
         b = bill.Bill(url)
-
         return b
 
     def save_reebill(self, reebill):
@@ -843,7 +842,8 @@ class ReebillDAO:
             con.putrequest('PUT', '%s' % url)
             con.putheader('Content-Type', 'text/xml')
 
-            auth = 'Basic ' + string.strip(base64.encodestring(self.config['user'] + ':' + self.config['password']))
+            auth = 'Basic ' + string.strip(base64.encodestring(
+                self.config['user'] + ':' + self.config['password']))
             con.putheader('Authorization', auth )
 
             clen = len(xml) 
