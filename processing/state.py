@@ -31,8 +31,8 @@ class StateDB:
         user = config['user']
         password = config['password']
 
+        # put "echo=True" in the call to create_engine to print the SQL statements that are executed
         engine = create_engine('mysql://%s:%s@%s:3306/%s' % (user, password, host, db), pool_recycle=3600)
-        #metadata = MetaData() 
         metadata = MetaData(engine)
 
         # table objects loaded automatically from database
@@ -57,7 +57,8 @@ class StateDB:
 
         mapper(UtilBill, utilbill_table, \
                 properties={
-                    'reebill': relationship(ReeBill, backref='utilbill')
+                    # "lazy='joined'" makes SQLAlchemy eagerly load utilbill customers
+                    'reebill': relationship(ReeBill, backref='utilbill', lazy='joined')
                 })
 
         mapper(Payment, payment_table, \
