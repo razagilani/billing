@@ -143,7 +143,7 @@ class Process(object):
         XMLUtils().save_xml_file(pay.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), self.config.get("xmldb", "user"), 
             self.config.get("xmldb", "password"))
         # save in mongo
-        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        reebill = self.reebill_dao.load_reebill(account, sequence)
         self.reebill_dao.save_reebill(reebill)
 
     def roll_bill(self, account, sequence):
@@ -281,7 +281,7 @@ class Process(object):
         XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"),
             account, next_sequence), self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
         # save in mongo
-        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        reebill = self.reebill_dao.load_reebill(account, sequence)
         self.reebill_dao.save_reebill(reebill)
 
         # create an initial rebill record to which the utilbills are later associated
@@ -315,7 +315,7 @@ class Process(object):
             self.bindrs(
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-                self.config.get("billdb", "rspath"),
+                self.config.get("rsdb", "rspath"),
                 False, 
                 self.config.get("xmldb", "user"),
                 self.config.get("xmldb", "password")
@@ -325,7 +325,7 @@ class Process(object):
             self.bindrs(
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-                self.config.get("billdb", "rspath"),
+                self.config.get("rsdb", "rspath"),
                 True, 
                 self.config.get("xmldb", "user"),
                 self.config.get("xmldb", "password")
@@ -486,7 +486,7 @@ class Process(object):
 
         XMLUtils().save_xml_file(etree.tostring(tree, pretty_print=True), outputbill, user, password)
         # save in mongo
-        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, id))
+        reebill = self.reebill_dao.load_reebill(account, id)
         self.reebill_dao.save_reebill(reebill)
 
     def calculate_statistics(self, account, sequence):
@@ -600,7 +600,7 @@ class Process(object):
         XMLUtils().save_xml_file(next_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
             self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
         # save in mongo
-        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        reebill = self.reebill_dao.load_reebill(account, sequence)
         self.reebill_dao.save_reebill(reebill)
 
 
@@ -634,7 +634,7 @@ class Process(object):
         XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
             self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
         # save in mongo
-        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        reebill = self.reebill_dao.load_reebill(account, sequence)
         self.reebill_dao.save_reebill(reebill)
 
     def issue(self, account, sequence, issuedate=None):
@@ -657,7 +657,7 @@ class Process(object):
         XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
             self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
         # save in mongo
-        reebill = MongoReebill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        reebill = self.reebill_dao.load_reebill(account, sequence)
         self.reebill_dao.save_reebill(reebill)
 
     def issue_to_customer(self, account, sequence):
