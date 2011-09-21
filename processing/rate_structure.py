@@ -5,11 +5,15 @@ import jinja2
 import os
 from decimal import Decimal
 import traceback
+import copy
 
 import pymongo
 
 from billing import mongo
 import yaml
+
+import pprint
+pp = pprint.PrettyPrinter(indent=1)
 
 class RateStructureDAO():
 
@@ -33,49 +37,184 @@ class RateStructureDAO():
         # TODO: clean up mongo resources here?
         pass
 
+    def load_probable_rs(self, reebill, service):
 
-    def load_rs(self, account, sequence, rsbinding, branch):
+        # return a probable rate structure for each utilbill in the reebill
 
-        rate_structure = yaml.load(file(os.path.join(self.config["rspath"], rsbinding, account, sequence+".yaml")))
+        # all the data needed to identify a probable rate structure
+        account = reebill.account
+        sequence = reebill.sequence
+        branch = reebill.branch
+        rsbinding = reebill.rate_structure_name_for_service(service)
+        utility_name = reebill.utility_name_for_service(service)
+        rate_structure_name = reebill.rate_structure_name_for_service(service)
+        (period_begin, period_end) = reebill.utilbill_period_for_service(service)
 
-        # no mongo doc? make one to populate mongo.
-        if self.load_rs_mongo(account, sequence, rsbinding, branch) is None:
-            self.save_rs_mongo(account, sequence, rsbinding, branch, rate_structure)
 
+        # load the URS
+        urs = self.load_urs(utility_name, rate_structure_name, period_begin, period_end)
+        if urs is None: raise Exception("Could not lookup URS")
+
+        # load the UPRS
+        uprs = self.load_uprs(utility_name, rate_structure_name, period_begin, period_end)
+
+        # load the CPRS
+        cprs = self.load_cprs(account, sequence, branch, utility_name, rate_structure_name)
+
+        # URS is overridden and augmented by rates in UPRS
+        urs['rates'].update(uprs)
+
+        # which is in turn overridden and augmented by rates in CPRS
+        urs['rates'].update(cprs)
+
+        return urs
+
+    # TODO need to specify which rate structure name
+    def load_rs(self, account, sequence, branch, utility_name):
+
+        rate_structure = yaml.load(file(os.path.join(self.config["rspath"], str(utility_name), str(account), str(sequence)+".yaml")))
+
+        rate_structure_name = rate_structure['name']
+
+        # if there is no cprs, assume the rs hasn't been converted and convert it  
+        # to both a URS and CPRS
+        if self.load_cprs(account, sequence, branch, utility_name, rate_structure_name) is None:
+
+            # convert rs.yaml to URS 
+            rates = {}
+            convert_rs = copy.deepcopy(rate_structure)
+            for rate in convert_rs['rates']:
+                descriptor = rate['descriptor']
+                del rate['descriptor']
+                # assume that quantity
+                if 'quantity' in rate: del rate['quantity']
+                rates[descriptor] = rate
+            convert_rs['rates'] = rates
+
+            # convert regs to new structure
+            regs = {}
+            for reg in convert_rs['registers']:
+                descriptor = reg['descriptor']
+                del reg['descriptor']
+                regs[descriptor] = reg
+            convert_rs['registers'] = regs
+
+
+            effective = convert_rs['effective']
+            expires = convert_rs['expires']
+
+            # remove regs  and things note needed in the URS body 
+            del convert_rs['name']
+            del convert_rs['service']
+            del convert_rs['effective']
+            del convert_rs['expires']
+
+            # will overwrite for every CPRS but last write becomes URS on cut-over
+            self.save_urs(utility_name, rate_structure_name, effective, expires, convert_rs)
+
+            # convert rs.yaml to CPRS
+            convert_rs = copy.deepcopy(rate_structure)
+            rates = {}
+            if 'effective' in convert_rs: del convert_rs['effective']
+            if 'expires' in convert_rs: del convert_rs['expires']
+            for rate in convert_rs['rates']:
+                descriptor = rate['descriptor']
+                del rate['descriptor']
+
+                # Assume these are going into URS
+                if 'description' in rate: del rate['description']
+                if 'rateunits' in rate: del rate['rateunits']
+                if 'quantityunits' in rate: del rate['quantityunits']
+                rates[descriptor] = rate
+            convert_rs.update(rates)
+            del convert_rs['rates']
+
+            # remove regs  and things not needed in the CPRS
+            del convert_rs['registers']
+            del convert_rs['name']
+            del convert_rs['service']
+
+            self.save_cprs(account, sequence, branch, utility_name, rate_structure_name, convert_rs)
+
+
+        # return the yaml so things still work
         return rate_structure
 
-    def load_rs_mongo(self, account, sequence, rsbinding, branch):
+    def load_urs(self, utility_name, rate_structure_name, period_begin, period_end):
 
-        mongo_rate_structure = self.collection.find_one({
+        # TODO: be able to accept a period_begin/period_end for a service and query 
+        # the URS in a manner ensuring the correct in-effect URS is obtained
+
+        # TODO fixme
+        urs_rate_structure = self.collection.find_one({
             '_id': {
-                    'account': account,
-                    'sequence': sequence,
-                    'branch': branch,
-                    'rsbinding': rsbinding
+                'utility_name': utility_name,
+                'rate_structure_name': rate_structure_name,
+                #'effective':  effect<=period_begin
+                #'expires': expires>=period_end
             }
         })
 
-        return mongo_rate_structure
+        return urs_rate_structure
+
+    def load_uprs(self, utility_name, rate_structure_name, begin_period, end_period):
+
+        # eventually, return an rs that matches the service period 
+        return {}
+
+    def load_cprs(self, account, sequence, branch, utility_name, rate_structure_name):
+
+        # works db.ratestructure.findOne({'_id':{"account":"10002", "sequence":"16", "rate_structure_name":"101_residential_service_rate", "utility_name":"piedmont", "branch":0}})
+        query = {
+            "_id.account":account, 
+            "_id.sequence": str(sequence), 
+            "_id.rate_structure_name": rate_structure_name, 
+            "_id.utility_name": utility_name, 
+            "_id.branch":int(branch)}
+
+        cprs_rate_structure = self.collection.find_one(query)
+
+        return cprs_rate_structure
+
+    def save_urs(self, utility_name, rate_structure_name, effective, expires, rate_structure_data):
+
+        # works
+        #db.ratestructure.findOne({'_id':{"rate_structure_name":"101_residential_service_rate", "utility_name":"piedmont"}})
+
+        rate_structure_data['_id'] = { 
+            'utility_name': utility_name,
+            'rate_structure_name': rate_structure_name,
+            # TODO: support date ranges for URS
+            #'effective': effective,
+            #'expires': expires
+        }
 
 
+        # TODO: bson_convert has to become a util function
+        rate_structure_data = mongo.bson_convert(rate_structure_data)
 
-    def save_rs_mongo(self, account, sequence, rsbinding, branch, rate_structure):
+        self.collection.save(rate_structure_data)
 
-        rate_structure['_id'] = { 
+    def save_cprs(self, account, sequence, branch, utility_name, rate_structure_name, rate_structure_data):
+
+        rate_structure_data['_id'] = { 
             'account': account,
             'sequence': sequence,
             'branch': branch,
-            'rsbinding': rsbinding
+            'utility_name': utility_name,
+            'rate_structure_name': rate_structure_name,
         }
 
-        rate_structure = mongo.bson_convert(rate_structure)
 
-        self.collection.save(rate_structure)
+        # TODO: bson_convert has to become a util function
+        rate_structure_data = mongo.bson_convert(rate_structure_data)
+
+        self.collection.save(rate_structure_data)
 
     def save_rs(self, account, sequence, rsbinding, rate_structure):
 
         yaml.safe_dump(rate_structure, open(os.path.join(self.config["rspath"], rsbinding, account, sequence+".yaml"), "w"), default_flow_style=False)
-        self.save_rs_mongo(account, sequence, rsbinding, 0, rate_structure)
+        #self.save_rs_mongo(account, sequence, rsbinding, 0, rate_structure)
 
 
 
