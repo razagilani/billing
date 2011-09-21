@@ -659,7 +659,7 @@ class MongoReebill:
         #    if ub['service'] == service:
         #for meter in ub['meters']:
 
-        for meter in self.meters_for_service(service):
+        for meter in self.meters_for_service(service):2917:ef9b7f1e03cd
             if meter['identifier'] == identifier:
                 meter['present_read_date'] = present_read_date
                 meter['prior_read_date'] = prior_read_date
