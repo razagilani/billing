@@ -71,25 +71,15 @@ def bson_convert(x):
     raise ValueError("type(%s) is %s: can't convert that into bson" \
             % (x, type(x)))
 
-#TODO: looks like this makes a by value copy of a dictionary causing references to be lost
-# making difficult returning references to data that needs to be modified. (e.g. we return
-# a meter dict which might have an identifier changed)
-# See set_meter_read_date()
 def deep_map(func, x):
     '''Applies the function 'func' througout the data structure x, or just
     applies it to x if x is a scalar. Used for type conversions from Mongo
     types back into the appropriate Python types.'''
     if type(x) is list:
-        for item in x:
-            deep_map(func, item)
-        #return [deep_map(func, item) for item in x]
-        #return [deep_map(func, item) for item in x]
+        return [deep_map(func, item) for item in x]
     if type(x) is dict:
-        for key, value in x.iteritems():
-            deep_map(func, key)
-            deep_map(func, value)
-        # this creates a new dictionary, we wish to use the one in place? Only if references are lost
-        #return dict((deep_map(func, key), deep_map(func, value)) for key, value in x.iteritems())
+        return dict((deep_map(func, key), deep_map(func, value)) for key, value in x.iteritems())
+
     return func(x)
 
 def float_to_decimal(x):
