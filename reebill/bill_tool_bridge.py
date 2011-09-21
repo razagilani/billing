@@ -73,6 +73,11 @@ class BillToolBridge:
             self.config.set('xmldb', 'source_prefix', 'http://[host]:8080/exist/rest/db/skyline/bills')
             self.config.set('xmldb', 'password', '[password]')
             self.config.set('xmldb', 'user', 'prod')
+            self.config.add_section('mongodb')
+            self.config.set('mongodb', 'host', 'localhost')
+            self.config.set('mongodb', 'port', '27017')
+            self.config.set('mongodb', 'db_name', 'skyline')
+            self.config.set('mongodb', 'collection_name', 'reebills')
             self.config.add_section('http')
             self.config.set('http', 'socket_port', '8185')
             self.config.set('http', 'socket_host', '10.0.0.250')
@@ -188,7 +193,8 @@ class BillToolBridge:
                 "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
                 None,
                 None,
-                True
+                True,
+                self.config # pass along config object through fetch_bill_data to mongo, so the bill can be saved in mongodb
             )
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
