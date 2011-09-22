@@ -301,8 +301,9 @@ class BillToolBridge:
 
         return json.dumps({'success': True})
 
-    #TODO make this generic enough that all other account listing functions can return pretty names
+    #TODO remove this because full_names_of_accounts is more general
     def prettyify_account_numbers(self, accounts):
+        '''Given a list of account numbers, return a list of strings containing many names/ids for each customer joined together.'''
         # now get associated names from Nexus and add them to each account dictionary
         rows = []
         all_accounts_all_names = NexusUtil().all_ids_for_accounts("billing", accounts)
@@ -318,8 +319,31 @@ class BillToolBridge:
             #account['name'] = string.join(display_name, ' - ')
             row['name'] = ' - '.join(display_name)
             rows += [row]
-
         return rows
+
+    def full_names_of_accounts(self, accounts):
+        '''Given a list of account numbers (as strings), returns a list
+        containing the "full name" of each account, each of which is of the
+        form "accountnumber - codename - casualname - primus". Names that do not
+        exist are skipped.'''
+        all_accounts_all_names = NexusUtil().all_ids_for_accounts("billing", accounts)
+        result = []
+        for account, all_names in zip(accounts, all_accounts_all_names):
+            names = [account]
+            try:
+                names.append(all_names['codename'])
+            except KeyError:
+                pass
+            try:
+                names.append(all_names['casualname'])
+            except KeyError:
+                pass
+            try:
+                names.append(all_names['primus'])
+            except KeyError:
+                pass
+            result.append(' - '.join(names))
+        return result
 
     @cherrypy.expose
     def listAccounts(self, **kwargs):
@@ -358,19 +382,20 @@ class BillToolBridge:
 
             # convert the result into a list of dictionaries for returning as
             # JSON to the browser
-            rows = []
-            all_statuses_all_names = NexusUtil().all_ids_for_accounts("billing", statuses, key=lambda status:status.account)
-            for status, all_names in zip(statuses, all_statuses_all_names):
-                all_names = NexusUtil().all("billing", status.account)
-                display_name = [status.account]
-                if 'codename' in all_names:
-                    display_name.append(all_names['codename'])
-                if 'casualname' in all_names:
-                    display_name.append(all_names['casualname'])
-                if 'primus' in all_names:
-                    display_name.append(all_names['primus'])
-                rows.append({'account': string.join(display_name, '-'), 'dayssince':status.dayssince})
-
+            #rows = []
+            #all_statuses_all_names = NexusUtil().all_ids_for_accounts("billing", statuses, key=lambda status:status.account)
+            #for status, all_names in zip(statuses, all_statuses_all_names):
+                #all_names = NexusUtil().all("billing", status.account)
+                #display_name = [status.account]
+                #if 'codename' in all_names:
+                    #display_name.append(all_names['codename'])
+                #if 'casualname' in all_names:
+                    #display_name.append(all_names['casualname'])
+                #if 'primus' in all_names:
+                    #display_name.append(all_names['primus'])
+                #rows.append({'account': string.join(display_name, '-'), 'dayssince':status.dayssince})
+            full_names = self.full_names_of_accounts([s.account for s in statuses])
+            rows = [dict([('account', full_names[i]), ('dayssince', status.dayssince)]) for i, status in enumerate(statuses)]
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
             # TODO: log errors?
@@ -388,15 +413,16 @@ class BillToolBridge:
             # JSON to the browser
             rows = []
             all_statuses_all_names = NexusUtil().all_ids_for_accounts("billing", statuses, key=lambda status:status.account)
-            for status, all_names in zip(statuses, all_statuses_all_names):
-                display_name = [status.account]
-                if 'codename' in all_names:
-                    display_name.append(all_names['codename'])
-                if 'casualname' in all_names:
-                    display_name.append(all_names['casualname'])
-                if 'primus' in all_names:
-                    display_name.append(all_names['primus'])
-                rows.append({'account': string.join(display_name, '-')})
+            rows = self.prettyify_account_numbers(map(lambda x:x.account, statuses))
+            #for status, all_names in zip(statuses, all_statuses_all_names):
+                #display_name = [status.account]
+                #if 'codename' in all_names:
+                    #display_name.append(all_names['codename'])
+                #if 'casualname' in all_names:
+                    #display_name.append(all_names['casualname'])
+                #if 'primus' in all_names:
+                    #display_name.append(all_names['primus'])
+                #rows.append({'account': string.join(display_name, '-')})
 
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
