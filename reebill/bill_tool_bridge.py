@@ -131,8 +131,19 @@ class BillToolBridge:
         #billdb_config_section.update(xmldb_config_section)
         self.reebill_dao = mongo.ReebillDAO(reebill_dao_configs)
 
+        # create a RateStructureDAO
+
+        # TODO: externalize config
+        self.ratestructure_dao = rs.RateStructureDAO({
+            "database":"skyline",
+            "rspath":"/db-dev/skyline/ratestructure/",
+            "host":"localhost",
+            "collection":"ratestructure",
+            "port": 27017
+        })
+
         # create one Process object to use for all related bill processing
-        self.process = process.Process(self.config, self.state_db, self.reebill_dao)
+        self.process = process.Process(self.config, self.state_db, self.reebill_dao, self.ratestructure_dao)
 
         # configure mailer
         bill_mailer.config = self.config

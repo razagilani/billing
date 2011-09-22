@@ -317,25 +317,11 @@ class Process(object):
 
             # process the actual charges across all services
             self.bindrsnew(reebill, self.rate_structure_dao, False)
-            #self.bindrs( "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-            #    "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-            #    self.config.get("billdb", "rspath"),
-            #    False, 
-            #    self.config.get("xmldb", "user"),
-            #    self.config.get("xmldb", "password")
-            #)
 
             # process the hypothetical charges across all services
             self.bindrsnew(reebill, ratestructure_dao, True)
-            #self.bindrs(
-            #    "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-            #    "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence),
-            #    self.config.get("billdb", "rspath"),
-            #    True, 
-            #    self.config.get("xmldb", "user"),
-            #    self.config.get("xmldb", "password")
-            #)
-            self.calculate_reperiod(account, sequence)
+
+            self.calculate_reperiod(reebill.account, reebill.sequence)
 
     def bindrsnew(self, reebill, ratestructure_db, do_hypothetical):
         """ This function binds a rate structure against the actual and hypothetical charges found """
@@ -353,6 +339,7 @@ class Process(object):
             import pdb
             pdb.set_trace()
             # get a RateStructure
+
             rate_structure = self.rate_structure_dao.load_rate_structure(reebill, service)
 
             # find out what registers are needed to process this rate structure
