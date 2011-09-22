@@ -884,17 +884,15 @@ class BillToolBridge:
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
+            # result is a list of dictionaries of the form {account: account
+            # number, name: full name, period_start: date, period_end: date,
+            # sequence: reebill sequence number (if present)}
             utilbills, totalCount = self.state_db.list_utilbills(int(start), int(limit))
             # note that utilbill customers are eagerly loaded
             full_names = self.full_names_of_accounts([ub.customer.account for ub in utilbills])
-             # the code that was here before included
-             # 'sequence': utilbill.reebill.sequence if utilbill.reebill else None
-             # in the dict for each utilbill, which would be
-             # ('sequence', ub.reebill.sequence)])
-             # here, but UtilBill doesn't even seem to have a 'reebill'
-             # attribute so i omitted it
             rows = [dict([('account', ub.customer.account), ('name', full_names[i]),
-                ('period_start', ub.period_start), ('period_end', ub.period_end)])
+                ('period_start', ub.period_start), ('period_end', ub.period_end),
+                ('sequence', ub.reebill.sequence if ub.reebill else None)])
                  for i, ub in enumerate(utilbills)]
             return ju.dumps({'success': True, 'rows':rows,
                 'results':totalCount})
