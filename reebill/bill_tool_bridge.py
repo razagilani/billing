@@ -301,31 +301,11 @@ class BillToolBridge:
 
         return json.dumps({'success': True})
 
-    #TODO remove this because full_names_of_accounts is more general
-    def prettyify_account_numbers(self, accounts):
-        '''Given a list of account numbers, return a list of strings containing many names/ids for each customer joined together.'''
-        # now get associated names from Nexus and add them to each account dictionary
-        rows = []
-        all_accounts_all_names = NexusUtil().all_ids_for_accounts("billing", accounts)
-        for account, all_names in zip(accounts, all_accounts_all_names):
-            row = {'account':account}
-            display_name = [account]
-            if u'codename' in all_names:
-                display_name.append(all_names[u'codename'])
-            if u'casualname' in all_names:
-                display_name.append(all_names[u'casualname'])
-            if u'primus' in all_names:
-                display_name.append(all_names[u'primus'])
-            #account['name'] = string.join(display_name, ' - ')
-            row['name'] = ' - '.join(display_name)
-            rows += [row]
-        return rows
-
     def full_names_of_accounts(self, accounts):
         '''Given a list of account numbers (as strings), returns a list
         containing the "full name" of each account, each of which is of the
         form "accountnumber - codename - casualname - primus". Names that do not
-        exist are skipped.'''
+        exist for a given account are skipped.'''
         all_accounts_all_names = NexusUtil().all_ids_for_accounts("billing", accounts)
         result = []
         for account, all_names in zip(accounts, all_accounts_all_names):
@@ -350,11 +330,9 @@ class BillToolBridge:
         accounts = []
         try:
             # eventually, this data will have to support pagination
-
             accounts = self.state_db.listAccounts()
-
-            rows = self.prettyify_account_numbers(accounts)
-
+            rows = [{'account': account, 'name': full_name} for account,
+                    full_name in zip(accounts, self.full_names_of_accounts(accounts))]
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
@@ -378,24 +356,12 @@ class BillToolBridge:
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
+            # result is a list of dictionaries of the form
+            # {account: full name, dayssince: days}
             statuses, totalCount = self.state_db.retrieve_status_days_since(int(start), int(limit))
-
-            # convert the result into a list of dictionaries for returning as
-            # JSON to the browser
-            #rows = []
-            #all_statuses_all_names = NexusUtil().all_ids_for_accounts("billing", statuses, key=lambda status:status.account)
-            #for status, all_names in zip(statuses, all_statuses_all_names):
-                #all_names = NexusUtil().all("billing", status.account)
-                #display_name = [status.account]
-                #if 'codename' in all_names:
-                    #display_name.append(all_names['codename'])
-                #if 'casualname' in all_names:
-                    #display_name.append(all_names['casualname'])
-                #if 'primus' in all_names:
-                    #display_name.append(all_names['primus'])
-                #rows.append({'account': string.join(display_name, '-'), 'dayssince':status.dayssince})
             full_names = self.full_names_of_accounts([s.account for s in statuses])
-            rows = [dict([('account', full_names[i]), ('dayssince', status.dayssince)]) for i, status in enumerate(statuses)]
+            rows = [dict([('account', full_names[i]), ('dayssince', status.dayssince)])
+                    for i, status in enumerate(statuses)]
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
             # TODO: log errors?
@@ -407,23 +373,12 @@ class BillToolBridge:
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
+            # result is a list of dictionaries of the form
+            # {account: account number, full_name: full name}
             statuses, totalCount = self.state_db.retrieve_status_unbilled(int(start), int(limit))
-            
-            # convert the result into a list of dictionaries for returning as
-            # JSON to the browser
-            rows = []
             all_statuses_all_names = NexusUtil().all_ids_for_accounts("billing", statuses, key=lambda status:status.account)
-            rows = self.prettyify_account_numbers(map(lambda x:x.account, statuses))
-            #for status, all_names in zip(statuses, all_statuses_all_names):
-                #display_name = [status.account]
-                #if 'codename' in all_names:
-                    #display_name.append(all_names['codename'])
-                #if 'casualname' in all_names:
-                    #display_name.append(all_names['casualname'])
-                #if 'primus' in all_names:
-                    #display_name.append(all_names['primus'])
-                #rows.append({'account': string.join(display_name, '-')})
-
+            full_names = self.full_names_of_accounts([s.account for s in statuses])
+            rows = [dict([('account', full_names[i])]) for i, status in enumerate(statuses)]
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
             # TODO: log errors?
@@ -930,31 +885,17 @@ class BillToolBridge:
         # JSON format if it succeded or an error if it didn't
         try:
             utilbills, totalCount = self.state_db.list_utilbills(int(start), int(limit))
-            
-            # convert the result into a list of dictionaries for returning as
-            # JSON to the browser
-            rows = []
-            # TODO: eager loading of utilbills' customers, to prevent nexus from triggering many mysql queries when it applies the key function below
-            all_utilbills_all_names = NexusUtil().all_ids_for_accounts("billing", utilbills, key=lambda utilbill:utilbill.customer.account)
-            for utilbill, all_names in zip(utilbills, all_utilbills_all_names):
-
-                # wouldn't it be nice if the db_objects dealt with the lack of relationship better? Not sure.
-                sequence = utilbill.reebill.sequence if utilbill.reebill else None
-                account = utilbill.customer.account if utilbill.customer else None
-
-                all_names = NexusUtil().all("billing", account)
-                display_name = [account]
-
-                if 'codename' in all_names:
-                    display_name.append(all_names['codename'])
-                if 'casualname' in all_names:
-                    display_name.append(all_names['casualname'])
-                if 'primus' in all_names:
-                    display_name.append(all_names['primus'])
-
-                rows.append({'account':account, 'name': string.join(display_name, '-'), 'period_start': utilbill.period_start,
-                'period_end':utilbill.period_end, 'sequence':sequence})
-
+            # note that utilbill customers are eagerly loaded
+            full_names = self.full_names_of_accounts([ub.customer.account for ub in utilbills])
+             # the code that was here before included
+             # 'sequence': utilbill.reebill.sequence if utilbill.reebill else None
+             # in the dict for each utilbill, which would be
+             # ('sequence', ub.reebill.sequence)])
+             # here, but UtilBill doesn't even seem to have a 'reebill'
+             # attribute so i omitted it
+            rows = [dict([('account', ub.customer.account), ('name', full_names[i]),
+                ('period_start', ub.period_start), ('period_end', ub.period_end)])
+                 for i, ub in enumerate(utilbills)]
             return ju.dumps({'success': True, 'rows':rows,
                 'results':totalCount})
         except Exception as e:
