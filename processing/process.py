@@ -319,7 +319,7 @@ class Process(object):
             self.bindrsnew(reebill, self.rate_structure_dao, False)
 
             # process the hypothetical charges across all services
-            self.bindrsnew(reebill, ratestructure_dao, True)
+            self.bindrsnew(reebill, self.rate_structure_dao, True)
 
             self.calculate_reperiod(reebill.account, reebill.sequence)
 
@@ -336,8 +336,6 @@ class Process(object):
         for service in reebill.services:
 
 
-            import pdb
-            pdb.set_trace()
             # get a RateStructure
 
             rate_structure = self.rate_structure_dao.load_rate_structure(reebill, service)
@@ -360,13 +358,16 @@ class Process(object):
             # process actual charges with non-shadow meter register totals
             actual_chargegroups = reebill.actual_chargegroups_for_service(service)
 
+            print "actual chargegroups before bind %s" % actual_chargegroups
+
             # iterate over the charge groups, binding the reebill charges to its associated RSI
 
             for chargegroup, charges in actual_chargegroups.items():
                 rate_structure.bind_charges(charges)
 
-            reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
+            print "actual chargegroups after bind %s" % actual_chargegroups
 
+            reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
 
             # process hypothetical charges with non-shadow + shadow meter register totals
             #shadow_register_readings = reebill.shadow_registers(service)

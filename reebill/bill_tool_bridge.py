@@ -217,7 +217,8 @@ class BillToolBridge:
 
         try:
             reebill = self.reebill_dao.load_reebill(account, sequence)
-            self.process.bind_rate_structure(reebill, ratestructure_dao)
+            self.process.bind_rate_structure(reebill)
+            self.reebill_dao.save_reebill(reebill)
             return json.dumps({'success': True})
 
         except Exception as e:
