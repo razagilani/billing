@@ -5,6 +5,7 @@ import jinja2
 import os
 from decimal import Decimal
 import traceback
+import inspect
 import copy
 
 import pymongo
@@ -459,6 +460,7 @@ class Register():
         return s
 
 class RateStructureItem():
+
     """ 
     Container class for RSIs.  This serves as a class from which RateStructureItem instances are obtained
     via definition in the rs data. An RSI consists of (importantly) a descriptor, quantity, rate and total.
@@ -518,6 +520,11 @@ class RateStructureItem():
                 # Don't add the attr the property since it has no value and its only contribution 
                 # would be to make for None type checking all over the place.
 
+
+        self.evaluated_total = False
+        self.evaluated_quantity = False
+        self.evaluated_rate = False
+
     @property
     def descriptor(self):
         if hasattr(self, "_descriptor"):
@@ -525,7 +532,7 @@ class RateStructureItem():
         else:
             return None
 
-    def evaluate_rsi(self, rsi_value):
+    def evaluate(self, rsi_value):
         """
         An RSI value is an str that has an expression that may be evaluated.
         An RSI expression can be as simpe as a number, or as complex as a Python
@@ -535,6 +542,10 @@ class RateStructureItem():
         """
         assert type(rsi_value) is str
 
+
+        caller = inspect.stack()[1][3]
+        print "RSI Evaluate: %s, %s Value: %s" % (self._descriptor, caller, rsi_value)
+
         try:
 
             # eval results in a recursive evaluation of all referenced expressions
@@ -542,6 +553,7 @@ class RateStructureItem():
             # this enables the rsi_value to contain references to attributes 
             # (registers and RSIs) that are held in the RateStructure
             result = eval(rsi_value, self._rate_structure.__dict__)
+            print "RSI Evaluate Result: %s" % result
             return str(result)
 
         except RuntimeError as re:
@@ -572,43 +584,38 @@ class RateStructureItem():
     def total(self):
         """
         """
+        if self.evaluated_total is False:
 
-        if hasattr(self, "_total"):
-            return self.evaluate_rsi(self._total)
+            if hasattr(self, "_total"):
+                self._total = self.evaluate(self._total)
+                self.evaluated_total = True
+                return self._total
 
-        # total isn't defined by RSI, so it must be computed
-        else:
+            # total isn't defined by RSI, so it must be computed
+            else:
 
-            # total must be computed from rate and/or quantity.
+                # total must be computed from rate and/or quantity.
 
-            # TODO: consider the meaning of the possible existing rate and quantity for the RSI
-            # even though it has a total.  What if r and q are set and don't equal a total that has been set?!
+                # TODO: consider the meaning of the possible existing rate and quantity for the RSI
+                # even though it has a total.  What if r and q are set and don't equal a total that has been set?!
 
-            # TODO: it total exists, and either rate or quantity is missing, why not solve for
-            # the missing term?
+                # TODO: it total exists, and either rate or quantity is missing, why not solve for
+                # the missing term?
 
-            # Look for a quantity, but it is ok if it does not exist - provided there is a rate
-            q = self.quantity if hasattr(self, "_quantity") else None
-
-            # Look for a rate and let the exception fly if it does not exist
-            r = self.rate
-                
-            # A quantity and rate must be set to evaluate total.
-            if q is not None:
-                #print "%s: %s = %s * %s (%s)" % (self.descriptor, self._total, q, r, self.description)
+                q = self.quantity
+                r = self.rate
+                    
                 self._total = str(Decimal(q) * Decimal(r))
 
-            # No quantity, but there is a rate. 
-            # A flat rate assumption can be made.
-            elif q is None:
-                self._total = str(Decimal("1") * Decimal(r))
+                self.evaluated_total = True
 
-            rule = self._roundrule if hasattr(self, "_roundrule") else None
-            # we can set self._total if we want to compute only once
-            #TODO: flag for compute once
+                rule = self._roundrule if hasattr(self, "_roundrule") else None
 
-            # perform decimal round rule.  Preserve native type. 
-            return str(Decimal(self._total).quantize(Decimal('.01'), rule))
+                # perform decimal round rule.  Preserve native type. 
+                return str(Decimal(self._total).quantize(Decimal('.01'), rule))
+
+        else:
+            return self._total
 
     @property
     def description(self):
@@ -621,15 +628,20 @@ class RateStructureItem():
     @property
     def quantity(self):
 
-        if hasattr(self, "_quantity"):
-            result = self.evaluate_rsi(self._quantity)
-            return result
+        if self.evaluated_quantity is False:
+            if hasattr(self, "_quantity"):
+                self._quantity = self.evaluate(self._quantity)
+                self.evaluated_quantity = True
+                return self._quantity
+            else:
+                # no quantity attribute? It may be assumed to be one
+                self._quantity = "1"
+                self.evaluated_quantity = True
+                return self._quantity
 
-        raise NoPropertyError(self._descriptor, "%s.quantity does not exist" % self._descriptor)
-
-    #@quantity.setter
-    #def quantity(self, quantity):
-    #    self._quantity = str(quantity)
+            raise NoPropertyError(self._descriptor, "%s.quantity does not exist" % self._descriptor)
+        else:
+            return self._quantity
 
     @property
     def quantityunits(self):
@@ -642,11 +654,15 @@ class RateStructureItem():
     @property
     def rate(self):
 
-        if hasattr(self, "_rate"):
-            result = self.evaluate_rsi(self._rate)
-            return result
+        if self.evaluated_rate is False:
+            if hasattr(self, "_rate"):
+                self._rate = self.evaluate(self._rate)
+                self.evaluated_rate = True
+                return self._rate
 
-        raise NoPropertyError(self._descriptor, "%s.rate does not exist" % self._descriptor)
+            raise NoPropertyError(self._descriptor, "%s.rate does not exist" % self._descriptor)
+        else:
+            return self._rate
 
     @property
     def rateunits(self):

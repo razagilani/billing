@@ -35,12 +35,8 @@ def deep_map(func, x):
     types back into the appropriate Python types.'''
     if type(x) is list:
         return [deep_map(func, item) for item in x]
-        #return [deep_map(func, item) for item in x]
-        #return [deep_map(func, item) for item in x]
     if type(x) is dict:
         return dict((deep_map(func, key), deep_map(func, value)) for key, value in x.iteritems())
-        # this creates a new dictionary, we wish to use the one in place? Only if references are lost
-        #return dict((deep_map(func, key), deep_map(func, value)) for key, value in x.iteritems())
     return func(x)
 
 def float_to_decimal(x):
