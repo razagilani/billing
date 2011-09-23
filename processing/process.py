@@ -359,8 +359,6 @@ class Process(object):
 
             # iterate over the charge groups, binding the reebill charges to its associated RSI
             for chargegroup, charges in actual_chargegroups.items():
-                import pdb
-                pdb.set_trace()
                 rate_structure.bind_charges(charges)
             reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
 
