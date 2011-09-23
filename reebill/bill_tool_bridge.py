@@ -463,7 +463,15 @@ class BillToolBridge:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
-            rate_structure = self.ratestructure_dao.load_rs(reebill, service)
+            #rate_structure = self.ratestructure_dao.load_cprs(reebill, service)
+            rate_structure = self.ratestructure_dao.load_cprs(
+                reebill.account, 
+                reebill.sequence, 
+                reebill.branch,
+                reebill.utility_name_for_service(service),
+                reebill.rate_structure_name_for_service(service)
+            )
+
             rates = rate_structure["rates"]
 
             if xaction == "read":
@@ -471,6 +479,7 @@ class BillToolBridge:
 
             elif xaction == "update":
 
+                # TODO: we can now update specific rows since a GUID exists
                 # all grid editor changes must be batched since yaml file cannot be written asynchronously 
                 # convert json to python
                 rows = json.loads(kwargs["rows"])
@@ -502,19 +511,34 @@ class BillToolBridge:
                     # clear it so that the old emptied attributes are removed
                     rsi.clear()
                     rsi.update(row)
-                    
 
-                self.ratestructure_dao.save_rs(account, sequence, rsbinding, rate_structure)
+                self.ratestructure_dao.save_cprs(
+                    reebill.account, 
+                    reebill.sequence, 
+                    reebill.branch,
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    rate_structure
+                )
 
                 return json.dumps({'success':True})
 
             elif xaction == "create":
                 # create operations require the server to return the initial record, initialized with key
 
+                # return a new server side UUID here.  See 18721745
                 new_rate = {"descriptor":"NEW"}
                 rates.append(new_rate)
 
-                self.ratestructure_dao.save_rs(account, sequence, rsbinding, rate_structure)
+                #self.ratestructure_dao.save_rs(account, sequence, rsbinding, rate_structure)
+                self.ratestructure_dao.save_cprs(
+                    reebill.account, 
+                    reebill.sequence, 
+                    reebill.branch,
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    rate_structure
+                )
 
                 return json.dumps({'success':True, 'rows':new_rate})
 
@@ -535,7 +559,15 @@ class BillToolBridge:
                     rates.remove([result for result in it.ifilter(lambda x: x["descriptor"]==descriptor, rates)][0])
                     #print [result for result in it.ifilter(lambda x: x["descriptor"]==descriptor, rates)]
 
-                self.ratestructure_dao.save_rs(account, sequence, rsbinding, rate_structure)
+                #self.ratestructure_dao.save_rs(account, sequence, rsbinding, rate_structure)
+                self.ratestructure_dao.save_cprs(
+                    reebill.account, 
+                    reebill.sequence, 
+                    reebill.branch,
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    rate_structure
+                )
 
                 return json.dumps({'success':True})
 

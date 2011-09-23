@@ -111,6 +111,7 @@ class RateStructureDAO():
 
         # load the CPRS
         cprs = self.load_cprs(account, sequence, branch, utility_name, rate_structure_name)
+        print "We loaded the CPRS %s" % cprs
 
         # remove the mongo key, because the requester already has this information
         # and we do not want application code depending on the "_id" field.
@@ -119,7 +120,9 @@ class RateStructureDAO():
         # remove the uuids because they are not used in rate structure computation
         if 'rates' in cprs:
             for cprs_rate in cprs['rates']:
+                print "got a cprs_rate %s" % cprs_rate
                 del cprs_rate['uuid']
+                print "deleted UUID from cprs_rate %s" % cprs_rate
 
 
         # URS is overridden and augmented by rates in UPRS
@@ -216,6 +219,7 @@ class RateStructureDAO():
             # convert rs.yaml to CPRS
             #
             convert_rs = copy.deepcopy(rate_structure)
+            print "converting yaml to CPRS %s" % convert_rs
             for rate in convert_rs['rates']:
                 # Assume these have gone into URS
                 if 'description' in rate: del rate['description']
@@ -224,6 +228,7 @@ class RateStructureDAO():
                 rate['uuid'] = str(uuid.uuid1())
                 rate['rate'] = str(rate['rate'])
                 rate['quantity'] = str(rate['quantity'])
+            print "added uuid to CPRS %s" % convert_rs
 
             # remove regs  and things not needed in the CPRS
             if 'effective' in convert_rs: del convert_rs['effective']
@@ -233,6 +238,8 @@ class RateStructureDAO():
             if 'service' in convert_rs: del convert_rs['service']
 
             self.save_cprs(account, sequence, branch, utility_name, rate_structure_name, convert_rs)
+
+            rate_structure = self.load_cprs(account, sequence, branch, utility_name, rate_structure_name)
 
         # return the yaml so things still work
         return rate_structure
@@ -249,6 +256,7 @@ class RateStructureDAO():
 
         return RateStructure(rs_data)
 
+    # TODO: consider just accepting a reebill
     def load_urs(self, utility_name, rate_structure_name, period_begin, period_end):
 
         # TODO: be able to accept a period_begin/period_end for a service and query 
@@ -265,6 +273,7 @@ class RateStructureDAO():
 
         return urs
 
+    # TODO: consider just accepting a reebill
     def load_uprs(self, utility_name, rate_structure_name, begin_period, end_period):
 
         # eventually, return a uprs that may have useful information that matches this service period 
@@ -272,6 +281,7 @@ class RateStructureDAO():
 
         return uprs
 
+    # TODO: consider just accepting a reebill
     def load_cprs(self, account, sequence, branch, utility_name, rate_structure_name):
         # TODO param types
 
@@ -672,9 +682,6 @@ class RateStructureItem():
 
     @property
     def quantity(self):
-
-        import pdb
-        pdb.set_trace()
 
         if self.evaluated_quantity is False:
             if hasattr(self, "_quantity"):
