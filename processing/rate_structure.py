@@ -330,6 +330,8 @@ class RateStructure():
     The rate structure is the model for how utilities calculate their utility bill.  This model does not
     necessarily dictate the reebill, because the reebill can have charges that are not part of this model.
     This is also why the rate structure model does not comprehend charge grouping, subtotals or totals.
+
+    A RateStructure stores lots of state.  Reload it for a new uncomputed one.
     """
 
     # TODO: make sure register descriptor and rate structure item bindings do not collide
@@ -349,6 +351,7 @@ class RateStructure():
         for reg in self.registers:
             if reg.descriptor is None:
                 raise Exception("Register descriptor required.\n%s" % reg)
+            print "Rate Structure set reg %s %s" % (reg.descriptor, reg)
             self.__dict__[reg.descriptor] = reg
 
         # RSIs refer to RS namespace to access registers,
@@ -390,8 +393,8 @@ class RateStructure():
             for register_need in self.registers:
                 if register_need.descriptor == register_reading['rsi_binding']:
                     matched = True
-                    register_need.quantity = str(register_reading['total'])
-                    print "%s bound to rate structure" % register_reading
+                    register_need.quantity = register_reading['total']
+                    #print "%s bound to rate structure" % register_reading
             if not matched:
                 print "%s not bound to rate structure" % register_reading
 
@@ -428,8 +431,6 @@ class RateStructure():
             if (hasattr(rsi, 'bound') == False):
                 print "RSI was not bound " + str(rsi)
 
-                    
-
     def __str__(self):
 
         s = '' 
@@ -440,24 +441,52 @@ class RateStructure():
             s += str(rsi)
         return s
 
+class Register(object):
 
-class Register():
+    def __init__(self, reg_data):
 
-    def __init__(self, props):
-            for key in props:
-                setattr(self, key, props[key])
+            if 'quantity' not in reg_data: raise Exception("Register must have a reading")
 
-    #TODO: implement @properties for registers
+            for key in reg_data:
+                setattr(self, key, reg_data[key])
+
+    @property
+    def descriptor(self):
+        return self._descriptor
+    @descriptor.setter
+    def descriptor(self, value):
+        self._descriptor = value
+
+    @property
+    def description(self):
+        return self._description
+    @description.setter
+    def description(self, value):
+        self._description = value
+
+    @property
+    def quantity(self):
+        return self._quantity
+    @quantity.setter
+    def quantity(self, value):
+        # have to express value as float so that expressions can eval()
+        self._quantity = float(value)
+
+    @property
+    def quantityunits(self):
+        return self._quantityunits
+    @quantityunits.setter
+    def quantityunits(self, value):
+        self._quantityunits = value
 
     def __str__(self):
 
-        s = '' 
-        s += '%s\t' % (self.descriptor if hasattr(self, 'descriptor') else '')
-        s += '%s\t' % (self.description if hasattr(self, 'description') else '')
-        s += '%s\t' % (self.quantity if hasattr(self, 'quantity') else '')
-        s += '%s\t' % (self.quantityunits if hasattr(self, 'quantityunits') else '')
-        s += '\n'
-        return s
+        return "Register %s: %s, %s, %s" % (
+            self.descriptor if self.descriptor else 'No Descriptor',
+            self.description if self.description else 'No Description',
+            self.quantity if self.quantity else 'No Reading',
+            self.quantityunits if self.quantityunits else 'No Quantity Units',
+        )
 
 class RateStructureItem():
 
@@ -506,9 +535,11 @@ class RateStructureItem():
             value = props[key]
             # if not None, and is a string with contents
             if (value is not None):
-                # make sure everything is a string, with contents,  for the eval() function
                  
+                # values are initially set as strings, and as the values are evaluated
+                # the return type is a function of what the expression evals to.
                 value = str(value)
+
                 if len(value):
                     # place these propery values in self, but prepend the _ so @property methods of self
                     # do not access them since @property methods are used for expression evaluation
@@ -535,13 +566,16 @@ class RateStructureItem():
     def evaluate(self, rsi_value):
         """
         An RSI value is an str that has an expression that may be evaluated.
-        An RSI expression can be as simpe as a number, or as complex as a Python
+        An RSI expression can be as simple as a number, or as complex as a Python
         statement that references values of other RSIs.
-        Should the expression fail to evaluate, None is returned and the RSI is
-        flagged as having an error.
+
+        Knowing the behavior of eval() is important to understand this implementation.
+        eval() returns a type that is a function of the expression passed into it.
+        Much of the time, there is a floating point number in an expression.
+        Consequently, RSI and Registers have to typically return a 'float' for numerical
+        values so that eval() can avoid type mismatches when using +,-,/ and * operators.
         """
         assert type(rsi_value) is str
-
 
         caller = inspect.stack()[1][3]
         print "RSI Evaluate: %s, %s Value: %s" % (self._descriptor, caller, rsi_value)
@@ -553,8 +587,10 @@ class RateStructureItem():
             # this enables the rsi_value to contain references to attributes 
             # (registers and RSIs) that are held in the RateStructure
             result = eval(rsi_value, self._rate_structure.__dict__)
-            print "RSI Evaluate Result: %s" % result
-            return str(result)
+            print "RSI Evaluate Result: %s %s" % (type(result), result)
+
+            # an evaluated result can be a string or float or who knows what
+            return result
 
         except RuntimeError as re:
 
@@ -602,17 +638,26 @@ class RateStructureItem():
                 # TODO: it total exists, and either rate or quantity is missing, why not solve for
                 # the missing term?
 
+                # quantities or rates may be a string or float due to eval()
                 q = self.quantity
                 r = self.rate
                     
-                self._total = str(Decimal(q) * Decimal(r))
+                t = Decimal(str(q)) * Decimal(str(r))
+
+                # perform decimal round rule. 
+                rule = self._roundrule if hasattr(self, "_roundrule") else None
+                t = Decimal(t).quantize(Decimal('.00'), rule)
+
+                # An evaluated value in an RSI must be returned as a float. Why?
+                # Because it is used as a term in expressions that are passed into
+                # eval().  And, eval cannot do things like divide by a string.
+                # e.g. PER_THERM_RATE, rate Value: 8.31 / REG_THERMS.quantity
+
+                self._total = float(t)
 
                 self.evaluated_total = True
 
-                rule = self._roundrule if hasattr(self, "_roundrule") else None
-
-                # perform decimal round rule.  Preserve native type. 
-                return str(Decimal(self._total).quantize(Decimal('.01'), rule))
+                return self._total
 
         else:
             return self._total
@@ -628,20 +673,23 @@ class RateStructureItem():
     @property
     def quantity(self):
 
+        import pdb
+        pdb.set_trace()
+
         if self.evaluated_quantity is False:
             if hasattr(self, "_quantity"):
-                self._quantity = self.evaluate(self._quantity)
+                self._quantity = float(self.evaluate(self._quantity))
                 self.evaluated_quantity = True
                 return self._quantity
             else:
                 # no quantity attribute? It may be assumed to be one
-                self._quantity = "1"
+                self._quantity = float("1")
                 self.evaluated_quantity = True
                 return self._quantity
 
             raise NoPropertyError(self._descriptor, "%s.quantity does not exist" % self._descriptor)
         else:
-            return self._quantity
+            return float(self._quantity)
 
     @property
     def quantityunits(self):
@@ -656,13 +704,13 @@ class RateStructureItem():
 
         if self.evaluated_rate is False:
             if hasattr(self, "_rate"):
-                self._rate = self.evaluate(self._rate)
+                self._rate = float(self.evaluate(self._rate))
                 self.evaluated_rate = True
                 return self._rate
 
             raise NoPropertyError(self._descriptor, "%s.rate does not exist" % self._descriptor)
         else:
-            return self._rate
+            return float(self._rate)
 
     @property
     def rateunits(self):

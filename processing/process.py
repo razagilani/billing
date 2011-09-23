@@ -316,14 +316,11 @@ class Process(object):
     def bind_rate_structure(self, reebill):
 
             # process the actual charges across all services
-            self.bindrsnew(reebill, self.rate_structure_dao, False)
-
-            # process the hypothetical charges across all services
-            self.bindrsnew(reebill, self.rate_structure_dao, True)
+            self.bindrs(reebill, self.rate_structure_dao)
 
             self.calculate_reperiod(reebill.account, reebill.sequence)
 
-    def bindrsnew(self, reebill, ratestructure_db, do_hypothetical):
+    def bindrs(self, reebill, ratestructure_db):
         """ This function binds a rate structure against the actual and hypothetical charges found """
         """ in a bill. If and RSI specifies information no in the bill, it is added to the bill.   """
         """ If the bill specifies information in a charge that is not in the RSI, the charge is """
@@ -336,12 +333,6 @@ class Process(object):
         for service in reebill.services:
 
 
-            # get a RateStructure
-
-            rate_structure = self.rate_structure_dao.load_rate_structure(reebill, service)
-
-            # find out what registers are needed to process this rate structure
-            register_needs = rate_structure.register_needs()
 
             #
             # All registers for all meters in a given service are made available
@@ -349,6 +340,14 @@ class Process(object):
             # Registers that are not to be used by the rate structure should
             # simply not have an rsi_binding.
             #
+
+            # actual
+
+            rate_structure = self.rate_structure_dao.load_rate_structure(reebill, service)
+
+            # find out what registers are needed to process this rate structure
+            #register_needs = rate_structure.register_needs()
+
             # get metered energy from all meter registers in the reebill
             actual_register_readings = reebill.actual_registers(service)
 
@@ -358,180 +357,43 @@ class Process(object):
             # process actual charges with non-shadow meter register totals
             actual_chargegroups = reebill.actual_chargegroups_for_service(service)
 
-            print "actual chargegroups before bind %s" % actual_chargegroups
-
             # iterate over the charge groups, binding the reebill charges to its associated RSI
-
             for chargegroup, charges in actual_chargegroups.items():
+                import pdb
+                pdb.set_trace()
                 rate_structure.bind_charges(charges)
-
-            print "actual chargegroups after bind %s" % actual_chargegroups
-
             reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
 
+
             # process hypothetical charges with non-shadow + shadow meter register totals
-            #shadow_register_readings = reebill.shadow_registers(service)
+            rate_structure = self.rate_structure_dao.load_rate_structure(reebill, service)
+
+            # find out what registers are needed to process this rate structure
+            #register_needs = rate_structure.register_needs()
+
+            actual_register_readings = reebill.actual_registers(service)
+            shadow_register_readings = reebill.shadow_registers(service)
 
             # add the shadow register totals to the actual register, and re-process
 
+            # TODO: probably a better way to do this
+            for shadow_reading in shadow_register_readings:
+                for actual_reading in actual_register_readings:
+                    if actual_reading['identifier'] == shadow_reading['identifier']:
+                        shadow_reading['total'] += actual_reading['total']
+                # TODO: throw exception when registers mismatch
 
-            #hypothetical_chargegroups = reebill.hypothetical_chargegroups_for_service(service)
-
-
-    def bindrs(self, inputbill, outputbill, rsdb, hypothetical, user=None, password=None):
-        """ This function binds a rate structure against the actual and hypothetical charges found """
-        """ in a bill. If and RSI specifies information no in the bill, it is added to the bill.   """
-        """ If the bill specifies information in a charge that is not in the RSI, the charge is """
-        """ left untouched."""
-        """ """
-
-        # given a bill that has its actual or shadow registers populated, apply a rate structure.
-
-        # load XML bill
-        tree = etree.parse(inputbill)
-
-        # grab the account id so that ratestructures are customer dependent
-        account = self.get_elem(tree, "/ub:bill/@account")[0]
-        id = self.get_elem(tree, "/ub:bill/@id")[0]
-
-        # TODO: much of the code below to be refactored when register definitions are 
-        # placed in the rate structure
-
-        # obtain utilbill groves to determine what services are present
-        # identify the per service rate structures for each utilbill
-        for utilbill in tree.findall("{bill}utilbill"):
-
-            # get name of the utility
-            rsbinding_utilbill = utilbill.get("rsbinding")
-
-            # get service
-            service = utilbill.get("service")
-
-            rs = self.load_rs(rsdb, rsbinding_utilbill, account, id)
-
-            # acquire actual meter registers for this service
-            actual_registers = self.get_elem(utilbill, "/ub:bill/ub:measuredusage[@service='" + 
-                service + "']/ub:meter/ub:register[@shadow='false']")
-
-            # each service has a number of actual utility registers
-            for actual_register in actual_registers:
-
-                # each register has a binding to a register declared in the rate structure
-                rsbinding_register = actual_register.get("rsbinding")
-
-                # actual register quantity, with shadow register value optionally added
-                register_quantity = 0.0
-
-                # acquire shadow register and track its value
-                register_quantity += float(actual_register.find("{bill}total").text)
-
-                if (hypothetical):
-                    # acquire shadow register and add its value to the actual register to sum re and ce
-                    shadow_reg_total = self.get_elem(actual_register,"../ub:register[@shadow='true' and @rsbinding='"
-                        +rsbinding_register+"']/ub:total")
-
-                    # it is possible a shadow register does not exist, because we may be showing all meters for a
-                    # given service and only one of those meters services hot water and is offset by renewable
-                    if len(shadow_reg_total) > 0:
-                        register_quantity += float(shadow_reg_total[0].text)
-
-                # populate rate structure with meter quantities read from XML
-                rs.__dict__[rsbinding_register].quantity = register_quantity
-
-            # now that the rate structure is loaded, configured and populated with registers
-            # bind to the charge items in the bill
-
-            # if hypothetical, then treat the hypothetical charges. If not, process actual
-            charges = None
-            if (hypothetical):
-                charges = self.get_elem(utilbill, "/ub:bill/ub:details[@service='"
-                    + service+"']/ub:chargegroup/ub:charges[@type='hypothetical']/ub:charge")
-                # TODO: create the hypothetical charges from the actual charges 
-            else:
-                charges = self.get_elem(utilbill, "/ub:bill/ub:details[@service='"
-                    + service + "']/ub:chargegroup/ub:charges[@type='actual']/ub:charge")
-            
-            # process each individual charge and bind it to the rate structure
-            for charge in charges:
-                # a charge may not have a binding because it is not meant to be bound
-                charge_binding = charge.get("rsbinding")
-                if (charge_binding is None):
-                    print "*** No rsbinding for " + etree.tostring(charge)
-                    continue
-
-                # obtain the rate structure item that is bound to this charge
-                rsi = rs.__dict__[charge_binding]
-                # flag the rsi so we can know which RSIs were not processed
-                rsi.bound = True
-
-                # if there is a description present in the rate structure, override the value in xml
-                # if there is no description in the RSI, leave the one in XML
-                if (rsi.description is not None):
-                    description = charge.find("{bill}description")
-                    if (description is None):
-                        # description element missing, so insert one
-                        description = etree.Element("{bill}description")
-                        # description is always first child
-                        charge.insert(0, description)
-                        print "*** updated charge with description because it was absent in the bill and present in the RSI"
-                    description.text = rsi.description
-
-                # if the quantity is present in the rate structure, override value in XML
-                if (rsi.quantity is not None):
-                    quantity = charge.find("{bill}quantity")
-                    if (quantity is None):
-                        # quantity element is missing, so insert one
-                        attribs = {}
-                        if (rsi.quantityunits is not None):
-                            attribs["units"] = rsi.quantityunits
-                            
-                        quantity = etree.Element("{bill}quantity", attribs)
-                        # quantity is next sibling of description
-                        if (charge.find("{bill}description") is not None):
-                            charge.insert(1, quantity)
-                        else:
-                            charge.insert(0, quantity)
-                        print "*** updated charge with quantity because it was absent in the bill and present in the RSI"
-                    quantity.text = str(rsi.quantity)
-
-                # if the rate is present in the rate structure, override value in XML
-                if (rsi.rate is not None):
-                    rate = charge.find("{bill}rate")
-                    if (rate is None):
-                        # rate element missing, so insert one
-                        attribs = {}
-                        if (rsi.rateunits is not None):
-                            attribs["units"] = rsi.rateunits
-                        rate = etree.Element("{bill}rate", attribs)
-                        # insert as preceding sibling to the last element which is total
-                        total = charge.find("{bill}total")
-                        if (total is not None):
-                            total.addprevious(rate)
-                        else:
-                            charge.append(rate)
-                        print "*** updated charge with rate because it was absent in the bill and present in the RSI"
-                    # wrap rsi.rate in a Decimal to avoid exponential formatting of very small rate values
-                    rate.text = str(Decimal(str(rsi.rate)))
-
-                total = charge.find("{bill}total")
-                if (total is None):
-                    # total element is missing, so create one
-                    total = etree.Element("{bill}total")
-                    # total is always last child
-                    charge.append(total)
-                    print "*** updated charge with total because it was absent in the bill and present in the RSI"
-
-                total.text = str(rsi.total)
-
-            for rsi in rs.rates:
-                if (hasattr(rsi, 'bound') == False):
-                    print "*** RSI was not bound " + str(rsi)
+            # apply the combined registers from the reebill to the probable rate structure
+            rate_structure.bind_register_readings(shadow_register_readings)
 
 
-        XMLUtils().save_xml_file(etree.tostring(tree, pretty_print=True), outputbill, user, password)
-        # save in mongo
-        reebill = self.reebill_dao.load_reebill(account, id)
-        self.reebill_dao.save_reebill(reebill)
+            # process actual charges with non-shadow meter register totals
+            hypothetical_chargegroups = reebill.hypothetical_chargegroups_for_service(service)
+
+            # iterate over the charge groups, binding the reebill charges to its associated RSI
+            for chargegroup, charges in hypothetical_chargegroups.items():
+                rate_structure.bind_charges(charges)
+            reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
 
     def calculate_statistics(self, account, sequence):
         """ Period Statistics for the input bill period are determined here from the total energy usage """
@@ -711,6 +573,15 @@ class Process(object):
 
 if __name__ == '__main__':
 
+
+    import pdb
+    pdb.set_trace()
+
+    from billing.processing.rate_structure import Register
+
+    reg_data = {u'descriptor': u'REG_THERMS', u'description': u'Total therm register', u'quantityunits': u'therm', u'quantity': u'0'}
+    my_reg = Register(reg_data)
+
     reebill_dao = ReebillDAO({
         "host":"localhost", 
         "port":27017, 
@@ -727,7 +598,7 @@ if __name__ == '__main__':
         "port": 27017
     })
 
-    reebill = reebill_dao.load_reebill("10002","12")
+    reebill = reebill_dao.load_reebill("10002","17")
     Process(None, None, reebill_dao, ratestructure_dao).bind_rate_structure(reebill)
 
 
