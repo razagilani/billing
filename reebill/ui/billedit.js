@@ -1602,15 +1602,18 @@ function renderWidgets()
 
 
     ///////////////////////////////////////
-    // RSI Tab
+    // Rate Structure Tab
 
-    var initialRSI = {
+
+    // the CPRS
+
+    var initialCPRSRSI = {
         rows: [
             //{descriptor:'SOMETHING REALLY REALLY REALLY LONG', description:'description', quantity:'quantity', quantityunits:'quantityunits', rate:'rate', rateunits:'rateunits', roundrule:'roundrule', total:'total'},
         ]
     };
 
-    var rsiReader = new Ext.data.JsonReader({
+    var CPRSRSIReader = new Ext.data.JsonReader({
         // metadata configuration options:
         // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
         //idProperty: 'id',
@@ -1621,6 +1624,7 @@ function renderWidgets()
         fields: [
             // map Record's field to json object's key of same name
             {name: 'uuid', mapping: 'uuid'},
+            {name: 'descriptor', mapping: 'descriptor'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
             {name: 'quantityunits', mapping: 'quantityunits'},
@@ -1631,34 +1635,31 @@ function renderWidgets()
         ]
     });
 
-    var rsiWriter = new Ext.data.JsonWriter({
+    var CPRSRSIWriter = new Ext.data.JsonWriter({
         encode: true,
         // write all fields, not just those that changed
         writeAllFields: true 
     });
 
-    var rsiStoreProxy = new Ext.data.HttpProxy({
+    var CPRSRSIStoreProxy = new Ext.data.HttpProxy({
         method: 'GET',
         prettyUrls: false,
-        url: 'http://'+location.host+'/reebill/rsi',
+        url: 'http://'+location.host+'/reebill/cprsrsi',
     });
 
-    var rsiStore = new Ext.data.JsonStore({
-        proxy: rsiStoreProxy,
+    var CPRSRSIStore = new Ext.data.JsonStore({
+        proxy: CPRSRSIStoreProxy,
         autoSave: false,
-        reader: rsiReader,
-        writer: rsiWriter,
-        //restful: true,
-        // batching must be done because server code not reentrant due to writing YAML file
-        //batch: true,
+        reader: CPRSRSIReader,
+        writer: CPRSRSIWriter,
         // or, autosave must be used to save each action
         autoSave: true,
         // won't be updated when combos change, so do this in event
         // perhaps also can be put in the options param for the ajax request
         baseParams: { account:accountCombo.getValue(), sequence: sequenceCombo.getValue()},
-        data: initialRSI,
+        data: initialCPRSRSI,
         root: 'rows',
-        idProperty: 'descriptor',
+        idProperty: 'uuid',
         fields: [
             {name: 'uuid'},
             {name: 'descriptor'},
@@ -1672,14 +1673,20 @@ function renderWidgets()
         ],
     });
 
-    var rsiColModel = new Ext.grid.ColumnModel(
+    var CPRSRSIColModel = new Ext.grid.ColumnModel(
     {
         columns: [
             {
+                header: 'UUID',
+                sortable: true,
+                dataIndex: 'uuid',
+                editable: false,
+                editor: new Ext.form.TextField({allowBlank: false})
+            },{
                 header: 'RS Binding',
                 sortable: true,
                 dataIndex: 'descriptor',
-                editable: false,
+                editable: true,
                 editor: new Ext.form.TextField({allowBlank: false})
             },{
                 header: 'Description',
@@ -1722,72 +1729,68 @@ function renderWidgets()
         ]
     });
 
-    var rsiToolbar = new Ext.Toolbar({
+    var CPRSRSIToolbar = new Ext.Toolbar({
         items: [
             {
                 xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.insertBtn...
-                id: 'rsiInsertBtn',
+                // ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
+                id: 'CPRSRSIInsertBtn',
                 iconCls: 'icon-user-add',
                 text: 'Insert',
                 disabled: true,
                 handler: function()
                 {
-                    rsiGrid.stopEditing();
+                    CPRSRSIGrid.stopEditing();
 
                     // grab the current selection - only one row may be selected per singlselect configuration
-                    var selection = rsiGrid.getSelectionModel().getSelected();
+                    var selection = CPRSRSIGrid.getSelectionModel().getSelected();
 
                     // make the new record
-                    var rsiType = rsiGrid.getStore().recordType;
+                    var CPRSRSIType = CPRSRSIGrid.getStore().recordType;
                     var defaultData = 
                     {
                     };
-                    var r = new rsiType(defaultData);
+                    var r = new CPRSRSIType(defaultData);
         
                     // select newly inserted record
-                    var insertionPoint = rsiStore.indexOf(selection);
-                    rsiStore.insert(insertionPoint + 1, r);
-                    // TODO throwing exception - find out why
-                    // because there is no grouping view?
-                    //rsiStore.getView().refresh();
-                    //rsiStore.getSelectionModel().selectRow(insertionPoint);
-                    rsiGrid.startEditing(insertionPoint +1,1);
+                    var insertionPoint = CPRSRSIStore.indexOf(selection);
+                    CPRSRSIStore.insert(insertionPoint + 1, r);
+                    CPRSRSIGrid.startEditing(insertionPoint +1,1);
                     
                     // An inserted record must be saved 
-                    rsiGrid.getTopToolbar().findById('rsiSaveBtn').setDisabled(false);
+                    CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
                 }
             },{
                 xtype: 'tbseparator'
             },{
                 xtype: 'button',
                 // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                id: 'rsiRemoveBtn',
+                id: 'CPRSRSIRemoveBtn',
                 iconCls: 'icon-user-delete',
                 text: 'Remove',
                 disabled: true,
                 handler: function()
                 {
-                    rsiGrid.stopEditing();
-                    rsiStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    rsiStore.setBaseParam("account", accountCombo.getValue());
-                    rsiStore.setBaseParam("sequence", sequenceCombo.getValue());
+                    CPRSRSIGrid.stopEditing();
+                    CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+                    CPRSRSIStore.setBaseParam("account", accountCombo.getValue());
+                    CPRSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
 
                     // TODO single row selection only, test allowing multirow selection
-                    var s = rsiGrid.getSelectionModel().getSelections();
+                    var s = CPRSRSIGrid.getSelectionModel().getSelections();
                     for(var i = 0, r; r = s[i]; i++)
                     {
-                        rsiStore.remove(r);
+                        CPRSRSIStore.remove(r);
                     }
-                    rsiStore.save(); 
-                    rsiGrid.getTopToolbar().findById('rsiSaveBtn').setDisabled(true);
+                    CPRSRSIStore.save(); 
+                    CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
                 }
             },{
                 xtype:'tbseparator'
             },{
                 xtype: 'button',
                 // places reference to this button in grid.  
-                id: 'rsiSaveBtn',
+                id: 'CPRSRSISaveBtn',
                 text: 'Save',
                 disabled: true,
                 handler: function()
@@ -1795,26 +1798,26 @@ function renderWidgets()
                     // disable the save button for the save attempt.
                     // is there a closer place for this to the actual button click due to the possibility of a double
                     // clicked button submitting two ajax requests?
-                    rsiGrid.getTopToolbar().findById('rsiSaveBtn').setDisabled(true);
+                    CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
 
                     // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    rsiGrid.stopEditing();
+                    CPRSRSIGrid.stopEditing();
 
-                    rsiStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    rsiStore.setBaseParam("account", accountCombo.getValue());
-                    rsiStore.setBaseParam("sequence", sequenceCombo.getValue());
+                    CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+                    CPRSRSIStore.setBaseParam("account", accountCombo.getValue());
+                    CPRSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
 
-                    rsiStore.save(); 
+                    CPRSRSIStore.save(); 
                 }
             }
         ]
     });
 
-    var rsiGrid = new Ext.grid.EditorGridPanel({
-        tbar: rsiToolbar,
-        colModel: rsiColModel,
+    var CPRSRSIGrid = new Ext.grid.EditorGridPanel({
+        tbar: CPRSRSIToolbar,
+        colModel: CPRSRSIColModel,
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
-        store: rsiStore,
+        store: CPRSRSIStore,
         enableColumnMove: false,
         frame: true,
         collapsible: true,
@@ -1824,32 +1827,282 @@ function renderWidgets()
             // doesn't seem to work
             forceFit: true,
         },
-        title: 'Rate Structure',
+        title: 'Customer Bill Period Rate Structure',
         clicksToEdit: 2
     });
 
-    rsiGrid.getSelectionModel().on('selectionchange', function(sm){
+    CPRSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
         // if a selection is made, allow it to be removed
         // if the selection was deselected to nothing, allow no 
         // records to be removed.
 
-        rsiGrid.getTopToolbar().findById('rsiRemoveBtn').setDisabled(sm.getCount() <1);
+        CPRSRSIGrid.getTopToolbar().findById('CPRSRSIRemoveBtn').setDisabled(sm.getCount() <1);
 
         // if there was a selection, allow an insertion
-        rsiGrid.getTopToolbar().findById('rsiInsertBtn').setDisabled(sm.getCount() <1);
+        CPRSRSIGrid.getTopToolbar().findById('CPRSRSIInsertBtn').setDisabled(sm.getCount() <1);
     });
   
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
-    rsiStore.on('update', function(){
-        rsiGrid.getTopToolbar().findById('rsiSaveBtn').setDisabled(false);
+    CPRSRSIStore.on('update', function(){
+        CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
     });
 
-    rsiStore.on('beforesave', function() {
-        rsiStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        rsiStore.setBaseParam("account", accountCombo.getValue());
-        rsiStore.setBaseParam("sequence", sequenceCombo.getValue());
+    CPRSRSIStore.on('beforesave', function() {
+        CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+        CPRSRSIStore.setBaseParam("account", accountCombo.getValue());
+        CPRSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
     });
+
+
+    // the URS
+    var initialURSRSI = {
+        rows: [
+            //{descriptor:'SOMETHING REALLY REALLY REALLY LONG', description:'description', quantity:'quantity', quantityunits:'quantityunits', rate:'rate', rateunits:'rateunits', roundrule:'roundrule', total:'total'},
+        ]
+    };
+
+    var URSRSIReader = new Ext.data.JsonReader({
+        // metadata configuration options:
+        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
+        //idProperty: 'id',
+        root: 'rows',
+
+        // the fields config option will internally create an Ext.data.Record
+        // constructor that provides mapping for reading the record data objects
+        fields: [
+            // map Record's field to json object's key of same name
+            {name: 'uuid', mapping: 'uuid'},
+            {name: 'descriptor', mapping: 'descriptor'},
+            {name: 'description', mapping: 'description'},
+            {name: 'quantity', mapping: 'quantity'},
+            {name: 'quantityunits', mapping: 'quantityunits'},
+            {name: 'rate', mapping: 'rate'},
+            {name: 'rateunits', mapping: 'rateunits'},
+            {name: 'roundrule', mapping:'roundrule'},
+            {name: 'total', mapping: 'total'},
+        ]
+    });
+
+    var URSRSIWriter = new Ext.data.JsonWriter({
+        encode: true,
+        // write all fields, not just those that changed
+        writeAllFields: true 
+    });
+
+    var URSRSIStoreProxy = new Ext.data.HttpProxy({
+        method: 'GET',
+        prettyUrls: false,
+        url: 'http://'+location.host+'/reebill/ursrsi',
+    });
+
+    var URSRSIStore = new Ext.data.JsonStore({
+        proxy: URSRSIStoreProxy,
+        autoSave: false,
+        reader: URSRSIReader,
+        writer: URSRSIWriter,
+        // or, autosave must be used to save each action
+        autoSave: true,
+        // won't be updated when combos change, so do this in event
+        // perhaps also can be put in the options param for the ajax request
+        baseParams: { account:accountCombo.getValue(), sequence: sequenceCombo.getValue()},
+        data: initialURSRSI,
+        root: 'rows',
+        idProperty: 'uuid',
+        fields: [
+            {name: 'uuid'},
+            {name: 'descriptor'},
+            {name: 'description'},
+            {name: 'quantity'},
+            {name: 'quantityunits'},
+            {name: 'rate'},
+            {name: 'rateunits'},
+            {name: 'roundrule'},
+            {name: 'total'},
+        ],
+    });
+
+    var URSRSIColModel = new Ext.grid.ColumnModel(
+    {
+        columns: [
+            {
+                header: 'UUID',
+                sortable: true,
+                dataIndex: 'uuid',
+                editable: false,
+                editor: new Ext.form.TextField({allowBlank: false})
+            },{
+                header: 'RS Binding',
+                sortable: true,
+                dataIndex: 'descriptor',
+                editable: true,
+                editor: new Ext.form.TextField({allowBlank: false})
+            },{
+                header: 'Description',
+                sortable: true,
+                dataIndex: 'description',
+                editor: new Ext.form.TextField({allowBlank: true})
+            },{
+                header: 'Quantity',
+                sortable: true,
+                dataIndex: 'quantity',
+                editor: new Ext.form.TextField({allowBlank: true})
+            },{
+                header: 'Units',
+                sortable: true,
+                dataIndex: 'quantityunits',
+                editor: new Ext.form.TextField({allowBlank: true})
+            },{
+                header: 'Rate',
+                sortable: true,
+                dataIndex: 'rate',
+                editor: new Ext.form.TextField({allowBlank: true})
+            },{
+                header: 'Units',
+                sortable: true,
+                dataIndex: 'rateunits',
+                editor: new Ext.form.TextField({allowBlank: true})
+            },{
+                header: 'Round Rule',
+                sortable: true,
+                dataIndex: 'roundrule',
+                editor: new Ext.form.TextField({allowBlank: true})
+            },{
+                header: 'Total', 
+                sortable: true, 
+                dataIndex: 'total', 
+                summaryType: 'sum',
+                align: 'right',
+                editor: new Ext.form.TextField({allowBlank: true})
+            }
+        ]
+    });
+
+    var URSRSIToolbar = new Ext.Toolbar({
+        items: [
+            {
+                xtype: 'button',
+                // ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
+                id: 'URSRSIInsertBtn',
+                iconCls: 'icon-user-add',
+                text: 'Insert',
+                disabled: true,
+                handler: function()
+                {
+                    URSRSIGrid.stopEditing();
+
+                    // grab the current selection - only one row may be selected per singlselect configuration
+                    var selection = URSRSIGrid.getSelectionModel().getSelected();
+
+                    // make the new record
+                    var URSRSIType = URSRSIGrid.getStore().recordType;
+                    var defaultData = 
+                    {
+                    };
+                    var r = new URSRSIType(defaultData);
+        
+                    // select newly inserted record
+                    var insertionPoint = URSRSIStore.indexOf(selection);
+                    URSRSIStore.insert(insertionPoint + 1, r);
+                    URSRSIGrid.startEditing(insertionPoint +1,1);
+                    
+                    // An inserted record must be saved 
+                    URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
+                }
+            },{
+                xtype: 'tbseparator'
+            },{
+                xtype: 'button',
+                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                id: 'URSRSIRemoveBtn',
+                iconCls: 'icon-user-delete',
+                text: 'Remove',
+                disabled: true,
+                handler: function()
+                {
+                    URSRSIGrid.stopEditing();
+                    URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+                    URSRSIStore.setBaseParam("account", accountCombo.getValue());
+                    URSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
+
+                    // TODO single row selection only, test allowing multirow selection
+                    var s = URSRSIGrid.getSelectionModel().getSelections();
+                    for(var i = 0, r; r = s[i]; i++)
+                    {
+                        URSRSIStore.remove(r);
+                    }
+                    URSRSIStore.save(); 
+                    URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(true);
+                }
+            },{
+                xtype:'tbseparator'
+            },{
+                xtype: 'button',
+                // places reference to this button in grid.  
+                id: 'URSRSISaveBtn',
+                text: 'Save',
+                disabled: true,
+                handler: function()
+                {
+                    // disable the save button for the save attempt.
+                    // is there a closer place for this to the actual button click due to the possibility of a double
+                    // clicked button submitting two ajax requests?
+                    URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(true);
+
+                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
+                    URSRSIGrid.stopEditing();
+
+                    URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+                    URSRSIStore.setBaseParam("account", accountCombo.getValue());
+                    URSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
+
+                    URSRSIStore.save(); 
+                }
+            }
+        ]
+    });
+
+    var URSRSIGrid = new Ext.grid.EditorGridPanel({
+        tbar: URSRSIToolbar,
+        colModel: URSRSIColModel,
+        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+        store: URSRSIStore,
+        enableColumnMove: false,
+        frame: true,
+        collapsible: true,
+        animCollapse: false,
+        stripeRows: true,
+        viewConfig: {
+            // doesn't seem to work
+            forceFit: true,
+        },
+        title: 'Utility Global Rate Structure',
+        clicksToEdit: 2
+    });
+
+    URSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
+        // if a selection is made, allow it to be removed
+        // if the selection was deselected to nothing, allow no 
+        // records to be removed.
+
+        URSRSIGrid.getTopToolbar().findById('URSRSIRemoveBtn').setDisabled(sm.getCount() <1);
+
+        // if there was a selection, allow an insertion
+        URSRSIGrid.getTopToolbar().findById('URSRSIInsertBtn').setDisabled(sm.getCount() <1);
+    });
+  
+    // grid's data store callback for when data is edited
+    // when the store backing the grid is edited, enable the save button
+    URSRSIStore.on('update', function(){
+        URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
+    });
+
+    URSRSIStore.on('beforesave', function() {
+        URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+        URSRSIStore.setBaseParam("account", accountCombo.getValue());
+        URSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
+    });
+
 
     ///////////////////////////////////////
     // Payments Tab
@@ -2377,11 +2630,12 @@ function renderWidgets()
           xtype: 'panel',
           items: null // configureUBMeasuredUsagesForm sets this
         },{
-          id: 'rsiTab',
-          title: 'RSIs',
+          id: 'rateStructureTab',
+          title: 'Rate Structure',
           xtype: 'panel',
-          layout: 'accordion',
-          items: [rsiGrid]
+          //layout: 'accordion',
+          layout: 'vbox',
+          items: [URSRSIGrid, CPRSRSIGrid]
         },{
           title: 'Charge Items',
           xtype: 'panel',
@@ -2527,7 +2781,8 @@ function renderWidgets()
 
         aChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
         hChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
-        rsiStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
+        CPRSRSIStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
+        URSRSIStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
 
         paymentStore.load({params: {account: account}});
 

@@ -51,6 +51,9 @@ import billing.processing.rate_structure as rs
 from datetime import datetime
 from datetime import date
 
+# uuid collides with locals so both module and locals are renamed
+import uuid as UUID
+
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -455,15 +458,12 @@ class BillToolBridge:
 
     @cherrypy.expose
     # TODO see 15415625 about the problem passing in service to get at a set of RSIs
-    # TODO make this support new URS, UPRS and CPRS structure
-    # experiment to see how using one URL for all operations works
-    def rsi(self, xaction, account, sequence, service, **kwargs):
+    def cprsrsi(self, xaction, account, sequence, service, **kwargs):
 
         try:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
-            #rate_structure = self.ratestructure_dao.load_cprs(reebill, service)
             rate_structure = self.ratestructure_dao.load_cprs(
                 reebill.account, 
                 reebill.sequence, 
@@ -479,9 +479,6 @@ class BillToolBridge:
 
             elif xaction == "update":
 
-                # TODO: we can now update specific rows since a GUID exists
-                # all grid editor changes must be batched since yaml file cannot be written asynchronously 
-                # convert json to python
                 rows = json.loads(kwargs["rows"])
 
                 # single edit comes in not in a list
@@ -491,14 +488,15 @@ class BillToolBridge:
                 for row in rows:
 
                     # identify the RSI descriptor of the posted data
-                    descriptor = row["descriptor"]
+                    rsi_uuid = row['uuid']
 
-                    # identify the rsi in the rs_yaml, and update it with posted data
-                    # python is totally evil
-                    #If there is more than one returned, this is an exception so break the above statement out later
-                    matches = [rsi_match for rsi_match in it.ifilter(lambda x: x["descriptor"]==descriptor, rates)]
+                    # identify the rsi, and update it with posted data
+                    matches = [rsi_match for rsi_match in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
+                    # there should only be one match
+                    if (len(matches) == 0):
+                        raise Exception("Did not match an RSI UUID which should not be possible")
                     if (len(matches) > 1):
-                        raise Exception("matched more than one RSI which should not be possible")
+                        raise Exception("Matched more than one RSI UUID which should not be possible")
                     rsi = matches[0]
 
                     # eliminate attributes that have empty strings or None as these mustn't 
@@ -524,13 +522,10 @@ class BillToolBridge:
                 return json.dumps({'success':True})
 
             elif xaction == "create":
-                # create operations require the server to return the initial record, initialized with key
 
-                # return a new server side UUID here.  See 18721745
-                new_rate = {"descriptor":"NEW"}
+                new_rate = {"uuid": str(UUID.uuid1())}
                 rates.append(new_rate)
 
-                #self.ratestructure_dao.save_rs(account, sequence, rsbinding, rate_structure)
                 self.ratestructure_dao.save_cprs(
                     reebill.account, 
                     reebill.sequence, 
@@ -544,26 +539,134 @@ class BillToolBridge:
 
             elif xaction == "destroy":
 
-                descriptors = json.loads(kwargs["rows"])
+                uuids = json.loads(kwargs["rows"])
 
                 # single edit comes in not in a list
                 # TODO: understand why this is a unicode coming up from browser
-                if type(descriptors) is unicode: descriptors = [descriptors]
+                if type(uuids) is unicode: uuids = [uuids]
 
                 # process list of removals
-                for descriptor in descriptors:
+                for rsi_uuid in uuids:
 
-                    # identify the rsi in the rs_yaml, and update it with posted data
-                    # python is totally evil
-                    #If there is more than one returned, this is an exception so break the above statement out later
-                    rates.remove([result for result in it.ifilter(lambda x: x["descriptor"]==descriptor, rates)][0])
-                    #print [result for result in it.ifilter(lambda x: x["descriptor"]==descriptor, rates)]
+                    # identify the rsi
+                    matches = [result for result in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
 
-                #self.ratestructure_dao.save_rs(account, sequence, rsbinding, rate_structure)
+                    if (len(matches) == 0):
+                        raise Exception("Did not match an RSI UUID which should not be possible")
+                    if (len(matches) > 1):
+                        raise Exception("Matched more than one RSI UUID which should not be possible")
+                    rsi = matches[0]
+
+                    rates.remove(rsi)
+
                 self.ratestructure_dao.save_cprs(
                     reebill.account, 
                     reebill.sequence, 
                     reebill.branch,
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    rate_structure
+                )
+
+                return json.dumps({'success':True})
+
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+    @cherrypy.expose
+    def ursrsi(self, xaction, account, sequence, service, **kwargs):
+
+        try:
+
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+
+            rate_structure = self.ratestructure_dao.load_urs(
+                reebill.utility_name_for_service(service),
+                reebill.rate_structure_name_for_service(service)
+            )
+
+            rates = rate_structure["rates"]
+
+            if xaction == "read":
+                return json.dumps({'success': True, 'rows':rates})
+
+            elif xaction == "update":
+
+                rows = json.loads(kwargs["rows"])
+
+                # single edit comes in not in a list
+                if type(rows) is dict: rows = [rows]
+
+                # process list of edits
+                for row in rows:
+
+                    # identify the RSI descriptor of the posted data
+                    rsi_uuid = row['uuid']
+
+                    # identify the rsi, and update it with posted data
+                    matches = [rsi_match for rsi_match in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
+                    # there should only be one match
+                    if (len(matches) == 0):
+                        raise Exception("Did not match an RSI UUID which should not be possible")
+                    if (len(matches) > 1):
+                        raise Exception("Matched more than one RSI UUID which should not be possible")
+                    rsi = matches[0]
+
+                    # eliminate attributes that have empty strings or None as these mustn't 
+                    # be added to the RSI so the RSI knows to compute for those values
+                    for k,v in row.items():
+                        if v is None or v == "":
+                            del row[k]
+
+                    # now take the legitimate values from the posted data and update the RSI
+                    # clear it so that the old emptied attributes are removed
+                    rsi.clear()
+                    rsi.update(row)
+
+                self.ratestructure_dao.save_urs(
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    rate_structure
+                )
+
+                return json.dumps({'success':True})
+
+            elif xaction == "create":
+
+                new_rate = {"uuid": str(UUID.uuid1())}
+                rates.append(new_rate)
+
+                self.ratestructure_dao.save_urs(
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    rate_structure
+                )
+
+                return json.dumps({'success':True, 'rows':new_rate})
+
+            elif xaction == "destroy":
+
+                uuids = json.loads(kwargs["rows"])
+
+                # single edit comes in not in a list
+                # TODO: understand why this is a unicode coming up from browser
+                if type(uuids) is unicode: uuids = [uuids]
+
+                # process list of removals
+                for rsi_uuid in uuids:
+
+                    # identify the rsi
+                    matches = [result for result in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
+
+                    if (len(matches) == 0):
+                        raise Exception("Did not match an RSI UUID which should not be possible")
+                    if (len(matches) > 1):
+                        raise Exception("Matched more than one RSI UUID which should not be possible")
+                    rsi = matches[0]
+
+                    rates.remove(rsi)
+
+                self.ratestructure_dao.save_urs(
                     reebill.utility_name_for_service(service),
                     reebill.rate_structure_name_for_service(service),
                     rate_structure

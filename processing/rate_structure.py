@@ -94,6 +94,7 @@ class RateStructureDAO():
         for urs_rate in urs['rates']:
             del urs_rate['uuid']
 
+        print "What the fuck %s" % urs
         for urs_reg in urs['registers']:
             del urs_reg['uuid']
 
@@ -257,12 +258,13 @@ class RateStructureDAO():
         return RateStructure(rs_data)
 
     # TODO: consider just accepting a reebill
-    def load_urs(self, utility_name, rate_structure_name, period_begin, period_end):
+    def load_urs(self, utility_name, rate_structure_name, period_begin=None, period_end=None):
 
         # TODO: be able to accept a period_begin/period_end for a service and query 
         # the URS in a manner ensuring the correct in-effect URS is obtained
 
         query = {
+            '_id.type':'URS',
             '_id.utility_name': utility_name,
             '_id.rate_structure_name': rate_structure_name,
             #'_id.effective': effect<=period_begin,
@@ -286,6 +288,7 @@ class RateStructureDAO():
         # TODO param types
 
         query = {
+            '_id.type':'CPRS',
             "_id.account":account, 
             "_id.sequence": int(sequence), 
             "_id.rate_structure_name": rate_structure_name, 
@@ -300,6 +303,7 @@ class RateStructureDAO():
     def save_urs(self, utility_name, rate_structure_name, effective, expires, rate_structure_data):
 
         rate_structure_data['_id'] = { 
+            'type':'URS',
             'utility_name': utility_name,
             'rate_structure_name': rate_structure_name,
             # TODO: support date ranges for URS
@@ -316,6 +320,7 @@ class RateStructureDAO():
     def save_cprs(self, account, sequence, branch, utility_name, rate_structure_name, rate_structure_data):
 
         rate_structure_data['_id'] = { 
+            'type': 'CPRS',
             'account': account,
             'sequence': int(sequence),
             'branch': int(branch),
@@ -332,6 +337,7 @@ class RateStructureDAO():
     def save_rs(self, account, sequence, rsbinding, rate_structure):
 
         yaml.safe_dump(rate_structure, open(os.path.join(self.config["rspath"], rsbinding, account, sequence+".yaml"), "w"), default_flow_style=False)
+
 
 
 class RateStructure():
