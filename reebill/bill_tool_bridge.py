@@ -192,7 +192,6 @@ class BillToolBridge:
 
     @cherrypy.expose
     def bindree(self, account, sequence, **args):
-
         from billing.processing import fetch_bill_data as fbd
         try:
             # TODO make args to fetch bill data optional
@@ -200,8 +199,9 @@ class BillToolBridge:
                 "http://duino-drop.appspot.com/",
                 self.config.get("xmldb", "user"),
                 self.config.get("xmldb", "password"),
-                nu.NexusUtil("nexus").olap_id(account),
-                "%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                #nu.NexusUtil("nexus").olap_id(account),
+                #"%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
+                account, sequence
                 None,
                 None,
                 True,
