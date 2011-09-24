@@ -458,20 +458,34 @@ class RateStructure():
         return s
 
 class Register(object):
+    def __init__(self, reg_data, prior_read_date, present_read_date):
+        if 'quantity' not in reg_data:
+            raise Exception("Register must have a reading")
+        # copy pairs of the form (key, value) in 'reg_data' to pairs of the
+        # form (_key, value) via the property decorators below
+        for key in reg_data:
+            setattr(self, key, reg_data[key])
+        # prior_read_date & present_read_date are properties of meters in
+        # mongo, so they're not in the 'reg_data' dict, which comes from the
+        # register subdocument.
+        self.prior_read_date = prior_read_date
+        self.present_read_date = present_read_date
 
-    def __init__(self, reg_data):
-
-            if 'quantity' not in reg_data: raise Exception("Register must have a reading")
-
-            for key in reg_data:
-                setattr(self, key, reg_data[key])
+        # only TOU registers have inclusions and exclusions in their mongo
+        # document. if these are absent, this is not a TOU register, but
+        # 'inclusions' and 'exclusions' are necessary for accumulating
+        # renewable energy consumption in a shadow register, so we set them to
+        # cover the entire day
+        if not 'inclusions' in reg_data:
+            self.inclusions = [{'fromhour': 0, 'tohour': 23, 'weekday':[1,2,3,4,5,6,7]}]
+            self.exclusions = []
 
     @property
-    def descriptor(self):
-        return self._descriptor
-    @descriptor.setter
-    def descriptor(self, value):
-        self._descriptor = value
+    def register_binding(self):
+        return self._register_binding
+    @register_binding.setter
+    def register_binding(self, value):
+        self._register_binding = value
 
     @property
     def description(self):
@@ -489,19 +503,63 @@ class Register(object):
         self._quantity = float(value)
 
     @property
-    def quantityunits(self):
-        return self._quantityunits
-    @quantityunits.setter
-    def quantityunits(self, value):
-        self._quantityunits = value
+    def quantity_units(self):
+        return self._quantity_units
+    @quantity_units.setter
+    def quantity_units(self, value):
+        self._quantity_units = value
+    
+    @property
+    def prior_read_date(self):
+        return self._prior_read_date
+    @prior_read_date.setter
+    def prior_read_date(self, value):
+        self._prior_read_date = value
+    
+    @property
+    def present_read_date(self):
+        return self._present_read_date
+    @present_read_date.setter
+    def present_read_date(self, value):
+        self._present_read_date = value
+
+    @property
+    def identifier(self):
+        return self._identifier
+    @identifier.setter
+    def identifier(self, value):
+        self._identifier = value
+
+    def valid_hours(self, theDate):
+        return [(0, 23)]
+        # no idea what this code does--what is inclusion[3]?
+        """For a given date, return a list of tuples that describe the ranges of hours 
+        this register should accumulate energy
+        e.g. [(8,12), (15,19)] == 8:00:00AM to 11:59:59, and 3:00:00pm to 6:59:59
+        Taken from fetch_bill_data.Register."""
+        '''
+        hour_tups = []
+        for inclusion in self.inclusions:
+            # if theDate matches a holiday listed as an inclusion, meter is on the entire day.
+            # Full day in inclusion (holiday) override weekday rules
+            if theDate in inclusion[3]:
+                return [(0, 23)]
+            if theDate.isoweekday() in inclusion[2]:
+                # weekday matches, make sure it is not excluded due to full day in exclusion (holiday)
+                for exclusion in self.exclusions:
+                    if (theDate in exclusion[3]):
+                        return []
+                hour_tups.append((inclusion[0], inclusion[1]))
+        '''
+        return hour_tups
 
     def __str__(self):
 
         return "Register %s: %s, %s, %s" % (
-            self.descriptor if self.descriptor else 'No Descriptor',
+            self.register_binding if self.register_binding else 'No Descriptor',
             self.description if self.description else 'No Description',
             self.quantity if self.quantity else 'No Reading',
-            self.quantityunits if self.quantityunits else 'No Quantity Units',
+            self.quantity_units if self.quantity_units else 'No Quantity Units',
         )
 
 class RateStructureItem():
