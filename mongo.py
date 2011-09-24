@@ -123,13 +123,13 @@ def rename_keys(x,d=name_changes ):
     '''If x is a dictionary or list, recursively replaces keys in x according
     to 'name_changes' above.'''
     if type(x) is dict:
-        the_dict = dict([(d.get(key,key), rename_keys(value)) \
+        the_dict = dict([(d.get(key,key), rename_keys(value, d)) \
                 for (key,value) in x.iteritems() \
                 if not (key in d and d[key] is None)])
         return the_dict 
     if type(x) is list:
         #return map(rename_keys, x)
-        return [rename_keys(element) for element in x]
+        return [rename_keys(element, d) for element in x]
     return x
 
 #def dict_merge(overwrite=False, *dicts):
@@ -328,7 +328,20 @@ class MongoReebill:
             # TODO replace register.inclusions/exclusions with a "descriptor"
             # (a name) that matches the value of 'descriptor' for a register in
             # the 'registers' section of the monthly rate structure yaml file. 
-            utilbill.update({'meters': rename_keys(python_convert(meters))})
+            utilbill.update({'meters': rename_keys(python_convert(meters), {
+                    'begin': 'period_begin',
+                    'end': 'period_end',
+                    'rsbinding': 'register_binding',
+                    'rateunits': 'rate_units',
+                    'quantityunits': 'quantity_units',
+                    'presentreaddate': 'present_read_date',
+                    'priorreaddate': 'prior_read_date',
+                    'inclusions':None,
+                    'exclusions':None,
+                    'total': 'quantity', # register "total" is now called a "quantity"
+                    'units': 'quantity_units' # register "units" are now called "quantity_units" so key name is the same as in rate structure
+                })})
+            print 'meters:'
 
         # statistics: exactly the same as in XML
         self.dictionary['statistics'] = rename_keys(python_convert(b.statistics))
@@ -827,6 +840,17 @@ class MongoReebill:
 
         return all_shadow
 
+    def set_shadow_register_quantity(self, identifier, quantity):
+        '''Sets the value 'quantity' in the first register subdictionary whose
+        identifier is 'identifier' to 'quantity'. Raises an exception if no
+        register with that identified is found.'''
+        for service in self.services:
+            for register in self.shadow_registers(service):
+                if register['identifier'] == identifier:
+                    register['quantity'] = quantity
+                    return
+        raise Exception('No shadow register found with identifier "%s"' % identifier)
+
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
@@ -894,14 +918,12 @@ class ReebillDAO:
         '''Saves the MongoReebill 'reebill' into the database. If a document
         with the same account & sequence number already exists, the existing
         document is replaced with this one.'''
-
-        pp.pprint(reebill.dictionary)
         mongo_doc = bson_convert(copy.deepcopy(reebill.dictionary))
         mongo_doc['_id'] = {'account': reebill.account,
             'sequence': reebill.sequence,
             'branch': 0}
-
         self.collection.save(mongo_doc)
+        print '*** saved reebill in mongo'
 
     def save_xml_reebill(self, xml_reebill, account, sequence):
 
@@ -934,20 +956,19 @@ class ReebillDAO:
         else:
             pass
 
+# config data to be passed into ReebillDAO constructor when debugging
+debug_config = {
+    "host":"localhost", 
+    "port":27017, 
+    "database":"skyline", 
+    "collection":"reebills", 
+    "destination_prefix":"http://localhost:8080/exist/rest/db/skyline/bills"
+}
+
 if __name__ == '__main__':
-
-    dao = ReebillDAO({
-        "host":"localhost", 
-        "port":27017, 
-        "database":"skyline", 
-        "collection":"reebills", 
-        "destination_prefix":"http://localhost:8080/exist/rest/db/skyline/bills"
-    })
-
+    dao = ReebillDAO(debug_config)
     reebill = dao.load_reebill("10002","12")
     dao.save_reebill(reebill)
-
-
 
     success_count = 0
     error_count = 0
