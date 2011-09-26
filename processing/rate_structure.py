@@ -264,11 +264,11 @@ class RateStructureDAO():
         # the URS in a manner ensuring the correct in-effect URS is obtained
 
         query = {
-            '_id.type':'URS',
-            '_id.utility_name': utility_name,
-            '_id.rate_structure_name': rate_structure_name,
-            #'_id.effective': effect<=period_begin,
-            #'_id.expires': expires>=period_begin,
+            "_id.type":"URS",
+            "_id.utility_name": utility_name,
+            "_id.rate_structure_name": rate_structure_name,
+            #"_id.effective": effect<=period_begin,
+            #"_id.expires": expires>=period_begin,
 
         }
         urs = self.collection.find_one(query)
@@ -288,7 +288,7 @@ class RateStructureDAO():
         # TODO param types
 
         query = {
-            '_id.type':'CPRS',
+            "_id.type":"CPRS",
             "_id.account":account, 
             "_id.sequence": int(sequence), 
             "_id.rate_structure_name": rate_structure_name, 
@@ -303,9 +303,9 @@ class RateStructureDAO():
     def save_urs(self, utility_name, rate_structure_name, effective, expires, rate_structure_data):
 
         rate_structure_data['_id'] = { 
-            'type':'URS',
-            'utility_name': utility_name,
-            'rate_structure_name': rate_structure_name,
+            "type":"URS",
+            "utility_name": utility_name,
+            "rate_structure_name": rate_structure_name,
             # TODO: support date ranges for URS
             #'effective': effective,
             #'expires': expires
@@ -363,12 +363,12 @@ class RateStructure():
         This class may be constructed from a URS, UPRS, CPRS or probable rate structure
         """
 
-        self.registers = [Register(reg_data) for reg_data in rs_data["registers"]]
+        self.registers = [Register(reg_data, None, None) for reg_data in rs_data["registers"]]
         for reg in self.registers:
-            if reg.descriptor is None:
+            if reg.register_binding is None:
                 raise Exception("Register descriptor required.\n%s" % reg)
-            print "Rate Structure set reg %s %s" % (reg.descriptor, reg)
-            self.__dict__[reg.descriptor] = reg
+            print "Rate Structure set reg %s %s" % (reg.register_binding, reg)
+            self.__dict__[reg.register_binding] = reg
 
         # RSIs refer to RS namespace to access registers,
         # so they are constructed with self along with their properties
@@ -407,9 +407,9 @@ class RateStructure():
             # find matching descriptor in rate structure
             matched = False
             for register_need in self.registers:
-                if register_need.descriptor == register_reading['rsi_binding']:
+                if register_need.register_binding == register_reading['register_binding']:
                     matched = True
-                    register_need.quantity = register_reading['total']
+                    register_need.quantity = register_reading['quantity']
                     #print "%s bound to rate structure" % register_reading
             if not matched:
                 print "%s not bound to rate structure" % register_reading

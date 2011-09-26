@@ -378,7 +378,7 @@ class Process(object):
             for shadow_reading in shadow_register_readings:
                 for actual_reading in actual_register_readings:
                     if actual_reading['identifier'] == shadow_reading['identifier']:
-                        shadow_reading['total'] += actual_reading['total']
+                        shadow_reading['quantity'] += actual_reading['quantity']
                 # TODO: throw exception when registers mismatch
 
             # apply the combined registers from the reebill to the probable rate structure
