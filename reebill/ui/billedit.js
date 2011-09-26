@@ -1676,13 +1676,13 @@ function renderWidgets()
     var CPRSRSIColModel = new Ext.grid.ColumnModel(
     {
         columns: [
-            {
+            /*{
                 header: 'UUID',
                 sortable: true,
                 dataIndex: 'uuid',
                 editable: false,
                 editor: new Ext.form.TextField({allowBlank: false})
-            },{
+            },*/{
                 header: 'RS Binding',
                 sortable: true,
                 dataIndex: 'descriptor',
@@ -1818,9 +1818,9 @@ function renderWidgets()
         colModel: CPRSRSIColModel,
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
         store: CPRSRSIStore,
-        enableColumnMove: false,
+        enableColumnMove: true,
         frame: true,
-        collapsible: true,
+        collapsible: false,
         animCollapse: false,
         stripeRows: true,
         viewConfig: {
@@ -1925,13 +1925,13 @@ function renderWidgets()
     var URSRSIColModel = new Ext.grid.ColumnModel(
     {
         columns: [
-            {
+            /*{
                 header: 'UUID',
                 sortable: true,
                 dataIndex: 'uuid',
                 editable: false,
                 editor: new Ext.form.TextField({allowBlank: false})
-            },{
+            },*/{
                 header: 'RS Binding',
                 sortable: true,
                 dataIndex: 'descriptor',
@@ -2067,9 +2067,9 @@ function renderWidgets()
         colModel: URSRSIColModel,
         selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
         store: URSRSIStore,
-        enableColumnMove: false,
+        enableColumnMove: true,
         frame: true,
-        collapsible: true,
+        collapsible: false,
         animCollapse: false,
         stripeRows: true,
         viewConfig: {

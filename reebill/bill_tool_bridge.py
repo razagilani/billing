@@ -204,7 +204,7 @@ class BillToolBridge:
                 self.config.get("xmldb", "password"),
                 #nu.NexusUtil("nexus").olap_id(account),
                 #"%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-                account, sequence
+                account, sequence,
                 None,
                 None,
                 True,
@@ -626,6 +626,8 @@ class BillToolBridge:
                 self.ratestructure_dao.save_urs(
                     reebill.utility_name_for_service(service),
                     reebill.rate_structure_name_for_service(service),
+                    None,
+                    None,
                     rate_structure
                 )
 
@@ -639,6 +641,8 @@ class BillToolBridge:
                 self.ratestructure_dao.save_urs(
                     reebill.utility_name_for_service(service),
                     reebill.rate_structure_name_for_service(service),
+                    None,
+                    None,
                     rate_structure
                 )
 
