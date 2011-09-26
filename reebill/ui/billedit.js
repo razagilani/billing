@@ -1737,7 +1737,7 @@ function renderWidgets()
                 id: 'CPRSRSIInsertBtn',
                 iconCls: 'icon-user-add',
                 text: 'Insert',
-                disabled: true,
+                disabled: false,
                 handler: function()
                 {
                     CPRSRSIGrid.stopEditing();
@@ -1820,8 +1820,8 @@ function renderWidgets()
         store: CPRSRSIStore,
         enableColumnMove: true,
         frame: true,
-        collapsible: false,
-        animCollapse: false,
+        collapsible: true,
+        animCollapse: true,
         stripeRows: true,
         viewConfig: {
             // doesn't seem to work
@@ -1839,7 +1839,7 @@ function renderWidgets()
         CPRSRSIGrid.getTopToolbar().findById('CPRSRSIRemoveBtn').setDisabled(sm.getCount() <1);
 
         // if there was a selection, allow an insertion
-        CPRSRSIGrid.getTopToolbar().findById('CPRSRSIInsertBtn').setDisabled(sm.getCount() <1);
+        //CPRSRSIGrid.getTopToolbar().findById('CPRSRSIInsertBtn').setDisabled(sm.getCount() <1);
     });
   
     // grid's data store callback for when data is edited
@@ -1986,7 +1986,7 @@ function renderWidgets()
                 id: 'URSRSIInsertBtn',
                 iconCls: 'icon-user-add',
                 text: 'Insert',
-                disabled: true,
+                disabled: false,
                 handler: function()
                 {
                     URSRSIGrid.stopEditing();
@@ -2069,8 +2069,8 @@ function renderWidgets()
         store: URSRSIStore,
         enableColumnMove: true,
         frame: true,
-        collapsible: false,
-        animCollapse: false,
+        collapsible: true,
+        animCollapse: true,
         stripeRows: true,
         viewConfig: {
             // doesn't seem to work
@@ -2088,7 +2088,7 @@ function renderWidgets()
         URSRSIGrid.getTopToolbar().findById('URSRSIRemoveBtn').setDisabled(sm.getCount() <1);
 
         // if there was a selection, allow an insertion
-        URSRSIGrid.getTopToolbar().findById('URSRSIInsertBtn').setDisabled(sm.getCount() <1);
+        //URSRSIGrid.getTopToolbar().findById('URSRSIInsertBtn').setDisabled(sm.getCount() <1);
     });
   
     // grid's data store callback for when data is edited
@@ -2635,6 +2635,11 @@ function renderWidgets()
           xtype: 'panel',
           //layout: 'accordion',
           layout: 'vbox',
+          layoutConfig : {
+            align : 'stretch',
+            pack: 'start',
+            flex: 1
+          },
           items: [URSRSIGrid, CPRSRSIGrid]
         },{
           title: 'Charge Items',

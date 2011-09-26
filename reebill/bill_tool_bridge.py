@@ -68,7 +68,6 @@ class BillToolBridge:
     def __init__(self):
         self.config = ConfigParser.RawConfigParser()
         config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'bill_tool_bridge.cfg')
-        print config_file_path
         if not self.config.read(config_file_path):
             print "Creating config file"
             self.config.add_section('xmldb')
@@ -390,7 +389,6 @@ class BillToolBridge:
 
     @cherrypy.expose
     def listSequences(self, account, **kwargs):
-        print 'listSequences'
         sequences = []
         try:
             # eventually, this data will have to support pagination
@@ -673,6 +671,8 @@ class BillToolBridge:
                 self.ratestructure_dao.save_urs(
                     reebill.utility_name_for_service(service),
                     reebill.rate_structure_name_for_service(service),
+                    None,
+                    None,
                     rate_structure
                 )
 
@@ -798,7 +798,6 @@ class BillToolBridge:
             # then the reebill datastructure itself can be shipped to client.
             utilbill_periods = {}
             for service in reebill.services:
-                print '&&&&&', service
                 (begin, end) = reebill.utilbill_period_for_service(service)
                 utilbill_periods[service] = {
                     'begin': begin,
