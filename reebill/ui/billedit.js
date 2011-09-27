@@ -1609,7 +1609,6 @@ function renderWidgets()
 
     var initialCPRSRSI = {
         rows: [
-            //{descriptor:'SOMETHING REALLY REALLY REALLY LONG', description:'description', quantity:'quantity', quantityunits:'quantityunits', rate:'rate', rateunits:'rateunits', roundrule:'roundrule', total:'total'},
         ]
     };
 
@@ -1624,7 +1623,7 @@ function renderWidgets()
         fields: [
             // map Record's field to json object's key of same name
             {name: 'uuid', mapping: 'uuid'},
-            {name: 'descriptor', mapping: 'descriptor'},
+            {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
             {name: 'quantityunits', mapping: 'quantityunits'},
@@ -1662,7 +1661,7 @@ function renderWidgets()
         idProperty: 'uuid',
         fields: [
             {name: 'uuid'},
-            {name: 'descriptor'},
+            {name: 'rsi_binding'},
             {name: 'description'},
             {name: 'quantity'},
             {name: 'quantityunits'},
@@ -1683,9 +1682,9 @@ function renderWidgets()
                 editable: false,
                 editor: new Ext.form.TextField({allowBlank: false})
             },*/{
-                header: 'RS Binding',
+                header: 'RSI Binding',
                 sortable: true,
-                dataIndex: 'descriptor',
+                dataIndex: 'rsi_binding',
                 editable: true,
                 editor: new Ext.form.TextField({allowBlank: false})
             },{
@@ -1820,8 +1819,8 @@ function renderWidgets()
         store: CPRSRSIStore,
         enableColumnMove: true,
         frame: true,
-        collapsible: true,
-        animCollapse: true,
+        collapsible: false,
+        animCollapse: false,
         stripeRows: true,
         viewConfig: {
             // doesn't seem to work
@@ -1858,7 +1857,6 @@ function renderWidgets()
     // the URS
     var initialURSRSI = {
         rows: [
-            //{descriptor:'SOMETHING REALLY REALLY REALLY LONG', description:'description', quantity:'quantity', quantityunits:'quantityunits', rate:'rate', rateunits:'rateunits', roundrule:'roundrule', total:'total'},
         ]
     };
 
@@ -1873,7 +1871,7 @@ function renderWidgets()
         fields: [
             // map Record's field to json object's key of same name
             {name: 'uuid', mapping: 'uuid'},
-            {name: 'descriptor', mapping: 'descriptor'},
+            {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
             {name: 'quantityunits', mapping: 'quantityunits'},
@@ -1911,7 +1909,7 @@ function renderWidgets()
         idProperty: 'uuid',
         fields: [
             {name: 'uuid'},
-            {name: 'descriptor'},
+            {name: 'rsi_binding'},
             {name: 'description'},
             {name: 'quantity'},
             {name: 'quantityunits'},
@@ -1932,9 +1930,9 @@ function renderWidgets()
                 editable: false,
                 editor: new Ext.form.TextField({allowBlank: false})
             },*/{
-                header: 'RS Binding',
+                header: 'RSI Binding',
                 sortable: true,
-                dataIndex: 'descriptor',
+                dataIndex: 'rsi_binding',
                 editable: true,
                 editor: new Ext.form.TextField({allowBlank: false})
             },{
@@ -2069,8 +2067,8 @@ function renderWidgets()
         store: URSRSIStore,
         enableColumnMove: true,
         frame: true,
-        collapsible: true,
-        animCollapse: true,
+        collapsible: false,
+        animCollapse: false,
         stripeRows: true,
         viewConfig: {
             // doesn't seem to work
@@ -2575,6 +2573,8 @@ function renderWidgets()
         //items: [{ text: 'A Button' }, '-', 'Plain Text', ' ', ' ']
     });
 
+
+
     ////////////////////////////////////////////////////////////////////////////
     // construct tabpanel for viewport
 
@@ -2633,14 +2633,27 @@ function renderWidgets()
           id: 'rateStructureTab',
           title: 'Rate Structure',
           xtype: 'panel',
-          //layout: 'accordion',
-          layout: 'vbox',
-          layoutConfig : {
-            align : 'stretch',
-            pack: 'start',
-            flex: 1
-          },
-          items: [URSRSIGrid, CPRSRSIGrid]
+          layout: 'border',
+          items: [
+            {
+                region: 'north',
+                xtype: 'container',
+                split: true,
+                layout: 'fit',
+                //margins: '5 5 0 0',
+                items: [CPRSRSIGrid]
+            },{
+                region: 'center',     // center region is required, no width/height specified
+                xtype: 'container',
+                layout: 'fit',
+                //margins: '5 5 0 0',
+                items: [URSRSIGrid]
+            }/* placeholder for UPRS,{
+                region:'south',
+                //collapsible: true,   // make collapsible
+                layout: 'fit',
+            }*/
+        ]
         },{
           title: 'Charge Items',
           xtype: 'panel',

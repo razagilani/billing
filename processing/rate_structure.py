@@ -94,7 +94,6 @@ class RateStructureDAO():
         for urs_rate in urs['rates']:
             del urs_rate['uuid']
 
-        print "What the fuck %s" % urs
         for urs_reg in urs['registers']:
             del urs_reg['uuid']
 
@@ -112,7 +111,6 @@ class RateStructureDAO():
 
         # load the CPRS
         cprs = self.load_cprs(account, sequence, branch, utility_name, rate_structure_name)
-        print "We loaded the CPRS %s" % cprs
 
         # remove the mongo key, because the requester already has this information
         # and we do not want application code depending on the "_id" field.
@@ -121,9 +119,7 @@ class RateStructureDAO():
         # remove the uuids because they are not used in rate structure computation
         if 'rates' in cprs:
             for cprs_rate in cprs['rates']:
-                print "got a cprs_rate %s" % cprs_rate
                 del cprs_rate['uuid']
-                print "deleted UUID from cprs_rate %s" % cprs_rate
 
 
         # URS is overridden and augmented by rates in UPRS
@@ -148,7 +144,7 @@ class RateStructureDAO():
         if 'rates' in cprs:
             for cprs_rate in cprs['rates']:
                 # find a matching rate in the URS that was just overidden by UPRS
-                urs_uprs_rate = [rate for rate in urs['rates'] if rate['descriptor'] == cprs_rate['descriptor']]
+                urs_uprs_rate = [rate for rate in urs['rates'] if rate['rsi_binding'] == cprs_rate['rsi_binding']]
                 # URS/UPRS does not have a rate for the CPRS to override, so add it.
                 if len(urs_uprs_rate) == 0:
                     urs['rates'].append(cprs_rate)
@@ -160,7 +156,7 @@ class RateStructureDAO():
         # the URS has been thoroughly overridden by the UPRS and CPRS
         return urs
 
-    # TODO this is load_rs_data
+    # Now only used to convert YAML to Mongo
     def load_rs(self, reebill, service):
 
         account = reebill.account
@@ -184,16 +180,25 @@ class RateStructureDAO():
             convert_rs = copy.deepcopy(rate_structure)
             for rate in convert_rs['rates']:
                 if 'descriptor' not in rate: raise Exception('A descriptor is necessary')
-                # assume that quantity would never be in URS?
-                if 'quantity' in rate: del rate['quantity']
+                rate['rsi_binding'] = rate['descriptor']
+                del rate['descriptor']
                 # add a uuid so it can be edited in UI
                 rate['uuid'] = str(uuid.uuid1())
-                rate['rate'] = str(rate['rate'])
+                if 'rate' in rate: 
+                    rate['rate'] = str(rate['rate'])
+                if 'rateunits' in rate: 
+                    rate['rate_units'] = str(rate['rateunits'])
+                    del rate['rateunits']
+                if 'quantityunits' in rate:
+                    rate['quantity_units'] = str(rate['quantityunits'])
+                    del rate['quantityunits']
 
             for reg in convert_rs['registers']:
                 reg['uuid'] = str(uuid.uuid1())
                 reg['quantity'] = str(reg['quantity'])
-
+                reg['quantity_units'] = str(reg['quantityunits'])
+                reg['register_binding'] = str(reg['descriptor'])
+                del reg['descriptor']
 
             # might need to keep these in document body, since it won't be possible
             # for a reebill to directly query by effective and expires.  Maybe
@@ -210,11 +215,9 @@ class RateStructureDAO():
             # will overwrite for every CPRS but last write becomes URS on cut-over
             self.save_urs(utility_name, rate_structure_name, effective, expires, convert_rs)
 
-
             #
             # don't worry about the UPRS until there is UI support to form it
             #
-
 
             #
             # convert rs.yaml to CPRS
@@ -224,11 +227,17 @@ class RateStructureDAO():
             for rate in convert_rs['rates']:
                 # Assume these have gone into URS
                 if 'description' in rate: del rate['description']
-                if 'rateunits' in rate: del rate['rateunits']
-                if 'quantityunits' in rate: del rate['quantityunits']
                 rate['uuid'] = str(uuid.uuid1())
                 rate['rate'] = str(rate['rate'])
+                if 'rateunits' in rate: 
+                    rate['rate_units'] = str(rate['rateunits'])
+                    del rate['rateunits']
+                if 'quantityunits' in rate:
+                    rate['quantity_units'] = str(rate['quantityunits'])
+                    del rate['quantityunits']
                 rate['quantity'] = str(rate['quantity'])
+                rate['rsi_binding'] = rate['descriptor']
+                del rate['descriptor']
             print "added uuid to CPRS %s" % convert_rs
 
             # remove regs  and things not needed in the CPRS
@@ -247,9 +256,10 @@ class RateStructureDAO():
 
     def load_rate_structure(self, reebill, service):
         '''
-        Return a RateStructure that acts on rate structure from mongo
+        Return a RateStructure that acts on URS/UPRS/CPRS combined rate structure
         '''
 
+        # CONVERTS FROM YAML TO MONGO
         # create one in mongo from YAML
         self.load_rs(reebill, service)
 
@@ -383,9 +393,9 @@ class RateStructure():
 
         self.rates = [RateStructureItem(rsi_data, self) for rsi_data in rs_data["rates"]]
         for rsi in self.rates:
-            if rsi.descriptor is None:
+            if rsi.rsi_binding is None:
                 raise Exception("RSI descriptor required.\n%s" % rsi)
-            self.__dict__[rsi.descriptor] = rsi
+            self.__dict__[rsi.rsi_binding] = rsi
 
 
     def register_needs(self):
@@ -430,14 +440,14 @@ class RateStructure():
             if rsi.quantity is not None:
                 charge['quantity'] = rsi.quantity
 
-            if rsi.quantityunits is not None:
-                charge['quantity_units'] = rsi.quantityunits
+            if rsi.quantity_units is not None:
+                charge['quantity_units'] = rsi.quantity_units
 
             if rsi.rate is not None:
                 charge['rate'] = rsi.rate
 
-            if rsi.rateunits is not None:
-                charge['rate_units'] = rsi.rateunits
+            if rsi.rate_units is not None:
+                charge['rate_units'] = rsi.rate_units
 
             charge['total'] = rsi.total
 
@@ -459,6 +469,7 @@ class RateStructure():
 
 class Register(object):
     def __init__(self, reg_data, prior_read_date, present_read_date):
+        print "constructing register with %s" % reg_data
         if 'quantity' not in reg_data:
             raise Exception("Register must have a reading")
         # copy pairs of the form (key, value) in 'reg_data' to pairs of the
@@ -625,15 +636,14 @@ class RateStructureItem():
                 # Don't add the attr the property since it has no value and its only contribution 
                 # would be to make for None type checking all over the place.
 
-
         self.evaluated_total = False
         self.evaluated_quantity = False
         self.evaluated_rate = False
 
     @property
-    def descriptor(self):
-        if hasattr(self, "_descriptor"):
-            return self._descriptor
+    def rsi_binding(self):
+        if hasattr(self, "_rsi_binding"):
+            return self._rsi_binding
         else:
             return None
 
@@ -652,7 +662,7 @@ class RateStructureItem():
         assert type(rsi_value) is str
 
         caller = inspect.stack()[1][3]
-        print "RSI Evaluate: %s, %s Value: %s" % (self._descriptor, caller, rsi_value)
+        print "RSI Evaluate: %s, %s Value: %s" % (self._rsi_binding, caller, rsi_value)
 
         try:
 
@@ -758,15 +768,15 @@ class RateStructureItem():
                 self.evaluated_quantity = True
                 return self._quantity
 
-            raise NoPropertyError(self._descriptor, "%s.quantity does not exist" % self._descriptor)
+            raise NoPropertyError(self._rsi_binding, "%s.quantity does not exist" % self._rsi_binding)
         else:
             return float(self._quantity)
 
     @property
-    def quantityunits(self):
+    def quantity_units(self):
 
-        if hasattr(self, "_quantityunits"):
-            return self._quantityunits
+        if hasattr(self, "_quantity_units"):
+            return self._quantity_units
         else:
             return None
 
@@ -779,14 +789,14 @@ class RateStructureItem():
                 self.evaluated_rate = True
                 return self._rate
 
-            raise NoPropertyError(self._descriptor, "%s.rate does not exist" % self._descriptor)
+            raise NoPropertyError(self._rsi_binding, "%s.rate does not exist" % self._rsi_binding)
         else:
             return float(self._rate)
 
     @property
-    def rateunits(self):
+    def rate_units(self):
 
-        return self._rateunits if hasattr(self, "_rateunits") else None
+        return self._rate_units if hasattr(self, "_rate_units") else None
 
     @property
     def roundrule(self):
@@ -796,23 +806,23 @@ class RateStructureItem():
     def __str__(self):
 
         s = 'Unevaluated RSI\n'
-        s += 'descriptor: %s\n' % (self._descriptor if hasattr(self, '_descriptor') else '')
+        s += 'rsi_binding: %s\n' % (self._rsi_binding if hasattr(self, '_rsi_binding') else '')
         s += 'description: %s\n' % (self._description if hasattr(self, '_description') else '')
         s += 'quantity: %s\n' % (self._quantity if hasattr(self, '_quantity') else '')
-        s += 'quantityunits: %s\n' % (self._quantityunits if hasattr(self, '_quantityunits') else '')
+        s += 'quantity_units: %s\n' % (self._quantity_units if hasattr(self, '_quantity_units') else '')
         s += 'rate: %s\n' % (self._rate if hasattr(self, '_rate') else '')
-        s += 'rateunits: %s\n' % (self._rateunits if hasattr(self, '_rateunits') else '')
+        s += 'rate_units: %s\n' % (self._rate_units if hasattr(self, '_rate_units') else '')
         s += 'roundrule: %s\n' % (self._roundrule if hasattr(self, '_roundrule') else '')
         s += 'total: %s\n' % (self._total if hasattr(self, '_total') else '')
         s += '\n'
         if self.deepprint is True:
             s += 'Evaluated RSI\n'
-            s += 'descriptor: %s\n' % (self.descriptor)
+            s += 'rsi_binding: %s\n' % (self.rsi_binding)
             s += 'description: %s\n' % (self.description)
             s += 'quantity: %s\n' % (self.quantity)
-            s += 'quantityunits: %s\n' % (self.quantityunits)
+            s += 'quantity_units: %s\n' % (self.quantity_units)
             s += 'rate: %s\n' % (self.rate)
-            s += 'rateunits: %s\n' % (self.rateunits)
+            s += 'rate_units: %s\n' % (self.rate_units)
             s += 'roundrule: %s\n' % (self.roundrule)
             s += 'total: %s\n' % (self.total)
             s += '\n'

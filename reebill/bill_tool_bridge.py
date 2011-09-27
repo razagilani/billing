@@ -483,9 +483,12 @@ class BillToolBridge:
                 if type(rows) is dict: rows = [rows]
 
                 # process list of edits
+                # TODO: RateStructure DAO should do CRUD ops
                 for row in rows:
 
-                    # identify the RSI descriptor of the posted data
+
+
+                    # identify the RSI UUID of the posted data
                     rsi_uuid = row['uuid']
 
                     # identify the rsi, and update it with posted data
@@ -502,6 +505,10 @@ class BillToolBridge:
                     for k,v in row.items():
                         if v is None or v == "":
                             del row[k]
+
+                    # now that blank values are removed, ensure that required fields were sent from client 
+                    if 'uuid' not in row: raise Exception("RSI must have a uuid")
+                    if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
 
                     # now take the legitimate values from the posted data and update the RSI
                     # clear it so that the old emptied attributes are removed
@@ -522,6 +529,9 @@ class BillToolBridge:
             elif xaction == "create":
 
                 new_rate = {"uuid": str(UUID.uuid1())}
+                # should find an unbound charge item, and use its binding since an RSI
+                # might be made after a charge item is created
+                new_rate['rsi_binding'] = "Temporary RSI Binding"
                 rates.append(new_rate)
 
                 self.ratestructure_dao.save_cprs(
@@ -616,6 +626,10 @@ class BillToolBridge:
                         if v is None or v == "":
                             del row[k]
 
+                    # now that blank values are removed, ensure that required fields were sent from client 
+                    if 'uuid' not in row: raise Exception("RSI must have a uuid")
+                    if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
+
                     # now take the legitimate values from the posted data and update the RSI
                     # clear it so that the old emptied attributes are removed
                     rsi.clear()
@@ -634,6 +648,7 @@ class BillToolBridge:
             elif xaction == "create":
 
                 new_rate = {"uuid": str(UUID.uuid1())}
+                new_rate['rsi_binding'] = "Temporary RSI Binding"
                 rates.append(new_rate)
 
                 self.ratestructure_dao.save_urs(
