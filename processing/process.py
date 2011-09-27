@@ -308,7 +308,9 @@ class Process(object):
                 end
             )
 
+    # TODO: delete me
     def load_rs(self, rsdb, rsbinding, account, sequence):
+        raise Exception("Nobody should be calling this now")
         rs = yaml.load(file(os.path.join(rsdb, rsbinding, account, sequence+".yaml")))
         return rate_structure.RateStructure(rs)
 
