@@ -876,18 +876,15 @@ class ReebillDAO:
 
     def load_reebill(self, account, sequence, branch=0):
 
+        if not account: return None
+        if not sequence: return None
+
         query = {
             "_id.account": str(account),
             "_id.branch": int(branch),
             "_id.sequence": int(sequence)
         }
         mongo_doc = self.collection.find_one(query)
-
-        #{"_id": {
-        #    "account": str(account), 
-        #    "branch": int(branch),
-        #    "sequence": int(sequence)
-        #}})
 
         # didn't find one in mongo, so let's grab it from eXist
         # TODO: why not also save it into mongo and reload from mongo? for migration?

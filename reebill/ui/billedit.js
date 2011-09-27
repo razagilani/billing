@@ -164,6 +164,16 @@ function renderWidgets()
                     // update the current account and sequence
                     loadReeBillUI(record.data.account, record.data.sequence)
 
+                    // reset the account and sequence combos.  This is a hack, and there needs to be a unified
+                    // way to select a given utilbill, reebill or both
+                    // but when the utilbill list is selected, there may be no rebill associated.
+                    accountsStore.reload();
+                    accountCombo.setValue(record.data.account);
+                    sequencesStore.setBaseParam('account', record.data.account);
+                    sequencesStore.load();
+                    // if sequence is null, set null selection
+                    sequenceCombo.setValue(record.data.sequence);
+
                     // convert the parsed date into a string in the format expected by the back end
                     var formatted_begin_date_string = record.data.period_start.format('Y-m-d');
                     var formatted_end_date_string = record.data.period_end.format('Y-m-d');
@@ -193,23 +203,8 @@ function renderWidgets()
                                 if (jsonData.success == true) {
                                     imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
                                 }
-                                Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(imageUrl, 'Utility bill', 'utilbill'), true);
-                                //if (jsonData.success == false) {
-                                    //[>Ext.MessageBox.alert('Server Error',
-                                        //jsonData.errors.reason + " "
-                                        //+ jsonData.errors.details);*/
-                                    //// replace bill image with a message instead
-                                    ////Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
-                                        ////html: NO_UTILBILL_FOUND_MESSAGE, id: 'utilbillimage'}, true);
-                                    //Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML('', 'Utility bill', 'utilbill'), true);
-                                //} else {
-                                    //// show image in utilbillimageBox
-                                    ////Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'img',
-                                        ////src: 'http://' + location.host + '/utilitybillimages/' 
-                                        ////+ jsonData.imageName, width: '100%', id: 'utilbillimage'}, true);
-                                        //var url = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName
-                                        //Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(url, 'Utility bill', 'utilbill'), true);
-                                //} 
+                                Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(imageUrl, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
+
                             } catch (err) {
                                 Ext.MessageBox.alert('ERROR', err);
                             }
@@ -279,6 +274,7 @@ function renderWidgets()
 
     var accountCombo = new Ext.form.ComboBox({
         store: accountsStore,
+        fieldLabel: 'Account',
         displayField:'name',
         valueField:'account',
         typeAhead: true,
@@ -286,7 +282,6 @@ function renderWidgets()
         emptyText:'Select...',
         // TODO: seems to have no effect. investigate.
         //resizeable: true,
-        width: 350,
         selectOnFocus:true,
     });
 
@@ -303,12 +298,59 @@ function renderWidgets()
 
     var sequenceCombo = new Ext.form.ComboBox({
         store: sequencesStore,
+        fieldLabel: 'Sequence',
         displayField:'sequence',
         typeAhead: true,
         triggerAction: 'all',
         emptyText:'Select...',
-        width: 350,
         selectOnFocus:true,
+    });
+
+    // forms for calling bill process operations
+    var billOperationButton = new Ext.SplitButton({
+        text: 'Process Bill',
+        handler: allOperations, // handle a click on the button itself
+        menu: new Ext.menu.Menu({
+            items: [
+                // these items will render as dropdown menu items when the arrow is clicked:
+                {text: 'Roll Period', handler: rollOperation},
+                {text: 'Bind RE&E Offset', handler: bindREEOperation},
+                {text: 'Bind Rate Structure', handler: bindRSOperation},
+                {text: 'Calculate REPeriod', handler: calcREPeriodOperation},
+                {text: 'Pay', handler: payOperation},
+                {text: 'Sum', handler: sumOperation},
+                {text: 'CalcStats', handler: calcStatsOperation},
+                {text: 'Set Issue Date', handler: issueOperation},
+                {text: 'Render', handler: renderOperation},
+                {text: 'Commit', handler: commitOperation},
+                {text: 'Issue to Customer', handler: issueToCustomerOperation},
+            ]
+        })
+    });
+
+
+    var reebillFormPanel = new Ext.form.FormPanel({
+        title: 'Select ReeBill',
+        frame:true,
+        bodyStyle: 'padding: 10px 10px 0 10px;',
+        defaults: {
+            anchor: '95%',
+            allowBlank: false,
+            msgTarget: 'side',
+            width: 250
+        },
+        items: [
+            new Ext.form.ComboBox({
+                id: 'service_for_charges',
+                fieldLabel: 'Service',
+                triggerAction: 'all',
+                store: ['Gas', 'Electric'],
+                value: 'Gas',
+            }),
+            accountCombo,
+            sequenceCombo,
+            billOperationButton
+        ],
     });
 
     // event to link the account to the bill combo box
@@ -333,29 +375,6 @@ function renderWidgets()
         }
     });
 
-    // forms for calling bill process operations
-
-    var billOperationButton = new Ext.SplitButton({
-        text: 'Process Bill',
-        handler: allOperations, // handle a click on the button itself
-        menu: new Ext.menu.Menu({
-            items: [
-                // these items will render as dropdown menu items when the arrow is clicked:
-                {text: 'Roll Period', handler: rollOperation},
-                {text: 'Bind RE&E Offset', handler: bindREEOperation},
-                {text: 'Bind Rate Structure', handler: bindRSOperation},
-                {text: 'Calculate REPeriod', handler: calcREPeriodOperation},
-                {text: 'Pay', handler: payOperation},
-                {text: 'Sum', handler: sumOperation},
-                {text: 'CalcStats', handler: calcStatsOperation},
-                {text: 'Set Issue Date', handler: issueOperation},
-                {text: 'Render', handler: renderOperation},
-                {text: 'Commit', handler: commitOperation},
-                {text: 'Issue to Customer', handler: issueToCustomerOperation},
-            ]
-        })
-    });
-
 
     function successResponse(response, options) 
     {
@@ -375,19 +394,6 @@ function renderWidgets()
     function allOperations()
     {
     }
-
-    // refactor request object
-    /*MyAjaxRequest = Ext.extend ( Ext.Ajax.request, {
-         url : 'ajax.php' ,
-         params : { action : 'getDate' },
-         method: 'GET',
-         success: function ( result, request ) {
-            Ext.MessageBox.alert ('Success', 'Data return from the server: '+    result.responseText);
-         },
-         failure: function ( result, request) {
-            Ext.MessageBox.alert('Failed', result.responseText);
-          }
-    } ); */
 
     function issueToCustomerOperation()
     {
@@ -1072,22 +1078,9 @@ function renderWidgets()
             },
         ]
     });
-    var serviceComboFormPanel = new Ext.form.FormPanel({
-        layout:'fit',
-        width: 100,
-        items: [
-            new Ext.form.ComboBox({
-                id: 'service_for_charges',
-                triggerAction: 'all',
-                store: ['Gas', 'Electric'],
-                value: 'Gas',
-            })
-        ],
-    });
 
     var aChargesToolbar = new Ext.Toolbar({
         items: [
-            serviceComboFormPanel,
             {
                 xtype: 'tbseparator'
             },{
@@ -2600,7 +2593,6 @@ function renderWidgets()
           xtype: 'panel',
           layout: 'vbox',
           layoutConfig : {
-            //type : 'vbox',
             align : 'stretch',
             pack : 'start'
           },
@@ -2613,11 +2605,14 @@ function renderWidgets()
         },{
           title: 'Select ReeBill',
           xtype: 'panel',
-          bodyStyle:'padding:10px 10px 0px 10px',
+          layout: 'vbox',
+          layoutConfig : {
+            align : 'stretch',
+            pack : 'start'
+          },
           items: [
-            accountCombo,
-            sequenceCombo,
-            billOperationButton
+            reebillFormPanel,
+            //billOperationButton
           ],
         },{
           id: 'ubPeriodsTab',
@@ -2743,15 +2738,6 @@ function renderWidgets()
     // override the selection of the reebill.
     function loadReeBillUI(account, sequence) {
         
-        accountCombo.setValue(account);
-        sequenceCombo.setValue(sequence);
-
-        // if there is no reebill, don't attempt to load one
-        // TODO: I don't want this kind of checking in the UI.  How do we design
-        // in such a way that we never have to test sequence?
-        if (sequence == null || sequence == "")
-            return;
-
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/ubPeriods',
             params: {account: account, sequence: sequence},
@@ -2797,20 +2783,24 @@ function renderWidgets()
             disableCaching: true,
         });
 
-        aChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
-        hChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
-        CPRSRSIStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
-        URSRSIStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
+        aChargesStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
+        hChargesStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
+        CPRSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
+        URSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
 
-        paymentStore.load({params: {account: account}});
+        paymentStore.reload({params: {account: account}});
 
         reebillStore.setBaseParam("account", account)
         // paging tool bar params must be passed in to keep store in sync with toolbar paging calls - autoload params lost after autoload
-        reebillStore.load({params:{start:0, limit:25}});
+        reebillStore.reload({params:{start:0, limit:25}});
 
         var sb = Ext.getCmp('statusbar');
+        if (sequence == null)
+            var selStatus = account
+        else
+            var selStatus = account + "-" + sequence
         sb.setStatus({
-            text: account + "-" + sequence,
+            text: selStatus
         });
 
 
@@ -2839,17 +2829,8 @@ function renderWidgets()
                     if (jsonData.success == true) {
                         imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
                     }
-                    Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML(imageUrl, 'Reebill', 'reebill'), true);
-                    //if (jsonData.success == false) {
-                        //// replace reebill image with a missing graphic
-                        //Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
-                            //html: NO_REEBILL_FOUND_MESSAGE, id: 'reebillimage'}, true);
-                    //} else {
-                        //// show image in utilbillimagebox
-                        //Ext.DomHelper.overwrite('reebillimagebox', {tag: 'img',
-                            //src: 'http://' + location.host + '/utilitybillimages/' 
-                            //+ jsonData.imageName, width: '100%', id: 'reebillimage'}, true);
-                    //} 
+                    Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML(imageUrl, 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
+
                 } catch (err) {
                     Ext.MessageBox.alert('error', err);
                 }
@@ -2924,7 +2905,9 @@ function unregisterAjaxEvents()
     Ext.Ajax.removeListener('requestexception', this.hideSpinner, this);
 }
 
-function getImageBoxHTML(url, label, idPrefix) {
+
+// TODO: 17613609  Need to show bill image, error not found image, error does not exist image
+function getImageBoxHTML(url, label, idPrefix, errorHTML) {
     // TODO default menu selection
     if (url) {
         return {tag: 'div', id: idPrefix + 'imagebox', children: [
@@ -2941,7 +2924,7 @@ function getImageBoxHTML(url, label, idPrefix) {
             {tag: 'img', src: url, width: '100%', id: idPrefix + 'image'},
         ]};
     } else {
-        return {tag: 'div', id: idPrefix + 'imagebox', children: [{tag: 'div', html: NO_UTILBILL_SELECTED_MESSAGE,
+        return {tag: 'div', id: idPrefix + 'imagebox', children: [{tag: 'div', html: errorHTML,
             id: 'utilbillimage'}] };
     }
 }

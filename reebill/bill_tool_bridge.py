@@ -462,6 +462,13 @@ class BillToolBridge:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
+            # It is possible that there is no reebill for the requested rate structure 
+            # if this is the case, return no rate structure.  
+            # This is done so that the UI can configure itself with no data for the
+            # requested rate structure 
+            if reebill is None:
+                return ju.dumps({'success':True})
+
             rate_structure = self.ratestructure_dao.load_cprs(
                 reebill.account, 
                 reebill.sequence, 
@@ -587,6 +594,13 @@ class BillToolBridge:
         try:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
+
+            # It is possible that there is no reebill for the requested rate structure 
+            # if this is the case, return no rate structure.  
+            # This is done so that the UI can configure itself with no data for the
+            # requested rate structure 
+            if reebill is None:
+                return ju.dumps({'success':True})
 
             rate_structure = self.ratestructure_dao.load_urs(
                 reebill.utility_name_for_service(service),
@@ -808,6 +822,13 @@ class BillToolBridge:
 
         try:
             reebill = self.reebill_dao.load_reebill(account, sequence)
+
+            # It is possible that there is no reebill for the requested periods 
+            # if this is the case, return no periods.  
+            # This is done so that the UI can configure itself with no data for the
+            # requested measured usage
+            if reebill is None:
+                return ju.dumps({})
             
             # TODO: consider re-writing client code to not rely on labels,
             # then the reebill datastructure itself can be shipped to client.
@@ -853,6 +874,14 @@ class BillToolBridge:
         try:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
+
+            # It is possible that there is no reebill for the requested charges 
+            # if this is the case, return no charges.  
+            # This is done so that the UI can configure itself with no data for the
+            # requested charges 
+            if reebill is None:
+                return ju.dumps({'success':True, 'rows':[]})
+
             flattened_charges = reebill.actual_chargegroups_flattened(service)
             return ju.dumps({'success': True, 'rows': flattened_charges})
 
@@ -867,6 +896,14 @@ class BillToolBridge:
         try:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
+
+            # It is possible that there is no reebill for the requested charges 
+            # if this is the case, return no charges.  
+            # This is done so that the UI can configure itself with no data for the
+            # requested charges 
+            if reebill is None:
+                return ju.dumps({'success':True, 'rows':[]})
+
             flattened_charges = reebill.hypothetical_chargegroups_flattened(service)
             return ju.dumps({'success': True, 'rows': flattened_charges})
 
@@ -918,6 +955,14 @@ class BillToolBridge:
 
         try:
             reebill = self.reebill_dao.load_reebill(account, sequence)
+
+            # It is possible that there is no reebill for the requested measured usages
+            # if this is the case, return no usages.  
+            # This is done so that the UI can configure itself with no data for the
+            # requested measured usage
+            if reebill is None:
+                return ju.dumps({'success': True})
+
             meters = reebill.meters
             return ju.dumps(meters)
 
