@@ -279,23 +279,18 @@ class MongoReebill:
             this_bill_hypothetical_details = \
                     hypothetical_details[utilbill['service']]
 
+            # some XML reebills lack an rsbinding element
+            if hasattr(this_bill_actual_details.rateschedule, 'rsbinding'):
+                utilbill.update({
+                    #'rate_structure_binding': this_bill_actual_details.rateschedule.rsbinding
+                    'utility_name': this_bill_actual_details.rateschedule.rsbinding
+                })
+            
             # fill in utilbill
             utilbill.update({
                 # this is the <name/> element in <rateschedule/> and is not used.
                 #'rate_schedule_name': python_convert(this_bill_actual_details.rateschedule.name),
                 
-                # Don't fail here, since the rsbinding has already 
-                # been placed in self.dictionary['utilbills']
-
-                # fail if this bill doesn't have an rsbinding
-                'rate_structure_binding': this_bill_actual_details. \
-                        rateschedule.rsbinding,
-                # so-called rate structure/schedule binding ("rsbinding") in utilbill
-                # is actually the name of the utility
-                #'utility_name': this_bill_actual_details.rateschedule.rsbinding,
-                # TODO add rate schedule (not all xml files have this)
-                # 'rate_schedule': python_convert(b.rateschedule),
-
                 # chargegroups are divided between actual and hypothetical; these are
                 # stored in 2 dictionaries mapping the name of each chargegroup to a
                 # list of its charges. totals (in the format {total: #}) are removed
@@ -342,8 +337,10 @@ class MongoReebill:
                     'units': 'quantity_units' # register "units" are now called "quantity_units" so key name is the same as in rate structure
                 })})
 
-        # statistics: exactly the same as in XML
-        self.dictionary['statistics'] = rename_keys(python_convert(b.statistics))
+        # statistics: exactly the same as in XML (but some early XML reebills
+        # don't have a "statistics" element)
+        if b.statistics is not None:
+            self.dictionary['statistics'] = rename_keys(python_convert(b.statistics))
 
         # strip out the old types including  MutableNamedTuples, creating loss 
         # of being able to access data via dot-notation
@@ -733,11 +730,17 @@ class MongoReebill:
         return dict([(service, self.meters_for_service(service)) for service in self.services])
 
     def utility_name_for_service(self, service_name):
-        utility_names = [
-            ub['utility_name'] 
-            for ub in self.dictionary['utilbills']
-            if ub['service'] == service_name
-        ]
+        try:
+            utility_names = [
+                ub['utility_name'] 
+                for ub in self.dictionary['utilbills']
+                if ub['service'] == service_name
+            ]
+        except KeyError:
+            # mongo reebills that came from xml reebills lacking "rsbinding" at
+            # the utilbill root will lack a "utility_name" key
+            raise NoUtilityNameError('this reebill lacks a utility name (from '
+                    '"rsbinding" attribute at at bill/utilbill in xml).')
 
         if utility_names == []:
             raise Exception('No utility name found for service "%s"' % service_name)
@@ -746,12 +749,16 @@ class MongoReebill:
         return utility_names[0]
 
     def rate_structure_name_for_service(self, service_name):
-
-        rs_bindings = [
-            ub['rate_structure_binding'] 
-            for ub in self.dictionary['utilbills']
-            if ub['service'] == service_name
-        ]
+        try:
+            rs_bindings = [
+                ub['rate_structure_binding'] 
+                for ub in self.dictionary['utilbills']
+                if ub['service'] == service_name
+            ]
+        except KeyError:
+            # mongo reebills that came from xml reebills lacking "rsbinding" at
+            # the utilbill root will lack a "rate_structure_binding" key
+            raise NoRateStructureError('this reebill lacks a rate structure')
 
         if rs_bindings == []:
             raise Exception('No rate structure binding found for service "%s"' % service_name)
@@ -947,3 +954,7 @@ class ReebillDAO:
         else:
             pass
 
+class NoRateStructureError(Exception):
+    pass
+class NoUtilityNameError(Exception):
+    pass
