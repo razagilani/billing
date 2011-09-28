@@ -5,6 +5,8 @@ from processing.process import Process
 from processing.rate_structure import RateStructureDAO
 from processing.state import StateDB
 
+import pdb
+
 if __name__ == '__main__':
 
     ratestructure_dao = RateStructureDAO({
@@ -33,7 +35,6 @@ if __name__ == '__main__':
 
     process = Process({}, state_db, reebill_dao, ratestructure_dao)
 
-
     success_count = 0
     error_count = 0
     for account in range(10001, 10025):
@@ -55,10 +56,15 @@ if __name__ == '__main__':
                 error_count += 1
             except TypeError as e:
                 print '%s %s: %s' % (account, sequence,
-                        'AttributeError ' + str(e))
+                        'TypeError ' + str(e))
                 error_count += 1
             except IOError:
                 pass
+            except Exception as e:
+                print '%s %s: %s' % (account, sequence,
+                        'Exception ' + str(e))
+                error_count += 1
+
     print 'imported %s bills' % success_count
     print error_count, 'errors'
 

@@ -341,7 +341,6 @@ class MongoReebill:
                     'total': 'quantity', # register "total" is now called a "quantity"
                     'units': 'quantity_units' # register "units" are now called "quantity_units" so key name is the same as in rate structure
                 })})
-            print 'meters:'
 
         # statistics: exactly the same as in XML
         self.dictionary['statistics'] = rename_keys(python_convert(b.statistics))

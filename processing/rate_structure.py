@@ -223,7 +223,6 @@ class RateStructureDAO():
             # convert rs.yaml to CPRS
             #
             convert_rs = copy.deepcopy(rate_structure)
-            print "converting yaml to CPRS %s" % convert_rs
             for rate in convert_rs['rates']:
                 # Assume these have gone into URS
                 if 'description' in rate: del rate['description']
@@ -238,7 +237,6 @@ class RateStructureDAO():
                 rate['quantity'] = str(rate['quantity'])
                 rate['rsi_binding'] = rate['descriptor']
                 del rate['descriptor']
-            print "added uuid to CPRS %s" % convert_rs
 
             # remove regs  and things not needed in the CPRS
             if 'effective' in convert_rs: del convert_rs['effective']
@@ -377,7 +375,6 @@ class RateStructure():
         for reg in self.registers:
             if reg.register_binding is None:
                 raise Exception("Register descriptor required.\n%s" % reg)
-            print "Rate Structure set reg %s %s" % (reg.register_binding, reg)
             self.__dict__[reg.register_binding] = reg
 
         # RSIs refer to RS namespace to access registers,
@@ -432,7 +429,6 @@ class RateStructure():
 
         for charge in charges:
             rsi = self.__dict__[charge['rsi_binding']]
-            print "matched rsi %s to charge %s" % (rsi, charge)
 
             if rsi.description is not None:
                 charge['description'] = rsi.description
@@ -455,7 +451,8 @@ class RateStructure():
 
         for rsi in self.rates:
             if (hasattr(rsi, 'bound') == False):
-                print "RSI was not bound " + str(rsi)
+                #print "RSI was not bound " + str(rsi)
+                pass
 
     def __str__(self):
 
@@ -469,7 +466,6 @@ class RateStructure():
 
 class Register(object):
     def __init__(self, reg_data, prior_read_date, present_read_date):
-        print "constructing register with %s" % reg_data
         if 'quantity' not in reg_data:
             raise Exception("Register must have a reading")
         # copy pairs of the form (key, value) in 'reg_data' to pairs of the
@@ -662,7 +658,7 @@ class RateStructureItem():
         assert type(rsi_value) is str
 
         caller = inspect.stack()[1][3]
-        print "RSI Evaluate: %s, %s Value: %s" % (self._rsi_binding, caller, rsi_value)
+        #print "RSI Evaluate: %s, %s Value: %s" % (self._rsi_binding, caller, rsi_value)
 
         try:
 
@@ -671,7 +667,7 @@ class RateStructureItem():
             # this enables the rsi_value to contain references to attributes 
             # (registers and RSIs) that are held in the RateStructure
             result = eval(rsi_value, self._rate_structure.__dict__)
-            print "RSI Evaluate Result: %s %s" % (type(result), result)
+            #print "RSI Evaluate Result: %s %s" % (type(result), result)
 
             # an evaluated result can be a string or float or who knows what
             return result
