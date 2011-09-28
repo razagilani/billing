@@ -888,12 +888,10 @@ class ReebillDAO:
         # TODO: why not also save it into mongo and reload from mongo? for migration?
 
         if mongo_doc is None:
-            print "*** loaded from xml"
             b = self.load_xml_reebill(account, sequence)
             xml_reebill = MongoReebill(b)
             return xml_reebill
         else:
-            print "*** loaded from mongo"
             mongo_doc = deep_map(float_to_decimal, mongo_doc)
             mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
             mongo_reebill = MongoReebill(mongo_doc)
@@ -918,7 +916,6 @@ class ReebillDAO:
             'sequence': reebill.sequence,
             'branch': 0}
         self.collection.save(mongo_doc)
-        print '*** saved reebill in mongo'
 
     def save_xml_reebill(self, xml_reebill, account, sequence):
 
