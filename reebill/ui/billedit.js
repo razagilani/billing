@@ -886,8 +886,8 @@ function renderWidgets()
                         registerFormPanel.add(
                             new Ext.form.NumberField({
                                 fieldLabel: register.identifier,
-                                name: 'total',
-                                value: register.total,
+                                name: 'quantity',
+                                value: register.quantity,
                             })
                         );
 
