@@ -283,7 +283,7 @@ class MongoReebill:
             if hasattr(this_bill_actual_details.rateschedule, 'rsbinding'):
                 utilbill.update({
                     #'rate_structure_binding': this_bill_actual_details.rateschedule.rsbinding
-                    'utility_name': this_bill_actual_details.rateschedule.rsbinding
+                    'rate_structure_binding': this_bill_actual_details.rateschedule.rsbinding
                 })
             
             # fill in utilbill
