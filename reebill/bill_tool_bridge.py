@@ -985,12 +985,12 @@ class BillToolBridge:
 
 
     @cherrypy.expose
-    def setActualRegister(self, account, sequence, service, register_identifier, meter_identifier, total):
+    def setActualRegister(self, account, sequence, service, register_identifier, meter_identifier, quantity):
 
         try:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
-            reebill.set_meter_actual_register(service, meter_identifier, register_identifier, total)
+            reebill.set_meter_actual_register(service, meter_identifier, register_identifier, quantity)
             self.reebill_dao.save_reebill(reebill)
 
             return ju.dumps({'success':True})

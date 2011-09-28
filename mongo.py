@@ -720,7 +720,7 @@ class MongoReebill:
                 meter['present_read_date'] = present_read_date
                 meter['prior_read_date'] = prior_read_date
 
-    def set_meter_actual_register(self, service, meter_identifier, register_identifier, total):
+    def set_meter_actual_register(self, service, meter_identifier, register_identifier, quantity):
         ''' Set the total for a specified meter register.'''
 
         for ub in self.dictionary['utilbills']:
@@ -729,7 +729,7 @@ class MongoReebill:
                     if meter['identifier'] == meter_identifier:
                         for register in meter['registers']:
                             if (register['shadow'] == False) and (register['identifier'] == register_identifier):
-                                register['total'] = total
+                                register['quantity'] = quantity
 
     @property
     def meters(self):
