@@ -24,7 +24,6 @@ if __name__ == '__main__':
         "user": "dev"
     }) 
 
-
     reebill_dao = ReebillDAO({
         "host":"localhost", 
         "port":27017, 
@@ -33,20 +32,17 @@ if __name__ == '__main__':
         "destination_prefix":"http://localhost:8080/exist/rest/db/skyline/bills"
     })
 
-    process = Process({}, state_db, reebill_dao, ratestructure_dao)
+    #process = Process({}, state_db, reebill_dao, ratestructure_dao)
 
     success_count = 0
     error_count = 0
+    pdb.set_trace()
     for account in range(10001, 10025):
         for sequence in range(1,20):
             try:
 
                 # convert to mongo
                 reebill = reebill_dao.load_reebill(account, sequence)
-
-                # convert rate structure
-                process.bind_rate_structure(reebill)
-
                 reebill_dao.save_reebill(reebill)
 
                 success_count += 1
@@ -68,5 +64,43 @@ if __name__ == '__main__':
     print 'imported %s bills' % success_count
     print error_count, 'errors'
 
+    success_count = 0
+    error_count = 0
 
+    print "************************************************"
 
+    pdb.set_trace()
+
+    for account in range(10001, 10025):
+        for sequence in range(1,20):
+            try:
+
+                # convert to mongo
+                reebill = reebill_dao.load_reebill(account, sequence)
+
+                # convert rate structure
+                ratestructure_dao.convert_rs_yaml(reebill)
+
+                success_count += 1
+
+                print 'Success: %s %s' % (account, sequence,)
+
+            except AttributeError as e:
+                print '%s %s: %s' % (account, sequence,
+                        'AttributeError ' + str(e))
+                error_count += 1
+            except TypeError as e:
+                print '%s %s: %s' % (account, sequence,
+                        'TypeError ' + str(e))
+                error_count += 1
+            except IOError as e:
+                print '%s %s: %s' % (account, sequence,
+                        'IOError ' + str(e))
+                error_count += 1
+            except Exception as e:
+                print '%s %s: %s' % (account, sequence,
+                        'Exception ' + str(e))
+                error_count += 1
+
+    print 'imported %s ratestructures' % success_count
+    print error_count, 'errors'
