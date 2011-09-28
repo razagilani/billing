@@ -647,8 +647,6 @@ class MongoReebill:
             if ub['service'] == service_name:
                 ub['actual_chargegroups'] = new_chargegroups
 
-    
-
     @property
     def services(self):
         '''Returns a list of all services for which there are utilbills.'''

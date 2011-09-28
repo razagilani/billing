@@ -463,16 +463,15 @@ def render(reebill, outputfile, backgrounds, verbose):
 
     # populate billPeriodTableF
     # spacer so rows can line up with those in summarChargesTableF rows
-    services = reebill.all_services
     serviceperiod = [
             [Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake'])],
             [Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
         ] + [
             [
                 Paragraph(service + u' service',styles['BillLabelSmRight']), 
-                Paragraph(str(reebill.utilbill_periods(service)[0]), styles['BillFieldRight']), 
-                Paragraph(str(reebill.utilbill_periods(service)[1]), styles['BillFieldRight'])
-            ] for service in services
+                Paragraph(str(reebill.utilbill_period_for_service(service)[0]), styles['BillFieldRight']), 
+                Paragraph(str(reebill.utilbill_period_for_service(service)[1]), styles['BillFieldRight'])
+            ] for service in reebill.services
         ]
 
     t = Table(serviceperiod, colWidths=[115,63,63])
@@ -489,7 +488,7 @@ def render(reebill, outputfile, backgrounds, verbose):
             Paragraph(str(reebill.hypothetical_total_for_service(service).quantize(Decimal(".00"))),styles['BillFieldRight']), 
             Paragraph(str(reebill.actual_total_for_service(service).quantize(Decimal(".00"))),styles['BillFieldRight']), 
             Paragraph(str(reebill.ree_value_for_service(service).quantize(Decimal(".00"))),styles['BillFieldRight'])
-        ] for service in reebill.all_services
+        ] for service in reebill.services
     ]
 
     t = Table(utilitycharges, colWidths=[84,84,84])
@@ -575,7 +574,7 @@ def render(reebill, outputfile, backgrounds, verbose):
     ]
 
     # make a dictionary like Bill.measured_usage() using data from MongoReeBill:
-    mongo_measured_usage = dict((service,reebill.meters(service)) for service in reebill.all_services)
+    mongo_measured_usage = dict((service,reebill.meters_for_service(service)) for service in reebill.services)
 
     # TODO: show both the utilty and shadow register as separate line items such that both their descriptions and rules could be shown
     for service, meters in mongo_measured_usage.items():
@@ -594,11 +593,11 @@ def render(reebill, outputfile, backgrounds, verbose):
                 # TODO validate that there is only a utility and shadow register
                 for register in register_group:
                     if register['shadow'] is True:
-                        shadow_total = register['total']
-                        total += register['total']
+                        shadow_total = register['quantity']
+                        total += register['quantity']
                     if register['shadow'] is False:
-                        utility_total = register['total']
-                        total += register['total']
+                        utility_total = register['quantity']
+                        total += register['quantity']
 
                 measuredUsage.append([
                     # TODO unless some wrapper class exists (pivotal 13643807) check for errors
@@ -659,7 +658,7 @@ def render(reebill, outputfile, backgrounds, verbose):
         [None, None, None, None, None, None, None]
     ]
 
-    for service in reebill.all_services:
+    for service in reebill.services:
         # MongoReebill.hypothetical_chargegroups_for_service() returns a dict
         # mapping charge types (e.g. "All Charges") to lists of chargegroups.
         chargegroups_dict = reebill.hypothetical_chargegroups_for_service(service)

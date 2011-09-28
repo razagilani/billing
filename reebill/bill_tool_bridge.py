@@ -983,7 +983,6 @@ class BillToolBridge:
         except Exception as e:
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-
     @cherrypy.expose
     def setActualRegister(self, account, sequence, service, register_identifier, meter_identifier, quantity):
 
@@ -997,8 +996,6 @@ class BillToolBridge:
 
         except Exception as e:
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
-
 
     #
     ################
