@@ -608,10 +608,12 @@ class BillToolBridge:
             if reebill is None:
                 return ju.dumps({'success':True})
 
-            rate_structure = self.ratestructure_dao.load_urs(
-                reebill.utility_name_for_service(service),
-                reebill.rate_structure_name_for_service(service)
-            )
+            utility_name = reebill.utility_name_for_service(service)
+            rs_name = reebill.rate_structure_name_for_service(service)
+            rate_structure = self.ratestructure_dao.load_urs(utility_name, rs_name)
+
+            if rate_structure is None:
+                raise Exception("Could not load URS for %s and %s" % (utility_name, rs_name) )
 
             rates = rate_structure["rates"]
 
