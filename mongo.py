@@ -388,7 +388,7 @@ class MongoReebill:
 
     @property
     def period_begin(self):
-        return python_convert(dictionary['period_begin'])
+        return python_convert(self.dictionary['period_begin'])
     @period_begin.setter
     def period_begin(self, value):
         self.dictionary['period_begin'] = value

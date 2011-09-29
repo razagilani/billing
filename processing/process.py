@@ -268,17 +268,12 @@ class Process(object):
 
 
     def commit_rebill(self, account, sequence):
+        #the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+        reebill = self.reebill_dao.load_reebill(account, sequence)
+        begin = reebill.period_begin
+        end = reebill.period_end
 
-            the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
-            begin = the_bill.rebill_summary.begin
-            end = the_bill.rebill_summary.end
-
-            self.state_db.commit_bill(
-                account,
-                sequence,
-                begin,
-                end
-            )
+        self.state_db.commit_bill(account, sequence, begin, end)
 
     # TODO: delete me
     def load_rs(self, rsdb, rsbinding, account, sequence):
