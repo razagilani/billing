@@ -561,7 +561,7 @@ class MongoReebill:
             raise Exception('Multiple utilbills found for service "%s"' % service_name)
         return totals[0]
 
-    def set_ree_value_for_service(self, service, new_ree_value):
+    def set_ree_value_for_service(self, service_name, new_ree_value):
         for ub in self.dictionary['utilbills']:
             if ub['service'] == service_name:
                 ub['ree_value'] = new_ree_value
@@ -576,7 +576,7 @@ class MongoReebill:
             raise Exception('Multiple utilbills found for service "%s"' % service_name)
         return totals[0]
 
-    def set_ree_savings_for_service(self, service, new_ree_savings):
+    def set_ree_savings_for_service(self, service_name, new_ree_savings):
 
         for ub in self.dictionary['utilbills']:
             if ub['service'] == service_name:
@@ -592,7 +592,7 @@ class MongoReebill:
             raise Exception('Multiple utilbills found for service "%s"' % service_name)
         return totals[0]
 
-    def set_ree_charges_for_service(self, service, new_ree_charges):
+    def set_ree_charges_for_service(self, service_name, new_ree_charges):
         for ub in self.dictionary['utilbills']:
             if ub['service'] == service_name:
                 ub['ree_charges'] = new_ree_charges
@@ -730,6 +730,56 @@ class MongoReebill:
         '''Returns a dictionary mapping service names to lists of meters.'''
         return dict([(service, self.meters_for_service(service)) for service in self.services])
 
+    def actual_registers(self, service):
+        ''' For all meters of a given service, return all the actual registers.
+        Registers have rate structure bindings that are used to make the actual
+        registers available to rate structure items.
+        '''
+
+        all_actual = []
+
+        for meter in self.meters_for_service(service):
+            all_actual.extend(filter(
+                lambda register: register if register['shadow'] is False else False, meter['registers']
+            ))
+
+        return all_actual
+
+    # TODO: probably should be qualified by service since register identifiers could collide
+    def set_actual_register_quantity(self, identifier, quantity):
+        '''Sets the value 'quantity' in the first register subdictionary whose
+        identifier is 'identifier' to 'quantity'. Raises an exception if no
+        register with that identified is found.'''
+        for service in self.services:
+            for register in self.actual_registers(service):
+                if register['identifier'] == identifier:
+                    register['quantity'] = quantity
+                    return
+        raise Exception('No actual register found with identifier "%s"' % identifier)
+
+    def shadow_registers(self, service):
+
+        all_shadow = []
+
+        for meter in self.meters_for_service(service):
+            all_shadow.extend(filter(
+                lambda register: register if register['shadow'] is True else False, meter['registers']
+            ))
+
+        return all_shadow
+
+    # TODO: probably should be qualified by service since register identifiers could collide
+    def set_shadow_register_quantity(self, identifier, quantity):
+        '''Sets the value 'quantity' in the first register subdictionary whose
+        identifier is 'identifier' to 'quantity'. Raises an exception if no
+        register with that identified is found.'''
+        for service in self.services:
+            for register in self.shadow_registers(service):
+                if register['identifier'] == identifier:
+                    register['quantity'] = quantity
+                    return
+        raise Exception('No shadow register found with identifier "%s"' % identifier)
+
     def utility_name_for_service(self, service_name):
         try:
             utility_names = [
@@ -819,42 +869,6 @@ class MongoReebill:
                 ub[chargegroups] = new_chargegroups
 
 
-    def actual_registers(self, service):
-        ''' For all meters of a given service, return all the actual registers.
-        Registers have rate structure bindings that are used to make the actual
-        registers available to rate structure items.
-        '''
-
-        all_actual = []
-
-        for meter in self.meters_for_service(service):
-            all_actual.extend(filter(
-                lambda register: register if register['shadow'] is False else False, meter['registers']
-            ))
-
-        return all_actual
-
-    def shadow_registers(self, service):
-
-        all_shadow = []
-
-        for meter in self.meters_for_service(service):
-            all_shadow.extend(filter(
-                lambda register: register if register['shadow'] is True else False, meter['registers']
-            ))
-
-        return all_shadow
-
-    def set_shadow_register_quantity(self, identifier, quantity):
-        '''Sets the value 'quantity' in the first register subdictionary whose
-        identifier is 'identifier' to 'quantity'. Raises an exception if no
-        register with that identified is found.'''
-        for service in self.services:
-            for register in self.shadow_registers(service):
-                if register['identifier'] == identifier:
-                    register['quantity'] = quantity
-                    return
-        raise Exception('No shadow register found with identifier "%s"' % identifier)
 
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''

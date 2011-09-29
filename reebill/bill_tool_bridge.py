@@ -174,12 +174,14 @@ class BillToolBridge:
     def roll(self, account, sequence, **args):
 
         try:
-            self.process.roll_bill(account, sequence)
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            new_reebill = self.process.roll_bill(reebill)
+            self.reebill_dao.save_reebill(new_reebill)
+            return json.dumps({'success': True})
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return json.dumps({'success': True})
 
     @cherrypy.expose
     def pay(self, account, sequence, **args):
