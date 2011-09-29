@@ -62,7 +62,6 @@ if __name__ == '__main__':
                 print '%s %s: %s' % (account, sequence,
                         'TypeError ' + str(e))
                 error_count += 1
-                raise
             except IOError as e:
                 if str(e).endswith('failed to load HTTP resource'):
                     # there is no reebill for this account & sequence
