@@ -157,7 +157,7 @@ def subdict(d, keys, ignore_missing=True):
     ignored.'''
     return dict((key,d[key]) for key in keys if not ignore_missing or (key in d))
 
-class MongoReebill:
+class MongoReebill(object):
     '''Class representing the reebill data structure stored in MongoDB. All
     data is stored in 'dictionary', which is a Python dict that PyMongo could
     read/write directly from/to the database. Provides methods for extracting
@@ -413,7 +413,7 @@ class MongoReebill:
         '''Returns a dict.'''
         return self.dictionary['billing_address']
     @billing_address.setter
-    def billing_address(self):
+    def billing_address(self, value):
         '''Returns a dict.'''
         self.dictionary['billing_address'] = value
 
@@ -435,6 +435,7 @@ class MongoReebill:
     @property
     def payment_received(self):
         return self.dictionary['payment_received']
+
     @payment_received.setter
     def payment_received(self, value):
         self.dictionary['payment_received'] = value
@@ -489,21 +490,21 @@ class MongoReebill:
     def actual_total(self):
         return self.dictionary['actual_total']
     @actual_total.setter
-    def actual_total(self):
+    def actual_total(self, value):
         self.dictionary['actual_total'] = value
 
     @property
     def hypothetical_total(self):
         return self.dictionary['hypothetical_total']
     @hypothetical_total.setter
-    def hypothetical_total(self):
+    def hypothetical_total(self, value):
         self.dictionary['hypothetical_total'] = value
 
     @property
     def ree_value(self):
         return self.dictionary['ree_value']
     @ree_value.setter
-    def ree_value(self):
+    def ree_value(self, value):
         self.dictionary['ree_value'] = value
 
     def hypothetical_total_for_service(self, service_name):
@@ -932,10 +933,16 @@ class ReebillDAO:
         '''Saves the MongoReebill 'reebill' into the database. If a document
         with the same account & sequence number already exists, the existing
         document is replaced with this one.'''
+        print "save_reebill received id %s" % id(reebill.dictionary)
+        print "the value is %s " % reebill.payment_received
+        print "reebill.dictionary ******************************"
+        pp.pprint (reebill.dictionary)
         mongo_doc = bson_convert(copy.deepcopy(reebill.dictionary))
         mongo_doc['_id'] = {'account': reebill.account,
             'sequence': reebill.sequence,
             'branch': 0}
+        print "mongo doc *************************************"
+        pp.pprint (mongo_doc)
         self.collection.save(mongo_doc)
 
     def save_xml_reebill(self, xml_reebill, account, sequence):
