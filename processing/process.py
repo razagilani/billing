@@ -543,8 +543,9 @@ class Process(object):
     def issue(self, account, sequence, issuedate=None):
         """ Set the Renewable Energy bill Period """
 
-        inputtree = etree.parse("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
-        outputtree = etree.parse("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        #inputtree = etree.parse("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+        #outputtree = etree.parse("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        reebill = self.reebill_dao.load_reebill(account, sequence)
 
         if issuedate is None:
             issuedate = datetime.date.today()
@@ -554,13 +555,14 @@ class Process(object):
         duedate = issuedate + datetime.timedelta(days=30)
 
         # TODO: refactor out xml code to depend on bill.py
-        self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:issued")[0].text = issuedate.strftime("%Y-%m-%d")
-        self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:duedate")[0].text = duedate.strftime("%Y-%m-%d")
+        #self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:issued")[0].text = issuedate.strftime("%Y-%m-%d")
+        #self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:duedate")[0].text = duedate.strftime("%Y-%m-%d")
+        reebill.issue_date = issuedate.strftime("%Y-%m-%d")
+        reebill.due_date = duedate.strftime("%Y-%d-%m")
 
-        XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
-            self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
+        #XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
+            #self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
         # save in mongo
-        reebill = self.reebill_dao.load_reebill(account, sequence)
         self.reebill_dao.save_reebill(reebill)
 
     def issue_to_customer(self, account, sequence):
