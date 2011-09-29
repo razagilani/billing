@@ -40,15 +40,20 @@ from billing.processing import state
 from billing.mongo import ReebillDAO
 
 class Process(object):
-    """ Class with a variety of utility procedures for processing bills """
+    """ Class with a variety of utility procedures for processing bills.
+        The idea here is that this class is instantiated with the data
+        access objects it needs, and then ReeBills (why not just references
+        to them?) are passed in and returned.  
+    """
 
     config = None
     
     def __init__(self, config, state_db, reebill_dao, rate_structure_dao):
         self.config = config
         self.state_db = state_db
-        self.reebill_dao = reebill_dao
         self.rate_structure_dao = rate_structure_dao
+        #TODO: why do we need a reebill_dao? Reebills get passed in to this helper class
+        self.reebill_dao = reebill_dao
 
     #TODO better function name to reflect the return types of XPath - not just elements, but sums, etc...
     #TODO function to return a single element vs list - that will clean up lots of code
@@ -150,149 +155,116 @@ class Process(object):
         reebill = self.reebill_dao.load_reebill(account, sequence)
         self.reebill_dao.save_reebill(reebill)
 
-    def roll_bill(self, account, sequence):
+    def roll_bill(self, reebill):
         """
         Create rebill for next period, based on prior bill.
-        This is acheived by accessing xml document for prior bill, and resetting select values.
         """
 
-        # obtain the last Rebill sequence
-        last_sequence = self.state_db.last_sequence(account)
+        # obtain the last Reebill sequence from the state database
+        # TODO: database connection needs to be passed through here
+        # such that transactions encompassing the http request can be done
+        last_sequence = self.state_db.last_sequence(reebill.account)
 
-        if (int(sequence) < int(last_sequence)):
+        if (int(reebill.sequence) < int(last_sequence)):
             raise Exception("Not the last sequence")
 
         next_sequence = int(last_sequence + 1)
 
-        # duplicate the rate structure(s) so that it may be edited
-        # first, we must get the bill and introspect it to determine what rate structures it is bound to
-        the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+        # for each service, duplicate the CPRS
+        for service in reebill.services:
 
-        utilbills = the_bill.utilbill_summary_charges
-        rsbindings = [utilbill.rsbinding for (s, utilbill) in utilbills.items()]
+            utility_name = reebill.utility_name_for_service(service)
+            rate_structure_name = reebill.rate_structure_name_for_service(service)
 
-        rspath = self.config.get("billdb", "rspath")
+            # load current CPRS
+            cprs = self.rate_structure_dao.load_cprs(reebill.account, reebill.sequence,
+                reebill.branch, utility_name, rate_structure_name)
 
-        import shutil 
-        for rsbinding in rsbindings:
-            shutil.copyfile(os.path.join(rspath, rsbinding, account, sequence+".yaml"), os.path.join(rspath, rsbinding, account, str(next_sequence)+".yaml"))
-            
+            # save the next CPRS
+            self.rate_structure_dao.save_cprs(reebill.account, next_sequence,
+                reebill.branch, utility_name, rate_structure_name, cprs)
 
-        # increment sequence
-        the_bill.id = next_sequence
-
-        # get the rebill and zero it out
-        r = the_bill.rebill_summary
+        # increment reebill sequence
+        reebill.sequence = next_sequence
 
         # process rebill
+        reebill.period_begin = None
+        reebill.period_end = None
+        reebill.total_adjustment = Decimal("0.00")
+        reebill.hypothetical_total = Decimal("0.00")
+        reebill.actual_total = Decimal("0.00")
+        reebill.ree_value = Decimal("0.00")
+        reebill.ree_charges = Decimal("0.00")
+        reebill.ree_savings = Decimal("0.00")
+        reebill.due_date = None
+        reebill.issue_date = None
+        reebill.motd = None
 
-        r.begin = datetime.datetime.max
-        r.begin = None
-        r.end = None
-        r.totaladjustment = Decimal("0.00")
-        r.hypotheticalecharges = Decimal("0.00")
-        r.actualecharges = Decimal("0.00")
-        r.revalue = Decimal("0.00")
-        r.recharges = Decimal("0.00")
-        r.resavings = Decimal("0.00")
-        r.duedate = None
-        r.issued = None
-        r.message = None
+        reebill.prior_balance = Decimal("0.00")
+        reebill.total_due = Decimal("0.00")
+        reebill.payment_received = Decimal("0.00")
+        reebill.balance_forward = Decimal("0.00")
 
-        # compute payments
-        # moved to pay bill
-        #r.priorbalance = r.totaldue
-        r.totaldue = Decimal("0.00")
-        #r.paymentreceived = Decimal(amountPaid)
-        #r.balanceforward = r.priorbalance - r.paymentreceived
+        for service in reebill.services:
 
-        # set rebill back to bill
-        the_bill.rebill_summary = r
+            # get utilbill numbers and zero them out
+            reebill.set_actual_total_for_service(service, Decimal("0.00")) 
+            reebill.set_hypothetical_total_for_service(service, Decimal("0.00")) 
+            reebill.set_ree_value_for_service(service, Decimal("0.00")) 
+            reebill.set_ree_savings_for_service(service, Decimal("0.00")) 
+            reebill.set_ree_charges_for_service(service, Decimal("0.00")) 
 
-        # get utilbill summaries and zero them out
-        ub_summary_charges = the_bill.utilbill_summary_charges
-        for (service, charges) in ub_summary_charges.items():
-            # utility billing periods are utility specific
-            # TODO business logic specific dates are selected here
-            charges.begin = charges.end
-            charges.end = None
+            # set utility period dates
+            old_period = reebill.utilbill_period_for_service(service)
+            # end is now begin
+            # TODO: the end date might not be the begin date, so this could be
+            # a utility specific business rule
+            old_period = (old_period[1], None)
+            reebill.set_utilbill_period_for_service(service, old_period)
 
-            charges.hypotheticalecharges = Decimal("0.00")
-            charges.actualecharges = Decimal("0.00")
-            charges.revalue = Decimal("0.00")
-            charges.recharges = Decimal("0.00")
-            charges.resavings = Decimal("0.00")
-
-        # set the utilbill summaries back into bill
-        the_bill.utilbill_summary_charges = ub_summary_charges
-
-        # process /ub:bill/ub:details/
-
-        # zero out details totals
-
-        def zero_charges(details):
-
-            for service, detail in details.items():
-
-                detail.total = Decimal("0.00")
-
-                for chargegroup in detail.chargegroups:
-                    #TODO: zero out a chargegroup total when one exists
-
-                    for charge in chargegroup.charges:
-                        if hasattr(charge, "rate"): charge.rate = None 
-                        if hasattr(charge, "quantity"): charge.quantity = None 
-                        charge.total = Decimal("0.00")
-            return details
-
-        the_bill.actual_details = zero_charges(the_bill.actual_details)
-        the_bill.hypothetical_details = zero_charges(the_bill.hypothetical_details)
        
         # reset measured usage
-        measured_usage = the_bill.measured_usage
 
-        for service, meters in measured_usage.items():
-            for meter in meters:
-                meter.priorreaddate = meter.presentreaddate
-                meter.presentreaddate = None
-                for register in meter.registers:
-                    register.total = Decimal("0")
-                    register.presentreading = Decimal("0")
-
-        the_bill.measured_usage = measured_usage
+        for service in reebill.services:
+            for meter in reebill.meters_for_service(service):
+                prior_read_date = meter['prior_read_date']
+                reebill.set_meter_read_date(service, meter['identifier'], meter['prior_read_date'], None)
+            for actual_register in reebill.actual_registers(service):
+                reebill.set_actual_register_quantity(actual_register['identifier'], 0)
+            for shadow_register in reebill.shadow_registers(service):
+                reebill.set_shadow_register_quantity(shadow_register['identifier'], 0)
 
 
         # zero out statistics section
-        statistics = the_bill.statistics
+        statistics = reebill.statistics
 
-        statistics.conventionalconsumed = None
-        statistics.renewableconsumed = None
-        statistics.renewableutilization = None
-        statistics.conventionalutilization = None
-        statistics.renewableproduced = None
-        statistics.co2offset = None
-        statistics.totalsavings = None
-        statistics.totalrenewableconsumed = None
-        statistics.totalrenewableproduced = None
-        statistics.totaltrees = None
-        statistics.totalco2offset = None
+        statistics["conventional_consumed"] = None
+        statistics["renewable_consumed"] = None
+        statistics["renewable_utilization"] = None
+        statistics["conventional_utilization"] = None
+        statistics["renewable_produced"] = None
+        statistics["co2_offset"] = None
+        statistics["total_savings"] = None
+        statistics["total_renewable_consumed"] = None
+        statistics["total_renewable_produced"] = None
+        statistics["total_trees"] = None
+        statistics["total_co2_offset"] = None
 
-        the_bill.statistics = statistics
+        reebill.statistics = statistics
 
         # leave consumption trend alone since we want to carry it forward until it is based on the cubes
         # at which time we can just recreate the whole trend
-                
-        XMLUtils().save_xml_file(the_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"),
-            account, next_sequence), self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
-        # save in mongo
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        self.reebill_dao.save_reebill(reebill)
 
+        # TODO: this needs to be done in a http request level database transaction
         # create an initial rebill record to which the utilbills are later associated
         self.state_db.new_rebill(
-            account,
-            next_sequence
+            reebill.account,
+            reebill.sequence
         )
+
+        # reebill is saved by caller - but what happens if the save fails?
+        # the state_db transaction is done at this point
+        return reebill
 
 
     def commit_rebill(self, account, sequence):
