@@ -175,8 +175,8 @@ class BillToolBridge:
 
         try:
             reebill = self.reebill_dao.load_reebill(account, sequence)
-            new_reebill = self.process.roll_bill(reebill)
-            self.reebill_dao.save_reebill(new_reebill)
+            self.process.roll_bill(reebill)
+            self.reebill_dao.save_reebill(reebill)
             return json.dumps({'success': True})
 
         except Exception as e:
@@ -187,12 +187,16 @@ class BillToolBridge:
     def pay(self, account, sequence, **args):
 
         try:
-            self.process.pay_bill(account, sequence)
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            self.process.pay_bill(reebill)
+            print "BTB Reebill payment_received %s" % reebill.payment_received
+            print "BTB will pass in reebill id %s" % id(reebill.dictionary)
+            self.reebill_dao.save_reebill(reebill)
+            return json.dumps({'success': True})
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return json.dumps({'success': True})
 
     @cherrypy.expose
     def bindree(self, account, sequence, **args):
@@ -1083,6 +1087,7 @@ bridge = BillToolBridge()
 
 if __name__ == '__main__':
 
+
     # configure CherryPy
     local_conf = {
         '/' : {
@@ -1106,4 +1111,3 @@ else:
         atexit.register(cherrypy.engine.stop)
 
     application = cherrypy.Application(bridge, script_name=None, config=None)
-
