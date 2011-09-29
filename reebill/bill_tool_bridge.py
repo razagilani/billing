@@ -202,23 +202,22 @@ class BillToolBridge:
     def bindree(self, account, sequence, **args):
         from billing.processing import fetch_bill_data as fbd
         try:
-            # TODO make args to fetch bill data optional
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+
             fbd.fetch_bill_data(
                 "http://duino-drop.appspot.com/",
-                self.config.get("xmldb", "user"),
-                self.config.get("xmldb", "password"),
-                #nu.NexusUtil("nexus").olap_id(account),
-                #"%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence), 
-                account, sequence,
-                None,
-                None,
-                True,
-                self.config # pass along config object through fetch_bill_data to mongo, so the bill can be saved in mongodb
+                nu.NexusUtil().olap_id(account),
+                reebill
             )
-        except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return json.dumps({'success': True})
+            self.reebill_dao.save_reebill(reebill)
+
+            return json.dumps({'success': True})
+
+        except Exception as e:
+
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
 
     @cherrypy.expose
     def bindrs(self, account, sequence, **args):
@@ -230,7 +229,8 @@ class BillToolBridge:
             return json.dumps({'success': True})
 
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
     @cherrypy.expose

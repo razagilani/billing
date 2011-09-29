@@ -194,32 +194,18 @@ def usageDataToVirtualRegister(install, reebill, server=None,
     return reebill
 
 
-def fetch_bill_data(server, user, password, account, sequence, period_begin, period_end, verbose, config):
-    # load reebill from mongo
-    dao =  mongo.ReebillDAO(config)
-    reebill = dao.load_reebill(account, sequence)
+def fetch_bill_data(server, olap_id, reebill):
+    
+    period_begin = reebill.period_begin
+    period_end = reebill.period_end
 
-    if (period_begin != None):
-        period_begin = datetime(int(period_begin[0:4]), int(period_begin[4:6]),
-                int(period_begin[6:8]))
-    if (period_end != None):
-        period_end = datetime(int(period_end[0:4]),int(period_end[4:6]),
-                int(period_end[6:8]))
-
-    # get OLAP id from account number
-    olap_id = nexus.NexusQuery().mongo_find({'billing':account})[0]['olap']
     # update values of shadow registers in reebill with skyline generated energy
     reebill = usageDataToVirtualRegister(olap_id, 
                                          reebill,
                                          server=server,
                                          beginAccumulation=period_begin,
-                                         endAccumulation=period_end,
-                                         verbose=verbose)
-    # save reebill in mongo
-    dao.save_reebill(reebill)
-
-    # formerly returning dom; this will cause errors until caller is fixed
-    return reebill
+                                         endAccumulation=period_end
+                                         )
 
 if __name__ == "__main__":
     '''Command-line interface.'''

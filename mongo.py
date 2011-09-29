@@ -933,16 +933,10 @@ class ReebillDAO:
         '''Saves the MongoReebill 'reebill' into the database. If a document
         with the same account & sequence number already exists, the existing
         document is replaced with this one.'''
-        print "save_reebill received id %s" % id(reebill.dictionary)
-        print "the value is %s " % reebill.payment_received
-        print "reebill.dictionary ******************************"
-        pp.pprint (reebill.dictionary)
         mongo_doc = bson_convert(copy.deepcopy(reebill.dictionary))
         mongo_doc['_id'] = {'account': reebill.account,
             'sequence': reebill.sequence,
             'branch': 0}
-        print "mongo doc *************************************"
-        pp.pprint (mongo_doc)
         self.collection.save(mongo_doc)
 
     def save_xml_reebill(self, xml_reebill, account, sequence):
