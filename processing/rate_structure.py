@@ -318,6 +318,8 @@ class RateStructureDAO():
 
         self.collection.save(rate_structure_data)
 
+    # TODO: consider just accepting a ReeBill
+    # TODO: rate_structure_data should come first in param list?
     def save_cprs(self, account, sequence, branch, utility_name, rate_structure_name, rate_structure_data):
 
         rate_structure_data['_id'] = { 
