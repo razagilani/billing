@@ -476,35 +476,42 @@ class Process(object):
 
     def calculate_reperiod(self, account, sequence):
         """ Set the Renewable Energy bill Period """
-
-        inputtree = etree.parse("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
-        outputtree = etree.parse("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
-
+        #inputtree = etree.parse("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
+        #outputtree = etree.parse("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        reebill = self.reebill_dao.load_reebill(account, sequence)
+        
         # TODO: refactor out xml code to depend on bill.py
-        utilbill_begin_periods = self.get_elem(inputtree, "/ub:bill/ub:utilbill/ub:billperiodbegin")
-        utilbill_end_periods = self.get_elem(inputtree, "/ub:bill/ub:utilbill/ub:billperiodend")
+        #utilbill_begin_periods = self.get_elem(inputtree, "/ub:bill/ub:utilbill/ub:billperiodbegin")
+        #utilbill_end_periods = self.get_elem(inputtree, "/ub:bill/ub:utilbill/ub:billperiodend")
+        utilbill_period_beginnings = []
+        utilbill_period_ends = []
+        for period in reebill.utilbill_periods.itervalues():
+            utilbill_period_beginnings.append(period[0])
+            utilbill_period_ends.append(period[1])
 
         rebill_periodbegindate = datetime.datetime.max
-        for period in utilbill_begin_periods:
-            candidate_date = datetime.datetime.strptime(period.text, "%Y-%m-%d")
+        for beginning in utilbill_period_beginnings:
+            candidate_date = datetime.datetime(beginning.year, beginning.month, beginning.day, 0, 0, 0)
             # find minimum date
             if (candidate_date < rebill_periodbegindate):
                 rebill_periodbegindate = candidate_date
 
         rebill_periodenddate = datetime.datetime.min 
-        for period in utilbill_end_periods:
+        for end in utilbill_period_ends:
             # find maximum date
-            candidate_date = datetime.datetime.strptime(period.text, "%Y-%m-%d")
+            candidate_date = datetime.datetime(end.year, end.month, end.day, 0, 0, 0)
             if (candidate_date > rebill_periodenddate):
                 rebill_periodenddate = candidate_date
 
-        rebillperiodbegin = self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:billperiodbegin")[0].text = rebill_periodbegindate.strftime("%Y-%m-%d")
-        rebillperiodend = self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:billperiodend")[0].text = rebill_periodenddate.strftime("%Y-%m-%d")
+        #rebillperiodbegin = self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:billperiodbegin")[0].text = rebill_periodbegindate.strftime("%Y-%m-%d")
+        #rebillperiodend = self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:billperiodend")[0].text = rebill_periodenddate.strftime("%Y-%m-%d")
+        reebill.period_begin = rebill_periodbegindate.strftime('%Y-%m-%d')
+        reebill.period_end = rebill_periodenddate.strftime('%Y-%m-%d')
 
-        XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
-            self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
+        #XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
+            #self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
         # save in mongo
-        reebill = self.reebill_dao.load_reebill(account, sequence)
+        #reebill = self.reebill_dao.load_reebill(account, sequence)
         self.reebill_dao.save_reebill(reebill)
 
     def issue(self, account, sequence, issuedate=None):
