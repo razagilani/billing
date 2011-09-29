@@ -607,7 +607,7 @@ def render(reebill, outputfile, backgrounds, verbose):
                     shadow_total.quantize(Decimal("0.00")) if shadow_total is not None else "",
                     utility_total,
                     total.quantize(Decimal("0.00")),
-                    register['units'],
+                    register['quantity_units'],
                 ])
 
     measuredUsage.append([None, None, None, None, None, None])

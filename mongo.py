@@ -727,6 +727,7 @@ class MongoReebill:
 
     @property
     def meters(self):
+        '''Returns a dictionary mapping service names to lists of meters.'''
         return dict([(service, self.meters_for_service(service)) for service in self.services])
 
     def utility_name_for_service(self, service_name):

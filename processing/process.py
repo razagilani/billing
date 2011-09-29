@@ -402,10 +402,12 @@ class Process(object):
 
 
         # the trailing bill where totals are obtained
-        prev_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, int(sequence)-1))
+        #prev_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, int(sequence)-1))
+        prev_bill = self.reebill_dao.load_reebill(account, int(sequence)-1)
 
         # the current bill where accumulated values are stored
-        next_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        xml_next_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
+        next_bill = self.reebill_dao.load_reebill(account, int(sequence))
 
         # determine the renewable and conventional energy across all services by converting all registers to BTUs
         # TODO these conversions should be treated in a utility class
@@ -436,23 +438,16 @@ class Process(object):
             else:
                 raise Exception("Units '" + units + "' not supported")
 
-        # obtain all the registers, for all the services, that are of type 'total'
-        #registers = self.get_elem(outputtree, "/ub:bill/ub:measuredusage/ub:meter/ub:register[@type=\"total\"]")
-        #if not len(registers): print "Make sure total type registers exist!"
-
-        for service, meters in next_bill.measured_usage.items():
+        for meters in next_bill.meters.itervalues():                        
             for meter in meters:
-                for register in meter.registers:
-
-                    units = register.units
-                    total = register.total
-
-                    if register.shadow is True:
+                for register in meter['registers']:
+                    units = register['quantity_units']
+                    total = register['quantity']
+                    if register['shadow'] == True:
                         re += normalize(units, total)
                         co2 += calcco2(units, total)
                     else:
                         ce += normalize(units, total)
-                        
         next_stats = next_bill.statistics
         prev_stats = prev_bill.statistics
 
@@ -461,53 +456,55 @@ class Process(object):
         ce_utilization = Decimal(str(ce / (re + ce))).quantize(Decimal('.00'), rounding=ROUND_DOWN)
 
         # update utilization stats
-        next_stats.renewableutilization = re_utilization
-        next_stats.conventionalutilization = ce_utilization
+        next_stats['renewable_utilization'] = re_utilization
+        next_stats['conventional_utilization'] = ce_utilization
 
         # determine cumulative savings
 
         # update cumulative savings
-        next_stats.totalsavings = prev_stats.totalsavings + next_bill.rebill_summary.resavings
+        next_stats['total_savings'] = prev_stats['total_savings'] + next_bill.ree_savings
 
         # set renewable consumed
-        next_stats.renewableconsumed = re
+        next_stats['renewable_consumed'] = re
 
-        next_stats.totalrenewableconsumed = prev_stats.renewableconsumed + re
+        next_stats['total_renewable_consumed'] = prev_stats['renewable_consumed'] + re
 
         # set conventional consumed
-        next_stats.conventionalconsumed = ce
+        next_stats['conventional_consumed'] = ce
 
-        next_stats.totalconventionalconsumed = prev_stats.conventionalconsumed + ce
+        next_stats['total_conventional_consumed'] = prev_stats['conventional_consumed'] + ce
 
         # set CO2 in XML
-        next_stats.co2offset = co2
+        next_stats['co2_offset'] = co2
 
         # determine and set cumulative CO2
-        next_stats.totalco2offset =  prev_stats.totalco2offset + co2
+        next_stats['total_co2_offset'] =  prev_stats['total_co2_offset'] + co2
 
         # externalize this calculation to utilities
-        next_stats.totaltrees = next_stats.totalco2offset/1300
+        next_stats['total_trees'] = next_stats['total_co2_offset']/1300
         
 
         # determine re consumption trend
         # last day of re bill period is taken to be the month of consumption (This is ultimately utility dependent - 
         # especially when graphing ce from the utilty bill)
-        billdate = next_bill.rebill_summary.end
+        #billdate = next_bill.rebill_summary.end
+        billdate = next_bill.period_end
 
         # determine current month (this needs to be quantized according to some logic)
         month = billdate.strftime("%b")
 
-        for period in next_stats.consumptiontrend:
-            if(period.month == month):
-                period.quantity = re/100000
+        for period in next_stats['consumption_trend']:
+            if(period['month'] == month):
+                period['quantity'] = re/100000
 
         next_bill.statistics = next_stats
 
-        XMLUtils().save_xml_file(next_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
-            self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
+        #XMLUtils().save_xml_file(next_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
+            #self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
+        
         # save in mongo
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        self.reebill_dao.save_reebill(reebill)
+        #reebill = self.reebill_dao.load_reebill(account, sequence)
+        self.reebill_dao.save_reebill(next_bill)
 
 
     def calculate_reperiod(self, account, sequence):
