@@ -17,7 +17,7 @@ import yaml
 import pprint
 pp = pprint.PrettyPrinter(indent=1)
 
-class RateStructureDAO():
+class RateStructureDAO(object):
     '''
     Manages loading and saving rate structures.
 
@@ -343,7 +343,7 @@ class RateStructureDAO():
 
 
 
-class RateStructure():
+class RateStructure(object):
     """ 
     A RateStructure consist of Registers and RateStructureItems.
     The rate structure is the model for how utilities calculate their utility bill.  This model does not
@@ -564,7 +564,7 @@ class Register(object):
             self.quantity_units if self.quantity_units else 'No Quantity Units',
         )
 
-class RateStructureItem():
+class RateStructureItem(object):
 
     """ 
     Container class for RSIs.  This serves as a class from which RateStructureItem instances are obtained

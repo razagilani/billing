@@ -133,27 +133,28 @@ class Process(object):
             actual_chargegroups = reebill.actual_chargegroups_for_service(service)
             reebill.set_hypothetical_chargegroups_for_service(service, actual_chargegroups)
 
-    def pay_bill(self, account, sequence):
-
-        pay = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
-
-        pay_rebill = pay.rebill_summary
+    def pay_bill(self, reebill):
 
         # depend on first ub period to be the date range for which a payment is seeked.
-        # this is a wrong design because there may be more than on ub period and
-        # these periods come back in document order, which could change.
-        ubperiod = pay.utilbill_summary_charges.itervalues().next()
-        payments = self.state_db.find_payment(account, pay_rebill.begin, pay_rebill.end)
-        pay_rebill.paymentreceived = sum([payment.credit for payment in payments])
+        # this is a wrong design because there may be more than one ub period
+        # in the case of multiple services with staggered periods.
+        # can't use reeperiod because it overlaps.
+        # TODO: determine the date range for which a payment is applied
+        # see bug 16622833 and feature 16622489
 
-        # set rebill back to bill
-        pay.rebill_summary = pay_rebill
+        # get a service from the bill
+        for service in reebill.services:
+            pass
 
-        XMLUtils().save_xml_file(pay.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), self.config.get("xmldb", "user"), 
-            self.config.get("xmldb", "password"))
-        # save in mongo
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        self.reebill_dao.save_reebill(reebill)
+        all_service_periods = reebill.utilbill_periods
+
+        period = all_service_periods[service]
+
+        payments = self.state_db.find_payment(reebill.account, period[0], period[1])
+        print "Reebill payment_received %s" % reebill.payment_received
+        reebill.payment_received = sum([payment.credit for payment in payments])
+        print "Reebill payment_received %s" % reebill.payment_received
+        print "Reebill payment_received type %s" % type(reebill.payment_received)
 
     def roll_bill(self, reebill):
         """
@@ -264,8 +265,6 @@ class Process(object):
 
         # reebill is saved by caller - but what happens if the save fails?
         # the state_db transaction is done at this point
-        return reebill
-
 
     def commit_rebill(self, account, sequence):
 
