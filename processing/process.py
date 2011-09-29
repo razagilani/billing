@@ -14,13 +14,10 @@ from optparse import OptionParser
 
 import datetime
 
-# for xml processing
-from lxml import etree
 import copy
 
 from billing import bill
 
-from billing.xml_utils import XMLUtils
 
 # for testing
 #import StringIO
@@ -267,7 +264,6 @@ class Process(object):
         # the state_db transaction is done at this point
 
     def commit_rebill(self, account, sequence):
-        #the_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
         reebill = self.reebill_dao.load_reebill(account, sequence)
         begin = reebill.period_begin
         end = reebill.period_end
@@ -368,11 +364,9 @@ class Process(object):
 
 
         # the trailing bill where totals are obtained
-        #prev_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, int(sequence)-1))
         prev_bill = self.reebill_dao.load_reebill(account, int(sequence)-1)
 
         # the current bill where accumulated values are stored
-        xml_next_bill = bill.Bill("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
         next_bill = self.reebill_dao.load_reebill(account, int(sequence))
 
         # determine the renewable and conventional energy across all services by converting all registers to BTUs
@@ -440,7 +434,7 @@ class Process(object):
 
         next_stats['total_conventional_consumed'] = prev_stats['conventional_consumed'] + ce
 
-        # set CO2 in XML
+        # set CO2
         next_stats['co2_offset'] = co2
 
         # determine and set cumulative CO2
@@ -465,9 +459,6 @@ class Process(object):
 
         next_bill.statistics = next_stats
 
-        #XMLUtils().save_xml_file(next_bill.xml(), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
-            #self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
-        
         # save in mongo
         #reebill = self.reebill_dao.load_reebill(account, sequence)
         self.reebill_dao.save_reebill(next_bill)
@@ -475,13 +466,8 @@ class Process(object):
 
     def calculate_reperiod(self, account, sequence):
         """ Set the Renewable Energy bill Period """
-        #inputtree = etree.parse("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
-        #outputtree = etree.parse("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
         reebill = self.reebill_dao.load_reebill(account, sequence)
         
-        # TODO: refactor out xml code to depend on bill.py
-        #utilbill_begin_periods = self.get_elem(inputtree, "/ub:bill/ub:utilbill/ub:billperiodbegin")
-        #utilbill_end_periods = self.get_elem(inputtree, "/ub:bill/ub:utilbill/ub:billperiodend")
         utilbill_period_beginnings = []
         utilbill_period_ends = []
         for period in reebill.utilbill_periods.itervalues():
@@ -507,8 +493,6 @@ class Process(object):
         reebill.period_begin = rebill_periodbegindate.strftime('%Y-%m-%d')
         reebill.period_end = rebill_periodenddate.strftime('%Y-%m-%d')
 
-        #XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
-            #self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
         # save in mongo
         #reebill = self.reebill_dao.load_reebill(account, sequence)
         self.reebill_dao.save_reebill(reebill)
@@ -516,8 +500,6 @@ class Process(object):
     def issue(self, account, sequence, issuedate=None):
         """ Set the Renewable Energy bill Period """
 
-        #inputtree = etree.parse("%s/%s/%s.xml" % (self.config.get("xmldb", "source_prefix"), account, sequence))
-        #outputtree = etree.parse("%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence))
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         if issuedate is None:
@@ -527,14 +509,9 @@ class Process(object):
         # TODO: parameterize for dependence on customer 
         duedate = issuedate + datetime.timedelta(days=30)
 
-        # TODO: refactor out xml code to depend on bill.py
-        #self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:issued")[0].text = issuedate.strftime("%Y-%m-%d")
-        #self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:duedate")[0].text = duedate.strftime("%Y-%m-%d")
         reebill.issue_date = issuedate.strftime("%Y-%m-%d")
         reebill.due_date = duedate.strftime("%Y-%d-%m")
 
-        #XMLUtils().save_xml_file(etree.tostring(outputtree, pretty_print=True), "%s/%s/%s.xml" % (self.config.get("xmldb", "destination_prefix"), account, sequence), 
-            #self.config.get("xmldb", "user"), self.config.get("xmldb", "password"))
         # save in mongo
         self.reebill_dao.save_reebill(reebill)
 
