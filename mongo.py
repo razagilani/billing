@@ -328,6 +328,7 @@ class MongoReebill(object):
                     'end': 'period_end',
                     'rsbinding': 'register_binding',
                     'rateunits': 'rate_units',
+                    'presentreading': None,
                     'quantityunits': 'quantity_units',
                     'presentreaddate': 'present_read_date',
                     'priorreaddate': 'prior_read_date',
