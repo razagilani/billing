@@ -31,7 +31,7 @@ def deploy():
 
     #  install ui and application code into site-packages
     fabops.sudo('cd /var/local/%s/lib/python2.6/site-packages/billing && tar xvzf /tmp/%s.tar.z' % (project_name, project_name), user='root')
-    fabops.sudo('cd /var/local/%s/lib/python2.6/site-packages/billing/%s && mv bill_tool_bridge-prod.cfg bill_tool_bridge.cfg' % (project_name, project_name), user='root')
+    fabops.sudo('cd /var/local/%s/lib/python2.6/site-packages/billing/%s && mv bill_tool_bridge-prod-template.cfg bill_tool_bridge.cfg' % (project_name, project_name), user='root')
 
     # install other billing code into site-packages
     fabops.sudo('cd /var/local/%s/lib/python2.6/site-packages/billing/ && tar xvzf /tmp/bill_framework_code.tar.z' % (project_name), user='root')
