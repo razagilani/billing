@@ -51,6 +51,8 @@ import billing.processing.rate_structure as rs
 from datetime import datetime
 from datetime import date
 
+from decimal import Decimal
+
 # uuid collides with locals so both module and locals are renamed
 import uuid as UUID
 
@@ -169,7 +171,6 @@ class BillToolBridge:
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-
     @cherrypy.expose
     def roll(self, account, sequence, **args):
 
@@ -189,8 +190,6 @@ class BillToolBridge:
         try:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             self.process.pay_bill(reebill)
-            print "BTB Reebill payment_received %s" % reebill.payment_received
-            print "BTB will pass in reebill id %s" % id(reebill.dictionary)
             self.reebill_dao.save_reebill(reebill)
             return json.dumps({'success': True})
 
@@ -857,7 +856,7 @@ class BillToolBridge:
 
         try:
             reebill = self.reebill_dao.load_reebill(account, sequence)
-            reebill.set_utilbill_period_for_service(service, (datetime.strptime(begin, "%Y-%m-%d").date(),datetime.strptime(end, "%Y-%m-%d").date()))
+            reebill.set_utilbill_period_for_service(service, (datetime.strptime(begin, "%Y-%m-%d"),datetime.strptime(end, "%Y-%m-%d")))
             self.reebill_dao.save_reebill(reebill)
 
             return ju.dumps({'success':True})
@@ -979,7 +978,11 @@ class BillToolBridge:
         try:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
-            reebill.set_meter_read_date(service, meter_identifier, presentreaddate, priorreaddate)
+            reebill.set_meter_read_date(service, meter_identifier, 
+                datetime.strptime(presentreaddate, "%Y-%m-%d"), 
+                datetime.strptime(priorreaddate, "%Y-%m-%d")
+            )
+
             self.reebill_dao.save_reebill(reebill)
 
             return ju.dumps({'success':True})
@@ -993,7 +996,7 @@ class BillToolBridge:
         try:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
-            reebill.set_meter_actual_register(service, meter_identifier, register_identifier, quantity)
+            reebill.set_meter_actual_register(service, meter_identifier, register_identifier, Decimal(quantity))
             self.reebill_dao.save_reebill(reebill)
 
             return ju.dumps({'success':True})

@@ -108,7 +108,7 @@ def dateGenerator(from_date, to_date):
         from_date = from_date + timedelta(days = 1)
     return
 
-def bindRegisters(reebill, verbose=False):
+def bindRegisters(reebill):
     result = []
     service_meters_dict = reebill.meters # poorly-named attribute
     for service, meters in service_meters_dict.iteritems():
@@ -121,9 +121,7 @@ def bindRegisters(reebill, verbose=False):
                     result.append(r)
     return result
 
-def usageDataToVirtualRegister(install, reebill, server=None,
-        beginAccumulation=None, endAccumulation=None, verbose=False):
-    # TODO rename to 'usage_data_to_shadow_register'?
+def usage_data_to_virtual_register(install, reebill, server=None):
     '''Gets energy quantities from OLTP and puts them in the total fields of
     the appropriate shadow registers in the MongoReebill object reebill.
     Returns the document so it can be saved in Mongo. 'beginAccumulation' is
@@ -131,7 +129,7 @@ def usageDataToVirtualRegister(install, reebill, server=None,
     accumulated (inclusive), and 'endAccumulation' is the end (exclusive).
     (Times are 0:00 to 0:00, not 0:00 to 23:59:59)'''
     # get registers from mongo document (instead of xml)
-    registers = bindRegisters(reebill, verbose)
+    registers = bindRegisters(reebill)
 
     s = splinter.Splinter(server, "tyrell", "dev")
     inst_obj = s.get_install_obj_for(install)
@@ -140,13 +138,8 @@ def usageDataToVirtualRegister(install, reebill, server=None,
     for register in registers:
         print 'register:', register
         # service date range
-        # set up interval - use meter read dates from xml if command line params not available
-        if (beginAccumulation == None):
-            #beginAccumulation = (datetime.strptime(register.prior_read_date, "%Y-%m-%d")).date()
-            beginAccumulation = register.prior_read_date
-        if (endAccumulation == None):
-            #endAccumulation = (datetime.strptime(register.present_read_date, "%Y-%m-%d")).date()
-            endAccumulation = register.present_read_date
+        beginAccumulation = register.prior_read_date
+        endAccumulation = register.present_read_date
 
         # get service type of this register (gas or electric)
         # TODO replace this ugly hack with something better
@@ -159,6 +152,7 @@ def usageDataToVirtualRegister(install, reebill, server=None,
         assert service_of_this_register is not None
         
         for day in dateGenerator(beginAccumulation, endAccumulation):
+
             energy = None
             for hourrange in register.valid_hours(day):
                 # get energy, using this register's service type
@@ -193,78 +187,8 @@ def usageDataToVirtualRegister(install, reebill, server=None,
     # return the updated reebill
     return reebill
 
-
+# TODO: kill this function
 def fetch_bill_data(server, olap_id, reebill):
     
-    period_begin = reebill.period_begin
-    period_end = reebill.period_end
-
     # update values of shadow registers in reebill with skyline generated energy
-    reebill = usageDataToVirtualRegister(olap_id, 
-                                         reebill,
-                                         server=server,
-                                         beginAccumulation=period_begin,
-                                         endAccumulation=period_end
-                                         )
-
-if __name__ == "__main__":
-    '''Command-line interface.'''
-    # configure optparse
-    parser = OptionParser()
-    #parser.add_option("-B", "--bill", dest="bill",
-            #help=("Bind to registers defined in bill FILE. e.g. 10001/4.xml or"
-            #"http://tyrell:8080/exist/rest/db/test/skyline/bills/10001/4.xml"),
-            #metavar="FILE")
-    #parser.add_option("-o", "--olap", dest="install",
-            #help="Bind to data from olap NAME. e.g. daves",
-            #metavar="NAME")
-    parser.add_option('-a', '--account', dest='account',
-            help=('Account number for identifying the reebill in which usage'
-            'data will be bound to shadow registers.'))
-    parser.add_option('-q', '--sequence', dest='sequence',
-            help=('Sequence number for identifying the reebill in which usage'
-            'data will be bound to shadow registers.'))
-    # ToDo: bind to fuel type and begin period in bill 
-    parser.add_option("-b", "--begin", dest="begin", default=None,
-            help="Begin date in YYYYMMDD format.", metavar="YYYYMMDD")
-    parser.add_option("-e", "--end", dest="end", default=None,
-            help="End date in YYYYMMDD format.", metavar="YYYYMMDD")
-    parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
-            default=False, help="Print accumulation messages to stdout.")
-    parser.add_option("-u", "--user", dest="user", default='prod',
-            help="Bill database user account name.")
-    parser.add_option("-p", "--password", dest="password",
-            help="Bill database user account name.")
-    parser.add_option("-s", "--server", dest="server",
-            default='http://duino-drop.appspot.com/',
-            help="Location of a server that OLAP class Splinter() can use.")
-    parser.add_option("-r", "--readonly", action="store_true", dest="readonly",
-            default=False, help="Do not update the bill.")
-    options, args = parser.parse_args()
-
-    if options.account is None:
-        print "account must be specified."
-        exit()
-    if options.sequence is None:
-        print "sequence must be specified."
-        exit()
-    if options.begin is None:
-        print "Depending on meter priorreaddate."
-    else:
-        print "Meter priorreaddate overridden."
-    if options.end is None:
-        print "Depending on meter currentreaddate."
-    else:
-        print "Meter currentreaddate overridden."
-
-    fetch_bill_data(options.server,
-            options.user,
-            options.password,
-            options.account,
-            options.sequence,
-            options.begin,
-            options.end,
-            options.verbose,
-            # TODO use real config info instead of debug_config
-            mongo.debug_config)
-    
+    reebill = usage_data_to_virtual_register(olap_id, reebill, server=server)
