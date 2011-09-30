@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
     success_count = 0
     error_count = 0
-    for account in range(10001, 10025):
+    for account in range(10005, 10025):
         for sequence in range(1,20):
             try:
                 # convert to mongo
@@ -48,9 +48,11 @@ if __name__ == '__main__':
             except NoRateStructureError as e:
                 print '%s %s: no rate structure' % (account, sequence)
                 error_count += 1
+                raise
             except NoUtilityNameError as e:
                 print '%s %s: no utility name' % (account, sequence)
                 error_count += 1
+                raise
             except AttributeError as e:
                 print '%s %s: %s' % (account, sequence,
                         'AttributeError ' + str(e))
@@ -62,6 +64,7 @@ if __name__ == '__main__':
                 print '%s %s: %s' % (account, sequence,
                         'TypeError ' + str(e))
                 error_count += 1
+                raise
             except IOError as e:
                 if str(e).endswith('failed to load HTTP resource'):
                     # there is no reebill for this account & sequence
@@ -93,10 +96,12 @@ if __name__ == '__main__':
                 print '%s %s: %s' % (account, sequence,
                         'AttributeError ' + str(e))
                 error_count += 1
+                raise
             except TypeError as e:
                 print '%s %s: %s' % (account, sequence,
                         'TypeError ' + str(e))
                 error_count += 1
+                raise
             except IOError as e:
                 if str(e).endswith('failed to load HTTP resource'):
                     # there is no reebill for this account & sequence

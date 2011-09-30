@@ -229,7 +229,8 @@ class RateStructureDAO(object):
                     # Assume these have gone into URS
                     if 'description' in rate: del rate['description']
                     rate['uuid'] = str(uuid.uuid1())
-                    rate['rate'] = str(rate['rate'])
+                    if 'rate' in rate: 
+                        rate['rate'] = str(rate['rate'])
                     if 'rateunits' in rate: 
                         rate['rate_units'] = str(rate['rateunits'])
                         del rate['rateunits']
