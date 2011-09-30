@@ -325,17 +325,16 @@ class BillToolBridge:
 
     @cherrypy.expose
     def mail(self, account, sequences, recipients, **args):
-
         try:
-
             # sequences will come in as a string if there is one element in post data. 
             # If there are more, it will come in as a list of strings
             if type(sequences) is not list: sequences = [sequences]
             # acquire the most recent reebill from the sequence list and use its values for the merge
             sequences = [sequence for sequence in sequences]
-            sequences.sort()
+            # sequences is [u'17']
 
             all_bills = [self.reebill_dao.load_reebill(account, sequence) for sequence in sequences]
+            print all_bills
 
             # the last element
             most_recent_bill = all_bills[-1]
@@ -345,17 +344,14 @@ class BillToolBridge:
             bill_dates = ", ".join(bill_dates)
 
             merge_fields = {}
-            merge_fields["street"] = most_recent_bill.service_address["street"]
-            merge_fields["balance_due"] = most_recent_bill.balance_due
+            merge_fields["sa_street1"] = most_recent_bill.service_address["sa_street1"]
+            merge_fields["sa_balance_due"] = most_recent_bill.balance_due
             merge_fields["bill_dates"] = bill_dates
             merge_fields["last_bill"] = bill_file_names[-1]
 
             bill_mailer.mail(recipients, merge_fields, os.path.join(self.config.get("billdb", "billpath"), account), bill_file_names);
-
-
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
         return json.dumps({'success': True})
 
     #TODO make this generic enough that all other account listing functions can return pretty names
