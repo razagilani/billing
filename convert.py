@@ -36,8 +36,8 @@ if __name__ == '__main__':
 
     success_count = 0
     error_count = 0
-    for account in range(10005, 10025):
-        for sequence in range(1,20):
+    for account in range(10001, 10025):
+        for sequence in range(1,25):
             try:
                 # convert to mongo
                 reebill = reebill_dao.load_reebill(account, sequence)
@@ -45,6 +45,7 @@ if __name__ == '__main__':
                 #process.bind_rate_structure(reebill)
                 reebill_dao.save_reebill(reebill)
                 success_count += 1
+                print 'Success: %s %s' % (account, sequence,)
             except NoRateStructureError as e:
                 print '%s %s: no rate structure' % (account, sequence)
                 error_count += 1
@@ -58,8 +59,6 @@ if __name__ == '__main__':
                         'AttributeError ' + str(e))
                 error_count += 1
                 raise
-            except ConstructorError: # TODO remove
-                pass
             except TypeError as e:
                 print '%s %s: %s' % (account, sequence,
                         'TypeError ' + str(e))
@@ -79,12 +78,11 @@ if __name__ == '__main__':
     print 'imported %s bills' % success_count
     print error_count, 'errors'
 
-    pdb.set_trace()
     print "************************************************"
     success_count = 0
     error_count = 0
     for account in range(10001, 10025):
-        for sequence in range(1,20):
+        for sequence in range(1,25):
             try:
                 # convert to mongo
                 reebill = reebill_dao.load_reebill(account, sequence)

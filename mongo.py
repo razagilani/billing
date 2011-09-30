@@ -655,8 +655,12 @@ class MongoReebill(object):
         is 'service_name'. There's not supposed to be more than one utilbill
         per service, so an exception is raised if that happens (or if there's
         no utilbill for that service).'''
-        date_string_pairs = [(u['period_begin'], u['period_end'])
-                for u in self.dictionary['utilbills'] if u['service'] == service_name]
+        date_string_pairs = [
+            (
+                u['period_begin'] if 'period_begin' in u else None,
+                u['period_end'] if 'period_end' in u else None
+            )  for u in self.dictionary['utilbills'] if u['service'] == service_name
+        ]
         if date_string_pairs == []:
             raise Exception('No utilbills for service "%s"' % service_name)
         if len(date_string_pairs) > 1:

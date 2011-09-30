@@ -36,6 +36,9 @@ from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state
 from billing.mongo import ReebillDAO
 
+# uuid collides with locals so both the locals and package are renamed
+import uuid as UUID
+
 class Process(object):
     """ Class with a variety of utility procedures for processing bills.
         The idea here is that this class is instantiated with the data
@@ -148,10 +151,8 @@ class Process(object):
         period = all_service_periods[service]
 
         payments = self.state_db.find_payment(reebill.account, period[0], period[1])
-        print "Reebill payment_received %s" % reebill.payment_received
-        reebill.payment_received = sum([payment.credit for payment in payments])
-        print "Reebill payment_received %s" % reebill.payment_received
-        print "Reebill payment_received type %s" % type(reebill.payment_received)
+        # sum() of [] is int zero, so always wrap payments in a Decimal
+        reebill.payment_received = Decimal(sum([payment.credit for payment in payments]))
 
     def roll_bill(self, reebill):
         """
@@ -220,13 +221,33 @@ class Process(object):
             old_period = (old_period[1], None)
             reebill.set_utilbill_period_for_service(service, old_period)
 
+            # set new UUID's & clear out the last bound charges
+            actual_chargegroups = reebill.actual_chargegroups_for_service(service)
+            for (group, charges) in actual_chargegroups.items():
+                for charge in charges:
+                    charge['uuid'] = str(UUID.uuid1())
+                    if 'rate' in charge: del charge['rate']
+                    if 'quantity' in charge: del charge['quantity']
+                    if 'total' in charge: del charge['total']
+                    
+            reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
+
+            hypothetical_chargegroups = reebill.hypothetical_chargegroups_for_service(service)
+            for (group, charges) in hypothetical_chargegroups.items():
+                for charge in charges:
+                    charge['uuid'] = str(UUID.uuid1())
+                    if 'rate' in charge: del charge['rate']
+                    if 'quantity' in charge: del charge['quantity']
+                    if 'total' in charge: del charge['total']
+                    
+            reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
+
        
         # reset measured usage
 
         for service in reebill.services:
             for meter in reebill.meters_for_service(service):
-                prior_read_date = meter['prior_read_date']
-                reebill.set_meter_read_date(service, meter['identifier'], meter['prior_read_date'], None)
+                reebill.set_meter_read_date(service, meter['identifier'], None, meter['present_read_date'])
             for actual_register in reebill.actual_registers(service):
                 reebill.set_actual_register_quantity(actual_register['identifier'], 0)
             for shadow_register in reebill.shadow_registers(service):
@@ -488,10 +509,8 @@ class Process(object):
             if (candidate_date > rebill_periodenddate):
                 rebill_periodenddate = candidate_date
 
-        #rebillperiodbegin = self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:billperiodbegin")[0].text = rebill_periodbegindate.strftime("%Y-%m-%d")
-        #rebillperiodend = self.get_elem(outputtree, "/ub:bill/ub:rebill/ub:billperiodend")[0].text = rebill_periodenddate.strftime("%Y-%m-%d")
-        reebill.period_begin = rebill_periodbegindate.strftime('%Y-%m-%d')
-        reebill.period_end = rebill_periodenddate.strftime('%Y-%m-%d')
+        reebill.period_begin = rebill_periodbegindate
+        reebill.period_end = rebill_periodenddate
 
         # save in mongo
         #reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -509,8 +528,8 @@ class Process(object):
         # TODO: parameterize for dependence on customer 
         duedate = issuedate + datetime.timedelta(days=30)
 
-        reebill.issue_date = issuedate.strftime("%Y-%m-%d")
-        reebill.due_date = duedate.strftime("%Y-%d-%m")
+        reebill.issue_date = issuedate
+        reebill.due_date = duedate
 
         # save in mongo
         self.reebill_dao.save_reebill(reebill)
