@@ -12,17 +12,10 @@ from datetime import date, datetime,timedelta, time
 import random
 from optparse import OptionParser
 
-## for xml processing
-#import amara
-#from amara import bindery
-#from amara import xml_print
-
 from skyliner import sky_install
 from skyliner import splinter
 from skyliner import sky_objects
 from skyliner.sky_errors import DataHandlerError
-#from billing import xml_utils
-#from billing.xml_utils import XMLUtils
 from billing import mongo
 from scripts.nexus import nexus
 from billing.processing import rate_structure
@@ -171,14 +164,14 @@ def usage_data_to_virtual_register(install, reebill, server=None):
                     energy = 0
                 
                 # convert units from BTU to kWh (for electric) or therms (for gas)
-                if register.quantity_units.lower() == 'kWh':
+                if register.quantity_units.lower() == 'kwh':
                     energy /= 3412.14
                 elif register.quantity_units.lower() == 'therms':
                     energy /= 100000
                 else:
                     raise Exception('unknown energy unit')
 
-                print 'register %s accumulating energy %s %s' % (register.identifier, energy, register.quantity_units)
+                #print 'register %s accumulating energy %s %s' % (register.identifier, energy, register.quantity_units)
                 register.quantity += energy
 
         # update the reebill: put the total skyline energy in the shadow register

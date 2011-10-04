@@ -314,7 +314,7 @@ def render(reebill, outputfile, backgrounds, verbose):
     # populate due date and amount
     dueDateAndAmount = [
         [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(str(reebill.due_date), styles['BillFieldRight'])], 
-        [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(reebill.balance_due), styles['BillFieldRight'])]
+        [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(reebill.balance_due.quantize(Decimal("0.00"))), styles['BillFieldRight'])]
     ]
     
     t = Table(dueDateAndAmount, [135,85])

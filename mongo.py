@@ -92,7 +92,7 @@ name_changes = {
     'revalue': 'ree_value',
     'recharges': 'ree_charges',
     'resavings': 'ree_savings',
-    'totaldue': 'total_due',
+    'totaldue': 'balance_due',
     'duedate': 'due_date',
     'issued': 'issue_date',
     # utilbill section
@@ -404,7 +404,7 @@ class MongoReebill(object):
     @property
     def balance_due(self):
         '''Returns a Decimal.'''
-        return self.dictionary['total_due']
+        return self.dictionary['balance_due']
     @balance_due.setter
     def balance_due(self, value):
         self.dictionary['balance_due'] = value
