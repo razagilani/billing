@@ -344,7 +344,7 @@ class BillToolBridge:
 
             merge_fields = {}
             merge_fields["sa_street1"] = most_recent_bill.service_address["sa_street1"]
-            merge_fields["sa_balance_due"] = most_recent_bill.balance_due
+            merge_fields["balance_due"] = most_recent_bill.balance_due.quantize(Decimal("0.00"))
             merge_fields["bill_dates"] = bill_dates
             merge_fields["last_bill"] = bill_file_names[-1]
 

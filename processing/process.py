@@ -179,6 +179,8 @@ class Process(object):
             cprs = self.rate_structure_dao.load_cprs(reebill.account, reebill.sequence,
                 reebill.branch, utility_name, rate_structure_name)
 
+            if cprs is None: raise Exception("No current CPRS")
+
             # save the next CPRS
             self.rate_structure_dao.save_cprs(reebill.account, next_sequence,
                 reebill.branch, utility_name, rate_structure_name, cprs)
@@ -358,6 +360,13 @@ class Process(object):
             shadow_register_readings = reebill.shadow_registers(service)
 
             # add the shadow register totals to the actual register, and re-process
+
+            # TODO: Big problem here.... if REG_TOTAL, for example, is used to calculate
+            # a rate shown on the utility bill, it works - until REG_TOTAL has the shadow
+            # renewable energy - then the rate is calculated incorrectly.  This is because
+            # a seemingly innocent expression like SETF 2.22/REG_TOTAL.quantity calcs 
+            # one way for actual charge computation and another way for hypothetical charge
+            # computation.  See 12205265
 
             # TODO: probably a better way to do this
             for shadow_reading in shadow_register_readings:
