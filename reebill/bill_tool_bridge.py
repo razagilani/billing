@@ -153,7 +153,12 @@ class BillToolBridge:
         # create on RateStructureDAO to user for all ratestructure queries
         rsdb_config_section = self.config.items("rsdb")
         self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
-
+    
+    @cherrypy.expose
+    def login(self, username, password, **args):
+        # TODO turn on session for cherrypy
+        #cherrypy.session['username'] = username
+        print 'user "%s" logged in with password "%s"' % (username, password)
 
     # TODO: do this on a per service basis 18311877
     @cherrypy.expose

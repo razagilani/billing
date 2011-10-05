@@ -28,7 +28,7 @@ Ext.onReady(function() {
         buttons: [{
             text: 'Submit',
             handler: function() {
-                loginFormPanel.getForm().getEl().dom.action = 'login';
+                loginFormPanel.getForm().getEl().dom.action = 'http://' + location.host + '/reebill/login'
                 loginFormPanel.getForm().getEl().dom.method = 'POST';
                 loginFormPanel.getForm().submit();
             }
