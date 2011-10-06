@@ -33,11 +33,6 @@ UTILBILL_EXTENSIONS = ['pdf', 'html', 'htm', 'tif', 'tiff']
 # extension of reebills (there probably won't be more than one format)
 REEBILL_EXTENSION = 'pdf'
 
-# where bill images are temporarily saved for viewing after they're rendered
-# TODO change this to the real location
-# TODO also put in config file
-BILL_IMAGE_DIRECTORY = '/tmp/billimages'
-
 # determines the format of bill image files
 # TODO put in config file
 IMAGE_EXTENSION = 'png'
@@ -53,6 +48,10 @@ class BillUpload(object):
     def __init__(self, config, state_db):
         self.state_db = state_db
         self.config = config
+
+        # get bill image directory from config file
+        self.bill_image_directory = self.config.get('billrendering',
+                'bill_image_directory')
         
         # get log file name and format from config file
         # TODO: if logging section of config file is malformed, choose default
@@ -197,11 +196,11 @@ class BillUpload(object):
                 + bill_file_name_without_extension + '_' + \
                 str(datetime.datetime.today()).replace(' ', '').replace('.','') \
                 .replace(':','')
-        bill_image_path_without_extension = os.path.join(BILL_IMAGE_DIRECTORY,\
+        bill_image_path_without_extension = os.path.join(self.bill_image_directory,\
                 bill_image_name_without_extension)
 
         # create bill image directory if it doesn't exist already
-        create_directory_if_necessary(BILL_IMAGE_DIRECTORY, self.logger)
+        create_directory_if_necessary(self.bill_image_directory, self.logger)
         
         # render the image, saving it to bill_image_path
         self.renderBillImage(bill_file_path, bill_image_path_without_extension,
@@ -213,7 +212,7 @@ class BillUpload(object):
         
 
     '''Given an account number and sequence number of a reebill, remnders that
-    bill as an image in BILL_IMAGE_DIRECTORY, and returns the name of the image
+    bill as an image in self.bill_image_directory, and returns the name of the image
     file. ("Sequence" means the position of that bill in the sequence of bills
     issued to a particular customer.) The caller is responsble for providing
     a URL to the client where that image can be accessed.'''
@@ -244,11 +243,11 @@ class BillUpload(object):
         bill_image_name_without_extension = 'reebill_' + account + '_' \
                 + sequence + str(datetime.datetime.today()).replace(' ', '') \
                 .replace('.','').replace(':','')
-        bill_image_path_without_extension = os.path.join(BILL_IMAGE_DIRECTORY,\
+        bill_image_path_without_extension = os.path.join(self.bill_image_directory,\
                 bill_image_name_without_extension)
 
         # create bill image directory if it doesn't exist already
-        create_directory_if_necessary(BILL_IMAGE_DIRECTORY, self.logger)
+        create_directory_if_necessary(self.bill_image_directory, self.logger)
         
         # render the image, saving it to bill_image_path
         self.renderBillImage(reebill_file_path, 
