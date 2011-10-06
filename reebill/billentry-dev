@@ -1,6 +1,6 @@
 <VirtualHost *:80>
                 ServerAdmin webmaster@localhost
-                ServerName billentry-dev
+                ServerName reebill-dev
 
                 DocumentRoot /home/dklothe/skyline/billing/reebill/ui
                 <Directory />
