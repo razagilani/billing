@@ -2,7 +2,7 @@
 import urllib, urllib2
 import json
 from optparse import OptionParser
-from scripts.nexus import nexus
+#from scripts.nexus import nexus
 
 class NexusUtil(object):
 
@@ -40,7 +40,13 @@ class NexusUtil(object):
     def fast_all(self, system, system_id):
         '''Same as all(), but looks up the data directly from nexus instead of
         via the HTTP interface.'''
-        result = nexus.NexusQuery().mongo_find({system:system_id})
+        # TODO: design a solution better than having to depend on another 
+        # application.  NexusQuery is a class in another application.
+        # see 19355107
+        return all(sysem, system_id)
+
+        #
+        #result = nexus.NexusQuery().mongo_find({system:system_id})
 
         # 'result' is normally a list of dictionaries, containing various
         # customer id types and their values for a given customer. it may be
@@ -49,10 +55,10 @@ class NexusUtil(object):
         # customer has an "olap" name or "casualname", but not a billing name).
         # fast_all() is only used to display customer names, so returning an
         # empty dict in that situation is OK.
-        if result == []:
-            return {}
+        #if result == []:
+        #    return {}
         
-        return result[0]
+        #return result[0]
 
     def all_ids_for_accounts(self, system, id_objects, key=lambda x:x):
         '''Returns a list of all customer names for all the customers specified
