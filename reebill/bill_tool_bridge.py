@@ -104,10 +104,14 @@ class BillToolBridge:
             # default format of log entries (config file can override this)
             DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
+            # directory where bill images are temporarily stored
+            DEFAULT_BILL_IMAGE_DIRECTORY = '/temp/billimages'
+
             # log file info
             self.config.add_section('log')
             self.config.set('log', 'log_file_name', DEFAULT_LOG_FILE_NAME)
             self.config.set('log', 'log_format', DEFAULT_LOG_FORMAT)
+            self.config.set('billrendering', DEFAULT_BILL_IMAGE_DIRECTORY)
 
 
         # Writing our configuration file to 'example.cfg'
