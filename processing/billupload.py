@@ -36,7 +36,7 @@ REEBILL_EXTENSION = 'pdf'
 # where bill images are temporarily saved for viewing after they're rendered
 # TODO change this to the real location
 # TODO also put in config file
-BILL_IMAGE_DIRECTORY = '/tmp/billimages'
+BILL_IMAGE_DIRECTORY = '/tmp/billimages-stage'
 
 # determines the format of bill image files
 # TODO put in config file
@@ -333,8 +333,8 @@ class BillUpload(object):
         # it printed to stderr
         if montage_result.returncode != 0:
             error_text = montage_result.communicate()[1]
-            self.logger.error('"%s" failed: ' % (montage_command, \
-                    bill_file_path, bill_image_path) + error_text)
+            self.logger.error('"%s %s %s" failed: ' % (montage_command, \
+                    bill_file_path, bill_image_path_without_extension) + error_text)
             raise Exception(error_text)
     
         # delete the individual page images now that they've been joined

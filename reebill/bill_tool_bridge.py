@@ -3,8 +3,6 @@
 File: bill_tool_bridge.py
 Description: Allows bill tool to be invoked as a CGI
 '''
-import site
-site.addsitedir('/var/local/reebill/lib/python2.6/site-packages')
 
 import sys
 sys.stdout = sys.stderr
@@ -38,8 +36,6 @@ from billing import bill
 
 from billing import json_util as ju
 
-from billing.xml_utils import XMLUtils
-
 import itertools as it
 
 from billing.reebill import bill_mailer
@@ -68,6 +64,7 @@ class BillToolBridge:
 
     # TODO: refactor config and share it between btb and bt 15413411
     def __init__(self):
+        print "BillToolBridge Instatiated %s" % str(id(self))
         self.config = ConfigParser.RawConfigParser()
         config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'bill_tool_bridge.cfg')
         if not self.config.read(config_file_path):
@@ -115,9 +112,9 @@ class BillToolBridge:
             self.config.set('log', 'log_format', DEFAULT_LOG_FORMAT)
 
 
-        # Writing our configuration file to 'example.cfg'
-        with open(config_file_path, 'wb') as new_config_file:
-            self.config.write(new_config_file)
+            # Writing our configuration file to 'example.cfg'
+            with open(config_file_path, 'wb') as new_config_file:
+                self.config.write(new_config_file)
 
         self.config.read(config_file_path)
 
@@ -132,19 +129,11 @@ class BillToolBridge:
         billdb_config_section = self.config.items("billdb")
         xmldb_config_section = self.config.items("xmldb")
         reebill_dao_configs = dict(billdb_config_section + xmldb_config_section)
-        #billdb_config_section.update(xmldb_config_section)
         self.reebill_dao = mongo.ReebillDAO(reebill_dao_configs)
 
         # create a RateStructureDAO
-
-        # TODO: externalize config
-        self.ratestructure_dao = rs.RateStructureDAO({
-            "database":"skyline",
-            "rspath":"/db-dev/skyline/ratestructure/",
-            "host":"localhost",
-            "collection":"ratestructure",
-            "port": 27017
-        })
+        rsdb_config_section = dict(self.config.items("rsdb"))
+        self.ratestructure_dao = rs.RateStructureDAO(rsdb_config_section)
 
         # create one Process object to use for all related bill processing
         self.process = process.Process(self.config, self.state_db, self.reebill_dao, self.ratestructure_dao)

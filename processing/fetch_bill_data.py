@@ -17,7 +17,6 @@ from skyliner import splinter
 from skyliner import sky_objects
 from skyliner.sky_errors import DataHandlerError
 from billing import mongo
-from scripts.nexus import nexus
 from billing.processing import rate_structure
 
 class Register():

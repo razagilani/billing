@@ -928,7 +928,7 @@ class ReebillDAO:
         # initialization with a string: URL of an XML reebill in Exist. use
         # bill.py to extract information from it into self.dictionary.
 
-        url = "%s/%s/%s.xml" % (self.config['destination_prefix'], account, sequence)
+        url = "%s/%s/%s.xml" % (self.config['source_prefix'], account, sequence)
 
         # make a Bill object from the XML document
         b = bill.Bill(url)
