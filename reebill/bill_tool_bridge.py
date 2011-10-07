@@ -3,7 +3,6 @@
 File: bill_tool_bridge.py
 Description: Allows bill tool to be invoked as a CGI
 '''
-
 import sys
 sys.stdout = sys.stderr
 
@@ -51,10 +50,15 @@ from decimal import Decimal
 
 # uuid collides with locals so both module and locals are renamed
 import uuid as UUID
+import inspect
 
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
+# temporary hard-coded user & password data
+# TODO replace with a MySQL table of usernames & password hashes
+USERS = {'dev': 'dev'}
+        
 # TODO rename to ProcessBridge or something
 class BillToolBridge:
     """ A monolithic class encapsulating the behavior to:  handle an incoming http request """
@@ -64,7 +68,6 @@ class BillToolBridge:
 
     # TODO: refactor config and share it between btb and bt 15413411
     def __init__(self):
-        print "BillToolBridge Instatiated %s" % str(id(self))
         self.config = ConfigParser.RawConfigParser()
         config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'bill_tool_bridge.cfg')
         if not self.config.read(config_file_path):
@@ -106,10 +109,14 @@ class BillToolBridge:
             # default format of log entries (config file can override this)
             DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
+            # directory where bill images are temporarily stored
+            DEFAULT_BILL_IMAGE_DIRECTORY = '/temp/billimages'
+
             # log file info
             self.config.add_section('log')
             self.config.set('log', 'log_file_name', DEFAULT_LOG_FILE_NAME)
             self.config.set('log', 'log_format', DEFAULT_LOG_FORMAT)
+            self.config.set('billrendering', DEFAULT_BILL_IMAGE_DIRECTORY)
 
 
             # Writing our configuration file to 'example.cfg'
@@ -145,11 +152,37 @@ class BillToolBridge:
         rsdb_config_section = self.config.items("rsdb")
         self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
 
+    @cherrypy.expose
+    def login(self, username, password, **args):
+        if username not in USERS or USERS[username] != password:
+            # failed login: redirect to the login page (again)
+            print 'login attempt failed: username "%s", password "%s"' % (username, password)
+            raise cherrypy.HTTPRedirect("/login.html")
+        # successful login: store username in cherrypy session object & redirect to main page
+        cherrypy.session['username'] = username
+        print 'user "%s" logged in with password "%s"' % (cherrypy.session['username'], password)
+        raise cherrypy.HTTPRedirect("/billentry.html")
+
+    #def check_authentication(function):
+        #'''Decorator to check authentication for HTTP request functions: redirect
+        #to login page if the user is not authenticated.'''
+        #def redirect(*args, **kwargs):
+            #raise cherrypy.httpredirect('/login.html')
+        #if 'username' in cherrypy.session:
+            #return function
+        #return redirect
+    def check_authentication(self):
+        '''Decorator to check authentication for HTTP request functions: redirect
+        to login page if the user is not authenticated.'''
+        if 'username' not in cherrypy.session:
+            print "access denied:", inspect.stack()[1][3]
+            # 401 = unauthorized--can't reply to an ajax call with a redirect
+            cherrypy.response.status = 401
 
     # TODO: do this on a per service basis 18311877
     @cherrypy.expose
     def copyactual(self, account, sequence, **args):
-
+        self.check_authentication()
         try:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             self.process.copy_actual_charges(reebill)
@@ -162,7 +195,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def roll(self, account, sequence, **args):
-
+        self.check_authentication()
         try:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             self.process.roll_bill(reebill)
@@ -175,7 +208,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def pay(self, account, sequence, **args):
-
+        self.check_authentication()
         try:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             self.process.pay_bill(reebill)
@@ -188,6 +221,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def bindree(self, account, sequence, **args):
+        self.check_authentication()
         from billing.processing import fetch_bill_data as fbd
         try:
             reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -209,7 +243,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def bindrs(self, account, sequence, **args):
-
+        self.check_authentication()
         try:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             self.process.bind_rate_structure(reebill)
@@ -223,7 +257,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def calc_reperiod(self, account, sequence, **args):
-
+        self.check_authentication()
         try:
             self.process.calculate_reperiod(account, sequence)
 
@@ -234,7 +268,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def calcstats(self, account, sequence, **args):
-
+        self.check_authentication()
         try:
             self.process.calculate_statistics(account, sequence)
 
@@ -245,7 +279,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def sum(self, account, sequence, **args):
-
+        self.check_authentication()
         try:
             present_reebill = self.reebill_dao.load_reebill(account, sequence)
             prior_reebill = self.reebill_dao.load_reebill(account, int(sequence)-1)
@@ -260,8 +294,7 @@ class BillToolBridge:
         
     @cherrypy.expose
     def issue(self, account, sequence, **args):
-
-
+        self.check_authentication()
         try:
             self.process.issue(account, sequence)
 
@@ -274,7 +307,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def render(self, account, sequence, **args):
-
+        self.check_authentication()
         try:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             render.render(reebill, 
@@ -289,7 +322,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def commit(self, account, sequence, **args):
-
+        self.check_authentication()
         try:
 
             self.process.commit_rebill(account, sequence)
@@ -301,7 +334,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def issueToCustomer(self, account, sequence, **args):
-
+        self.check_authentication()
         try:
             self.process.issue_to_customer(account, sequence)
             return json.dumps({'success': True})
@@ -313,6 +346,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def mail(self, account, sequences, recipients, **args):
+        self.check_authentication()
         try:
             # sequences will come in as a string if there is one element in post data. 
             # If there are more, it will come in as a list of strings
@@ -364,6 +398,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def listAccounts(self, **kwargs):
+        self.check_authentication()
         accounts = []
         try:
             # eventually, this data will have to support pagination
@@ -379,6 +414,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def listSequences(self, account, **kwargs):
+        self.check_authentication()
         sequences = []
         try:
             # eventually, this data will have to support pagination
@@ -391,6 +427,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def retrieve_status_days_since(self, start, limit, **args):
+        self.check_authentication()
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
@@ -419,6 +456,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def retrieve_status_unbilled(self, start, limit, **args):
+        self.check_authentication()
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
@@ -447,7 +485,7 @@ class BillToolBridge:
     @cherrypy.expose
     # TODO see 15415625 about the problem passing in service to get at a set of RSIs
     def cprsrsi(self, xaction, account, sequence, service, **kwargs):
-
+        self.check_authentication()
         try:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -580,7 +618,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def ursrsi(self, xaction, account, sequence, service, **kwargs):
-
+        self.check_authentication()
         try:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -705,7 +743,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def payment(self, xaction, account, sequence, **kwargs):
-
+        self.check_authentication()
         try:
 
             if xaction == "read":
@@ -773,7 +811,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def reebill(self, xaction, start, limit, account, **kwargs):
-
+        self.check_authentication()
         try:
 
             if xaction == "read":
@@ -807,6 +845,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def ubPeriods(self, account, sequence, **args):
+        self.check_authentication()
         """
         Return all of the utilbill periods on a per service basis so that the forms may be
         dynamically created.
@@ -839,6 +878,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def setUBPeriod(self, account, sequence, service, begin, end, **args):
+        self.check_authentication()
         """ 
         Utilbill period forms are dynamically created in browser, and post back to here individual periods.
         """ 
@@ -862,7 +902,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def actualCharges(self, service, account, sequence, **args):
-
+        self.check_authentication()
         try:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -884,7 +924,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def hypotheticalCharges(self, service, account, sequence, **args):
-
+        self.check_authentication()
         try:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -906,7 +946,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def saveActualCharges(self, service, account, sequence, rows, **args):
-    
+        self.check_authentication()
         try:
             flattened_charges = ju.loads(rows)
 
@@ -922,6 +962,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def saveHypotheticalCharges(self, service, account, sequence, rows, **args):
+        self.check_authentication()
         try:
             flattened_charges = ju.loads(rows)
 
@@ -944,7 +985,7 @@ class BillToolBridge:
         Return all of the measuredusages on a per service basis so that the forms may be
         dynamically created.
         """
-
+        self.check_authentication()
         try:
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
@@ -963,7 +1004,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def setMeter(self, account, sequence, service, meter_identifier, presentreaddate, priorreaddate):
-
+        self.check_authentication()
         try:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -981,7 +1022,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def setActualRegister(self, account, sequence, service, register_identifier, meter_identifier, quantity):
-
+        self.check_authentication()
         try:
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -1001,6 +1042,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def upload_utility_bill(self, account, begin_date, end_date, file_to_upload, **args):
+        self.check_authentication()
         try:
             # get Python file object and file name as string from the CherryPy
             # object 'file_to_upload', and pass those to BillUpload so it's
@@ -1018,6 +1060,7 @@ class BillToolBridge:
  
     @cherrypy.expose
     def listUtilBills(self, start, limit, **args):
+        self.check_authentication()
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
@@ -1057,6 +1100,7 @@ class BillToolBridge:
     
     @cherrypy.expose
     def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
+        self.check_authentication()
         try:
             # TODO: put url here, instead of in billentry.js?
             result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date, resolution)
@@ -1066,6 +1110,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     def getReeBillImage(self, account, sequence, resolution, **args):
+        self.check_authentication()
         try:
             result = self.billUpload.getReeBillImagePath(account, sequence, resolution)
             return ju.dumps({'success':True, 'imageName':result})
@@ -1094,7 +1139,10 @@ if __name__ == '__main__':
     cherrypy.quickstart(bridge, "/", config = local_conf)
 else:
     # WSGI Mode
-    cherrypy.config.update({'environment': 'embedded'})
+    cherrypy.config.update({
+        'environment': 'embedded',
+        'tools.sessions.on': True
+    })
 
     if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:
         cherrypy.engine.start(blocking=False)
