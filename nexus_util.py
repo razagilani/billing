@@ -43,7 +43,7 @@ class NexusUtil(object):
         # TODO: design a solution better than having to depend on another 
         # application.  NexusQuery is a class in another application.
         # see 19355107
-        return all(sysem, system_id)
+        return self.all(system, system_id)
 
         #
         #result = nexus.NexusQuery().mongo_find({system:system_id})

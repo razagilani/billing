@@ -289,6 +289,9 @@ class RateStructureDAO(object):
     def load_cprs(self, account, sequence, branch, utility_name, rate_structure_name):
         # TODO param types
 
+        print "load_cprs %s %s %s %s %s" % (type(account), type(sequence), type(branch), type(utility_name), type(rate_structure_name))
+        print "load_cprs %s %s %s %s %s" % (account, sequence, branch, utility_name, rate_structure_name)
+
         query = {
             "_id.type":"CPRS",
             "_id.account":account, 
@@ -297,8 +300,12 @@ class RateStructureDAO(object):
             "_id.utility_name": utility_name, 
             "_id.branch":int(branch)}
 
+        print "CPRS query is %s" % query
+
 
         cprs = self.collection.find_one(query)
+        print "got cprs %s" % id(cprs)
+        print "got cprs type %s" % type(cprs)
 
         return cprs
 

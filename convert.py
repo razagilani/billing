@@ -9,8 +9,8 @@ import pdb
 
 if __name__ == '__main__':
     ratestructure_dao = RateStructureDAO({
-        "database":"skyline",
-        "rspath":"/db-dev/skyline/ratestructure/",
+        "database":"skyline-stage",
+        "rspath":"/db-stage/skyline/ratestructure/",
         "host":"localhost",
         "collection":"ratestructure",
         "port": 27017
@@ -18,18 +18,17 @@ if __name__ == '__main__':
 
     state_db = StateDB({
         "host": "tyrell",
-        "password": "dev",
-        "db": "skyline_dev",
-        "user": "dev"
+        "password": "stage",
+        "db": "skyline_stage",
+        "user": "stage"
     }) 
-
 
     reebill_dao = ReebillDAO({
         "host":"localhost", 
         "port":27017, 
-        "database":"skyline", 
+        "database":"skyline-stage", 
         "collection":"reebills", 
-        "destination_prefix":"http://localhost:8080/exist/rest/db/skyline/bills"
+        "source_prefix":"http://localhost:8080/exist/rest/db/skyline/bills"
     })
 
     process = Process({}, state_db, reebill_dao, ratestructure_dao)
