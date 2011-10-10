@@ -21,7 +21,8 @@ configurations = {
 def prepare_deploy(project):
 
     # create version information file
-    fabops.local("sed -i 's/SKYLINE_VERSIONINFO/'`whoami` `hostname` `date` `hg id`'/g' *.py')
+    fabops.local("sed -i 's/SKYLINE_VERSIONINFO=\".*\".*$/SKYLINE_VERSIONINFO=\"'\"`date` `hg id` `whoami`\"'\"/g' ui/billedit.js")
+
 
     # TODO: use context, and suppress output of tar
 
