@@ -20,6 +20,9 @@ configurations = {
 
 def prepare_deploy(project):
 
+    # create version information file
+    fabops.local("sed -i 's/SKYLINE_VERSIONINFO/'`whoami` `hostname` `date` `hg id`'/g' *.py')
+
     # TODO: use context, and suppress output of tar
 
     # grab skyline framework
