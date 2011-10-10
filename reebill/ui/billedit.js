@@ -4,7 +4,9 @@ var NO_REEBILL_SELECTED_MESSAGE = '<div style="position:absolute; top:30%;"><tab
 var NO_REEBILL_FOUND_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_reebill_notfound.png"/></td></tr></table></div>';
 var LOADING_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="rotologo_white.gif"/></td></tr></table></div>';
 
-var DEFAULT_RESOLUTION = 70; // TODO for testing; make bigger
+var SKYLINE_VERSIONINFO="Mon Oct 10 14:42:04 EDT 2011 b8ea2801848e+ (xmlmigration-17193637) tip randrews"
+
+var DEFAULT_RESOLUTION = 100; 
 
 function renderWidgets()
 {
@@ -2678,6 +2680,56 @@ function renderWidgets()
             pack : 'start'
           },
           items: [reebillGrid]
+        },{
+          id: 'preferencesTab',
+          title: 'Preferences',
+          xtype: 'panel',
+          layout: 'vbox',
+          layoutConfig : {
+            pack : 'start',
+            align : 'stretch',
+          },
+          items: [
+            new Ext.FormPanel({
+              labelWidth: 240, // label settings here cascade unless overridden
+              frame: true,
+              title: 'Image Resolution Preferences',
+              bodyStyle: 'padding:5px 5px 0',
+              //width: 610,
+              defaults: {width: 435},
+              defaultType: 'textfield',
+              items: [
+                new Ext.ux.form.SpinnerField({
+                  id: 'utilbillresolutionmenu',
+                  fieldLabel: 'Utilility Bill Resolution',
+                  name: 'utilbillresolution',
+                  minValue: 50,
+                  maxValue: 200,
+                  allowDecimals: false,
+                  decimalPrecision: 10,
+                  incrementValue: 10,
+                  alternateIncrementValue: 2.1,
+                  accelerate: true
+                }),
+                new Ext.ux.form.SpinnerField({
+                  id: 'reebillresolutionmenu',
+                  fieldLabel: 'ReeBill Resolution',
+                  name: 'reebillresolution',
+                  minValue: 50,
+                  maxValue: 200,
+                  allowDecimals: false,
+                  decimalPrecision: 10,
+                  incrementValue: 10,
+                  alternateIncrementValue: 2.1,
+                  accelerate: true
+                }),
+              ]
+            }),
+          ]
+        },{
+          id: 'aboutTab',
+          title: 'About',
+          html: '<p>' + SKYLINE_VERSIONINFO + '</p>'
         }]
       });
 
@@ -2912,30 +2964,11 @@ function unregisterAjaxEvents()
 
 // TODO: 17613609  Need to show bill image, error not found image, error does not exist image
 function getImageBoxHTML(url, label, idPrefix, errorHTML) {
-    // TODO default menu selection
     if (url) {
-        return {tag: 'div', id: idPrefix + 'imagebox', children: [
-                // label
-                label + ' resolution: ',
-                // resolution menu
-                {tag: 'select', id: idPrefix + 'resolutionmenu', onchange: idPrefix + 'Reload()', children: [
-                    {tag: 'option', html:'50'},
-                    {tag: 'option', html:'100'},
-                    {tag: 'option', html:'150'},
-                    {tag: 'option', html:'200'},
-                ]},
-             // image
-            {tag: 'img', src: url, width: '100%', id: idPrefix + 'image'},
-        ]};
+        // TODO default menu selection
+        return {tag: 'img', src: url, width: '100%', id: idPrefix + 'image'}
     } else {
         return {tag: 'div', id: idPrefix + 'imagebox', children: [{tag: 'div', html: errorHTML,
             id: 'utilbillimage'}] };
     }
 }
-function utilbillReload() {
-    console.log('reloading utilbill image');
-}
-function reebillReload() {
-    console.log('reloading reebill image');
-}
-
