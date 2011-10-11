@@ -38,6 +38,7 @@ def prepare_deploy(project, environment):
     fabops.local('tar czvf /tmp/bill_framework_code.tar.z ../*.py ../processing/*.py')
 
 def deploy():
+
     environment = fabops.prompt("Environment?", default="stage")
     if environment == "prod":
         clobber = fabops.prompt(red("Clobber production?"), default="No")

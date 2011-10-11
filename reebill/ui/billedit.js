@@ -1,13 +1,23 @@
 
-var SKYLINE_VERSIONINFO="Tue Oct 11 12:11:48 EDT 2011 d385cf449f7d+ (xmlmigration-17193637) tip randrews"
-var SKYLINE_DEPLOYENV="stage"
-
 var DEFAULT_RESOLUTION = 100; 
 
 function renderWidgets()
 {
     // global ajax timeout
     Ext.Ajax.timeout = 960000; //16 minutes
+
+    // pass configuration information to containing webpage
+    var SKYLINE_VERSIONINFO="Tue Oct 11 12:56:25 EDT 2011 8688aa52277b+ (xmlmigration-17193637) tip randrews"
+    var SKYLINE_DEPLOYENV="stage"
+    versionInfo = Ext.get('SKYLINE_VERSIONINFO');
+    versionInfo.update(SKYLINE_VERSIONINFO);
+    deployEnv = Ext.get('SKYLINE_DEPLOYENV');
+    deployEnv.update(SKYLINE_DEPLOYENV);
+
+    title = Ext.get('pagetitle');
+    title.update("Skyline ReeBill - " + SKYLINE_DEPLOYENV)
+
+
 
     // ToDo: state support for grid
     //Ext.state.Manager.setProvider(new Ext.state.CookieProvider());
