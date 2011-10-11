@@ -1,4 +1,6 @@
 #!/usr/bin/python
+'''Note that these objects have additional properties besides the ones defined
+here, due to relationships defined in state.py.'''
 
 class Customer(object):
     def __init__(self, name, account, discountrate):
