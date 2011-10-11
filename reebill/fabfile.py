@@ -18,10 +18,11 @@ configurations = {
     "prod": ["reebill", "reebill", "reebill", "bill_tool_bridge-prod-template.cfg"]
 }
 
-def prepare_deploy(project):
+def prepare_deploy(project, environment):
 
     # create version information file
     fabops.local("sed -i 's/SKYLINE_VERSIONINFO=\".*\".*$/SKYLINE_VERSIONINFO=\"'\"`date` `hg id` `whoami`\"'\"/g' ui/billedit.js")
+    fabops.local("sed -i 's/SKYLINE_DEPLOYENV=\".*\".*$/SKYLINE_DEPLOYENV=\"%s\"/g' ui/billedit.js" % environment)
 
 
     # TODO: use context, and suppress output of tar
@@ -50,7 +51,7 @@ def deploy():
     group = configurations[environment][2]
     config_file = configurations[environment][3]
             
-    prepare_deploy(project)
+    prepare_deploy(project, environment)
     fabapi.put('/tmp/%s.tar.z' % (project), '/tmp')
     fabapi.put('/tmp/skyliner.tar.z', '/tmp')
     fabapi.put('/tmp/bill_framework_code.tar.z', '/tmp')
