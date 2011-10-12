@@ -132,6 +132,7 @@ function renderWidgets()
         root: 'rows',
         totalProperty: 'results',
         pageSize: 25,
+        //baseParams: {},
         paramNames: {start: 'start', limit: 'limit'},
         //autoLoad: {params:{start: 0, limit: 25}},
         fields: [
@@ -374,14 +375,14 @@ function renderWidgets()
     // the bill document.  Follow loadReeBillUI() for additional details
     // ToDo: do not allow selection change if store is unsaved
     sequenceCombo.on('select', function(combobox, record, index) {
-        loadReeBillUISequence(accountCombo.getValue(), sequenceCombo.getValue());
+        loadReeBillUIForSequence(accountCombo.getValue(), sequenceCombo.getValue());
     });
 
     // a hack so that a newly rolled bill may be accessed by directly entering its sequence
     // remove this when https://www.pivotaltracker.com/story/show/14564121 completes
     sequenceCombo.on('specialkey', function(field, e) {
         if (e.getKey() == e.ENTER) {
-            loadReeBillUISequence(accountCombo.getValue(), sequenceCombo.getValue());
+            loadReeBillUIForSequence(accountCombo.getValue(), sequenceCombo.getValue());
         }
     });
 
@@ -396,7 +397,7 @@ function renderWidgets()
         if(true !== o.success) {
             Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
         } else {
-            loadReeBillUISequence(accountCombo.getValue(), sequenceCombo.getValue());
+            loadReeBillUIForSequence(accountCombo.getValue(), sequenceCombo.getValue());
         }
     }
 
@@ -2822,17 +2823,15 @@ function renderWidgets()
     // whenever an account is selected from the Account tab,
     // update all other dependent widgets
 
-    // global necessary?
-    //var current_account = null;
-
     // load things global to the account
     function loadReeBillUIForAccount(account)
     {
-        //current_account = account
         // this store eventually goes away
         // because accounts are selected from the status tables
         accountsStore.reload();
         accountCombo.setValue(account);
+        sequencesStore.setBaseParam('account', account);
+        sequencesStore.load();
 
         // update list of payments for this account
         paymentStore.reload({params: {account: account}});
@@ -2844,7 +2843,9 @@ function renderWidgets()
         reebillStore.reload({params:{start:0, limit:25}});
 
         // tell utilBillGrid to filter itself
-        utilbillGridStore.reload({params:{start:0, limit:25, account:account}});
+        utilbillGridStore.setBaseParam("account", account)
+        // pass in page params since the pagingtoolbar normally provides paramNames
+        utilbillGridStore.reload({params:{start:0, limit:25}});
         // TODO: this should become a hidden field in this form, unless we want
         // the user to be able to upload for any account, in which case we would 
         // make a drop down of accounts and then filter by what is selected.
@@ -2855,18 +2856,8 @@ function renderWidgets()
         updateStatusbar(account, null);
     }
 
-    // called by the utilbillGrid selection model
-    // this function then sets the account and sequence values into the rebill account and sequence comboboxes
-    // which in turn can be used to override a selection made by the utilbillGrid sel Model
-    // this is because #1 a utility bill is initially selected for processing which may have an reebill which
-    // is then displayed and #2, the user may wish to see several reebills without changing the utility bill.
-    // in other words, utilbillgrid selects both a utilbill and reebill and the reebill combos
-    // override the selection of the reebill.
     function loadReeBillUIForSequence(account, sequence) {
 
-        // load global account items
-        loadReeBillUIForAccount(account);
-        
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/ubPeriods',
             params: {account: account, sequence: sequence},
