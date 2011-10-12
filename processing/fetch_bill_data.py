@@ -129,6 +129,9 @@ def usage_data_to_virtual_register(install, reebill, server=None):
     # now that a list of shadow registers are initialized, accumulate energy into them for the specified date range
     for register in registers:
         print 'register:', register
+        # reset register in case energy was previously accumulated
+        register.quantity = 0
+
         # service date range
         beginAccumulation = register.prior_read_date
         endAccumulation = register.present_read_date
@@ -170,7 +173,7 @@ def usage_data_to_virtual_register(install, reebill, server=None):
                 else:
                     raise Exception('unknown energy unit')
 
-                #print 'register %s accumulating energy %s %s' % (register.identifier, energy, register.quantity_units)
+                print 'register %s accumulating energy %s %s' % (register.identifier, energy, register.quantity_units)
                 register.quantity += energy
 
         # update the reebill: put the total skyline energy in the shadow register
