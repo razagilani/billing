@@ -6,8 +6,8 @@ function renderWidgets()
     Ext.Ajax.timeout = 960000; //16 minutes
 
     // pass configuration information to containing webpage
-    var SKYLINE_VERSIONINFO="default"
-    var SKYLINE_DEPLOYENV="Dev"
+    var SKYLINE_VERSIONINFO="Wed Oct 12 17:57:55 EDT 2011 c67a8c60813c+ tip randrews"
+    var SKYLINE_DEPLOYENV="stage"
     versionInfo = Ext.get('SKYLINE_VERSIONINFO');
     versionInfo.update(SKYLINE_VERSIONINFO);
     deployEnv = Ext.get('SKYLINE_DEPLOYENV');
@@ -2826,6 +2826,11 @@ function renderWidgets()
     // load things global to the account
     function loadReeBillUIForAccount(account)
     {
+
+        // unload previously loaded utility and reebill images
+        Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(null, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
+        Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML(null, 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
+
         // this store eventually goes away
         // because accounts are selected from the status tables
         accountsStore.reload();

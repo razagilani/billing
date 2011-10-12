@@ -17,7 +17,7 @@ if __name__ == '__main__':
     })
 
     state_db = StateDB({
-        "host": "tyrell",
+        "host": "localhost",
         "password": "stage",
         "db": "skyline_stage",
         "user": "stage"
