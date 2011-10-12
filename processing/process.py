@@ -349,6 +349,7 @@ class Process(object):
                 rate_structure.bind_charges(charges)
             reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
 
+            # hypothetical charges
 
             # process hypothetical charges with non-shadow + shadow meter register totals
             rate_structure = self.rate_structure_dao.load_rate_structure(reebill, service)
@@ -369,14 +370,15 @@ class Process(object):
             # computation.  See 12205265
 
             # TODO: probably a better way to do this
-            for shadow_reading in shadow_register_readings:
+            registers_to_bind = copy.deepcopy(shadow_register_readings)
+            for shadow_reading in registers_to_bind:
                 for actual_reading in actual_register_readings:
                     if actual_reading['identifier'] == shadow_reading['identifier']:
                         shadow_reading['quantity'] += actual_reading['quantity']
                 # TODO: throw exception when registers mismatch
 
             # apply the combined registers from the reebill to the probable rate structure
-            rate_structure.bind_register_readings(shadow_register_readings)
+            rate_structure.bind_register_readings(registers_to_bind)
 
 
             # process actual charges with non-shadow meter register totals
