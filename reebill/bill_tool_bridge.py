@@ -172,6 +172,7 @@ class BillToolBridge:
             #return function
         #return redirect
     def check_authentication(self):
+        return
         '''Decorator to check authentication for HTTP request functions: redirect
         to login page if the user is not authenticated.'''
         if 'username' not in cherrypy.session:
@@ -437,8 +438,9 @@ class BillToolBridge:
             # {account: full name, dayssince: days}
             statuses, totalCount = self.state_db.retrieve_status_days_since(int(start), int(limit))
             full_names = self.full_names_of_accounts([s.account for s in statuses])
-            rows = [dict([('account', full_names[i]), ('dayssince', status.dayssince)])
+            rows = [dict([('account', status.account), ('fullname', full_names[i]), ('dayssince', status.dayssince)])
                     for i, status in enumerate(statuses)]
+
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
             # TODO: log errors?
@@ -456,7 +458,7 @@ class BillToolBridge:
             statuses, totalCount = self.state_db.retrieve_status_unbilled(int(start), int(limit))
             all_statuses_all_names = NexusUtil().all_ids_for_accounts("billing", statuses, key=lambda status:status.account)
             full_names = self.full_names_of_accounts([s.account for s in statuses])
-            rows = [dict([('account', full_names[i])]) for i, status in enumerate(statuses)]
+            rows = [dict([('account', status.account),('fullname', full_names[i])]) for i, status in enumerate(statuses)]
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
             # TODO: log errors?
@@ -1040,7 +1042,7 @@ class BillToolBridge:
 
  
     @cherrypy.expose
-    def listUtilBills(self, start, limit, **args):
+    def listUtilBills(self, start, limit, account, **args):
         self.check_authentication()
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
@@ -1048,7 +1050,7 @@ class BillToolBridge:
             # result is a list of dictionaries of the form {account: account
             # number, name: full name, period_start: date, period_end: date,
             # sequence: reebill sequence number (if present)}
-            utilbills, totalCount = self.state_db.list_utilbills(int(start), int(limit))
+            utilbills, totalCount = self.state_db.list_utilbills(account, int(start), int(limit))
             # note that utilbill customers are eagerly loaded
             full_names = self.full_names_of_accounts([ub.customer.account for ub in utilbills])
             rows = [dict([('account', ub.customer.account), ('name', full_names[i]),

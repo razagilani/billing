@@ -1,4 +1,3 @@
-
 var DEFAULT_RESOLUTION = 100; 
 
 function renderWidgets()
@@ -7,8 +6,8 @@ function renderWidgets()
     Ext.Ajax.timeout = 960000; //16 minutes
 
     // pass configuration information to containing webpage
-    var SKYLINE_VERSIONINFO="Mon Oct 10 17:42:48 EDT 2011 d385cf449f7d+ (xmlmigration-17193637) tip randrews"
-    var SKYLINE_DEPLOYENV="SomeEnv"
+    var SKYLINE_VERSIONINFO="default"
+    var SKYLINE_DEPLOYENV="Dev"
     versionInfo = Ext.get('SKYLINE_VERSIONINFO');
     versionInfo.update(SKYLINE_VERSIONINFO);
     deployEnv = Ext.get('SKYLINE_DEPLOYENV');
@@ -17,9 +16,7 @@ function renderWidgets()
     title = Ext.get('pagetitle');
     title.update("Skyline ReeBill - " + SKYLINE_DEPLOYENV)
 
-
-
-    // ToDo: state support for grid
+    // ToDo: 5204832 state support for grid
     //Ext.state.Manager.setProvider(new Ext.state.CookieProvider());
 
     // set a variety of patterns for Date Pickers
@@ -36,6 +33,8 @@ function renderWidgets()
         UniversalSortableDateTime: "Y-m-d H:i:sO",
         YearMonth: "F, Y"
     };
+
+
 
     ////////////////////////////////////////////////////////////////////////////
     // Upload tab
@@ -134,7 +133,7 @@ function renderWidgets()
         totalProperty: 'results',
         pageSize: 25,
         paramNames: {start: 'start', limit: 'limit'},
-        autoLoad: {params:{start: 0, limit: 25}},
+        //autoLoad: {params:{start: 0, limit: 25}},
         fields: [
             {name: 'name'},
             {name: 'account'},
@@ -170,7 +169,7 @@ function renderWidgets()
 
                     // a row was slected in the UI
                     // update the current account and sequence
-                    loadReeBillUI(record.data.account, record.data.sequence)
+                    loadReeBillUIForSequence(record.data.account, record.data.sequence)
 
                     // reset the account and sequence combos.  This is a hack, and there needs to be a unified
                     // way to select a given utilbill, reebill or both
@@ -256,7 +255,6 @@ function renderWidgets()
             },
 
         ],
-        
         // paging bar on the bottom
         bbar: new Ext.PagingToolbar({
             pageSize: 25,
@@ -376,17 +374,16 @@ function renderWidgets()
     // the bill document.  Follow loadReeBillUI() for additional details
     // ToDo: do not allow selection change if store is unsaved
     sequenceCombo.on('select', function(combobox, record, index) {
-        loadReeBillUI(accountCombo.getValue(), sequenceCombo.getValue());
+        loadReeBillUISequence(accountCombo.getValue(), sequenceCombo.getValue());
     });
 
     // a hack so that a newly rolled bill may be accessed by directly entering its sequence
     // remove this when https://www.pivotaltracker.com/story/show/14564121 completes
     sequenceCombo.on('specialkey', function(field, e) {
         if (e.getKey() == e.ENTER) {
-            loadReeBillUI(accountCombo.getValue(), sequenceCombo.getValue());
+            loadReeBillUISequence(accountCombo.getValue(), sequenceCombo.getValue());
         }
     });
-
 
     function successResponse(response, options) 
     {
@@ -399,7 +396,7 @@ function renderWidgets()
         if(true !== o.success) {
             Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
         } else {
-            loadReeBillUI(accountCombo.getValue(), sequenceCombo.getValue());
+            loadReeBillUISequence(accountCombo.getValue(), sequenceCombo.getValue());
         }
     }
 
@@ -2430,6 +2427,7 @@ function renderWidgets()
         fields: [
             // map Record's field to json object's key of same name
             {name: 'account', mapping: 'account'},
+            {name: 'fullname', mapping: 'fullname'},
             {name: 'dayssince', mapping: 'dayssince'}
         ]
     });
@@ -2443,6 +2441,7 @@ function renderWidgets()
         reader: statusDaysSinceReader,
         fields: [
             {name: 'account'},
+            {name: 'fullname'},
             {name: 'dayssince'},
         ],
         url: 'http://' + location.host + '/reebill/retrieve_status_days_since',
@@ -2455,7 +2454,7 @@ function renderWidgets()
             {
                 header: 'Account',
                 sortable: true,
-                dataIndex: 'account',
+                dataIndex: 'fullname',
                 editable: false,
             },{
                 header: 'Days since last bill',
@@ -2470,7 +2469,14 @@ function renderWidgets()
     var statusDaysSinceGrid = new Ext.grid.GridPanel({
         //tbar: statusToolbar,
         colModel: statusDaysSinceColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+        selModel: new Ext.grid.RowSelectionModel({
+            singleSelect: true,
+            listeners: {
+                rowselect: function (selModel, index, record) {
+                    loadReeBillUIForAccount(record.data.account);
+                }
+            }
+        }),
         store: statusDaysSinceStore,
         enableColumnMove: false,
         frame: true,
@@ -2510,6 +2516,7 @@ function renderWidgets()
         fields: [
             // map Record's field to json object's key of same name
             {name: 'account', mapping: 'account'},
+            {name: 'fullname', mapping: 'fullname'},
         ]
     });
 
@@ -2522,6 +2529,7 @@ function renderWidgets()
         reader: statusUnbilledReader,
         fields: [
             {name: 'account'},
+            {name: 'fullname'},
         ],
         url: 'http://' + location.host + '/reebill/retrieve_status_unbilled',
     });
@@ -2533,7 +2541,7 @@ function renderWidgets()
             {
                 header: 'Account',
                 sortable: true,
-                dataIndex: 'account',
+                dataIndex: 'fullname',
                 editable: false,
             }
         ]
@@ -2543,7 +2551,14 @@ function renderWidgets()
     var statusUnbilledGrid = new Ext.grid.GridPanel({
         //tbar: statusToolbar,
         colModel: statusUnbilledColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+        selModel: new Ext.grid.RowSelectionModel({
+            singleSelect: true,
+            listeners: {
+                rowselect: function (selModel, index, record) {
+                    loadReeBillUIForAccount(record.data.account);
+                }
+            }
+        }),
         store: statusUnbilledStore,
         enableColumnMove: false,
         frame: true,
@@ -2590,13 +2605,13 @@ function renderWidgets()
       //margins:'0 4 4 0',
       // necessary for child FormPanels to draw properly when dynamically changed
       layoutOnTabChange: true,
-      activeTab: 1,
+      activeTab: 0,
       bbar: statusBar,
       border:true,
       items:[
         {
           id: 'statusTab',
-          title: 'Status',
+          title: 'Accounts',
           xtype: 'panel',
           layout: 'accordion',
           items: [statusDaysSinceGrid, statusUnbilledGrid]
@@ -2787,9 +2802,58 @@ function renderWidgets()
     // also consider what to do about the Ext.data.Stores and where they should
     // go since they hit the web for data.
 
-    // Functions that handle the loading and saving of bill xml 
-    // using the restful interface of eXist DB
 
+
+    // update selection in statusbar
+    function updateStatusbar(account, sequence)
+    {
+
+        var sb = Ext.getCmp('statusbar');
+        if (sequence == null)
+            var selStatus = account
+        else
+            var selStatus = account + "-" + sequence
+        sb.setStatus({
+            text: selStatus
+        });
+
+    }
+
+    // whenever an account is selected from the Account tab,
+    // update all other dependent widgets
+
+    // global necessary?
+    //var current_account = null;
+
+    // load things global to the account
+    function loadReeBillUIForAccount(account)
+    {
+        //current_account = account
+        // this store eventually goes away
+        // because accounts are selected from the status tables
+        accountsStore.reload();
+        accountCombo.setValue(account);
+
+        // update list of payments for this account
+        paymentStore.reload({params: {account: account}});
+
+        // update list of ReeBills (for mailing) for this account
+        reebillStore.setBaseParam("account", account)
+
+        // paging tool bar params must be passed in to keep store in sync with toolbar paging calls - autoload params lost after autoload
+        reebillStore.reload({params:{start:0, limit:25}});
+
+        // tell utilBillGrid to filter itself
+        utilbillGridStore.reload({params:{start:0, limit:25, account:account}});
+        // TODO: this should become a hidden field in this form, unless we want
+        // the user to be able to upload for any account, in which case we would 
+        // make a drop down of accounts and then filter by what is selected.
+        //
+        // add the account to the upload_account field
+        upload_account.setValue(account)
+
+        updateStatusbar(account, null);
+    }
 
     // called by the utilbillGrid selection model
     // this function then sets the account and sequence values into the rebill account and sequence comboboxes
@@ -2798,7 +2862,10 @@ function renderWidgets()
     // is then displayed and #2, the user may wish to see several reebills without changing the utility bill.
     // in other words, utilbillgrid selects both a utilbill and reebill and the reebill combos
     // override the selection of the reebill.
-    function loadReeBillUI(account, sequence) {
+    function loadReeBillUIForSequence(account, sequence) {
+
+        // load global account items
+        loadReeBillUIForAccount(account);
         
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/ubPeriods',
@@ -2850,25 +2917,9 @@ function renderWidgets()
         CPRSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
         URSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
 
-        paymentStore.reload({params: {account: account}});
-
-        reebillStore.setBaseParam("account", account)
-        // paging tool bar params must be passed in to keep store in sync with toolbar paging calls - autoload params lost after autoload
-        reebillStore.reload({params:{start:0, limit:25}});
-
-        var sb = Ext.getCmp('statusbar');
-        if (sequence == null)
-            var selStatus = account
-        else
-            var selStatus = account + "-" + sequence
-        sb.setStatus({
-            text: selStatus
-        });
-
 
         // url for getting bill images (calls bill_tool_bridge.getbillimage())
         reeBillImageURL = 'http://' + location.host + '/reebill/getReeBillImage';
-
 
         // image rendering resolution
         var menu = document.getElementById('reebillresolutionmenu');
@@ -2911,6 +2962,10 @@ function renderWidgets()
         // in the utilbill image box
         Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div', html:
             LOADING_MESSAGE, id: 'reebillimage'}, true);
+
+
+        // finally, update the status bar with current selection
+        updateStatusbar(account, sequence);
     }
 }
 
