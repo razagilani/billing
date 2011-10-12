@@ -2724,6 +2724,7 @@ function renderWidgets()
                   id: 'utilbillresolutionmenu',
                   fieldLabel: 'Utilility Bill Resolution',
                   name: 'utilbillresolution',
+                  value: DEFAULT_RESOLUTION, // TODO load resolution preference from session data
                   minValue: 50,
                   maxValue: 200,
                   allowDecimals: false,
@@ -2738,6 +2739,7 @@ function renderWidgets()
                   name: 'reebillresolution',
                   minValue: 50,
                   maxValue: 200,
+                  value: DEFAULT_RESOLUTION, // TODO load resolution preference from session data
                   allowDecimals: false,
                   decimalPrecision: 10,
                   incrementValue: 10,
