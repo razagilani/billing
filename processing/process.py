@@ -107,24 +107,24 @@ class Process(object):
             ree_savings = discount_rate * (hypothetical_total - actual_total)
 
             present_reebill.set_ree_value_for_service(service, ree_value.quantize(Decimal('.00')))
-            present_reebill.set_ree_charges_for_service(service, Decimal(ree_charges).quantize(Decimal('.00'),rounding=ROUND_DOWN))
-            present_reebill.set_ree_savings_for_service(service, Decimal(ree_savings).quantize(Decimal('.00'),rounding=ROUND_UP))
+            present_reebill.set_ree_charges_for_service(service, ree_charges)
+            present_reebill.set_ree_savings_for_service(service, ree_savings)
 
 
-            # accumulate at the reebill level
-            present_reebill.hypothetical_total = present_reebill.hypothetical_total + hypothetical_total
-            present_reebill.actual_total = present_reebill.actual_total + actual_total
+        # accumulate at the reebill level
+        present_reebill.hypothetical_total = present_reebill.hypothetical_total + hypothetical_total
+        present_reebill.actual_total = present_reebill.actual_total + actual_total
 
-            present_reebill.ree_value = present_reebill.ree_value + ree_value
-            present_reebill.ree_charges = present_reebill.ree_charges + ree_charges
-            present_reebill.ree_savings = present_reebill.ree_savings + ree_savings
+        present_reebill.ree_value = Decimal(present_reebill.ree_value + ree_value).quantize(Decimal('.00'))
+        present_reebill.ree_charges = Decimal(present_reebill.ree_charges + ree_charges).quantize(Decimal('.00'), rounding=ROUND_DOWN)
+        present_reebill.ree_savings = Decimal(present_reebill.ree_savings + ree_savings).quantize(Decimal('.00'), rounding=ROUND_UP)
 
-            # now grab the prior bill and pull values forward
-            present_reebill.prior_balance = prior_reebill.balance_due
-            present_reebill.balance_forward = present_reebill.prior_balance - present_reebill.payment_received
-            present_reebill.balance_due = present_reebill.balance_forward + present_reebill.ree_charges
+        # now grab the prior bill and pull values forward
+        present_reebill.prior_balance = prior_reebill.balance_due
+        present_reebill.balance_forward = present_reebill.prior_balance - present_reebill.payment_received
+        present_reebill.balance_due = present_reebill.balance_forward + present_reebill.ree_charges
 
-            # TODO total_adjustment
+        # TODO total_adjustment
 
 
     def copy_actual_charges(self, reebill):
