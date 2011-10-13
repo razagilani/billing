@@ -190,7 +190,7 @@ function renderWidgets()
                     theUrl = 'http://' + location.host + '/reebill/getUtilBillImage';
 
                     // image rendering resolution
-                    var menu = document.getElementById('utilbillresolutionmenu');
+                    var menu = document.getElementById('billresolutionmenu');
                     if (menu) {
                         resolution = menu.value;
                     } else {
@@ -206,7 +206,7 @@ function renderWidgets()
                     Ext.Ajax.request({
                         url: theUrl,
                         params: {account: record.data.account, begin_date: formatted_begin_date_string,
-                            end_date: formatted_end_date_string, resolution: resolution},
+                            end_date: formatted_end_date_string},
                         success: function(result, request) {
                             var jsonData = null;
                             try {
@@ -2581,6 +2581,50 @@ function renderWidgets()
         }),
     });
 
+    ///////////////////////////////////////////////////////////////////////////
+    // preferences tab
+    // bill image resolution field in preferences tab (needs a name so its
+    // value can be gotten)
+    var billImageResolutionField = new Ext.ux.form.SpinnerField({
+      id: 'billresolutionmenu',
+      fieldLabel: 'Bill image resolution',
+      name: 'billresolution',
+      value: DEFAULT_RESOLUTION,
+      minValue: 50,
+      maxValue: 200,
+      allowDecimals: false,
+      decimalPrecision: 10,
+      incrementValue: 10,
+      alternateIncrementValue: 2.1,
+      accelerate: true
+    });
+    // get initial value of this field from the server
+    var resolution = null;
+    Ext.Ajax.request({
+        url: 'http://'+location.host+'/reebill/getBillImageResolution',
+        disableCaching: true,
+        success: function(result, request) {
+            var jsonData = null;
+            try {
+                jsonData = Ext.util.JSON.decode(result.responseText);
+                console.log(result.responseText);
+                if (jsonData.success == true) {
+                    resolution = jsonData['resolution'];
+                    console.log('setting resolution to ' + jsonData['resolution']);
+                    billImageResolutionField.setValue(resolution);
+                } else {
+                    Ext.Msg.alert("getBillImageResolution failed: " + jsonData.errors);
+                }
+            } catch (err) {
+                Ext.MessageBox.alert('ERROR', 'Could not decode "' + jsonData + '"');
+            }
+        },
+        failure: function () {
+            Ext.Msg.alert("setBillImageResolution request failed");
+        }
+    });
+
+
     // end of tab widgets
     ////////////////////////////////////////////////////////////////////////////
 
@@ -2721,31 +2765,31 @@ function renderWidgets()
               defaults: {width: 435},
               defaultType: 'textfield',
               items: [
-                new Ext.ux.form.SpinnerField({
-                  id: 'utilbillresolutionmenu',
-                  fieldLabel: 'Utilility Bill Resolution',
-                  name: 'utilbillresolution',
-                  value: DEFAULT_RESOLUTION, // TODO load resolution preference from session data
-                  minValue: 50,
-                  maxValue: 200,
-                  allowDecimals: false,
-                  decimalPrecision: 10,
-                  incrementValue: 10,
-                  alternateIncrementValue: 2.1,
-                  accelerate: true
-                }),
-                new Ext.ux.form.SpinnerField({
-                  id: 'reebillresolutionmenu',
-                  fieldLabel: 'ReeBill Resolution',
-                  name: 'reebillresolution',
-                  minValue: 50,
-                  maxValue: 200,
-                  value: DEFAULT_RESOLUTION, // TODO load resolution preference from session data
-                  allowDecimals: false,
-                  decimalPrecision: 10,
-                  incrementValue: 10,
-                  alternateIncrementValue: 2.1,
-                  accelerate: true
+                billImageResolutionField,
+                new Ext.Button({
+                    text: 'Save',
+                    handler: function() {
+                        Ext.Ajax.request({
+                            url: 'http://'+location.host+'/reebill/setBillImageResolution',
+                            params: { 'resolution': billImageResolutionField.getValue() },
+                            disableCaching: true,
+                            success: function(result, request) {
+                                var jsonData = null;
+                                try {
+                                    jsonData = Ext.util.JSON.decode(result.responseText);
+                                    console.log(result.responseText);
+                                    if (jsonData.success == false) {
+                                        Ext.Msg.alert("setBillImageResolution failed: " + jsonData.errors)
+                                    }
+                                } catch (err) {
+                                    Ext.MessageBox.alert('ERROR', 'Could not decode "' + jsonData + '"');
+                                }
+                            },
+                            failure: function () {
+                                Ext.Msg.alert("setBillImageResolution request failed");
+                            }
+                        });
+                    }
                 }),
               ]
             }),
@@ -2826,8 +2870,7 @@ function renderWidgets()
     // update all other dependent widgets
 
     // load things global to the account
-    function loadReeBillUIForAccount(account)
-    {
+    function loadReeBillUIForAccount(account) {
 
         // unload previously loaded utility and reebill images
         Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(null, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
@@ -2931,7 +2974,7 @@ function renderWidgets()
         // new window
         Ext.Ajax.request({
             url: reeBillImageURL,
-            params: {account: account, sequence: sequence, resolution:resolution},
+            params: {account: account, sequence: sequence},
             success: function(result, request) {
                 var jsonData = null;
                 try {
