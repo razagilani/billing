@@ -13,6 +13,19 @@ function renderWidgets()
     deployEnv = Ext.get('SKYLINE_DEPLOYENV');
     deployEnv.update(SKYLINE_DEPLOYENV);
 
+    // show username & logout link in the footer
+    var logoutLink = '<a href="http://' + location.host + '/reebill/logout">log out</a>';
+    Ext.Ajax.request({
+        url: 'http://' + location.host + '/reebill/getUsername',
+        success: function(result, request) {
+            var jsonData = Ext.util.JSON.decode(result.responseText);
+            var username = jsonData['username'];
+            Ext.DomHelper.overwrite('LOGIN_INFO', "You're logged as <b>" + username + "</b>; " + logoutLink)
+        },
+        failure: function() { Ext.MessageBox.alert('Ajax failure', 'http://' + location.host + '/getUsername'); },
+        disableCaching: true,
+    });
+
     title = Ext.get('pagetitle');
     title.update("Skyline ReeBill - " + SKYLINE_DEPLOYENV)
 
