@@ -348,10 +348,11 @@ class RateStructureDAO(object):
 
 class RateStructure(object):
     """ 
-    A RateStructure consist of Registers and RateStructureItems.
-    The rate structure is the model for how utilities calculate their utility bill.  This model does not
-    necessarily dictate the reebill, because the reebill can have charges that are not part of this model.
-    This is also why the rate structure model does not comprehend charge grouping, subtotals or totals.
+    A RateStructure consist of Registers and RateStructureItems. The rate
+    structure is the model for how utilities calculate their utility bill.
+    This model does not necessarily dictate the reebill, because the reebill
+    can have charges that are not part of this model. This is also why the rate
+    structure model does not comprehend charge grouping, subtotals or totals.
 
     A RateStructure stores lots of state.  Reload it for a new uncomputed one.
     """
@@ -535,31 +536,30 @@ class Register(object):
     def identifier(self, value):
         self._identifier = value
 
-    def valid_hours(self, theDate):
-        return [(0, 23)]
-        # no idea what this code does--what is inclusion[3]?
-        """For a given date, return a list of tuples that describe the ranges of hours 
-        this register should accumulate energy
-        e.g. [(8,12), (15,19)] == 8:00:00AM to 11:59:59, and 3:00:00pm to 6:59:59
-        Taken from fetch_bill_data.Register."""
-        '''
-        hour_tups = []
-        for inclusion in self.inclusions:
-            # if theDate matches a holiday listed as an inclusion, meter is on the entire day.
-            # Full day in inclusion (holiday) override weekday rules
-            if theDate in inclusion[3]:
-                return [(0, 23)]
-            if theDate.isoweekday() in inclusion[2]:
-                # weekday matches, make sure it is not excluded due to full day in exclusion (holiday)
-                for exclusion in self.exclusions:
-                    if (theDate in exclusion[3]):
-                        return []
-                hour_tups.append((inclusion[0], inclusion[1]))
-        '''
-        return hour_tups
+    #def valid_hours(self, theDate):
+        #return [(0, 23)]
+        ## no idea what this code does--what is inclusion[3]?
+        #"""For a given date, return a list of tuples that describe the ranges of hours 
+        #this register should accumulate energy
+        #e.g. [(8,12), (15,19)] == 8:00:00AM to 11:59:59, and 3:00:00pm to 6:59:59
+        #Taken from fetch_bill_data.Register."""
+        #'''
+        #hour_tups = []
+        #for inclusion in self.inclusions:
+            ## if theDate matches a holiday listed as an inclusion, meter is on the entire day.
+            ## Full day in inclusion (holiday) override weekday rules
+            #if theDate in inclusion[3]:
+                #return [(0, 23)]
+            #if theDate.isoweekday() in inclusion[2]:
+                ## weekday matches, make sure it is not excluded due to full day in exclusion (holiday)
+                #for exclusion in self.exclusions:
+                    #if (theDate in exclusion[3]):
+                        #return []
+                #hour_tups.append((inclusion[0], inclusion[1]))
+        #'''
+        #return hour_tups
 
     def __str__(self):
-
         return "Register %s: %s, %s, %s" % (
             self.register_binding if self.register_binding else 'No Descriptor',
             self.description if self.description else 'No Description',
