@@ -64,6 +64,25 @@ class BillToolBridge:
     """ A monolithic class encapsulating the behavior to:  handle an incoming http request """
     """ and invoke bill processing code.  No business logic should reside here."""
 
+    """
+    Notes on using SQLAlchemy.  Since the ORM sits on top of the MySQL API, care must
+    be given to the underlying resource utilization.  Namely, sessions have to be
+    closed via a commit or rollback.
+
+    Also, SQLAlchemy may be lazy in the way it executes database operations.  Primary
+    keys may not be returned and set in an instance unless commit is called.  Therefore,
+    ensure that a commit is issued before using newly inserted instances.
+
+    The pattern of usage is as follows:
+    - declare a local variable that will point to a session at the top of a try block
+    - initialize this variable to None, so that if an exception is subsequently raised
+      the local will not be undefined.
+    - pass the session into a statedb function.
+    - commit the session.
+    - if an exception was raised, and the local variable pointing to the session is
+      initialized, then rollback.
+    """
+
     config = None
 
     # TODO: refactor config and share it between btb and bt 15413411
@@ -130,7 +149,7 @@ class BillToolBridge:
         self.state_db = state.StateDB(dict(statedb_config_section)) 
 
         # create one BillUpload object to use for all BillUpload-related methods
-        self.billUpload = BillUpload(self.config, self.state_db)
+        self.billUpload = BillUpload(self.config)
 
         # create a MongoReeBillDAO
         billdb_config_section = self.config.items("billdb")
@@ -177,6 +196,7 @@ class BillToolBridge:
         to login page if the user is not authenticated.'''
         if 'username' not in cherrypy.session:
             print "access denied:", inspect.stack()[1][3]
+            # TODO: 19664107
             # 401 = unauthorized--can't reply to an ajax call with a redirect
             cherrypy.response.status = 401
 
@@ -185,6 +205,9 @@ class BillToolBridge:
     def copyactual(self, account, sequence, **args):
         self.check_authentication()
         try:
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
+
             reebill = self.reebill_dao.load_reebill(account, sequence)
             self.process.copy_actual_charges(reebill)
             self.reebill_dao.save_reebill(reebill)
@@ -198,6 +221,9 @@ class BillToolBridge:
     def roll(self, account, sequence, **args):
         self.check_authentication()
         try:
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
+
             reebill = self.reebill_dao.load_reebill(account, sequence)
             self.process.roll_bill(reebill)
             self.reebill_dao.save_reebill(reebill)
@@ -211,13 +237,23 @@ class BillToolBridge:
     def pay(self, account, sequence, **args):
         self.check_authentication()
         try:
+            session = None
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
-            self.process.pay_bill(reebill)
+
+            self.process.pay_bill(session, reebill, payments)
+            session.commit()
             self.reebill_dao.save_reebill(reebill)
             return json.dumps({'success': True})
 
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            if session is not None: 
+                try:
+                    if session is not None: session.rollback()
+                except:
+                    print "Could not rollback session"
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
     @cherrypy.expose
@@ -225,6 +261,8 @@ class BillToolBridge:
         self.check_authentication()
         from billing.processing import fetch_bill_data as fbd
         try:
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
             fbd.fetch_bill_data(
@@ -246,6 +284,8 @@ class BillToolBridge:
     def bindrs(self, account, sequence, **args):
         self.check_authentication()
         try:
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
             self.process.bind_rate_structure(reebill)
             self.reebill_dao.save_reebill(reebill)
@@ -260,6 +300,8 @@ class BillToolBridge:
     def calc_reperiod(self, account, sequence, **args):
         self.check_authentication()
         try:
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
             self.process.calculate_reperiod(account, sequence)
 
         except Exception as e:
@@ -271,10 +313,12 @@ class BillToolBridge:
     def calcstats(self, account, sequence, **args):
         self.check_authentication()
         try:
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
             self.process.calculate_statistics(account, sequence)
 
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
         return json.dumps({'success': True})
 
@@ -282,21 +326,35 @@ class BillToolBridge:
     def sum(self, account, sequence, **args):
         self.check_authentication()
         try:
+            session = None
+
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
             present_reebill = self.reebill_dao.load_reebill(account, sequence)
             prior_reebill = self.reebill_dao.load_reebill(account, int(sequence)-1)
-            self.process.sum_bill(prior_reebill, present_reebill)
+        
+            session = self.state_db.session()
+            self.process.sum_bill(session, prior_reebill, present_reebill, discount_rate)
+            session.commit()
             self.reebill_dao.save_reebill(present_reebill)
 
             return json.dumps({'success': True})
 
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            if session is not None: 
+                try:
+                    if session is not None: session.rollback()
+                except:
+                    print "Could not rollback session"
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
         
     @cherrypy.expose
     def issue(self, account, sequence, **args):
         self.check_authentication()
         try:
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
             self.process.issue(account, sequence)
 
         except Exception as e:
@@ -310,6 +368,8 @@ class BillToolBridge:
     def render(self, account, sequence, **args):
         self.check_authentication()
         try:
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
             render.render(reebill, 
                 self.config.get("billdb", "billpath")+ "%s/%s.pdf" % (account, sequence),
@@ -325,6 +385,8 @@ class BillToolBridge:
     def commit(self, account, sequence, **args):
         self.check_authentication()
         try:
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
 
             self.process.commit_rebill(account, sequence)
 
@@ -337,6 +399,8 @@ class BillToolBridge:
     def issueToCustomer(self, account, sequence, **args):
         self.check_authentication()
         try:
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
             self.process.issue_to_customer(account, sequence)
             return json.dumps({'success': True})
 
@@ -349,6 +413,8 @@ class BillToolBridge:
     def mail(self, account, sequences, recipients, **args):
         self.check_authentication()
         try:
+            if not account or not sequence or not recipients:
+                raise ValueError("Bad Parameter Value")
             # sequences will come in as a string if there is one element in post data. 
             # If there are more, it will come in as a list of strings
             if type(sequences) is not list: sequences = [sequences]
@@ -404,29 +470,46 @@ class BillToolBridge:
     @cherrypy.expose
     def listAccounts(self, **kwargs):
         self.check_authentication()
-        accounts = []
         try:
+            session = None
+            accounts = []
             # eventually, this data will have to support pagination
-            accounts = self.state_db.listAccounts()
+            session = self.state_db.session()
+            accounts = self.state_db.listAccounts(session)
+            session.commit()
             rows = [{'account': account, 'name': full_name} for account,
                     full_name in zip(accounts, self.full_names_of_accounts(accounts))]
+            return json.dumps({'success': True, 'rows':rows})
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            if session is not None: 
+                try:
+                    if session is not None: session.rollback()
+                except:
+                    print "Could not rollback session"
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return json.dumps({'success': True, 'rows':rows})
 
     @cherrypy.expose
     def listSequences(self, account, **kwargs):
         self.check_authentication()
-        sequences = []
         try:
+            session = None
+            sequences = []
+            if not account:
+                raise ValueError("Bad Parameter Value")
             # eventually, this data will have to support pagination
-            sequences = self.state_db.listSequences(account)
+            session = self.state_db.session()
+            sequences = self.state_db.listSequences(session, account)
+            session.commit()
             rows = [{'sequence': sequence} for sequence in sequences]
+            return json.dumps({'success': True, 'rows':rows})
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            try:
+                if session is not None: session.rollback()
+            except:
+                print "Could not rollback session"
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return json.dumps({'success': True, 'rows':rows})
 
     @cherrypy.expose
     def retrieve_status_days_since(self, start, limit, **args):
@@ -434,15 +517,24 @@ class BillToolBridge:
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
+            session = None
+            if not start or not limit:
+                raise ValueError("Bad Parameter Value")
             # result is a list of dictionaries of the form
             # {account: full name, dayssince: days}
-            statuses, totalCount = self.state_db.retrieve_status_days_since(int(start), int(limit))
+            session = self.state_db.session()
+            statuses, totalCount = self.state_db.retrieve_status_days_since(session, int(start), int(limit))
+            session.commit()
             full_names = self.full_names_of_accounts([s.account for s in statuses])
             rows = [dict([('account', status.account), ('fullname', full_names[i]), ('dayssince', status.dayssince)])
                     for i, status in enumerate(statuses)]
 
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
+            try:
+                if session is not None: session.rollback()
+            except:
+                print "Could not rollback session"
             # TODO: log errors?
             print >> sys.stderr, e
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -453,14 +545,23 @@ class BillToolBridge:
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
+            session = None
+            if not start or not limit:
+                raise ValueError("Bad Parameter Value")
             # result is a list of dictionaries of the form
             # {account: account number, full_name: full name}
-            statuses, totalCount = self.state_db.retrieve_status_unbilled(int(start), int(limit))
+            session = self.state_db.session()
+            statuses, totalCount = self.state_db.retrieve_status_unbilled(session, int(start), int(limit))
+            session.commit()
             all_statuses_all_names = NexusUtil().all_ids_for_accounts("billing", statuses, key=lambda status:status.account)
             full_names = self.full_names_of_accounts([s.account for s in statuses])
             rows = [dict([('account', status.account),('fullname', full_names[i])]) for i, status in enumerate(statuses)]
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
+            try:
+                if session is not None: session.rollback()
+            except:
+                print "Could not rollback session"
             # TODO: log errors?
             print >> sys.stderr, e
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
@@ -470,6 +571,8 @@ class BillToolBridge:
     def cprsrsi(self, xaction, account, sequence, service, **kwargs):
         self.check_authentication()
         try:
+            if not xaction or not sequence or not service:
+                raise ValueError("Bad Parameter Value")
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
@@ -603,6 +706,8 @@ class BillToolBridge:
     def ursrsi(self, xaction, account, sequence, service, **kwargs):
         self.check_authentication()
         try:
+            if not xaction or not sequence or not service:
+                raise ValueError("Bad Parameter Value")
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
@@ -725,13 +830,19 @@ class BillToolBridge:
 
 
     @cherrypy.expose
-    def payment(self, xaction, account, sequence, **kwargs):
+    def payment(self, xaction, account, **kwargs):
         self.check_authentication()
         try:
+            session = None
+            if not xaction or not account:
+                raise ValueError("Bad parameter value")
+
 
             if xaction == "read":
 
-                payments = self.state_db.payments(account)
+                session = self.state_db.session()
+                payments = self.state_db.payments(session, account)
+                session.commit()
 
                 payments = [{
                     'id': payment.id, 
@@ -739,10 +850,13 @@ class BillToolBridge:
                     'description': payment.description, 
                     'credit': str(payment.credit),
                 } for payment in payments]
+
                 
                 return json.dumps({'success': True, 'rows':payments})
 
             elif xaction == "update":
+
+                session = self.state_db.session()
 
                 rows = json.loads(kwargs["rows"])
 
@@ -752,21 +866,25 @@ class BillToolBridge:
                 # process list of edits
                 for row in rows:
                     self.state_db.update_payment(
+                        session,
                         row['id'],
                         row['date'],
                         row['description'],
                         row['credit'],
                     )
-                         
-
+                
+                session.commit()
 
                 return json.dumps({'success':True})
 
             elif xaction == "create":
 
+                session = self.state_db.session()
+
                 from datetime import date
 
-                new_payment = self.state_db.create_payment(account, date.today(), "New Entry", "0.00")
+                new_payment = self.state_db.create_payment(session, account, date.today(), "New Entry", "0.00")
+                session.commit()
                 # TODO: is there a better way to populate a dictionary from an ORM object dict?
                 row = [{
                     'id': new_payment.id, 
@@ -775,9 +893,12 @@ class BillToolBridge:
                     'credit': str(new_payment.credit),
                     }]
 
+
                 return json.dumps({'success':True, 'rows':row})
 
             elif xaction == "destroy":
+
+                session = self.state_db.session()
 
                 rows = json.loads(kwargs["rows"])
 
@@ -786,24 +907,38 @@ class BillToolBridge:
 
                 for oid in rows:
                     self.state_db.delete_payment(oid)
+
+                session.commit()
                          
                 return json.dumps({'success':True})
 
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            try:
+                if session is not None: session.rollback()
+            except:
+                print "Could not rollback session"
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
     def reebill(self, xaction, start, limit, account, **kwargs):
         self.check_authentication()
         try:
+            session = None
+
+            if not xaction or not start or not limit:
+                raise ValueError("Bad Parameter Value")
 
             if xaction == "read":
 
-                reebills, totalCount = self.state_db.listReebills(int(start), int(limit), account)
-                
+                session = self.state_db.session()
+
+                reebills, totalCount = self.state_db.listReebills(session, int(start), int(limit), account)
+                session.commit()
+
                 # convert the result into a list of dictionaries for returning as
                 # JSON to the browser
                 rows = [{'sequence': reebill.sequence} for reebill in reebills]
+
 
                 return json.dumps({'success': True, 'rows':rows, 'results':totalCount})
 
@@ -819,8 +954,12 @@ class BillToolBridge:
 
                 return json.dumps({'success':False})
 
-        except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+        except Exception as e:    
+            try:
+               if session is not None: session.rollback()
+            except:
+                print "Could not rollback session"
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
     ################
@@ -835,6 +974,9 @@ class BillToolBridge:
         """
 
         try:
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
+
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
             # It is possible that there is no reebill for the requested periods 
@@ -867,6 +1009,8 @@ class BillToolBridge:
         """ 
 
         try:
+            if not account or not sequence or not service or not begin or not end:
+                raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
             reebill.set_utilbill_period_for_service(service, (datetime.strptime(begin, "%Y-%m-%d"),datetime.strptime(end, "%Y-%m-%d")))
             self.reebill_dao.save_reebill(reebill)
@@ -887,6 +1031,8 @@ class BillToolBridge:
     def actualCharges(self, service, account, sequence, **args):
         self.check_authentication()
         try:
+            if not account or not sequence or not service:
+                raise ValueError("Bad Parameter Value")
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
@@ -909,6 +1055,8 @@ class BillToolBridge:
     def hypotheticalCharges(self, service, account, sequence, **args):
         self.check_authentication()
         try:
+            if not account or not sequence or not service:
+                raise ValueError("Bad Parameter Value")
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
@@ -931,6 +1079,9 @@ class BillToolBridge:
     def saveActualCharges(self, service, account, sequence, rows, **args):
         self.check_authentication()
         try:
+            if not account or not sequence or not service or not rows:
+                raise ValueError("Bad Parameter Value")
+
             flattened_charges = ju.loads(rows)
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -947,6 +1098,8 @@ class BillToolBridge:
     def saveHypotheticalCharges(self, service, account, sequence, rows, **args):
         self.check_authentication()
         try:
+            if not account or not sequence or not service or not rows:
+                raise ValueError("Bad Parameter Value")
             flattened_charges = ju.loads(rows)
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -970,6 +1123,8 @@ class BillToolBridge:
         """
         self.check_authentication()
         try:
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
             # It is possible that there is no reebill for the requested measured usages
@@ -989,6 +1144,9 @@ class BillToolBridge:
     def setMeter(self, account, sequence, service, meter_identifier, presentreaddate, priorreaddate):
         self.check_authentication()
         try:
+            if not account or not sequence or not service or not meter_identifier \
+                or not presentreaddate or not priorreaddate:
+                raise ValueError("Bad Parameter Value")
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
             reebill.set_meter_read_date(service, meter_identifier, 
@@ -1007,6 +1165,9 @@ class BillToolBridge:
     def setActualRegister(self, account, sequence, service, register_identifier, meter_identifier, quantity):
         self.check_authentication()
         try:
+            if not account or not sequence or not service or not register_identifier \
+                or not meter_identifier or not quantity:
+                raise ValueError("Bad Parameter Value")
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
             reebill.set_meter_actual_register(service, meter_identifier, register_identifier, Decimal(quantity))
@@ -1027,15 +1188,27 @@ class BillToolBridge:
     def upload_utility_bill(self, account, begin_date, end_date, file_to_upload, **args):
         self.check_authentication()
         try:
+            session = None
+            if not account or not begin_date or not end_date or not file_to_upload:
+                raise ValueError("Bad Parameter Value")
+
             # get Python file object and file name as string from the CherryPy
             # object 'file_to_upload', and pass those to BillUpload so it's
             # independent of CherryPy
             if self.billUpload.upload(account, begin_date, end_date, file_to_upload.file, file_to_upload.filename) is True:
+                session = self.state_db.session()
+                self.state_db.insert_bill_in_database(session, account, begin_date, end_date)
+                session.commit()
                 return ju.dumps({'success':True})
             else:
                 return ju.dumps({'success':False, 'errors':{'reason':'file upload failed', 'details':'Returned False'}})
         except Exception as e: 
-             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            if session is not None: 
+                try:
+                    if session is not None: session.rollback()
+                except:
+                    print "Could not rollback session"
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     #
     ################
@@ -1047,28 +1220,43 @@ class BillToolBridge:
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
+            session = None
+
+            if not start or not limit or not account:
+                raise ValueError("Bad Parameter Value")
+
+            session = self.state_db.session()
+
             # result is a list of dictionaries of the form {account: account
             # number, name: full name, period_start: date, period_end: date,
             # sequence: reebill sequence number (if present)}
-            utilbills, totalCount = self.state_db.list_utilbills(account, int(start), int(limit))
+            utilbills, totalCount = self.state_db.list_utilbills(session, account, int(start), int(limit))
+            session.commit()
             # note that utilbill customers are eagerly loaded
             full_names = self.full_names_of_accounts([ub.customer.account for ub in utilbills])
             rows = [dict([('account', ub.customer.account), ('name', full_names[i]),
                 ('period_start', ub.period_start), ('period_end', ub.period_end),
                 ('sequence', ub.reebill.sequence if ub.reebill else None)])
                  for i, ub in enumerate(utilbills)]
-            return ju.dumps({'success': True, 'rows':rows,
-                'results':totalCount})
+
+
+            return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
             # TODO: log errors?
             print >> sys.stderr, e
-            #return '{success: false}'
+            try:
+                if session is not None: session.rollback()
+            except:
+                print "Could not rollback session"
+
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
     
     @cherrypy.expose
     def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
         self.check_authentication()
         try:
+            if not account or not begin_date or not end_date or not resolution:
+                raise ValueError("Bad Parameter Value")
             # TODO: put url here, instead of in billentry.js?
             result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date, resolution)
             return ju.dumps({'success':True, 'imageName':result})
@@ -1079,6 +1267,8 @@ class BillToolBridge:
     def getReeBillImage(self, account, sequence, resolution, **args):
         self.check_authentication()
         try:
+            if not account or not sequence or not resolution:
+                raise ValueError("Bad Parameter Value")
             result = self.billUpload.getReeBillImagePath(account, sequence, resolution)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
