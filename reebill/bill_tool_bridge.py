@@ -62,6 +62,7 @@ USERS = {
         'password': 'dev',
         'preferences': {'bill_image_resolution': '100'}
     }
+}
         
 # TODO rename to ProcessBridge or something
 class BillToolBridge:
