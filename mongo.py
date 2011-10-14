@@ -72,6 +72,7 @@ def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
     return x
 
 
+# TODO remove this entirely (https://www.pivotaltracker.com/story/show/19714373)
 # this dictionary maps XML element names to MongoDB document keys, for use in
 # rename_keys(). element names that map to None will be removed instead of
 # renamed.
@@ -132,7 +133,7 @@ def rename_keys(x,d=name_changes ):
         return [rename_keys(element, d) for element in x]
     return x
 
-#def dict_merge(overwrite=False, *dicts):
+# TODO move these dictionary utility functions out into a separate file
 def dict_merge(*dicts, **kwargs):
     '''Returns a dictionary consisting of the key-value pairs in all the
     dictionaries passed as arguments. These dictionaries must not share any

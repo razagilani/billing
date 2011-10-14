@@ -20,9 +20,12 @@ function renderWidgets()
         success: function(result, request) {
             var jsonData = Ext.util.JSON.decode(result.responseText);
             var username = jsonData['username'];
-            Ext.DomHelper.overwrite('LOGIN_INFO', "You're logged as <b>" + username + "</b>; " + logoutLink)
+            Ext.DomHelper.overwrite('LOGIN_INFO',
+                "You're logged in as <b>" + username + "</b>; " + logoutLink)
         },
-        failure: function() { Ext.MessageBox.alert('Ajax failure', 'http://' + location.host + '/getUsername'); },
+        failure: function() {
+             Ext.MessageBox.alert('Ajax failure', 'http://' + location.host + '/getUsername');
+        },
         disableCaching: true,
     });
 

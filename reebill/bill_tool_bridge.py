@@ -214,7 +214,6 @@ class BillToolBridge:
     def getUsername(self, **kwargs):
         self.check_authentication()
         try:
-            resolution = cherrypy.session['preferences']['bill_image_resolution']
             return ju.dumps({'success':True, 'username': cherrypy.session['username']})
         except Exception as e:
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
