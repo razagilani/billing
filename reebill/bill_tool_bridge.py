@@ -57,7 +57,11 @@ pp = pprint.PrettyPrinter(indent=4)
 
 # temporary hard-coded user & password data
 # TODO replace with a MySQL table of usernames & password hashes
-USERS = {'dev': 'dev'}
+USERS = {
+    'dev': {
+        'password': 'dev',
+        'preferences': {'bill_image_resolution': '100'}
+    }
         
 # TODO rename to ProcessBridge or something
 class BillToolBridge:
@@ -171,14 +175,20 @@ class BillToolBridge:
         rsdb_config_section = self.config.items("rsdb")
         self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
 
+    ###########################################################################
+    # authentication functions
+
     @cherrypy.expose
     def login(self, username, password, **args):
-        if username not in USERS or USERS[username] != password:
+        if username not in USERS or USERS[username]['password'] != password:
             # failed login: redirect to the login page (again)
             print 'login attempt failed: username "%s", password "%s"' % (username, password)
             raise cherrypy.HTTPRedirect("/login.html")
-        # successful login: store username in cherrypy session object & redirect to main page
+        
+        # successful login: store username & user preferences in cherrypy
+        # session object & redirect to main page
         cherrypy.session['username'] = username
+        cherrypy.session['preferences'] = USERS[username]['preferences']
         print 'user "%s" logged in with password "%s"' % (cherrypy.session['username'], password)
         raise cherrypy.HTTPRedirect("/billentry.html")
 
@@ -198,6 +208,22 @@ class BillToolBridge:
             # TODO: 19664107
             # 401 = unauthorized--can't reply to an ajax call with a redirect
             cherrypy.response.status = 401
+    
+    @cherrypy.expose
+    def getUsername(self, **kwargs):
+        self.check_authentication()
+        try:
+            resolution = cherrypy.session['preferences']['bill_image_resolution']
+            return ju.dumps({'success':True, 'username': cherrypy.session['username']})
+        except Exception as e:
+             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+    @cherrypy.expose
+    def logout(self):
+        self.check_authentication()
+        print 'user "%s" logged out' % (cherrypy.session['username'])
+        del cherrypy.session['username']
+        raise cherrypy.HTTPRedirect('/login.html')
 
     # TODO: do this on a per service basis 18311877
     @cherrypy.expose
@@ -215,6 +241,9 @@ class BillToolBridge:
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+    ###########################################################################
+    # bill processing
 
     @cherrypy.expose
     def roll(self, account, sequence, **args):
@@ -1251,28 +1280,48 @@ class BillToolBridge:
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
     
     @cherrypy.expose
-    def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
+    def getUtilBillImage(self, account, begin_date, end_date, **args):
         self.check_authentication()
         try:
             if not account or not begin_date or not end_date or not resolution:
                 raise ValueError("Bad Parameter Value")
             # TODO: put url here, instead of in billentry.js?
+            resolution = cherrypy.session['preferences']['bill_image_resolution']
             result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date, resolution)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
-    def getReeBillImage(self, account, sequence, resolution, **args):
+    def getReeBillImage(self, account, sequence, **args):
         self.check_authentication()
         try:
             if not account or not sequence or not resolution:
                 raise ValueError("Bad Parameter Value")
+            resolution = cherrypy.session['preferences']['bill_image_resolution']
             result = self.billUpload.getReeBillImagePath(account, sequence, resolution)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+    
+    @cherrypy.expose
+    def getBillImageResolution(self, **kwargs):
+        self.check_authentication()
+        try:
+            resolution = cherrypy.session['preferences']['bill_image_resolution']
+            return ju.dumps({'success':True, 'resolution': resolution})
+        except Exception as e:
+             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
+    @cherrypy.expose
+    def setBillImageResolution(self, resolution, **kwargs):
+        self.check_authentication()
+        try:
+            cherrypy.session['preferences']['bill_image_resolution'] = int(resolution)
+            return ju.dumps({'success':True})
+        except Exception as e:
+             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+        
 # TODO: place instantiation in main, so this module can be loaded without btb being instantiated
 bridge = BillToolBridge()
 
