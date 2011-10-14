@@ -191,7 +191,6 @@ class BillToolBridge:
             #return function
         #return redirect
     def check_authentication(self):
-        return
         '''Decorator to check authentication for HTTP request functions: redirect
         to login page if the user is not authenticated.'''
         if 'username' not in cherrypy.session:
