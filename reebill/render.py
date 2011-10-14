@@ -509,8 +509,6 @@ def render(reebill, outputfile, backgrounds, verbose):
     Elements.append(t)
     Elements.append(UseUpSpace())
 
-
-
     # populate current charges
     currentCharges = [
         [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(reebill.ree_savings.quantize(Decimal(".00"))), styles['BillFieldRight'])],

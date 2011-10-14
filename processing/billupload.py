@@ -45,8 +45,8 @@ IMAGE_RENDERING_DENSITY = 100
 
 class BillUpload(object):
 
-    def __init__(self, config, state_db):
-        self.state_db = state_db
+    def __init__(self, config):
+        #self.state_db = state_db
         self.config = config
 
         # get bill image directory from config file
@@ -138,7 +138,7 @@ class BillUpload(object):
                 save_file.close()
 
         # make a row in utilbill representing the bill that was uploaded.
-        self.state_db.insert_bill_in_database(account, begin_date, end_date)
+        #self.state_db.insert_bill_in_database(account, begin_date, end_date)
 
         return True
 

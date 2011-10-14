@@ -63,7 +63,7 @@ class Process(object):
 
 
     # compute the value, charges and savings of renewable energy
-    def sum_bill(self, prior_reebill, present_reebill):
+    def sum_bill(self, session, prior_reebill, present_reebill):
 
         # get discount rate
         discount_rate = Decimal(str(self.state_db.discount_rate(present_reebill.account)))
@@ -107,24 +107,24 @@ class Process(object):
             ree_savings = discount_rate * (hypothetical_total - actual_total)
 
             present_reebill.set_ree_value_for_service(service, ree_value.quantize(Decimal('.00')))
-            present_reebill.set_ree_charges_for_service(service, Decimal(ree_charges).quantize(Decimal('.00'),rounding=ROUND_DOWN))
-            present_reebill.set_ree_savings_for_service(service, Decimal(ree_savings).quantize(Decimal('.00'),rounding=ROUND_UP))
+            present_reebill.set_ree_charges_for_service(service, ree_charges)
+            present_reebill.set_ree_savings_for_service(service, ree_savings)
 
 
-            # accumulate at the reebill level
-            present_reebill.hypothetical_total = present_reebill.hypothetical_total + hypothetical_total
-            present_reebill.actual_total = present_reebill.actual_total + actual_total
+        # accumulate at the reebill level
+        present_reebill.hypothetical_total = present_reebill.hypothetical_total + hypothetical_total
+        present_reebill.actual_total = present_reebill.actual_total + actual_total
 
-            present_reebill.ree_value = present_reebill.ree_value + ree_value
-            present_reebill.ree_charges = present_reebill.ree_charges + ree_charges
-            present_reebill.ree_savings = present_reebill.ree_savings + ree_savings
+        present_reebill.ree_value = Decimal(present_reebill.ree_value + ree_value).quantize(Decimal('.00'))
+        present_reebill.ree_charges = Decimal(present_reebill.ree_charges + ree_charges).quantize(Decimal('.00'), rounding=ROUND_DOWN)
+        present_reebill.ree_savings = Decimal(present_reebill.ree_savings + ree_savings).quantize(Decimal('.00'), rounding=ROUND_UP)
 
-            # now grab the prior bill and pull values forward
-            present_reebill.prior_balance = prior_reebill.balance_due
-            present_reebill.balance_forward = present_reebill.prior_balance - present_reebill.payment_received
-            present_reebill.balance_due = present_reebill.balance_forward + present_reebill.ree_charges
+        # now grab the prior bill and pull values forward
+        present_reebill.prior_balance = prior_reebill.balance_due
+        present_reebill.balance_forward = present_reebill.prior_balance - present_reebill.payment_received
+        present_reebill.balance_due = present_reebill.balance_forward + present_reebill.ree_charges
 
-            # TODO total_adjustment
+        # TODO total_adjustment
 
 
     def copy_actual_charges(self, reebill):
@@ -133,7 +133,7 @@ class Process(object):
             actual_chargegroups = reebill.actual_chargegroups_for_service(service)
             reebill.set_hypothetical_chargegroups_for_service(service, actual_chargegroups)
 
-    def pay_bill(self, reebill):
+    def pay_bill(self, session, reebill, payments):
 
         # depend on first ub period to be the date range for which a payment is seeked.
         # this is a wrong design because there may be more than one ub period
@@ -147,14 +147,12 @@ class Process(object):
             pass
 
         all_service_periods = reebill.utilbill_periods
-
         period = all_service_periods[service]
-
-        payments = self.state_db.find_payment(reebill.account, period[0], period[1])
+        payments = self.state_db.find_payment(session, reebill.account, period[0], period[1])
         # sum() of [] is int zero, so always wrap payments in a Decimal
         reebill.payment_received = Decimal(sum([payment.credit for payment in payments]))
 
-    def roll_bill(self, reebill):
+    def roll_bill(self, session, reebill, last_sequence):
         """
         Create rebill for next period, based on prior bill.
         """
@@ -162,7 +160,7 @@ class Process(object):
         # obtain the last Reebill sequence from the state database
         # TODO: database connection needs to be passed through here
         # such that transactions encompassing the http request can be done
-        last_sequence = self.state_db.last_sequence(reebill.account)
+        last_sequence = self.state_db.last_sequence(session, reebill.account)
 
         if (int(reebill.sequence) < int(last_sequence)):
             raise Exception("Not the last sequence")
@@ -278,20 +276,15 @@ class Process(object):
 
         # TODO: this needs to be done in a http request level database transaction
         # create an initial rebill record to which the utilbills are later associated
-        self.state_db.new_rebill(
-            reebill.account,
-            reebill.sequence
-        )
+        self.state_db.new_rebill(session, reebill.account, reebill.sequence)
 
-        # reebill is saved by caller - but what happens if the save fails?
-        # the state_db transaction is done at this point
 
-    def commit_rebill(self, account, sequence):
+    def commit_rebill(self, session, account, sequence):
         reebill = self.reebill_dao.load_reebill(account, sequence)
         begin = reebill.period_begin
         end = reebill.period_end
 
-        self.state_db.commit_bill(account, sequence, begin, end)
+        self.state_db.commit_bill(session, account, sequence, begin, end)
 
     # TODO: delete me
     def load_rs(self, rsdb, rsbinding, account, sequence):
@@ -548,7 +541,7 @@ class Process(object):
     def issue_to_customer(self, account, sequence):
 
         # issue to customer
-        self.state_db.issue(account, sequence)
+        self.state_db.issue(session, account, sequence)
 
 if __name__ == '__main__':
 
