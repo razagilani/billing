@@ -6,8 +6,8 @@ function renderWidgets()
     Ext.Ajax.timeout = 960000; //16 minutes
 
     // pass configuration information to containing webpage
-    var SKYLINE_VERSIONINFO="Wed Oct 12 17:57:55 EDT 2011 c67a8c60813c+ tip randrews"
-    var SKYLINE_DEPLOYENV="stage"
+    var SKYLINE_VERSIONINFO="UNSPECIFIED"
+    var SKYLINE_DEPLOYENV="UNSPECIFIED"
     versionInfo = Ext.get('SKYLINE_VERSIONINFO');
     versionInfo.update(SKYLINE_VERSIONINFO);
     deployEnv = Ext.get('SKYLINE_DEPLOYENV');
@@ -2680,7 +2680,7 @@ function renderWidgets()
           layout: 'accordion',
           items: [paymentGrid]
         },{
-          title: 'Upload',
+          title: 'Utility Bill',
           xtype: 'panel',
           layout: 'vbox',
           layoutConfig : {

@@ -37,6 +37,10 @@ def prepare_deploy(project, environment):
     # grab other billing code
     fabops.local('tar czvf /tmp/bill_framework_code.tar.z ../*.py ../processing/*.py')
 
+    # try and put back sane values since the software was likely deployed from a development environment
+    fabops.local("sed -i 's/SKYLINE_VERSIONINFO=\".*\".*$/SKYLINE_VERSIONINFO=\"UNSPECIFIED\"/g' ui/billedit.js")
+    fabops.local("sed -i 's/SKYLINE_DEPLOYENV=\".*\".*$/SKYLINE_DEPLOYENV=\"UNSPECIFIED\"/g' ui/billedit.js")
+
 def deploy():
 
     environment = fabops.prompt("Environment?", default="stage")
