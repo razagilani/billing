@@ -157,15 +157,16 @@ class BillToolBridge:
         rsdb_config_section = self.config.items("rsdb")
         self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
 
+    ###########################################################################
+    # authentication functions
+
     @cherrypy.expose
     def login(self, username, password, **args):
-        print "**************** login attempt"
         if username not in USERS or USERS[username]['password'] != password:
             # failed login: redirect to the login page (again)
             print 'login attempt failed: username "%s", password "%s"' % (username, password)
             raise cherrypy.HTTPRedirect("/login.html")
         
-        print '************ successful login'
         # successful login: store username & user preferences in cherrypy
         # session object & redirect to main page
         cherrypy.session['username'] = username
@@ -182,13 +183,29 @@ class BillToolBridge:
             #return function
         #return redirect
     def check_authentication(self):
-        return
         '''Decorator to check authentication for HTTP request functions: redirect
         to login page if the user is not authenticated.'''
+        return #TODO remove to re-enable authentication
         if 'username' not in cherrypy.session:
             print "access denied:", inspect.stack()[1][3]
             # 401 = unauthorized--can't reply to an ajax call with a redirect
             cherrypy.response.status = 401
+    
+    @cherrypy.expose
+    def getUsername(self, **kwargs):
+        self.check_authentication()
+        try:
+            resolution = cherrypy.session['preferences']['bill_image_resolution']
+            return ju.dumps({'success':True, 'username': cherrypy.session['username']})
+        except Exception as e:
+             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+    @cherrypy.expose
+    def logout(self):
+        self.check_authentication()
+        print 'user "%s" logged out' % (cherrypy.session['username'])
+        del cherrypy.session['username']
+        raise cherrypy.HTTPRedirect('/login.html')
 
     # TODO: do this on a per service basis 18311877
     @cherrypy.expose
@@ -203,6 +220,9 @@ class BillToolBridge:
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+    ###########################################################################
+    # bill processing
 
     @cherrypy.expose
     def roll(self, account, sequence, **args):
