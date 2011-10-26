@@ -222,7 +222,7 @@ function renderWidgets()
                     Ext.Ajax.request({
                         url: theUrl,
                         params: {account: record.data.account, begin_date: formatted_begin_date_string,
-                            end_date: formatted_end_date_string},
+                            end_date: formatted_end_date_string, resolution: resolution},
                         success: function(result, request) {
                             var jsonData = null;
                             try {
@@ -2990,7 +2990,7 @@ function renderWidgets()
         // new window
         Ext.Ajax.request({
             url: reeBillImageURL,
-            params: {account: account, sequence: sequence},
+            params: {account: account, sequence: sequence, resolution: resolution},
             success: function(result, request) {
                 var jsonData = null;
                 try {
