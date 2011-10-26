@@ -26,7 +26,7 @@ if (ub == null) {
 if (ub.rate_structure_binding == 'DC Residential-R-Winter') {
     ub.rate_structure_binding = 'Large General Service - TOU - Schedule GL - POLR Type II (summer)';
     print('updated rate_structure_binding in utilbill of 10017-1');
-} else if (ub.rate_structure_binding != 'Large General Service - TOU - Schedule GL - POLR Type II (summer)') {
+} else if (ub.rate_structure_binding == 'Large General Service - TOU - Schedule GL - POLR Type II (summer)') {
     print('rate_structure_binding in utilbill of 10017-1 was already updated');
 } else {
     print('utilbill of reebill 10017-1 has unexpected rate_structure_binding: ' + ub.rate_structure_binding);
