@@ -149,6 +149,7 @@ def usage_data_to_virtual_register(install, reebill, server=None):
     s = splinter.Splinter(server, "tyrell", "dev")
     inst_obj = s.get_install_obj_for(install)
 
+    # TODO remove
     print '********** registers:', registers
     
     # now that a list of shadow registers are initialized, accumulate energy
