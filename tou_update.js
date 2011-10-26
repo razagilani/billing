@@ -8,6 +8,7 @@
 use skyline;
 
 // currently the only reebill for 10017
+// TODO: apparently there are now 2 reebills for 10017
 var reebill = db.reebills.findOne({'_id.account':'10017', '_id.sequence':1, '_id.branch':0});
 if (reebill == null) {
     print('reebill 10017-1 not found');
@@ -31,6 +32,7 @@ if (ub.rate_structure_binding == 'DC Residential-R-Winter') {
     print('utilbill of reebill 10017-1 has unexpected rate_structure_binding: ' + ub.rate_structure_binding);
     quit();
 }
+db.reebills.save(reebill);
 
 // update rate structure document
 var urs = db.ratestructure.findOne({
