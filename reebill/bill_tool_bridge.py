@@ -56,7 +56,8 @@ import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
 # temporary hard-coded user & password data
-# TODO replace with a MySQL table of usernames & password hashes
+# TODO 20217763 replace with externalized of usernames & password hashes
+# TODO 20217755 save preferences somewhere
 USERS = {
     'dev': {
         'password': 'dev',
@@ -64,7 +65,7 @@ USERS = {
     }
 }
         
-# TODO rename to ProcessBridge or something
+# TODO 11454025 rename to ProcessBridge or something
 class BillToolBridge:
     """ A monolithic class encapsulating the behavior to:  handle an incoming http request """
     """ and invoke bill processing code.  No business logic should reside here."""
@@ -270,6 +271,7 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
+            session = self.state_db.session()
             self.process.pay_bill(session, reebill, payments)
             session.commit()
             self.reebill_dao.save_reebill(reebill)
@@ -563,7 +565,7 @@ class BillToolBridge:
                 if session is not None: session.rollback()
             except:
                 print "Could not rollback session"
-            # TODO: log errors?
+            # TODO 20217999: log errors?
             print >> sys.stderr, e
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
@@ -590,7 +592,7 @@ class BillToolBridge:
                 if session is not None: session.rollback()
             except:
                 print "Could not rollback session"
-            # TODO: log errors?
+            # TODO 20217999: log errors?
             print >> sys.stderr, e
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
