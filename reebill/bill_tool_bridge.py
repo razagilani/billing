@@ -1280,7 +1280,7 @@ class BillToolBridge:
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
     
     @cherrypy.expose
-    def getUtilBillImage(self, account, begin_date, end_date, **args):
+    def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
         self.check_authentication()
         try:
             if not account or not begin_date or not end_date or not resolution:
@@ -1293,7 +1293,7 @@ class BillToolBridge:
              return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
-    def getReeBillImage(self, account, sequence, **args):
+    def getReeBillImage(self, account, sequence, resolution, **args):
         self.check_authentication()
         try:
             if not account or not sequence or not resolution:
