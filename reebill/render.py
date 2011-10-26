@@ -266,7 +266,7 @@ def render(reebill, outputfile, backgrounds, verbose):
     measuredUsageHeaderF = Frame(30, 500, 550, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='measuredUsageHeader', showBoundary=_showBoundaries)
 
     # measured usage meter summaries
-    measuredUsageF = Frame(30, 400, 550, 90, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billabeUsage', showBoundary=_showBoundaries)
+    measuredUsageF = Frame(30, 400, 550, 105, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billableUsage', showBoundary=_showBoundaries)
 
     # Charge details header frame
     chargeDetailsHeaderF = Frame(30, 350, 550, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetailsHeader', showBoundary=_showBoundaries)
