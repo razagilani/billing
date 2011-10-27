@@ -12,80 +12,14 @@ from datetime import date, datetime,timedelta, time
 import calendar
 import random
 from optparse import OptionParser
-
 from skyliner import sky_install
 from skyliner import splinter
 from skyliner import sky_objects
 from skyliner.sky_errors import DataHandlerError
 from billing import mongo
 from billing.mongo import dict_merge # TODO move this function out of mongo.py
+from billing import dateutils
 
-# holidays are stored as functions mapping a year to a date within the year:
-# this allows potentially arbitarily rules, with the reasonable assumption that
-# a occurs at most once per year (you could return None if it does not occur at
-# all).
-
-# for simplicity, we're assuming that utility billing holidays match defined
-# federal holiday dates, not the dates on which federal employees get a
-# vacation. this decision is not based on actual data, so we may have to
-# correct it later.
-
-def nth_weekday(n, weekday_number, month):
-    '''Returns a function mapping years to the 'n'th weekday of 'month' in the
-    given year, so "nth weekday of month"-style holidays (like "3rd monday of
-    February") can be defined without dealing with the insanity of the Python
-    calendar library. 'n' is a 1-based number or 'last'; weekday_number is
-    0-based starting at Sunday.'''
-    cal = calendar.Calendar()
-    def result(year):
-        # calendar.itermonthdays2() returns (day number, weekday number)
-        # tuples, where days outside the month are included (with day number =
-        # 0) to get a complete week. as if that weren't bad enough, weekdays
-        # are 0-indexed starting at monday (european-style, apparently). also
-        # note that calendar.setfirstweekday(calendar.SUNDAY) has no effect.
-        days = [day[0] for day in cal.itermonthdays2(year, month)
-                if day[0] != 0 and day[1] == (weekday_number + 6) % 7]
-        return date(year, month, days[-1 if n == 'last' else n-1])
-    return result
-
-# the names (values in the dictionary below) just serve as documentation.
-HOLIDAYS = {
-    # fixed-date holidays: date is independent of year
-    lambda year: date(year, 1, 1) : "New Year's Day",
-    lambda year: date(year, 7, 4) : "Independence Day",
-    lambda year: date(year, 11, 11) : "Veterans' Day",
-    lambda year: date(year, 12, 25) : "Christmas Day",
-
-    # "nth weekday of month" holidays: nth_weekday(n, weekday, month)
-    nth_weekday(3, 1, 1): "Martin Luther King Day",
-    nth_weekday(3, 1, 2): "Presidents' Day",
-    nth_weekday('last', 1, 5): "Memorial Day",
-    nth_weekday(1, 1, 9): "Labor Day",
-    nth_weekday(2, 1, 10): "Columbus Day",
-    nth_weekday(4, 5, 11): "Thanksgiving Day"
-}
-
-def date_generator(from_date, to_date):
-    """Yield dates based on from_date up to and excluding to_date.  The reason
-    for the exclusion of to_date is that utility billing periods do not include
-    the whole day for the end date specified for the period.  That is, the
-    utility billing period range of 2/15 to 3/4, for example, is for the usage
-    at 0:00 2/15 to 0:00 3/4.  0:00 3/4 is before the 3/4 begins."""
-    if (from_date > to_date):
-        return
-    while from_date < to_date:
-        yield from_date
-        from_date = from_date + timedelta(days = 1)
-    return
-
-def get_day_type(day):
-    '''Returns 'weekday', 'weekend', or 'holiday' to classify the given date.'''
-    if day in [holiday(year) for holiday in holidays]:
-        return 'holiday'
-    if day.weekday() == 0 or day.weekday() == 6:
-        return 'weekend'
-    return 'weekday'
-    
 def get_shadow_register_data(reebill):
     '''Returns a list of shadow registers in all meters of the given
     MongoReebill. The returned dictionaries are the same as register
@@ -115,7 +49,6 @@ def usage_data_to_virtual_register(install, reebill, server=None):
     # now that a list of shadow registers are initialized, accumulate energy
     # into them for the specified date range
     for register in registers:
-        print 'register:', register
         # service date range
         begin_date = register['prior_read_date'] # inclusive
         end_date = register['present_read_date'] # exclusive
@@ -134,7 +67,7 @@ def usage_data_to_virtual_register(install, reebill, server=None):
         # reset register in case energy was previously accumulated
         register['quantity'] = 0
 
-        for day in date_generator(begin_date, end_date):
+        for day in dateutils.date_generator(begin_date, end_date):
             # the hour ranges during which we want to accumulate energy in this
             # shadow register is the entire day for normal registers, or
             # periods given by 'active_periods_weekday/weekend/holiday' for
@@ -146,7 +79,7 @@ def usage_data_to_virtual_register(install, reebill, server=None):
                 assert 'active_periods_weekend' in register
                 assert 'active_periods_holiday' in register
                 hour_ranges = map(tuple,
-                        register['active_periods_'+get_day_type(day)])
+                        register['active_periods_' + dateutils.get_day_type(day)]) 
             else:
                 hour_ranges = [(0,23)]
 
@@ -193,9 +126,9 @@ def usage_data_to_virtual_register(install, reebill, server=None):
     # return the updated reebill
     return reebill
 
+# TODO: kill this function
+def fetch_bill_data(server, olap_id, reebill):
+    # update values of shadow registers in reebill with skyline generated energy
+    reebill = usage_data_to_virtual_register(olap_id, reebill, server=server)
 
-# holiday test. check against:
-# http://www.opm.gov/Operating_Status_Schedules/fedhol/2011.asp
-# http://www.opm.gov/oca/worksch/html/holiday.asp
-import pprint
-pprint.PrettyPrinter().pprint(sorted([(name, holiday(2011)) for holiday, name in HOLIDAYS.iteritems()], key=lambda t:(t[1], t[0])))
+
