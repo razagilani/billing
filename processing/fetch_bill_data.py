@@ -1,9 +1,8 @@
 #!/usr/bin/python
-"""
-File: Registers.py
-Description: Register valid time logic and usage accumulation
-Usage: See command line synopsis
-"""
+'''
+Code for accumulating Skyline-generated energy into "shadow" registers in
+meters of reebills.
+'''
 import sys
 import os  
 from pprint import pprint, pformat
