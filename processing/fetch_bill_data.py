@@ -20,78 +20,6 @@ from skyliner.sky_errors import DataHandlerError
 from billing import mongo
 from billing.mongo import dict_merge # TODO move this function out of mongo.py
 
-#class Register():
-    #"""
-    #Tracks the times a meter register accumulates usage data and accumulates
-    #Skyline field usage data accordingly.  This class provides the SI virtual 
-    #meter data and behavior.
-
-    #This class works by tracking inclusions and exclusions of time for each register.
-
-    #Each register has inclusions for the time it is recording energy and
-    #exclusions for the time it should not record energy.
-
-    #A good example are a set of TOU registers where the total kWh register is
-    #inclusive of all time and a shoulder register is inclusive of two ranges of
-    #time during weekdays, except for a holiday.  The ranges of time are
-    #inclusions, the holiday an exclusion.
-
-    #TODO: assert that all registers that do not include all time (non total
-    #registers) sum up to all time for the days on which they are effective.
-    #For example, the peak, shoulder, off peak registers are all off on
-    #weekends.  But are all on during weekdays, typically.  Ensure that for
-    #those days where they are effective, on, that all hours of the days are
-    #recorded in at least one register.  In other words, there shall be no
-    #discontinuities in the time intervals covered.
-    #"""
-    #def __init__(self, identifier, description, total, service, priorreaddate, presentreaddate):
-        #self.__accumulatedEnergy = 0
-
-        ## name of the register -  matches meter register #
-        #self.identifier = identifier
-        #self.description = description
-
-        ## lists of the time periods that the register is either on or off
-        ## each list element is in the form of (from hour, to hour, day of week,
-        ## holiday date)
-        #self.inclusions = []
-        #self.exclusions = []
-
-        ## utility service name
-        #self.service = service
-
-        ## total amount of skyline energy
-        #self.total = total
-
-        ## the beginning and end of the period for which this register would
-        ## accumulate energy
-        #self.priorreaddate = priorreaddate
-        #self.presentreaddate = presentreaddate
-
-    #def __str__(self):
-        #return self.identifier + " " + self.service + " " + self.description \
-                #+ " " + self.priorreaddate + " to " + self.presentreaddate \
-                #+ "inclusions " + str(self.inclusions) + " exclusions " + \
-                #str(self.exclusions)
-    
-    #def accumulate(self, energy):
-        #"""Accumulate energy in this register.  Field usage data is repeatedly
-        #accumulated for a billing period total."""
-        #self.__accumulatedEnergy += energy
-        
-    #def accumulatedEnergy(self):
-        #"""Return the amount of energy accumulated in this register."""
-        #return self.__accumulatedEnergy
-        
-    ## need good service/fuel name constant through all code.  Map it for now.  Bill model uses human name, abbrevs used in the data files.
-    #def serviceType(self):
-        #"""Map the human readable service names found in the bill model to fuel
-        #type abbreviations used in the data files."""
-        #if self.service == u'Electric':
-            #return 'elec'
-        #if self.service == u'Gas':
-            #return 'gas'
-
 # holidays are stored as functions mapping a year to a date within the year:
 # this allows potentially arbitarily rules, with the reasonable assumption that
 # a occurs at most once per year (you could return None if it does not occur at
@@ -110,7 +38,7 @@ def nth_weekday(n, weekday_number, month):
     0-based starting at Sunday.'''
     cal = calendar.Calendar()
     def result(year):
-        # calendar().itermonthdays2 returns (day number, weekday number)
+        # calendar.itermonthdays2() returns (day number, weekday number)
         # tuples, where days outside the month are included (with day number =
         # 0) to get a complete week. as if that weren't bad enough, weekdays
         # are 0-indexed starting at monday (european-style, apparently). also
@@ -137,7 +65,7 @@ HOLIDAYS = {
     nth_weekday(4, 5, 11): "Thanksgiving Day"
 }
 
-def dateGenerator(from_date, to_date):
+def date_generator(from_date, to_date):
     """Yield dates based on from_date up to and excluding to_date.  The reason
     for the exclusion of to_date is that utility billing periods do not include
     the whole day for the end date specified for the period.  That is, the
@@ -158,18 +86,6 @@ def get_day_type(day):
         return 'weekend'
     return 'weekday'
     
-#def bindRegisters(reebill):
-    #result = []
-    #service_meters_dict = reebill.meters # poorly-named attribute
-    #for service, meters in service_meters_dict.iteritems():
-        #for meter in meters:
-            #for register in meter['registers']:
-                #if register['shadow'] == True:
-                    #r = rate_structure.Register(register, 
-                            #meter['prior_read_date'],
-                            #meter['present_read_date'])
-                    #result.append(r)
-    #return result
 def get_shadow_register_data(reebill):
     '''Returns a list of shadow registers in all meters of the given
     MongoReebill. The returned dictionaries are the same as register
@@ -196,9 +112,6 @@ def usage_data_to_virtual_register(install, reebill, server=None):
     s = splinter.Splinter(server, "tyrell", "dev")
     inst_obj = s.get_install_obj_for(install)
 
-    # TODO remove
-    print '********** registers:', registers
-    
     # now that a list of shadow registers are initialized, accumulate energy
     # into them for the specified date range
     for register in registers:
@@ -221,7 +134,7 @@ def usage_data_to_virtual_register(install, reebill, server=None):
         # reset register in case energy was previously accumulated
         register['quantity'] = 0
 
-        for day in dateGenerator(begin_date, end_date):
+        for day in date_generator(begin_date, end_date):
             # the hour ranges during which we want to accumulate energy in this
             # shadow register is the entire day for normal registers, or
             # periods given by 'active_periods_weekday/weekend/holiday' for
@@ -243,11 +156,13 @@ def usage_data_to_virtual_register(install, reebill, server=None):
                 # (convert numpy types to float)
                 try:
                     if service_of_this_register.lower() == 'electric':
-                        energy_today = float(inst_obj.get_energy_consumed_by_service(
+                        energy_today = float(inst_obj.\
+                                get_energy_consumed_by_service(
                                 datetime(day.year, day.month, day.day),
                                 "elec", hourrange))
                     elif service_of_this_register.lower() == 'gas':
-                        energy_today = float(inst_obj.get_energy_consumed_by_service(
+                        energy_today = float(inst_obj.\
+                                get_energy_consumed_by_service(
                                 datetime(day.year, day.month, day.day),
                                 "gas", hourrange))
                     else:
@@ -266,24 +181,17 @@ def usage_data_to_virtual_register(install, reebill, server=None):
                 else:
                     raise Exception('unknown energy unit')
 
-                print 'register %s accumulating energy %s %s' % \
-                        (register['identifier'], energy_today, register['quantity_units'])
+                print 'register %s accumulating energy %s %s' % (
+                        register['identifier'], energy_today,
+                        register['quantity_units'])
                 register['quantity'] += energy_today
 
         # update the reebill: put the total skyline energy in the shadow register
-        reebill.set_shadow_register_quantity(register['identifier'], register['quantity'])
+        reebill.set_shadow_register_quantity(register['identifier'],
+                register['quantity'])
 
     # return the updated reebill
     return reebill
-
-# TODO: kill this function
-def fetch_bill_data(server, olap_id, reebill):
-    
-    # update values of shadow registers in reebill with skyline generated energy
-    reebill = usage_data_to_virtual_register(olap_id, reebill, server=server)
-
-
-
 
 
 # holiday test. check against:
