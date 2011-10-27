@@ -1,8 +1,6 @@
-'''Month-related utility functions. estimate_month() can be used for deciding
-which calendar month to associate with a utility billing period.'''
+'''Date-related utility functions.'''
 import calendar
 from datetime import date, timedelta
-#from datetime import date, datetime,timedelta, time
 import unittest
 
 def days_in_month(year, month, start_date, end_date):
@@ -167,10 +165,10 @@ def date_generator(from_date, to_date):
 
 def nth_weekday(n, weekday_number, month):
     '''Returns a function mapping years to the 'n'th weekday of 'month' in the
-    given year, so "nth weekday of month"-style holidays (like "3rd monday of
-    February") can be defined without dealing with the insanity of the Python
-    calendar library. 'n' is a 1-based number or 'last'; weekday_number is
-    0-based starting at Sunday.'''
+    given year, so holidays like "3rd monday of February" can be defined
+    without dealing with the insanity of the Python calendar library. 'n' is
+    ether a 1-based index or the string "last"; weekday_number is 0-based
+    starting at Sunday.'''
     cal = calendar.Calendar()
     def result(year):
         # calendar.itermonthdays2() returns (day number, weekday number)
