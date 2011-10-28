@@ -2898,6 +2898,7 @@ function renderWidgets()
         accountCombo.setValue(account);
         sequencesStore.setBaseParam('account', account);
         sequencesStore.load();
+        sequenceCombo.setValue(null);
 
         // update list of payments for this account
         paymentStore.reload({params: {account: account}});
@@ -2918,6 +2919,15 @@ function renderWidgets()
         //
         // add the account to the upload_account field
         upload_account.setValue(account)
+
+        // clear data when a new account is selected
+        configureUBPeriodsForms(null, null, null);
+        configureUBMeasuredUsagesForms(null, null, null);
+        aChargesStore.loadData({rows: 0, success: true});
+        hChargesStore.loadData({rows: 0, succes: true});
+        CPRSRSIStore.loadData({rows: 0, success: true});
+        URSRSIStore.loadData({rows: 0, success: true});
+
 
         updateStatusbar(account, null);
     }
