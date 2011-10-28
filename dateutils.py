@@ -58,7 +58,86 @@ def estimate_month(start_date, end_date):
 
 
 
-class MonthTest(unittest.TestCase):
+def date_generator(from_date, to_date):
+    """Yield dates based on from_date up to and excluding to_date.  The reason
+    for the exclusion of to_date is that utility billing periods do not include
+    the whole day for the end date specified for the period.  That is, the
+    utility billing period range of 2/15 to 3/4, for example, is for the usage
+    at 0:00 2/15 to 0:00 3/4.  0:00 3/4 is before the 3/4 begins."""
+    if (from_date > to_date):
+        return
+    while from_date < to_date:
+        yield from_date
+        from_date = from_date + timedelta(days = 1)
+    return
+
+def nth_weekday(n, weekday_number, month):
+    '''Returns a function mapping years to the 'n'th weekday of 'month' in the
+    given year, so holidays like "3rd monday of February" can be defined
+    without dealing with the insanity of the Python calendar library. 'n' is
+    ether a 1-based index or the string "last"; weekday_number is 0-based
+    starting at Sunday.'''
+    cal = calendar.Calendar()
+    def result(year):
+        # calendar.itermonthdays2() returns (day number, weekday number)
+        # tuples, where days outside the month are included (with day number =
+        # 0) to get a complete week. as if that weren't bad enough, weekdays
+        # are 0-indexed starting at monday (european-style, apparently). also
+        # note that calendar.setfirstweekday(calendar.SUNDAY) has no effect.
+        days = [day[0] for day in cal.itermonthdays2(year, month)
+                if day[0] != 0 and day[1] == (weekday_number + 6) % 7]
+        if type(n) is int and n-1 not in range(len(days)):
+            raise IndexError("there's no %sth %sday of month %s in %s" % (
+                n, weekday_number, month, year))
+        return date(year, month, days[-1 if n == 'last' else n-1])
+    return result
+
+# for time-of-use billing, holidays are stored as functions mapping a year to a
+# date within the year: this allows potentially arbitarily rules (such as
+# holiday dates changing from one year to another) with the reasonable
+# assumption that a holiday occurs at most once per year (you could return None
+# if it does not occur at all).
+# for simplicity, we're assuming that utility billing holidays match defined
+# federal holiday dates, not the dates on which federal employees get a
+# vacation. this decision is not based on actual data, so we may have to
+# correct it later.
+# this appears to be the official source for holiday dates:
+# http://www.law.cornell.edu/uscode/5/6103.html
+
+# the names (values in the dictionary below) just serve as documentation.
+FEDERAL_HOLIDAYS = {
+    # fixed-date holidays: date is independent of year
+    lambda year: date(year, 1, 1) : "New Year's Day",
+    lambda year: date(year, 7, 4) : "Independence Day",
+    lambda year: date(year, 11, 11) : "Veterans' Day",
+    lambda year: date(year, 12, 25) : "Christmas Day",
+
+    # "nth weekday of month" holidays: nth_weekday(n, weekday, month)
+    nth_weekday(3, 1, 1): "Martin Luther King Day",
+    nth_weekday(3, 1, 2): "Presidents' Day",
+    nth_weekday('last', 1, 5): "Memorial Day",
+    nth_weekday(1, 1, 9): "Labor Day",
+    nth_weekday(2, 1, 10): "Columbus Day",
+    nth_weekday(4, 4, 11): "Thanksgiving Day"
+}
+
+def all_holidays(year):
+    '''Returns all the holidays in the given year as a set of dates.'''
+    return set([holiday(year) for holiday in FEDERAL_HOLIDAYS
+        if holiday(year) is not None])
+
+def get_day_type(day):
+    '''Returns "weekday", "weekend", or "holiday" to classify the given date.
+    Holidays override regular weekday/weekend classifications.'''
+    if day in all_holidays(day.year):
+        return 'holiday'
+    # python weeks start on monday
+    if day.weekday() in [5,6]:
+        return 'weekend'
+    return 'weekday'
+    
+
+class DateUtilsTest(unittest.TestCase):
     def test_days_in_month(self):
         jul15 = date(2011,7,15)
         aug5 = date(2011,8,5)
@@ -146,90 +225,105 @@ class MonthTest(unittest.TestCase):
         # start & end very far apart: prefer first month with 31 days
         self.assertEquals(estimate_month(jul15, aug122012), (2011, 8))
 
+    def test_date_generator(self):
+        oct1 = date(2011,10,1)
+        oct2 = date(2011,10,2)
+        oct27 = date(2011,10,27)
+        oct28 = date(2011,10,28)
+        self.assertEquals([], list(date_generator(oct1, oct1)))
+        self.assertEquals([oct1], list(date_generator(oct1, oct2)))
+        self.assertEquals(27, len(list(date_generator(oct1, oct28))))
+        self.assertEquals(oct1, list(date_generator(oct1, oct28))[0])
+        self.assertEquals(oct2, list(date_generator(oct1, oct28))[1])
+        self.assertEquals(oct27, list(date_generator(oct1, oct28))[-1])
+        self.assertEquals([], list(date_generator(oct28, oct2)))
 
+    def test_nth_weekday(self):
+        sat_oct1 = date(2011,10,1)
+        sat_oct8 = date(2011,10,8)
+        sat_oct15 = date(2011,10,15)
+        sat_oct22 = date(2011,10,22)
+        sat_oct29 = date(2011,10,29)
+        fri_oct7 = date(2011,10,7)
+        fri_oct14 = date(2011,10,14)
+        fri_oct21 = date(2011,10,21)
+        fri_oct28 = date(2011,10,28)
+        wed_oct26 = date(2011,10,26)
+        mon_oct31 = date(2011,10,31)
 
+        self.assertEquals([sat_oct1, sat_oct8, sat_oct15, sat_oct22, sat_oct29],
+                [nth_weekday(n, 6, 10)(2011) for n in [1,2,3,4,5]])
+        self.assertRaises(IndexError, nth_weekday(-1, 6, 10), 2011)
+        self.assertRaises(IndexError, nth_weekday(0, 6, 10), 2011)
+        self.assertRaises(IndexError, nth_weekday(6, 6, 10), 2011)
+        self.assertEquals([fri_oct7, fri_oct14, fri_oct21, fri_oct28],
+                [nth_weekday(n, 5, 10)(2011) for n in [1,2,3,4]])
+        self.assertRaises(IndexError, nth_weekday(-1, 5, 10), 2011)
+        self.assertRaises(IndexError, nth_weekday(0, 5, 10), 2011)
+        self.assertRaises(IndexError, nth_weekday(5, 5, 10), 2011)
+        self.assertEquals(wed_oct26, nth_weekday('last', 3, 10)(2011))
+        self.assertEquals(mon_oct31, nth_weekday('last', 1, 10)(2011))
 
+        self.assertEquals(date(2013,2,18), nth_weekday(3,1,2)(2013))
 
-def date_generator(from_date, to_date):
-    """Yield dates based on from_date up to and excluding to_date.  The reason
-    for the exclusion of to_date is that utility billing periods do not include
-    the whole day for the end date specified for the period.  That is, the
-    utility billing period range of 2/15 to 3/4, for example, is for the usage
-    at 0:00 2/15 to 0:00 3/4.  0:00 3/4 is before the 3/4 begins."""
-    if (from_date > to_date):
-        return
-    while from_date < to_date:
-        yield from_date
-        from_date = from_date + timedelta(days = 1)
-    return
-
-def nth_weekday(n, weekday_number, month):
-    '''Returns a function mapping years to the 'n'th weekday of 'month' in the
-    given year, so holidays like "3rd monday of February" can be defined
-    without dealing with the insanity of the Python calendar library. 'n' is
-    ether a 1-based index or the string "last"; weekday_number is 0-based
-    starting at Sunday.'''
-    cal = calendar.Calendar()
-    def result(year):
-        # calendar.itermonthdays2() returns (day number, weekday number)
-        # tuples, where days outside the month are included (with day number =
-        # 0) to get a complete week. as if that weren't bad enough, weekdays
-        # are 0-indexed starting at monday (european-style, apparently). also
-        # note that calendar.setfirstweekday(calendar.SUNDAY) has no effect.
-        days = [day[0] for day in cal.itermonthdays2(year, month)
-                if day[0] != 0 and day[1] == (weekday_number + 6) % 7]
-        return date(year, month, days[-1 if n == 'last' else n-1])
-    return result
-
-# for time-of-use billing, holidays are stored as functions mapping a year to a
-# date within the year: this allows potentially arbitarily rules (such as
-# holiday dates changing from one year to another) with the reasonable
-# assumption that a holiday occurs at most once per year (you could return None
-# if it does not occur at all).
-# for simplicity, we're assuming that utility billing holidays match defined
-# federal holiday dates, not the dates on which federal employees get a
-# vacation. this decision is not based on actual data, so we may have to
-# correct it later.
-
-# the names (values in the dictionary below) just serve as documentation.
-HOLIDAYS = {
-    # fixed-date holidays: date is independent of year
-    lambda year: date(year, 1, 1) : "New Year's Day",
-    lambda year: date(year, 7, 4) : "Independence Day",
-    lambda year: date(year, 11, 11) : "Veterans' Day",
-    lambda year: date(year, 12, 25) : "Christmas Day",
-
-    # "nth weekday of month" holidays: nth_weekday(n, weekday, month)
-    nth_weekday(3, 1, 1): "Martin Luther King Day",
-    nth_weekday(3, 1, 2): "Presidents' Day",
-    nth_weekday('last', 1, 5): "Memorial Day",
-    nth_weekday(1, 1, 9): "Labor Day",
-    nth_weekday(2, 1, 10): "Columbus Day",
-    nth_weekday(4, 5, 11): "Thanksgiving Day"
-}
-
-def all_holidays(year):
-    '''Returns all the holidays in the given year as a list of dates.'''
-    return [holiday(year) for holiday in HOLIDAYS if holiday(year) is not None]
-
-def get_day_type(day):
-    '''Returns 'weekday', 'weekend', or 'holiday' to classify the given date.
-    Holidays override regular weekday/weekend classifications.'''
-    if day in all_holidays(day.year):
-        return 'holiday'
-    # python weeks start on monday
-    if day.weekday() in [5,6]:
-        return 'weekend'
-    return 'weekday'
-    
-
+    def test_all_holidays(self):
+        # source of holiday dates:
+        # http://www.opm.gov/oca/worksch/html/holiday.asp
+        # (note that some sources, such as
+        # http://www.opm.gov/Operating_Status_Schedules/fedhol/2011.asp
+        # report federal employee vacation days, which may differ from the
+        # holidays themselves. we assume that utility billing holidays are the
+        # actual holiday dates.)
+        
+        # 2013
+        newyear11 = date(2011, 1, 1)
+        mlk11 = date(2011, 1, 17)
+        washington11 = date(2011, 2, 21)
+        memorial11 = date(2011, 5, 30)
+        independence11 = date(2011, 7, 4)
+        labor11 = date(2011, 9, 5)
+        columbus11 = date(2011, 10, 10)
+        veterans11 = date(2011, 11, 11)
+        thanks11 = date(2011, 11, 24)
+        xmas11 = date(2011, 12, 25)
+        all_2011 = set([newyear11, mlk11, washington11, memorial11,
+            independence11, labor11, columbus11, veterans11, thanks11, xmas11])
+        self.assertEquals(all_2011, all_holidays(2011))
+        
+        # 2012
+        newyear12 = date(2012, 1, 1)
+        mlk12 = date(2012, 1, 16)
+        washington12 = date(2012, 2, 20)
+        memorial12 = date(2012, 5, 28)
+        independence12 = date(2012, 7, 4)
+        labor12 = date(2012, 9, 3)
+        columbus12 = date(2012, 10, 8)
+        veterans12 = date(2012, 11, 11)
+        thanks12 = date(2012, 11, 22)
+        xmas12 = date(2012, 12, 25)
+        all_2012 = set([newyear12, mlk12, washington12, memorial12,
+            independence12, labor12, columbus12, veterans12, thanks12, xmas12])
+        self.assertEquals(all_2012, all_holidays(2012))
+        
+        # 2013
+        # manually checked
+        newyear13 = date(2013, 1, 1)
+        mlk13 = date(2013, 1, 21)
+        washington13 = date(2013, 2, 18)
+        memorial13 = date(2013, 5, 27)
+        independence13 = date(2013, 7, 4)
+        labor13 = date(2013, 9, 2)
+        columbus13 = date(2013, 10, 14)
+        veterans13 = date(2013, 11, 11)
+        thanks13 = date(2013, 11, 28)
+        xmas13 = date(2013, 12, 25)
+        all_2013 = set([newyear13, mlk13, washington13, memorial13,
+            independence13, labor13, columbus13, veterans13, thanks13, xmas13])
+        self.assertEquals(all_2013, all_holidays(2013))
 
 if __name__ == '__main__':
     unittest.main()
 
-    # manual holiday test. check against:
-    # http://www.opm.gov/Operating_Status_Schedules/fedhol/2011.asp
-    # http://www.opm.gov/oca/worksch/html/holiday.asp
     import pprint
-    pprint.PrettyPrinter().pprint(sorted([(name, holiday(2011)) for holiday, name in HOLIDAYS.iteritems()], key=lambda t:(t[1], t[0])))
+    pprint.PrettyPrinter().pprint(sorted([(name, holiday(2011)) for holiday, name in FEDERAL_HOLIDAYS.iteritems()], key=lambda t:(t[1], t[0])))
     # TODO unit-test the holiday code
