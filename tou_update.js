@@ -4,9 +4,6 @@
 // customers are 10001 and 10018, but 10001's early bills lack rate structures
 // and there are no bills yet for 10018.
 
-// TODO change to skyline-stage or whatever
-use skyline;
-
 // currently the only reebill for 10017
 var reebill = db.reebills.findOne({'_id.account':'10017', '_id.sequence':1, '_id.branch':0});
 if (reebill == null) {
