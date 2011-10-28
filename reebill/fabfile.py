@@ -15,7 +15,7 @@ exclude_from = 'fabexcludes.txt'
 configurations = {
     "dev": ["reebill-dev", "reebill-dev", "reebill-dev", "bill_tool_bridge-dev-template.cfg"],
     "stage": ["reebill-stage", "reebill-stage", "reebill-stage", "reebill-stage-template.cfg"],
-    "prod": ["reebill", "reebill", "reebill", "bill_tool_bridge-prod-template.cfg"]
+    "prod": ["reebill-prod", "reebill-prod", "reebill-prod", "reebill-prod-template.cfg"]
 }
 
 def prepare_deploy(project, environment):
@@ -35,7 +35,7 @@ def prepare_deploy(project, environment):
     fabops.local('tar czvf /tmp/%s.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../reebill' % (project, exclude_from))
 
     # grab other billing code
-    fabops.local('tar czvf /tmp/bill_framework_code.tar.z ../*.py ../processing/*.py')
+    fabops.local('tar czvf /tmp/bill_framework_code.tar.z ../*.py ../processing/*.py ../tou_update.js')
 
     # try and put back sane values since the software was likely deployed from a development environment
     fabops.local("sed -i 's/SKYLINE_VERSIONINFO=\".*\".*$/SKYLINE_VERSIONINFO=\"UNSPECIFIED\"/g' ui/billedit.js")
