@@ -62,7 +62,15 @@ USERS = {
     'dev': {
         'password': 'dev',
         'preferences': {'bill_image_resolution': '100'}
-    }
+    },
+    'djonas': {
+        'password': 'djonas',
+        'preferences': {'bill_image_resolution': '250'}
+    },
+    'randrews': {
+        'password': 'randrews',
+        'preferences': {'bill_image_resolution': '250'}
+    },
 }
         
 # TODO 11454025 rename to ProcessBridge or something
