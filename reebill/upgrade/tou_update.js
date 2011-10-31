@@ -20,22 +20,13 @@ if (ub == null) {
     print('utilbill of reebill 10017-1 not found');
     quit();
 }
-if (ub.rate_structure_binding == 'DC Residential-R-Winter') {
-    ub.rate_structure_binding = 'Large General Service - TOU - Schedule GL - POLR Type II (summer)';
-    print('updated rate_structure_binding in utilbill of 10017-1');
-} else if (ub.rate_structure_binding == 'Large General Service - TOU - Schedule GL - POLR Type II (summer)') {
-    print('rate_structure_binding in utilbill of 10017-1 was already updated');
-} else {
-    print('utilbill of reebill 10017-1 has unexpected rate_structure_binding: ' + ub.rate_structure_binding);
-    quit();
-}
 db.reebills.save(reebill);
 
 // update rate structure document
 var urs = db.ratestructure.findOne({
     '_id.type':'URS', '_id.utility_name':'bge',
     '_id.rate_structure_name':
-    'Large General Service - TOU - Schedule GL - POLR Type II (summer)'
+    'Large General Service - TOU - Schedule GL - POLR Type II'
 });
 if (urs == null) {
     print('URS for BGE, "Large General Service..." not found');
