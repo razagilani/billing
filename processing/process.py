@@ -66,7 +66,7 @@ class Process(object):
     def sum_bill(self, session, prior_reebill, present_reebill):
 
         # get discount rate
-        discount_rate = Decimal(str(self.state_db.discount_rate(present_reebill.account)))
+        discount_rate = Decimal(str(self.state_db.discount_rate(session, present_reebill.account)))
 
         # reset ree_charges, ree_value, ree_savings so we can accumulate across all services
         present_reebill.ree_value = Decimal("0")
@@ -133,7 +133,7 @@ class Process(object):
             actual_chargegroups = reebill.actual_chargegroups_for_service(service)
             reebill.set_hypothetical_chargegroups_for_service(service, actual_chargegroups)
 
-    def pay_bill(self, session, reebill, payments):
+    def pay_bill(self, session, reebill):
 
         # depend on first ub period to be the date range for which a payment is seeked.
         # this is a wrong design because there may be more than one ub period
@@ -152,7 +152,7 @@ class Process(object):
         # sum() of [] is int zero, so always wrap payments in a Decimal
         reebill.payment_received = Decimal(sum([payment.credit for payment in payments]))
 
-    def roll_bill(self, session, reebill, last_sequence):
+    def roll_bill(self, session, reebill):
         """
         Create rebill for next period, based on prior bill.
         """
@@ -538,7 +538,7 @@ class Process(object):
         # save in mongo
         self.reebill_dao.save_reebill(reebill)
 
-    def issue_to_customer(self, account, sequence):
+    def issue_to_customer(self, session, account, sequence):
 
         # issue to customer
         self.state_db.issue(session, account, sequence)
