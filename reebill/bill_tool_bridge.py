@@ -25,6 +25,7 @@ from billing.processing import process
 from billing.processing import state
 from billing.processing import fetch_bill_data as fbd
 from billing.reebill import render
+from billing.reebill import journal
 from billing.processing.billupload import BillUpload
 
 # TODO fixme
@@ -102,19 +103,19 @@ class BillToolBridge:
     # TODO: refactor config and share it between btb and bt 15413411
     def __init__(self):
         self.config = ConfigParser.RawConfigParser()
-        config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'bill_tool_bridge.cfg')
+        config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'reebill.cfg')
         if not self.config.read(config_file_path):
             print "Creating config file"
-            self.config.add_section('xmldb')
-            self.config.set('xmldb', 'destination_prefix', 'http://[host]:8080/exist/rest/db/skyline/bills')
-            self.config.set('xmldb', 'source_prefix', 'http://[host]:8080/exist/rest/db/skyline/bills')
-            self.config.set('xmldb', 'password', '[password]')
-            self.config.set('xmldb', 'user', 'prod')
             self.config.add_section('mongodb')
             self.config.set('mongodb', 'host', 'localhost')
             self.config.set('mongodb', 'port', '27017')
             self.config.set('mongodb', 'db_name', 'skyline')
             self.config.set('mongodb', 'collection_name', 'reebills')
+            self.config.add_section('journaldb')
+            self.config.set('journaldb', 'host', 'localhost')
+            self.config.set('journaldb', 'port', '27017')
+            self.config.set('journaldb', 'db_name', 'skyline')
+            self.config.set('journaldb', 'collection_name', 'journal')
             self.config.add_section('http')
             self.config.set('http', 'socket_port', '8185')
             self.config.set('http', 'socket_host', '10.0.0.250')
@@ -126,8 +127,8 @@ class BillToolBridge:
             self.config.add_section('statedb')
             self.config.set('statedb', 'host', 'localhost')
             self.config.set('statedb', 'db', 'skyline')
-            self.config.set('statedb', 'user', 'devTEST7')
-            self.config.set('statedb', 'password', '[password]TEST8')
+            self.config.set('statedb', 'user', '[your mysql user]')
+            self.config.set('statedb', 'password', '[your mysql password]')
             self.config.add_section('mailer')
             self.config.set('mailer', 'smtp_host', 'smtp.gmail.com')
             self.config.set('mailer', 'smtp_port', '587')
@@ -149,7 +150,10 @@ class BillToolBridge:
             self.config.add_section('log')
             self.config.set('log', 'log_file_name', DEFAULT_LOG_FILE_NAME)
             self.config.set('log', 'log_format', DEFAULT_LOG_FORMAT)
-            self.config.set('billrendering', DEFAULT_BILL_IMAGE_DIRECTORY)
+
+            # bill rendering
+            self.config.add_section('billrendering')
+            self.config.set('billrendering', 'bill_image_directory', DEFAULT_BILL_IMAGE_DIRECTORY)
 
 
             # Writing our configuration file to 'example.cfg'

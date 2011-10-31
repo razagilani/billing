@@ -13,7 +13,7 @@ root_dir = os.path.dirname(os.path.abspath(__file__))
 exclude_from = 'fabexcludes.txt'
 
 configurations = {
-    "dev": ["reebill-dev", "reebill-dev", "reebill-dev", "bill_tool_bridge-dev-template.cfg"],
+    "dev": ["reebill-dev", "reebill-dev", "reebill-dev", "reebill-dev-template.cfg"],
     "stage": ["reebill-stage", "reebill-stage", "reebill-stage", "reebill-stage-template.cfg"],
     "prod": ["reebill-prod", "reebill-prod", "reebill-prod", "reebill-prod-template.cfg"]
 }
@@ -75,13 +75,13 @@ def deploy():
         #with fabcontext.hide('stdout'):
         with fabcontext.cd('/var/local/%s/lib/python2.6/site-packages/billing/reebill' % (project)):
             # does the config file exist?
-            exists = fabcontrib.files.exists("bill_tool_bridge.cfg")
+            exists = fabcontrib.files.exists("reebill.cfg")
             if exists is False:
                 print green("Copying deployment template configuration to create new configuration file.")
-                fabops.sudo('cp %s bill_tool_bridge.cfg' % (config_file), user='root')
+                fabops.sudo('cp %s reebill.cfg' % (config_file), user='root')
             else:
                 print green("Configuration file exists")
-                result = fabops.sudo('diff %s bill_tool_bridge.cfg' % (config_file), user='root')
+                result = fabops.sudo('diff %s reebill.cfg' % (config_file), user='root')
                 if result.failed is True:
                     print red("Warning: Configuration file differs from deployment template and was not updated.")
                 else:
