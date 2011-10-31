@@ -2938,7 +2938,7 @@ function renderWidgets()
 
     function loadReeBillUIForSequence(account, sequence) {
 
-        if (account == null || sequence = null) {
+        if (account == null || sequence == null) {
             throw "Account and Sequence must be set";
         }
 

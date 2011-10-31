@@ -238,7 +238,6 @@ class BillToolBridge:
     @cherrypy.expose
     def copyactual(self, account, sequence, **args):
         try:
-            session = None
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
 
@@ -267,6 +266,7 @@ class BillToolBridge:
             session = self.state_db.session()
             self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
+            session.commit()
             return json.dumps({'success': True})
 
         except Exception as e:
@@ -288,7 +288,7 @@ class BillToolBridge:
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
             session = self.state_db.session()
-            self.process.pay_bill(session, reebill, payments)
+            self.process.pay_bill(session, reebill)
             session.commit()
             self.reebill_dao.save_reebill(reebill)
             return json.dumps({'success': True})
@@ -380,7 +380,7 @@ class BillToolBridge:
             prior_reebill = self.reebill_dao.load_reebill(account, int(sequence)-1)
         
             session = self.state_db.session()
-            self.process.sum_bill(session, prior_reebill, present_reebill, discount_rate)
+            self.process.sum_bill(session, prior_reebill, present_reebill)
             session.commit()
             self.reebill_dao.save_reebill(present_reebill)
 
@@ -431,35 +431,51 @@ class BillToolBridge:
     def commit(self, account, sequence, **args):
         self.check_authentication()
         try:
+            session = None
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
 
-            self.process.commit_rebill(account, sequence)
+            session = self.state_db.session()
+            self.process.commit_rebill(session, account, sequence)
+            session.commit()
+
+            return json.dumps({'success': True})
 
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            if session is not None: 
+                try:
+                    if session is not None: session.rollback()
+                except:
+                    print "Could not rollback session"
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        return json.dumps({'success': True})
 
     @cherrypy.expose
     def issueToCustomer(self, account, sequence, **args):
         self.check_authentication()
         try:
+            session = None
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
-            self.process.issue_to_customer(account, sequence)
+            session = self.state_db.session()
+            self.process.issue_to_customer(session, account, sequence)
+            session.commit()
             return json.dumps({'success': True})
 
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
+            if session is not None: 
+                try:
+                    if session is not None: session.rollback()
+                except:
+                    print "Could not rollback session"
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
     @cherrypy.expose
     def mail(self, account, sequences, recipients, **args):
         self.check_authentication()
         try:
-            if not account or not sequence or not recipients:
+            if not account or not sequences or not recipients:
                 raise ValueError("Bad Parameter Value")
             # sequences will come in as a string if there is one element in post data. 
             # If there are more, it will come in as a list of strings
