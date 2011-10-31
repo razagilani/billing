@@ -11,7 +11,7 @@ import copy
 import pymongo
 import uuid
 
-from billing import mongo
+from billing.mongo_utils import bson_convert, python_convert
 import yaml
 
 import pprint
@@ -65,10 +65,13 @@ class RateStructureDAO(object):
         self.collection = self.database[self.config['collection']]
 
     def __del__(self):
-        # TODO: clean up mongo resources here?
+        # TODO: 17928569 clean up mongo resources here?
         pass
 
     def load_probable_rs(self, reebill, service):
+
+    def journal(self, account, sequence, message):
+
 
         # return a probable rate structure for each utilbill in the reebill
 
@@ -316,8 +319,7 @@ class RateStructureDAO(object):
         }
 
 
-        # TODO: bson_convert has to become a util function
-        rate_structure_data = mongo.bson_convert(rate_structure_data)
+        rate_structure_data = bson_convert(rate_structure_data)
 
         self.collection.save(rate_structure_data)
 
@@ -335,8 +337,7 @@ class RateStructureDAO(object):
         }
 
 
-        # TODO: bson_convert has to become a util function
-        rate_structure_data = mongo.bson_convert(rate_structure_data)
+        rate_structure_data = bson_convert(rate_structure_data)
 
         self.collection.save(rate_structure_data)
 

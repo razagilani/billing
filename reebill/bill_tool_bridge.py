@@ -43,6 +43,7 @@ from billing.reebill import bill_mailer
 from billing import mongo
 
 import billing.processing.rate_structure as rs
+import billing.journal as journal
 
 from datetime import datetime
 from datetime import date
@@ -178,6 +179,10 @@ class BillToolBridge:
         # create a RateStructureDAO
         rsdb_config_section = dict(self.config.items("rsdb"))
         self.ratestructure_dao = rs.RateStructureDAO(rsdb_config_section)
+
+        # create a JournalDAO
+        journaldb_config_section = dict(self.config.items("journaldb"))
+        self.journal_dao = journal.JournalDAO(journaldb_config_section)
 
         # create one Process object to use for all related bill processing
         self.process = process.Process(self.config, self.state_db, self.reebill_dao, self.ratestructure_dao)
@@ -482,7 +487,10 @@ class BillToolBridge:
 
             bill_mailer.mail(recipients, merge_fields, os.path.join(self.config.get("billdb", "billpath"), account), bill_file_names);
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+        # TODO STOPPED HERE - id #'s for messages?
+        self.journal.journal(account, sequence, "ReeBill Mailed")
         return json.dumps({'success': True})
 
     def full_names_of_accounts(self, accounts):
