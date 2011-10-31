@@ -186,7 +186,11 @@ function renderWidgets()
 
                     // a row was slected in the UI
                     // update the current account and sequence
-                    loadReeBillUIForSequence(record.data.account, record.data.sequence)
+                    if (record.data.sequence != null) {
+                        loadReeBillUIForSequence(record.data.account, record.data.sequence);
+                    } else {
+                        loadReeBillUIForAccount(record.data.account);
+                    }
 
                     // reset the account and sequence combos.  This is a hack, and there needs to be a unified
                     // way to select a given utilbill, reebill or both
@@ -2933,6 +2937,10 @@ function renderWidgets()
     }
 
     function loadReeBillUIForSequence(account, sequence) {
+
+        if (account == null || sequence = null) {
+            throw "Account and Sequence must be set";
+        }
 
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/ubPeriods',
