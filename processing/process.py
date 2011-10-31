@@ -152,7 +152,7 @@ class Process(object):
         # sum() of [] is int zero, so always wrap payments in a Decimal
         reebill.payment_received = Decimal(sum([payment.credit for payment in payments]))
 
-    def roll_bill(self, session, reebill, last_sequence):
+    def roll_bill(self, session, reebill):
         """
         Create rebill for next period, based on prior bill.
         """
