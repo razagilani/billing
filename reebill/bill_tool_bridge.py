@@ -237,8 +237,8 @@ class BillToolBridge:
     # TODO: do this on a per service basis 18311877
     @cherrypy.expose
     def copyactual(self, account, sequence, **args):
-        self.check_authentication()
         try:
+            session = None
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
 
@@ -258,16 +258,24 @@ class BillToolBridge:
     def roll(self, account, sequence, **args):
         self.check_authentication()
         try:
+            session = None
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
-            self.process.roll_bill(reebill)
+
+            session = self.state_db.session()
+            self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
             return json.dumps({'success': True})
 
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            if session is not None: 
+                try:
+                    if session is not None: session.rollback()
+                except:
+                    print "Could not rollback session"
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
     @cherrypy.expose
