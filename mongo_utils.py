@@ -3,6 +3,7 @@ from datetime import date, time, datetime
 from decimal import Decimal
 from lxml.etree import _ElementStringResult
 from billing.mutable_named_tuple import MutableNamedTuple
+from bson.objectid import ObjectId
 
 def python_convert(x):
     '''Strip out the MutableNamedTuples since they are no longer 
@@ -21,6 +22,10 @@ def python_convert(x):
         return x
     if type(x) is date:
         return x
+    if type(x) is datetime:
+        return x
+    if type(x) is ObjectId:
+        return x
     if type(x) is dict or type(x) is MutableNamedTuple:
         return dict([(item[0], python_convert(item[1])) for item in \
             x.iteritems() if item[1] is not None])
@@ -34,7 +39,7 @@ def bson_convert(x):
     # TODO:  copy all or convert all in place?  Or, don't care and just keep
     # doing both scalars are converted in place, dicts are copied.
 
-    if type(x) in [str, float, int, bool, datetime, unicode]:
+    if type(x) in [str, float, int, bool, datetime, unicode, ObjectId]:
         return x
     if type(x) is Decimal:
         return float(x)

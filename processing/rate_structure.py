@@ -70,9 +70,6 @@ class RateStructureDAO(object):
 
     def load_probable_rs(self, reebill, service):
 
-    def journal(self, account, sequence, message):
-
-
         # return a probable rate structure for each utilbill in the reebill
 
         # all the data needed to identify a probable rate structure

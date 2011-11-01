@@ -27,7 +27,7 @@ class StateDB:
         it from outside this file, because the session should only be created
         once. Instead, use the global variable 'session' above.'''
         host = config['host']
-        db = config['db']
+        db = config['database']
         user = config['user']
         password = config['password']
 
@@ -65,7 +65,6 @@ class StateDB:
                 properties={
                     'customer': relationship(Customer, backref='payment')
                 })
-
 
 
         # To turn logging on
