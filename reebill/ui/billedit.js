@@ -2645,6 +2645,192 @@ function renderWidgets()
     });
 
 
+
+    ///////////////////////////////////////
+    // journals Tab
+
+    var initialjournal =  {
+        rows: [
+        ]
+    };
+
+    var journalReader = new Ext.data.JsonReader({
+        root: 'rows',
+
+        // the fields config option will internally create an Ext.data.Record
+        // constructor that provides mapping for reading the record data objects
+        fields: [
+            // map Record's field to json object's key of same name
+            {name: '_id', mapping: '_id'},
+            {name: 'date', mapping: 'date'},
+            {name: 'account', mapping: 'account'},
+            {name: 'sequence', mapping: 'sequence'},
+            {name: 'msg', mapping: 'msg'},
+        ]
+    });
+
+    var journalWriter = new Ext.data.JsonWriter({
+        encode: true,
+        // write all fields, not just those that changed
+        writeAllFields: true 
+    });
+
+    var journalStoreProxy = new Ext.data.HttpProxy({
+        method: 'GET',
+        prettyUrls: false,
+        url: 'http://'+location.host+'/reebill/journal',
+    });
+
+    var journalStore = new Ext.data.JsonStore({
+        proxy: journalStoreProxy,
+        autoSave: false,
+        reader: journalReader,
+        writer: journalWriter,
+        autoSave: true,
+        // won't be updated when combos change, so do this in event
+        // perhaps also can be put in the options param for the ajax request
+        //baseParams: { account:accountCombo.getValue(), sequence: sequenceCombo.getValue()},
+        data: initialjournal,
+        root: 'rows',
+        idProperty: '_id',
+        fields: [
+            {name: '_id'},
+            {
+                name: 'date',
+                type: 'date',
+                //dateFormat: 'Y-m-d'
+            },
+            {name: 'account'},
+            {name: 'sequence'},
+            {name: 'msg'},
+        ],
+    });
+
+    var journalColModel = new Ext.grid.ColumnModel(
+    {
+        columns: [
+            {
+                header: 'ObjectId',
+                sortable: true,
+                dataIndex: '_id',
+            },{
+                header: 'Date',
+                sortable: true,
+                dataIndex: 'date',
+                renderer: function(date) { if (date) return date.format(Date.patterns['ISO8601Long']); },
+                editor: new Ext.form.DateField({
+                    allowBlank: false,
+                    format: Date.patterns['ISO8601Long'],
+               }),
+            },{
+                header: 'Account',
+                sortable: true,
+                dataIndex: 'account',
+                //editor: new Ext.form.TextField({allowBlank: true})
+            },{
+                header: 'Sequence',
+                sortable: true,
+                dataIndex: 'sequence',
+                //editor: new Ext.form.TextField({allowBlank: true})
+            },{
+                header: 'Message',
+                sortable: true,
+                dataIndex: 'msg',
+                //editor: new Ext.form.TextField({allowBlank: true})
+            },
+        ]
+    });
+
+    var journalToolbar = new Ext.Toolbar({
+        items: [
+            {
+                xtype: 'button',
+                id: 'journalInsertBtn',
+                iconCls: 'icon-user-add',
+                text: 'Insert',
+                disabled: false,
+                handler: function()
+                {
+                    journalGrid.stopEditing();
+
+                    // grab the current selection - only one row may be selected per singlselect configuration
+                    var selection = journalGrid.getSelectionModel().getSelected();
+
+                    // make the new record
+                    var journalType = journalGrid.getStore().recordType;
+                    var defaultData = 
+                    {
+                    };
+                    var r = new journalType(defaultData);
+        
+                    // select newly inserted record
+                    //var insertionPoint = journalStore.indexOf(selection);
+                    //journalStore.insert(insertionPoint + 1, r);
+                    journalStore.add([r]);
+                    //journalGrid.startEditing(insertionPoint +1,1);
+                    
+                }
+            },{
+                xtype: 'tbseparator'
+            },{
+                xtype: 'button',
+                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                id: 'journalRemoveBtn',
+                iconCls: 'icon-user-delete',
+                text: 'Remove',
+                disabled: true,
+                handler: function()
+                {
+                    journalGrid.stopEditing();
+                    journalStore.setBaseParam("account", accountCombo.getValue());
+
+                    // TODO single row selection only, test allowing multirow selection
+                    var s = journalGrid.getSelectionModel().getSelections();
+                    for(var i = 0, r; r = s[i]; i++)
+                    {
+                        journalStore.remove(r);
+                    }
+                    journalStore.save(); 
+                }
+            }
+        ]
+    });
+
+    var journalGrid = new Ext.grid.EditorGridPanel({
+        flex: 1,
+        tbar: journalToolbar,
+        colModel: journalColModel,
+        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+        store: journalStore,
+        enableColumnMove: false,
+        frame: true,
+        collapsible: true,
+        animCollapse: false,
+        stripeRows: true,
+        viewConfig: {
+            // doesn't seem to work
+            forceFit: true,
+        },
+        title: 'journals',
+        clicksToEdit: 2
+    });
+
+    journalGrid.getSelectionModel().on('selectionchange', function(sm){
+        //journalGrid.getTopToolbar().findById('journalInsertBtn').setDisabled(sm.getCount() <1);
+        journalGrid.getTopToolbar().findById('journalRemoveBtn').setDisabled(sm.getCount() <1);
+    });
+  
+    // grid's data store callback for when data is edited
+    // when the store backing the grid is edited, enable the save button
+    journalStore.on('update', function(){
+        //journalGrid.getTopToolbar().findById('journalSaveBtn').setDisabled(false);
+    });
+
+    journalStore.on('beforesave', function() {
+        journalStore.setBaseParam("account", accountCombo.getValue());
+    });
+
+
     // end of tab widgets
     ////////////////////////////////////////////////////////////////////////////
 
@@ -2710,7 +2896,6 @@ function renderWidgets()
           },
           items: [
             reebillFormPanel,
-            //billOperationButton
           ],
         },{
           id: 'ubPeriodsTab',
@@ -2766,6 +2951,17 @@ function renderWidgets()
             pack : 'start'
           },
           items: [reebillGrid]
+        },{
+          id: 'journalTab',
+          title: 'Journal',
+          xtype: 'panel',
+          layout: 'vbox',
+          layoutConfig : {
+            //type : 'vbox',
+            align : 'stretch',
+            pack : 'start'
+          },
+          items: [journalGrid]
         },{
           id: 'preferencesTab',
           title: 'Preferences',
@@ -2912,6 +3108,9 @@ function renderWidgets()
 
         // paging tool bar params must be passed in to keep store in sync with toolbar paging calls - autoload params lost after autoload
         reebillStore.reload({params:{start:0, limit:25}});
+
+        // update list of journal entries for this account
+        journalStore.reload({params: {account: account}});
 
         // tell utilBillGrid to filter itself
         utilbillGridStore.setBaseParam("account", account)

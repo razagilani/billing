@@ -19,8 +19,6 @@ import string
 
 import ConfigParser
 
-#import MySQLdb
-
 from billing.processing import process
 from billing.processing import state
 from billing.processing import fetch_bill_data as fbd
@@ -43,7 +41,6 @@ from billing.reebill import bill_mailer
 from billing import mongo
 
 import billing.processing.rate_structure as rs
-import billing.journal as journal
 
 from datetime import datetime
 from datetime import date
@@ -107,27 +104,30 @@ class BillToolBridge:
         config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'reebill.cfg')
         if not self.config.read(config_file_path):
             print "Creating config file"
-            self.config.add_section('mongodb')
-            self.config.set('mongodb', 'host', 'localhost')
-            self.config.set('mongodb', 'port', '27017')
-            self.config.set('mongodb', 'db_name', 'skyline')
-            self.config.set('mongodb', 'collection_name', 'reebills')
             self.config.add_section('journaldb')
             self.config.set('journaldb', 'host', 'localhost')
             self.config.set('journaldb', 'port', '27017')
-            self.config.set('journaldb', 'db_name', 'skyline')
+            self.config.set('journaldb', 'database', 'skyline')
             self.config.set('journaldb', 'collection_name', 'journal')
             self.config.add_section('http')
             self.config.set('http', 'socket_port', '8185')
             self.config.set('http', 'socket_host', '10.0.0.250')
             self.config.add_section('rsdb')
-            self.config.set('rsdb', 'rspath', '[root]db/skyline/ratestructure/')
+            #self.config.set('rsdb', 'rspath', '[root]db/skyline/ratestructure/')
+            self.config.set('rsdb', 'host', 'localhost')
+            self.config.set('rsdb', 'port', '27017')
+            self.config.set('rsdb', 'database', 'skyline')
+            self.config.set('rsdb', 'collection', 'reebills')
             self.config.add_section('billdb')
             self.config.set('billdb', 'utilitybillpath', '[root]db/skyline/utilitybills/')
             self.config.set('billdb', 'billpath', '[root]db/skyline/bills/')
+            self.config.set('billdb', 'host', 'localhost')
+            self.config.set('billdb', 'port', '27017')
+            self.config.set('billdb', 'database', 'skyline')
+            self.config.set('billdb', 'collection_name', 'reebills')
             self.config.add_section('statedb')
             self.config.set('statedb', 'host', 'localhost')
-            self.config.set('statedb', 'db', 'skyline')
+            self.config.set('statedb', 'database', 'skyline')
             self.config.set('statedb', 'user', '[your mysql user]')
             self.config.set('statedb', 'password', '[your mysql password]')
             self.config.add_section('mailer')
@@ -145,7 +145,7 @@ class BillToolBridge:
             DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
             # directory where bill images are temporarily stored
-            DEFAULT_BILL_IMAGE_DIRECTORY = '/temp/billimages'
+            DEFAULT_BILL_IMAGE_DIRECTORY = '/tmp/billimages'
 
             # log file info
             self.config.add_section('log')
@@ -172,22 +172,21 @@ class BillToolBridge:
 
         # create a MongoReeBillDAO
         billdb_config_section = self.config.items("billdb")
-        xmldb_config_section = self.config.items("xmldb")
-        reebill_dao_configs = dict(billdb_config_section + xmldb_config_section)
-        self.reebill_dao = mongo.ReebillDAO(reebill_dao_configs)
+        self.reebill_dao = mongo.ReebillDAO(dict(billdb_config_section))
 
         # create a RateStructureDAO
-        rsdb_config_section = dict(self.config.items("rsdb"))
-        self.ratestructure_dao = rs.RateStructureDAO(rsdb_config_section)
+        rsdb_config_section = self.config.items("rsdb")
+        self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
 
         # create a JournalDAO
-        journaldb_config_section = dict(self.config.items("journaldb"))
-        self.journal_dao = journal.JournalDAO(journaldb_config_section)
+        journaldb_config_section = self.config.items("journaldb")
+        self.journal_dao = journal.JournalDAO(dict(journaldb_config_section))
 
         # create one Process object to use for all related bill processing
         self.process = process.Process(self.config, self.state_db, self.reebill_dao, self.ratestructure_dao)
 
         # configure mailer
+        # TODO: pass in specific configs?
         bill_mailer.config = self.config
 
         # create on RateStructureDAO to user for all ratestructure queries
@@ -222,6 +221,7 @@ class BillToolBridge:
     def check_authentication(self):
         '''Decorator to check authentication for HTTP request functions: redirect
         to login page if the user is not authenticated.'''
+        return
         if 'username' not in cherrypy.session:
             print "access denied:", inspect.stack()[1][3]
             # TODO: 19664107
@@ -276,6 +276,7 @@ class BillToolBridge:
             self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
             session.commit()
+            self.journal_dao.journal(account, sequence, "ReeBill rolled")
             return json.dumps({'success': True})
 
         except Exception as e:
@@ -327,6 +328,8 @@ class BillToolBridge:
             )
 
             self.reebill_dao.save_reebill(reebill)
+
+            self.journal_dao.journal(account, sequence, "RE&E Bound")
 
             return json.dumps({'success': True})
 
@@ -510,12 +513,14 @@ class BillToolBridge:
             merge_fields["last_bill"] = bill_file_names[-1]
 
             bill_mailer.mail(recipients, merge_fields, os.path.join(self.config.get("billdb", "billpath"), account), bill_file_names);
+
+            self.journal_dao.journal(account, sequence, "Mailed to %s by %s" % (recipients, cherrypy.session['username'] ))
+
+            return json.dumps({'success': True})
+
         except Exception as e:
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-        # TODO STOPPED HERE - id #'s for messages?
-        self.journal.journal(account, sequence, "ReeBill Mailed")
-        return json.dumps({'success': True})
 
     def full_names_of_accounts(self, accounts):
         '''Given a list of account numbers (as strings), returns a list
@@ -780,7 +785,7 @@ class BillToolBridge:
     def ursrsi(self, xaction, account, sequence, service, **kwargs):
         self.check_authentication()
         try:
-            if not xaction or not sequence or not service:
+            if not xaction or not account or not sequence or not service:
                 raise ValueError("Bad Parameter Value")
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -1286,6 +1291,117 @@ class BillToolBridge:
 
     #
     ################
+
+    @cherrypy.expose
+    def journal(self, xaction, account, **kwargs):
+        self.check_authentication()
+        try:
+            if not xaction or not account:
+                raise ValueError("Bad Parameter Value")
+
+            journal_entries = self.journal_dao.load_entries(account)
+            print journal_entries
+
+            if xaction == "read":
+                return ju.dumps({'success': True, 'rows':journal_entries})
+
+            elif xaction == "update":
+
+                rows = json.loads(kwargs["rows"])
+
+                # single edit comes in not in a list
+                if type(rows) is dict: rows = [rows]
+
+                # process list of edits
+                for row in rows:
+
+                    # identify the RSI descriptor of the posted data
+                    rsi_uuid = row['uuid']
+
+                    # identify the rsi, and update it with posted data
+                    matches = [rsi_match for rsi_match in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
+                    # there should only be one match
+                    if (len(matches) == 0):
+                        raise Exception("Did not match an RSI UUID which should not be possible")
+                    if (len(matches) > 1):
+                        raise Exception("Matched more than one RSI UUID which should not be possible")
+                    rsi = matches[0]
+
+                    # eliminate attributes that have empty strings or None as these mustn't 
+                    # be added to the RSI so the RSI knows to compute for those values
+                    for k,v in row.items():
+                        if v is None or v == "":
+                            del row[k]
+
+                    # now that blank values are removed, ensure that required fields were sent from client 
+                    if 'uuid' not in row: raise Exception("RSI must have a uuid")
+                    if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
+
+                    # now take the legitimate values from the posted data and update the RSI
+                    # clear it so that the old emptied attributes are removed
+                    rsi.clear()
+                    rsi.update(row)
+
+                self.ratestructure_dao.save_urs(
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    None,
+                    None,
+                    rate_structure
+                )
+
+                return json.dumps({'success':True})
+
+            elif xaction == "create":
+
+                new_rate = {"uuid": str(UUID.uuid1())}
+                new_rate['rsi_binding'] = "Temporary RSI Binding"
+                rates.append(new_rate)
+
+                self.ratestructure_dao.save_urs(
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    None,
+                    None,
+                    rate_structure
+                )
+
+                return json.dumps({'success':True, 'rows':new_rate})
+
+            elif xaction == "destroy":
+
+                uuids = json.loads(kwargs["rows"])
+
+                # single edit comes in not in a list
+                # TODO: understand why this is a unicode coming up from browser
+                if type(uuids) is unicode: uuids = [uuids]
+
+                # process list of removals
+                for rsi_uuid in uuids:
+
+                    # identify the rsi
+                    matches = [result for result in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
+
+                    if (len(matches) == 0):
+                        raise Exception("Did not match an RSI UUID which should not be possible")
+                    if (len(matches) > 1):
+                        raise Exception("Matched more than one RSI UUID which should not be possible")
+                    rsi = matches[0]
+
+                    rates.remove(rsi)
+
+                self.ratestructure_dao.save_urs(
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    None,
+                    None,
+                    rate_structure
+                )
+
+                return json.dumps({'success':True})
+
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
  
     @cherrypy.expose
