@@ -292,6 +292,7 @@ function renderWidgets()
     //
 
 
+    // TODO: 16598217 can go away
     var accountsStore = new Ext.data.JsonStore({
         // store configs
         autoDestroy: true,
@@ -303,6 +304,8 @@ function renderWidgets()
         fields: ['account', 'name'],
     });
 
+
+    // TODO: 16598217 prepare to remove this combobox and replace with a text field
     var accountCombo = new Ext.form.ComboBox({
         store: accountsStore,
         fieldLabel: 'Account',
@@ -311,9 +314,8 @@ function renderWidgets()
         typeAhead: true,
         triggerAction: 'all',
         emptyText:'Select...',
-        // TODO: seems to have no effect. investigate.
-        //resizeable: true,
         selectOnFocus:true,
+        readOnly: true,
     });
 
     var sequencesStore = new Ext.data.JsonStore({
@@ -696,6 +698,7 @@ function renderWidgets()
     //
     // Generic form save handler
     // 
+    // TODO: 20496293 accept functions to callback on form post success
     function saveForm() 
     {
 
@@ -724,6 +727,7 @@ function renderWidgets()
                     }
                 },
                 success: function(form, action) {
+                    // TODO: 20496293 pass this in as a callback
                     utilbillGrid.getBottomToolbar().doRefresh();
                 }
             })
@@ -2740,7 +2744,7 @@ function renderWidgets()
             },
         ]
     });
-
+    /* TODO: 20493983 enable for admin user
     var journalToolbar = new Ext.Toolbar({
         items: [
             {
@@ -2795,26 +2799,6 @@ function renderWidgets()
             }
         ]
     });
-
-    var journalGrid = new Ext.grid.EditorGridPanel({
-        flex: 1,
-        tbar: journalToolbar,
-        colModel: journalColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
-        store: journalStore,
-        enableColumnMove: false,
-        frame: true,
-        collapsible: true,
-        animCollapse: false,
-        stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
-        title: 'journals',
-        clicksToEdit: 2
-    });
-
     journalGrid.getSelectionModel().on('selectionchange', function(sm){
         //journalGrid.getTopToolbar().findById('journalInsertBtn').setDisabled(sm.getCount() <1);
         journalGrid.getTopToolbar().findById('journalRemoveBtn').setDisabled(sm.getCount() <1);
@@ -2829,6 +2813,99 @@ function renderWidgets()
     journalStore.on('beforesave', function() {
         journalStore.setBaseParam("account", accountCombo.getValue());
     });
+    */
+
+    var journalGrid = new Ext.grid.EditorGridPanel({
+        flex: 1,
+        //tbar: journalToolbar,
+        colModel: journalColModel,
+        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+        store: journalStore,
+        enableColumnMove: false,
+        frame: true,
+        collapsible: true,
+        animCollapse: false,
+        stripeRows: true,
+        viewConfig: {
+            // doesn't seem to work
+            forceFit: true,
+        },
+        title: 'Journal Entries',
+        clicksToEdit: 2
+    });
+
+    //
+    // Set up the journal memo widget
+    //
+    // account field
+    var journalMemoField = new Ext.form.TextField({
+        fieldLabel: 'Journal',
+        name: 'journal',
+        width: 300,
+        allowBlank: false,
+    });
+    // buttons
+    var journalMemoResetButton = new Ext.Button({
+        text: 'Reset',
+        handler: function() {this.findParentByType(Ext.form.FormPanel).getForm().reset(); }
+    });
+    var journalMemoSubmitButton = new Ext.Button({
+        text: 'Submit',
+        handler: function () {
+
+            // if there is no account selected, do not submit
+
+            //http://www.sencha.com/forum/showthread.php?127087-Getting-the-right-scope-in-button-handler
+            var formPanel = this.findParentByType(Ext.form.FormPanel);
+
+            if (formPanel.getForm().isValid()) {
+
+                formPanel.getForm().submit({
+                    params:{
+                        // see baseParams
+                    }, 
+                    waitMsg:'Saving...',
+                    failure: function(form, action) {
+                        switch (action.failureType) {
+                            case Ext.form.Action.CLIENT_INVALID:
+                                Ext.Msg.alert('Failure', 'Form fields may not be submitted with invalid values');
+                                break;
+                            case Ext.form.Action.CONNECT_FAILURE:
+                                Ext.Msg.alert('Failure', 'Ajax communication failed');
+                                break;
+                            case Ext.form.Action.SERVER_INVALID:
+                                Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                            default:
+                                Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                        }
+                    },
+                    success: function(form, action) {
+                    }
+                })
+
+            } else {
+                Ext.MessageBox.alert('Errors', 'Please fix form errors noted.');
+            }
+        }
+    });
+    var journalFormPanel = new Ext.form.FormPanel({
+        url: 'http://'+location.host+'/reebill/save_journal_entry',
+        frame: true,
+        border: false,
+        width: 400,
+        layout: 'hbox',
+        defaults: {
+            layout: 'form'
+        },
+        items: [journalMemoField, journalMemoResetButton, journalMemoSubmitButton],
+
+        hideLabels: false,
+        labelAlign: 'left',   // or 'right' or 'top'
+        labelSeparator: '', // takes precedence over layoutConfig value
+        labelWidth: 65,       // defaults to 100
+        labelPad: 8           // defaults to 5, must specify labelWidth to be honored
+
+    });
 
 
     // end of tab widgets
@@ -2841,6 +2918,7 @@ function renderWidgets()
         defaultText: 'No RE Bill',
         id: 'statusbar',
         statusAlign: 'right', // the magic config
+        items: [journalFormPanel]
         //items: [{ text: 'A Button' }, '-', 'Plain Text', ' ', ' ']
     });
 
@@ -3093,7 +3171,7 @@ function renderWidgets()
         Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML(null, 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
 
         // this store eventually goes away
-        // because accounts are selected from the status tables
+        // because accounts are to be selected from the status tables
         accountsStore.reload();
         accountCombo.setValue(account);
         sequencesStore.setBaseParam('account', account);
