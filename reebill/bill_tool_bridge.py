@@ -591,7 +591,7 @@ class BillToolBridge:
 
 
     @cherrypy.expose
-    def retrieve_status_days_since(self, start, limit, **args):
+    def retrieve_account_status(self, start, limit, **args):
         self.check_authentication()
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
@@ -608,33 +608,6 @@ class BillToolBridge:
             rows = [dict([('account', status.account), ('fullname', full_names[i]), ('dayssince', status.dayssince)])
                     for i, status in enumerate(statuses)]
 
-            return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
-        except Exception as e:
-            try:
-                if session is not None: session.rollback()
-            except:
-                print "Could not rollback session"
-            # TODO 20217999: log errors?
-            print >> sys.stderr, e
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
-    @cherrypy.expose
-    def retrieve_status_unbilled(self, start, limit, **args):
-        self.check_authentication()
-        # call getrows to actually query the database; return the result in
-        # JSON format if it succeded or an error if it didn't
-        try:
-            session = None
-            if not start or not limit:
-                raise ValueError("Bad Parameter Value")
-            # result is a list of dictionaries of the form
-            # {account: account number, full_name: full name}
-            session = self.state_db.session()
-            statuses, totalCount = self.state_db.retrieve_status_unbilled(session, int(start), int(limit))
-            session.commit()
-            all_statuses_all_names = NexusUtil().all_ids_for_accounts("billing", statuses, key=lambda status:status.account)
-            full_names = self.full_names_of_accounts([s.account for s in statuses])
-            rows = [dict([('account', status.account),('fullname', full_names[i])]) for i, status in enumerate(statuses)]
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
             try:
@@ -1300,105 +1273,39 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value")
 
             journal_entries = self.journal_dao.load_entries(account)
-            print journal_entries
 
             if xaction == "read":
                 return ju.dumps({'success': True, 'rows':journal_entries})
 
             elif xaction == "update":
 
-                rows = json.loads(kwargs["rows"])
-
-                # single edit comes in not in a list
-                if type(rows) is dict: rows = [rows]
-
-                # process list of edits
-                for row in rows:
-
-                    # identify the RSI descriptor of the posted data
-                    rsi_uuid = row['uuid']
-
-                    # identify the rsi, and update it with posted data
-                    matches = [rsi_match for rsi_match in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
-                    # there should only be one match
-                    if (len(matches) == 0):
-                        raise Exception("Did not match an RSI UUID which should not be possible")
-                    if (len(matches) > 1):
-                        raise Exception("Matched more than one RSI UUID which should not be possible")
-                    rsi = matches[0]
-
-                    # eliminate attributes that have empty strings or None as these mustn't 
-                    # be added to the RSI so the RSI knows to compute for those values
-                    for k,v in row.items():
-                        if v is None or v == "":
-                            del row[k]
-
-                    # now that blank values are removed, ensure that required fields were sent from client 
-                    if 'uuid' not in row: raise Exception("RSI must have a uuid")
-                    if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
-
-                    # now take the legitimate values from the posted data and update the RSI
-                    # clear it so that the old emptied attributes are removed
-                    rsi.clear()
-                    rsi.update(row)
-
-                self.ratestructure_dao.save_urs(
-                    reebill.utility_name_for_service(service),
-                    reebill.rate_structure_name_for_service(service),
-                    None,
-                    None,
-                    rate_structure
-                )
-
-                return json.dumps({'success':True})
+                # TODO: 20493983 eventually allow admin user to override and edit
+                return json.dumps({'success':False, 'errors':{'reason':'Not supported'}})
 
             elif xaction == "create":
 
-                new_rate = {"uuid": str(UUID.uuid1())}
-                new_rate['rsi_binding'] = "Temporary RSI Binding"
-                rates.append(new_rate)
-
-                self.ratestructure_dao.save_urs(
-                    reebill.utility_name_for_service(service),
-                    reebill.rate_structure_name_for_service(service),
-                    None,
-                    None,
-                    rate_structure
-                )
-
-                return json.dumps({'success':True, 'rows':new_rate})
+                # TODO: 20493983 necessary for adding new journal entries directy to grid
+                return json.dumps({'success':False, 'errors':{'reason':'Not supported'}})
 
             elif xaction == "destroy":
 
-                uuids = json.loads(kwargs["rows"])
+                # TODO: 20493983 eventually allow admin user to override and edit
+                return json.dumps({'success':False, 'errors':{'reason':'Not supported'}})
 
-                # single edit comes in not in a list
-                # TODO: understand why this is a unicode coming up from browser
-                if type(uuids) is unicode: uuids = [uuids]
+        except Exception as e:
+                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-                # process list of removals
-                for rsi_uuid in uuids:
+    @cherrypy.expose
+    def save_journal_entry(self, account, sequence, entry, **kwargs):
+        self.check_authentication()
+        try:
+            # TODO: 1320091681504  allow a journal entry to be made without a sequence
+            if not account or not sequence or not entry:
+                raise ValueError("Bad Parameter Value")
 
-                    # identify the rsi
-                    matches = [result for result in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
+            self.journal_dao.journal(account, sequence, entry)
 
-                    if (len(matches) == 0):
-                        raise Exception("Did not match an RSI UUID which should not be possible")
-                    if (len(matches) > 1):
-                        raise Exception("Matched more than one RSI UUID which should not be possible")
-                    rsi = matches[0]
-
-                    rates.remove(rsi)
-
-                self.ratestructure_dao.save_urs(
-                    reebill.utility_name_for_service(service),
-                    reebill.rate_structure_name_for_service(service),
-                    None,
-                    None,
-                    rate_structure
-                )
-
-                return json.dumps({'success':True})
+            return json.dumps({'success':True})
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
