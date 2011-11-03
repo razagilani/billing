@@ -186,12 +186,17 @@ function renderWidgets()
 
                     // a row was slected in the UI
                     // update the current account and sequence
+
+
+                    // Can we loadReeBillUIForAccount and then load for sequence if there is  a sequence?
                     if (record.data.sequence != null) {
                         loadReeBillUIForSequence(record.data.account, record.data.sequence);
                     } else {
-                        loadReeBillUIForAccount(record.data.account);
+                        // already called by accountGrid
+                        //loadReeBillUIForAccount(record.data.account);
                     }
 
+                    /*
                     // reset the account and sequence combos.  This is a hack, and there needs to be a unified
                     // way to select a given utilbill, reebill or both
                     // but when the utilbill list is selected, there may be no rebill associated.
@@ -201,6 +206,7 @@ function renderWidgets()
                     sequencesStore.load();
                     // if sequence is null, set null selection
                     sequenceCombo.setValue(record.data.sequence);
+                    */
 
                     // convert the parsed date into a string in the format expected by the back end
                     var formatted_begin_date_string = record.data.period_start.format('Y-m-d');
@@ -292,6 +298,7 @@ function renderWidgets()
     //
 
 
+    // TODO: 16598217 can go away
     var accountsStore = new Ext.data.JsonStore({
         // store configs
         autoDestroy: true,
@@ -303,6 +310,8 @@ function renderWidgets()
         fields: ['account', 'name'],
     });
 
+
+    // TODO: 16598217 prepare to remove this combobox and replace with a text field
     var accountCombo = new Ext.form.ComboBox({
         store: accountsStore,
         fieldLabel: 'Account',
@@ -311,9 +320,8 @@ function renderWidgets()
         typeAhead: true,
         triggerAction: 'all',
         emptyText:'Select...',
-        // TODO: seems to have no effect. investigate.
-        //resizeable: true,
         selectOnFocus:true,
+        readOnly: true,
     });
 
     var sequencesStore = new Ext.data.JsonStore({
@@ -696,6 +704,7 @@ function renderWidgets()
     //
     // Generic form save handler
     // 
+    // TODO: 20496293 accept functions to callback on form post success
     function saveForm() 
     {
 
@@ -724,6 +733,7 @@ function renderWidgets()
                     }
                 },
                 success: function(form, action) {
+                    // TODO: 20496293 pass this in as a callback
                     utilbillGrid.getBottomToolbar().doRefresh();
                 }
             })
@@ -1289,1545 +1299,1510 @@ function renderWidgets()
 
     aChargesGrid.getSelectionModel().on('selectionchange', function(sm){
         // if a selection is made, allow it to be removed
-        // if the selection was deselected to nothing, allow no 
-        // records to be removed.
+            // if the selection was deselected to nothing, allow no 
+            // records to be removed.
 
-        aChargesGrid.getTopToolbar().findById('aChargesRemoveBtn').setDisabled(sm.getCount() <1);
+            aChargesGrid.getTopToolbar().findById('aChargesRemoveBtn').setDisabled(sm.getCount() <1);
 
-        // if there was a selection, allow an insertion
-        aChargesGrid.getTopToolbar().findById('aChargesInsertBtn').setDisabled(sm.getCount() <1);
-    });
-  
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    aChargesStore.on('update', function(){
-        aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
-    });
-    
+            // if there was a selection, allow an insertion
+            aChargesGrid.getTopToolbar().findById('aChargesInsertBtn').setDisabled(sm.getCount() <1);
+        });
+      
+        // grid's data store callback for when data is edited
+        // when the store backing the grid is edited, enable the save button
+        aChargesStore.on('update', function(){
+            aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
+        });
+        
 
 
-    ///////////////////////////////////////
-    // support for the hypothetical charges
+        ///////////////////////////////////////
+        // support for the hypothetical charges
 
-    // initial data loaded into the grid before a bill is loaded
-    // populate with data if initial pre-loaded data is desired
-    var initialHypotheticalCharges = {
-        rows: [
-        ]
-    };
+        // initial data loaded into the grid before a bill is loaded
+        // populate with data if initial pre-loaded data is desired
+        var initialHypotheticalCharges = {
+            rows: [
+            ]
+        };
 
-    var hChargesReader = new Ext.data.JsonReader({
-        // metadata configuration options:
-        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        //idProperty: 'id',
-        root: 'rows',
+        var hChargesReader = new Ext.data.JsonReader({
+            // metadata configuration options:
+            // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
+            //idProperty: 'id',
+            root: 'rows',
 
-        // the fields config option will internally create an Ext.data.Record
-        // constructor that provides mapping for reading the record data objects
-        fields: [
-            // map Record's field to json object's key of same name
-            {name: 'chargegroup', mapping: 'chargegroup'},
-            {name: 'rsi_binding', mapping: 'rsi_binding'},
-            {name: 'description', mapping: 'description'},
-            {name: 'quantity', mapping: 'quantity'},
-            {name: 'quantity_units', mapping: 'quantity_units'},
-            {name: 'rate', mapping: 'rate'},
-            {name: 'rate_units', mapping: 'rate_units'},
-            {name: 'total', mapping: 'total', type: 'float'},
-            {name: 'processingnote', mapping:'processingnote'},
-        ]
-    });
-    var hChargesWriter = new Ext.data.JsonWriter({
-        encode: true,
-        // write all fields, not just those that changed
-        writeAllFields: true 
-    });
-
-    // This proxy is only used for reading charge item records, not writing.
-    // This is due to the necessity to batch upload all records. See Grid Editor save handler.
-    // We leave the proxy here for loading data as well as if and when records have entity 
-    // id's and row level CRUD can occur.
-    var hChargesStoreProxy = new Ext.data.HttpProxy({
-        method: 'GET',
-        prettyUrls: false,
-        // see options parameter for Ext.Ajax.request
-        url: 'http://'+location.host+'/reebill/hypotheticalCharges',
-        /*api: {
-            // all actions except the following will use above url
-            create  : '',
-            update  : ''
-        }*/
-    });
-
-    var hChargesStore = new Ext.data.GroupingStore({
-        proxy: hChargesStoreProxy,
-        autoSave: false,
-        reader: hChargesReader,
-        writer: hChargesWriter,
-        data: initialHypotheticalCharges,
-        sortInfo:{field: 'chargegroup', direction: 'ASC'},
-        groupField:'chargegroup'
-    });
-
-    var hChargesSummary = new Ext.ux.grid.GroupSummary();
-
-    var hChargesColModel = new Ext.grid.ColumnModel(
-    {
-        columns: [
-            {
-                id:'chargegroup',
-                header: 'Charge Group',
-                width: 160,
-                sortable: true,
-                dataIndex: 'chargegroup',
-                hidden: true 
-            },{
-                header: 'RSI Binding',
-                width: 75,
-                sortable: true,
-                dataIndex: 'rsi_binding',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Description',
-                width: 75,
-                sortable: true,
-                dataIndex: 'description',
-                editor: new Ext.form.TextField({allowBlank: false})
-            },{
-                header: 'Quantity',
-                width: 75,
-                sortable: true,
-                dataIndex: 'quantity',
-                editor: new Ext.form.NumberField({decimalPrecision: 5, allowBlank: true})
-            },{
-                header: 'Units',
-                width: 75,
-                sortable: true,
-                dataIndex: 'quantity_units',
-                editor: new Ext.form.ComboBox({
-                    typeAhead: true,
-                    triggerAction: 'all',
-                    // transform the data already specified in html
-                    //transform: 'light',
-                    lazyRender: true,
-                    listClass: 'x-combo-list-small',
-                    mode: 'local',
-                    store: new Ext.data.ArrayStore({
-                        fields: [
-                            'displayText'
-                        ],
-                        // TODO: externalize these units
-                        data: [['dollars'], ['kWh'], ['ccf'], ['Therms'], ['kWD'], ['KQH'], ['rkVA']]
-                    }),
-                    valueField: 'displayText',
-                    displayField: 'displayText'
-                })
-                
-            },{
-                header: 'Rate',
-                width: 75,
-                sortable: true,
-                dataIndex: 'rate',
-                editor: new Ext.form.NumberField({decimalPrecision: 10, allowBlank: true})
-            },{
-                header: 'Units',
-                width: 75,
-                sortable: true,
-                dataIndex: 'rate_units',
-                editor: new Ext.form.ComboBox({
-                    typeAhead: true,
-                    triggerAction: 'all',
-                    // transform the data already specified in html
-                    //transform: 'light',
-                    lazyRender: true,
-                    listClass: 'x-combo-list-small',
-                    mode: 'local',
-                    store: new Ext.data.ArrayStore({
-                        fields: [
-                            'displayText'
-                        ],
-                        // TODO: externalize these units
-                        data: [['dollars'], ['cents']]
-                    }),
-                    valueField: 'displayText',
-                    displayField: 'displayText'
-                })
-            },{
-                header: 'Total', 
-                width: 75, 
-                sortable: true, 
-                dataIndex: 'total', 
-                summaryType: 'sum',
-                align: 'right',
-                editor: new Ext.form.NumberField({allowBlank: false}),
-                renderer: function(v, params, record)
-                {
-                    return Ext.util.Format.usMoney(record.data.total);
-                }
-            },
-        ]
-    });
-
-    var hChargesToolbar = new Ext.Toolbar({
-        items: [
-            {
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as hChargesGrid.insertBtn...
-                id: 'hChargesInsertBtn',
-                iconCls: 'icon-user-add',
-                text: 'Insert',
-                disabled: true,
-                handler: function()
-                {
-                    hChargesGrid.stopEditing();
-
-                    // grab the current selection - only one row may be selected per singlselect configuration
-                    var selection = hChargesGrid.getSelectionModel().getSelected();
-
-                    // make the new record
-                    var ChargeItemType = hChargesGrid.getStore().recordType;
-                    var defaultData = 
-                    {
-                        // ok, this is tricky:  the newly created record is assigned the chargegroup
-                        // of the selection during the insert.  This way, the new record is added
-                        // to the proper group.  Otherwise, if the record does not have the same
-                        // chargegroup name of the adjacent record, a new group is shown in the grid
-                        // and the UI goes out of sync.  Try this by change the chargegroup below
-                        // to some other string.
-                        chargegroup: selection.data.chargegroup,
-                        description: 'enter description',
-                        quantity: 0,
-                        quantity_units: 'kWh',
-                        rate: 0,
-                        rate_units: 'dollars',
-                        total: 0,
-                        //autototal: 0
-                    };
-                    var c = new ChargeItemType(defaultData);
-
-                    // select newly inserted record
-                    var insertionPoint = hChargesStore.indexOf(selection);
-                    hChargesStore.insert(insertionPoint + 1, c);
-                    hChargesGrid.getView().refresh();
-                    hChargesGrid.getSelectionModel().selectRow(insertionPoint);
-                    hChargesGrid.startEditing(insertionPoint +1,1);
-                    
-                    // An inserted record must be saved 
-                    hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
-                }
-            },{
-                xtype: 'tbseparator'
-            },{
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as hChargesGrid.removeBtn...
-                id: 'hChargesRemoveBtn',
-                iconCls: 'icon-user-delete',
-                text: 'Remove',
-                disabled: true,
-                handler: function()
-                {
-                    hChargesGrid.stopEditing();
-                    var s = hChargesGrid.getSelectionModel().getSelections();
-                    for(var i = 0, r; r = s[i]; i++)
-                    {
-                        hChargesStore.remove(r);
-                    }
-                    hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
-                }
-            },{
-                xtype: 'tbseparator'
-            },{
-                xtype: 'button',
-                // places reference to this button in grid.  
-                id: 'hChargesSaveBtn',
-                text: 'Save',
-                disabled: true,
-                handler: function()
-                {
-                    // disable the save button for the save attempt.
-                    // is there a closer place for this to the actual button click due to the possibility of a double
-                    // clicked button submitting two ajax requests?
-                    hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(true);
-
-                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    hChargesGrid.stopEditing();
-
-                    // OK, a little nastiness follows: We cannot rely on the underlying Store to
-                    // send records back to the server because it does so intelligently: Only
-                    // dirty records go back.  Unfortunately, since there is no entity id for
-                    // a record (yet), all records must be returned so that ultimately an
-                    // XML grove can be produced with proper document order.
-                    //hChargesStore.save(); is what we want to do
-
-                    var jsonData = Ext.encode(Ext.pluck(hChargesStore.data.items, 'data'));
-
-                    // TODO: refactor out into globals
-                    account = accountCombo.getValue();
-                    sequence = sequenceCombo.getValue();
-
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/reebill/saveHypotheticalCharges',
-                        params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence, rows: jsonData},
-                        success: function() { 
-                            // TODO: check success status in json package
-
-                            // reload the store to clear dirty flags
-                            hChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}})
-                        },
-                        failure: function() { alert("ajax fail"); },
-                    });
-                }
-            }]
+            // the fields config option will internally create an Ext.data.Record
+            // constructor that provides mapping for reading the record data objects
+            fields: [
+                // map Record's field to json object's key of same name
+                {name: 'chargegroup', mapping: 'chargegroup'},
+                {name: 'rsi_binding', mapping: 'rsi_binding'},
+                {name: 'description', mapping: 'description'},
+                {name: 'quantity', mapping: 'quantity'},
+                {name: 'quantity_units', mapping: 'quantity_units'},
+                {name: 'rate', mapping: 'rate'},
+                {name: 'rate_units', mapping: 'rate_units'},
+                {name: 'total', mapping: 'total', type: 'float'},
+                {name: 'processingnote', mapping:'processingnote'},
+            ]
+        });
+        var hChargesWriter = new Ext.data.JsonWriter({
+            encode: true,
+            // write all fields, not just those that changed
+            writeAllFields: true 
         });
 
-    var hChargesGrid = new Ext.grid.EditorGridPanel({
-        tbar: hChargesToolbar,
-        colModel: hChargesColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
-        store: hChargesStore,
-        enableColumnMove: false,
-        view: new Ext.grid.GroupingView({
-            forceFit:true,
-            groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
-        }),
-        plugins: hChargesSummary,
-        frame: true,
-        collapsible: true,
-        animCollapse: false,
-        stripeRows: true,
-        autoExpandColumn: 'chargegroup',
-        height: 900,
-        width: 1000,
-        title: 'Hypothetical Charges',
-        clicksToEdit: 2
-        // config options for stateful behavior
-        //stateful: true,
-        //stateId: 'grid' 
-    });
+        // This proxy is only used for reading charge item records, not writing.
+        // This is due to the necessity to batch upload all records. See Grid Editor save handler.
+        // We leave the proxy here for loading data as well as if and when records have entity 
+        // id's and row level CRUD can occur.
+        var hChargesStoreProxy = new Ext.data.HttpProxy({
+            method: 'GET',
+            prettyUrls: false,
+            // see options parameter for Ext.Ajax.request
+            url: 'http://'+location.host+'/reebill/hypotheticalCharges',
+            /*api: {
+                // all actions except the following will use above url
+                create  : '',
+                update  : ''
+            }*/
+        });
 
-    hChargesGrid.getSelectionModel().on('selectionchange', function(sm){
-        // if a selection is made, allow it to be removed
-        // if the selection was deselected to nothing, allow no 
-        // records to be removed.
-        hChargesGrid.getTopToolbar().findById('hChargesRemoveBtn').setDisabled(sm.getCount() < 1);
+        var hChargesStore = new Ext.data.GroupingStore({
+            proxy: hChargesStoreProxy,
+            autoSave: false,
+            reader: hChargesReader,
+            writer: hChargesWriter,
+            data: initialHypotheticalCharges,
+            sortInfo:{field: 'chargegroup', direction: 'ASC'},
+            groupField:'chargegroup'
+        });
 
-        // if there was a selection, allow an insertion
-        hChargesGrid.getTopToolbar().findById('hChargesInsertBtn').setDisabled(sm.getCount()<1);
+        var hChargesSummary = new Ext.ux.grid.GroupSummary();
 
-    });
-  
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    hChargesStore.on('update', function(){
-        hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
-    });
-
-
-
-    ///////////////////////////////////////
-    // Rate Structure Tab
-
-
-    // the CPRS
-
-    var initialCPRSRSI = {
-        rows: [
-        ]
-    };
-
-    var CPRSRSIReader = new Ext.data.JsonReader({
-        // metadata configuration options:
-        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        //idProperty: 'id',
-        root: 'rows',
-
-        // the fields config option will internally create an Ext.data.Record
-        // constructor that provides mapping for reading the record data objects
-        fields: [
-            // map Record's field to json object's key of same name
-            {name: 'uuid', mapping: 'uuid'},
-            {name: 'rsi_binding', mapping: 'rsi_binding'},
-            {name: 'description', mapping: 'description'},
-            {name: 'quantity', mapping: 'quantity'},
-            {name: 'quantityunits', mapping: 'quantityunits'},
-            {name: 'rate', mapping: 'rate'},
-            {name: 'rateunits', mapping: 'rateunits'},
-            {name: 'roundrule', mapping:'roundrule'},
-            {name: 'total', mapping: 'total'},
-        ]
-    });
-
-    var CPRSRSIWriter = new Ext.data.JsonWriter({
-        encode: true,
-        // write all fields, not just those that changed
-        writeAllFields: true 
-    });
-
-    var CPRSRSIStoreProxy = new Ext.data.HttpProxy({
-        method: 'GET',
-        prettyUrls: false,
-        url: 'http://'+location.host+'/reebill/cprsrsi',
-    });
-
-    var CPRSRSIStore = new Ext.data.JsonStore({
-        proxy: CPRSRSIStoreProxy,
-        autoSave: false,
-        reader: CPRSRSIReader,
-        writer: CPRSRSIWriter,
-        // or, autosave must be used to save each action
-        autoSave: true,
-        // won't be updated when combos change, so do this in event
-        // perhaps also can be put in the options param for the ajax request
-        baseParams: { account:accountCombo.getValue(), sequence: sequenceCombo.getValue()},
-        data: initialCPRSRSI,
-        root: 'rows',
-        idProperty: 'uuid',
-        fields: [
-            {name: 'uuid'},
-            {name: 'rsi_binding'},
-            {name: 'description'},
-            {name: 'quantity'},
-            {name: 'quantityunits'},
-            {name: 'rate'},
-            {name: 'rateunits'},
-            {name: 'roundrule'},
-            {name: 'total'},
-        ],
-    });
-
-    var CPRSRSIColModel = new Ext.grid.ColumnModel(
-    {
-        columns: [
-            /*{
-                header: 'UUID',
-                sortable: true,
-                dataIndex: 'uuid',
-                editable: false,
-                editor: new Ext.form.TextField({allowBlank: false})
-            },*/{
-                header: 'RSI Binding',
-                sortable: true,
-                dataIndex: 'rsi_binding',
-                editable: true,
-                editor: new Ext.form.TextField({allowBlank: false})
-            },{
-                header: 'Description',
-                sortable: true,
-                dataIndex: 'description',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Quantity',
-                sortable: true,
-                dataIndex: 'quantity',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Units',
-                sortable: true,
-                dataIndex: 'quantityunits',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Rate',
-                sortable: true,
-                dataIndex: 'rate',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Units',
-                sortable: true,
-                dataIndex: 'rateunits',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Round Rule',
-                sortable: true,
-                dataIndex: 'roundrule',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Total', 
-                sortable: true, 
-                dataIndex: 'total', 
-                summaryType: 'sum',
-                align: 'right',
-                editor: new Ext.form.TextField({allowBlank: true})
-            }
-        ]
-    });
-
-    var CPRSRSIToolbar = new Ext.Toolbar({
-        items: [
-            {
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
-                id: 'CPRSRSIInsertBtn',
-                iconCls: 'icon-user-add',
-                text: 'Insert',
-                disabled: false,
-                handler: function()
+        var hChargesColModel = new Ext.grid.ColumnModel(
+        {
+            columns: [
                 {
-                    CPRSRSIGrid.stopEditing();
-
-                    // grab the current selection - only one row may be selected per singlselect configuration
-                    var selection = CPRSRSIGrid.getSelectionModel().getSelected();
-
-                    // make the new record
-                    var CPRSRSIType = CPRSRSIGrid.getStore().recordType;
-                    var defaultData = 
-                    {
-                    };
-                    var r = new CPRSRSIType(defaultData);
-        
-                    // select newly inserted record
-                    var insertionPoint = CPRSRSIStore.indexOf(selection);
-                    CPRSRSIStore.insert(insertionPoint + 1, r);
-                    CPRSRSIGrid.startEditing(insertionPoint +1,1);
+                    id:'chargegroup',
+                    header: 'Charge Group',
+                    width: 160,
+                    sortable: true,
+                    dataIndex: 'chargegroup',
+                    hidden: true 
+                },{
+                    header: 'RSI Binding',
+                    width: 75,
+                    sortable: true,
+                    dataIndex: 'rsi_binding',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Description',
+                    width: 75,
+                    sortable: true,
+                    dataIndex: 'description',
+                    editor: new Ext.form.TextField({allowBlank: false})
+                },{
+                    header: 'Quantity',
+                    width: 75,
+                    sortable: true,
+                    dataIndex: 'quantity',
+                    editor: new Ext.form.NumberField({decimalPrecision: 5, allowBlank: true})
+                },{
+                    header: 'Units',
+                    width: 75,
+                    sortable: true,
+                    dataIndex: 'quantity_units',
+                    editor: new Ext.form.ComboBox({
+                        typeAhead: true,
+                        triggerAction: 'all',
+                        // transform the data already specified in html
+                        //transform: 'light',
+                        lazyRender: true,
+                        listClass: 'x-combo-list-small',
+                        mode: 'local',
+                        store: new Ext.data.ArrayStore({
+                            fields: [
+                                'displayText'
+                            ],
+                            // TODO: externalize these units
+                            data: [['dollars'], ['kWh'], ['ccf'], ['Therms'], ['kWD'], ['KQH'], ['rkVA']]
+                        }),
+                        valueField: 'displayText',
+                        displayField: 'displayText'
+                    })
                     
-                    // An inserted record must be saved 
-                    CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
-                }
-            },{
-                xtype: 'tbseparator'
-            },{
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                id: 'CPRSRSIRemoveBtn',
-                iconCls: 'icon-user-delete',
-                text: 'Remove',
-                disabled: true,
-                handler: function()
-                {
-                    CPRSRSIGrid.stopEditing();
-                    CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    CPRSRSIStore.setBaseParam("account", accountCombo.getValue());
-                    CPRSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
-
-                    // TODO single row selection only, test allowing multirow selection
-                    var s = CPRSRSIGrid.getSelectionModel().getSelections();
-                    for(var i = 0, r; r = s[i]; i++)
+                },{
+                    header: 'Rate',
+                    width: 75,
+                    sortable: true,
+                    dataIndex: 'rate',
+                    editor: new Ext.form.NumberField({decimalPrecision: 10, allowBlank: true})
+                },{
+                    header: 'Units',
+                    width: 75,
+                    sortable: true,
+                    dataIndex: 'rate_units',
+                    editor: new Ext.form.ComboBox({
+                        typeAhead: true,
+                        triggerAction: 'all',
+                        // transform the data already specified in html
+                        //transform: 'light',
+                        lazyRender: true,
+                        listClass: 'x-combo-list-small',
+                        mode: 'local',
+                        store: new Ext.data.ArrayStore({
+                            fields: [
+                                'displayText'
+                            ],
+                            // TODO: externalize these units
+                            data: [['dollars'], ['cents']]
+                        }),
+                        valueField: 'displayText',
+                        displayField: 'displayText'
+                    })
+                },{
+                    header: 'Total', 
+                    width: 75, 
+                    sortable: true, 
+                    dataIndex: 'total', 
+                    summaryType: 'sum',
+                    align: 'right',
+                    editor: new Ext.form.NumberField({allowBlank: false}),
+                    renderer: function(v, params, record)
                     {
-                        CPRSRSIStore.remove(r);
+                        return Ext.util.Format.usMoney(record.data.total);
                     }
-                    CPRSRSIStore.save(); 
-                    CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
-                }
-            },{
-                xtype:'tbseparator'
-            },{
-                xtype: 'button',
-                // places reference to this button in grid.  
-                id: 'CPRSRSISaveBtn',
-                text: 'Save',
-                disabled: true,
-                handler: function()
+                },
+            ]
+        });
+
+        var hChargesToolbar = new Ext.Toolbar({
+            items: [
                 {
-                    // disable the save button for the save attempt.
-                    // is there a closer place for this to the actual button click due to the possibility of a double
-                    // clicked button submitting two ajax requests?
-                    CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
-
-                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    CPRSRSIGrid.stopEditing();
-
-                    CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    CPRSRSIStore.setBaseParam("account", accountCombo.getValue());
-                    CPRSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
-
-                    CPRSRSIStore.save(); 
-                }
-            }
-        ]
-    });
-
-    var CPRSRSIGrid = new Ext.grid.EditorGridPanel({
-        tbar: CPRSRSIToolbar,
-        colModel: CPRSRSIColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
-        store: CPRSRSIStore,
-        enableColumnMove: true,
-        frame: true,
-        collapsible: false,
-        animCollapse: false,
-        stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
-        title: 'Customer Bill Period Rate Structure',
-        clicksToEdit: 2
-    });
-
-    CPRSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
-        // if a selection is made, allow it to be removed
-        // if the selection was deselected to nothing, allow no 
-        // records to be removed.
-
-        CPRSRSIGrid.getTopToolbar().findById('CPRSRSIRemoveBtn').setDisabled(sm.getCount() <1);
-
-        // if there was a selection, allow an insertion
-        //CPRSRSIGrid.getTopToolbar().findById('CPRSRSIInsertBtn').setDisabled(sm.getCount() <1);
-    });
-  
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    CPRSRSIStore.on('update', function(){
-        CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
-    });
-
-    CPRSRSIStore.on('beforesave', function() {
-        CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        CPRSRSIStore.setBaseParam("account", accountCombo.getValue());
-        CPRSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
-    });
-
-
-    // the URS
-    var initialURSRSI = {
-        rows: [
-        ]
-    };
-
-    var URSRSIReader = new Ext.data.JsonReader({
-        // metadata configuration options:
-        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        //idProperty: 'id',
-        root: 'rows',
-
-        // the fields config option will internally create an Ext.data.Record
-        // constructor that provides mapping for reading the record data objects
-        fields: [
-            // map Record's field to json object's key of same name
-            {name: 'uuid', mapping: 'uuid'},
-            {name: 'rsi_binding', mapping: 'rsi_binding'},
-            {name: 'description', mapping: 'description'},
-            {name: 'quantity', mapping: 'quantity'},
-            {name: 'quantityunits', mapping: 'quantityunits'},
-            {name: 'rate', mapping: 'rate'},
-            {name: 'rateunits', mapping: 'rateunits'},
-            {name: 'roundrule', mapping:'roundrule'},
-            {name: 'total', mapping: 'total'},
-        ]
-    });
-
-    var URSRSIWriter = new Ext.data.JsonWriter({
-        encode: true,
-        // write all fields, not just those that changed
-        writeAllFields: true 
-    });
-
-    var URSRSIStoreProxy = new Ext.data.HttpProxy({
-        method: 'GET',
-        prettyUrls: false,
-        url: 'http://'+location.host+'/reebill/ursrsi',
-    });
-
-    var URSRSIStore = new Ext.data.JsonStore({
-        proxy: URSRSIStoreProxy,
-        autoSave: false,
-        reader: URSRSIReader,
-        writer: URSRSIWriter,
-        // or, autosave must be used to save each action
-        autoSave: true,
-        // won't be updated when combos change, so do this in event
-        // perhaps also can be put in the options param for the ajax request
-        baseParams: { account:accountCombo.getValue(), sequence: sequenceCombo.getValue()},
-        data: initialURSRSI,
-        root: 'rows',
-        idProperty: 'uuid',
-        fields: [
-            {name: 'uuid'},
-            {name: 'rsi_binding'},
-            {name: 'description'},
-            {name: 'quantity'},
-            {name: 'quantityunits'},
-            {name: 'rate'},
-            {name: 'rateunits'},
-            {name: 'roundrule'},
-            {name: 'total'},
-        ],
-    });
-
-    var URSRSIColModel = new Ext.grid.ColumnModel(
-    {
-        columns: [
-            /*{
-                header: 'UUID',
-                sortable: true,
-                dataIndex: 'uuid',
-                editable: false,
-                editor: new Ext.form.TextField({allowBlank: false})
-            },*/{
-                header: 'RSI Binding',
-                sortable: true,
-                dataIndex: 'rsi_binding',
-                editable: true,
-                editor: new Ext.form.TextField({allowBlank: false})
-            },{
-                header: 'Description',
-                sortable: true,
-                dataIndex: 'description',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Quantity',
-                sortable: true,
-                dataIndex: 'quantity',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Units',
-                sortable: true,
-                dataIndex: 'quantityunits',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Rate',
-                sortable: true,
-                dataIndex: 'rate',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Units',
-                sortable: true,
-                dataIndex: 'rateunits',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Round Rule',
-                sortable: true,
-                dataIndex: 'roundrule',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Total', 
-                sortable: true, 
-                dataIndex: 'total', 
-                summaryType: 'sum',
-                align: 'right',
-                editor: new Ext.form.TextField({allowBlank: true})
-            }
-        ]
-    });
-
-    var URSRSIToolbar = new Ext.Toolbar({
-        items: [
-            {
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
-                id: 'URSRSIInsertBtn',
-                iconCls: 'icon-user-add',
-                text: 'Insert',
-                disabled: false,
-                handler: function()
-                {
-                    URSRSIGrid.stopEditing();
-
-                    // grab the current selection - only one row may be selected per singlselect configuration
-                    var selection = URSRSIGrid.getSelectionModel().getSelected();
-
-                    // make the new record
-                    var URSRSIType = URSRSIGrid.getStore().recordType;
-                    var defaultData = 
+                    xtype: 'button',
+                    // ref places a name for this component into the grid so it may be referenced as hChargesGrid.insertBtn...
+                    id: 'hChargesInsertBtn',
+                    iconCls: 'icon-user-add',
+                    text: 'Insert',
+                    disabled: true,
+                    handler: function()
                     {
-                    };
-                    var r = new URSRSIType(defaultData);
-        
-                    // select newly inserted record
-                    var insertionPoint = URSRSIStore.indexOf(selection);
-                    URSRSIStore.insert(insertionPoint + 1, r);
-                    URSRSIGrid.startEditing(insertionPoint +1,1);
-                    
-                    // An inserted record must be saved 
-                    URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
-                }
-            },{
-                xtype: 'tbseparator'
-            },{
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                id: 'URSRSIRemoveBtn',
-                iconCls: 'icon-user-delete',
-                text: 'Remove',
-                disabled: true,
-                handler: function()
-                {
-                    URSRSIGrid.stopEditing();
-                    URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    URSRSIStore.setBaseParam("account", accountCombo.getValue());
-                    URSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
+                        hChargesGrid.stopEditing();
 
-                    // TODO single row selection only, test allowing multirow selection
-                    var s = URSRSIGrid.getSelectionModel().getSelections();
-                    for(var i = 0, r; r = s[i]; i++)
-                    {
-                        URSRSIStore.remove(r);
+                        // grab the current selection - only one row may be selected per singlselect configuration
+                        var selection = hChargesGrid.getSelectionModel().getSelected();
+
+                        // make the new record
+                        var ChargeItemType = hChargesGrid.getStore().recordType;
+                        var defaultData = 
+                        {
+                            // ok, this is tricky:  the newly created record is assigned the chargegroup
+                            // of the selection during the insert.  This way, the new record is added
+                            // to the proper group.  Otherwise, if the record does not have the same
+                            // chargegroup name of the adjacent record, a new group is shown in the grid
+                            // and the UI goes out of sync.  Try this by change the chargegroup below
+                            // to some other string.
+                            chargegroup: selection.data.chargegroup,
+                            description: 'enter description',
+                            quantity: 0,
+                            quantity_units: 'kWh',
+                            rate: 0,
+                            rate_units: 'dollars',
+                            total: 0,
+                            //autototal: 0
+                        };
+                        var c = new ChargeItemType(defaultData);
+
+                        // select newly inserted record
+                        var insertionPoint = hChargesStore.indexOf(selection);
+                        hChargesStore.insert(insertionPoint + 1, c);
+                        hChargesGrid.getView().refresh();
+                        hChargesGrid.getSelectionModel().selectRow(insertionPoint);
+                        hChargesGrid.startEditing(insertionPoint +1,1);
+                        
+                        // An inserted record must be saved 
+                        hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
                     }
-                    URSRSIStore.save(); 
-                    URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(true);
+                },{
+                    xtype: 'tbseparator'
+                },{
+                    xtype: 'button',
+                    // ref places a name for this component into the grid so it may be referenced as hChargesGrid.removeBtn...
+                    id: 'hChargesRemoveBtn',
+                    iconCls: 'icon-user-delete',
+                    text: 'Remove',
+                    disabled: true,
+                    handler: function()
+                    {
+                        hChargesGrid.stopEditing();
+                        var s = hChargesGrid.getSelectionModel().getSelections();
+                        for(var i = 0, r; r = s[i]; i++)
+                        {
+                            hChargesStore.remove(r);
+                        }
+                        hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
+                    }
+                },{
+                    xtype: 'tbseparator'
+                },{
+                    xtype: 'button',
+                    // places reference to this button in grid.  
+                    id: 'hChargesSaveBtn',
+                    text: 'Save',
+                    disabled: true,
+                    handler: function()
+                    {
+                        // disable the save button for the save attempt.
+                        // is there a closer place for this to the actual button click due to the possibility of a double
+                        // clicked button submitting two ajax requests?
+                        hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(true);
+
+                        // stop grid editing so that widgets like comboboxes in rows don't stay focused
+                        hChargesGrid.stopEditing();
+
+                        // OK, a little nastiness follows: We cannot rely on the underlying Store to
+                        // send records back to the server because it does so intelligently: Only
+                        // dirty records go back.  Unfortunately, since there is no entity id for
+                        // a record (yet), all records must be returned so that ultimately an
+                        // XML grove can be produced with proper document order.
+                        //hChargesStore.save(); is what we want to do
+
+                        var jsonData = Ext.encode(Ext.pluck(hChargesStore.data.items, 'data'));
+
+                        // TODO: refactor out into globals
+                        account = accountCombo.getValue();
+                        sequence = sequenceCombo.getValue();
+
+                        Ext.Ajax.request({
+                            url: 'http://'+location.host+'/reebill/saveHypotheticalCharges',
+                            params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence, rows: jsonData},
+                            success: function() { 
+                                // TODO: check success status in json package
+
+                                // reload the store to clear dirty flags
+                                hChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}})
+                            },
+                            failure: function() { alert("ajax fail"); },
+                        });
+                    }
+                }]
+            });
+
+        var hChargesGrid = new Ext.grid.EditorGridPanel({
+            tbar: hChargesToolbar,
+            colModel: hChargesColModel,
+            selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+            store: hChargesStore,
+            enableColumnMove: false,
+            view: new Ext.grid.GroupingView({
+                forceFit:true,
+                groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
+            }),
+            plugins: hChargesSummary,
+            frame: true,
+            collapsible: true,
+            animCollapse: false,
+            stripeRows: true,
+            autoExpandColumn: 'chargegroup',
+            height: 900,
+            width: 1000,
+            title: 'Hypothetical Charges',
+            clicksToEdit: 2
+            // config options for stateful behavior
+            //stateful: true,
+            //stateId: 'grid' 
+        });
+
+        hChargesGrid.getSelectionModel().on('selectionchange', function(sm){
+            // if a selection is made, allow it to be removed
+            // if the selection was deselected to nothing, allow no 
+            // records to be removed.
+            hChargesGrid.getTopToolbar().findById('hChargesRemoveBtn').setDisabled(sm.getCount() < 1);
+
+            // if there was a selection, allow an insertion
+            hChargesGrid.getTopToolbar().findById('hChargesInsertBtn').setDisabled(sm.getCount()<1);
+
+        });
+      
+        // grid's data store callback for when data is edited
+        // when the store backing the grid is edited, enable the save button
+        hChargesStore.on('update', function(){
+            hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
+        });
+
+
+
+        ///////////////////////////////////////
+        // Rate Structure Tab
+
+
+        // the CPRS
+
+        var initialCPRSRSI = {
+            rows: [
+            ]
+        };
+
+        var CPRSRSIReader = new Ext.data.JsonReader({
+            // metadata configuration options:
+            // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
+            //idProperty: 'id',
+            root: 'rows',
+
+            // the fields config option will internally create an Ext.data.Record
+            // constructor that provides mapping for reading the record data objects
+            fields: [
+                // map Record's field to json object's key of same name
+                {name: 'uuid', mapping: 'uuid'},
+                {name: 'rsi_binding', mapping: 'rsi_binding'},
+                {name: 'description', mapping: 'description'},
+                {name: 'quantity', mapping: 'quantity'},
+                {name: 'quantityunits', mapping: 'quantityunits'},
+                {name: 'rate', mapping: 'rate'},
+                {name: 'rateunits', mapping: 'rateunits'},
+                {name: 'roundrule', mapping:'roundrule'},
+                {name: 'total', mapping: 'total'},
+            ]
+        });
+
+        var CPRSRSIWriter = new Ext.data.JsonWriter({
+            encode: true,
+            // write all fields, not just those that changed
+            writeAllFields: true 
+        });
+
+        var CPRSRSIStoreProxy = new Ext.data.HttpProxy({
+            method: 'GET',
+            prettyUrls: false,
+            url: 'http://'+location.host+'/reebill/cprsrsi',
+        });
+
+        var CPRSRSIStore = new Ext.data.JsonStore({
+            proxy: CPRSRSIStoreProxy,
+            autoSave: false,
+            reader: CPRSRSIReader,
+            writer: CPRSRSIWriter,
+            // or, autosave must be used to save each action
+            autoSave: true,
+            // won't be updated when combos change, so do this in event
+            // perhaps also can be put in the options param for the ajax request
+            baseParams: { account:accountCombo.getValue(), sequence: sequenceCombo.getValue()},
+            data: initialCPRSRSI,
+            root: 'rows',
+            idProperty: 'uuid',
+            fields: [
+                {name: 'uuid'},
+                {name: 'rsi_binding'},
+                {name: 'description'},
+                {name: 'quantity'},
+                {name: 'quantityunits'},
+                {name: 'rate'},
+                {name: 'rateunits'},
+                {name: 'roundrule'},
+                {name: 'total'},
+            ],
+        });
+
+        var CPRSRSIColModel = new Ext.grid.ColumnModel(
+        {
+            columns: [
+                /*{
+                    header: 'UUID',
+                    sortable: true,
+                    dataIndex: 'uuid',
+                    editable: false,
+                    editor: new Ext.form.TextField({allowBlank: false})
+                },*/{
+                    header: 'RSI Binding',
+                    sortable: true,
+                    dataIndex: 'rsi_binding',
+                    editable: true,
+                    editor: new Ext.form.TextField({allowBlank: false})
+                },{
+                    header: 'Description',
+                    sortable: true,
+                    dataIndex: 'description',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Quantity',
+                    sortable: true,
+                    dataIndex: 'quantity',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Units',
+                    sortable: true,
+                    dataIndex: 'quantityunits',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Rate',
+                    sortable: true,
+                    dataIndex: 'rate',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Units',
+                    sortable: true,
+                    dataIndex: 'rateunits',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Round Rule',
+                    sortable: true,
+                    dataIndex: 'roundrule',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Total', 
+                    sortable: true, 
+                    dataIndex: 'total', 
+                    summaryType: 'sum',
+                    align: 'right',
+                    editor: new Ext.form.TextField({allowBlank: true})
                 }
-            },{
-                xtype:'tbseparator'
-            },{
-                xtype: 'button',
-                // places reference to this button in grid.  
-                id: 'URSRSISaveBtn',
-                text: 'Save',
-                disabled: true,
-                handler: function()
+            ]
+        });
+
+        var CPRSRSIToolbar = new Ext.Toolbar({
+            items: [
                 {
-                    // disable the save button for the save attempt.
-                    // is there a closer place for this to the actual button click due to the possibility of a double
-                    // clicked button submitting two ajax requests?
-                    URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(true);
+                    xtype: 'button',
+                    // ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
+                    id: 'CPRSRSIInsertBtn',
+                    iconCls: 'icon-user-add',
+                    text: 'Insert',
+                    disabled: false,
+                    handler: function()
+                    {
+                        CPRSRSIGrid.stopEditing();
 
-                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    URSRSIGrid.stopEditing();
+                        // grab the current selection - only one row may be selected per singlselect configuration
+                        var selection = CPRSRSIGrid.getSelectionModel().getSelected();
 
-                    URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    URSRSIStore.setBaseParam("account", accountCombo.getValue());
-                    URSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
+                        // make the new record
+                        var CPRSRSIType = CPRSRSIGrid.getStore().recordType;
+                        var defaultData = 
+                        {
+                        };
+                        var r = new CPRSRSIType(defaultData);
+            
+                        // select newly inserted record
+                        var insertionPoint = CPRSRSIStore.indexOf(selection);
+                        CPRSRSIStore.insert(insertionPoint + 1, r);
+                        CPRSRSIGrid.startEditing(insertionPoint +1,1);
+                        
+                        // An inserted record must be saved 
+                        CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
+                    }
+                },{
+                    xtype: 'tbseparator'
+                },{
+                    xtype: 'button',
+                    // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                    id: 'CPRSRSIRemoveBtn',
+                    iconCls: 'icon-user-delete',
+                    text: 'Remove',
+                    disabled: true,
+                    handler: function()
+                    {
+                        CPRSRSIGrid.stopEditing();
+                        CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+                        CPRSRSIStore.setBaseParam("account", accountCombo.getValue());
+                        CPRSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
 
-                    URSRSIStore.save(); 
+                        // TODO single row selection only, test allowing multirow selection
+                        var s = CPRSRSIGrid.getSelectionModel().getSelections();
+                        for(var i = 0, r; r = s[i]; i++)
+                        {
+                            CPRSRSIStore.remove(r);
+                        }
+                        CPRSRSIStore.save(); 
+                        CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
+                    }
+                },{
+                    xtype:'tbseparator'
+                },{
+                    xtype: 'button',
+                    // places reference to this button in grid.  
+                    id: 'CPRSRSISaveBtn',
+                    text: 'Save',
+                    disabled: true,
+                    handler: function()
+                    {
+                        // disable the save button for the save attempt.
+                        // is there a closer place for this to the actual button click due to the possibility of a double
+                        // clicked button submitting two ajax requests?
+                        CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
+
+                        // stop grid editing so that widgets like comboboxes in rows don't stay focused
+                        CPRSRSIGrid.stopEditing();
+
+                        CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+                        CPRSRSIStore.setBaseParam("account", accountCombo.getValue());
+                        CPRSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
+
+                        CPRSRSIStore.save(); 
+                    }
                 }
-            }
-        ]
-    });
+            ]
+        });
 
-    var URSRSIGrid = new Ext.grid.EditorGridPanel({
-        tbar: URSRSIToolbar,
-        colModel: URSRSIColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
-        store: URSRSIStore,
-        enableColumnMove: true,
-        frame: true,
-        collapsible: false,
-        animCollapse: false,
-        stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
-        title: 'Utility Global Rate Structure',
-        clicksToEdit: 2
-    });
-
-    URSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
-        // if a selection is made, allow it to be removed
-        // if the selection was deselected to nothing, allow no 
-        // records to be removed.
-
-        URSRSIGrid.getTopToolbar().findById('URSRSIRemoveBtn').setDisabled(sm.getCount() <1);
-
-        // if there was a selection, allow an insertion
-        //URSRSIGrid.getTopToolbar().findById('URSRSIInsertBtn').setDisabled(sm.getCount() <1);
-    });
-  
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    URSRSIStore.on('update', function(){
-        URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
-    });
-
-    URSRSIStore.on('beforesave', function() {
-        URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        URSRSIStore.setBaseParam("account", accountCombo.getValue());
-        URSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
-    });
-
-
-    ///////////////////////////////////////
-    // Payments Tab
-
-    var initialPayment =  {
-        rows: [
-        ]
-    };
-
-    var paymentReader = new Ext.data.JsonReader({
-        // metadata configuration options:
-        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        //idProperty: 'id',
-        root: 'rows',
-
-        // the fields config option will internally create an Ext.data.Record
-        // constructor that provides mapping for reading the record data objects
-        fields: [
-            // map Record's field to json object's key of same name
-            {name: 'id', mapping: 'id'},
-            {name: 'date', mapping: 'date'},
-            {name: 'description', mapping: 'description'},
-            {name: 'credit', mapping: 'credit'},
-        ]
-    });
-
-    var paymentWriter = new Ext.data.JsonWriter({
-        encode: true,
-        // write all fields, not just those that changed
-        writeAllFields: true 
-    });
-
-    var paymentStoreProxy = new Ext.data.HttpProxy({
-        method: 'GET',
-        prettyUrls: false,
-        url: 'http://'+location.host+'/reebill/payment',
-    });
-
-    var paymentStore = new Ext.data.JsonStore({
-        proxy: paymentStoreProxy,
-        autoSave: false,
-        reader: paymentReader,
-        writer: paymentWriter,
-        autoSave: true,
-        // won't be updated when combos change, so do this in event
-        // perhaps also can be put in the options param for the ajax request
-        baseParams: { account:accountCombo.getValue(), sequence: sequenceCombo.getValue()},
-        data: initialPayment,
-        root: 'rows',
-        idProperty: 'id',
-        fields: [
-            {
-                name: 'date',
-                type: 'date',
-                dateFormat: 'Y-m-d'
+        var CPRSRSIGrid = new Ext.grid.EditorGridPanel({
+            tbar: CPRSRSIToolbar,
+            colModel: CPRSRSIColModel,
+            selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+            store: CPRSRSIStore,
+            enableColumnMove: true,
+            frame: true,
+            collapsible: false,
+            animCollapse: false,
+            stripeRows: true,
+            viewConfig: {
+                // doesn't seem to work
+                forceFit: true,
             },
-            {name: 'description'},
-            {name: 'credit'},
-        ],
-    });
+            title: 'Customer Bill Period Rate Structure',
+            clicksToEdit: 2
+        });
 
-    var paymentColModel = new Ext.grid.ColumnModel(
-    {
-        columns: [
-            {
-                header: 'Date',
-                sortable: true,
-                dataIndex: 'date',
-                renderer: function(date) { if (date) return date.format("Y-m-d"); },
-                editor: new Ext.form.DateField({
-                    allowBlank: false,
-                    format: 'Y-m-d',
-               }),
-            },{
-                header: 'Description',
-                sortable: true,
-                dataIndex: 'description',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Credit',
-                sortable: true,
-                dataIndex: 'credit',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },
-        ]
-    });
+        CPRSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
+            // if a selection is made, allow it to be removed
+            // if the selection was deselected to nothing, allow no 
+            // records to be removed.
 
-    var paymentToolbar = new Ext.Toolbar({
-        items: [
-            {
-                xtype: 'button',
-                id: 'paymentInsertBtn',
-                iconCls: 'icon-user-add',
-                text: 'Insert',
-                disabled: false,
-                handler: function()
-                {
-                    paymentGrid.stopEditing();
+            CPRSRSIGrid.getTopToolbar().findById('CPRSRSIRemoveBtn').setDisabled(sm.getCount() <1);
 
-                    // grab the current selection - only one row may be selected per singlselect configuration
-                    var selection = paymentGrid.getSelectionModel().getSelected();
+            // if there was a selection, allow an insertion
+            //CPRSRSIGrid.getTopToolbar().findById('CPRSRSIInsertBtn').setDisabled(sm.getCount() <1);
+        });
+      
+        // grid's data store callback for when data is edited
+        // when the store backing the grid is edited, enable the save button
+        CPRSRSIStore.on('update', function(){
+            CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
+        });
 
-                    // make the new record
-                    var paymentType = paymentGrid.getStore().recordType;
-                    var defaultData = 
-                    {
-                    };
-                    var r = new paymentType(defaultData);
-        
-                    // select newly inserted record
-                    //var insertionPoint = paymentStore.indexOf(selection);
-                    //paymentStore.insert(insertionPoint + 1, r);
-                    paymentStore.add([r]);
-                    //paymentGrid.startEditing(insertionPoint +1,1);
-                    
+        CPRSRSIStore.on('beforesave', function() {
+            CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+            CPRSRSIStore.setBaseParam("account", accountCombo.getValue());
+            CPRSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
+        });
+
+
+        // the URS
+        var initialURSRSI = {
+            rows: [
+            ]
+        };
+
+        var URSRSIReader = new Ext.data.JsonReader({
+            // metadata configuration options:
+            // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
+            //idProperty: 'id',
+            root: 'rows',
+
+            // the fields config option will internally create an Ext.data.Record
+            // constructor that provides mapping for reading the record data objects
+            fields: [
+                // map Record's field to json object's key of same name
+                {name: 'uuid', mapping: 'uuid'},
+                {name: 'rsi_binding', mapping: 'rsi_binding'},
+                {name: 'description', mapping: 'description'},
+                {name: 'quantity', mapping: 'quantity'},
+                {name: 'quantityunits', mapping: 'quantityunits'},
+                {name: 'rate', mapping: 'rate'},
+                {name: 'rateunits', mapping: 'rateunits'},
+                {name: 'roundrule', mapping:'roundrule'},
+                {name: 'total', mapping: 'total'},
+            ]
+        });
+
+        var URSRSIWriter = new Ext.data.JsonWriter({
+            encode: true,
+            // write all fields, not just those that changed
+            writeAllFields: true 
+        });
+
+        var URSRSIStoreProxy = new Ext.data.HttpProxy({
+            method: 'GET',
+            prettyUrls: false,
+            url: 'http://'+location.host+'/reebill/ursrsi',
+        });
+
+        var URSRSIStore = new Ext.data.JsonStore({
+            proxy: URSRSIStoreProxy,
+            autoSave: false,
+            reader: URSRSIReader,
+            writer: URSRSIWriter,
+            // or, autosave must be used to save each action
+            autoSave: true,
+            // won't be updated when combos change, so do this in event
+            // perhaps also can be put in the options param for the ajax request
+            baseParams: { account:accountCombo.getValue(), sequence: sequenceCombo.getValue()},
+            data: initialURSRSI,
+            root: 'rows',
+            idProperty: 'uuid',
+            fields: [
+                {name: 'uuid'},
+                {name: 'rsi_binding'},
+                {name: 'description'},
+                {name: 'quantity'},
+                {name: 'quantityunits'},
+                {name: 'rate'},
+                {name: 'rateunits'},
+                {name: 'roundrule'},
+                {name: 'total'},
+            ],
+        });
+
+        var URSRSIColModel = new Ext.grid.ColumnModel(
+        {
+            columns: [
+                /*{
+                    header: 'UUID',
+                    sortable: true,
+                    dataIndex: 'uuid',
+                    editable: false,
+                    editor: new Ext.form.TextField({allowBlank: false})
+                },*/{
+                    header: 'RSI Binding',
+                    sortable: true,
+                    dataIndex: 'rsi_binding',
+                    editable: true,
+                    editor: new Ext.form.TextField({allowBlank: false})
+                },{
+                    header: 'Description',
+                    sortable: true,
+                    dataIndex: 'description',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Quantity',
+                    sortable: true,
+                    dataIndex: 'quantity',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Units',
+                    sortable: true,
+                    dataIndex: 'quantityunits',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Rate',
+                    sortable: true,
+                    dataIndex: 'rate',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Units',
+                    sortable: true,
+                    dataIndex: 'rateunits',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Round Rule',
+                    sortable: true,
+                    dataIndex: 'roundrule',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Total', 
+                    sortable: true, 
+                    dataIndex: 'total', 
+                    summaryType: 'sum',
+                    align: 'right',
+                    editor: new Ext.form.TextField({allowBlank: true})
                 }
-            },{
-                xtype: 'tbseparator'
-            },{
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                id: 'paymentRemoveBtn',
-                iconCls: 'icon-user-delete',
-                text: 'Remove',
-                disabled: true,
-                handler: function()
-                {
-                    paymentGrid.stopEditing();
-                    paymentStore.setBaseParam("account", accountCombo.getValue());
+            ]
+        });
 
-                    // TODO single row selection only, test allowing multirow selection
-                    var s = paymentGrid.getSelectionModel().getSelections();
-                    for(var i = 0, r; r = s[i]; i++)
+        var URSRSIToolbar = new Ext.Toolbar({
+            items: [
+                {
+                    xtype: 'button',
+                    // ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
+                    id: 'URSRSIInsertBtn',
+                    iconCls: 'icon-user-add',
+                    text: 'Insert',
+                    disabled: false,
+                    handler: function()
                     {
-                        paymentStore.remove(r);
+                        URSRSIGrid.stopEditing();
+
+                        // grab the current selection - only one row may be selected per singlselect configuration
+                        var selection = URSRSIGrid.getSelectionModel().getSelected();
+
+                        // make the new record
+                        var URSRSIType = URSRSIGrid.getStore().recordType;
+                        var defaultData = 
+                        {
+                        };
+                        var r = new URSRSIType(defaultData);
+            
+                        // select newly inserted record
+                        var insertionPoint = URSRSIStore.indexOf(selection);
+                        URSRSIStore.insert(insertionPoint + 1, r);
+                        URSRSIGrid.startEditing(insertionPoint +1,1);
+                        
+                        // An inserted record must be saved 
+                        URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
                     }
-                    paymentStore.save(); 
-                }
-            }
-        ]
-    });
-
-    var paymentGrid = new Ext.grid.EditorGridPanel({
-        tbar: paymentToolbar,
-        colModel: paymentColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
-        store: paymentStore,
-        enableColumnMove: false,
-        frame: true,
-        collapsible: true,
-        animCollapse: false,
-        stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
-        title: 'Payments',
-        clicksToEdit: 2
-    });
-
-    paymentGrid.getSelectionModel().on('selectionchange', function(sm){
-        //paymentGrid.getTopToolbar().findById('paymentInsertBtn').setDisabled(sm.getCount() <1);
-        paymentGrid.getTopToolbar().findById('paymentRemoveBtn').setDisabled(sm.getCount() <1);
-    });
-  
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    paymentStore.on('update', function(){
-        //paymentGrid.getTopToolbar().findById('paymentSaveBtn').setDisabled(false);
-    });
-
-    paymentStore.on('beforesave', function() {
-        paymentStore.setBaseParam("account", accountCombo.getValue());
-    });
-
-    ///////////////////////////////////////
-    // reebills Tab
-
-    var initialreebill =  {
-        rows: [
-        ]
-    };
-
-    var reebillReader = new Ext.data.JsonReader({
-        // metadata configuration options:
-        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        //idProperty: 'id',
-        root: 'rows',
-
-        // the fields config option will internally create an Ext.data.Record
-        // constructor that provides mapping for reading the record data objects
-        fields: [
-            // map Record's field to json object's key of same name
-            {name: 'sequence', mapping: 'sequence'},
-        ]
-    });
-
-    var reebillWriter = new Ext.data.JsonWriter({
-        encode: true,
-        // write all fields, not just those that changed
-        writeAllFields: true 
-    });
-
-    var reebillStoreProxy = new Ext.data.HttpProxy({
-        method: 'GET',
-        prettyUrls: false,
-        url: 'http://'+location.host+'/reebill/reebill',
-    });
-
-    var reebillStore = new Ext.data.JsonStore({
-        proxy: reebillStoreProxy,
-        autoSave: false,
-        reader: reebillReader,
-        writer: reebillWriter,
-        autoSave: true,
-        autoLoad: {params:{start: 0, limit: 25}},
-        // won't be updated when combos change, so do this in event
-        // perhaps also can be put in the options param for the ajax request
-        baseParams: { account:"none"},
-        paramNames: {start: 'start', limit: 'limit'},
-        data: initialreebill,
-        root: 'rows',
-        totalProperty: 'results',
-        idProperty: 'sequence',
-        fields: [
-            {name: 'sequence'},
-        ],
-    });
-
-    var reebillColModel = new Ext.grid.ColumnModel(
-    {
-        columns: [
-            {
-                header: 'Sequence',
-                sortable: true,
-                dataIndex: 'sequence',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },
-        ]
-    });
-
-    var reebillToolbar = new Ext.Toolbar({
-        items: [
-            {
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                id: 'reebillMailBtn',
-                iconCls: 'icon-user-mail',
-                text: 'Mail',
-                disabled: false,
-                handler: function()
-                {
-                    sequences = []
-                    var s = reebillGrid.getSelectionModel().getSelections();
-                    for(var i = 0, r; r = s[i]; i++)
+                },{
+                    xtype: 'tbseparator'
+                },{
+                    xtype: 'button',
+                    // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                    id: 'URSRSIRemoveBtn',
+                    iconCls: 'icon-user-delete',
+                    text: 'Remove',
+                    disabled: true,
+                    handler: function()
                     {
-                        sequences.push(r.data.sequence);
+                        URSRSIGrid.stopEditing();
+                        URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+                        URSRSIStore.setBaseParam("account", accountCombo.getValue());
+                        URSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
+
+                        // TODO single row selection only, test allowing multirow selection
+                        var s = URSRSIGrid.getSelectionModel().getSelections();
+                        for(var i = 0, r; r = s[i]; i++)
+                        {
+                            URSRSIStore.remove(r);
+                        }
+                        URSRSIStore.save(); 
+                        URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(true);
                     }
+                },{
+                    xtype:'tbseparator'
+                },{
+                    xtype: 'button',
+                    // places reference to this button in grid.  
+                    id: 'URSRSISaveBtn',
+                    text: 'Save',
+                    disabled: true,
+                    handler: function()
+                    {
+                        // disable the save button for the save attempt.
+                        // is there a closer place for this to the actual button click due to the possibility of a double
+                        // clicked button submitting two ajax requests?
+                        URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(true);
 
-                    mailReebillOperation(sequences);
+                        // stop grid editing so that widgets like comboboxes in rows don't stay focused
+                        URSRSIGrid.stopEditing();
+
+                        URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+                        URSRSIStore.setBaseParam("account", accountCombo.getValue());
+                        URSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
+
+                        URSRSIStore.save(); 
+                    }
                 }
-            }
-        ]
-    });
+            ]
+        });
 
-    var reebillGrid = new Ext.grid.EditorGridPanel({
-        flex: 1,
-        tbar: reebillToolbar,
-        bbar: new Ext.PagingToolbar({
-            // TODO: constant
-            pageSize: 25,
+        var URSRSIGrid = new Ext.grid.EditorGridPanel({
+            tbar: URSRSIToolbar,
+            colModel: URSRSIColModel,
+            selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+            store: URSRSIStore,
+            enableColumnMove: true,
+            frame: true,
+            collapsible: false,
+            animCollapse: false,
+            stripeRows: true,
+            viewConfig: {
+                // doesn't seem to work
+                forceFit: true,
+            },
+            title: 'Utility Global Rate Structure',
+            clicksToEdit: 2
+        });
+
+        URSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
+            // if a selection is made, allow it to be removed
+            // if the selection was deselected to nothing, allow no 
+            // records to be removed.
+
+            URSRSIGrid.getTopToolbar().findById('URSRSIRemoveBtn').setDisabled(sm.getCount() <1);
+
+            // if there was a selection, allow an insertion
+            //URSRSIGrid.getTopToolbar().findById('URSRSIInsertBtn').setDisabled(sm.getCount() <1);
+        });
+      
+        // grid's data store callback for when data is edited
+        // when the store backing the grid is edited, enable the save button
+        URSRSIStore.on('update', function(){
+            URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
+        });
+
+        URSRSIStore.on('beforesave', function() {
+            URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+            URSRSIStore.setBaseParam("account", accountCombo.getValue());
+            URSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
+        });
+
+
+        ///////////////////////////////////////
+        // Payments Tab
+
+        var initialPayment =  {
+            rows: [
+            ]
+        };
+
+        var paymentReader = new Ext.data.JsonReader({
+            // metadata configuration options:
+            // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
+            //idProperty: 'id',
+            root: 'rows',
+
+            // the fields config option will internally create an Ext.data.Record
+            // constructor that provides mapping for reading the record data objects
+            fields: [
+                // map Record's field to json object's key of same name
+                {name: 'id', mapping: 'id'},
+                {name: 'date', mapping: 'date'},
+                {name: 'description', mapping: 'description'},
+                {name: 'credit', mapping: 'credit'},
+            ]
+        });
+
+        var paymentWriter = new Ext.data.JsonWriter({
+            encode: true,
+            // write all fields, not just those that changed
+            writeAllFields: true 
+        });
+
+        var paymentStoreProxy = new Ext.data.HttpProxy({
+            method: 'GET',
+            prettyUrls: false,
+            url: 'http://'+location.host+'/reebill/payment',
+        });
+
+        var paymentStore = new Ext.data.JsonStore({
+            proxy: paymentStoreProxy,
+            autoSave: false,
+            reader: paymentReader,
+            writer: paymentWriter,
+            autoSave: true,
+            // won't be updated when combos change, so do this in event
+            // perhaps also can be put in the options param for the ajax request
+            baseParams: { account:accountCombo.getValue(), sequence: sequenceCombo.getValue()},
+            data: initialPayment,
+            root: 'rows',
+            idProperty: 'id',
+            fields: [
+                {
+                    name: 'date',
+                    type: 'date',
+                    dateFormat: 'Y-m-d'
+                },
+                {name: 'description'},
+                {name: 'credit'},
+            ],
+        });
+
+        var paymentColModel = new Ext.grid.ColumnModel(
+        {
+            columns: [
+                {
+                    header: 'Date',
+                    sortable: true,
+                    dataIndex: 'date',
+                    renderer: function(date) { if (date) return date.format("Y-m-d"); },
+                    editor: new Ext.form.DateField({
+                        allowBlank: false,
+                        format: 'Y-m-d',
+                   }),
+                },{
+                    header: 'Description',
+                    sortable: true,
+                    dataIndex: 'description',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Credit',
+                    sortable: true,
+                    dataIndex: 'credit',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },
+            ]
+        });
+
+        var paymentToolbar = new Ext.Toolbar({
+            items: [
+                {
+                    xtype: 'button',
+                    id: 'paymentInsertBtn',
+                    iconCls: 'icon-user-add',
+                    text: 'Insert',
+                    disabled: false,
+                    handler: function()
+                    {
+                        paymentGrid.stopEditing();
+
+                        // grab the current selection - only one row may be selected per singlselect configuration
+                        var selection = paymentGrid.getSelectionModel().getSelected();
+
+                        // make the new record
+                        var paymentType = paymentGrid.getStore().recordType;
+                        var defaultData = 
+                        {
+                        };
+                        var r = new paymentType(defaultData);
+            
+                        // select newly inserted record
+                        //var insertionPoint = paymentStore.indexOf(selection);
+                        //paymentStore.insert(insertionPoint + 1, r);
+                        paymentStore.add([r]);
+                        //paymentGrid.startEditing(insertionPoint +1,1);
+                        
+                    }
+                },{
+                    xtype: 'tbseparator'
+                },{
+                    xtype: 'button',
+                    // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                    id: 'paymentRemoveBtn',
+                    iconCls: 'icon-user-delete',
+                    text: 'Remove',
+                    disabled: true,
+                    handler: function()
+                    {
+                        paymentGrid.stopEditing();
+                        paymentStore.setBaseParam("account", accountCombo.getValue());
+
+                        // TODO single row selection only, test allowing multirow selection
+                        var s = paymentGrid.getSelectionModel().getSelections();
+                        for(var i = 0, r; r = s[i]; i++)
+                        {
+                            paymentStore.remove(r);
+                        }
+                        paymentStore.save(); 
+                    }
+                }
+            ]
+        });
+
+        var paymentGrid = new Ext.grid.EditorGridPanel({
+            tbar: paymentToolbar,
+            colModel: paymentColModel,
+            selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+            store: paymentStore,
+            enableColumnMove: false,
+            frame: true,
+            collapsible: true,
+            animCollapse: false,
+            stripeRows: true,
+            viewConfig: {
+                // doesn't seem to work
+                forceFit: true,
+            },
+            title: 'Payments',
+            clicksToEdit: 2
+        });
+
+        paymentGrid.getSelectionModel().on('selectionchange', function(sm){
+            //paymentGrid.getTopToolbar().findById('paymentInsertBtn').setDisabled(sm.getCount() <1);
+            paymentGrid.getTopToolbar().findById('paymentRemoveBtn').setDisabled(sm.getCount() <1);
+        });
+      
+        // grid's data store callback for when data is edited
+        // when the store backing the grid is edited, enable the save button
+        paymentStore.on('update', function(){
+            //paymentGrid.getTopToolbar().findById('paymentSaveBtn').setDisabled(false);
+        });
+
+        paymentStore.on('beforesave', function() {
+            paymentStore.setBaseParam("account", accountCombo.getValue());
+        });
+
+        ///////////////////////////////////////
+        // reebills Tab
+
+        var initialreebill =  {
+            rows: [
+            ]
+        };
+
+        var reebillReader = new Ext.data.JsonReader({
+            // metadata configuration options:
+            // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
+            //idProperty: 'id',
+            root: 'rows',
+
+            // the fields config option will internally create an Ext.data.Record
+            // constructor that provides mapping for reading the record data objects
+            fields: [
+                // map Record's field to json object's key of same name
+                {name: 'sequence', mapping: 'sequence'},
+            ]
+        });
+
+        var reebillWriter = new Ext.data.JsonWriter({
+            encode: true,
+            // write all fields, not just those that changed
+            writeAllFields: true 
+        });
+
+        var reebillStoreProxy = new Ext.data.HttpProxy({
+            method: 'GET',
+            prettyUrls: false,
+            url: 'http://'+location.host+'/reebill/reebill',
+        });
+
+        var reebillStore = new Ext.data.JsonStore({
+            proxy: reebillStoreProxy,
+            autoSave: false,
+            reader: reebillReader,
+            writer: reebillWriter,
+            autoSave: true,
+            autoLoad: {params:{start: 0, limit: 25}},
+            // won't be updated when combos change, so do this in event
+            // perhaps also can be put in the options param for the ajax request
+            baseParams: { account:"none"},
+            paramNames: {start: 'start', limit: 'limit'},
+            data: initialreebill,
+            root: 'rows',
+            totalProperty: 'results',
+            idProperty: 'sequence',
+            fields: [
+                {name: 'sequence'},
+            ],
+        });
+
+        var reebillColModel = new Ext.grid.ColumnModel(
+        {
+            columns: [
+                {
+                    header: 'Sequence',
+                    sortable: true,
+                    dataIndex: 'sequence',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },
+            ]
+        });
+
+        var reebillToolbar = new Ext.Toolbar({
+            items: [
+                {
+                    xtype: 'button',
+                    // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                    id: 'reebillMailBtn',
+                    iconCls: 'icon-user-mail',
+                    text: 'Mail',
+                    disabled: false,
+                    handler: function()
+                    {
+                        sequences = []
+                        var s = reebillGrid.getSelectionModel().getSelections();
+                        for(var i = 0, r; r = s[i]; i++)
+                        {
+                            sequences.push(r.data.sequence);
+                        }
+
+                        mailReebillOperation(sequences);
+                    }
+                }
+            ]
+        });
+
+        var reebillGrid = new Ext.grid.EditorGridPanel({
+            flex: 1,
+            tbar: reebillToolbar,
+            bbar: new Ext.PagingToolbar({
+                // TODO: constant
+                pageSize: 25,
+                store: reebillStore,
+                displayInfo: true,
+                displayMsg: 'Displaying {0} - {1} of {2}',
+                emptyMsg: "No ReeBills to display",
+            }),
+            colModel: reebillColModel,
+            selModel: new Ext.grid.RowSelectionModel({singleSelect: false}),
             store: reebillStore,
-            displayInfo: true,
-            displayMsg: 'Displaying {0} - {1} of {2}',
-            emptyMsg: "No ReeBills to display",
-        }),
-        colModel: reebillColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: false}),
-        store: reebillStore,
-        enableColumnMove: false,
-        frame: true,
-        collapsible: true,
-        animCollapse: false,
-        stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
-        title: 'reebills',
-        clicksToEdit: 2
-    });
-
-    reebillGrid.getSelectionModel().on('selectionchange', function(sm){
-        //reebillGrid.getTopToolbar().findById('reebillInsertBtn').setDisabled(sm.getCount() <1);
-    });
-  
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    reebillStore.on('update', function(){
-        //reebillGrid.getTopToolbar().findById('reebillSaveBtn').setDisabled(false);
-    });
-
-    reebillStore.on('beforesave', function() {
-        reebillStore.setBaseParam("account", accountCombo.getValue());
-    });
-
-    ///////////////////////////////////////
-    // Status Days Since 
-
-    var initialStatusDaysSince = {
-        rows: []
-    };
-
-    var statusDaysSinceReader = new Ext.data.JsonReader({
-        // metadata configuration options:
-        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        //idProperty: 'id',
-        root: 'rows',
-
-        // the fields config option will internally create an Ext.data.Record
-        // constructor that provides mapping for reading the record data objects
-        fields: [
-            // map Record's field to json object's key of same name
-            {name: 'account', mapping: 'account'},
-            {name: 'fullname', mapping: 'fullname'},
-            {name: 'dayssince', mapping: 'dayssince'}
-        ]
-    });
-
-    var statusDaysSinceStore = new Ext.data.JsonStore({
-        root: 'rows',
-        totalProperty: 'results',
-        pageSize: 25,
-        paramNames: {start: 'start', limit: 'limit'},
-        autoLoad: {params:{start: 0, limit: 25}},
-        reader: statusDaysSinceReader,
-        fields: [
-            {name: 'account'},
-            {name: 'fullname'},
-            {name: 'dayssince'},
-        ],
-        url: 'http://' + location.host + '/reebill/retrieve_status_days_since',
-    });
-
-
-    var statusDaysSinceColModel = new Ext.grid.ColumnModel(
-    {
-        columns: [
-            {
-                header: 'Account',
-                sortable: true,
-                dataIndex: 'fullname',
-                editable: false,
-            },{
-                header: 'Days since last bill',
-                sortable: true,
-                dataIndex: 'dayssince',
-                editable: false,
+            enableColumnMove: false,
+            frame: true,
+            collapsible: true,
+            animCollapse: false,
+            stripeRows: true,
+            viewConfig: {
+                // doesn't seem to work
+                forceFit: true,
             },
-        ]
-    });
+            title: 'reebills',
+            clicksToEdit: 2
+        });
 
+        reebillGrid.getSelectionModel().on('selectionchange', function(sm){
+            //reebillGrid.getTopToolbar().findById('reebillInsertBtn').setDisabled(sm.getCount() <1);
+        });
+      
+        // grid's data store callback for when data is edited
+        // when the store backing the grid is edited, enable the save button
+        reebillStore.on('update', function(){
+            //reebillGrid.getTopToolbar().findById('reebillSaveBtn').setDisabled(false);
+        });
 
-    var statusDaysSinceGrid = new Ext.grid.GridPanel({
-        //tbar: statusToolbar,
-        colModel: statusDaysSinceColModel,
-        selModel: new Ext.grid.RowSelectionModel({
-            singleSelect: true,
-            listeners: {
-                rowselect: function (selModel, index, record) {
-                    loadReeBillUIForAccount(record.data.account);
-                }
-            }
-        }),
-        store: statusDaysSinceStore,
-        enableColumnMove: false,
-        frame: true,
-        collapsible: true,
-        animCollapse: false,
-        stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
-        title: 'Processing Status',
-        // paging bar on the bottom
-        bbar: new Ext.PagingToolbar({
+        reebillStore.on('beforesave', function() {
+            reebillStore.setBaseParam("account", accountCombo.getValue());
+        });
+
+        ///////////////////////////////////////
+        // account status
+
+        var initialStatusDaysSince = {
+            rows: []
+        };
+
+        var accountReader = new Ext.data.JsonReader({
+            // metadata configuration options:
+            // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
+            //idProperty: 'id',
+            root: 'rows',
+
+            // the fields config option will internally create an Ext.data.Record
+            // constructor that provides mapping for reading the record data objects
+            fields: [
+                // map Record's field to json object's key of same name
+                {name: 'account', mapping: 'account'},
+                {name: 'fullname', mapping: 'fullname'},
+                {name: 'dayssince', mapping: 'dayssince'}
+            ]
+        });
+
+        var accountStore = new Ext.data.JsonStore({
+            root: 'rows',
+            totalProperty: 'results',
             pageSize: 25,
-            store: statusDaysSinceStore,
-            displayInfo: true,
-            displayMsg: 'Displaying {0} - {1} of {2}',
-            emptyMsg: "No statuses to display",
-        }),
-    });
-
-    ///////////////////////////////////////
-    // Status Unbilled
-
-    var initialStatusUnbilled = {
-        rows: []
-    };
-
-    var statusUnbilledReader = new Ext.data.JsonReader({
-        // metadata configuration options:
-        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        //idProperty: 'id',
-        root: 'rows',
-
-        // the fields config option will internally create an Ext.data.Record
-        // constructor that provides mapping for reading the record data objects
-        fields: [
-            // map Record's field to json object's key of same name
-            {name: 'account', mapping: 'account'},
-            {name: 'fullname', mapping: 'fullname'},
-        ]
-    });
-
-    var statusUnbilledStore = new Ext.data.JsonStore({
-        root: 'rows',
-        totalProperty: 'results',
-        pageSize: 25,
-        paramNames: {start: 'start', limit: 'limit'},
-        autoLoad: {params:{start: 0, limit: 25}},
-        reader: statusUnbilledReader,
-        fields: [
-            {name: 'account'},
-            {name: 'fullname'},
-        ],
-        url: 'http://' + location.host + '/reebill/retrieve_status_unbilled',
-    });
+            paramNames: {start: 'start', limit: 'limit'},
+            autoLoad: {params:{start: 0, limit: 25}},
+            reader: accountReader,
+            fields: [
+                {name: 'account'},
+                {name: 'fullname'},
+                {name: 'dayssince'},
+            ],
+            url: 'http://' + location.host + '/reebill/retrieve_account_status',
+        });
 
 
-    var statusUnbilledColModel = new Ext.grid.ColumnModel(
-    {
-        columns: [
-            {
-                header: 'Account',
-                sortable: true,
-                dataIndex: 'fullname',
-                editable: false,
-            }
-        ]
-    });
-
-
-    var statusUnbilledGrid = new Ext.grid.GridPanel({
-        //tbar: statusToolbar,
-        colModel: statusUnbilledColModel,
-        selModel: new Ext.grid.RowSelectionModel({
-            singleSelect: true,
-            listeners: {
-                rowselect: function (selModel, index, record) {
-                    loadReeBillUIForAccount(record.data.account);
-                }
-            }
-        }),
-        store: statusUnbilledStore,
-        enableColumnMove: false,
-        frame: true,
-        collapsible: true,
-        animCollapse: false,
-        stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
-        title: 'Unbilled Status',
-        // paging bar on the bottom
-        bbar: new Ext.PagingToolbar({
-            pageSize: 25,
-            store: statusUnbilledStore,
-            displayInfo: true,
-            displayMsg: 'Displaying {0} - {1} of {2}',
-            emptyMsg: "No statuses to display",
-        }),
-    });
-
-    ///////////////////////////////////////////////////////////////////////////
-    // preferences tab
-    // bill image resolution field in preferences tab (needs a name so its
-    // value can be gotten)
-    var billImageResolutionField = new Ext.ux.form.SpinnerField({
-      id: 'billresolutionmenu',
-      fieldLabel: 'Bill image resolution',
-      name: 'billresolution',
-      value: DEFAULT_RESOLUTION,
-      minValue: 50,
-      maxValue: 200,
-      allowDecimals: false,
-      decimalPrecision: 10,
-      incrementValue: 10,
-      alternateIncrementValue: 2.1,
-      accelerate: true
-    });
-    // get initial value of this field from the server
-    var resolution = null;
-    Ext.Ajax.request({
-        url: 'http://'+location.host+'/reebill/getBillImageResolution',
-        disableCaching: true,
-        success: function(result, request) {
-            var jsonData = null;
-            try {
-                jsonData = Ext.util.JSON.decode(result.responseText);
-                console.log(result.responseText);
-                if (jsonData.success == true) {
-                    resolution = jsonData['resolution'];
-                    console.log('setting resolution to ' + jsonData['resolution']);
-                    billImageResolutionField.setValue(resolution);
-                } else {
-                    Ext.Msg.alert("getBillImageResolution failed: " + jsonData.errors);
-                }
-            } catch (err) {
-                Ext.MessageBox.alert('ERROR', 'Could not decode "' + jsonData + '"');
-            }
-        },
-        failure: function () {
-            Ext.Msg.alert("setBillImageResolution request failed");
-        }
-    });
-
-
-
-    ///////////////////////////////////////
-    // journals Tab
-
-    var initialjournal =  {
-        rows: [
-        ]
-    };
-
-    var journalReader = new Ext.data.JsonReader({
-        root: 'rows',
-
-        // the fields config option will internally create an Ext.data.Record
-        // constructor that provides mapping for reading the record data objects
-        fields: [
-            // map Record's field to json object's key of same name
-            {name: '_id', mapping: '_id'},
-            {name: 'date', mapping: 'date'},
-            {name: 'account', mapping: 'account'},
-            {name: 'sequence', mapping: 'sequence'},
-            {name: 'msg', mapping: 'msg'},
-        ]
-    });
-
-    var journalWriter = new Ext.data.JsonWriter({
-        encode: true,
-        // write all fields, not just those that changed
-        writeAllFields: true 
-    });
-
-    var journalStoreProxy = new Ext.data.HttpProxy({
-        method: 'GET',
-        prettyUrls: false,
-        url: 'http://'+location.host+'/reebill/journal',
-    });
-
-    var journalStore = new Ext.data.JsonStore({
-        proxy: journalStoreProxy,
-        autoSave: false,
-        reader: journalReader,
-        writer: journalWriter,
-        autoSave: true,
-        // won't be updated when combos change, so do this in event
-        // perhaps also can be put in the options param for the ajax request
-        //baseParams: { account:accountCombo.getValue(), sequence: sequenceCombo.getValue()},
-        data: initialjournal,
-        root: 'rows',
-        idProperty: '_id',
-        fields: [
-            {name: '_id'},
-            {
-                name: 'date',
-                type: 'date',
-                //dateFormat: 'Y-m-d'
-            },
-            {name: 'account'},
-            {name: 'sequence'},
-            {name: 'msg'},
-        ],
-    });
-
-    var journalColModel = new Ext.grid.ColumnModel(
-    {
-        columns: [
-            {
-                header: 'ObjectId',
-                sortable: true,
-                dataIndex: '_id',
-            },{
-                header: 'Date',
-                sortable: true,
-                dataIndex: 'date',
-                renderer: function(date) { if (date) return date.format(Date.patterns['ISO8601Long']); },
-                editor: new Ext.form.DateField({
-                    allowBlank: false,
-                    format: Date.patterns['ISO8601Long'],
-               }),
-            },{
-                header: 'Account',
-                sortable: true,
-                dataIndex: 'account',
-                //editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Sequence',
-                sortable: true,
-                dataIndex: 'sequence',
-                //editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Message',
-                sortable: true,
-                dataIndex: 'msg',
-                //editor: new Ext.form.TextField({allowBlank: true})
-            },
-        ]
-    });
-
-    var journalToolbar = new Ext.Toolbar({
-        items: [
-            {
-                xtype: 'button',
-                id: 'journalInsertBtn',
-                iconCls: 'icon-user-add',
-                text: 'Insert',
-                disabled: false,
-                handler: function()
+        var accountColModel = new Ext.grid.ColumnModel(
+        {
+            columns: [
                 {
-                    journalGrid.stopEditing();
+                    header: 'Account',
+                    sortable: true,
+                    dataIndex: 'fullname',
+                    editable: false,
+                },{
+                    header: 'Days since last bill',
+                    sortable: true,
+                    dataIndex: 'dayssince',
+                    editable: false,
+                },
+            ]
+        });
 
-                    // grab the current selection - only one row may be selected per singlselect configuration
-                    var selection = journalGrid.getSelectionModel().getSelected();
 
-                    // make the new record
-                    var journalType = journalGrid.getStore().recordType;
-                    var defaultData = 
-                    {
-                    };
-                    var r = new journalType(defaultData);
-        
-                    // select newly inserted record
-                    //var insertionPoint = journalStore.indexOf(selection);
-                    //journalStore.insert(insertionPoint + 1, r);
-                    journalStore.add([r]);
-                    //journalGrid.startEditing(insertionPoint +1,1);
-                    
-                }
-            },{
-                xtype: 'tbseparator'
-            },{
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                id: 'journalRemoveBtn',
-                iconCls: 'icon-user-delete',
-                text: 'Remove',
-                disabled: true,
-                handler: function()
-                {
-                    journalGrid.stopEditing();
-                    journalStore.setBaseParam("account", accountCombo.getValue());
+        // this grid tracks the state of the currently selected account
 
-                    // TODO single row selection only, test allowing multirow selection
-                    var s = journalGrid.getSelectionModel().getSelections();
-                    for(var i = 0, r; r = s[i]; i++)
-                    {
-                        journalStore.remove(r);
+        var accountGrid = new Ext.grid.GridPanel({
+            colModel: accountColModel,
+            selModel: new Ext.grid.RowSelectionModel({
+                singleSelect: true,
+                listeners: {
+                    rowselect: function (selModel, index, record) {
+                        loadReeBillUIForAccount(record.data.account);
                     }
-                    journalStore.save(); 
                 }
+            }),
+            store: accountStore,
+            enableColumnMove: false,
+            frame: true,
+            collapsible: true,
+            animCollapse: false,
+            stripeRows: true,
+            viewConfig: {
+                // doesn't seem to work
+                forceFit: true,
+            },
+            title: 'Processing Status',
+            // paging bar on the bottom
+            bbar: new Ext.PagingToolbar({
+                pageSize: 25,
+                store: accountStore,
+                displayInfo: true,
+                displayMsg: 'Displaying {0} - {1} of {2}',
+                emptyMsg: "No statuses to display",
+            }),
+        });
+
+
+        ///////////////////////////////////////////////////////////////////////////
+        // preferences tab
+        // bill image resolution field in preferences tab (needs a name so its
+        // value can be gotten)
+        var billImageResolutionField = new Ext.ux.form.SpinnerField({
+          id: 'billresolutionmenu',
+          fieldLabel: 'Bill image resolution',
+          name: 'billresolution',
+          value: DEFAULT_RESOLUTION,
+          minValue: 50,
+          maxValue: 200,
+          allowDecimals: false,
+          decimalPrecision: 10,
+          incrementValue: 10,
+          alternateIncrementValue: 2.1,
+          accelerate: true
+        });
+        // get initial value of this field from the server
+        var resolution = null;
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/reebill/getBillImageResolution',
+            disableCaching: true,
+            success: function(result, request) {
+                var jsonData = null;
+                try {
+                    jsonData = Ext.util.JSON.decode(result.responseText);
+                    console.log(result.responseText);
+                    if (jsonData.success == true) {
+                        resolution = jsonData['resolution'];
+                        console.log('setting resolution to ' + jsonData['resolution']);
+                        billImageResolutionField.setValue(resolution);
+                    } else {
+                        Ext.Msg.alert("getBillImageResolution failed: " + jsonData.errors);
+                    }
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Could not decode "' + jsonData + '"');
+                }
+            },
+            failure: function () {
+                Ext.Msg.alert("setBillImageResolution request failed");
             }
-        ]
-    });
+        });
 
-    var journalGrid = new Ext.grid.EditorGridPanel({
-        flex: 1,
-        tbar: journalToolbar,
-        colModel: journalColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
-        store: journalStore,
-        enableColumnMove: false,
-        frame: true,
-        collapsible: true,
-        animCollapse: false,
-        stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
-        title: 'journals',
-        clicksToEdit: 2
-    });
 
-    journalGrid.getSelectionModel().on('selectionchange', function(sm){
-        //journalGrid.getTopToolbar().findById('journalInsertBtn').setDisabled(sm.getCount() <1);
-        journalGrid.getTopToolbar().findById('journalRemoveBtn').setDisabled(sm.getCount() <1);
-    });
-  
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    journalStore.on('update', function(){
-        //journalGrid.getTopToolbar().findById('journalSaveBtn').setDisabled(false);
-    });
 
-    journalStore.on('beforesave', function() {
-        journalStore.setBaseParam("account", accountCombo.getValue());
+        ///////////////////////////////////////
+        // journals Tab
+
+        var initialjournal =  {
+            rows: [
+            ]
+        };
+
+        var journalReader = new Ext.data.JsonReader({
+            root: 'rows',
+
+            // the fields config option will internally create an Ext.data.Record
+            // constructor that provides mapping for reading the record data objects
+            fields: [
+                // map Record's field to json object's key of same name
+                {name: '_id', mapping: '_id'},
+                {name: 'date', mapping: 'date'},
+                {name: 'account', mapping: 'account'},
+                {name: 'sequence', mapping: 'sequence'},
+                {name: 'msg', mapping: 'msg'},
+            ]
+        });
+
+        var journalWriter = new Ext.data.JsonWriter({
+            encode: true,
+            // write all fields, not just those that changed
+            writeAllFields: true 
+        });
+
+        var journalStoreProxy = new Ext.data.HttpProxy({
+            method: 'GET',
+            prettyUrls: false,
+            url: 'http://'+location.host+'/reebill/journal',
+        });
+
+        var journalStore = new Ext.data.JsonStore({
+            proxy: journalStoreProxy,
+            autoSave: false,
+            reader: journalReader,
+            writer: journalWriter,
+            autoSave: true,
+            data: initialjournal,
+            root: 'rows',
+            idProperty: '_id',
+            fields: [
+                {name: '_id'},
+                {
+                    name: 'date',
+                    type: 'date',
+                    //dateFormat: 'Y-m-d'
+                },
+                {name: 'account'},
+                {name: 'sequence'},
+                {name: 'msg'},
+            ],
+        });
+
+        var journalColModel = new Ext.grid.ColumnModel(
+        {
+            columns: [
+                {
+                    header: 'ObjectId',
+                    sortable: true,
+                    dataIndex: '_id',
+                },{
+                    header: 'Date',
+                    sortable: true,
+                    dataIndex: 'date',
+                    renderer: function(date) { if (date) return date.format(Date.patterns['ISO8601Long']); },
+                    editor: new Ext.form.DateField({
+                        allowBlank: false,
+                        format: Date.patterns['ISO8601Long'],
+                   }),
+                },{
+                    header: 'Account',
+                    sortable: true,
+                    dataIndex: 'account',
+                    //editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Sequence',
+                    sortable: true,
+                    dataIndex: 'sequence',
+                    //editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Message',
+                    sortable: true,
+                    dataIndex: 'msg',
+                    //editor: new Ext.form.TextField({allowBlank: true})
+                },
+            ]
+        });
+        /* TODO: 20493983 enable for admin user
+        var journalToolbar = new Ext.Toolbar({
+            items: [
+                {
+                    xtype: 'button',
+                    id: 'journalInsertBtn',
+                    iconCls: 'icon-user-add',
+                    text: 'Insert',
+                    disabled: false,
+                    handler: function()
+                    {
+                        journalGrid.stopEditing();
+
+                        // grab the current selection - only one row may be selected per singlselect configuration
+                        var selection = journalGrid.getSelectionModel().getSelected();
+
+                        // make the new record
+                        var journalType = journalGrid.getStore().recordType;
+                        var defaultData = 
+                        {
+                        };
+                        var r = new journalType(defaultData);
+            
+                        // select newly inserted record
+                        //var insertionPoint = journalStore.indexOf(selection);
+                        //journalStore.insert(insertionPoint + 1, r);
+                        journalStore.add([r]);
+                        //journalGrid.startEditing(insertionPoint +1,1);
+                        
+                    }
+                },{
+                    xtype: 'tbseparator'
+                },{
+                    xtype: 'button',
+                    // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                    id: 'journalRemoveBtn',
+                    iconCls: 'icon-user-delete',
+                    text: 'Remove',
+                    disabled: true,
+                    handler: function()
+                    {
+                        journalGrid.stopEditing();
+                        journalStore.setBaseParam("account", accountCombo.getValue());
+
+                        // TODO single row selection only, test allowing multirow selection
+                        var s = journalGrid.getSelectionModel().getSelections();
+                        for(var i = 0, r; r = s[i]; i++)
+                        {
+                            journalStore.remove(r);
+                        }
+                        journalStore.save(); 
+                    }
+                }
+            ]
+        });
+        journalGrid.getSelectionModel().on('selectionchange', function(sm){
+            //journalGrid.getTopToolbar().findById('journalInsertBtn').setDisabled(sm.getCount() <1);
+            journalGrid.getTopToolbar().findById('journalRemoveBtn').setDisabled(sm.getCount() <1);
+        });
+      
+        // grid's data store callback for when data is edited
+        // when the store backing the grid is edited, enable the save button
+        journalStore.on('update', function(){
+            //journalGrid.getTopToolbar().findById('journalSaveBtn').setDisabled(false);
+        });
+
+        journalStore.on('beforesave', function() {
+            journalStore.setBaseParam("account", accountCombo.getValue());
+        });
+        */
+
+        var journalGrid = new Ext.grid.EditorGridPanel({
+            flex: 1,
+            //tbar: journalToolbar,
+            colModel: journalColModel,
+            selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+            store: journalStore,
+            enableColumnMove: false,
+            frame: true,
+            collapsible: true,
+            animCollapse: false,
+            stripeRows: true,
+            viewConfig: {
+                // doesn't seem to work
+                forceFit: true,
+            },
+            title: 'Journal Entries',
+            clicksToEdit: 2
+        });
+
+        //
+        // Set up the journal memo widget
+        //
+        // account field
+        var journalEntryField = new Ext.form.TextField({
+            fieldLabel: 'Journal',
+            name: 'entry',
+            width: 300,
+            allowBlank: false,
+        });
+        var journalEntryAccountField = new Ext.form.Hidden({
+            name: 'account',
+        });
+        var journalEntrySequenceField = new Ext.form.Hidden({
+            name: 'sequence',
+        });
+        // buttons
+        var journalEntryResetButton = new Ext.Button({
+            text: 'Reset',
+            handler: function() {this.findParentByType(Ext.form.FormPanel).getForm().reset(); }
+        });
+        var journalEntrySubmitButton = new Ext.Button({
+            text: 'Submit',
+            // TODO: 20513861 clear form on success
+            // TODO: 20514019 reload journal grid on success
+            handler: saveForm,
+        });
+        var journalFormPanel = new Ext.form.FormPanel({
+            url: 'http://'+location.host+'/reebill/save_journal_entry',
+            frame: true,
+            border: false,
+            width: 400,
+            layout: 'hbox',
+            defaults: {
+                layout: 'form'
+            },
+            items: [
+                journalEntryField, 
+                journalEntryResetButton, journalEntrySubmitButton,
+                journalEntryAccountField, journalEntrySequenceField
+        ],
+        hideLabels: false,
+        labelAlign: 'left',   // or 'right' or 'top'
+        labelSeparator: '', // takes precedence over layoutConfig value
+        labelWidth: 65,       // defaults to 100
+        labelPad: 8           // defaults to 5, must specify labelWidth to be honored
     });
 
 
@@ -2841,7 +2816,7 @@ function renderWidgets()
         defaultText: 'No RE Bill',
         id: 'statusbar',
         statusAlign: 'right', // the magic config
-        //items: [{ text: 'A Button' }, '-', 'Plain Text', ' ', ' ']
+        items: [journalFormPanel]
     });
 
 
@@ -2865,7 +2840,7 @@ function renderWidgets()
           title: 'Accounts',
           xtype: 'panel',
           layout: 'accordion',
-          items: [statusDaysSinceGrid, statusUnbilledGrid]
+          items: [accountGrid,]
         },{
           id: 'paymentTab',
           title: 'Pay',
@@ -3093,7 +3068,7 @@ function renderWidgets()
         Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML(null, 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
 
         // this store eventually goes away
-        // because accounts are selected from the status tables
+        // because accounts are to be selected from the status tables
         accountsStore.reload();
         accountCombo.setValue(account);
         sequencesStore.setBaseParam('account', account);
@@ -3112,6 +3087,11 @@ function renderWidgets()
         // update list of journal entries for this account
         journalStore.reload({params: {account: account}});
 
+        // update the journal form panel so entries get submitted to currently selected account
+        // need to set account into a hidden field here since there is no data store behind the form
+        journalFormPanel.getForm().findField("account").setValue(account)
+        // TODO: 1320091681504 if an account is selected w/o a sequence, a journal entry can't be made
+
         // tell utilBillGrid to filter itself
         utilbillGridStore.setBaseParam("account", account)
         // pass in page params since the pagingtoolbar normally provides paramNames
@@ -3123,7 +3103,9 @@ function renderWidgets()
         // add the account to the upload_account field
         upload_account.setValue(account)
 
-        // clear data when a new account is selected
+        // clear reebill data when a new account is selected
+        // TODO: 1320091681504 if an account is selected w/o a sequence, a journal entry can't be made
+        journalFormPanel.getForm().findField("sequence").setValue(null)
         configureUBPeriodsForms(null, null, null);
         configureUBMeasuredUsagesForms(null, null, null);
         aChargesStore.loadData({rows: 0, success: true});
@@ -3140,6 +3122,10 @@ function renderWidgets()
         if (account == null || sequence == null) {
             throw "Account and Sequence must be set";
         }
+
+        // update the journal form panel so entries get submitted to currently selected account
+        // need to set account into a hidden field here since there is no data store behind the form
+        journalFormPanel.getForm().findField("sequence").setValue(sequence)
 
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/ubPeriods',
