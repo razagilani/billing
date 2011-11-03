@@ -950,10 +950,8 @@ class ReebillDAO:
             end_datetime = datetime(end_date.year, end_date.month,
                     end_date.day)
             query['period_begin'] = {'$lte': end_datetime}
-        print 'query:', query
-        mongo_docs = self.collection.find(query)
         result = []
-        for mongo_doc in mongo_docs:
+        for mongo_doc in self.collection.find(query):
             mongo_doc = convert_datetimes(mongo_doc)
             mongo_doc = deep_map(float_to_decimal, mongo_doc)
             result.append(MongoReebill(mongo_doc))
