@@ -12,14 +12,20 @@ class NexusUtil(object):
 
     def olap_id(self, bill_account):
         """ For a billing account number, return an olap_id """
-
         url = "http://%s/nexus_query/lookup?system=billing&systemid=%s&forsystem=olap" % (
             self.host,
             bill_account
         )
-
         f = urllib2.urlopen(url)
+        return f.read()
 
+    def billing_id(self, olap_id):
+        '''For an olap id, return a billing account number.'''
+        url = "http://%s/nexus_query/lookup?system=olap&systemid=%s&forsystem=billing" % (
+            self.host,
+            olap_id
+        )
+        f = urllib2.urlopen(url)
         return f.read()
 
     def all(self, system, system_id):

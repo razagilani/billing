@@ -824,6 +824,12 @@ class MongoReebill(object):
             raise Exception('Multiple rate structure bindings found for service "%s"' % service_name)
         return rs_bindings[0]
 
+    @property
+    def savings(self):
+        '''Value of renewable energy generated, or total savings from
+        hypothetical utility bill.'''
+        return self.dictionary['ree_value']
+
     #
     # Helper functions
     #
@@ -924,6 +930,34 @@ class ReebillDAO:
             mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
             mongo_reebill = MongoReebill(mongo_doc)
             return mongo_reebill
+    
+    def load_reebills_in_period(self, account, branch=0, start_date=None, end_date=None):
+        '''Returns a list of MongoReebills whose period began on or before
+        'end_date' and ended on or after 'start_date'. If 'start_date' and
+        'end_date' are not given or are None, the time period extends to the
+        begining or end of time, respectively.'''
+        query = {
+            '_id.account': str(account),
+            '_id.branch': int(branch),
+        }
+        # add dates to query if present (converting dates into datetimes
+        # because mongo only allows datetimes)
+        if start_date is not None:
+            start_datetime = datetime(start_date.year, start_date.month,
+                    start_date.day)
+            query['period_end'] = {'$gte': start_datetime}
+        if end_date is not None:
+            end_datetime = datetime(end_date.year, end_date.month,
+                    end_date.day)
+            query['period_begin'] = {'$lte': end_datetime}
+        print 'query:', query
+        mongo_docs = self.collection.find(query)
+        result = []
+        for mongo_doc in mongo_docs:
+            mongo_doc = convert_datetimes(mongo_doc)
+            mongo_doc = deep_map(float_to_decimal, mongo_doc)
+            result.append(MongoReebill(mongo_doc))
+        return result
         
     def load_xml_reebill(self, account, sequence, branch=0):
         # initialization with a string: URL of an XML reebill in Exist. use
