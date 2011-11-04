@@ -139,6 +139,8 @@ class BillToolBridge:
             self.config.set('mailer', 'originator', 'jwatson@skylineinnovations.com')
             self.config.set('mailer', 'from', '"Jules Watson" <jwatson@skylineinnovations.com>')
             self.config.set('mailer', 'password', 'password')
+            self.config.add_section('authentication')
+            self.config.set('authenticate', 'true')
 
             # For BillUpload
             # default name of log file (config file can override this)
@@ -223,6 +225,9 @@ class BillToolBridge:
         rsdb_config_section = self.config.items("rsdb")
         self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
 
+        # determine whether authentication is on or off
+        self.authentication_on = self.config.getboolean('authentication', 'authenticate')
+
         # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
 
@@ -254,7 +259,9 @@ class BillToolBridge:
     def check_authentication(self):
         '''Decorator to check authentication for HTTP request functions: redirect
         to login page if the user is not authenticated.'''
-        return # authentication turned off
+        # skip if authentication is turned off
+        if not self.authentication_on:
+            return
         if 'username' not in cherrypy.session:
             self.logger.info("Non-logged-in user was denied access to: %s" % \
                     inspect.stack()[1][3])
