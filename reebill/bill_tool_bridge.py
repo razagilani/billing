@@ -222,7 +222,6 @@ class BillToolBridge:
         self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
 
         # print a message in the log--TODO include the software version
-        print 'about to print log message'
         self.logger.info('BillToolBridge initialized')
 
     ###########################################################################
@@ -253,7 +252,7 @@ class BillToolBridge:
     def check_authentication(self):
         '''Decorator to check authentication for HTTP request functions: redirect
         to login page if the user is not authenticated.'''
-        return
+        #return
         if 'username' not in cherrypy.session:
             print "access denied:", inspect.stack()[1][3]
             # TODO: 19664107
@@ -270,9 +269,9 @@ class BillToolBridge:
 
     @cherrypy.expose
     def logout(self):
-        self.check_authentication()
-        self.logger.info('user "%s" logged out' % (cherrypy.session['username']))
-        del cherrypy.session['username']
+        if 'username' in cherrypy.session:
+            self.logger.info('user "%s" logged out' % (cherrypy.session['username']))
+            del cherrypy.session['username']
         raise cherrypy.HTTPRedirect('/login.html')
 
     # TODO: do this on a per service basis 18311877
