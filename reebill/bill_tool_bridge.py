@@ -265,7 +265,8 @@ class BillToolBridge:
         try:
             return ju.dumps({'success':True, 'username': cherrypy.session['username']})
         except Exception as e:
-             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
     def logout(self):
@@ -309,13 +310,13 @@ class BillToolBridge:
             session.commit()
             self.journal_dao.journal(account, sequence, "ReeBill rolled")
             return json.dumps({'success': True})
-
         except Exception as e:
             if session is not None: 
                 try:
                     if session is not None: session.rollback()
                 except:
                     print "Could not rollback session"
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
@@ -340,6 +341,7 @@ class BillToolBridge:
                     if session is not None: session.rollback()
                 except:
                     print "Could not rollback session"
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
@@ -365,7 +367,7 @@ class BillToolBridge:
             return json.dumps({'success': True})
 
         except Exception as e:
-
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
@@ -379,9 +381,8 @@ class BillToolBridge:
             self.process.bind_rate_structure(reebill)
             self.reebill_dao.save_reebill(reebill)
             return json.dumps({'success': True})
-
         except Exception as e:
-
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
@@ -394,7 +395,8 @@ class BillToolBridge:
             self.process.calculate_reperiod(account, sequence)
 
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
         return json.dumps({'success': True})
 
@@ -405,10 +407,9 @@ class BillToolBridge:
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
             self.process.calculate_statistics(account, sequence)
-
         except Exception as e:
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
         return json.dumps({'success': True})
 
     @cherrypy.expose
@@ -435,8 +436,8 @@ class BillToolBridge:
                     if session is not None: session.rollback()
                 except:
                     print "Could not rollback session"
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
         
     @cherrypy.expose
     def issue(self, account, sequence, **args):
@@ -445,13 +446,10 @@ class BillToolBridge:
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
             self.process.issue(account, sequence)
-
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
         return json.dumps({'success': True})
-
-
 
     @cherrypy.expose
     def render(self, account, sequence, **args):
@@ -466,7 +464,8 @@ class BillToolBridge:
                 None,
             )
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
         return json.dumps({'success': True})
 
@@ -477,21 +476,18 @@ class BillToolBridge:
             session = None
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
-
             session = self.state_db.session()
             self.process.commit_rebill(session, account, sequence)
             session.commit()
-
             return json.dumps({'success': True})
-
         except Exception as e:
             if session is not None: 
                 try:
                     if session is not None: session.rollback()
                 except:
                     print "Could not rollback session"
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
 
     @cherrypy.expose
     def issueToCustomer(self, account, sequence, **args):
@@ -511,6 +507,7 @@ class BillToolBridge:
                     if session is not None: session.rollback()
                 except:
                     print "Could not rollback session"
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
@@ -550,6 +547,7 @@ class BillToolBridge:
             return json.dumps({'success': True})
 
         except Exception as e:
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
@@ -596,6 +594,7 @@ class BillToolBridge:
                     if session is not None: session.rollback()
                 except:
                     print "Could not rollback session"
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
@@ -618,6 +617,7 @@ class BillToolBridge:
                 if session is not None: session.rollback()
             except:
                 print "Could not rollback session"
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
@@ -645,8 +645,7 @@ class BillToolBridge:
                 if session is not None: session.rollback()
             except:
                 print "Could not rollback session"
-            # TODO 20217999: log errors?
-            print >> sys.stderr, e
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
@@ -783,7 +782,8 @@ class BillToolBridge:
                 return json.dumps({'success':True})
 
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
     def ursrsi(self, xaction, account, sequence, service, **kwargs):
@@ -909,8 +909,8 @@ class BillToolBridge:
                 return json.dumps({'success':True})
 
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
     def payment(self, xaction, account, **kwargs):
@@ -1000,6 +1000,7 @@ class BillToolBridge:
                 if session is not None: session.rollback()
             except:
                 print "Could not rollback session"
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
@@ -1042,6 +1043,7 @@ class BillToolBridge:
                if session is not None: session.rollback()
             except:
                 print "Could not rollback session"
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
@@ -1101,7 +1103,8 @@ class BillToolBridge:
             return ju.dumps({'success':True})
 
         except Exception as e:
-             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
     #
@@ -1130,7 +1133,7 @@ class BillToolBridge:
             return ju.dumps({'success': True, 'rows': flattened_charges})
 
         except Exception as e:
-
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
@@ -1154,7 +1157,7 @@ class BillToolBridge:
             return ju.dumps({'success': True, 'rows': flattened_charges})
 
         except Exception as e:
-
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
@@ -1174,6 +1177,7 @@ class BillToolBridge:
             return ju.dumps({'success': True})
 
         except Exception as e:
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
@@ -1192,6 +1196,7 @@ class BillToolBridge:
             return ju.dumps({'success': True})
 
         except Exception as e:
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
@@ -1221,6 +1226,7 @@ class BillToolBridge:
             return ju.dumps(meters)
 
         except Exception as e:
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
@@ -1242,7 +1248,8 @@ class BillToolBridge:
             return ju.dumps({'success':True})
 
         except Exception as e:
-             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
     def setActualRegister(self, account, sequence, service, register_identifier, meter_identifier, quantity):
@@ -1259,7 +1266,8 @@ class BillToolBridge:
             return ju.dumps({'success':True})
 
         except Exception as e:
-             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     #
     ################
@@ -1284,6 +1292,7 @@ class BillToolBridge:
                 session.commit()
                 return ju.dumps({'success':True})
             else:
+                self.logger.error('file upload failed:', begin_date, end_date, file_to_upload.filename)
                 return ju.dumps({'success':False, 'errors':{'reason':'file upload failed', 'details':'Returned False'}})
         except Exception as e: 
             if session is not None: 
@@ -1291,6 +1300,7 @@ class BillToolBridge:
                     if session is not None: session.rollback()
                 except:
                     print "Could not rollback session"
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     #
@@ -1324,7 +1334,8 @@ class BillToolBridge:
                 return json.dumps({'success':False, 'errors':{'reason':'Not supported'}})
 
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
     def save_journal_entry(self, account, sequence, entry, **kwargs):
@@ -1339,7 +1350,8 @@ class BillToolBridge:
             return json.dumps({'success':True})
 
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
  
     @cherrypy.expose
@@ -1376,7 +1388,7 @@ class BillToolBridge:
                 if session is not None: session.rollback()
             except:
                 print "Could not rollback session"
-
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
     
     @cherrypy.expose
@@ -1390,7 +1402,8 @@ class BillToolBridge:
             result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date, resolution)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
-             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
     def getReeBillImage(self, account, sequence, resolution, **args):
@@ -1402,7 +1415,8 @@ class BillToolBridge:
             result = self.billUpload.getReeBillImagePath(account, sequence, resolution)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
-             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
     
     @cherrypy.expose
     def getBillImageResolution(self, **kwargs):
@@ -1411,7 +1425,8 @@ class BillToolBridge:
             resolution = cherrypy.session['preferences']['bill_image_resolution']
             return ju.dumps({'success':True, 'resolution': resolution})
         except Exception as e:
-             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
     def setBillImageResolution(self, resolution, **kwargs):
@@ -1420,14 +1435,13 @@ class BillToolBridge:
             cherrypy.session['preferences']['bill_image_resolution'] = int(resolution)
             return ju.dumps({'success':True})
         except Exception as e:
-             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
         
 # TODO: place instantiation in main, so this module can be loaded without btb being instantiated
 bridge = BillToolBridge()
 
 if __name__ == '__main__':
-
-
     # configure CherryPy
     local_conf = {
         '/' : {
