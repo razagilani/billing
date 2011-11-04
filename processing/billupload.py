@@ -45,7 +45,7 @@ IMAGE_RENDERING_DENSITY = 100
 
 class BillUpload(object):
 
-    def __init__(self, config):
+    def __init__(self, config, logger):
         #self.state_db = state_db
         self.config = config
 
@@ -53,29 +53,7 @@ class BillUpload(object):
         self.bill_image_directory = self.config.get('billrendering',
                 'bill_image_directory')
         
-        # get log file name and format from config file
-        # TODO: if logging section of config file is malformed, choose default
-        # values and report the error to stderr
-        log_file_path = os.path.join( \
-                os.path.dirname(os.path.realpath(__file__)), \
-                self.config.get('log', 'log_file_name'))
-        log_format = self.config.get('log', 'log_format')
-        
-        # make sure log file is writable
-        try:
-            open(log_file_path, 'a').close() # 'a' for append
-        except Exception as e:
-            # logging this error is impossible, so print to stderr
-            print >> sys.stderr, 'Log file path "%s" is not writable.' \
-                    % log_file_path
-            raise
-        
-        # create logger
-        self.logger = logging.getLogger('billupload')
-        formatter = logging.Formatter(log_format)
-        handler = logging.FileHandler(log_file_path)
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler) 
+        self.logger = logger
         
         # load save directory info from config file
         self.save_directory = self.config.get('billdb', 'utilitybillpath')
