@@ -239,7 +239,7 @@ class BillToolBridge:
         # session object & redirect to main page
         cherrypy.session['username'] = username
         cherrypy.session['preferences'] = USERS[username]['preferences']
-        print 'user "%s" logged in with password "%s"' % (cherrypy.session['username'], password)
+        self.logger.info('user "%s" logged in with password "%s"' % (cherrypy.session['username'], password))
         raise cherrypy.HTTPRedirect("/billentry.html")
 
     #def check_authentication(function):
@@ -271,7 +271,7 @@ class BillToolBridge:
     @cherrypy.expose
     def logout(self):
         self.check_authentication()
-        print 'user "%s" logged out' % (cherrypy.session['username'])
+        self.logger.info('user "%s" logged out' % (cherrypy.session['username']))
         del cherrypy.session['username']
         raise cherrypy.HTTPRedirect('/login.html')
 
