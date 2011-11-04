@@ -68,7 +68,6 @@ class BillUpload(object):
         # check account name (validate_account just checks it against a regex)
         # TODO: check that it's really an existing account against nexus
         if not validate_account(account):
-            self.logger.error('invalid account name: "%s"' % account)
             raise ValueError('invalid account name: "%s"' % account)
 
         # convert dates into the proper format, & report error if that fails
@@ -76,9 +75,8 @@ class BillUpload(object):
             formatted_begin_date = format_date(begin_date)
             formatted_end_date = format_date(end_date)
         except Exception as e:
-            self.logger.error('unexpected date format(s): %s, %s: %s' \
+            raise ValueError('unexpected date format(s): %s, %s: %s' \
                     % (begin_date, end_date, str(e)))
-            raise
         
         # read whole file in one chunk
         try:
@@ -130,7 +128,6 @@ class BillUpload(object):
         # check account name (validate_account just checks that it's a string
         # and that it matches a regex)
         if not validate_account(account):
-            self.logger.error('invalid account name: "%s"' % account)
             raise ValueError('invalid account name: "%s"' % account)
 
         # convert dates into the proper format, & report error if that fails
@@ -138,9 +135,8 @@ class BillUpload(object):
             formatted_begin_date = format_date(begin_date)
             formatted_end_date = format_date(end_date)
         except Exception as e:
-            self.logger.error('unexpected date format(s): %s, %s: %s' \
+            raise ValueError('unexpected date format(s): %s, %s: %s' \
                     % (begin_date, end_date, str(e)))
-            raise
 
         # name of bill file (in its original format), without extension:
         # [begin_date]-[end_date].[extension]
@@ -165,7 +161,6 @@ class BillUpload(object):
             error_text = 'Could not find a readable bill file whose path \
                     (without extension) is "%s"' \
                     % bill_file_path_without_extension
-            self.logger.error(error_text)
             raise IOError(error_text)
         bill_file_path = bill_file_path_without_extension + '.' + extension
 
@@ -199,12 +194,10 @@ class BillUpload(object):
         # check account name (validate_account just checks that it's a string
         # and that it matches a regex)
         if not validate_account(account):
-            self.logger.error('invalid account name: "%s"' % account)
             raise ValueError('invalid account name: "%s"' % account)
 
         # check sequence number
         if not validate_sequence_number(sequence):
-            self.logger.error('invalid sequence number: "%s"' % sequence)
             raise ValueError('invalid sequence number: "%s"' % account)
 
         # get path of reebill
@@ -214,7 +207,6 @@ class BillUpload(object):
         # make sure it exists and can be read
         if not os.access(reebill_file_path, os.R_OK):
             error_text = 'Could not find the reebill "%s"' % reebill_file_path
-            self.logger.error(error_text)
             raise IOError(error_text)
 
         # name and path of bill image: name includes date so it's always unique
@@ -255,8 +247,6 @@ class BillUpload(object):
             convert_command = ['pdftoppm', '-png', '-rx', \
                     str(density), '-ry', str(density), bill_file_path, \
                     bill_image_path_without_extension]
-            self.logger.error('Invoking %s' % (' '.join(convert_command)))
-
         else:
             # use the command-line version of ImageMagick to convert the file.
             # ('-quiet' suppresses warning messages. formats are determined by
@@ -278,9 +268,8 @@ class BillUpload(object):
         # stderr
         if convert_result.returncode != 0:
             error_text = convert_result.communicate()[1]
-            self.logger.error('"%s" failed: %s' % (' '.join(convert_command), \
+            raise Exception('"%s" failed: %s' % (' '.join(convert_command), \
                     error_text))
-            raise Exception(error_text)
         
         # if the original was a multi-page PDF, 'convert' may have produced
         # multiple images named bill_image_path-0.png, bill_image_path-1.png,
@@ -310,9 +299,9 @@ class BillUpload(object):
         # it printed to stderr
         if montage_result.returncode != 0:
             error_text = montage_result.communicate()[1]
-            self.logger.error('"%s %s %s" failed: ' % (montage_command, \
-                    bill_file_path, bill_image_path_without_extension) + error_text)
-            raise Exception(error_text)
+            raise Exception('"%s %s %s" failed: ' % (montage_command, \
+                    bill_file_path, bill_image_path_without_extension) \
+                    + error_text)
     
         # delete the individual page images now that they've been joined
         for bill_image_name in bill_image_names:
@@ -320,8 +309,8 @@ class BillUpload(object):
                 os.remove(bill_image_name)
             except Exception as e:
                 # this is not critical, so if it fails, just log the error
-                self.logger.warning(('couldn\'t remove bill image file \
-                        "%s": ' % bill_image_name) + str(e))
+                self.logger.warning((('couldn\'t remove bill image file '
+                        '"%s": ') % bill_image_name) + str(e))
         
 
 '''Creates the directory at 'path' if it does not exist and can be created.  If
