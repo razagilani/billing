@@ -104,7 +104,9 @@ class BillToolBridge:
         self.config = ConfigParser.RawConfigParser()
         config_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'reebill.cfg')
         if not self.config.read(config_file_path):
-            print "Creating config file"
+            # can't log this because logger hasn't been created yet (log file
+            # name & associated info comes from config file)
+            print >> sys.stderr, 'Config file "%s" not found; creating it with default values'
             self.config.add_section('journaldb')
             self.config.set('journaldb', 'host', 'localhost')
             self.config.set('journaldb', 'port', '27017')
@@ -231,7 +233,7 @@ class BillToolBridge:
     def login(self, username, password, **args):
         if username not in USERS or USERS[username]['password'] != password:
             # failed login: redirect to the login page (again)
-            print 'login attempt failed: username "%s", password "%s"' % (username, password)
+            self.logger.error('login attempt failed: username "%s", password "%s"' % (username, password))
             raise cherrypy.HTTPRedirect("/login.html")
         
         # successful login: store username & user preferences in cherrypy
@@ -252,9 +254,10 @@ class BillToolBridge:
     def check_authentication(self):
         '''Decorator to check authentication for HTTP request functions: redirect
         to login page if the user is not authenticated.'''
-        #return
+        return # authentication turned off
         if 'username' not in cherrypy.session:
-            print "access denied:", inspect.stack()[1][3]
+            self.logger.info("Non-logged-in user was denied access to: %s" % \
+                    inspect.stack()[1][3])
             # TODO: 19664107
             # 401 = unauthorized--can't reply to an ajax call with a redirect
             cherrypy.response.status = 401
@@ -525,7 +528,6 @@ class BillToolBridge:
             # sequences is [u'17']
 
             all_bills = [self.reebill_dao.load_reebill(account, sequence) for sequence in sequences]
-            print all_bills
 
             # the last element
             most_recent_bill = all_bills[-1]
@@ -688,9 +690,6 @@ class BillToolBridge:
                 # process list of edits
                 # TODO: RateStructure DAO should do CRUD ops
                 for row in rows:
-
-
-
                     # identify the RSI UUID of the posted data
                     rsi_uuid = row['uuid']
 
@@ -1382,8 +1381,6 @@ class BillToolBridge:
 
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
-            # TODO: log errors?
-            print >> sys.stderr, e
             try:
                 if session is not None: session.rollback()
             except:
