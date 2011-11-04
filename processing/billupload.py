@@ -59,12 +59,13 @@ class BillUpload(object):
         self.save_directory = self.config.get('billdb', 'utilitybillpath')
         self.reebill_directory = self.config.get('billdb', 'billpath')
 
-    '''Uploads the file 'the_file' (whose name is 'file_name') to the location
-    [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]. Returns
-    True for success, or throws one of various exceptions if something doesn't
-    work. (The caller takes care of reporting the error in the proper format.)
-    '''
     def upload(self, account, begin_date, end_date, the_file, file_name):
+        '''Uploads the file 'the_file' (whose name is 'file_name') to the
+        location
+        [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]. Returns
+        True for success, or throws one of various exceptions if something
+        doesn't work. (The caller takes care of reporting the error in the
+        proper format.) '''
         # check account name (validate_account just checks it against a regex)
         # TODO: check that it's really an existing account against nexus
         if not validate_account(account):
@@ -91,13 +92,13 @@ class BillUpload(object):
         # path where file will be saved:
         # [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension] (NB:
         # date format is determined by the submitter)
-        save_file_path = os.path.join(self.save_directory, account, \
+        save_file_path = os.path.join(self.save_directory, account,
                 formatted_begin_date + '-' + formatted_end_date \
                 + os.path.splitext(file_name)[1])
 
         # create the save directory if it doesn't exist
-        create_directory_if_necessary(os.path.join(self.save_directory, account),
-                self.logger)
+        create_directory_if_necessary(os.path.join( self.save_directory,
+                account), self.logger)
         
         # write the file in SAVE_DIRECTORY
         # (overwrite if it's already there)
@@ -119,12 +120,12 @@ class BillUpload(object):
         return True
 
 
-    '''Given an account and dates for a utility bill, renders that bill as an
-    image in BILL_IMAGE_DIRECTORY, and returns the name of the image file. (The
-    caller is responsble for providing a URL to the client where that image can
-    be accessed.)'''
     # TODO rename: ImagePath -> ImageName
     def getUtilBillImagePath(self, account, begin_date, end_date, resolution):
+        '''Given an account and dates for a utility bill, renders that bill as
+        an image in BILL_IMAGE_DIRECTORY, and returns the name of the image
+        file. (The caller is responsble for providing a URL to the client where
+        that image can be accessed.)'''
         # check account name (validate_account just checks that it's a string
         # and that it matches a regex)
         if not validate_account(account):
@@ -167,9 +168,10 @@ class BillUpload(object):
         # name and path of bill image: name includes date so it's always unique
         bill_image_name_without_extension = 'utilbill_' + account + '_' \
                 + bill_file_name_without_extension + '_' + \
-                str(datetime.datetime.today()).replace(' ', '').replace('.','') \
-                .replace(':','')
-        bill_image_path_without_extension = os.path.join(self.bill_image_directory,\
+                str(datetime.datetime.today()).replace(' ', '') \
+                .replace('.','').replace(':','')
+        bill_image_path_without_extension = os.path.join(
+                self.bill_image_directory,
                 bill_image_name_without_extension)
 
         # create bill image directory if it doesn't exist already
@@ -184,13 +186,14 @@ class BillUpload(object):
         return bill_image_name_without_extension + '.' + IMAGE_EXTENSION
         
 
-    '''Given an account number and sequence number of a reebill, remnders that
-    bill as an image in self.bill_image_directory, and returns the name of the image
-    file. ("Sequence" means the position of that bill in the sequence of bills
-    issued to a particular customer.) The caller is responsble for providing
-    a URL to the client where that image can be accessed.'''
     # TODO rename: ImagePath -> ImageName
     def getReeBillImagePath(self, account, sequence, resolution):
+        '''Given an account number and sequence number of a reebill, remnders
+        that bill as an image in self.bill_image_directory, and returns the
+        name of the image file. ("Sequence" means the position of that bill in
+        the sequence of bills issued to a particular customer.) The caller is
+        responsble for providing a URL to the client where that image can be
+        accessed.'''
         # check account name (validate_account just checks that it's a string
         # and that it matches a regex)
         if not validate_account(account):
@@ -213,7 +216,8 @@ class BillUpload(object):
         bill_image_name_without_extension = 'reebill_' + account + '_' \
                 + sequence + str(datetime.datetime.today()).replace(' ', '') \
                 .replace('.','').replace(':','')
-        bill_image_path_without_extension = os.path.join(self.bill_image_directory,\
+        bill_image_path_without_extension = os.path.join(
+                self.bill_image_directory,
                 bill_image_name_without_extension)
 
         # create bill image directory if it doesn't exist already
@@ -229,19 +233,20 @@ class BillUpload(object):
         return bill_image_name_without_extension + '.' + IMAGE_EXTENSION
 
 
-    '''Converts the file at [bill_file_path_without_extension].[extension] to
-    an image and saves it at bill_image_path. Types are determined by
-    extensions. For non-raster input formats like PDF, the resolution of the
-    output image is determined by 'density' (in pixels per inch?). (This
-    requires the 'convert' command from ImageMagick, which itself requires
-    html2pdf to render html files, and the 'montage' command from ImageMagick
-    to join multi-page documents into a single image.) Raises an exception if
-    image rendering fails.'''
     def renderBillImage(self, bill_file_path, \
             bill_image_path_without_extension, extension, density):
+        '''Converts the file at [bill_file_path_without_extension].[extension]
+        to an image and saves it at bill_image_path. Types are determined by
+        extensions. For non-raster input formats like PDF, the resolution of
+        the output image is determined by 'density' (in pixels per inch?).
+        (This requires the 'convert' command from ImageMagick, which itself
+        requires html2pdf to render html files, and the 'montage' command from
+        ImageMagick to join multi-page documents into a single image.) Raises
+        an exception if image rendering fails.'''
 
-        # TODO: this needs to be reimplemented so as to be command line command oriented
-        # It is not possible to make a generic function for N command line programs
+        # TODO: this needs to be reimplemented so as to be command line command
+        # oriented It is not possible to make a generic function for N command
+        # line programs
 
         if extension == "pdf".lower():
             convert_command = ['pdftoppm', '-png', '-rx', \
@@ -313,9 +318,10 @@ class BillUpload(object):
                         '"%s": ') % bill_image_name) + str(e))
         
 
-'''Creates the directory at 'path' if it does not exist and can be created.  If
-it cannot be created, logs the error using 'logger' and raises an exception.'''
 def create_directory_if_necessary(path, logger):
+    '''Creates the directory at 'path' if it does not exist and can be
+    created.  If it cannot be created, logs the error using 'logger' and raises
+    an exception.'''
     try:
         os.makedirs(path)
     except OSError as e:
@@ -324,15 +330,14 @@ def create_directory_if_necessary(path, logger):
         if e.errno == errno.EEXIST:
             pass
         else:
-            logger.error('unable to create directory "%s": %s' \
-                    % (path, str(e)))
+            logger.error('unable to create directory "%s": %s'  % (path, e))
             raise
 
 # validators for checking parameter values #####################################
 
-'''Returns true iff the account is valid (just checks agains a regex, but this
-removes dangerous input)'''
 def validate_account(account):
+    '''Returns true iff the account is valid (just checks agains a regex, but
+    this removes dangerous input)'''
     try:
         return re.match(ACCOUNT_NAME_REGEX, account) is not None
     except TypeError:
@@ -340,10 +345,10 @@ def validate_account(account):
         # even a string, it's definitely not valid
         return False
 
-'''Takes a date formatted according to INPUT_DATE_FORMAT and returns one
-formatted according to OUTPUT_DATE_FORMAT. if the argument dose not match
-INPUT_DATE_FORMAT, raises an exception.'''
 def format_date(date_string):
+    '''Takes a date formatted according to INPUT_DATE_FORMAT and returns one
+    formatted according to OUTPUT_DATE_FORMAT. if the argument dose not match
+    INPUT_DATE_FORMAT, raises an exception.'''
     # convert to a time.struct_time object
     try:
         date_object = time.strptime(date_string, INPUT_DATE_FORMAT)
@@ -352,9 +357,9 @@ def format_date(date_string):
     # convert back
     return time.strftime(OUTPUT_DATE_FORMAT, date_object)
 
-'''Returns true iff the sequence number is valid (just checks against a
-regex).'''
 def validate_sequence_number(sequence):
+    '''Returns true iff the sequence number is valid (just checks against a
+    regex).'''
     try:
         return re.match(SEQUENCE_NUMBER_REGEX, sequence) is not None
     except TypeError:
