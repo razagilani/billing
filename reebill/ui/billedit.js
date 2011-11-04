@@ -151,6 +151,10 @@ function renderWidgets()
         //baseParams: {},
         paramNames: {start: 'start', limit: 'limit'},
         //autoLoad: {params:{start: 0, limit: 25}},
+
+        // default sort
+        sortInfo: {field: 'sequence', direction: 'ASC'}, // descending is DESC
+        remoteSort: true,
         fields: [
             {name: 'name'},
             {name: 'account'},
@@ -179,6 +183,7 @@ function renderWidgets()
         trackMouseOver:false,
         flex:1,
         layout: 'fit',
+        sortable: true,
         selModel: new Ext.grid.RowSelectionModel({
             singleSelect: true,
             listeners: {
