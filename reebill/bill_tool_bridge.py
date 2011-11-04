@@ -140,7 +140,7 @@ class BillToolBridge:
 
             # For BillUpload
             # default name of log file (config file can override this)
-            DEFAULT_LOG_FILE_NAME = 'billupload.log'
+            DEFAULT_LOG_FILE_NAME = 'reebill.log'
 
             # default format of log entries (config file can override this)
             DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
@@ -185,6 +185,11 @@ class BillToolBridge:
         handler = logging.FileHandler(log_file_path)
         handler.setFormatter(formatter)
         self.logger.addHandler(handler) 
+        # loggers are created with level 'NOTSET' by default, except the root
+        # logger (this one), which is created with level 'WARNING'. to include
+        # messages like the initialization message at the end of this function,
+        # the level has to be changed.
+        self.logger.setLevel(logging.DEBUG)
 
         # create an instance representing the database
         statedb_config_section = self.config.items("statedb")
@@ -217,6 +222,7 @@ class BillToolBridge:
         self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
 
         # print a message in the log--TODO include the software version
+        print 'about to print log message'
         self.logger.info('BillToolBridge initialized')
 
     ###########################################################################
