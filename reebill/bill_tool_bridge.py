@@ -657,6 +657,42 @@ class BillToolBridge:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
+
+    @cherrypy.expose
+    def all_re_charges(self, start, limit, **args):
+        self.check_authentication()
+        # call getrows to actually query the database; return the result in
+        # JSON format if it succeded or an error if it didn't
+        try:
+            session = None
+
+            if not start or not limit:
+                raise ValueError("Bad Parameter Value")
+
+            session = self.state_db.session()
+
+            accounts, totalCount = self.state_db.list_accounts(session, int(start), int(limit))
+
+            session.commit()
+            full_names = self.full_names_of_accounts([account for account in accounts])
+
+            rows = full_names
+
+            #rows = [dict([('account', status.account), ('fullname', full_names[i]), ('dayssince', status.dayssince)])
+            #        for i, status in enumerate(statuses)]
+
+            return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
+
+        except Exception as e:
+            try:
+                if session is not None: session.rollback()
+            except:
+                print "Could not rollback session"
+            # TODO 20217999: log errors?
+            print >> sys.stderr, e
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+
     @cherrypy.expose
     # TODO see 15415625 about the problem passing in service to get at a set of RSIs
     def cprsrsi(self, xaction, account, sequence, service, **kwargs):

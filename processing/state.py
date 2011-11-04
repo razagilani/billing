@@ -80,7 +80,6 @@ class StateDB:
 
     def commit_bill(self, session, account, sequence, start, end):
 
-        #session = self.session()
 
         # get customer id from account and the reebill from account and sequence
         customer = session.query(Customer).filter(Customer.account==account).one()
@@ -99,27 +98,17 @@ class StateDB:
             utilbill.reebill = reebill
             utilbill.processed = True
 
-        # TODO commit has to come out of here
-        #session.commit()
-
 
     def discount_rate(self, session, account):
 
-        #session = self.session()
-
         # one() raises an exception if more than one row was found
         result = session.query(Customer).filter_by(account=account).one().discountrate
-
-        # TODO commit has to come out of here
-        #session.commit()
 
         return result
 
         
 
     def last_sequence(self, session, account):
-
-        #session = self.session()
 
         customer = session.query(Customer).filter(Customer.account==account).one()
 
@@ -131,48 +120,42 @@ class StateDB:
         if max_sequence is None:
             max_sequence =  0
 
-        #session.commit()
-
         return max_sequence
         
     def new_rebill(self, session, account, sequence):
-
-        #session = self.session()
 
         customer = session.query(Customer).filter(Customer.account==account).one()
         new_reebill = ReeBill(customer, sequence)
 
         session.add(new_reebill)
 
-        # TODO commit has to come out of here
-        #session.commit()
-
     def issue(self, session, account, sequence):
-
-        #session = self.session()
 
         customer = session.query(Customer).filter(Customer.account==account).one()
         reeBill = session.query(ReeBill).filter(ReeBill.customer_id==customer.id).filter(ReeBill.sequence==sequence).one()
         reeBill.issued = 1
 
-        # TODO commit has to come out of here
-        #session.commit()
-
     def listAccounts(self, session):
         
-        #session = self.session()
-
         # SQLAlchemy returns a list of tuples, so convert it into a plain list
 
         result = map((lambda x: x[0]), session.query(Customer.account).all())
 
-        #session.commit()
-
         return result
 
-    def listSequences(self, session, account):
+    def list_accounts(self, session, start, limit):
+        
+        # SQLAlchemy returns a list of tuples, so convert it into a plain list
 
-        #session = self.session()
+        query = session.query(Customer.account)
+        slice = query[start:start + limit]
+        count = query.count()
+
+        result = map((lambda x: x[0]), slice)
+
+        return result, count
+
+    def listSequences(self, session, account):
 
         # TODO: figure out how to do this all in one query. many SQLAlchemy
         # subquery examples use multiple queries but that shouldn't be
@@ -183,20 +166,14 @@ class StateDB:
         # sequences is a list of tuples of numbers, so convert it into a plain list
         result = map((lambda x: x[0]), sequences)
 
-        #session.commit()
-
         return result
 
     def listReebills(self, session, start, limit, account):
-
-        #session = self.session()
 
         query = session.query(ReeBill).join(Customer).filter(Customer.account==account)
 
         slice = query[start:start + limit]
         count = query.count()
-
-        #session.commit()
 
         return slice, count
 
@@ -205,8 +182,6 @@ class StateDB:
     end date of bills in a slice of the utilbills table; returns the slice and the
     total number of rows in the table (for paging).'''
     def list_utilbills(self, session, account, start, limit):
-
-        #session = self.session()
 
         # SQLAlchemy query to get account & dates for all utilbills
         query = session.query(UtilBill).with_lockmode('read').join(Customer). \
@@ -217,15 +192,11 @@ class StateDB:
 
         count = query.count()
 
-        #session.commit()
-
         return slice, count
 
     '''Inserts a a row into the utilbill table when the bill file has been
     uploaded.'''
     def insert_bill_in_database(self, session, account, begin_date, end_date):
-
-        #session = self.session()
 
         # get customer id from account number
         customer = session.query(Customer).filter(Customer.account==account).one()
@@ -242,25 +213,16 @@ class StateDB:
         # put the new UtilBill in the database
         session.add(utilbill)
 
-        #session.commit()
-
     def create_payment(self, session, account, date, description, credit):
-
-        #session = self.session()
 
         customer = session.query(Customer).filter(Customer.account==account).one()
         new_payment = Payment(customer, date, description, credit)
 
         session.add(new_payment)
 
-        # TODO commit has to come out of here
-        #session.commit()
-
         return new_payment
 
     def update_payment(self, session, oid, date, description, credit):
-
-        #session = self.session()
 
         # get the object
         payment = session.query(Payment).filter(Payment.id == oid).one()
@@ -275,20 +237,12 @@ class StateDB:
         payment.description = description
         payment.credit = Decimal(credit)
 
-        # TODO commit has to come out of here
-        #session.commit()
-
     def delete_payment(self, session, oid):
-
-        #session = self.session()
 
         # get the object
         payment = session.query(Payment).filter(Payment.id == oid).one()
 
         session.delete(payment)
-
-        # TODO commit has to come out of here
-        #session.commit()
 
     '''periodbegin and periodend must be non-overlapping between bills.  This is in
     direct opposition to the reebill period concept, which is a period that covers
@@ -297,31 +251,21 @@ class StateDB:
     If the periods overlap, payments will be applied more than once. See 11093293'''
     def find_payment(self, session, account, periodbegin, periodend):
 
-        #session = self.session()
-
         payments = session.query(Payment).filter(Payment.customer_id == Customer.id) \
             .filter(Customer.account == account) \
             .filter(and_(Payment.date >= periodbegin, Payment.date < periodend)) \
             .all()
-
-        #session.commit()
 
         return payments
         
 
     def payments(self, session, account):
 
-        #session = self.session()
-
         payments = session.query(Payment).join(Customer).filter(Customer.account==account).all()
-
-        #session.commit()
 
         return payments
 
     def retrieve_status_days_since(self, session, start, limit):
-
-        #session = self.session()
 
         # SQLAlchemy query to get account & dates for all utilbills
         query = session.query(StatusDaysSince)
@@ -331,13 +275,9 @@ class StateDB:
 
         count = query.count()
 
-        #session.commit()
-
         return slice, count
 
     def retrieve_status_unbilled(self, session, start, limit):
-
-        #session = self.session()
 
         # SQLAlchemy query to get account & dates for all utilbills
         query = session.query(StatusUnbilled)
@@ -346,7 +286,5 @@ class StateDB:
         slice = query[start:start + limit]
 
         count = query.count()
-
-        #session.commit()
 
         return slice, count
