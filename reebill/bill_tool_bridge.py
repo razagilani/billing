@@ -50,6 +50,7 @@ from decimal import Decimal
 # uuid collides with locals so both module and locals are renamed
 import uuid as UUID
 import inspect
+import logging
 
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
@@ -163,12 +164,34 @@ class BillToolBridge:
 
         self.config.read(config_file_path)
 
+        # logging:
+        # get log file name and format from config file
+        # TODO: if logging section of config file is malformed, choose default
+        # values and report the error to stderr
+        log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                self.config.get('log', 'log_file_name'))
+        log_format = self.config.get('log', 'log_format')
+        # make sure log file is writable
+        try:
+            open(log_file_path, 'a').close() # 'a' for append
+        except Exception as e:
+            # logging this error is impossible, so print to stderr
+            print >> sys.stderr, 'Log file path "%s" is not writable.' \
+                    % log_file_path
+            raise
+        # create logger
+        self.logger = logging.getLogger('reebill')
+        formatter = logging.Formatter(log_format)
+        handler = logging.FileHandler(log_file_path)
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler) 
+
         # create an instance representing the database
         statedb_config_section = self.config.items("statedb")
         self.state_db = state.StateDB(dict(statedb_config_section)) 
 
         # create one BillUpload object to use for all BillUpload-related methods
-        self.billUpload = BillUpload(self.config)
+        self.billUpload = BillUpload(self.config, self.logger)
 
         # create a MongoReeBillDAO
         billdb_config_section = self.config.items("billdb")
@@ -192,6 +215,9 @@ class BillToolBridge:
         # create on RateStructureDAO to user for all ratestructure queries
         rsdb_config_section = self.config.items("rsdb")
         self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
+
+        # print a message in the log--TODO include the software version
+        self.logger.info('BillToolBridge initialized')
 
     ###########################################################################
     # authentication functions
