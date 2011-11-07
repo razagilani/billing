@@ -111,7 +111,7 @@ class BillToolBridge:
             self.config.set('journaldb', 'host', 'localhost')
             self.config.set('journaldb', 'port', '27017')
             self.config.set('journaldb', 'database', 'skyline')
-            self.config.set('journaldb', 'collection_name', 'journal')
+            self.config.set('journaldb', 'collection', 'journal')
             self.config.add_section('http')
             self.config.set('http', 'socket_port', '8185')
             self.config.set('http', 'socket_host', '10.0.0.250')
@@ -127,7 +127,7 @@ class BillToolBridge:
             self.config.set('billdb', 'host', 'localhost')
             self.config.set('billdb', 'port', '27017')
             self.config.set('billdb', 'database', 'skyline')
-            self.config.set('billdb', 'collection_name', 'reebills')
+            self.config.set('billdb', 'collection', 'reebills')
             self.config.add_section('statedb')
             self.config.set('statedb', 'host', 'localhost')
             self.config.set('statedb', 'database', 'skyline')
@@ -140,7 +140,7 @@ class BillToolBridge:
             self.config.set('mailer', 'from', '"Jules Watson" <jwatson@skylineinnovations.com>')
             self.config.set('mailer', 'password', 'password')
             self.config.add_section('authentication')
-            self.config.set('authenticate', 'true')
+            self.config.set('authentication', 'authenticate', 'true')
 
             # For BillUpload
             # default name of log file (config file can override this)
@@ -681,7 +681,7 @@ class BillToolBridge:
                 reebills = self.reebill_dao.load_reebills_for(account)
                 print "%s %s" % (account, len(reebills))
 
-            Stopped here.. now that we have arrays of reebills, ask processing to sum up the RE components
+            #Stopped here.. now that we have arrays of reebills, ask processing to sum up the RE components
 
 
 
