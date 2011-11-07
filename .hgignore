@@ -1,0 +1,3 @@
+glob:*.pyc
+reebill/reebill.log
+reebill/reebill.cfg
