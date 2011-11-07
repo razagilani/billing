@@ -674,7 +674,16 @@ class BillToolBridge:
             accounts, totalCount = self.state_db.list_accounts(session, int(start), int(limit))
 
             session.commit()
+
             full_names = self.full_names_of_accounts([account for account in accounts])
+
+            for account in accounts:
+                reebills = self.reebill_dao.load_reebills_for(account)
+                print "%s %s" % (account, len(reebills))
+
+            Stopped here.. now that we have arrays of reebills, ask processing to sum up the RE components
+
+
 
             rows = full_names
 

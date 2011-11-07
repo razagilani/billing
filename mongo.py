@@ -930,6 +930,25 @@ class ReebillDAO:
             mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
             mongo_reebill = MongoReebill(mongo_doc)
             return mongo_reebill
+
+    def load_reebills_for(self, account, branch=0):
+
+        if not account: return None
+
+        query = {
+            "_id.account": str(account),
+            "_id.branch": int(branch),
+        }
+
+        mongo_docs = self.collection.find(query)
+
+        mongo_reebills = []
+        for doc in mongo_docs:
+            doc = deep_map(float_to_decimal, doc)
+            doc = convert_datetimes(doc) # this must be an assignment because it copies
+            mongo_reebills.append(MongoReebill(doc))
+
+        return mongo_reebills
     
     def load_reebills_in_period(self, account, branch=0, start_date=None, end_date=None):
         '''Returns a list of MongoReebills whose period began on or before
