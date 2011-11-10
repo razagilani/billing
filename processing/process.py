@@ -544,6 +544,30 @@ class Process(object):
         # issue to customer
         self.state_db.issue(session, account, sequence)
 
+    def all_ree_charges(self, session):
+
+        accounts = self.state_db.listAccounts(session)
+
+        rows = [] 
+        totalCount = 0
+        for account in accounts:
+            for reebill in self.reebill_dao.load_reebills_for(account):
+                totalCount += 1
+                row = {}
+                row['account'] = account
+                row['sequence'] = reebill.sequence
+                row['billing_address'] = reebill.billing_address
+                row['service_address'] = reebill.service_address
+                row['issue_date'] = reebill.issue_date
+                row['period_begin'] = reebill.period_begin
+                row['period_end'] = reebill.period_end
+                row['ree_value'] = reebill.ree_value
+                row['ree_charges'] = reebill.ree_charges
+                rows.append(row)
+
+        return rows, totalCount
+        
+
 if __name__ == '__main__':
 
 
