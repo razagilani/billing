@@ -281,7 +281,10 @@ class BillToolBridge:
 
     def check_authentication(self):
         '''Decorator to check authentication for HTTP request functions:
-        redirect to login page if the user is not authenticated.'''
+        returns True if the user is logged in; if not, sets the HTTP status
+        code to 401 and returns False. Does not redirect to the login page,
+        because it gets called in AJAX requests, which must return actual data
+        instead of a redirect.'''
         try:
             # if authenticated is turned off, skip the check and make sure the
             # session contains default data
@@ -298,8 +301,9 @@ class BillToolBridge:
                 return False
             return True
         except Exception as e:
-            print >> sys.stderr, e, traceback.format_exc()
-            #self.logger.error(e, traceback.format_exc())
+            #print >> sys.stderr, e, traceback.format_exc()
+            self.logger.error(e, traceback.format_exc())
+            raise
     
     @cherrypy.expose
     def getUsername(self, **kwargs):
