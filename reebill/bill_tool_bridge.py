@@ -234,56 +234,83 @@ class BillToolBridge:
 
         # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
-
+    
+    @cherrypy.expose
+    def index(self):
+        print >> sys.stderr, 'index was called'
+        if self.check_authentication():
+            raise cherrypy.HTTPRedirect('/billentry.html')
+        else:
+            raise cherrypy.HTTPRedirect('/login.html')
     ###########################################################################
     # authentication functions
 
     @cherrypy.expose
-    def login(self, username, password, **args):
+    def login(self, username, password, rememberme='off', **kwargs):
         if username not in USERS or USERS[username]['password'] != password:
             # failed login: redirect to the login page (again)
-            self.logger.error('login attempt failed: username "%s", password "%s"' % (username, password))
+            # TODO logging passwords is obviously a bad idea
+            self.logger.info(('login attempt failed: username "%s", password '
+                '"%s", remember me: %s, type is %s') % (username, password, rememberme, type(rememberme)))
             raise cherrypy.HTTPRedirect("/login.html")
         
-        # successful login: store username & user preferences in cherrypy
-        # session object & redirect to main page
+        # successful login:
+
+        # create session object
+        # if 'rememberme' is true, timeout is 1 week (10080 minutes) and
+        # 'persistent' argument is true; if not, persistent is false and
+        # timeout has no effect (cookie expires when browser is closed)
+        # the functions below cause an error
+        #cherrypy.lib.sessions.expire()
+        #cherrypy.lib.sessions.init(timeout=1,
+        #        persistent=(rememberme == 'on'))
+        #cherrypy.session.regenerate()
+
+        # TODO problem: cherrypy.session.timeout is 60 no matter what
+        self.logger.info(cherrypy.session.timeout)
+        #print >> sys.stderr, 'timeout: ' + cherrypy.session.timeout
+        
+        # store username & user preferences in cherrypy session object &
+        # redirect to main page
         cherrypy.session['username'] = username
         cherrypy.session['preferences'] = USERS[username]['preferences']
-        self.logger.info('user "%s" logged in with password "%s"' % (cherrypy.session['username'], password))
+        # TODO logging passwords is obviously a bad idea
+        self.logger.info(('user "%s" logged in with password "%s", remember '
+            'me: "%s" type is %s') % (username, password, rememberme, type(rememberme)))
         raise cherrypy.HTTPRedirect("/billentry.html")
 
-    #def check_authentication(function):
-        #'''Decorator to check authentication for HTTP request functions: redirect
-        #to login page if the user is not authenticated.'''
-        #def redirect(*args, **kwargs):
-            #raise cherrypy.httpredirect('/login.html')
-        #if 'username' in cherrypy.session:
-            #return function
-        #return redirect
     def check_authentication(self):
-        '''Decorator to check authentication for HTTP request functions: redirect
-        to login page if the user is not authenticated.'''
-        # if authenticated is turned off, skip the check and make sure the
-        # session contains default data
-        if not self.authentication_on:
-            if 'preferences' not in cherrypy.session:
-                cherrypy.session['preferences'] = DEFAULT_PREFERENCES
-            return
-        if 'username' not in cherrypy.session:
-            self.logger.info("Non-logged-in user was denied access to: %s" % \
-                    inspect.stack()[1][3])
-            # TODO: 19664107
-            # 401 = unauthorized--can't reply to an ajax call with a redirect
-            cherrypy.response.status = 401
+        '''Decorator to check authentication for HTTP request functions:
+        redirect to login page if the user is not authenticated.'''
+        try:
+            # if authenticated is turned off, skip the check and make sure the
+            # session contains default data
+            if not self.authentication_on:
+                if 'preferences' not in cherrypy.session:
+                    cherrypy.session['preferences'] = DEFAULT_PREFERENCES
+                return True
+            if 'username' not in cherrypy.session:
+                self.logger.info("Non-logged-in user was denied access to: %s" % \
+                        inspect.stack()[1][3])
+                # TODO: 19664107
+                # 401 = unauthorized--can't reply to an ajax call with a redirect
+                cherrypy.response.status = 401
+                return False
+            return True
+        except Exception as e:
+            print >> sys.stderr, e, traceback.format_exc()
+            #self.logger.error(e, traceback.format_exc())
     
     @cherrypy.expose
     def getUsername(self, **kwargs):
         self.check_authentication()
         try:
-            return ju.dumps({'success':True, 'username': cherrypy.session['username']})
+            return ju.dumps({'success':True,
+                    'username': cherrypy.session['username']})
         except Exception as e:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return ju.dumps({'success': False, 'errors':{'reason': str(e),
+                    'details':traceback.format_exc()}})
 
     @cherrypy.expose
     def logout(self):
