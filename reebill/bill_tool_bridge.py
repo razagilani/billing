@@ -72,7 +72,11 @@ USERS = {
         'preferences': {'bill_image_resolution': '250'}
     },
 }
-        
+
+DEFAULT_PREFERENCES = {
+    'bill_image_resolution': '250'
+}
+
 # TODO 11454025 rename to ProcessBridge or something
 class BillToolBridge:
     """ A monolithic class encapsulating the behavior to:  handle an incoming http request """
@@ -259,8 +263,11 @@ class BillToolBridge:
     def check_authentication(self):
         '''Decorator to check authentication for HTTP request functions: redirect
         to login page if the user is not authenticated.'''
-        # skip if authentication is turned off
+        # if authenticated is turned off, skip the check and make sure the
+        # session contains default data
         if not self.authentication_on:
+            if 'preferences' not in cherrypy.session:
+                cherrypy.session['preferences'] = DEFAULT_PREFERENCES
             return
         if 'username' not in cherrypy.session:
             self.logger.info("Non-logged-in user was denied access to: %s" % \
