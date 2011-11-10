@@ -701,39 +701,19 @@ class BillToolBridge:
 
     @cherrypy.expose
     def all_ree_charges(self, **args):
+
         self.check_authentication()
-        # call getrows to actually query the database; return the result in
-        # JSON format if it succeded or an error if it didn't
+
         try:
             session = None
 
             session = self.state_db.session()
 
-            accounts = self.state_db.listAccounts(session)
+            rows, total_count = self.process.all_ree_charges(session)
 
             session.commit()
 
-            #full_names = self.full_names_of_accounts([account for account in accounts])
-
-            # TODO: 20758531 refactor reporting code
-            rows = [] 
-            totalCount = 0
-            for account in accounts:
-                for reebill in self.reebill_dao.load_reebills_for(account):
-                    totalCount += 1
-                    row = {}
-                    row['account'] = account
-                    row['sequence'] = reebill.sequence
-                    row['billing_address'] = reebill.billing_address
-                    row['service_address'] = reebill.service_address
-                    row['issue_date'] = reebill.issue_date
-                    row['period_begin'] = reebill.period_begin
-                    row['period_end'] = reebill.period_end
-                    row['ree_value'] = reebill.ree_value
-                    row['ree_charges'] = reebill.ree_charges
-                    rows.append(row)
-
-            return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
+            return ju.dumps({'success': True, 'rows':rows, 'results':total_count})
 
         except Exception as e:
             try:
@@ -746,44 +726,57 @@ class BillToolBridge:
 
     @cherrypy.expose
     def all_ree_charges_csv(self, **args):
+        try:
+            session = None
 
-        charges = json.loads(self.all_ree_charges())
+            session = self.state_db.session()
+            rows, total_count = self.process.all_ree_charges(session)
+            session.commit()
 
-        import csv
-        import StringIO
+            import csv
+            import StringIO
 
-        buf = StringIO.StringIO()
+            buf = StringIO.StringIO()
 
-        writer = csv.writer(buf)
+            writer = csv.writer(buf)
 
-        writer.writerow(['account','sequence',
-            'billing addressee', 'service addressee',
-            'issue_date', 'period_begin', 'period_end', 'ree_value', 'ree_charges'])
+            writer.writerow(['account','sequence',
+                'billing addressee', 'service addressee',
+                'issue_date', 'period_begin', 'period_end', 'ree_value', 'ree_charges'])
 
-        for row in charges['rows']:
-            ba = row['billing_address']
-            bill_addr_str = "%s %s %s %s %s" % (
-                ba['ba_addressee'] if 'ba_addressee' in ba and ba['ba_addressee'] is not None else "",
-                ba['ba_street1'] if 'ba_street1' in ba and ba['ba_street1'] is not None else "",
-                ba['ba_city'] if 'ba_city' in ba and ba['ba_city'] is not None else "",
-                ba['ba_state'] if 'ba_state' in ba and ba['ba_state'] is not None else "",
-                ba['ba_postal_code'] if 'ba_postal_code' in ba and ba['ba_postal_code'] is not None else "",
-            )
-            sa = row['service_address']
-            service_addr_str = "%s %s %s %s %s" % (
-                sa['sa_addressee'] if 'sa_addressee' in sa and sa['sa_addressee'] is not None else "",
-                sa['sa_street1'] if 'sa_street1' in sa and sa['sa_street1'] is not None else "",
-                sa['sa_city'] if 'sa_city' in sa and sa['sa_city'] is not None else "",
-                sa['sa_state'] if 'sa_state' in sa and sa['sa_state'] is not None else "",
-                sa['sa_postal_code'] if 'sa_postal_code' in sa and sa['sa_postal_code'] is not None else "",
-            )
+            for row in rows:
+                ba = row['billing_address']
+                bill_addr_str = "%s %s %s %s %s" % (
+                    ba['ba_addressee'] if 'ba_addressee' in ba and ba['ba_addressee'] is not None else "",
+                    ba['ba_street1'] if 'ba_street1' in ba and ba['ba_street1'] is not None else "",
+                    ba['ba_city'] if 'ba_city' in ba and ba['ba_city'] is not None else "",
+                    ba['ba_state'] if 'ba_state' in ba and ba['ba_state'] is not None else "",
+                    ba['ba_postal_code'] if 'ba_postal_code' in ba and ba['ba_postal_code'] is not None else "",
+                )
+                sa = row['service_address']
+                service_addr_str = "%s %s %s %s %s" % (
+                    sa['sa_addressee'] if 'sa_addressee' in sa and sa['sa_addressee'] is not None else "",
+                    sa['sa_street1'] if 'sa_street1' in sa and sa['sa_street1'] is not None else "",
+                    sa['sa_city'] if 'sa_city' in sa and sa['sa_city'] is not None else "",
+                    sa['sa_state'] if 'sa_state' in sa and sa['sa_state'] is not None else "",
+                    sa['sa_postal_code'] if 'sa_postal_code' in sa and sa['sa_postal_code'] is not None else "",
+                )
 
-            writer.writerow([row['account'], row['sequence'], 
-                bill_addr_str, service_addr_str, 
-                row['issue_date'], row['period_begin'], row['period_end'],
-                row['ree_value'], row['ree_charges']])
+                writer.writerow([row['account'], row['sequence'], 
+                    bill_addr_str, service_addr_str, 
+                    row['issue_date'], row['period_begin'], row['period_end'],
+                    row['ree_value'], row['ree_charges']])
 
-        return buf.getvalue()
+            return buf.getvalue()
+
+        except Exception as e:
+            try:
+                if session is not None: session.rollback()
+            except:
+                print "Could not rollback session"
+            # TODO 20217999: log errors?
+            print >> sys.stderr, e
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
 
     @cherrypy.expose
