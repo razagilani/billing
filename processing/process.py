@@ -249,9 +249,9 @@ class Process(object):
             for meter in reebill.meters_for_service(service):
                 reebill.set_meter_read_date(service, meter['identifier'], None, meter['present_read_date'])
             for actual_register in reebill.actual_registers(service):
-                reebill.set_actual_register_quantity(actual_register['identifier'], 0)
+                reebill.set_actual_register_quantity(actual_register['identifier'], 0.0)
             for shadow_register in reebill.shadow_registers(service):
-                reebill.set_shadow_register_quantity(shadow_register['identifier'], 0)
+                reebill.set_shadow_register_quantity(shadow_register['identifier'], 0.0)
 
 
         # zero out statistics section
@@ -399,7 +399,7 @@ class Process(object):
         def normalize(units, total):
             if (units.lower() == "kwh"):
                 # 1 kWh = 3413 BTU
-                return total * 3413 
+                return total * 3413
             elif (units.lower() == "therms" or units.lower() == "ccf"):
                 # 1 therm = 100000 BTUs
                 return total * 100000
@@ -408,18 +408,20 @@ class Process(object):
 
 
         # total renewable energy
-        re = 0
+        re = 0.0
         # total conventional energy
-        ce = 0
+        ce = 0.0
 
         # CO2 is fuel dependent
-        co2 = 0
+        co2 = 0.0
         # TODO these conversions should be treated in a utility class
         def calcco2(units, total):
             if (units.lower() == "kwh"):
-                return total * Decimal("1.297")
+                #return total * Decimal("1.297")
+                return total * 1.297
             elif (units.lower() == "therms" or units.lower() == "ccf"):
-                return total * Decimal("13.46")
+                #return total * Decimal("13.46")
+                return total * 13.46
             else:
                 raise Exception("Units '" + units + "' not supported")
 
@@ -466,7 +468,7 @@ class Process(object):
         next_stats['total_co2_offset'] =  prev_stats['total_co2_offset'] + co2
 
         # externalize this calculation to utilities
-        next_stats['total_trees'] = next_stats['total_co2_offset']/1300
+        next_stats['total_trees'] = next_stats['total_co2_offset']/1300.0
         
 
         # determine re consumption trend
@@ -480,12 +482,11 @@ class Process(object):
 
         for period in next_stats['consumption_trend']:
             if(period['month'] == month):
-                period['quantity'] = re/100000
+                period['quantity'] = re/100000.0
 
         next_bill.statistics = next_stats
 
         # save in mongo
-        #reebill = self.reebill_dao.load_reebill(account, sequence)
         self.reebill_dao.save_reebill(next_bill)
 
 

@@ -50,6 +50,8 @@ class RateStructureDAO(object):
 
     def __init__(self, config):
 
+
+        print "using config %s" % config
         self.config = config
         self.connection = None
         self.database = None
