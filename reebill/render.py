@@ -352,9 +352,11 @@ def render(reebill, outputfile, backgrounds, verbose):
     # populate graph one
 
     # Construct period consumption/production ratio graph
+    # TODO: 20846595 17928227 why does render bill have to check for the presence of keys? And then check for the presence of a value?  This sucks.
     renewableUtilization = st.get('renewable_utilization', "n/a")
     conventionalUtilization = st.get('conventional_utilization', "n/a")
-    data = [renewableUtilization, conventionalUtilization]
+    data = [renewableUtilization if renewableUtilization is not None else 0,
+        conventionalUtilization if conventionalUtilization is not None else 0]
     labels = ["Renewable", "Conventional"]
     c = PieChart(10*270, 10*127)
     c.addTitle2(TopLeft, "<*underline=8*>Energy Utilization This Period", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
@@ -379,8 +381,11 @@ def render(reebill, outputfile, backgrounds, verbose):
     
     # construct period environmental benefit
 
-    periodRenewableConsumed = str(st.get('renewable_consumed', Decimal("0")).quantize(Decimal("0")))
-    periodPoundsCO2Offset = str(st.get('co2_offset', Decimal("0")).quantize(Decimal("0")))
+    periodRenewableConsumed = st.get('renewable_consumed', 0)
+    periodRenewableConsumed = str(Decimal(str(periodRenewableConsumed))) if periodRenewableConsumed is not None else "0"
+
+    periodPoundsCO2Offset = st.get('co2_offset', 0)
+    periodPoundsCO2Offset = str(Decimal(str(periodPoundsCO2Offset))) if periodPoundsCO2Offset is not None else "0"
     
     environmentalBenefit = [
         [Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
@@ -399,12 +404,20 @@ def render(reebill, outputfile, backgrounds, verbose):
     
     # construct system life cumulative numbers table
 
+    total_renewable_consumed = st.get('total_renewable_consumed', 0)
+    total_renewable_consumed = str(Decimal(str(total_renewable_consumed if total_renewable_consumed is not None else "0")).quantize(Decimal("0")))
+    total_co2_offset = st.get('total_co2_offset', 0)
+    total_co2_offset = str(Decimal(str(total_co2_offset if total_co2_offset is not None else "0")).quantize(Decimal("0")))
+
+    total_trees = st.get('total_trees', 0)
+    total_trees = str(Decimal(str(total_trees if total_trees is not None else "0")).quantize(Decimal("0")))
+
     systemLife = [
         [Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
         [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph(str(st.get('total_savings', "n/a")), styles['BillFieldSm'])],
-        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(str(st.get('total_renewable_consumed', Decimal("0")).quantize(Decimal("0"))) + " BTUs", styles['BillFieldSm'])],
-        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(str(st.get('total_co2_offset', Decimal("0")).quantize(Decimal("0"))), styles['BillFieldSm'])],
-        [Paragraph("Tens of Trees to Date", styles['BillLabelSm']), Paragraph(str(st.get('total_trees', Decimal("0.0")).quantize(Decimal("0.0"))), styles['BillFieldSm'])]
+        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(total_renewable_consumed + " BTUs", styles['BillFieldSm'])],
+        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(total_co2_offset, styles['BillFieldSm'])],
+        [Paragraph("Tens of Trees to Date", styles['BillLabelSm']), Paragraph(total_trees, styles['BillFieldSm'])]
     ]
 
     t = Table(systemLife, [180,90])
@@ -414,8 +427,8 @@ def render(reebill, outputfile, backgrounds, verbose):
     Elements.append(Spacer(100,20))
     
     # build string for trees
-    numTrees = math.modf(float(st.get('total_trees', Decimal("0.0"))))[1]
-    fracTree = str(math.modf(float(st.get('total_trees', Decimal("0.0"))))[0])[2:3]
+    numTrees = math.modf(float(total_trees))[1]
+    fracTree = str(math.modf(float(total_trees))[0])[2:3]
     
     treeString = ""
     while (numTrees) > 0:
@@ -543,7 +556,7 @@ def render(reebill, outputfile, backgrounds, verbose):
     Elements.append(UseUpSpace())
 
     # populate motd
-    Elements.append(Paragraph(reebill.motd, styles['BillFieldSm']))
+    Elements.append(Paragraph(reebill.motd if reebill.motd is not None else "", styles['BillFieldSm']))
     Elements.append(UseUpSpace())
 
 
