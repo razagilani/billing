@@ -9,7 +9,7 @@ def python_convert(x):
     '''Strip out the MutableNamedTuples since they are no longer 
     needed to preserve document order and provide dot-access notation.'''
 
-    if type(x) in [str, float, int, bool]:
+    if type(x) in [type(None), str, float, int, bool]:
         return x
     if type(x) is Decimal:
         return x
@@ -28,7 +28,8 @@ def python_convert(x):
         return x
     if type(x) is dict or type(x) is MutableNamedTuple:
         return dict([(item[0], python_convert(item[1])) for item in \
-            x.iteritems() if item[1] is not None])
+            #x.iteritems() if item[1] is not None])
+            x.iteritems()])
     if type(x) is list:
         return map(python_convert, x)
 
@@ -39,7 +40,7 @@ def bson_convert(x):
     # TODO:  copy all or convert all in place?  Or, don't care and just keep
     # doing both scalars are converted in place, dicts are copied.
 
-    if type(x) in [str, float, int, bool, datetime, unicode, ObjectId]:
+    if type(x) in [type(None), str, float, int, bool, datetime, unicode, ObjectId]:
         return x
     if type(x) is Decimal:
         return float(x)
@@ -49,8 +50,8 @@ def bson_convert(x):
         return datetime(x.year, x.month, x.day)
     if type(x) is dict or type(x) is MutableNamedTuple:
         #TODO: don't copy dict
-        return dict([(item[0], bson_convert(item[1])) for item in x.iteritems()
-                if item[1] is not None])
+        return dict([(item[0], bson_convert(item[1])) for item in x.iteritems()])
+                #if item[1] is not None])
     if type(x) is list:
         return map(bson_convert, x)
 
