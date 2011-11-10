@@ -2448,10 +2448,6 @@ function renderWidgets()
         ///////////////////////////////////////
         // account status
 
-        var initialStatusDaysSince = {
-            rows: []
-        };
-
         var accountReader = new Ext.data.JsonReader({
             // metadata configuration options:
             // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
@@ -2533,6 +2529,96 @@ function renderWidgets()
                 displayMsg: 'Displaying {0} - {1} of {2}',
                 emptyMsg: "No statuses to display",
             }),
+        });
+
+        ///////////////////////////////////////
+        // account ree_charges status
+
+        var accountReeValueReader = new Ext.data.JsonReader({
+            root: 'rows',
+
+            // the fields config option will internally create an Ext.data.Record
+            // constructor that provides mapping for reading the record data objects
+            fields: [
+                // map Record's field to json object's key of same name
+                {name: 'account', mapping: 'account'},
+                {name: 'fullname', mapping: 'fullname'},
+                {name: 'ree_charges', mapping: 'ree_charges'}
+            ]
+        });
+
+        var accountReeValueStore = new Ext.data.JsonStore({
+            root: 'rows',
+            totalProperty: 'results',
+            pageSize: 25,
+            paramNames: {start: 'start', limit: 'limit'},
+            autoLoad: {params:{start: 0, limit: 25}},
+            reader: accountReeValueReader,
+            fields: [
+                {name: 'account'},
+                {name: 'fullname'},
+                {name: 'ree_charges'},
+            ],
+            url: 'http://' + location.host + '/reebill/summary_ree_charges',
+        });
+
+
+        var accountReeValueColModel = new Ext.grid.ColumnModel(
+        {
+            columns: [
+                {
+                    header: 'Account',
+                    sortable: true,
+                    dataIndex: 'fullname',
+                    editable: false,
+                },{
+                    header: 'REE Charges',
+                    sortable: true,
+                    dataIndex: 'ree_charges',
+                    editable: false,
+                },
+            ]
+        });
+
+
+        // this grid tracks the state of the currently selected account
+
+        var accountReeValueGrid = new Ext.grid.GridPanel({
+            colModel: accountReeValueColModel,
+            selModel: new Ext.grid.RowSelectionModel({
+                singleSelect: true,
+                listeners: {
+                    rowselect: function (selModel, index, record) {
+                        loadReeBillUIForAccount(record.data.account);
+                    }
+                }
+            }),
+            store: accountReeValueStore,
+            enableColumnMove: false,
+            frame: true,
+            collapsible: true,
+            animCollapse: false,
+            stripeRows: true,
+            viewConfig: {
+                // doesn't seem to work
+                forceFit: true,
+            },
+            title: 'REE Value',
+            // paging bar on the bottom
+            bbar: [
+            new Ext.PagingToolbar({
+                pageSize: 25,
+                store: accountStore,
+                displayInfo: true,
+                displayMsg: 'Displaying {0} - {1} of {2}',
+                emptyMsg: "No statuses to display",
+            }), new Ext.PagingToolbar({
+                pageSize: 25,
+                store: accountStore,
+                displayInfo: true,
+                displayMsg: 'Displaying {0} - {1} of {2}',
+                emptyMsg: "No statuses to display",
+            }),]
         });
 
 
@@ -2845,7 +2931,7 @@ function renderWidgets()
           title: 'Accounts',
           xtype: 'panel',
           layout: 'accordion',
-          items: [accountGrid,]
+          items: [accountGrid,accountReeValueGrid]
         },{
           id: 'paymentTab',
           title: 'Pay',
