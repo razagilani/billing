@@ -2586,16 +2586,13 @@ function renderWidgets()
         var accountReeValueToolbar = new Ext.Toolbar({
             items: [
                 {
-                    xtype: 'button',
+                    xtype: 'linkbutton',
                     // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                    href: "http://reebill-dev/reebill/all_ree_charges_csv",
                     id: 'accountReeValueExportCSVBtn',
                     iconCls: 'icon-application-go',
                     text: 'Export',
                     disabled: false,
-                    handler: function()
-                    {
-                        alert("foo");
-                    }
                 }
             ]
         });
