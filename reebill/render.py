@@ -410,14 +410,14 @@ def render(reebill, outputfile, backgrounds, verbose):
     total_co2_offset = str(Decimal(str(total_co2_offset if total_co2_offset is not None else "0")).quantize(Decimal("0")))
 
     total_trees = st.get('total_trees', 0)
-    total_trees = str(Decimal(str(total_trees if total_trees is not None else "0")).quantize(Decimal("0")))
+    total_trees = str(Decimal(str(total_trees if total_trees is not None else "0")).quantize(Decimal("0.0")))
 
     systemLife = [
         [Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
         [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph(str(st.get('total_savings', "n/a")), styles['BillFieldSm'])],
         [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(total_renewable_consumed + " BTUs", styles['BillFieldSm'])],
         [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(total_co2_offset, styles['BillFieldSm'])],
-        [Paragraph("Tens of Trees to Date", styles['BillLabelSm']), Paragraph(total_trees, styles['BillFieldSm'])]
+        [Paragraph("Equivalent to This Many Trees", styles['BillLabelSm']), Paragraph(total_trees, styles['BillFieldSm'])]
     ]
 
     t = Table(systemLife, [180,90])
@@ -426,21 +426,35 @@ def render(reebill, outputfile, backgrounds, verbose):
     Elements.append(t)
     Elements.append(Spacer(100,20))
     
-    # build string for trees
-    numTrees = math.modf(float(total_trees))[1]
-    fracTree = str(math.modf(float(total_trees))[0])[2:3]
-    
-    treeString = ""
-    while (numTrees) > 0:
-        treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(resource_dir, "images", "tree3.png") +"\"/>"
-        numTrees -= 1
+    # build string for trees:
+    # each tree image represents either 10 or 100 trees (scale is changed so tree images fit)
+    if float(total_trees) <= 10:
+        tree_images = float(total_trees)
+        tree_label = 'Trees'
+    else:
+        tree_images = float(total_trees) / 10.0
+        tree_label = 'Tens of Trees'
+    # number of whole trees to show is the floor of tree_images; the fractional
+    # tree image that is shown (if any) is determined by the fractional part of
+    # tree_images
+    tree_image_fraction, whole_tree_images = math.modf(tree_images)
+    whole_tree_images = int(whole_tree_images)
+    # round the fractional part to the nearest tenth, and convert it into a string
+    # (so it's now one of the digits 0-9)
+    tree_image_fraction = str(int(math.floor(10 * tree_image_fraction)))
 
-    if (fracTree != 0): treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(resource_dir, "images","tree3-" + fracTree + ".png") + "\"/>"
+
+    treeString = ""
+    while (whole_tree_images) > 0:
+        treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(resource_dir, "images", "tree3.png") +"\"/>"
+        whole_tree_images -= 1
+
+    if (tree_image_fraction != 0): treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(resource_dir, "images","tree3-" + tree_image_fraction + ".png") + "\"/>"
 
     Elements.append(Paragraph("<para leftIndent=\"6\">"+treeString+"</para>", styles['BillLabel']))
 
     Elements.append(Spacer(100,5))
-    Elements.append(Paragraph("<para leftIndent=\"50\">Ten's of Trees</para>", styles['GraphLabel']))
+    Elements.append(Paragraph("<para leftIndent=\"50\">%s</para>" % tree_label, styles['GraphLabel']))
 
     Elements.append(UseUpSpace())
 
