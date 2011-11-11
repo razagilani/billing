@@ -805,6 +805,10 @@ class BillToolBridge:
                     row['issue_date'], row['period_begin'], row['period_end'],
                     row['ree_value'], row['ree_charges']])
 
+                cherrypy.response.headers['Content-Type'] = 'text/csv'
+                cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s.csv' % datetime.now().strftime("%Y%m%d")
+
+
             return buf.getvalue()
 
         except Exception as e:
