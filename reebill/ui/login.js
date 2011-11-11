@@ -25,6 +25,12 @@ var rememberMeCheckbox = new Ext.form.Checkbox({
     boxLabel: 'Remember Me'
 });
 
+function submitHandler() {
+    loginFormPanel.getForm().getEl().dom.action = 'http://' + location.host + '/reebill/login'
+    loginFormPanel.getForm().getEl().dom.method = 'POST';
+    loginFormPanel.getForm().submit();
+}
+
 var loginFormPanel = new Ext.form.FormPanel({
     standardSubmit: true,
     //frame: true,
@@ -38,13 +44,20 @@ var loginFormPanel = new Ext.form.FormPanel({
         /* button style requires "cls:'buttonstyle'" attribute in button,
          * separate css file with ".buttonstyle {...}" */
         text: 'Log In',
-        handler: function() {
-            loginFormPanel.getForm().getEl().dom.action = 'http://' + location.host + '/reebill/login'
-            loginFormPanel.getForm().getEl().dom.method = 'POST';
-            loginFormPanel.getForm().submit();
-        }
+        handler: submitHandler
+    }],
+    keys: [{
+        key: [Ext.EventObject.ENTER],
+        handler: submitHandler
     }]
 });
+
+
+function submitHandler() {
+    loginFormPanel.getForm().getEl().dom.action = 'http://' + location.host + '/reebill/login'
+    loginFormPanel.getForm().getEl().dom.method = 'POST';
+    loginFormPanel.getForm().submit();
+}
 
 Ext.onReady(function() {
 
