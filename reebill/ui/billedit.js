@@ -1133,7 +1133,7 @@ function renderWidgets()
 
                 // ref places a name for this component into the grid so it may be referenced as aChargesGrid.insertBtn...
                 id: 'aChargesInsertBtn',
-                iconCls: 'icon-user-add',
+                iconCls: 'icon-add',
                 text: 'Insert',
                 disabled: true,
                 handler: function()
@@ -1180,7 +1180,7 @@ function renderWidgets()
                 xtype: 'button',
                 // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
                 id: 'aChargesRemoveBtn',
-                iconCls: 'icon-user-delete',
+                iconCls: 'icon-delete',
                 text: 'Remove',
                 disabled: true,
                 handler: function()
@@ -1199,6 +1199,7 @@ function renderWidgets()
                 xtype: 'button',
                 // places reference to this button in grid.  
                 id: 'aChargesSaveBtn',
+                iconCls: 'icon-save',
                 text: 'Save',
                 disabled: true,
                 handler: function()
@@ -1489,7 +1490,7 @@ function renderWidgets()
                     xtype: 'button',
                     // ref places a name for this component into the grid so it may be referenced as hChargesGrid.insertBtn...
                     id: 'hChargesInsertBtn',
-                    iconCls: 'icon-user-add',
+                    iconCls: 'icon-add',
                     text: 'Insert',
                     disabled: true,
                     handler: function()
@@ -1536,7 +1537,7 @@ function renderWidgets()
                     xtype: 'button',
                     // ref places a name for this component into the grid so it may be referenced as hChargesGrid.removeBtn...
                     id: 'hChargesRemoveBtn',
-                    iconCls: 'icon-user-delete',
+                    iconCls: 'icon-delete',
                     text: 'Remove',
                     disabled: true,
                     handler: function()
@@ -1772,7 +1773,7 @@ function renderWidgets()
                     xtype: 'button',
                     // ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
                     id: 'CPRSRSIInsertBtn',
-                    iconCls: 'icon-user-add',
+                    iconCls: 'icon-add',
                     text: 'Insert',
                     disabled: false,
                     handler: function()
@@ -1803,7 +1804,7 @@ function renderWidgets()
                     xtype: 'button',
                     // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
                     id: 'CPRSRSIRemoveBtn',
-                    iconCls: 'icon-user-delete',
+                    iconCls: 'icon-delete',
                     text: 'Remove',
                     disabled: true,
                     handler: function()
@@ -1828,6 +1829,7 @@ function renderWidgets()
                     xtype: 'button',
                     // places reference to this button in grid.  
                     id: 'CPRSRSISaveBtn',
+                    iconCls: 'icon-save',
                     text: 'Save',
                     disabled: true,
                     handler: function()
@@ -2020,7 +2022,7 @@ function renderWidgets()
                     xtype: 'button',
                     // ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
                     id: 'URSRSIInsertBtn',
-                    iconCls: 'icon-user-add',
+                    iconCls: 'icon-add',
                     text: 'Insert',
                     disabled: false,
                     handler: function()
@@ -2051,7 +2053,7 @@ function renderWidgets()
                     xtype: 'button',
                     // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
                     id: 'URSRSIRemoveBtn',
-                    iconCls: 'icon-user-delete',
+                    iconCls: 'icon-delete',
                     text: 'Remove',
                     disabled: true,
                     handler: function()
@@ -2076,6 +2078,7 @@ function renderWidgets()
                     xtype: 'button',
                     // places reference to this button in grid.  
                     id: 'URSRSISaveBtn',
+                    iconCls: 'icon-save',
                     text: 'Save',
                     disabled: true,
                     handler: function()
@@ -2231,7 +2234,7 @@ function renderWidgets()
                 {
                     xtype: 'button',
                     id: 'paymentInsertBtn',
-                    iconCls: 'icon-user-add',
+                    iconCls: 'icon-add',
                     text: 'Insert',
                     disabled: false,
                     handler: function()
@@ -2261,7 +2264,7 @@ function renderWidgets()
                     xtype: 'button',
                     // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
                     id: 'paymentRemoveBtn',
-                    iconCls: 'icon-user-delete',
+                    iconCls: 'icon-delete',
                     text: 'Remove',
                     disabled: true,
                     handler: function()
@@ -2386,7 +2389,7 @@ function renderWidgets()
                     xtype: 'button',
                     // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
                     id: 'reebillMailBtn',
-                    iconCls: 'icon-user-mail',
+                    iconCls: 'icon-mail-go',
                     text: 'Mail',
                     disabled: false,
                     handler: function()
@@ -2580,6 +2583,19 @@ function renderWidgets()
             ]
         });
 
+        var accountReeValueToolbar = new Ext.Toolbar({
+            items: [
+                {
+                    xtype: 'linkbutton',
+                    // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                    href: "http://reebill-dev/reebill/all_ree_charges_csv",
+                    id: 'accountReeValueExportCSVBtn',
+                    iconCls: 'icon-application-go',
+                    text: 'Export',
+                    disabled: false,
+                }
+            ]
+        });
 
         // this grid tracks the state of the currently selected account
 
@@ -2604,15 +2620,9 @@ function renderWidgets()
                 forceFit: true,
             },
             title: 'REE Value',
-            // paging bar on the bottom
+            tbar: accountReeValueToolbar,
             bbar: [
             new Ext.PagingToolbar({
-                pageSize: 25,
-                store: accountStore,
-                displayInfo: true,
-                displayMsg: 'Displaying {0} - {1} of {2}',
-                emptyMsg: "No statuses to display",
-            }), new Ext.PagingToolbar({
                 pageSize: 25,
                 store: accountStore,
                 displayInfo: true,
@@ -2764,7 +2774,7 @@ function renderWidgets()
                 {
                     xtype: 'button',
                     id: 'journalInsertBtn',
-                    iconCls: 'icon-user-add',
+                    iconCls: 'icon-add',
                     text: 'Insert',
                     disabled: false,
                     handler: function()
@@ -2794,7 +2804,7 @@ function renderWidgets()
                     xtype: 'button',
                     // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
                     id: 'journalRemoveBtn',
-                    iconCls: 'icon-user-delete',
+                    iconCls: 'icon-delete',
                     text: 'Remove',
                     disabled: true,
                     handler: function()
