@@ -45,7 +45,7 @@ import billing.processing.rate_structure as rs
 from datetime import datetime
 from datetime import date
 
-from decimal import Decimal
+from decimal import *
 
 # uuid collides with locals so both module and locals are renamed
 import uuid as UUID
@@ -695,7 +695,6 @@ class BillToolBridge:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-
     @cherrypy.expose
     def summary_ree_charges(self, start, limit, **args):
         self.check_authentication()
@@ -711,20 +710,12 @@ class BillToolBridge:
 
             accounts, totalCount = self.state_db.list_accounts(session, int(start), int(limit))
 
-            session.commit()
-
             full_names = self.full_names_of_accounts([account for account in accounts])
 
-            # TODO: 20758531 refactor reporting code
-            rows = [] 
-            for i, account in enumerate(accounts):
-                row = {}
-                reebills = self.reebill_dao.load_reebills_for(account)
-                ree_charges = sum([reebill.ree_charges for reebill in reebills])
-                row['account'] = account
-                row['fullname'] = full_names[i]
-                row['ree_charges'] = ree_charges
-                rows.append(row)
+            rows = self.process.summary_ree_charges(session, accounts, full_names)
+
+            session.commit()
+
 
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
 
@@ -778,9 +769,11 @@ class BillToolBridge:
 
             writer = csv.writer(buf)
 
-            writer.writerow(['account','sequence',
-                'billing addressee', 'service addressee',
-                'issue_date', 'period_begin', 'period_end', 'ree_value', 'ree_charges'])
+            writer.writerow(['Account','Sequence',
+                'Billing Addressee', 'Service Addressee',
+                'Issue Date', 'Period Begin', 'Period End', 'RE&E Value', 
+                'RE&E Charges', 'utility charges', 'hypothesized charges',
+                'RE&E Energy Therms', 'Marginal Rate per Therm'])
 
             for row in rows:
                 ba = row['billing_address']
@@ -803,7 +796,8 @@ class BillToolBridge:
                 writer.writerow([row['account'], row['sequence'], 
                     bill_addr_str, service_addr_str, 
                     row['issue_date'], row['period_begin'], row['period_end'],
-                    row['ree_value'], row['ree_charges']])
+                    row['ree_value'], row['ree_charges'], row['actual_charges'], row['hypothetical_charges'],
+                    row['total_energy'], row['marginal_rate_therm'] ])
 
                 cherrypy.response.headers['Content-Type'] = 'text/csv'
                 cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s.csv' % datetime.now().strftime("%Y%m%d")

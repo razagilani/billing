@@ -563,9 +563,80 @@ class Process(object):
                 row['period_end'] = reebill.period_end
                 row['ree_value'] = reebill.ree_value
                 row['ree_charges'] = reebill.ree_charges
+                row['actual_charges'] = reebill.actual_total
+                row['hypothetical_charges'] = reebill.hypothetical_total
+                total_energy_therms = self.total_ree_in_reebill(reebill)
+                row['total_energy'] = total_energy_therms
+                if total_energy_therms != Decimal(0):
+                    row['marginal_rate_therm'] = (reebill.hypothetical_total - reebill.actual_total)/total_energy_therms
+                else:
+                    row['marginal_rate_therm'] = 0
                 rows.append(row)
 
         return rows, totalCount
+
+    def summary_ree_charges(self, session, accounts, full_names):
+
+        rows = [] 
+        for i, account in enumerate(accounts):
+            row = {}
+            reebills = self.reebill_dao.load_reebills_for(account)
+            ree_charges = Decimal(sum([reebill.ree_charges for reebill in reebills]))
+            actual_total = Decimal(sum([reebill.actual_total for reebill in reebills]))
+            hypothetical_total = Decimal(sum([reebill.hypothetical_total for reebill in reebills]))
+            total_energy = Decimal(0)
+            marginal_rate_therm = Decimal(0)
+            total_energy = self.total_ree_in_reebills(reebills)
+
+            if total_energy != Decimal(0):
+                marginal_rate_therm = (hypothetical_total - actual_total)/total_energy
+
+            row['account'] = account
+            row['fullname'] = full_names[i]
+            row['ree_charges'] = ree_charges
+            row['actual_charges'] = actual_total.quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)
+            row['hypothetical_charges'] = hypothetical_total.quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)
+            row['total_energy'] = total_energy.quantize(Decimal("0"))
+            # per therm
+            row['marginal_rate_therm'] = (marginal_rate_therm).quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)
+            rows.append(row)
+
+        return rows
+
+    # TODO 20991629: maybe we should move this into ReeBill, because it should know how to report its data?
+    def total_ree_in_reebill(self, reebill):
+        """ Returns energy in Therms """
+
+        total_energy = Decimal(0)
+
+        services = reebill.services
+        for service in services:
+            registers = reebill.shadow_registers(service)
+            # 20977305 - treat registers the same
+            if service.lower() == 'gas':
+                # add up all registers and normalize energy to BTU
+                # gotta check units
+                for register in registers:
+                    if 'quantity' in register:
+                        total_energy += register['quantity']
+            elif service.lower() == 'electric':
+                # add up only total register and normalize energy
+                for register in registers:
+                    if 'type' in register and register['type'] == 'total':
+                        # 1kWh =  29.30722 Th
+                        total_energy += (register['quantity'] / Decimal("29.30722"))
+
+        return total_energy
+
+    def total_ree_in_reebills(self, reebills):
+
+        total_energy = Decimal(0)
+
+        for reebill in reebills:
+            total_energy += self.total_ree_in_reebill(reebill)
+
+        return total_energy
+
         
 
 if __name__ == '__main__':
