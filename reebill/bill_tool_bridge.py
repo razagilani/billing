@@ -1159,7 +1159,7 @@ class BillToolBridge:
                 if type(rows) is int: rows = [rows]
 
                 for oid in rows:
-                    self.state_db.delete_payment(oid)
+                    self.state_db.delete_payment(session, oid)
 
                 session.commit()
                          
