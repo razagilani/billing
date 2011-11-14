@@ -2649,14 +2649,13 @@ function renderWidgets()
             },
             title: 'REE Value',
             tbar: accountReeValueToolbar,
-            bbar: [
-            new Ext.PagingToolbar({
+            bbar: new Ext.PagingToolbar({
                 pageSize: 25,
-                store: accountStore,
+                store: accountReeValueStore,
                 displayInfo: true,
                 displayMsg: 'Displaying {0} - {1} of {2}',
                 emptyMsg: "No statuses to display",
-            }),]
+            }),
         });
 
 
