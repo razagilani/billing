@@ -2546,7 +2546,11 @@ function renderWidgets()
                 // map Record's field to json object's key of same name
                 {name: 'account', mapping: 'account'},
                 {name: 'fullname', mapping: 'fullname'},
-                {name: 'ree_charges', mapping: 'ree_charges'}
+                {name: 'ree_charges', mapping: 'ree_charges'},
+                {name: 'actual_charges', mapping: 'actual_charges'},
+                {name: 'hypothetical_charges', mapping: 'hypothetical_charges'},
+                {name: 'total_energy', mapping: 'total_energy'},
+                {name: 'marginal_rate_therm', mapping: 'marginal_rate_therm'},
             ]
         });
 
@@ -2561,6 +2565,10 @@ function renderWidgets()
                 {name: 'account'},
                 {name: 'fullname'},
                 {name: 'ree_charges'},
+                {name: 'actual_charges'},
+                {name: 'hypothetical_charges'},
+                {name: 'total_energy'},
+                {name: 'marginal_rate_therm'},
             ],
             url: 'http://' + location.host + '/reebill/summary_ree_charges',
         });
@@ -2578,6 +2586,26 @@ function renderWidgets()
                     header: 'REE Charges',
                     sortable: true,
                     dataIndex: 'ree_charges',
+                    editable: false,
+                },{
+                    header: 'Total Utility Charges',
+                    sortable: true,
+                    dataIndex: 'actual_charges',
+                    editable: false,
+                },{
+                    header: 'Hypothesized Utility Charges',
+                    sortable: true,
+                    dataIndex: 'hypothetical_charges',
+                    editable: false,
+                },{
+                    header: 'Total Energy',
+                    sortable: true,
+                    dataIndex: 'total_energy',
+                    editable: false,
+                },{
+                    header: 'Marginal Rate per Therm',
+                    sortable: true,
+                    dataIndex: 'marginal_rate_therm',
                     editable: false,
                 },
             ]
