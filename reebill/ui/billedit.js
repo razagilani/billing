@@ -2664,6 +2664,7 @@ function renderWidgets()
         // preferences tab
         // bill image resolution field in preferences tab (needs a name so its
         // value can be gotten)
+
         var billImageResolutionField = new Ext.ux.form.SpinnerField({
           id: 'billresolutionmenu',
           fieldLabel: 'Bill image resolution',
@@ -2677,6 +2678,46 @@ function renderWidgets()
           alternateIncrementValue: 2.1,
           accelerate: true
         });
+
+        var preferencesFormPanel = new Ext.FormPanel({
+          labelWidth: 240, // label settings here cascade unless overridden
+          frame: true,
+          title: 'Image Resolution Preferences',
+          bodyStyle: 'padding:5px 5px 0',
+          //width: 610,
+          defaults: {width: 435},
+          layout: 'fit', 
+          defaultType: 'textfield',
+          items: [
+            billImageResolutionField,
+            new Ext.Button({
+                text: 'Save',
+                handler: function() {
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/setBillImageResolution',
+                        params: { 'resolution': billImageResolutionField.getValue() },
+                        disableCaching: true,
+                        success: function(result, request) {
+                            var jsonData = null;
+                            try {
+                                jsonData = Ext.util.JSON.decode(result.responseText);
+                                console.log(result.responseText);
+                                if (jsonData.success == false) {
+                                    Ext.Msg.alert("setBillImageResolution failed: " + jsonData.errors)
+                                }
+                            } catch (err) {
+                                Ext.MessageBox.alert('ERROR', 'Could not decode "' + jsonData + '"');
+                            }
+                        },
+                        failure: function () {
+                            Ext.Msg.alert("setBillImageResolution request failed");
+                        }
+                    });
+                }
+            }),
+          ]
+        });
+
         // get initial value of this field from the server
         var resolution = null;
         Ext.Ajax.request({
@@ -2702,8 +2743,6 @@ function renderWidgets()
                 Ext.Msg.alert("setBillImageResolution request failed");
             }
         });
-
-
 
         ///////////////////////////////////////
         // journals Tab
@@ -3075,45 +3114,7 @@ function renderWidgets()
             pack : 'start',
             align : 'stretch',
           },
-          items: [
-            new Ext.FormPanel({
-              labelWidth: 240, // label settings here cascade unless overridden
-              frame: true,
-              title: 'Image Resolution Preferences',
-              bodyStyle: 'padding:5px 5px 0',
-              //width: 610,
-              defaults: {width: 435},
-              defaultType: 'textfield',
-              items: [
-                billImageResolutionField,
-                new Ext.Button({
-                    text: 'Save',
-                    handler: function() {
-                        Ext.Ajax.request({
-                            url: 'http://'+location.host+'/reebill/setBillImageResolution',
-                            params: { 'resolution': billImageResolutionField.getValue() },
-                            disableCaching: true,
-                            success: function(result, request) {
-                                var jsonData = null;
-                                try {
-                                    jsonData = Ext.util.JSON.decode(result.responseText);
-                                    console.log(result.responseText);
-                                    if (jsonData.success == false) {
-                                        Ext.Msg.alert("setBillImageResolution failed: " + jsonData.errors)
-                                    }
-                                } catch (err) {
-                                    Ext.MessageBox.alert('ERROR', 'Could not decode "' + jsonData + '"');
-                                }
-                            },
-                            failure: function () {
-                                Ext.Msg.alert("setBillImageResolution request failed");
-                            }
-                        });
-                    }
-                }),
-              ]
-            }),
-          ]
+          items: [preferencesFormPanel]
         },{
           id: 'aboutTab',
           title: 'About',
