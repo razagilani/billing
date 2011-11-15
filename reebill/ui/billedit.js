@@ -85,6 +85,7 @@ function renderWidgets()
             name: 'account',
             width: 200,
             allowBlank: false,
+            readOnly: true
     });
     // date fields
     var upload_begin_date = new Ext.form.DateField({
