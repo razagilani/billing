@@ -279,6 +279,7 @@ class Process(object):
         self.state_db.new_rebill(session, reebill.account, reebill.sequence)
 
 
+    # TODO 21052893: probably want to set up the next reebill here.  Automatically roll?
     def commit_rebill(self, session, account, sequence):
         reebill = self.reebill_dao.load_reebill(account, sequence)
         begin = reebill.period_begin
