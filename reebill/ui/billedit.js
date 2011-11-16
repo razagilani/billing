@@ -360,15 +360,15 @@ function renderWidgets()
                 // these items will render as dropdown menu items when the arrow is clicked:
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
-                {text: 'Bind Rate Structure', handler: bindRSOperation},
-                {text: 'Calculate REPeriod', handler: calcREPeriodOperation},
-                {text: 'Pay', handler: payOperation},
-                {text: 'Sum', handler: sumOperation},
-                {text: 'CalcStats', handler: calcStatsOperation},
-                {text: 'Set Issue Date', handler: issueOperation},
+                {text: 'Compute Bill', handler: bindRSOperation},
+                //{text: 'Calculate REPeriod', handler: calcREPeriodOperation},
+                //{text: 'Pay', handler: payOperation},
+                //{text: 'Sum', handler: sumOperation},
+                //{text: 'CalcStats', handler: calcStatsOperation},
+                //{text: 'Set Issue Date', handler: issueOperation},
                 {text: 'Render', handler: renderOperation},
-                {text: 'Commit', handler: commitOperation},
-                {text: 'Issue to Customer', handler: issueToCustomerOperation},
+                //{text: 'Commit', handler: commitOperation},
+                //{text: 'Issue to Customer', handler: issueToCustomerOperation},
             ]
         })
     });

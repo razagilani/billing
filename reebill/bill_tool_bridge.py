@@ -423,14 +423,46 @@ class BillToolBridge:
     @cherrypy.expose
     def bindrs(self, account, sequence, **args):
         self.check_authentication()
+        session = None
         try:
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
+
+            session = self.state_db.session()
+
             reebill = self.reebill_dao.load_reebill(account, sequence)
+            prior_reebill = self.reebill_dao.load_reebill(account, int(sequence)-1)
+
+            self.process.calculate_reperiod(reebill)
+
             self.process.bind_rate_structure(reebill)
+
+            self.process.pay_bill(session, reebill)
+
+            # hack to ensure the computations from bind_rs come back as decimal types
             self.reebill_dao.save_reebill(reebill)
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+
+            self.process.sum_bill(session, prior_reebill, reebill)
+
+            # hack to ensure the computations from bind_rs come back as decimal types
+            self.reebill_dao.save_reebill(reebill)
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            #pp.pprint(reebill.dictionary)
+            pp.pprint(prior_reebill.dictionary)
+            self.process.calculate_statistics(prior_reebill, reebill)
+
+            self.reebill_dao.save_reebill(reebill)
+
+            session.commit()
+
             return json.dumps({'success': True})
         except Exception as e:
+            if session is not None: 
+                try:
+                    if session is not None: session.rollback()
+                except:
+                    print "Could not rollback session"
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
@@ -615,7 +647,7 @@ class BillToolBridge:
             for reebill in all_bills:
                 self.journal_dao.journal(reebill.account, reebill.sequence, "Mailed to %s by %s" % (recipients, current_user))
                 self.process.issue_to_customer(session, reebill.account, reebill.sequence)
-                self.process.commit(session, reebill.account, reebill.sequence)
+                self.process.commit_reebill(session, reebill.account, reebill.sequence)
 
             session.commit()
             return json.dumps({'success': True})

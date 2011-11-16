@@ -55,13 +55,6 @@ class Process(object):
         #TODO: why do we need a reebill_dao? Reebills get passed in to this helper class
         self.reebill_dao = reebill_dao
 
-    #TODO better function name to reflect the return types of XPath - not just elements, but sums, etc...
-    #TODO function to return a single element vs list - that will clean up lots of code
-    #TODO refactor to external utility class
-    def get_elem(self, tree, xpath):
-        return tree.xpath(xpath, namespaces={"ub":"bill"})
-
-
     # compute the value, charges and savings of renewable energy
     def sum_bill(self, session, prior_reebill, present_reebill):
 
@@ -280,7 +273,7 @@ class Process(object):
 
 
     # TODO 21052893: probably want to set up the next reebill here.  Automatically roll?
-    def commit_rebill(self, session, account, sequence):
+    def commit_reebill(self, session, account, sequence):
         reebill = self.reebill_dao.load_reebill(account, sequence)
         begin = reebill.period_begin
         end = reebill.period_end
@@ -299,8 +292,6 @@ class Process(object):
             # process the actual charges across all services
             self.bindrs(reebill, self.rate_structure_dao)
 
-            self.calculate_reperiod(reebill.account, reebill.sequence)
-
     def bindrs(self, reebill, ratestructure_db):
         """ This function binds a rate structure against the actual and hypothetical charges found """
         """ in a bill. If and RSI specifies information no in the bill, it is added to the bill.   """
@@ -312,8 +303,6 @@ class Process(object):
 
         # process rate structures for all services
         for service in reebill.services:
-
-
 
             #
             # All registers for all meters in a given service are made available
@@ -356,12 +345,12 @@ class Process(object):
 
             # add the shadow register totals to the actual register, and re-process
 
-            # TODO: Big problem here.... if REG_TOTAL, for example, is used to calculate
+            # TODO: 12205265 Big problem here.... if REG_TOTAL, for example, is used to calculate
             # a rate shown on the utility bill, it works - until REG_TOTAL has the shadow
             # renewable energy - then the rate is calculated incorrectly.  This is because
             # a seemingly innocent expression like SETF 2.22/REG_TOTAL.quantity calcs 
             # one way for actual charge computation and another way for hypothetical charge
-            # computation.  See 12205265
+            # computation.
 
             # TODO: probably a better way to do this
             registers_to_bind = copy.deepcopy(shadow_register_readings)
@@ -383,46 +372,46 @@ class Process(object):
                 rate_structure.bind_charges(charges)
             reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
 
-    def calculate_statistics(self, account, sequence):
+    def calculate_statistics(self, prior_reebill, reebill):
         """ Period Statistics for the input bill period are determined here from the total energy usage """
         """ contained in the registers. Cumulative statistics are determined by adding period statistics """
         """ to the past cumulative statistics """ 
 
 
         # the trailing bill where totals are obtained
-        prev_bill = self.reebill_dao.load_reebill(account, int(sequence)-1)
+        #prev_bill = self.reebill_dao.load_reebill(prior_reebill.account, int(prior_reebill.sequence)-1)
+        prev_bill = prior_reebill
 
         # the current bill where accumulated values are stored
-        next_bill = self.reebill_dao.load_reebill(account, int(sequence))
+        #next_bill = self.reebill_dao.load_reebill(reebill.account, int(reebill.sequence))
+        next_bill = reebill
 
         # determine the renewable and conventional energy across all services by converting all registers to BTUs
         # TODO these conversions should be treated in a utility class
         def normalize(units, total):
             if (units.lower() == "kwh"):
                 # 1 kWh = 3413 BTU
-                return total * 3413
+                return total * Decimal("3413")
             elif (units.lower() == "therms" or units.lower() == "ccf"):
                 # 1 therm = 100000 BTUs
-                return total * 100000
+                return total * Decimal("100000")
             else:
                 raise Exception("Units '" + units + "' not supported")
 
 
         # total renewable energy
-        re = 0.0
+        re = Decimal("0.0")
         # total conventional energy
-        ce = 0.0
+        ce = Decimal("0.0")
 
         # CO2 is fuel dependent
-        co2 = 0.0
+        co2 = Decimal("0.0")
         # TODO these conversions should be treated in a utility class
         def calcco2(units, total):
             if (units.lower() == "kwh"):
-                #return total * Decimal("1.297")
-                return total * 1.297
+                return total * Decimal("1.297")
             elif (units.lower() == "therms" or units.lower() == "ccf"):
-                #return total * Decimal("13.46")
-                return total * 13.46
+                return total * Decimal("13.46")
             else:
                 raise Exception("Units '" + units + "' not supported")
 
@@ -469,7 +458,7 @@ class Process(object):
         next_stats['total_co2_offset'] =  prev_stats['total_co2_offset'] + co2
 
         # externalize this calculation to utilities
-        next_stats['total_trees'] = next_stats['total_co2_offset']/1300.0
+        next_stats['total_trees'] = next_stats['total_co2_offset']/Decimal("1300.0")
         
 
         # determine re consumption trend
@@ -483,17 +472,17 @@ class Process(object):
 
         for period in next_stats['consumption_trend']:
             if(period['month'] == month):
-                period['quantity'] = re/100000.0
+                period['quantity'] = re/Decimal("100000.0")
 
         next_bill.statistics = next_stats
 
         # save in mongo
-        self.reebill_dao.save_reebill(next_bill)
+        #self.reebill_dao.save_reebill(next_bill)
 
 
-    def calculate_reperiod(self, account, sequence):
+    def calculate_reperiod(self, reebill):
         """ Set the Renewable Energy bill Period """
-        reebill = self.reebill_dao.load_reebill(account, sequence)
+        #reebill = self.reebill_dao.load_reebill(account, sequence)
         
         utilbill_period_beginnings = []
         utilbill_period_ends = []
@@ -517,10 +506,6 @@ class Process(object):
 
         reebill.period_begin = rebill_periodbegindate
         reebill.period_end = rebill_periodenddate
-
-        # save in mongo
-        #reebill = self.reebill_dao.load_reebill(account, sequence)
-        self.reebill_dao.save_reebill(reebill)
 
     def issue(self, account, sequence, issuedate=None):
         """ Set the Renewable Energy bill Period """
