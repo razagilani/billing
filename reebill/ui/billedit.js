@@ -634,7 +634,6 @@ function renderWidgets()
     {
         registerAjaxEvents()
         Ext.Ajax.request({
-            // TODO: pass in only account and sequence
             url: 'http://'+location.host+'/reebill/render',
             params: { 
                 account: accountCombo.getValue(),
@@ -655,7 +654,6 @@ function renderWidgets()
 
         registerAjaxEvents();
         Ext.Ajax.request({
-            // TODO: pass in only account and sequence
             url: 'http://'+location.host+'/reebill/commit',
             params: {
                 account: accountCombo.getValue(),

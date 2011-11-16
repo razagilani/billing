@@ -291,6 +291,7 @@ class BillToolBridge:
             if not self.authentication_on:
                 if 'preferences' not in cherrypy.session:
                     cherrypy.session['preferences'] = DEFAULT_PREFERENCES
+                    cherrypy.session['username'] = "Default User"
                 return True
             if 'username' not in cherrypy.session:
                 self.logger.info("Non-logged-in user was denied access to: %s" % \
@@ -563,16 +564,36 @@ class BillToolBridge:
     def mail(self, account, sequences, recipients, **args):
         self.check_authentication()
         try:
+            session = None
             if not account or not sequences or not recipients:
                 raise ValueError("Bad Parameter Value")
+
+            # look up this value and fail early if there is something wrong with the session.
+            current_user = cherrypy.session['username']
+
+            session = self.state_db.session()
+
             # sequences will come in as a string if there is one element in post data. 
             # If there are more, it will come in as a list of strings
             if type(sequences) is not list: sequences = [sequences]
             # acquire the most recent reebill from the sequence list and use its values for the merge
             sequences = [sequence for sequence in sequences]
             # sequences is [u'17']
-
             all_bills = [self.reebill_dao.load_reebill(account, sequence) for sequence in sequences]
+
+            # set issue date 
+            for reebill in all_bills:
+                self.process.issue(reebill.account, reebill.sequence)
+                self.process.issue_to_customer(session, reebill.account, reebill.sequence)
+
+            # render all the bills
+            for reebill in all_bills:
+                render.render(reebill, 
+                    self.config.get("billdb", "billpath")+ "%s/%s.pdf" % (reebill.account, reebill.sequence),
+                    "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
+                    None,
+                )
+                
 
             # the last element
             most_recent_bill = all_bills[-1]
@@ -589,11 +610,22 @@ class BillToolBridge:
 
             bill_mailer.mail(recipients, merge_fields, os.path.join(self.config.get("billdb", "billpath"), account), bill_file_names);
 
-            self.journal_dao.journal(account, sequence, "Mailed to %s by %s" % (recipients, cherrypy.session['username'] ))
+            # set issued to customer flag
+            # Commit bill
+            for reebill in all_bills:
+                self.journal_dao.journal(reebill.account, reebill.sequence, "Mailed to %s by %s" % (recipients, current_user))
+                self.process.issue_to_customer(session, reebill.account, reebill.sequence)
+                self.process.commit(session, reebill.account, reebill.sequence)
 
+            session.commit()
             return json.dumps({'success': True})
 
         except Exception as e:
+            if session is not None: 
+                try:
+                    if session is not None: session.rollback()
+                except:
+                    print "Could not rollback session"
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
