@@ -267,7 +267,6 @@ class Process(object):
         # leave consumption trend alone since we want to carry it forward until it is based on the cubes
         # at which time we can just recreate the whole trend
 
-        # TODO: this needs to be done in a http request level database transaction
         # create an initial rebill record to which the utilbills are later associated
         self.state_db.new_rebill(session, reebill.account, reebill.sequence)
 
