@@ -878,6 +878,59 @@ class BillToolBridge:
             print >> sys.stderr, e
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
+    @cherrypy.expose
+    def all_ree_charges_csv_altitude(self, **args):
+        try:
+            session = None
+
+            session = self.state_db.session()
+            rows, total_count = self.process.all_ree_charges(session)
+            session.commit()
+
+            import csv
+            import StringIO
+
+            buf = StringIO.StringIO()
+
+            writer = csv.writer(buf)
+
+            writer.writerow(['Account-Sequence', 'Period End', 'RE&E Charges'])
+
+            for row in rows:
+                ba = row['billing_address']
+                bill_addr_str = "%s %s %s %s %s" % (
+                    ba['ba_addressee'] if 'ba_addressee' in ba and ba['ba_addressee'] is not None else "",
+                    ba['ba_street1'] if 'ba_street1' in ba and ba['ba_street1'] is not None else "",
+                    ba['ba_city'] if 'ba_city' in ba and ba['ba_city'] is not None else "",
+                    ba['ba_state'] if 'ba_state' in ba and ba['ba_state'] is not None else "",
+                    ba['ba_postal_code'] if 'ba_postal_code' in ba and ba['ba_postal_code'] is not None else "",
+                )
+                sa = row['service_address']
+                service_addr_str = "%s %s %s %s %s" % (
+                    sa['sa_addressee'] if 'sa_addressee' in sa and sa['sa_addressee'] is not None else "",
+                    sa['sa_street1'] if 'sa_street1' in sa and sa['sa_street1'] is not None else "",
+                    sa['sa_city'] if 'sa_city' in sa and sa['sa_city'] is not None else "",
+                    sa['sa_state'] if 'sa_state' in sa and sa['sa_state'] is not None else "",
+                    sa['sa_postal_code'] if 'sa_postal_code' in sa and sa['sa_postal_code'] is not None else "",
+                )
+
+                writer.writerow(["%s-%s" % (row['account'], row['sequence']), row['period_end'], row['ree_charges']])
+
+                cherrypy.response.headers['Content-Type'] = 'text/csv'
+                cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s.csv' % datetime.now().strftime("%Y%m%d")
+
+
+            return buf.getvalue()
+
+        except Exception as e:
+            try:
+                if session is not None: session.rollback()
+            except:
+                print "Could not rollback session"
+            # TODO 20217999: log errors?
+            print >> sys.stderr, e
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
 
     @cherrypy.expose
     # TODO see 15415625 about the problem passing in service to get at a set of RSIs
