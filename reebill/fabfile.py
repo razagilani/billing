@@ -58,18 +58,22 @@ def deploy():
     config_file = configurations[environment][3]
             
     prepare_deploy(project, environment)
-    fabapi.put('/tmp/%s.tar.z' % (project), '/tmp')
-    fabapi.put('/tmp/skyliner.tar.z', '/tmp')
-    fabapi.put('/tmp/bill_framework_code.tar.z', '/tmp')
+    if  fabcontrib.files.exists("/tmp/%s_deploy" % (project), use_sudo=True) is False:
+        print green("Creating directory /tmp/%s_deploy" % (project))
+        fabops.run('mkdir /tmp/%s_deploy/' % (project)) 
+    fabapi.put('/tmp/%s.tar.z' % (project), '/tmp/%s_deploy' % (project))
+    fabapi.put('/tmp/skyliner.tar.z', '/tmp/%s_deploy' % (project))
+    fabapi.put('/tmp/bill_framework_code.tar.z', '/tmp/%s_deploy' % (project))
 
     # making billing module if missing
-    # TODO: fab-ify this
-    fabops.sudo('if [ -d /var/local/%s/lib/python2.6/site-packages/billing ]; then echo "Directory exists"; else mkdir /var/local/%s/lib/python2.6/site-packages/billing; fi' % (project, project)) 
+    if  fabcontrib.files.exists("/var/local/%s/lib/python2.6/site-packages/billing" % (project), use_sudo=True) is False:
+        print green("Creating directory /var/local/%s/lib/python2.6/site-packages/billing" % (project))
+        fabops.sudo('mkdir /var/local/%s/lib/python2.6/site-packages/billing' % (project)) 
 
     #  install ui and application code into site-packages
     with fabcontext.hide('stdout'):
         with fabcontext.cd('/var/local/%s/lib/python2.6/site-packages/billing' % (project)):
-            fabops.sudo('tar xvzf /tmp/%s.tar.z' % (project), user='root')
+            fabops.sudo('tar xvzf /tmp/%s_deploy/%s.tar.z' % (project, project), user='root')
    
     with (fabcontext.settings(warn_only=True)):
         #with fabcontext.hide('stdout'):
@@ -90,12 +94,12 @@ def deploy():
     # install other billing code into site-packages
     with fabcontext.hide('stdout'):
         with fabcontext.cd('/var/local/%s/lib/python2.6/site-packages/billing/' % (project)):
-            fabops.sudo('tar xvzf /tmp/bill_framework_code.tar.z', user='root')
+            fabops.sudo('tar xvzf /tmp/%s_deploy/bill_framework_code.tar.z' % (project), user='root')
 
     #  install skyline framework into site-packages
     with fabcontext.hide('stdout'):
         with fabcontext.cd('/var/local/%s/lib/python2.6/site-packages/' % (project)):
-            fabops.sudo('tar xvzf /tmp/skyliner.tar.z', user='root')
+            fabops.sudo('tar xvzf /tmp/%s_deploy/skyliner.tar.z' % (project), user='root')
 
     fabops.sudo('chown -R %s:%s /var/local/%s' % (user, group, project), user='root')
     fabops.sudo('service apache2 restart')
