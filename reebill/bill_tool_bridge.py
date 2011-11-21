@@ -448,8 +448,6 @@ class BillToolBridge:
             # hack to ensure the computations from bind_rs come back as decimal types
             self.reebill_dao.save_reebill(reebill)
             reebill = self.reebill_dao.load_reebill(account, sequence)
-            #pp.pprint(reebill.dictionary)
-            pp.pprint(prior_reebill.dictionary)
             self.process.calculate_statistics(prior_reebill, reebill)
 
             self.reebill_dao.save_reebill(reebill)
@@ -617,6 +615,10 @@ class BillToolBridge:
             for reebill in all_bills:
                 self.process.issue(reebill.account, reebill.sequence)
                 self.process.issue_to_customer(session, reebill.account, reebill.sequence)
+
+            #  TODO: 21305875  Do this until reebill is being passed around
+            # problem is all_bills is not reloaded after .issue and .issue_to_customer
+            all_bills = [self.reebill_dao.load_reebill(account, sequence) for sequence in sequences]
 
             # render all the bills
             for reebill in all_bills:
