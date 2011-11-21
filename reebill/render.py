@@ -629,6 +629,7 @@ def render(reebill, outputfile, backgrounds, verbose):
                     register['identifier'],
                     register['description'],
                     # as in the case of a second meter that doesn't have a shadow register (see family laundry)
+                    # TODO 21314105 shadow_total is an int if RE was bound and its value was zero (non communicating site)? 
                     shadow_total.quantize(Decimal("0.00")) if shadow_total is not None else "",
                     utility_total,
                     total.quantize(Decimal("0.00")),
