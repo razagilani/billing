@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # backup 
-now=`date +"%Y%m%j"`
+now=`date +"%Y%m%d"`
 cd /tmp
-mysqldump -uroot -pvLGhTZu9eq4ULvbbKzlE skyline > ${now}billing_mysql.dmp
+mysqldump -uroot -pvLGhTZu9eq4ULvbbKzlE skyline_prod > ${now}billing_mysql.dmp
 mongodump --db skyline-prod --collection ratestructure --out ${now}ratestructure_mongo
 mongodump --db skyline-prod --collection reebills --out ${now}reebills_mongo
 
