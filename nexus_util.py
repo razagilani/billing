@@ -19,6 +19,14 @@ class NexusUtil(object):
         f = urllib2.urlopen(url)
         return f.read()
 
+    def olap_id_from_primus_id(self, address):
+        url = "http://%s/nexus_query/lookup?system=primus&systemid=%s&forsystem=olap" % (
+            self.host,
+            urllib.quote(address)
+        )
+        f = urllib2.urlopen(url)
+        return f.read()
+
     def billing_id(self, olap_id):
         '''For an olap id, return a billing account number.'''
         url = "http://%s/nexus_query/lookup?system=olap&systemid=%s&forsystem=billing" % (
@@ -33,7 +41,7 @@ class NexusUtil(object):
         url = "http://%s/nexus_query/lookup_all?system=%s&systemid=%s" % (
             self.host,
             system,
-            system_id
+            urllib.quote(system_id)
         )
         f = urllib2.urlopen(url)
         record = json.load(f)
