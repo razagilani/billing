@@ -328,7 +328,7 @@ def render(reebill, outputfile, backgrounds, verbose):
 
     sa = stringify(reebill.service_address)
     Elements.append(Paragraph(sa.get('sa_addressee', ""), styles['BillField']))
-    Elements.append(Paragraph(sa.get('sa_street',""), styles['BillField']))
+    Elements.append(Paragraph(sa.get('sa_street1',""), styles['BillField']))
     Elements.append(Paragraph(" ".join((sa.get('sa_city', ""), sa.get('sa_state', ""), sa.get('sa_postalcode', ""))), styles['BillField']))
     Elements.append(UseUpSpace())
 
@@ -340,7 +340,7 @@ def render(reebill, outputfile, backgrounds, verbose):
     Elements.append(Spacer(100,20))
     ba = stringify(reebill.billing_address)
     Elements.append(Paragraph(ba.get('ba_addressee', ""), styles['BillFieldLg']))
-    Elements.append(Paragraph(ba.get('ba_street', ""), styles['BillFieldLg']))
+    Elements.append(Paragraph(ba.get('ba_street1', ""), styles['BillFieldLg']))
     Elements.append(Paragraph(" ".join((ba.get('ba_city', ""), ba.get('ba_state', ""), ba.get('ba_postalcode',""))), styles['BillFieldLg']))
     Elements.append(UseUpSpace())
 
