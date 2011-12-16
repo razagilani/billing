@@ -2448,6 +2448,9 @@ function renderWidgets()
         });
 
         ///////////////////////////////////////
+        // Accounts Tab
+
+        ///////////////////////////////////////
         // account status
 
         var accountReader = new Ext.data.JsonReader({
@@ -2658,6 +2661,84 @@ function renderWidgets()
         });
 
 
+        ///////////////////////////////////////
+        // new account
+
+        var billImageResolutionField = new Ext.ux.form.SpinnerField({
+          id: 'billresolutionmenu',
+          fieldLabel: 'Bill image resolution',
+          name: 'billresolution',
+          value: DEFAULT_RESOLUTION,
+          minValue: 50,
+          maxValue: 200,
+          allowDecimals: false,
+          decimalPrecision: 10,
+          incrementValue: 10,
+          alternateIncrementValue: 2.1,
+          accelerate: true
+        });
+
+        var newAccountField = new Ext.form.TextField({
+          fieldLabel: 'Account',
+          name: 'account',
+          allowBlank: false,
+        });
+        var newNameField = new Ext.form.TextField({
+          fieldLabel: 'Name',
+          name: 'name',
+          allowBlank: false,
+        });
+        var newDiscountRate = new Ext.form.TextField({
+          fieldLabel: 'Discount Rate',
+          name: 'discount_rate',
+          allowBlank: false,
+        });
+
+        var newAccountFormPanel = new Ext.FormPanel({
+          url: 'http://'+location.host+'/reebill/new_account',
+          labelWidth: 95, // label settings here cascade unless overridden
+          frame: true,
+          title: 'Create New Account',
+          //width: 610,
+          defaults: {
+            width: 435,
+            xtype: 'textfield',
+          },
+          defaultType: 'textfield',
+          items: [newAccountField, newNameField, newDiscountRate ],
+          buttons: [
+            new Ext.Button({
+                text: 'Save',
+                handler: function() {
+                    Ext.Ajax.request({
+                        url: 'http://'+location.host+'/reebill/new_account',
+                        params: { 
+                          'name': newNameField.getValue(),
+                          'account': newAccountField.getValue(),
+                          'discount_rate': newDiscountRate.getValue()
+                        },
+                        disableCaching: true,
+                        success: function(result, request) {
+                            var jsonData = null;
+                            try {
+                                jsonData = Ext.util.JSON.decode(result.responseText);
+                                console.log(result.responseText);
+                                if (jsonData.success == false) {
+                                    Ext.Msg.alert("Create new account failed: " + jsonData.errors.reason)
+                                }
+                            } catch (err) {
+                                Ext.MessageBox.alert('ERROR', 'Could not decode "' + jsonData + '"');
+                            }
+                        },
+                        failure: function () {
+                            Ext.Msg.alert("Create new account request failed");
+                        }
+                    });
+                }
+            }),
+          ],
+        });
+
         ///////////////////////////////////////////////////////////////////////////
         // preferences tab
         // bill image resolution field in preferences tab (needs a name so its
@@ -2688,6 +2769,8 @@ function renderWidgets()
           defaultType: 'textfield',
           items: [
             billImageResolutionField,
+          ],
+          buttons: [
             new Ext.Button({
                 text: 'Save',
                 handler: function() {
@@ -2713,10 +2796,12 @@ function renderWidgets()
                     });
                 }
             }),
-          ]
+          ],
         });
 
         // get initial value of this field from the server
+        // TODO: 22360193 populating a form from Ajax creates a race condition.  
+        // What if the network doesn't return and user enters a value nefore the callback is fired?
         var resolution = null;
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/getBillImageResolution',
@@ -3006,7 +3091,7 @@ function renderWidgets()
           title: 'Accounts',
           xtype: 'panel',
           layout: 'accordion',
-          items: [accountGrid,accountReeValueGrid]
+          items: [accountGrid,accountReeValueGrid,newAccountFormPanel, ]
         },{
           id: 'paymentTab',
           title: 'Pay',

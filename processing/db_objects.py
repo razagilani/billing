@@ -3,10 +3,10 @@
 here, due to relationships defined in state.py.'''
 
 class Customer(object):
-    def __init__(self, name, account, discountrate):
+    def __init__(self, name, account, discount_rate):
         self.name = name
         self.account = account
-        self.discountrate = discountrate
+        self.discountrate = discount_rate
     def __repr__(self):
         return '<Customer(%s, %s, %s)>' \
                 % (self.name, self.account, self.discountrate)
