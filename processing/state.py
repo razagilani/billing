@@ -12,6 +12,7 @@ from sqlalchemy import Table, Integer, String, Float, MetaData, ForeignKey
 from sqlalchemy import create_engine
 from sqlalchemy.orm import mapper, sessionmaker, scoped_session
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
 from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, StatusUnbilled
 
@@ -78,6 +79,15 @@ class StateDB:
         # wrapped by scoped_session for thread contextualization
         self.session = scoped_session(sessionmaker(bind=engine, autoflush=True))
 
+    def new_account(self, session, name, account, discount_rate):
+
+        new_customer = Customer(name, account, discount_rate)
+
+        session.add(new_customer)
+
+        return new_customer
+
+
     def commit_bill(self, session, account, sequence, start, end):
 
 
@@ -105,9 +115,7 @@ class StateDB:
         result = session.query(Customer).filter_by(account=account).one().discountrate
 
         return result
-
         
-
     def last_sequence(self, session, account):
 
         customer = session.query(Customer).filter(Customer.account==account).one()
@@ -135,6 +143,15 @@ class StateDB:
         reeBill = session.query(ReeBill).filter(ReeBill.customer_id==customer.id).filter(ReeBill.sequence==sequence).one()
         reeBill.issued = 1
 
+    def account_exists(self, session, account):
+        try:
+           customer = session.query(Customer).filter(Customer.account==account).one()
+        except NoResultFound:
+            return False
+
+        return True
+
+    # TODO: 22260579 can we remove this function?
     def listAccounts(self, session):
         
         # SQLAlchemy returns a list of tuples, so convert it into a plain list
