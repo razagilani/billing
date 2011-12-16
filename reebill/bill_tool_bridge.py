@@ -344,6 +344,43 @@ class BillToolBridge:
     # bill processing
 
     @cherrypy.expose
+    def new_account(self, name, account, discount_rate, **args):
+        self.check_authentication()
+        try:
+            session = None
+            if not name or not account or not discount_rate:
+                raise ValueError("Bad Parameter Value")
+
+            session = self.state_db.session()
+
+            result = self.state_db.account_exists(session, account)
+
+            if result is True:
+                return json.dumps({'success': False, 'errors':{'reason':'Account exists'}})
+
+            # create new account in mysql
+            customer = self.state_db.new_account(session, name, account, discount_rate)
+
+            # create template reebill in mongo
+            self.reebill_dao.new_reebill(customer.account)
+
+            # record the successful completion
+            self.journal_dao.journal(customer.account, 0, "New account created")
+
+            session.commit()
+
+            return json.dumps({'success': True})
+
+        except Exception as e:
+            if session is not None: 
+                try:
+                    if session is not None: session.rollback()
+                except:
+                    print "Could not rollback session"
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+    @cherrypy.expose
     def roll(self, account, sequence, **args):
         self.check_authentication()
         try:
