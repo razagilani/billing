@@ -316,12 +316,12 @@ class MongoReebill(object):
         self.actual_total = Decimal("0.00")
         self.hypothetical_total = Decimal("0.00")
 
-        initialize first utilbill here.
-        need to choose a default service
-        once the utilbill is initially created, we leave it to other processes to add services, etc..
-        utilbill section:
-            "hypothetical_chargegroups" : {
-                "All Charges" : [
+        #initialize first utilbill here.
+        #need to choose a default service
+        #once the utilbill is initially created, we leave it to other processes to add services, etc..
+        #utilbill section:
+        #    "hypothetical_chargegroups" : {
+        #        "All Charges" : [
 
 
 
@@ -623,6 +623,20 @@ class MongoReebill(object):
             if ub['service'] == service_name:
                 ub['actual_chargegroups'] = new_chargegroups
 
+    def chargegroups_model_for_service(self, service_name):
+        '''Returns a shallow list of chargegroups for the utilbill whose
+        service is 'service_name'. There's not supposed to be more than one
+        utilbill per service, so an exception is raised if that happens (or if
+        there's no utilbill for that service).'''
+        chargegroup_lists = [ub['actual_chargegroups'].keys()
+                for ub in self.dictionary['utilbills']
+                if ub['service'] == service_name]
+        if chargegroup_lists == []:
+            raise Exception('No utilbills found for service "%s"' % service_name)
+        if len(chargegroup_lists) > 1:
+            raise Exception('Multiple utilbills found for service "%s"' % service_name)
+        return chargegroup_lists[0]
+
     @property
     def services(self):
         '''Returns a list of all services for which there are utilbills.'''
@@ -811,6 +825,8 @@ class MongoReebill(object):
     # Helper functions
     #
 
+
+    # the following functions are all about flattening nested chargegroups for the UI grid
     def hypothetical_chargegroups_flattened(self, service, chargegroups='hypothetical_chargegroups'):
         return self.chargegroups_flattened(service, chargegroups)
 
@@ -857,6 +873,7 @@ class MongoReebill(object):
                         new_chargegroups[cg].append(charge)
 
                 ub[chargegroups] = new_chargegroups
+
 
     def old__init__code(self):
         # ok, it is the old bill.py, and when we are no longer needing XML

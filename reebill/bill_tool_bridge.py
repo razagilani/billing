@@ -344,7 +344,7 @@ class BillToolBridge:
     # bill processing
 
     @cherrypy.expose
-    def new_account(self, name, account, discount_rate, **args):
+    def new_account(self, name, account, discount_rate, account_template, **args):
         self.check_authentication()
         try:
             session = None
@@ -1755,6 +1755,85 @@ class BillToolBridge:
         except Exception as e:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+    @cherrypy.expose
+    def reebill_structure(self, account, **args):
+        self.check_authentication()
+        try:
+            session = None
+            if not account:
+                raise ValueError("Bad Parameter Value: account")
+
+            session = self.state_db.session()
+            sequence = self.state_db.last_sequence(session, account)
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+
+            if reebill:
+
+                services = reebill.services
+
+                # construct utilbill parts
+                tree = []
+                node_index = 0
+                for service in reebill.services:
+                    utility = reebill.utility_name_for_service(service)
+                    rate_structure = reebill.rate_structure_name_for_service(service)
+                    chargegroups_model = reebill.chargegroups_model_for_service(service)
+
+                    node_index += 1
+                    utility_node = {
+                        'id': node_index, 
+                        'text': utility,
+                        'leaf': True
+                    }
+
+                    node_index += 1
+                    ratestructure_node = {
+                        'id': node_index, 
+                        'text': rate_structure,
+                        'leaf': True
+                    }
+
+                    chargegroup_names_nodes = []
+                    for group in chargegroups_model:
+                        node_index += 1
+                        chargegroup_names_nodes.append({
+                            'id': node_index,
+                            'text':group,
+                            'leaf': True
+                        })
+
+                    node_index += 1
+                    chargegroups_node = {
+                        'id': node_index,
+                        'text': 'Charge Groups',
+                        'children': chargegroup_names_nodes
+                    }
+
+                    node_index += 1
+                    utilbill_node = {
+                        'id': node_index,
+                        'text': service,
+                        'children': [utility_node, ratestructure_node, chargegroups_node]
+                    }
+                    tree.append(utilbill_node)
+
+                # we want to return success to ajax call and then load the tree in page
+                #return ju.dumps({'success':True, 'reebill_structure':tree});
+                # but the TreeLoader doesn't abide by the above ajax packet
+                return ju.dumps(tree);
+
+        except Exception as e:
+            try:
+                if session is not None: session.rollback()
+            except:
+                print "Could not rollback session"
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+
+            # TreePanel doesn't do error handling, so don't bother returning anything
+            # Maybe the TreeLoader can be made to respond to something.
+            #return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
         
 # TODO: place instantiation in main, so this module can be loaded without btb being instantiated
 bridge = BillToolBridge()
