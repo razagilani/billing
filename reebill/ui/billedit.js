@@ -300,11 +300,9 @@ function renderWidgets()
 
           
     ////////////////////////////////////////////////////////////////////////////
-    // Account and Bill selection tab
+    // ReeBill Tab
     //
 
-
-    // TODO: 16598217 can go away
     var accountsStore = new Ext.data.JsonStore({
         // store configs
         autoDestroy: true,
@@ -317,7 +315,6 @@ function renderWidgets()
     });
 
 
-    // TODO: 16598217 prepare to remove this combobox and replace with a text field
     var accountCombo = new Ext.form.ComboBox({
         store: accountsStore,
         fieldLabel: 'Account',
@@ -2662,81 +2659,129 @@ function renderWidgets()
 
 
         ///////////////////////////////////////
-        // new account
+        // Create New Account 
 
-        var billImageResolutionField = new Ext.ux.form.SpinnerField({
-          id: 'billresolutionmenu',
-          fieldLabel: 'Bill image resolution',
-          name: 'billresolution',
-          value: DEFAULT_RESOLUTION,
-          minValue: 50,
-          maxValue: 200,
-          allowDecimals: false,
-          decimalPrecision: 10,
-          incrementValue: 10,
-          alternateIncrementValue: 2.1,
-          accelerate: true
+        var newAccountTemplateStore = new Ext.data.JsonStore({
+            // store configs
+            autoDestroy: true,
+            autoLoad: true,
+            url: 'http://'+location.host+'/reebill/listAccounts',
+            storeId: 'accountsStore',
+            root: 'rows',
+            idProperty: 'account',
+            fields: ['account', 'name'],
+        });
+
+        var newAccountTemplateCombo = new Ext.form.ComboBox({
+            store: newAccountTemplateStore,
+            fieldLabel: 'Based on',
+            displayField:'name',
+            valueField:'account_template',
+            typeAhead: true,
+            triggerAction: 'all',
+            emptyText:'Select...',
+            selectOnFocus:true,
+            readOnly: false,
         });
 
         var newAccountField = new Ext.form.TextField({
-          fieldLabel: 'Account',
-          name: 'account',
-          allowBlank: false,
+            fieldLabel: 'Account',
+            name: 'account',
+            allowBlank: false,
         });
+
         var newNameField = new Ext.form.TextField({
-          fieldLabel: 'Name',
-          name: 'name',
-          allowBlank: false,
+            fieldLabel: 'Name',
+            name: 'name',
+            allowBlank: false,
         });
         var newDiscountRate = new Ext.form.TextField({
-          fieldLabel: 'Discount Rate',
-          name: 'discount_rate',
-          allowBlank: false,
+            fieldLabel: 'Discount Rate',
+            name: 'discount_rate',
+            allowBlank: false,
         });
 
         var newAccountFormPanel = new Ext.FormPanel({
-          url: 'http://'+location.host+'/reebill/new_account',
-          labelWidth: 95, // label settings here cascade unless overridden
-          frame: true,
-          title: 'Create New Account',
-          //width: 610,
-          defaults: {
-            width: 435,
-            xtype: 'textfield',
-          },
-          defaultType: 'textfield',
-          items: [newAccountField, newNameField, newDiscountRate ],
-          buttons: [
-            new Ext.Button({
-                text: 'Save',
-                handler: function() {
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/reebill/new_account',
-                        params: { 
-                          'name': newNameField.getValue(),
-                          'account': newAccountField.getValue(),
-                          'discount_rate': newDiscountRate.getValue()
-                        },
-                        disableCaching: true,
-                        success: function(result, request) {
-                            var jsonData = null;
-                            try {
-                                jsonData = Ext.util.JSON.decode(result.responseText);
-                                console.log(result.responseText);
-                                if (jsonData.success == false) {
-                                    Ext.Msg.alert("Create new account failed: " + jsonData.errors.reason)
+            url: 'http://'+location.host+'/reebill/new_account',
+            labelWidth: 95, // label settings here cascade unless overridden
+            frame: true,
+            title: 'Create New Account',
+            //width: 610,
+            defaults: {
+                width: 435,
+                xtype: 'textfield',
+            },
+            defaultType: 'textfield',
+            items: [newAccountField, newNameField, newDiscountRate, newAccountTemplateCombo ],
+            buttons: [
+                new Ext.Button({
+                    text: 'Save',
+                    handler: function() {
+                        Ext.Ajax.request({
+                            url: 'http://'+location.host+'/reebill/new_account',
+                            params: { 
+                              'name': newNameField.getValue(),
+                              'account': newAccountField.getValue(),
+                              'discount_rate': newDiscountRate.getValue()
+                            },
+                            disableCaching: true,
+                            success: function(result, request) {
+                                var jsonData = null;
+                                try {
+                                    jsonData = Ext.util.JSON.decode(result.responseText);
+                                    console.log(result.responseText);
+                                    if (jsonData.success == false) {
+                                        Ext.Msg.alert("Create new account failed: " + jsonData.errors.reason)
+                                    }
+                                } catch (err) {
+                                    Ext.MessageBox.alert('ERROR', 'Could not decode "' + jsonData + '"');
                                 }
-                            } catch (err) {
-                                Ext.MessageBox.alert('ERROR', 'Could not decode "' + jsonData + '"');
+                            },
+                            failure: function () {
+                                Ext.Msg.alert("Create new account request failed");
                             }
-                        },
-                        failure: function () {
-                            Ext.Msg.alert("Create new account request failed");
-                        }
-                    });
-                }
-            }),
-          ],
+                        });
+                    }
+                }),
+            ],
+        });
+        var billStructureTreeLoader = new Ext.tree.TreeLoader({dataUrl:'http://'+location.host+'/reebill/reebill_structure'});
+        var billStructureTree = new Ext.tree.TreePanel({
+            animate:true, 
+            autoScroll:true,
+            loader: billStructureTreeLoader,
+            enableDD:true,
+            containerScroll: true,
+            border: true,
+            width: 250,
+            height: 300,
+            dropConfig: {appendOnly:true}
+        });
+        
+        // add a tree sorter in folder mode
+        new Ext.tree.TreeSorter(billStructureTree, {folderSort:true});
+        
+        // set the root node
+        var billStructureRoot = new Ext.tree.AsyncTreeNode({
+            text: 'ReeBill', 
+            draggable:false, // disable root node dragging
+            id:'bill_structure_root'
+        });
+        billStructureTree.setRootNode(billStructureRoot);
+        
+        billStructureRoot.expand(false, /*no anim*/ false);
+
+        // event to link the account selection changes to reload structure tree
+        newAccountTemplateCombo.on('select', function(combobox, record, index) {
+            billStructureTree.enable();
+            billStructureTree.getLoader().dataUrl = 'http://'+location.host+'/reebill/reebill_structure';
+            billStructureTreeLoader.baseParams.account = newAccountTemplateCombo.getValue();
+            billStructureTree.getLoader().load(billStructureTree.root);
+            billStructureRoot.expand(true, true);
+            
+        });
+
+        billStructureTreeLoader.on("beforeload", function(treeLoader, node) {
         });
 
         ///////////////////////////////////////////////////////////////////////////
@@ -2810,10 +2855,10 @@ function renderWidgets()
                 var jsonData = null;
                 try {
                     jsonData = Ext.util.JSON.decode(result.responseText);
-                    console.log(result.responseText);
+                    //console.log(result.responseText);
                     if (jsonData.success == true) {
                         resolution = jsonData['resolution'];
-                        console.log('setting resolution to ' + jsonData['resolution']);
+                        //console.log('setting resolution to ' + jsonData['resolution']);
                         billImageResolutionField.setValue(resolution);
                     } else {
                         Ext.Msg.alert("getBillImageResolution failed: " + jsonData.errors);
@@ -3076,22 +3121,32 @@ function renderWidgets()
     // construct tabpanel for viewport
 
     var tabPanel = new Ext.TabPanel({
-      region:'center',
-      deferredRender:false,
-      autoScroll: false, 
-      //margins:'0 4 4 0',
-      // necessary for child FormPanels to draw properly when dynamically changed
-      layoutOnTabChange: true,
-      activeTab: 0,
-      bbar: statusBar,
-      border:true,
-      items:[
+        region:'center',
+        deferredRender:false,
+        autoScroll: false, 
+        //margins:'0 4 4 0',
+        // necessary for child FormPanels to draw properly when dynamically changed
+        layoutOnTabChange: true,
+        activeTab: 0,
+        bbar: statusBar,
+        border:true,
+        items:[
         {
-          id: 'statusTab',
-          title: 'Accounts',
-          xtype: 'panel',
-          layout: 'accordion',
-          items: [accountGrid,accountReeValueGrid,newAccountFormPanel, ]
+            id: 'statusTab',
+            title: 'Accounts',
+            xtype: 'panel',
+            layout: 'accordion',
+            items: [accountGrid,accountReeValueGrid,
+                {
+                    title: 'Create New Account',
+                    xtype: 'panel',
+                    layout: 'vbox',
+                    align: 'stretch',
+                    items: [
+                        newAccountFormPanel, billStructureTree
+                    ]
+                }
+            ]
         },{
           id: 'paymentTab',
           title: 'Pay',
