@@ -344,7 +344,7 @@ class BillToolBridge:
     # bill processing
 
     @cherrypy.expose
-    def new_account(self, name, account, discount_rate, account_template, **args):
+    def new_account(self, name, account, discount_rate, template_account, **args):
         self.check_authentication()
         try:
             session = None
@@ -358,11 +358,19 @@ class BillToolBridge:
             if result is True:
                 return json.dumps({'success': False, 'errors':{'reason':'Account exists'}})
 
+            template_last_sequence = self.state_db.last_sequence(session, template_account)
+            template_reebill = self.reebill_dao.load_reebill(template_account, template_last_sequence)
+
+            template_reebill.account = account
+            template_reebill.sequence = 0
+            template_reebill.branch = 0
+            template_reebill.reset()
+
+            # create template reebill in mongo for this new account
+            self.reebill_dao.save_reebill(template_reebill)
+
             # create new account in mysql
             customer = self.state_db.new_account(session, name, account, discount_rate)
-
-            # create template reebill in mongo
-            self.reebill_dao.new_reebill(customer.account)
 
             # record the successful completion
             self.journal_dao.journal(customer.account, 0, "New account created")

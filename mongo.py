@@ -17,7 +17,7 @@ import base64
 import itertools as it
 import copy
 from billing.mongo_utils import bson_convert, python_convert
-import uuid
+import uuid as UUID
 
 import pdb
 import pprint
@@ -875,6 +875,97 @@ class MongoReebill(object):
                 ub[chargegroups] = new_chargegroups
 
 
+    # TODO: 22547583
+    # Resets a previously populated ReeBill
+    # this code is related to what must be done when constructing a
+    # new instance of a reebill.  What is missing is setting up initial
+    # chargegroups and registers, for example.
+
+    def reset(self):
+
+        # process rebill
+        self.period_begin = None
+        self.period_end = None
+        self.total_adjustment = Decimal("0.00")
+        self.hypothetical_total = Decimal("0.00")
+        self.actual_total = Decimal("0.00")
+        self.ree_value = Decimal("0.00")
+        self.ree_charges = Decimal("0.00")
+        self.ree_savings = Decimal("0.00")
+        self.due_date = None
+        self.issue_date = None
+        self.motd = None
+
+        self.prior_balance = Decimal("0.00")
+        self.total_due = Decimal("0.00")
+        self.payment_received = Decimal("0.00")
+        self.balance_forward = Decimal("0.00")
+
+        for service in self.services:
+
+            # get utilbill numbers and zero them out
+            self.set_actual_total_for_service(service, Decimal("0.00")) 
+            self.set_hypothetical_total_for_service(service, Decimal("0.00")) 
+            self.set_ree_value_for_service(service, Decimal("0.00")) 
+            self.set_ree_savings_for_service(service, Decimal("0.00")) 
+            self.set_ree_charges_for_service(service, Decimal("0.00")) 
+
+            # set new UUID's & clear out the last bound charges
+            actual_chargegroups = self.actual_chargegroups_for_service(service)
+            for (group, charges) in actual_chargegroups.items():
+                for charge in charges:
+                    charge['uuid'] = str(UUID.uuid1())
+                    if 'rate' in charge: del charge['rate']
+                    if 'quantity' in charge: del charge['quantity']
+                    if 'total' in charge: del charge['total']
+                    
+            self.set_actual_chargegroups_for_service(service, actual_chargegroups)
+
+            hypothetical_chargegroups = self.hypothetical_chargegroups_for_service(service)
+            for (group, charges) in hypothetical_chargegroups.items():
+                for charge in charges:
+                    charge['uuid'] = str(UUID.uuid1())
+                    if 'rate' in charge: del charge['rate']
+                    if 'quantity' in charge: del charge['quantity']
+                    if 'total' in charge: del charge['total']
+                    
+            self.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
+
+       
+        # reset measured usage
+
+        for service in self.services:
+            for meter in self.meters_for_service(service):
+                self.set_meter_read_date(service, meter['identifier'], None, meter['present_read_date'])
+            for actual_register in self.actual_registers(service):
+                self.set_actual_register_quantity(actual_register['identifier'], 0.0)
+            for shadow_register in self.shadow_registers(service):
+                self.set_shadow_register_quantity(shadow_register['identifier'], 0.0)
+
+
+        # zero out statistics section
+        statistics = self.statistics
+
+        statistics["conventional_consumed"] = None
+        statistics["renewable_consumed"] = None
+        statistics["renewable_utilization"] = None
+        statistics["conventional_utilization"] = None
+        statistics["renewable_produced"] = None
+        statistics["co2_offset"] = None
+        statistics["total_savings"] = None
+        statistics["total_renewable_consumed"] = None
+        statistics["total_renewable_produced"] = None
+        statistics["total_trees"] = None
+        statistics["total_co2_offset"] = None
+
+        # TODO: 22554017
+        # leave consumption trend alone since we want to carry it forward until it is based on the cubes
+        # at which time we can just recreate the whole trend
+
+        self.statistics = statistics
+
+
+
     def old__init__code(self):
         # ok, it is the old bill.py, and when we are no longer needing XML
         # all code below DIES!!!
@@ -969,10 +1060,10 @@ class MongoReebill(object):
             # add GUIDs to each charge in both actual and hypothetical chargegroups
             for chargegroup in utilbill['actual_chargegroups'].values():
                 for charge in chargegroup:
-                    charge['uuid'] = str(uuid.uuid4())
+                    charge['uuid'] = str(UUID.uuid4())
             for chargegroup in utilbill['hypothetical_chargegroups'].values():
                 for charge in chargegroup:
-                    charge['uuid'] = str(uuid.uuid4())
+                    charge['uuid'] = str(UUID.uuid4())
 
             # measured usages: each utility has one or more meters, each of which has
             # one or more registers (which are like sub-meters)
@@ -1028,17 +1119,6 @@ class ReebillDAO:
         
         self.collection = self.connection[self.config['database']][self.config['collection']]
     
-    def new_reebill(self, account):
-
-        # construct a new ReeBill
-        new_reebill = MongoReebill(None)
-        new_reebill.account = account
-
-        print "will save %s" % new_reebill.dictionary
-
-        self.save_reebill(new_reebill)
-
-
 
     def load_reebill(self, account, sequence, branch=0):
 
@@ -1130,7 +1210,7 @@ class ReebillDAO:
         mongo_doc['_id'] = {'account': mongo_doc['account'],
             'sequence': mongo_doc['sequence'],
             'branch': mongo_doc['branch']}
-        print "converted bill dict %s" % mongo_doc
+
         self.collection.save(mongo_doc)
 
     # TODO 22263045 remove this function
