@@ -2666,7 +2666,7 @@ function renderWidgets()
             autoDestroy: true,
             autoLoad: true,
             url: 'http://'+location.host+'/reebill/listAccounts',
-            storeId: 'accountsStore',
+            storeId: 'newAccountTemplateStore',
             root: 'rows',
             idProperty: 'account',
             fields: ['account', 'name'],
@@ -2676,7 +2676,7 @@ function renderWidgets()
             store: newAccountTemplateStore,
             fieldLabel: 'Based on',
             displayField:'name',
-            valueField:'account_template',
+            valueField:'account',
             typeAhead: true,
             triggerAction: 'all',
             emptyText:'Select...',
@@ -2701,60 +2701,19 @@ function renderWidgets()
             allowBlank: false,
         });
 
-        var newAccountFormPanel = new Ext.FormPanel({
-            url: 'http://'+location.host+'/reebill/new_account',
-            labelWidth: 95, // label settings here cascade unless overridden
-            frame: true,
-            title: 'Create New Account',
-            //width: 610,
-            defaults: {
-                width: 435,
-                xtype: 'textfield',
-            },
-            defaultType: 'textfield',
-            items: [newAccountField, newNameField, newDiscountRate, newAccountTemplateCombo ],
-            buttons: [
-                new Ext.Button({
-                    text: 'Save',
-                    handler: function() {
-                        Ext.Ajax.request({
-                            url: 'http://'+location.host+'/reebill/new_account',
-                            params: { 
-                              'name': newNameField.getValue(),
-                              'account': newAccountField.getValue(),
-                              'discount_rate': newDiscountRate.getValue()
-                            },
-                            disableCaching: true,
-                            success: function(result, request) {
-                                var jsonData = null;
-                                try {
-                                    jsonData = Ext.util.JSON.decode(result.responseText);
-                                    console.log(result.responseText);
-                                    if (jsonData.success == false) {
-                                        Ext.Msg.alert("Create new account failed: " + jsonData.errors.reason)
-                                    }
-                                } catch (err) {
-                                    Ext.MessageBox.alert('ERROR', 'Could not decode "' + jsonData + '"');
-                                }
-                            },
-                            failure: function () {
-                                Ext.Msg.alert("Create new account request failed");
-                            }
-                        });
-                    }
-                }),
-            ],
-        });
         var billStructureTreeLoader = new Ext.tree.TreeLoader({dataUrl:'http://'+location.host+'/reebill/reebill_structure'});
         var billStructureTree = new Ext.tree.TreePanel({
+            title: 'Bill Structure Browser',
+            frame: true,
             animate:true, 
             autoScroll:true,
             loader: billStructureTreeLoader,
             enableDD:true,
             containerScroll: true,
             border: true,
-            width: 250,
-            height: 300,
+            //width: 250,
+            //height: 300,
+            autoWidth: true,
             dropConfig: {appendOnly:true}
         });
         
@@ -2782,6 +2741,52 @@ function renderWidgets()
         });
 
         billStructureTreeLoader.on("beforeload", function(treeLoader, node) {
+        });
+
+        var newAccountFormPanel = new Ext.FormPanel({
+            url: 'http://'+location.host+'/reebill/new_account',
+            labelWidth: 95, // label settings here cascade unless overridden
+            frame: true,
+            title: 'Create New Account',
+            //width: 610,
+            defaults: {
+                width: 435,
+                xtype: 'textfield',
+            },
+            defaultType: 'textfield',
+            items: [newAccountField, newNameField, newDiscountRate, newAccountTemplateCombo, billStructureTree  ],
+            buttons: [
+                new Ext.Button({
+                    text: 'Save',
+                    handler: function() {
+                        Ext.Ajax.request({
+                            url: 'http://'+location.host+'/reebill/new_account',
+                            params: { 
+                              'name': newNameField.getValue(),
+                              'account': newAccountField.getValue(),
+                              'template_account': newAccountTemplateCombo.getValue(),
+                              'discount_rate': newDiscountRate.getValue()
+                            },
+                            disableCaching: true,
+                            success: function(result, request) {
+                                var jsonData = null;
+                                try {
+                                    jsonData = Ext.util.JSON.decode(result.responseText);
+                                    console.log(result.responseText);
+                                    if (jsonData.success == false) {
+                                        Ext.Msg.alert("Create new account failed: " + jsonData.errors.reason)
+                                    }
+                                } catch (err) {
+                                    Ext.MessageBox.alert('ERROR', 'Could not decode "' + jsonData + '"');
+                                }
+                            },
+                            failure: function () {
+                                Ext.Msg.alert("Create new account request failed");
+                            }
+                        });
+                    }
+                }),
+            ],
         });
 
         ///////////////////////////////////////////////////////////////////////////
@@ -3136,8 +3141,9 @@ function renderWidgets()
             title: 'Accounts',
             xtype: 'panel',
             layout: 'accordion',
-            items: [accountGrid,accountReeValueGrid,
-                {
+            items: [accountGrid,accountReeValueGrid,newAccountFormPanel,
+                /*{
+                    id: 'createNewAccount',
                     title: 'Create New Account',
                     xtype: 'panel',
                     layout: 'vbox',
@@ -3145,7 +3151,7 @@ function renderWidgets()
                     items: [
                         newAccountFormPanel, billStructureTree
                     ]
-                }
+                }*/
             ]
         },{
           id: 'paymentTab',
