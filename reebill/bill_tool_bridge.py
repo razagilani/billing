@@ -348,32 +348,15 @@ class BillToolBridge:
         self.check_authentication()
         try:
             session = None
-            if not name or not account or not discount_rate:
+            if not name or not account or not discount_rate or not template_account:
                 raise ValueError("Bad Parameter Value")
 
             session = self.state_db.session()
 
-            result = self.state_db.account_exists(session, account)
-
-            if result is True:
-                return json.dumps({'success': False, 'errors':{'reason':'Account exists'}})
-
-            template_last_sequence = self.state_db.last_sequence(session, template_account)
-            template_reebill = self.reebill_dao.load_reebill(template_account, template_last_sequence)
-
-            template_reebill.account = account
-            template_reebill.sequence = 0
-            template_reebill.branch = 0
-            template_reebill.reset()
-
-            # create template reebill in mongo for this new account
-            self.reebill_dao.save_reebill(template_reebill)
-
-            # create new account in mysql
-            customer = self.state_db.new_account(session, name, account, discount_rate)
+            customer = self.process.create_new_account(session, account, name, discount_rate, template_account)
 
             # record the successful completion
-            self.journal_dao.journal(customer.account, 0, "New account created")
+            self.journal_dao.journal(customer.account, 0, "Newly created")
 
             session.commit()
 
@@ -1374,6 +1357,97 @@ class BillToolBridge:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
+    ################
+    # Handle addresses
+
+    @cherrypy.expose
+    def addresses(self, account, sequence, **args):
+        self.check_authentication()
+        """
+        Return the billing and service address so that it may be edited.
+        """
+
+        try:
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
+
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+
+            # It is possible that there is no reebill for the requested addresses
+            # if this is the case, return no periods.  
+            # This is done so that the UI can configure itself with no data
+            if reebill is None:
+                return ju.dumps({})
+
+            ba = reebill.billing_address
+            sa = reebill.service_address
+            
+            addresses = {}
+
+            addresses['billing_address'] = {
+                'ba_addressee': ba['ba_addressee'] if 'ba_addressee' in ba else '',
+                'ba_street1': ba['ba_street1'] if 'ba_street1' in ba else '',
+                'ba_city': ba['ba_city'] if 'ba_city' in ba else '',
+                'ba_state': ba['ba_state'] if 'ba_state' in ba else '',
+                'ba_postal_code': ba['ba_postal_code'] if 'ba_postal_code' in ba else '',
+            }
+
+            addresses['service_address'] = {
+                'sa_addressee': sa['sa_addressee'] if 'sa_addressee' in sa else '',
+                'sa_street1': sa['sa_street1'] if 'sa_street1' in sa else '',
+                'sa_city': sa['sa_city'] if 'sa_city' in sa else '',
+                'sa_state': sa['sa_state'] if 'sa_state' in sa else '',
+                'sa_postal_code': sa['sa_postal_code'] if 'sa_postal_code' in sa else '',
+            }
+
+            return ju.dumps(addresses)
+
+        except Exception as e:
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+
+    @cherrypy.expose
+    def set_addresses(self, account, sequence, 
+        ba_addressee, ba_street1, ba_city, ba_state, ba_postal_code,
+        sa_addressee, sa_street1, sa_city, sa_state, sa_postal_code,
+         **args):
+        """
+        Update both the billing and service address.
+        """
+
+        self.check_authentication()
+        try:
+            if not account or not sequence \
+            or not ba_addressee or not ba_street1 or not ba_city or not ba_state or not ba_postal_code \
+            or not sa_addressee or not sa_street1 or not sa_city or not sa_state or not sa_postal_code:
+                raise ValueError("Bad Parameter Value")
+
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+
+            ba = reebill.billing_address
+            sa = reebill.service_address
+            
+            reebill.billing_address['ba_addressee'] = ba_addressee
+            reebill.billing_address['ba_street1'] = ba_street1
+            reebill.billing_address['ba_city'] = ba_city
+            reebill.billing_address['ba_state'] = ba_state
+            reebill.billing_address['ba_postal_code'] = ba_postal_code
+
+            reebill.service_address['sa_addressee'] = sa_addressee
+            reebill.service_address['sa_street1'] = sa_street1
+            reebill.service_address['sa_city'] = sa_city
+            reebill.service_address['sa_state'] = sa_state
+            reebill.service_address['sa_postal_code'] = sa_postal_code
+
+            self.reebill_dao.save_reebill(reebill)
+
+            return ju.dumps({'success':True})
+
+        except Exception as e:
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+    #
+    ################
 
     ################
     # Handle ubPeriods
@@ -1399,8 +1473,6 @@ class BillToolBridge:
             if reebill is None:
                 return ju.dumps({})
             
-            # TODO: consider re-writing client code to not rely on labels,
-            # then the reebill datastructure itself can be shipped to client.
             utilbill_periods = {}
             for service in reebill.services:
                 (begin, end) = reebill.utilbill_period_for_service(service)
