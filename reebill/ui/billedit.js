@@ -202,18 +202,6 @@ function renderWidgets()
                         //loadReeBillUIForAccount(record.data.account);
                     }
 
-                    /*
-                    // reset the account and sequence combos.  This is a hack, and there needs to be a unified
-                    // way to select a given utilbill, reebill or both
-                    // but when the utilbill list is selected, there may be no rebill associated.
-                    accountsStore.reload();
-                    accountCombo.setValue(record.data.account);
-                    sequencesStore.setBaseParam('account', record.data.account);
-                    sequencesStore.load();
-                    // if sequence is null, set null selection
-                    sequenceCombo.setValue(record.data.sequence);
-                    */
-
                     // convert the parsed date into a string in the format expected by the back end
                     var formatted_begin_date_string = record.data.period_start.format('Y-m-d');
                     var formatted_end_date_string = record.data.period_end.format('Y-m-d');
@@ -303,6 +291,8 @@ function renderWidgets()
     // ReeBill Tab
     //
 
+    // Select ReeBill
+
     var accountsStore = new Ext.data.JsonStore({
         // store configs
         autoDestroy: true,
@@ -379,7 +369,6 @@ function renderWidgets()
             anchor: '95%',
             allowBlank: false,
             msgTarget: 'side',
-            width: 250
         },
         items: [
             new Ext.form.ComboBox({
@@ -416,6 +405,130 @@ function renderWidgets()
             loadReeBillUIForSequence(accountCombo.getValue(), sequenceCombo.getValue());
         }
     });
+
+    function configureAddressForm(account, sequence, addresses)
+    {
+        var reeBillTab = tabPanel.getItem('reeBillTab');
+
+        var addressFormPanel = Ext.getCmp('billingAddressFormPanel');
+
+        // create it if it does not exist
+        if (addressFormPanel === undefined) {
+            addressFormPanel = new Ext.FormPanel(
+            {
+                id: 'billingAddressFormPanel',
+                title: 'Billing Address',
+                header: true,
+                url: 'http://'+location.host+'/reebill/set_addresses',
+                border: false,
+                frame: true,
+                flex: 1,
+                bodyStyle:'padding:10px 10px 0px 10px',
+                defaults: {
+                    anchor: '-20',
+                    allowBlank: false,
+                },
+                items:[], 
+                buttons: 
+                [
+                    // TODO: the save button is generic in function, refactor
+                    {
+                        text   : 'Save',
+                        handler: saveForm
+                    },{
+                        text   : 'Reset',
+                        handler: function() {
+                            var formPanel = this.findParentByType(Ext.form.FormPanel);
+                            formPanel.getForm().reset();
+                        }
+                    }
+                ]
+            })
+            reeBillTab.add(addressFormPanel);
+        }
+
+        addressFormPanel.removeAll(true);
+
+        if (addresses) {
+            addressFormPanel.add(
+            {
+                xtype: 'fieldset',
+                title: 'Billing Address',
+                collapsible: false,
+                defaults: {
+                    anchor: '-20',
+                },
+                items: [
+                    {
+                        xtype: 'textfield',
+                        fieldLabel: 'Addressee',
+                        name: 'ba_addressee',
+                        value: addresses['billing_address']['ba_addressee'],
+                    },{
+                        xtype: 'textfield',
+                        fieldLabel: 'Street',
+                        name: 'ba_street1',
+                        value: addresses['billing_address']['ba_street1'],
+                    },{
+                        xtype: 'textfield',
+                        fieldLabel: 'City',
+                        name: 'ba_city',
+                        value: addresses['billing_address']['ba_city'],
+                    },{
+                        xtype: 'textfield',
+                        fieldLabel: 'State',
+                        name: 'ba_state',
+                        value: addresses['billing_address']['ba_state'],
+                    },{
+                        xtype: 'textfield',
+                        fieldLabel: 'Postal Code',
+                        name: 'ba_postal_code',
+                        value: addresses['billing_address']['ba_postal_code'],
+                    },
+                ]
+            },{
+                xtype: 'fieldset',
+                title: 'Service Address',
+                collapsible: false,
+                defaults: {
+                    anchor: '-20',
+                },
+                items: [
+                    {
+                        xtype: 'textfield',
+                        fieldLabel: 'Addressee',
+                        name: 'sa_addressee',
+                        value: addresses['service_address']['sa_addressee'],
+                    },{
+                        xtype: 'textfield',
+                        fieldLabel: 'Street',
+                        name: 'sa_street1',
+                        value: addresses['service_address']['sa_street1'],
+                    },{
+                        xtype: 'textfield',
+                        fieldLabel: 'City',
+                        name: 'sa_city',
+                        value: addresses['service_address']['sa_city'],
+                    },{
+                        xtype: 'textfield',
+                        fieldLabel: 'State',
+                        name: 'sa_state',
+                        value: addresses['service_address']['sa_state'],
+                    },{
+                        xtype: 'textfield',
+                        fieldLabel: 'Postal Code',
+                        name: 'sa_postal_code',
+                        value: addresses['service_address']['sa_postal_code'],
+                    },
+                ]
+            });
+
+            addressFormPanel.doLayout();
+        }
+
+        // add base parms for form post
+        addressFormPanel.getForm().baseParams = {account: account, sequence: sequence}
+    }
 
     function successResponse(response, options) 
     {
@@ -752,7 +865,7 @@ function renderWidgets()
 
 
     ////////////////////////////////////////////////////////////////////////////
-    // Bill Period tab
+    // Bill Periods tab
     //
     // dynamically create the period forms when a bill is loaded
     //
@@ -771,9 +884,11 @@ function renderWidgets()
             var ubPeriodsFormPanel = new Ext.FormPanel(
             {
                 id: service + 'UBPeriodsFormPanel',
-                header: false,
+                title: 'Service ' + service,
+                header: true,
                 url: 'http://'+location.host+'/reebill/setUBPeriod',
                 border: false,
+                frame: true,
                 labelWidth: 125,
                 bodyStyle:'padding:10px 10px 0px 10px',
                 items:[], // added by configureUBPeriodsForm()
@@ -796,13 +911,13 @@ function renderWidgets()
             // add the period date pickers to the form
             ubPeriodsFormPanel.add(
                 new Ext.form.DateField({
-                    fieldLabel: service + ' Service Begin',
+                    fieldLabel: 'Begin',
                     name: 'begin',
                     value: periods[service].begin,
                     format: 'Y-m-d'
                 }),
                 new Ext.form.DateField({
-                    fieldLabel: service + ' Service End',
+                    fieldLabel: 'End',
                     name: 'end',
                     value: periods[service].end,
                     format: 'Y-m-d'
@@ -843,9 +958,11 @@ function renderWidgets()
                 var meterFormPanel = new Ext.FormPanel(
                 {
                     id: service +'-'+meter.identifier+'-meterReadDateFormPanel',
-                    header: false,
+                    title: 'Meter ' + meter.identifier,
+                    header: true,
                     url: 'http://'+location.host+'/reebill/setMeter',
-                    border: false,
+                    border: true,
+                    frame: true,
                     labelWidth: 125,
                     bodyStyle:'padding:10px 10px 0px 10px',
                     items:[], // added by configureUBMeasuredUsagesForm()
@@ -898,15 +1015,17 @@ function renderWidgets()
                         var registerFormPanel = new Ext.FormPanel(
                         {
                             id: service +'-'+meter.identifier+'-'+ register.identifier+'-meterReadDateFormPanel',
-                            header: false,
+                            title: 'Meter ' + meter.identifier + ' Register ' + register.identifier,
+                            header: true,
                             url: 'http://'+location.host+'/reebill/setActualRegister',
-                            border: false,
+                            border: true,
+                            frame: true,
                             labelWidth: 125,
-                            bodyStyle:'padding:10px 10px 0px 10px',
+                            //bodyStyle:'padding:10px 10px 0px 10px',
                             items:[], // added by configureUBMeasuredUsagesForm()
                             baseParams: null, // added by configureUBMeasuredUsagesForm()
                             autoDestroy: true,
-                            layout: 'form',
+                            //layout: 'form',
                             buttons: 
                             [
                                 // TODO: the save button is generic in function, refactor
@@ -2748,9 +2867,8 @@ function renderWidgets()
             labelWidth: 95, // label settings here cascade unless overridden
             frame: true,
             title: 'Create New Account',
-            //width: 610,
             defaults: {
-                width: 435,
+                anchor: '95%',
                 xtype: 'textfield',
             },
             defaultType: 'textfield',
@@ -2759,6 +2877,7 @@ function renderWidgets()
                 new Ext.Button({
                     text: 'Save',
                     handler: function() {
+                        // TODO 22645885 show progress during post
                         Ext.Ajax.request({
                             url: 'http://'+location.host+'/reebill/new_account',
                             params: { 
@@ -2779,6 +2898,7 @@ function renderWidgets()
                                 } catch (err) {
                                     Ext.MessageBox.alert('ERROR', 'Could not decode "' + jsonData + '"');
                                 }
+                                // TODO 22645885 confirm save and clear form
                             },
                             failure: function () {
                                 Ext.Msg.alert("Create new account request failed");
@@ -3141,65 +3261,63 @@ function renderWidgets()
             title: 'Accounts',
             xtype: 'panel',
             layout: 'accordion',
-            items: [accountGrid,accountReeValueGrid,newAccountFormPanel,
-                /*{
-                    id: 'createNewAccount',
-                    title: 'Create New Account',
-                    xtype: 'panel',
-                    layout: 'vbox',
-                    align: 'stretch',
-                    items: [
-                        newAccountFormPanel, billStructureTree
-                    ]
-                }*/
-            ]
+            items: [accountGrid,accountReeValueGrid,newAccountFormPanel, ]
         },{
-          id: 'paymentTab',
-          title: 'Pay',
-          xtype: 'panel',
-          layout: 'accordion',
-          items: [paymentGrid]
+            id: 'paymentTab',
+            title: 'Pay',
+            xtype: 'panel',
+            layout: 'accordion',
+            items: [paymentGrid]
         },{
-          title: 'Utility Bill',
-          xtype: 'panel',
-          layout: 'vbox',
-          layoutConfig : {
-            align : 'stretch',
-            pack : 'start'
-          },
-          // utility bill image on one side, upload form & list of bills on the
-          // other side (using 2 panels)
-          items: [
-            upload_form_panel,
-            utilbillGrid,
-          ],
+            id: 'utilityBillTab',
+            title: 'Utility Bill',
+            xtype: 'panel',
+            layout: 'vbox',
+            layoutConfig : {
+                align : 'stretch',
+                pack : 'start'
+            },
+            // utility bill image on one side, upload form & list of bills on the
+            // other side (using 2 panels)
+            items: [
+                upload_form_panel,
+                utilbillGrid,
+            ],
         },{
-          title: 'ReeBill',
-          xtype: 'panel',
-          layout: 'vbox',
-          layoutConfig : {
-            align : 'stretch',
-            pack : 'start'
-          },
-          items: [
-            reebillFormPanel,
-          ],
+            id: 'reeBillTab',
+            title: 'ReeBill',
+            xtype: 'panel',
+            layout: 'vbox',
+            layoutConfig : {
+                align : 'stretch',
+                pack : 'start'
+            },
+            items: [
+                reebillFormPanel,
+                //billingAddressFormPanel,
+                //serviceAddressFormPanel,
+            ],
         },{
-          id: 'ubPeriodsTab',
-          title: 'Bill Periods',
-          xtype: 'panel',
-          items: null // configureUBPeriodForm set this
+            id: 'ubPeriodsTab',
+            title: 'Bill Periods',
+            xtype: 'panel',
+            items: null // configureUBPeriodForm set this
         },{
-          id: 'ubMeasuredUsagesTab',
-          title: 'Usage Periods',
-          xtype: 'panel',
-          items: null // configureUBMeasuredUsagesForm sets this
+            id: 'ubMeasuredUsagesTab',
+            title: 'Usage Periods',
+            xtype: 'panel',
+            layout: 'vbox',
+            layoutConfig : {
+                pack : 'start',
+                align : 'stretch',
+            },
+            items: null // configureUBMeasuredUsagesForm sets this
         },{
-          id: 'rateStructureTab',
-          title: 'Rate Structure',
-          xtype: 'panel',
-          layout: 'border',
-          items: [
+            id: 'rateStructureTab',
+            title: 'Rate Structure',
+            xtype: 'panel',
+            layout: 'border',
+            items: [
             {
                 region: 'north',
                 xtype: 'container',
@@ -3217,54 +3335,53 @@ function renderWidgets()
                 region:'south',
                 //collapsible: true,   // make collapsible
                 layout: 'fit',
-            }*/
-        ]
+            }*/]
         },{
-          title: 'Charge Items',
-          xtype: 'panel',
-          layout: 'accordion',
-          items: [
-            aChargesGrid,
-            hChargesGrid,
-          ]
+            title: 'Charge Items',
+            xtype: 'panel',
+            layout: 'accordion',
+            items: [
+                aChargesGrid,
+                hChargesGrid,
+            ]
         },{
-          id: 'mailTab',
-          title: 'Mail',
-          xtype: 'panel',
-          layout: 'vbox',
-          layoutConfig : {
-            //type : 'vbox',
-            align : 'stretch',
-            pack : 'start'
-          },
-          items: [reebillGrid]
+            id: 'mailTab',
+            title: 'Mail',
+            xtype: 'panel',
+            layout: 'vbox',
+            layoutConfig : {
+                //type : 'vbox',
+                align : 'stretch',
+                pack : 'start'
+            },
+            items: [reebillGrid]
         },{
-          id: 'journalTab',
-          title: 'Journal',
-          xtype: 'panel',
-          layout: 'vbox',
-          layoutConfig : {
-            //type : 'vbox',
-            align : 'stretch',
-            pack : 'start'
-          },
-          items: [journalGrid]
+            id: 'journalTab',
+            title: 'Journal',
+            xtype: 'panel',
+            layout: 'vbox',
+            layoutConfig : {
+                //type : 'vbox',
+                align : 'stretch',
+                pack : 'start'
+            },
+            items: [journalGrid]
         },{
-          id: 'preferencesTab',
-          title: 'Preferences',
-          xtype: 'panel',
-          layout: 'vbox',
-          layoutConfig : {
-            pack : 'start',
-            align : 'stretch',
-          },
-          items: [preferencesFormPanel]
+            id: 'preferencesTab',
+            title: 'Preferences',
+            xtype: 'panel',
+            layout: 'vbox',
+            layoutConfig : {
+                pack : 'start',
+                align : 'stretch',
+            },
+            items: [preferencesFormPanel]
         },{
-          id: 'aboutTab',
-          title: 'About',
-          html: '<p>' + SKYLINE_VERSIONINFO + '</p>'
+            id: 'aboutTab',
+            title: 'About',
+            html: '<p>' + SKYLINE_VERSIONINFO + '</p>'
         }]
-      });
+    });
 
     // end of tab widgets
     ////////////////////////////////////////////////////////////////////////////
@@ -3382,6 +3499,7 @@ function renderWidgets()
         journalFormPanel.getForm().findField("sequence").setValue(null)
         configureUBPeriodsForms(null, null, null);
         configureUBMeasuredUsagesForms(null, null, null);
+        configureAddressForm(null, null, null);
         aChargesStore.loadData({rows: 0, success: true});
         hChargesStore.loadData({rows: 0, succes: true});
         CPRSRSIStore.loadData({rows: 0, success: true});
@@ -3401,6 +3519,7 @@ function renderWidgets()
         // need to set account into a hidden field here since there is no data store behind the form
         journalFormPanel.getForm().findField("sequence").setValue(sequence)
 
+        // get utilbill period information from server
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/ubPeriods',
             params: {account: account, sequence: sequence},
@@ -3438,6 +3557,29 @@ function renderWidgets()
                         //Ext.MessageBox.alert('Success', 'Decode of stringData OK<br />jsonData.data = ' + jsonData);
                     } 
                     configureUBMeasuredUsagesForms(account, sequence, jsonData);
+                } catch (err) {
+                    //Ext.MessageBox.alert('ERROR', 'Could not decode ' + jsonData);
+                }
+            },
+            failure: function() {alert("ajax failure")},
+            disableCaching: true,
+        });
+
+        // get the address information for this reebill 
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/reebill/addresses',
+            params: {account: account, sequence: sequence},
+            success: function(result, request) {
+                var jsonData = null;
+                try {
+                    jsonData = Ext.util.JSON.decode(result.responseText);
+                    if (jsonData.success == false)
+                    {
+                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                    } else {
+                        //Ext.MessageBox.alert('Success', 'Decode of stringData OK<br />jsonData.data = ' + jsonData);
+                    } 
+                    configureAddressForm(account, sequence, jsonData);
                 } catch (err) {
                     //Ext.MessageBox.alert('ERROR', 'Could not decode ' + jsonData);
                 }
