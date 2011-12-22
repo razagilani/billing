@@ -160,6 +160,7 @@ class Process(object):
 
         next_sequence = int(last_sequence + 1)
 
+        # TODO: 22597151 refactor
         # for each service, duplicate the CPRS
         for service in reebill.services:
 
@@ -197,6 +198,54 @@ class Process(object):
         # create an initial rebill record to which the utilbills are later associated
         self.state_db.new_rebill(session, reebill.account, reebill.sequence)
 
+    def create_new_account(self, session, account, name, discount_rate, template_account):
+
+        result = self.state_db.account_exists(session, account)
+
+        if result is True:
+            raise Exception("Account exists")
+
+        template_last_sequence = self.state_db.last_sequence(session, template_account)
+
+        #TODO 22598787 use the active branch of the template_account
+        reebill = self.reebill_dao.load_reebill(template_account, template_last_sequence, 0)
+
+        # reset this bill to the new account
+        reebill.account = account
+        reebill.sequence = 0
+        reebill.branch = 0
+        reebill.reset()
+
+        reebill.billing_address = {}
+        reebill.service_address = {}
+
+        # create template reebill in mongo for this new account
+        self.reebill_dao.save_reebill(reebill)
+
+
+        # TODO: 22597151 refactor
+        # for each service, duplicate the CPRS
+        for service in reebill.services:
+
+            utility_name = reebill.utility_name_for_service(service)
+            rate_structure_name = reebill.rate_structure_name_for_service(service)
+
+            # load current CPRS of the template account
+            # TODO: 22598787
+            cprs = self.rate_structure_dao.load_cprs(template_account, template_last_sequence,
+                0, utility_name, rate_structure_name)
+
+            if cprs is None: raise Exception("No current CPRS")
+
+            # save the CPRS for the new reebill
+            self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence,
+                reebill.branch, utility_name, rate_structure_name, cprs)
+
+        # create new account in mysql
+        customer = self.state_db.new_account(session, name, account, discount_rate)
+
+        return customer
+
 
     # TODO 21052893: probably want to set up the next reebill here.  Automatically roll?
     def commit_reebill(self, session, account, sequence):
@@ -205,12 +254,6 @@ class Process(object):
         end = reebill.period_end
 
         self.state_db.commit_bill(session, account, sequence, begin, end)
-
-    # TODO: delete me
-    def load_rs(self, rsdb, rsbinding, account, sequence):
-        raise Exception("Nobody should be calling this now")
-        rs = yaml.load(file(os.path.join(rsdb, rsbinding, account, sequence+".yaml")))
-        return rate_structure.RateStructure(rs)
 
 
     def bind_rate_structure(self, reebill):

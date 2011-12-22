@@ -69,9 +69,10 @@ class StateDB:
 
 
         # To turn logging on
-        #import logging
-        #logging.basicConfig()
+        import logging
+        logging.basicConfig()
         #logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
+        logging.getLogger('sqlalchemy.pool').setLevel(logging.DEBUG)
 
         # session
         # global variable for the database session: SQLAlchemy will give an error if
@@ -116,6 +117,7 @@ class StateDB:
 
         return result
         
+    # TODO: 22598787 branches
     def last_sequence(self, session, account):
 
         customer = session.query(Customer).filter(Customer.account==account).one()
@@ -285,7 +287,7 @@ class StateDB:
     def retrieve_status_days_since(self, session, start, limit):
 
         # SQLAlchemy query to get account & dates for all utilbills
-        query = session.query(StatusDaysSince)
+        query = session.query(StatusDaysSince).with_lockmode("read")
 
         # SQLAlchemy does SQL 'limit' with Python list slicing
         slice = query[start:start + limit]
@@ -297,7 +299,7 @@ class StateDB:
     def retrieve_status_unbilled(self, session, start, limit):
 
         # SQLAlchemy query to get account & dates for all utilbills
-        query = session.query(StatusUnbilled)
+        query = session.query(StatusUnbilled).with_lockmode("read")
 
         # SQLAlchemy does SQL 'limit' with Python list slicing
         slice = query[start:start + limit]
