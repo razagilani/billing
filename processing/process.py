@@ -160,6 +160,7 @@ class Process(object):
 
         next_sequence = int(last_sequence + 1)
 
+        # TODO: 22597151 refactor
         # for each service, duplicate the CPRS
         for service in reebill.services:
 
@@ -179,32 +180,9 @@ class Process(object):
         # increment reebill sequence
         reebill.sequence = next_sequence
 
-        # process rebill
-        reebill.period_begin = None
-        reebill.period_end = None
-        reebill.total_adjustment = Decimal("0.00")
-        reebill.hypothetical_total = Decimal("0.00")
-        reebill.actual_total = Decimal("0.00")
-        reebill.ree_value = Decimal("0.00")
-        reebill.ree_charges = Decimal("0.00")
-        reebill.ree_savings = Decimal("0.00")
-        reebill.due_date = None
-        reebill.issue_date = None
-        reebill.motd = None
-
-        reebill.prior_balance = Decimal("0.00")
-        reebill.total_due = Decimal("0.00")
-        reebill.payment_received = Decimal("0.00")
-        reebill.balance_forward = Decimal("0.00")
-
+        # pre-populate the utilbill period by taking the end period date
+        # of the last bill, and make it the begin period of this reebill
         for service in reebill.services:
-
-            # get utilbill numbers and zero them out
-            reebill.set_actual_total_for_service(service, Decimal("0.00")) 
-            reebill.set_hypothetical_total_for_service(service, Decimal("0.00")) 
-            reebill.set_ree_value_for_service(service, Decimal("0.00")) 
-            reebill.set_ree_savings_for_service(service, Decimal("0.00")) 
-            reebill.set_ree_charges_for_service(service, Decimal("0.00")) 
 
             # set utility period dates
             old_period = reebill.utilbill_period_for_service(service)
@@ -214,61 +192,59 @@ class Process(object):
             old_period = (old_period[1], None)
             reebill.set_utilbill_period_for_service(service, old_period)
 
-            # set new UUID's & clear out the last bound charges
-            actual_chargegroups = reebill.actual_chargegroups_for_service(service)
-            for (group, charges) in actual_chargegroups.items():
-                for charge in charges:
-                    charge['uuid'] = str(UUID.uuid1())
-                    if 'rate' in charge: del charge['rate']
-                    if 'quantity' in charge: del charge['quantity']
-                    if 'total' in charge: del charge['total']
-                    
-            reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
+        reebill.reset()
 
-            hypothetical_chargegroups = reebill.hypothetical_chargegroups_for_service(service)
-            for (group, charges) in hypothetical_chargegroups.items():
-                for charge in charges:
-                    charge['uuid'] = str(UUID.uuid1())
-                    if 'rate' in charge: del charge['rate']
-                    if 'quantity' in charge: del charge['quantity']
-                    if 'total' in charge: del charge['total']
-                    
-            reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
-
-       
-        # reset measured usage
-
-        for service in reebill.services:
-            for meter in reebill.meters_for_service(service):
-                reebill.set_meter_read_date(service, meter['identifier'], None, meter['present_read_date'])
-            for actual_register in reebill.actual_registers(service):
-                reebill.set_actual_register_quantity(actual_register['identifier'], 0.0)
-            for shadow_register in reebill.shadow_registers(service):
-                reebill.set_shadow_register_quantity(shadow_register['identifier'], 0.0)
-
-
-        # zero out statistics section
-        statistics = reebill.statistics
-
-        statistics["conventional_consumed"] = None
-        statistics["renewable_consumed"] = None
-        statistics["renewable_utilization"] = None
-        statistics["conventional_utilization"] = None
-        statistics["renewable_produced"] = None
-        statistics["co2_offset"] = None
-        statistics["total_savings"] = None
-        statistics["total_renewable_consumed"] = None
-        statistics["total_renewable_produced"] = None
-        statistics["total_trees"] = None
-        statistics["total_co2_offset"] = None
-
-        reebill.statistics = statistics
-
-        # leave consumption trend alone since we want to carry it forward until it is based on the cubes
-        # at which time we can just recreate the whole trend
 
         # create an initial rebill record to which the utilbills are later associated
         self.state_db.new_rebill(session, reebill.account, reebill.sequence)
+
+    def create_new_account(self, session, account, name, discount_rate, template_account):
+
+        result = self.state_db.account_exists(session, account)
+
+        if result is True:
+            raise Exception("Account exists")
+
+        template_last_sequence = self.state_db.last_sequence(session, template_account)
+
+        #TODO 22598787 use the active branch of the template_account
+        reebill = self.reebill_dao.load_reebill(template_account, template_last_sequence, 0)
+
+        # reset this bill to the new account
+        reebill.account = account
+        reebill.sequence = 0
+        reebill.branch = 0
+        reebill.reset()
+
+        reebill.billing_address = {}
+        reebill.service_address = {}
+
+        # create template reebill in mongo for this new account
+        self.reebill_dao.save_reebill(reebill)
+
+
+        # TODO: 22597151 refactor
+        # for each service, duplicate the CPRS
+        for service in reebill.services:
+
+            utility_name = reebill.utility_name_for_service(service)
+            rate_structure_name = reebill.rate_structure_name_for_service(service)
+
+            # load current CPRS of the template account
+            # TODO: 22598787
+            cprs = self.rate_structure_dao.load_cprs(template_account, template_last_sequence,
+                0, utility_name, rate_structure_name)
+
+            if cprs is None: raise Exception("No current CPRS")
+
+            # save the CPRS for the new reebill
+            self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence,
+                reebill.branch, utility_name, rate_structure_name, cprs)
+
+        # create new account in mysql
+        customer = self.state_db.new_account(session, name, account, discount_rate)
+
+        return customer
 
 
     # TODO 21052893: probably want to set up the next reebill here.  Automatically roll?
@@ -278,12 +254,6 @@ class Process(object):
         end = reebill.period_end
 
         self.state_db.commit_bill(session, account, sequence, begin, end)
-
-    # TODO: delete me
-    def load_rs(self, rsdb, rsbinding, account, sequence):
-        raise Exception("Nobody should be calling this now")
-        rs = yaml.load(file(os.path.join(rsdb, rsbinding, account, sequence+".yaml")))
-        return rate_structure.RateStructure(rs)
 
 
     def bind_rate_structure(self, reebill):
