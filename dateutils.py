@@ -1,7 +1,25 @@
-'''Date-related utility functions.'''
+'''Date/time/datetime-related utility functions.'''
 import calendar
 from datetime import date, timedelta
 import unittest
+
+def timedelta_in_hours(delta):
+    '''Returns the given timedelta converted into hours, rounded toward 0 to
+    the nearest integer. (Used by scripts/deck/deck_uploader.py)'''
+    # a timedelta stores time in days and seconds. each of these can be
+    # positive or negative. convert each part into hours and round it toward 0.
+    # (this is ugly because python rounding goes toward negative infinity by
+    # default.)
+    day_hours = delta.days * 24
+    second_hours = delta.seconds / 3600.0
+    total_hours = day_hours + second_hours
+    # note: if you try to round these components separately and then add them,
+    # you will get a strange result, because of timedelta's internal
+    # representation: e.g. -1 second is represented as -1 days (negative) +
+    # 86399 seconds (positive)
+    if total_hours >= 0:
+        return int(math.floor(total_hours))
+    return - int(math.floor(abs(total_hours)))
 
 def days_in_month(year, month, start_date, end_date):
     '''Returns the number of days in 'month' of 'year' between start_date
@@ -56,10 +74,8 @@ def estimate_month(start_date, end_date):
                 max_year = year
     return max_year, max_month
 
-
-
 def date_generator(from_date, to_date):
-    """Yield dates based on from_date up to and excluding to_date.  The reason
+    """Yields dates based on from_date up to but excluding to_date.  The reason
     for the exclusion of to_date is that utility billing periods do not include
     the whole day for the end date specified for the period.  That is, the
     utility billing period range of 2/15 to 3/4, for example, is for the usage
@@ -136,6 +152,7 @@ def get_day_type(day):
         return 'weekend'
     return 'weekday'
     
+
 
 class DateUtilsTest(unittest.TestCase):
     def test_days_in_month(self):
@@ -320,6 +337,7 @@ class DateUtilsTest(unittest.TestCase):
         all_2013 = set([newyear13, mlk13, washington13, memorial13,
             independence13, labor13, columbus13, veterans13, thanks13, xmas13])
         self.assertEquals(all_2013, all_holidays(2013))
+
 
 if __name__ == '__main__':
     unittest.main()
