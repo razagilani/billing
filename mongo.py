@@ -72,68 +72,10 @@ def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
     return x
 
 
-# TODO remove this entirely (https://www.pivotaltracker.com/story/show/19714373)
-# this dictionary maps XML element names to MongoDB document keys, for use in
-# rename_keys(). element names that map to None will be removed instead of
-# renamed.
-# rename_keys()
-name_changes = {
-    # rebill section
-    'serviceaddress': 'service_address',
-    'billingaddress': 'billing_address',
-    'priorbalance': 'prior_balance',
-    'paymentreceived': 'payment_received',
-    'totaladjustment': 'total_adjustment',
-    'balanceforward': 'balance_forward',
-    # same name for total of hypothetical/actual charges within a particular
-    # utilbill and for over all utilbills in the whole reebill (so these are
-    # also in the utilbill section)
-    'hypotheticalecharges': 'hypothetical_total',
-    'actualecharges': 'actual_total',
-    'revalue': 'ree_value',
-    'recharges': 'ree_charges',
-    'resavings': 'ree_savings',
-    'totaldue': 'balance_due',
-    'duedate': 'due_date',
-    'issued': 'issue_date',
-    # utilbill section
-    'begin': 'period_begin',
-    'end': 'period_end',
-    'rsbinding': 'rsi_binding', # also in measuredusage section
-    'rateunits': 'rate_units',
-    'quantityunits': 'quantity_units',
-    # measuredusage section
-    'presentreaddate': 'present_read_date',
-    'priorreaddate': 'prior_read_date',
-    'inclusions':None,
-    'exclusions':None,
-    # statistics section
-    'co2offset': 'co2_offset',
-    'consumptiontrend': 'consumption_trend',
-    'conventionalconsumed': 'conventional_consumed',
-    'conventionalutilization': 'conventional_utilization',
-    'renewableconsumed': 'renewable_consumed',
-    'renewableproduced': 'renewable_produced',
-    'renewableutilization': 'renewable_utilization',
-    'totalco2offset': 'total_co2_offset',
-    'totalrenewableconsumed': 'total_renewable_consumed',
-    'totalsavings': 'total_savings',
-    'totaltrees': 'total_trees'
-}
-def rename_keys(x,d=name_changes ):
-    '''If x is a dictionary or list, recursively replaces keys in x according
-    to 'name_changes' above.'''
-    if type(x) is dict:
-        the_dict = dict([(d.get(key,key), rename_keys(value, d)) \
-                for (key,value) in x.iteritems() \
-                if not (key in d and d[key] is None)])
-        return the_dict 
-    if type(x) is list:
-        #return map(rename_keys, x)
-        return [rename_keys(element, d) for element in x]
-    return x
+# dictionary-related utility functions (created for xml-to-mongo conversion and
+# no longer used, but may come in useful)
+# TODO move into a separate file?
 
-# TODO move these dictionary utility functions out into a separate file
 def dict_merge(*dicts, **kwargs):
     '''Returns a dictionary consisting of the key-value pairs in all the
     dictionaries passed as arguments. These dictionaries must not share any
@@ -157,6 +99,9 @@ def subdict(d, keys, ignore_missing=True):
     'd' is missing any key in 'keys'; otherwise missing keys are just
     ignored.'''
     return dict((key,d[key]) for key in keys if not ignore_missing or (key in d))
+
+
+
 
 class MongoReebill(object):
     '''Class representing the reebill data structure stored in MongoDB. All
@@ -965,138 +910,6 @@ class MongoReebill(object):
         self.statistics = statistics
 
 
-
-    def old__init__code(self):
-        # ok, it is the old bill.py, and when we are no longer needing XML
-        # all code below DIES!!!
-        b = reebill_data
-
-        # Load, binding to xml data and renaming keys
-
-        # top-level reebill information:
-        self.dictionary = dict_merge({
-                'account': python_convert(b.account),
-                'sequence': int(b.id),
-                'branch': int(0),
-                'service_address': rename_keys(b.service_address, d={
-                    'addressee': 'sa_addressee',
-                    'street':'sa_street1',
-                    'city':'sa_city',
-                    'state':'sa_state',
-                    'postalcode': 'sa_postal_code'
-                    }),
-                'billing_address': rename_keys(b.billing_address, d={
-                    'addressee': 'ba_addressee',
-                    'street':'ba_street1',
-                    'city':'ba_city',
-                    'state':'ba_state',
-                    'postalcode': 'ba_postal_code'
-                    })
-            },
-            rename_keys(python_convert(b.rebill_summary))
-        )
-
-        # utilbill info from the actual "utilbill" section (service names
-        # moved from keys of the utilbill_summary_charges dict into the
-        # utilbills themselves)
-        self.dictionary['utilbills'] = [dict_merge({'service':service},
-                rename_keys(python_convert(b.utilbill_summary_charges[service]), d= {
-                    # utilbill section
-                    'begin': 'period_begin',
-                    'end': 'period_end',
-                    'rsbinding': 'utility_name', # also in measuredusage section
-                    'rateunits': 'rate_units',
-                    'quantityunits': 'quantity_units',
-                    'revalue':'ree_value',
-                    'recharges':'ree_charges',
-                    'resavings':'ree_savings',
-                    'actualecharges': 'actual_total',
-                    'hypotheticalecharges': 'hypothetical_total'
-                }))
-                for service in b.utilbill_summary_charges.keys()]
-
-
-        # utilbill info from "details", "measuredusage", and "statistics"
-        # sections of XML ("billableusage" section is completely ignored)
-        actual_details = b.actual_details
-        hypothetical_details = b.hypothetical_details
-        measured_usages = b.measured_usage
-        for utilbill in self.dictionary['utilbills']:
-            # get hypothetical details and actual details from bill.py
-            this_bill_actual_details = actual_details[utilbill['service']]
-            this_bill_hypothetical_details = \
-                    hypothetical_details[utilbill['service']]
-
-            # some XML reebills lack an rsbinding element
-            if hasattr(this_bill_actual_details.rateschedule, 'rsbinding'):
-                utilbill.update({
-                    #'rate_structure_binding': this_bill_actual_details.rateschedule.rsbinding
-                    'rate_structure_binding': this_bill_actual_details.rateschedule.rsbinding
-                })
-            
-            # fill in utilbill
-            utilbill.update({
-                # this is the <name/> element in <rateschedule/> and is not used.
-                #'rate_schedule_name': python_convert(this_bill_actual_details.rateschedule.name),
-                
-                # chargegroups are divided between actual and hypothetical; these are
-                # stored in 2 dictionaries mapping the name of each chargegroup to a
-                # list of its charges. totals (in the format {total: #}) are removed
-                # from each list of charges and placed at the root of the utilbill.
-                'actual_chargegroups': dict( 
-                    (chargegroup.type, [rename_keys(python_convert(charge))
-                    for charge in chargegroup.charges if charge.keys() != ['total']])
-                    for chargegroup in this_bill_actual_details.chargegroups
-                ),
-                'actual_total': python_convert(this_bill_actual_details.total),
-                'hypothetical_chargegroups': dict(
-                    (chargegroup.type, [rename_keys(python_convert(charge))
-                    for charge in chargegroup.charges if charge.keys() != ['total']])
-                    for chargegroup in this_bill_hypothetical_details.chargegroups
-                ),
-                'hypothetical_total': python_convert(this_bill_hypothetical_details.total)
-            })
-
-            # add GUIDs to each charge in both actual and hypothetical chargegroups
-            for chargegroup in utilbill['actual_chargegroups'].values():
-                for charge in chargegroup:
-                    charge['uuid'] = str(UUID.uuid4())
-            for chargegroup in utilbill['hypothetical_chargegroups'].values():
-                for charge in chargegroup:
-                    charge['uuid'] = str(UUID.uuid4())
-
-            # measured usages: each utility has one or more meters, each of which has
-            # one or more registers (which are like sub-meters)
-            meters = measured_usages[utilbill['service']]
-            # TODO replace register.inclusions/exclusions with a "descriptor"
-            # (a name) that matches the value of 'descriptor' for a register in
-            # the 'registers' section of the monthly rate structure yaml file. 
-            utilbill.update({'meters': rename_keys(python_convert(meters), {
-                    'begin': 'period_begin',
-                    'end': 'period_end',
-                    'rsbinding': 'register_binding',
-                    'rateunits': 'rate_units',
-                    'presentreading': None,
-                    'quantityunits': 'quantity_units',
-                    'presentreaddate': 'present_read_date',
-                    'priorreaddate': 'prior_read_date',
-                    'inclusions':None,
-                    'exclusions':None,
-                    'total': 'quantity', # register "total" is now called a "quantity"
-                    'units': 'quantity_units' # register "units" are now called "quantity_units" so key name is the same as in rate structure
-                })})
-
-        # statistics: exactly the same as in XML (but some early XML reebills
-        # don't have a "statistics" element)
-        if b.statistics is not None:
-            self.dictionary['statistics'] = rename_keys(python_convert(b.statistics))
-
-        # strip out the old types including  MutableNamedTuples, creating loss 
-        # of being able to access data via dot-notation
-        #new_dictionary = python_convert(self.dictionary)
-        #self.dictionary = new_dictionary
-
-
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
@@ -1132,18 +945,13 @@ class ReebillDAO:
         }
         mongo_doc = self.collection.find_one(query)
 
-        # didn't find one in mongo, so let's grab it from eXist
-        # TODO: 20445983 remove xml code
-
         if mongo_doc is None:
-            b = self.load_xml_reebill(account, sequence)
-            xml_reebill = MongoReebill(b)
-            return xml_reebill
-        else:
-            mongo_doc = deep_map(float_to_decimal, mongo_doc)
-            mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
-            mongo_reebill = MongoReebill(mongo_doc)
-            return mongo_reebill
+            return None
+
+        mongo_doc = deep_map(float_to_decimal, mongo_doc)
+        mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
+        mongo_reebill = MongoReebill(mongo_doc)
+        return mongo_reebill
 
     def load_reebills_for(self, account, branch=0):
 
@@ -1190,17 +998,6 @@ class ReebillDAO:
             result.append(MongoReebill(mongo_doc))
         return result
         
-    # TODO 22263045 remove this function
-    def load_xml_reebill(self, account, sequence, branch=0):
-        # initialization with a string: URL of an XML reebill in Exist. use
-        # bill.py to extract information from it into self.dictionary.
-
-        url = "%s/%s/%s.xml" % (self.config['source_prefix'], account, sequence)
-
-        # make a Bill object from the XML document
-        b = bill.Bill(url)
-        return b
-
     def save_reebill(self, reebill):
         '''Saves the MongoReebill 'reebill' into the database. If a document
         with the same account & sequence number already exists, the existing
@@ -1213,37 +1010,6 @@ class ReebillDAO:
 
         self.collection.save(mongo_doc)
 
-    # TODO 22263045 remove this function
-    def save_xml_reebill(self, xml_reebill, account, sequence):
-
-        url = "%s/%s/%s.xml" % (self.config["destination_prefix"], account, sequence)
-
-        parts = urlparse(url)
-
-        xml = xml_reebill.xml()
-
-        if (parts.scheme == 'http'): 
-            # http scheme URL, PUT to eXistDB
-
-            con = httplib.HTTPConnection(parts.netloc)
-            con.putrequest('PUT', '%s' % url)
-            con.putheader('Content-Type', 'text/xml')
-
-            auth = 'Basic ' + string.strip(base64.encodestring(
-                self.config['user'] + ':' + self.config['password']))
-            con.putheader('Authorization', auth )
-
-            clen = len(xml) 
-            con.putheader('Content-Length', clen)
-            con.endheaders() 
-            con.send(xml)
-            response = con.getresponse()
-            print str(response.status) + " " + response.reason
-
-            print >> sys.stderr, url
-
-        else:
-            pass
 
 class NoRateStructureError(Exception):
     pass
