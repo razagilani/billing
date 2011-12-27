@@ -16,7 +16,7 @@ from skyliner import splinter
 from skyliner import sky_objects
 from skyliner.sky_errors import DataHandlerError
 from billing import mongo
-from billing.mongo import dict_merge # TODO move this function out of mongo.py
+from billing.dictutils import dict_merge
 from billing import dateutils
 
 def get_shadow_register_data(reebill):
