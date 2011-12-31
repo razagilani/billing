@@ -1604,11 +1604,32 @@ class BillToolBridge:
     # Handle measuredUsages
 
     @cherrypy.expose
-    def ubMeasuredUsages(self, account, sequence, **args):
+    def ubMeasuredUsages(self, account, sequence, branch=0, **args):
         """
         Return all of the measuredusages on a per service basis so that the forms may be
         dynamically created.
+
+        This function returns a sophisticated data structure to the client. However, the client
+        is expected to flatten it, and return edits keyed by meter or register identifier.
+
+        {"SERVICENAME": [
+            "present_read_date": "2011-10-04", 
+            "prior_read_date": "2011-09-05",
+            "identifier": "028702956",
+            "registers": [
+                {
+                "description": "Total Ccf", 
+                "quantity": 200.0, 
+                "quantity_units": "Ccf", 
+                "shadow": false, 
+                "identifier": "028702956", 
+                "type": "total", 
+                "register_binding": "REG_TOTAL"
+                }
+            ], ...
+        ]}
         """
+
         self.check_authentication()
         try:
             if not account or not sequence:
@@ -1623,6 +1644,7 @@ class BillToolBridge:
                 return ju.dumps({'success': True})
 
             meters = reebill.meters
+
             return ju.dumps(meters)
 
         except Exception as e:
@@ -1837,7 +1859,7 @@ class BillToolBridge:
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
-    def reebill_structure(self, account, **args):
+    def reebill_structure(self, account, sequence=None, **args):
         self.check_authentication()
         try:
             session = None
@@ -1845,7 +1867,10 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value: account")
 
             session = self.state_db.session()
-            sequence = self.state_db.last_sequence(session, account)
+
+            print "got sequence %s %s" % (sequence, type(sequence))
+            if sequence is None:
+                sequence = self.state_db.last_sequence(session, account)
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
             if reebill:
@@ -1859,42 +1884,71 @@ class BillToolBridge:
                     utility = reebill.utility_name_for_service(service)
                     rate_structure = reebill.rate_structure_name_for_service(service)
                     chargegroups_model = reebill.chargegroups_model_for_service(service)
+                    meters = reebill.meters_for_service(service)
 
-                    node_index += 1
                     utility_node = {
-                        'id': node_index, 
+                        'id': str(UUID.uuid1()), 
+                        'leaf': True,
                         'text': utility,
-                        'leaf': True
                     }
 
-                    node_index += 1
                     ratestructure_node = {
-                        'id': node_index, 
+                        'id': str(UUID.uuid1()), 
+                        'leaf': True,
                         'text': rate_structure,
-                        'leaf': True
+                    }
+
+                    meter_nodes = []
+                    for meter in meters:
+                        register_nodes = []
+                        for register in meter['registers']:
+                            if register['shadow'] is True:
+                                continue
+                            register_nodes.append({
+                                'id': str(UUID.uuid1()),
+                                'leaf': True,
+                                'text': register['identifier'],
+                                'service': service,
+                                'account': account, 
+                                'sequence': sequence, 
+                                'node_type': 'register',
+                                'node_key': register['identifier']
+                            })
+                        meter_nodes.append({
+                            'id': str(UUID.uuid1()),
+                            'text': meter['identifier'],
+                            'children': register_nodes,
+                            'service': service,
+                            'account': account, 
+                            'sequence': sequence, 
+                            'node_type': 'meter',
+                            'node_key': meter['identifier']
+                        })
+
+                    meters_node = {
+                        'id': str(UUID.uuid1()),
+                        'text': 'Meters',
+                        'children': meter_nodes
                     }
 
                     chargegroup_names_nodes = []
                     for group in chargegroups_model:
-                        node_index += 1
                         chargegroup_names_nodes.append({
-                            'id': node_index,
+                            'id': str(UUID.uuid1()),
                             'text':group,
                             'leaf': True
                         })
 
-                    node_index += 1
                     chargegroups_node = {
-                        'id': node_index,
+                        'id': str(UUID.uuid1()),
                         'text': 'Charge Groups',
                         'children': chargegroup_names_nodes
                     }
 
-                    node_index += 1
                     utilbill_node = {
-                        'id': node_index,
+                        'id': str(UUID.uuid1()),
                         'text': service,
-                        'children': [utility_node, ratestructure_node, chargegroups_node]
+                        'children': [utility_node, ratestructure_node, chargegroups_node, meters_node]
                     }
                     tree.append(utilbill_node)
 
@@ -1910,9 +1964,157 @@ class BillToolBridge:
                 print "Could not rollback session"
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
 
-            # TreePanel doesn't do error handling, so don't bother returning anything
+            # TreePanel doesn't do error handling
             # Maybe the TreeLoader can be made to respond to something.
-            #return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+    @cherrypy.expose
+    def insert_reebill_sibling_node(self, service, account, sequence, node_type, node_key, **args):
+        """
+        """
+        self.check_authentication()
+        try:
+            session = None
+            if not service or not account or not sequence or not node_type or not node_key:
+                raise ValueError("Bad Parameter Value")
+
+            session = self.state_db.session()
+
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            new_meter = reebill.new_meter(service)
+            new_registers = reebill.new_register(service, new_meter['identifier'])
+            # both an actual and shadow register get created
+
+            new_node = None
+            if node_type == 'meter':
+                register_nodes = [{
+                    'id': str(UUID.uuid4()),
+                    'leaf': True,
+                    'text': new_registers[0]['identifier'],
+                    'service': service,
+                    'account': account, 
+                    'sequence': sequence, 
+                    'node_type': 'register',
+                    'node_key': new_registers[0]['identifier'],
+                }]
+                new_node = {
+                    'id': str(UUID.uuid4()),
+                    'text': new_meter['identifier'],
+                    'children': register_nodes,
+                    'service': service,
+                    'account': account, 
+                    'sequence': sequence, 
+                    'node_type': 'meter',
+                    'node_key': new_meter['identifier'], 
+                }
+
+
+            self.reebill_dao.save_reebill(reebill)
+
+            session.commit()
+
+            return ju.dumps({'success': True, 'node':new_node })
+
+        except Exception as e:
+            try:
+                if session is not None: session.rollback()
+            except:
+                print "Could not rollback session"
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+    @cherrypy.expose
+    def delete_reebill_node(self, service, account, sequence, node_type, node_key, text, **args):
+        """
+        """
+        self.check_authentication()
+        try:
+            session = None
+            if not service or not account or not sequence or not node_type or not node_key or not text:
+                raise ValueError("Bad Parameter Value")
+
+            session = self.state_db.session()
+
+            session.commit()
+
+            return ju.dumps({'success': True })
+
+        except Exception as e:
+            try:
+                if session is not None: session.rollback()
+            except:
+                print "Could not rollback session"
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+    @cherrypy.expose
+    def update_reebill_node(self, service, account, sequence, node_type, node_key, text, **args):
+        """
+        """
+        self.check_authentication()
+        try:
+            session = None
+            if not service or not account or not sequence or not node_type or not node_key or not text:
+                raise ValueError("Bad Parameter Value")
+
+            session = self.state_db.session()
+
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+
+            updated_node = None
+            if reebill:
+                if node_type == 'meter':
+
+                    # retrieve this meter based on node_key
+                    reebill.set_meter_identifier(service, node_key, text)
+                    # now that it has been changed, retrieve it with the new name
+                    meter = reebill.meter(service, text)
+
+                    # get the children of this meter
+                    register_nodes = []
+                    for register in meter['registers']:
+                        if register['shadow'] is True:
+                            continue
+                        register_nodes.append({
+                            'id': str(UUID.uuid1()),
+                            'leaf': True,
+                            'text': register['identifier'],
+                            'service': service,
+                            'account': account, 
+                            'sequence': sequence, 
+                            'node_type': 'register',
+                            'node_key': register['identifier']
+                        })
+
+                    updated_node = {
+                        'id': str(UUID.uuid1()),
+                        'text': meter['identifier'],
+                        'children': register_nodes,
+                        'service': service,
+                        'account': account, 
+                        'sequence': sequence, 
+                        'node_type': 'meter',
+                        'node_key': meter['identifier'], 
+                    }
+                        
+                    # update the meter fields
+
+            self.reebill_dao.save_reebill(reebill)
+
+            session.commit()
+
+            return ju.dumps({'success': True, 'node':updated_node})
+
+        except Exception as e:
+            try:
+                if session is not None: session.rollback()
+            except:
+                print "Could not rollback session"
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
         
 # TODO: place instantiation in main, so this module can be loaded without btb being instantiated
