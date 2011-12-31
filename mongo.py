@@ -704,6 +704,60 @@ class MongoReebill(object):
 
         return meters_lists[0]
 
+
+    def meter(self, service, identifier):
+        meter = next((meter for meter in self.meters_for_service(service) if meter['identifier'] == identifier), None)
+        return meter
+
+    def new_meter(self, service):
+
+        new_meter = {
+            'identifier': str(UUID.uuid4()),
+            'present_read_date': None,
+            'prior_read_date': datetime.now(),
+            'estimated': False,
+            'registers': [],
+        }
+
+        for ub in self.dictionary['utilbills']:
+            if ub['service'] == service:
+                ub['meters'].append(new_meter)
+
+        return new_meter
+
+    def new_register(self, service, meter_identifier):
+        
+        identifier = str(UUID.uuid4())
+
+        new_actual_register = {
+            "description" : "No description",
+            "quantity" : 0,
+            "quantity_units" : "No Units",
+            "shadow" : False,
+            "identifier" : identifier,
+            "type" : "total",
+            "register_binding": "No Binding"
+        }
+        new_shadow_register = {
+            "description" : "No description",
+            "quantity" : 0,
+            "quantity_units" : "No Units",
+            "shadow" : False,
+            "identifier" : identifier,
+            "type" : "total",
+            "register_binding": "No Binding"
+        }
+
+        # lookup meter and add these registers
+        meter = self.meter(service, meter_identifier)
+
+        meter['registers'].extend([new_actual_register, new_shadow_register])
+
+        return (new_actual_register, new_shadow_register)
+
+        
+    
+
     def set_meter_read_date(self, service, identifier, present_read_date, prior_read_date):
         ''' Set the read date for a specified meter.'''
 
@@ -722,6 +776,13 @@ class MongoReebill(object):
                         for register in meter['registers']:
                             if (register['shadow'] == False) and (register['identifier'] == register_identifier):
                                 register['quantity'] = quantity
+
+    def set_meter_identifier(self, service, old_identifier, new_identifier):
+
+        for meter in self.meters_for_service(service):
+            if meter['identifier'] == old_identifier:
+                meter['identifier'] = new_identifier
+
 
     @property
     def meters(self):
@@ -742,6 +803,7 @@ class MongoReebill(object):
             ))
 
         return all_actual
+
 
     # TODO: probably should be qualified by service since register identifiers could collide
     def set_actual_register_quantity(self, identifier, quantity):
