@@ -406,13 +406,198 @@ function renderWidgets()
         }
     });
 
+
+
+    /////////////////////////////////////////////////////
+    // Functions for ReeBill Structure Editor event
+
+    // uses ajax to edit reebill structure
+    // three operations use this: insert a new node, delete a node and edit a node
+    // for the edit a node operation, the newly edited value is also passed in
+    function editReeBillStructureNode(action, new_text)
+    {
+        var cmp = Ext.getCmp('reeBillEditorTree');
+        var selNode = cmp.getSelectionModel().getSelectedNode();
+        if (selNode == null || selNode.parentNode == null) {
+            Ext.Msg.alert("No node selected.")
+            return; 
+        }
+
+        // so that we can track the parent in case selNode is to be removed 
+        var parentNode = selNode.parentNode;
+
+        // determine if we have enough information to act on this node
+        if (!("service" in selNode.attributes && "account" in selNode.attributes 
+            && "sequence" in selNode.attributes && "node_type" in selNode.attributes
+            && "node_key" in selNode.attributes && "text" in selNode.attributes)) {
+
+            Ext.Msg.alert("Selected node uneditable.")
+            return;
+        }
+
+        // TODO: 22792659 disabled widgets have to be reenabled if there is an exception 
+        cmp.disable();
+
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/reebill/' + action,
+            params: { 
+                // note, we dont pass in selNode.id. This is because the unique id's
+                // are only used by the client side gui code.
+                'service': selNode.attributes.service,
+                'account': selNode.attributes.account,
+                'sequence': selNode.attributes.sequence,
+                'node_type': selNode.attributes.node_type,
+                'node_key': selNode.attributes.node_key,
+                // if a new value was passed in, update to this new value
+                'text': new_text == null ? selNode.attributes.text : new_text,
+            },
+            disableCaching: true,
+            success: function(result, request) {
+                var jsonData = null;
+                try {
+                    jsonData = Ext.util.JSON.decode(result.responseText);
+                    if (jsonData.success == false) {
+                        Ext.Msg.alert("Edit ReeBill Failed: " + jsonData.errors.reason)
+                    } else {
+                        if (action == 'insert_reebill_sibling_node') {
+                            var newNode = jsonData.node
+                            // TreePanel will fire insert event
+                            parentNode.appendChild(newNode);
+                        } else if (action == 'delete_reebill_node') {
+                            selNode.remove(true);
+                        } else if (action == 'update_reebill_node') {
+                            var updatedNode = jsonData.node
+                            parentNode.replaceChild(updatedNode,selNode);  
+                        }
+                    }
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
+                }
+
+                cmp.enable();
+                // TODO:  22827425 expand after edit - seems an exception is thrown in ext here
+                //parentNode.expandChildNodes();
+            },
+            failure: function () {
+                Ext.Msg.alert("Edit ReeBill Request Failed.");
+                cmp.enable();
+            }
+        });
+    }
+
+    function configureReeBillEditor(account, sequence)
+    {
+        var reeBillTab = tabPanel.getItem('reeBillTab');
+
+        var reeBillEditorTree = Ext.getCmp('reeBillEditorTree');
+
+        // lazily create it if it does not exist
+        if (reeBillEditorTree === undefined) {
+
+            var reeBillEditorTreeToolbar = new Ext.Toolbar({
+                
+                items: [
+                    {
+                        xtype: 'button',
+
+                        // ref places a name for this component into the grid so it may be referenced as aChargesGrid.insertBtn...
+                        id: 'nodeInsertBtn',
+                        iconCls: 'icon-add',
+                        text: 'Insert',
+                        disabled: false,
+                        handler: function() {
+                            editReeBillStructureNode('insert_reebill_sibling_node', null);
+                        },
+                    },{
+                        xtype: 'tbseparator'
+                    },{
+                        xtype: 'button',
+                        // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                        id: 'nodeRemoveBtn',
+                        iconCls: 'icon-delete',
+                        text: 'Remove',
+                        disabled: false,
+                        handler: function() {
+                            editReeBillStructureNode('delete_reebill_node', null);
+                        },
+                    }
+                ]
+            });
+
+            onTreeNodeDblClick = function(n) {
+                reeBillEditorTreeEditor.editNode = n;
+                reeBillEditorTreeEditor.startEdit(n.ui.textNode);
+            }
+
+            var reeBillEditorTreeLoader = new Ext.tree.TreeLoader({dataUrl:'http://'+location.host+'/reebill/reebill_structure'});
+
+            reeBillEditorTree = new Ext.tree.TreePanel({
+                id: 'reeBillEditorTree',
+                title: 'ReeBill Structure Editor',
+                frame: true,
+                animate: true, 
+                autoScroll: true,
+                loader: reeBillEditorTreeLoader,
+                enableDD: false,
+                containerScroll: true,
+                autoWidth: true,
+                dropConfig: {appendOnly: true},
+                tbar: reeBillEditorTreeToolbar,
+                listeners: {
+                    dblclick: onTreeNodeDblClick,
+                }
+            });
+
+            
+            // add a tree sorter in folder mode
+            new Ext.tree.TreeSorter(reeBillEditorTree, {folderSort:true});
+            
+            // set the root node
+            var reeBillEditorTreeRoot = new Ext.tree.AsyncTreeNode({
+                id:'reeBillEditorTreeRoot',
+                text: 'ReeBill', 
+                draggable:false, // disable root node dragging
+            });
+
+            reeBillEditorTree.setRootNode(reeBillEditorTreeRoot);
+            
+            reeBillEditorTreeRoot.expand(false, /*no anim*/ false);
+
+            onTreeEditComplete = function(treeEditor, n, o) {
+                //o - oldValue
+                //n - newValue
+                console.log("onTreeEditComplete");
+                editReeBillStructureNode('update_reebill_node', n)
+            }
+
+            var reeBillEditorTreeEditor = new Ext.tree.TreeEditor(reeBillEditorTree, {}, {
+                cancelOnEsc: true,
+                completeOnEnter: true,
+                selectOnFocus: true,
+                allowBlank: false,
+                listeners: {
+                    complete: onTreeEditComplete
+                }
+            });
+
+            reeBillTab.add(reeBillEditorTree);
+        }
+
+        reeBillEditorTree.getLoader().dataUrl = 'http://'+location.host+'/reebill/reebill_structure';
+        reeBillEditorTree.getLoader().baseParams.account = account;
+        reeBillEditorTree.getLoader().baseParams.sequence = sequence;
+        reeBillEditorTree.getLoader().load(reeBillEditorTree.root);
+        //reeBillEditorTree.expand(false, false);
+
+    }
+
     function configureAddressForm(account, sequence, addresses)
     {
         var reeBillTab = tabPanel.getItem('reeBillTab');
 
         var addressFormPanel = Ext.getCmp('billingAddressFormPanel');
 
-        // create it if it does not exist
+        // lazily create it if it does not exist
         if (addressFormPanel === undefined) {
             addressFormPanel = new Ext.FormPanel(
             {
@@ -952,9 +1137,11 @@ function renderWidgets()
         // for each service
         for (var service in usages)
         {
+
             // enumerate each meter
             usages[service].forEach(function(meter, index, array)
             {
+
                 var meterFormPanel = new Ext.FormPanel(
                 {
                     id: service +'-'+meter.identifier+'-meterReadDateFormPanel',
@@ -2853,7 +3040,8 @@ function renderWidgets()
         newAccountTemplateCombo.on('select', function(combobox, record, index) {
             billStructureTree.enable();
             billStructureTree.getLoader().dataUrl = 'http://'+location.host+'/reebill/reebill_structure';
-            billStructureTreeLoader.baseParams.account = newAccountTemplateCombo.getValue();
+            billStructureTree.getLoader().baseParams.account = newAccountTemplateCombo.getValue();
+            //billStructureTree.getLoader().baseParams.sequence = null; 
             billStructureTree.getLoader().load(billStructureTree.root);
             billStructureRoot.expand(true, true);
             
@@ -2896,7 +3084,7 @@ function renderWidgets()
                                         Ext.Msg.alert("Create new account failed: " + jsonData.errors.reason)
                                     }
                                 } catch (err) {
-                                    Ext.MessageBox.alert('ERROR', 'Could not decode "' + jsonData + '"');
+                                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
                                 }
                                 // TODO 22645885 confirm save and clear form
                             },
@@ -2957,7 +3145,7 @@ function renderWidgets()
                                     Ext.Msg.alert("setBillImageResolution failed: " + jsonData.errors)
                                 }
                             } catch (err) {
-                                Ext.MessageBox.alert('ERROR', 'Could not decode "' + jsonData + '"');
+                                Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
                             }
                         },
                         failure: function () {
@@ -2989,7 +3177,7 @@ function renderWidgets()
                         Ext.Msg.alert("getBillImageResolution failed: " + jsonData.errors);
                     }
                 } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Could not decode "' + jsonData + '"');
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
                 }
             },
             failure: function () {
@@ -3287,15 +3475,13 @@ function renderWidgets()
             id: 'reeBillTab',
             title: 'ReeBill',
             xtype: 'panel',
-            layout: 'vbox',
-            layoutConfig : {
+            layout: 'accordion',
+            /*layoutConfig : {
                 align : 'stretch',
                 pack : 'start'
-            },
+            },*/
             items: [
                 reebillFormPanel,
-                //billingAddressFormPanel,
-                //serviceAddressFormPanel,
             ],
         },{
             id: 'ubPeriodsTab',
@@ -3500,6 +3686,7 @@ function renderWidgets()
         configureUBPeriodsForms(null, null, null);
         configureUBMeasuredUsagesForms(null, null, null);
         configureAddressForm(null, null, null);
+        configureReeBillEditor(null, null);
         aChargesStore.loadData({rows: 0, success: true});
         hChargesStore.loadData({rows: 0, succes: true});
         CPRSRSIStore.loadData({rows: 0, success: true});
@@ -3535,7 +3722,7 @@ function renderWidgets()
                     } 
                     configureUBPeriodsForms(account, sequence, jsonData);
                 } catch (err) {
-                    //Ext.MessageBox.alert('ERROR', 'Could not decode ' + jsonData);
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
                 }
             },
             failure: function() {alert("ajax failure")},
@@ -3558,7 +3745,7 @@ function renderWidgets()
                     } 
                     configureUBMeasuredUsagesForms(account, sequence, jsonData);
                 } catch (err) {
-                    //Ext.MessageBox.alert('ERROR', 'Could not decode ' + jsonData);
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
                 }
             },
             failure: function() {alert("ajax failure")},
@@ -3581,7 +3768,7 @@ function renderWidgets()
                     } 
                     configureAddressForm(account, sequence, jsonData);
                 } catch (err) {
-                    //Ext.MessageBox.alert('ERROR', 'Could not decode ' + jsonData);
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
                 }
             },
             failure: function() {alert("ajax failure")},
@@ -3592,6 +3779,8 @@ function renderWidgets()
         hChargesStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
         CPRSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
         URSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
+
+        configureReeBillEditor(account, sequence);
 
 
         // url for getting bill images (calls bill_tool_bridge.getbillimage())
@@ -3634,10 +3823,13 @@ function renderWidgets()
             },
             disablecaching: true,
         });
+
+
         // while waiting for the ajax request to finish, show a loading message
         // in the utilbill image box
-        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div', html:
-            LOADING_MESSAGE, id: 'reebillimage'}, true);
+        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div', html:LOADING_MESSAGE, id: 'reebillimage'}, true);
+
+
 
 
         // finally, update the status bar with current selection
