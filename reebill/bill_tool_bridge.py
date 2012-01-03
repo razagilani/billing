@@ -467,13 +467,13 @@ class BillToolBridge:
 
             self.process.pay_bill(session, reebill)
 
-            # hack to ensure the computations from bind_rs come back as decimal types
+            # TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
             self.reebill_dao.save_reebill(reebill)
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
             self.process.sum_bill(session, prior_reebill, reebill)
 
-            # hack to ensure the computations from bind_rs come back as decimal types
+            # TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
             self.reebill_dao.save_reebill(reebill)
             reebill = self.reebill_dao.load_reebill(account, sequence)
             self.process.calculate_statistics(prior_reebill, reebill)

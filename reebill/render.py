@@ -53,6 +53,7 @@ pychartdir.setLicenseCode('DEVP-2HYW-CAU5-4YTR-6EA6-57AC')
 
 from pychartdir import Center, Left, TopLeft, DataColor, XYChart, PieChart
 
+from datetime import datetime
 
 #
 #  Load Fonts
@@ -103,7 +104,7 @@ firstPageName = 'FirstPage'
 secondPageName = 'SecondPage'
 resource_dir = os.path.dirname(__file__)
 
-#TODO - determine platform independent means to do this
+#TODO 22925361 - determine platform independent means to do this, plus make it so multiple installs don't conflict
 tmp_dir = "/tmp"
 
 
@@ -369,7 +370,8 @@ def render(reebill, outputfile, backgrounds, verbose):
     c.setPieSize((10*270)/2.2, (10*127)/1.65, ((10*127)/3.5))
     c.setData(data, labels)
     c.setLabelStyle('Inconsolata.ttf', 64)
-    image_path = os.path.join(tmp_dir, "utilization.png")
+    image_filename = "utilization-%s.png" % datetime.now()
+    image_path = os.path.join(tmp_dir, image_filename)
     c.makeChart(image_path)
    
     Elements.append(Image(image_path, 270*.9, 127*.9))
@@ -478,9 +480,10 @@ def render(reebill, outputfile, backgrounds, verbose):
     c.yAxis().setTitle("100 Thousand BTUs", 'Inconsolata.ttf', 52)
     c.xAxis().setLabels(labels)
     c.xAxis().setLabelStyle('Inconsolata.ttf', 64)
-    c.makeChart(os.path.join(tmp_dir,"SampleGraph4.png"))    
+    image_filename = "Graph4-%s.png" % datetime.now()
+    c.makeChart(os.path.join(tmp_dir,image_filename))    
 
-    Elements.append(Image(os.path.join(tmp_dir,'SampleGraph4.png'), 270*.9, 127*.9))
+    Elements.append(Image(os.path.join(tmp_dir,image_filename), 270*.9, 127*.9))
     Elements.append(UseUpSpace())
 
 
