@@ -465,8 +465,12 @@ class RateStructure(object):
 
 class Register(object):
     def __init__(self, reg_data, prior_read_date, present_read_date):
+
         if 'quantity' not in reg_data:
             raise Exception("Register must have a reading")
+        if not reg_data['quantity']:
+            raise Exception("Register must have a quantity")
+
         # copy pairs of the form (key, value) in 'reg_data' to pairs of the
         # form (_key, value) via the property decorators below
         for key in reg_data:
@@ -611,6 +615,7 @@ class RateStructureItem(object):
             # evaluate those attributes and return the results of eval()
 
             # if a value exists in the rate
+            # TODO:22974637 check for key membership using key in dict statement
             value = props[key]
             # if not None, and is a string with contents
             if (value is not None):
@@ -624,9 +629,9 @@ class RateStructureItem(object):
                     # do not access them since @property methods are used for expression evaluation
                     setattr(self, "_"+key, value)
                 else:
-                    print "Warning: %s %s is an empty property" % (props["descriptor"], key)
+                    print "Warning: %s %s is an empty property" % (props["rsi_binding"], key)
             else:
-                print "Warning: %s %s is an empty property" % (props["descriptor"], key)
+                print "Warning: %s %s is an empty property" % (props["rsi_binding"], key)
                 # Don't add the attr the property since it has no value and its only contribution 
                 # would be to make for None type checking all over the place.
 
