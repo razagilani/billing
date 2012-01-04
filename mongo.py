@@ -954,8 +954,8 @@ class ReebillDAO:
 
     def load_reebill(self, account, sequence, branch=0):
 
-        if not account: return None
-        if not sequence: return None
+        if account is None: return None
+        if sequence is None: return None
 
         query = {
             "_id.account": str(account),
@@ -965,11 +965,12 @@ class ReebillDAO:
         mongo_doc = self.collection.find_one(query)
 
         if mongo_doc is None:
-            return None
+            raise Exception("No ReeBill found for %s-%s-%s" % (account, branch, sequence))
 
         mongo_doc = deep_map(float_to_decimal, mongo_doc)
         mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
         mongo_reebill = MongoReebill(mongo_doc)
+
         return mongo_reebill
 
     def load_reebills_for(self, account, branch=0):
