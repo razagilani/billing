@@ -107,11 +107,13 @@ def usage_data_to_virtual_register(install, reebill, server=None):
                 
                 # convert units from BTU to kWh (for electric) or therms (for gas)
                 if register['quantity_units'].lower() == 'kwh':
-                    energy_today /= 3412.14
+                    #energy_today /= 3412.14
+                    # energy comes out in kwh
+                    pass
                 elif register['quantity_units'].lower() == 'therms':
                     energy_today /= 100000
                 else:
-                    raise Exception('unknown energy unit')
+                    raise Exception('unknown energy unit %s' % register['quantity_units'])
 
                 print 'register %s accumulating energy %s %s' % (
                         register['identifier'], energy_today,
