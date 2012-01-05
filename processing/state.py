@@ -91,7 +91,6 @@ class StateDB:
 
     def commit_bill(self, session, account, sequence, start, end):
 
-
         # get customer id from account and the reebill from account and sequence
         customer = session.query(Customer).filter(Customer.account==account).one()
         reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
@@ -109,6 +108,18 @@ class StateDB:
             utilbill.reebill = reebill
             utilbill.processed = True
 
+    def is_committed(self, session, account, sequence, branch=0 ):
+
+        # get customer id from account and the reebill from account and sequence
+        customer = session.query(Customer).filter(Customer.account==account).one()
+        reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
+                .filter(ReeBill.sequence==sequence).one()
+        try:
+            utilbill = session.query(UtilBill).filter(UtilBill.reebill==reebill).one()
+        except NoResultFound as nrf: 
+            return False
+
+        return True
 
     def discount_rate(self, session, account):
 
