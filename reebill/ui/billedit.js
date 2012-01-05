@@ -398,7 +398,7 @@ function renderWidgets()
         loadReeBillUIForSequence(accountCombo.getValue(), sequenceCombo.getValue());
     });
 
-    // a hack so that a newly rolled bill may be accessed by directly entering its sequence
+    // TODO: 14564121 a hack so that a newly rolled bill may be accessed by directly entering its sequence
     // remove this when https://www.pivotaltracker.com/story/show/14564121 completes
     sequenceCombo.on('specialkey', function(field, e) {
         if (e.getKey() == e.ENTER) {
@@ -3422,7 +3422,7 @@ function renderWidgets()
     // Status bar displayed at footer of every panel in the tabpanel
 
     var statusBar = new Ext.ux.StatusBar({
-        defaultText: 'No RE Bill',
+        defaultText: 'No REE Bill Selected',
         id: 'statusbar',
         statusAlign: 'right', // the magic config
         items: [journalFormPanel]
@@ -3620,18 +3620,21 @@ function renderWidgets()
 
 
     // update selection in statusbar
-    function updateStatusbar(account, sequence)
+    function updateStatusbar(account, sequence, branch)
     {
 
         var sb = Ext.getCmp('statusbar');
-        if (sequence == null)
-            var selStatus = account
-        else
-            var selStatus = account + "-" + sequence
+        var selStatus;
+        if (account != null && sequence != null && branch != null)
+            selStatus = account + "-" + sequence + "-" + branch;
+        else if (account != null && sequence != null)
+            selStatus = account + "-" + sequence;
+        else if (account != null)
+            selStatus = account;
+
         sb.setStatus({
             text: selStatus
         });
-
     }
 
     // whenever an account is selected from the Account tab,
@@ -3693,7 +3696,7 @@ function renderWidgets()
         URSRSIStore.loadData({rows: 0, success: true});
 
 
-        updateStatusbar(account, null);
+        updateStatusbar(account, null, null);
     }
 
     function loadReeBillUIForSequence(account, sequence) {
@@ -3833,7 +3836,7 @@ function renderWidgets()
 
 
         // finally, update the status bar with current selection
-        updateStatusbar(account, sequence);
+        updateStatusbar(account, sequence, 0);
     }
 }
 
