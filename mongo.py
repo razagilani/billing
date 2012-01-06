@@ -644,7 +644,7 @@ class MongoReebill(object):
             "description" : "No description",
             "quantity" : 0,
             "quantity_units" : "No Units",
-            "shadow" : False,
+            "shadow" : True,
             "identifier" : identifier,
             "type" : "total",
             "register_binding": "No Binding"
