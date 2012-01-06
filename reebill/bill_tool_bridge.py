@@ -355,8 +355,14 @@ class BillToolBridge:
 
             customer = self.process.create_new_account(session, account, name, discount_rate, template_account)
 
+            reebill = self.reebill_dao.load_reebill(account, 0)
+
             # record the successful completion
             self.journal_dao.journal(customer.account, 0, "Newly created")
+
+            self.process.roll_bill(session, reebill)
+            self.reebill_dao.save_reebill(reebill)
+            self.journal_dao.journal(account, 0, "ReeBill rolled")
 
             session.commit()
 
@@ -1868,7 +1874,6 @@ class BillToolBridge:
 
             session = self.state_db.session()
 
-            print "got sequence %s %s" % (sequence, type(sequence))
             if sequence is None:
                 sequence = self.state_db.last_sequence(session, account)
             reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -2069,6 +2074,7 @@ class BillToolBridge:
 
                     # retrieve this meter based on node_key
                     reebill.set_meter_identifier(service, node_key, text)
+
                     # now that it has been changed, retrieve it with the new name
                     meter = reebill.meter(service, text)
 
@@ -2106,6 +2112,7 @@ class BillToolBridge:
             session.commit()
 
             return ju.dumps({'success': True, 'node':updated_node})
+            #return ju.dumps({'success': True})
 
         except Exception as e:
             try:
