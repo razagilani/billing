@@ -4,47 +4,15 @@ File: bill_tool_bridge.py
 Description: Allows bill tool to be invoked as a CGI
 '''
 import sys
-sys.stdout = sys.stderr
-
 import traceback
 import json
-
-# CGI support
 import cherrypy
-
-# template support
 import jinja2, os
-
 import string
-
 import ConfigParser
-
-from billing.processing import process
-from billing.processing import state
-from billing.processing import fetch_bill_data as fbd
-from billing.reebill import render
-from billing.reebill import journal
-from billing.processing.billupload import BillUpload
-
-# TODO fixme
-from billing import nexus_util as nu
-from billing.nexus_util import NexusUtil
-
-from billing import bill
-
-from billing import json_util as ju
-
-import itertools as it
-
-from billing.reebill import bill_mailer
-
-from billing import mongo
-
-import billing.processing.rate_structure as rs
-
 from datetime import datetime
 from datetime import date
-
+import itertools as it
 from decimal import *
 
 # uuid collides with locals so both module and locals are renamed
@@ -52,6 +20,23 @@ import uuid as UUID
 import inspect
 import logging
 
+import pymongo
+
+from billing.processing import process
+from billing.processing import state
+from billing.processing import fetch_bill_data as fbd
+from billing.reebill import render
+from billing.reebill import journal
+from billing.processing.billupload import BillUpload
+from billing import nexus_util as nu
+from billing.nexus_util import NexusUtil
+from billing import bill
+from billing import json_util as ju
+from billing.reebill import bill_mailer
+from billing import mongo
+import billing.processing.rate_structure as rs
+
+sys.stdout = sys.stderr
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -137,6 +122,12 @@ class BillToolBridge:
             self.config.set('statedb', 'database', 'skyline')
             self.config.set('statedb', 'user', '[your mysql user]')
             self.config.set('statedb', 'password', '[your mysql password]')
+            self.config.add_section('usersdb')
+            self.config.set('usersdb', 'host', 'localhost')
+            self.config.set('usersdb', 'database', 'skyline')
+            self.config.set('usersdb', 'collection', 'users')
+            self.config.set('usersdb', 'user', 'dev')
+            self.config.set('usersdb', 'password', 'dev')
             self.config.add_section('mailer')
             self.config.set('mailer', 'smtp_host', 'smtp.gmail.com')
             self.config.set('mailer', 'smtp_port', '587')
@@ -199,6 +190,12 @@ class BillToolBridge:
         # the level has to be changed.
         self.logger.setLevel(logging.DEBUG)
 
+        # load users database
+        users_db_connection = pymongo.Connection(self.config.get('usersdb', 'host'),
+                int(self.config.get('usersdb', 'port')))
+        self.users_collection = users_db_connection[self.config.get('usersdb',
+            'database')][self.config.get('usersdb', 'collection')]
+
         # create an instance representing the database
         statedb_config_section = self.config.items("statedb")
         self.state_db = state.StateDB(dict(statedb_config_section)) 
@@ -247,12 +244,19 @@ class BillToolBridge:
 
     @cherrypy.expose
     def login(self, username, password, rememberme='off', **kwargs):
-        if username not in USERS or USERS[username]['password'] != password:
-            # failed login: redirect to the login page (again)
-            # TODO logging passwords is obviously a bad idea
+        #if username not in USERS or USERS[username]['password'] != password:
+            ## failed login: redirect to the login page (again)
+            ## TODO logging passwords is obviously a bad idea
+            #self.logger.info(('login attempt failed: username "%s", password '
+                #'"%s", remember me: %s, type is %s') % (username, password, rememberme, type(rememberme)))
+            #raise cherrypy.HTTPRedirect("/login.html")
+
+        user_dict = self.users_collection.find_one({'_id': username})
+        if not user_dict:
             self.logger.info(('login attempt failed: username "%s", password '
                 '"%s", remember me: %s, type is %s') % (username, password, rememberme, type(rememberme)))
             raise cherrypy.HTTPRedirect("/login.html")
+
         
         # successful login:
 
@@ -273,10 +277,13 @@ class BillToolBridge:
         # store username & user preferences in cherrypy session object &
         # redirect to main page
         cherrypy.session['username'] = username
-        cherrypy.session['preferences'] = USERS[username]['preferences']
+        #cherrypy.session['preferences'] = USERS[username]['preferences']
+        cherrypy.session['preferences'] = user_dict['preferences']
         # TODO logging passwords is obviously a bad idea
+        # (also passwords are now ignored because openid doesn't need them)
         self.logger.info(('user "%s" logged in with password "%s", remember '
-            'me: "%s" type is %s') % (username, password, rememberme, type(rememberme)))
+            'me: "%s" type is %s') % (username, password, rememberme,
+            type(rememberme)))
         raise cherrypy.HTTPRedirect("/billentry.html")
 
     def check_authentication(self):
@@ -317,12 +324,28 @@ class BillToolBridge:
             return ju.dumps({'success': False, 'errors':{'reason': str(e),
                     'details':traceback.format_exc()}})
 
+    def save_preferences(self):
+        self.check_authentication()
+        try:
+            # upsert the preferences sub-document of the user document with the
+            # preferences dict in the cherrypy session
+            self.users_collection.update({'_id':cherrypy.session['username']},
+                    {'preferences':cherrypy.session['preferences']})
+        except Exception as e:
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return ju.dumps({'success': False, 'errors':{'reason': str(e),
+                    'details':traceback.format_exc()}})
+
     @cherrypy.expose
     def logout(self):
         if 'username' in cherrypy.session:
             self.logger.info('user "%s" logged out' % (cherrypy.session['username']))
             del cherrypy.session['username']
         raise cherrypy.HTTPRedirect('/login.html')
+
+
+
+
 
     # TODO: do this on a per service basis 18311877
     @cherrypy.expose
@@ -1843,6 +1866,7 @@ class BillToolBridge:
         self.check_authentication()
         try:
             resolution = cherrypy.session['preferences']['bill_image_resolution']
+            self.save_preferences()
             return ju.dumps({'success':True, 'resolution': resolution})
         except Exception as e:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
@@ -1853,6 +1877,7 @@ class BillToolBridge:
         self.check_authentication()
         try:
             cherrypy.session['preferences']['bill_image_resolution'] = int(resolution)
+            self.save_preferences()
             return ju.dumps({'success':True})
         except Exception as e:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
