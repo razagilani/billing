@@ -43,21 +43,23 @@ pp = pprint.PrettyPrinter(indent=4)
 # temporary hard-coded user & password data
 # TODO 20217763 replace with externalized of usernames & password hashes
 # TODO 20217755 save preferences somewhere
-USERS = {
-    'dev': {
-        'password': 'dev',
-        'preferences': {'bill_image_resolution': '100'}
-    },
-    'djonas': {
-        'password': 'djonas',
-        'preferences': {'bill_image_resolution': '250'}
-    },
-    'randrews': {
-        'password': 'randrews',
-        'preferences': {'bill_image_resolution': '250'}
-    },
-}
-
+# https://www.pivotaltracker.com/story/show/22735151 
+#USERS = {
+    #'dev': {
+        #'password': 'dev',
+        #'preferences': {'bill_image_resolution': '100'}
+    #},
+    #'djonas': {
+        #'password': 'djonas',
+        #'preferences': {'bill_image_resolution': '250'}
+    #},
+    #'randrews': {
+        #'password': 'randrews',
+        #'preferences': {'bill_image_resolution': '250'}
+    #},
+#}
+DEFAULT_USER_IDENTIFIER = "default"
+DEFAULT_USER_NAME = "Default User"
 DEFAULT_PREFERENCES = {
     'bill_image_resolution': '250'
 }
@@ -239,22 +241,24 @@ class BillToolBridge:
             raise cherrypy.HTTPRedirect('/billentry.html')
         else:
             raise cherrypy.HTTPRedirect('/login.html')
+
     ###########################################################################
     # authentication functions
 
     @cherrypy.expose
-    def login(self, username, password, rememberme='off', **kwargs):
+    def login(self, identifier, password, rememberme='off', **kwargs):
         #if username not in USERS or USERS[username]['password'] != password:
             ## failed login: redirect to the login page (again)
             ## TODO logging passwords is obviously a bad idea
-            #self.logger.info(('login attempt failed: username "%s", password '
-                #'"%s", remember me: %s, type is %s') % (username, password, rememberme, type(rememberme)))
+            #self.logger.info(('login attempt failed: identifier "%s", password '
+                #'"%s", remember me: %s, type is %s') % (identifier, password, rememberme, type(rememberme)))
             #raise cherrypy.HTTPRedirect("/login.html")
 
-        user_dict = self.users_collection.find_one({'_id': username})
+        user_dict = self.users_collection.find_one({'_id': identifier})
         if not user_dict:
-            self.logger.info(('login attempt failed: username "%s", password '
-                '"%s", remember me: %s, type is %s') % (username, password, rememberme, type(rememberme)))
+            self.logger.info(('login attempt failed: identifier "%s", password'
+                ' "%s", remember me: %s, type is %s') % (identifier, password,
+                rememberme, type(rememberme)))
             raise cherrypy.HTTPRedirect("/login.html")
 
         
@@ -274,15 +278,17 @@ class BillToolBridge:
         self.logger.info(cherrypy.session.timeout)
         #print >> sys.stderr, 'timeout: ' + cherrypy.session.timeout
         
-        # store username & user preferences in cherrypy session object &
+        # store identifier & user preferences in cherrypy session object &
         # redirect to main page
-        cherrypy.session['username'] = username
+        cherrypy.session['identifier'] = identifier
+        cherrypy.session['username'] = user_dict['username']
         #cherrypy.session['preferences'] = USERS[username]['preferences']
         cherrypy.session['preferences'] = user_dict['preferences']
+
         # TODO logging passwords is obviously a bad idea
         # (also passwords are now ignored because openid doesn't need them)
         self.logger.info(('user "%s" logged in with password "%s", remember '
-            'me: "%s" type is %s') % (username, password, rememberme,
+            'me: "%s" type is %s') % (identifier, password, rememberme,
             type(rememberme)))
         raise cherrypy.HTTPRedirect("/billentry.html")
 
@@ -297,10 +303,11 @@ class BillToolBridge:
             # session contains default data
             if not self.authentication_on:
                 if 'preferences' not in cherrypy.session:
+                    # TODO what's the right way to handle the "default user" with openid? do we use a special string to avoid 
                     cherrypy.session['preferences'] = DEFAULT_PREFERENCES
-                    cherrypy.session['username'] = "Default User"
+                    cherrypy.session['identifier'] = DEFAULT_USER_IDENTIFIER
                 return True
-            if 'username' not in cherrypy.session:
+            if 'identifier' not in cherrypy.session:
                 self.logger.info("Non-logged-in user was denied access to: %s" % \
                         inspect.stack()[1][3])
                 # TODO: 19664107
@@ -315,6 +322,9 @@ class BillToolBridge:
     
     @cherrypy.expose
     def getUsername(self, **kwargs):
+        '''This returns the username of the currently logged-in user--not to be
+        confused with the identifier. The identifier is a unique id but the
+        username is not.'''
         self.check_authentication()
         try:
             return ju.dumps({'success':True,
@@ -325,6 +335,10 @@ class BillToolBridge:
                     'details':traceback.format_exc()}})
 
     def save_preferences(self):
+        # for the "default user", do nothing
+        if cherrypy.session['identifier'] == DEFAULT_USER_IDENTIFIER:
+            return
+
         self.check_authentication()
         try:
             # upsert the preferences sub-document of the user document with the
