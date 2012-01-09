@@ -20,12 +20,13 @@ class ReeBill(object):
                 % (self.customer, self.sequence, self.issued)
 class UtilBill(object):
     def __init__(self, customer, period_start, period_end, \
-            estimated, processed, received):
+            estimated, processed, received, date_received):
         self.customer = customer
         self.period_start = period_start
         self.period_end = period_end
         self.estimated = estimated
         self.received = received
+        self.date_recieved = date_received
     def __repr__(self):
         return '<UtilBill(%s, %s, %s)>' \
                 % (self.customer, self.period_start, self.period_end)

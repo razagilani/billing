@@ -142,7 +142,9 @@ class StateDB:
     def issue(self, session, account, sequence):
 
         customer = session.query(Customer).filter(Customer.account==account).one()
-        reeBill = session.query(ReeBill).filter(ReeBill.customer_id==customer.id).filter(ReeBill.sequence==sequence).one()
+        reeBill = session.query(ReeBill) \
+                .filter(ReeBill.customer_id==customer.id) \
+                .filter(ReeBill.sequence==sequence).one()
         reeBill.issued = 1
 
     def account_exists(self, session, account):
@@ -180,7 +182,8 @@ class StateDB:
         # subquery examples use multiple queries but that shouldn't be
         # necessary
         customer = session.query(Customer).filter(Customer.account==account).one()
-        sequences = session.query(ReeBill.sequence).with_lockmode("read").filter(ReeBill.customer_id==customer.id).all()
+        sequences = session.query(ReeBill.sequence).with_lockmode("read") \
+                .filter(ReeBill.customer_id==customer.id).all()
 
         # sequences is a list of tuples of numbers, so convert it into a plain list
         result = map((lambda x: x[0]), sequences)
@@ -197,10 +200,10 @@ class StateDB:
         return slice, count
 
 
-    '''Queries the database for account, start date, and
-    end date of bills in a slice of the utilbills table; returns the slice and the
-    total number of rows in the table (for paging).'''
     def list_utilbills(self, session, account, start, limit):
+        '''Queries the database for account, start date, and end date of bills
+        in a slice of the utilbills table; returns the slice and the total
+        number of rows in the table (for paging).'''
 
         # SQLAlchemy query to get account & dates for all utilbills
         query = session.query(UtilBill).with_lockmode('read').join(Customer). \
@@ -213,9 +216,16 @@ class StateDB:
 
         return slice, count
 
-    '''Inserts a a row into the utilbill table when the bill file has been
-    uploaded.'''
-    def insert_bill_in_database(self, session, account, begin_date, end_date):
+    def insert_bill_in_database(self, session, account, begin_date, end_date,
+            date_received):
+        '''Inserts a a row into the utilbill table when the bill file has been
+        uploaded. 'date_recieved' should be None for a utility bill that is
+        supposed to exist but that has not been recieved, e.g. for skipped
+        bills or customers that should have been billed by their utility but
+        have not. (The converse is not necessarily true: e.g. 'date_recieved'
+        will be None for early utilbills whose recieved date is unknown. So we
+        still use the "recieved" column to record whether a utilbill has been
+        recieved or not.)'''
 
         # get customer id from account number
         customer = session.query(Customer).filter(Customer.account==account).one()
@@ -226,14 +236,14 @@ class StateDB:
         # processed is false because this is a newly updated bill; recieved is
         # true because it's assumed that all bills have been recieved except in
         # unusual cases
-        utilbill = UtilBill(customer, period_start=begin_date, period_end=end_date, 
-            estimated=False, processed=False, received=True)
+        utilbill = UtilBill(customer, period_start=begin_date,
+                period_end=end_date, estimated=False, processed=False,
+                received=True, date_received=date_received)
 
         # put the new UtilBill in the database
         session.add(utilbill)
 
     def create_payment(self, session, account, date, description, credit):
-
         customer = session.query(Customer).filter(Customer.account==account).one()
         new_payment = Payment(customer, date, description, credit)
 
@@ -242,7 +252,6 @@ class StateDB:
         return new_payment
 
     def update_payment(self, session, oid, date, description, credit):
-
         # get the object
         payment = session.query(Payment).filter(Payment.id == oid).one()
 
@@ -257,35 +266,30 @@ class StateDB:
         payment.credit = Decimal(credit)
 
     def delete_payment(self, session, oid):
-
         # get the object
         payment = session.query(Payment).filter(Payment.id == oid).one()
 
         session.delete(payment)
 
-    '''periodbegin and periodend must be non-overlapping between bills.  This is in
-    direct opposition to the reebill period concept, which is a period that covers
-    all services for a given reebill and thus overlap between bills.  Therefore, 
-    a non overlapping period could be just the first utility service on the reebill.
-    If the periods overlap, payments will be applied more than once. See 11093293'''
     def find_payment(self, session, account, periodbegin, periodend):
-
+        '''periodbegin and periodend must be non-overlapping between bills.
+        This is in direct opposition to the reebill period concept, which is a
+        period that covers all services for a given reebill and thus overlap
+        between bills.  Therefore, a non overlapping period could be just the
+        first utility service on the reebill. If the periods overlap, payments
+        will be applied more than once. See 11093293'''
         payments = session.query(Payment).filter(Payment.customer_id == Customer.id) \
             .filter(Customer.account == account) \
             .filter(and_(Payment.date >= periodbegin, Payment.date < periodend)) \
             .all()
-
         return payments
         
 
     def payments(self, session, account):
-
         payments = session.query(Payment).join(Customer).filter(Customer.account==account).all()
-
         return payments
 
     def retrieve_status_days_since(self, session, start, limit):
-
         # SQLAlchemy query to get account & dates for all utilbills
         query = session.query(StatusDaysSince).with_lockmode("read")
 
@@ -297,7 +301,6 @@ class StateDB:
         return slice, count
 
     def retrieve_status_unbilled(self, session, start, limit):
-
         # SQLAlchemy query to get account & dates for all utilbills
         query = session.query(StatusUnbilled).with_lockmode("read")
 
