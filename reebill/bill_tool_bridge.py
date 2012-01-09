@@ -1735,7 +1735,8 @@ class BillToolBridge:
     # Handle utility bill upload
 
     @cherrypy.expose
-    def upload_utility_bill(self, account, begin_date, end_date, file_to_upload, **args):
+    def upload_utility_bill(self, account, begin_date, end_date,
+            file_to_upload, **args):
         self.check_authentication()
         try:
             session = None
@@ -1745,14 +1746,19 @@ class BillToolBridge:
             # get Python file object and file name as string from the CherryPy
             # object 'file_to_upload', and pass those to BillUpload so it's
             # independent of CherryPy
-            if self.billUpload.upload(account, begin_date, end_date, file_to_upload.file, file_to_upload.filename) is True:
+            upload_result = self.billUpload.upload(account, begin_date,
+                    end_date, file_to_upload.file, file_to_upload.filename)
+            if upload_result is True:
                 session = self.state_db.session()
-                self.state_db.insert_bill_in_database(session, account, begin_date, end_date)
+                self.state_db.insert_bill_in_database(session, account,
+                        begin_date, end_date, datetime.utcnow())
                 session.commit()
                 return ju.dumps({'success':True})
             else:
-                self.logger.error('file upload failed:', begin_date, end_date, file_to_upload.filename)
-                return ju.dumps({'success':False, 'errors':{'reason':'file upload failed', 'details':'Returned False'}})
+                self.logger.error('file upload failed:', begin_date, end_date,
+                        file_to_upload.filename)
+                return ju.dumps({'success':False, 'errors': {
+                    'reason':'file upload failed', 'details':'Returned False'}})
         except Exception as e: 
             if session is not None: 
                 try:
@@ -1760,7 +1766,8 @@ class BillToolBridge:
                 except:
                     print "Could not rollback session"
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return ju.dumps({'success': False, 'errors':{'reason': str(e),
+                'details':traceback.format_exc()}})
 
     #
     ################
