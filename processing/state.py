@@ -3,6 +3,7 @@
 Utility functions to interact with state database
 """
 import os, sys
+import datetime
 from datetime import timedelta
 import sqlalchemy
 from sqlalchemy import Table, Integer, String, Float, MetaData, ForeignKey
