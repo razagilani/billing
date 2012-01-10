@@ -200,32 +200,35 @@ class StateDB:
         return slice, count
 
 
-    def list_utilbills(self, session, account, start, limit):
+    def list_utilbills(self, session, account, start=None, limit=None):
         '''Queries the database for account, start date, and end date of bills
         in a slice of the utilbills table; returns the slice and the total
-        number of rows in the table (for paging).'''
+        number of rows in the table (for paging). If 'start' is not given, all
+        bills are returned. If 'start' is given but 'limit' is not, all bills
+        starting with index 'start'. If both 'start' and 'limit' are given,
+        returns bills with indices in [start, start + limit).'''
 
         # SQLAlchemy query to get account & dates for all utilbills
         query = session.query(UtilBill).with_lockmode('read').join(Customer). \
             filter(Customer.account==account).order_by(Customer.account, UtilBill.period_start)
 
+        if start is None:
+            return query, query.count()
+        if limit is None:
+            return query[start:], query.count()
         # SQLAlchemy does SQL 'limit' with Python list slicing
-        slice = query[start:start + limit]
-
-        count = query.count()
-
-        return slice, count
+        return query[start:start + limit], query.count()
 
     def insert_bill_in_database(self, session, account, begin_date, end_date,
-            date_received):
+            date_received, received=True):
         '''Inserts a a row into the utilbill table when the bill file has been
         uploaded. 'date_recieved' should be None for a utility bill that is
         supposed to exist but that has not been recieved, e.g. for skipped
         bills or customers that should have been billed by their utility but
         have not. (The converse is not necessarily true: e.g. 'date_recieved'
-        will be None for early utilbills whose recieved date is unknown. So we
-        still use the "recieved" column to record whether a utilbill has been
-        recieved or not.)'''
+        will be None for early utilbills whose recieved date is unknown.)
+        'received' should be False for bills that are supposed to exist but do
+        not.)'''
 
         # get customer id from account number
         customer = session.query(Customer).filter(Customer.account==account).one()
