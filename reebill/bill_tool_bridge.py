@@ -1743,11 +1743,18 @@ class BillToolBridge:
             if not account or not begin_date or not end_date or not file_to_upload:
                 raise ValueError("Bad Parameter Value")
 
+            # convert dates, which come in as strings, into actual date objects
+            begin_date_as_date = datetime.strptime(begin_date, '%Y-%m-%d').date()
+            end_date_as_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+            session = self.state_db.session()
+
             # if begin_date does not match end date of latest existing bill,
             # create hypothetical bills to cover the gap
-            latest_end_date = state.last_utilbill_end_date(self.state_db.session(), account)
-            if begin_date > latest_end_date:
-                self.state_db.fill_in_hypothetical_bills(latest_end_date, start_date)
+            latest_end_date = self.state_db.last_utilbill_end_date(session, account)
+            if begin_date_as_date > latest_end_date:
+                self.state_db.fill_in_hypothetical_utilbills(session, account, latest_end_date, begin_date_as_date)
+                session.commit()
 
             # get Python file object and file name as string from the CherryPy
             # object 'file_to_upload', and pass those to BillUpload so it's
@@ -1755,7 +1762,6 @@ class BillToolBridge:
             upload_result = self.billUpload.upload(account, begin_date,
                     end_date, file_to_upload.file, file_to_upload.filename)
             if upload_result is True:
-                session = self.state_db.session()
                 self.state_db.record_utilbill_in_database(session, account,
                         begin_date, end_date, datetime.utcnow())
                 session.commit()
