@@ -1750,7 +1750,7 @@ class BillToolBridge:
                     end_date, file_to_upload.file, file_to_upload.filename)
             if upload_result is True:
                 session = self.state_db.session()
-                self.state_db.insert_bill_in_database(session, account,
+                self.state_db.record_utilbill_in_database(session, account,
                         begin_date, end_date, datetime.utcnow())
                 session.commit()
                 return ju.dumps({'success':True})

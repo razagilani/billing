@@ -3,10 +3,7 @@
 Utility functions to interact with state database
 """
 import os, sys
-sys.stdout = sys.stderr
-import MySQLdb
-from optparse import OptionParser
-
+from datetime import timedelta
 import sqlalchemy
 from sqlalchemy import Table, Integer, String, Float, MetaData, ForeignKey
 from sqlalchemy import create_engine
@@ -15,6 +12,30 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
 from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, StatusUnbilled
+sys.stdout = sys.stderr
+
+def guess_utilbill_periods(start_date, end_date):
+    '''Returns a list of (start, end) tuples representing a guess of
+    utility bill periods in the date range [start_date, end_date). This is
+    for producing "hypothetical" utility bills.'''
+    if end_date <= start_date:
+        raise ValueError('start date must precede end date.')
+
+    # determine how many bills there are: divide total number of days by
+    # hard-coded average period length of existing utilbills (computed using
+    # utilbill_histogram.py), and round to nearest integer--but never go below
+    # 1, since there must be at least 1 bill
+    num_bills = max(1, int(round((end_date - start_date).days / 30.872)))
+
+    # each bill's period will have the same length
+    period_length = (end_date - start_date).days / num_bills
+
+    # generate periods
+    periods = []
+    for i in range(num_bills):
+        periods.append((start_date + timedelta(days=i*period_length),
+                start_date + timedelta(days=(i+1)*period_length)))
+    return periods
 
 class StateDB:
 
@@ -199,7 +220,6 @@ class StateDB:
 
         return slice, count
 
-
     def list_utilbills(self, session, account, start=None, limit=None):
         '''Queries the database for account, start date, and end date of bills
         in a slice of the utilbills table; returns the slice and the total
@@ -219,29 +239,20 @@ class StateDB:
         # SQLAlchemy does SQL 'limit' with Python list slicing
         return query[start:start + limit], query.count()
 
-    def insert_bill_in_database(self, session, account, begin_date, end_date,
-            date_received, received=True):
-        '''Inserts a a row into the utilbill table when the bill file has been
-        uploaded. 'date_recieved' should be None for a utility bill that is
-        supposed to exist but that has not been recieved, e.g. for skipped
-        bills or customers that should have been billed by their utility but
-        have not. (The converse is not necessarily true: e.g. 'date_recieved'
-        will be None for early utilbills whose recieved date is unknown.)
-        'received' should be False for bills that are supposed to exist but do
-        not.)'''
-
+    def record_utilbill_in_database(self, session, account, begin_date,
+            end_date, date_received):
+        '''Inserts a row into the utilbill table when a utility bill file has
+        been uploaded. Currently this only works for a Complete bill (see
+        comment in db_objects.UtilBill for explanation of utility bill states).
+        The bill is initially marked as un-processed.'''
         # get customer id from account number
         customer = session.query(Customer).filter(Customer.account==account).one()
 
-        # make a new UtilBill with the customer id and dates:
-        # reebill_id is NULL in the database because there's no ReeBill
-        # associated with this UtilBill yet; estimated is false (0) by default;
-        # processed is false because this is a newly updated bill; recieved is
-        # true because it's assumed that all bills have been recieved except in
-        # unusual cases
-        utilbill = UtilBill(customer, period_start=begin_date,
-                period_end=end_date, estimated=False, processed=False,
-                received=True, date_received=date_received)
+        # make a new UtilBill with the customer id and dates (UtilBill
+        # constructor defaults to processed=False)
+        utilbill = UtilBill(customer, state=UtilBill.Complete,
+                period_start=begin_date, period_end=end_date,
+                date_received=date_received)
 
         # put the new UtilBill in the database
         session.add(utilbill)
