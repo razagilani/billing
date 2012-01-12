@@ -1986,12 +1986,19 @@ class BillToolBridge:
             session = self.state_db.session()
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
-            new_meter = reebill.new_meter(service)
-            new_registers = reebill.new_register(service, new_meter['identifier'])
-            # both an actual and shadow register get created
+
+            # node insertions are done by selecting a sibling node and creating
+            # a new node based on the context of that selection.
 
             new_node = None
             if node_type == 'meter':
+                # in the case of inserting a meter, we simply need to know
+                # for which service the meter will be created since meters
+
+                new_meter = reebill.new_meter(service)
+                # both an actual and shadow register get created (actual, shadow)
+                new_registers = reebill.new_register(service, new_meter['identifier'])
+
                 register_nodes = [{
                     'id': str(UUID.uuid4()),
                     'leaf': True,
@@ -2012,6 +2019,23 @@ class BillToolBridge:
                     'node_type': 'meter',
                     'node_key': new_meter['identifier'], 
                 }
+            elif node_type == 'register':
+                # in the case of inserting a register, we need to find
+                # the parent of the currently selected register node
+                meter = reebill.meter_for_register(service, node_key)
+                new_registers = reebill.new_register(service, meter['identifier'])
+                new_node = {
+                    'id': str(UUID.uuid4()),
+                    'leaf': True,
+                    'text': new_registers[0]['identifier'],
+                    'service': service,
+                    'account': account, 
+                    'sequence': sequence, 
+                    'node_type': 'register',
+                    'node_key': new_registers[0]['identifier'],
+                }
+
+
 
 
             self.reebill_dao.save_reebill(reebill)
@@ -2040,6 +2064,19 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value")
 
             session = self.state_db.session()
+
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+
+            if reebill:
+                if node_type == 'meter':
+
+                    # retrieve this meter based on node_key
+                    reebill.delete_meter(service, node_key)
+
+                elif node_type == 'register':
+                    raise Exception("finish me")
+
+            self.reebill_dao.save_reebill(reebill)
 
             session.commit()
 
@@ -2106,6 +2143,23 @@ class BillToolBridge:
                     }
                         
                     # update the meter fields
+                elif node_type == 'register':
+                    # retrieve this meter based on node_key
+                    reebill.set_register_identifier(service, node_key, text)
+
+                    # now that it has been changed, retrieve it with the new name
+                    register = reebill.actual_register(service, text)
+
+                    updated_node = {
+                        'id': str(UUID.uuid1()),
+                        'leaf': True,
+                        'text': register['identifier'],
+                        'service': service,
+                        'account': account, 
+                        'sequence': sequence, 
+                        'node_type': 'register',
+                        'node_key': register['identifier'], 
+                    }
 
             self.reebill_dao.save_reebill(reebill)
 
