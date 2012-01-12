@@ -10,6 +10,7 @@ class Customer(object):
     def __repr__(self):
         return '<Customer(%s, %s, %s)>' \
                 % (self.name, self.account, self.discountrate)
+
 class ReeBill(object):
     def __init__(self, customer, sequence):
         self.customer = customer
@@ -18,14 +19,32 @@ class ReeBill(object):
     def __repr__(self):
         return '<ReeBill(%s, %s, %s)>' \
                 % (self.customer, self.sequence, self.issued)
+
 class UtilBill(object):
-    def __init__(self, customer, period_start, period_end, \
-            estimated, processed, received):
+    # utility bill states:
+    # 1. Complete: actual non-estimated utility bill.
+    # 2. Utility estimated: actual utility bill whose contents were estimated by
+    # the utility (and which will be corrected later to become Complete).
+    # 3. Skyline estimated: a bill that is known to exist (and whose dates are
+    # correct) but whose contents were estimated by Skyline.
+    # 4. Hypothetical: Skyline supposes that there is probably a bill during a
+    # certain time period and estimates what its contents would be if it existed.
+    # Such a bill may not really exist (since we can't even know how many bills
+    # there are in a given period of time), and if it does exist, its actual dates
+    # will probably be different than the guessed ones.
+    Complete, UtilityEstimated, SkylineEstimated, Hypothetical = range(4)
+
+    def __init__(self, customer, state, period_start=None, period_end=None,
+            date_received=None, processed=False):
+        '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
+        etc.'''
         self.customer = customer
+        self.state = state
         self.period_start = period_start
         self.period_end = period_end
-        self.estimated = estimated
-        self.received = received
+        self.date_received = date_received
+        self.processed = processed
+
     def __repr__(self):
         return '<UtilBill(%s, %s, %s)>' \
                 % (self.customer, self.period_start, self.period_end)
