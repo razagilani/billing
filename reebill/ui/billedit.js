@@ -136,7 +136,9 @@ function renderWidgets()
                 emptyText: 'Select a file to upload',
                 name: 'file_to_upload',
                 buttonText: 'Choose file...',
-                buttonCfg: { width:80 }
+                buttonCfg: { width:80 },
+                //allowBlank: true
+                //disabled: true
             },
         ],
 

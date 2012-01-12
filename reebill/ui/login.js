@@ -16,7 +16,8 @@ var prettyField = function(name, label, inputType) {
     });
 };
 
-var nameField = new prettyField('username', 'Username');
+// TODO change "Username" label to "identifier"
+var nameField = new prettyField('identifier', 'Username');
 
 var passwordField = new prettyField('password', 'Password', 'password');
 
