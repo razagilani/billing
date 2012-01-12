@@ -3,10 +3,8 @@
 Utility functions to interact with state database
 """
 import os, sys
-sys.stdout = sys.stderr
-import MySQLdb
-from optparse import OptionParser
-
+import datetime
+from datetime import timedelta
 import sqlalchemy
 from sqlalchemy import Table, Integer, String, Float, MetaData, ForeignKey
 from sqlalchemy import create_engine
@@ -15,6 +13,34 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
 from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, StatusUnbilled
+sys.stdout = sys.stderr
+
+def guess_utilbill_periods(start_date, end_date):
+    '''Returns a list of (start, end) tuples representing a guess of
+    utility bill periods in the date range [start_date, end_date). This is
+    for producing "hypothetical" utility bills.'''
+    if end_date <= start_date:
+        raise ValueError('start date must precede end date.')
+
+    # determine how many bills there are: divide total number of days by
+    # hard-coded average period length of existing utilbills (computed using
+    # utilbill_histogram.py), and round to nearest integer--but never go below
+    # 1, since there must be at least 1 bill
+    num_bills = max(1, int(round((end_date - start_date).days / 30.872)))
+
+    # each bill's period will have the same length (except possibly the last one)
+    period_length = (end_date - start_date).days / num_bills
+
+    # generate periods: all periods except the last have length
+    # 'period_length'; last period may be slightly longer to fill up any
+    # remaining space
+    periods = []
+    for i in range(num_bills-1):
+        periods.append((start_date + timedelta(days= i * period_length),
+                start_date + timedelta(days= (i + 1) * period_length)))
+    periods.append((start_date + timedelta(days= (num_bills-1) * period_length),
+        end_date))
+    return periods
 
 class StateDB:
 
@@ -143,6 +169,13 @@ class StateDB:
 
         return max_sequence
         
+    def last_utilbill_end_date(self, session, account):
+        '''Returns the end date of the latest utilbill for the customer given by 'account'.'''
+        customer = session.query(Customer).filter(Customer.account==account).one()
+        max_end_date = session.query(sqlalchemy.func.max(UtilBill.period_end)) \
+                .filter(UtilBill.customer_id==customer.id).one()[0]
+        return max_end_date
+
     def new_rebill(self, session, account, sequence):
 
         customer = session.query(Customer).filter(Customer.account==account).one()
@@ -153,7 +186,9 @@ class StateDB:
     def issue(self, session, account, sequence):
 
         customer = session.query(Customer).filter(Customer.account==account).one()
-        reeBill = session.query(ReeBill).filter(ReeBill.customer_id==customer.id).filter(ReeBill.sequence==sequence).one()
+        reeBill = session.query(ReeBill) \
+                .filter(ReeBill.customer_id==customer.id) \
+                .filter(ReeBill.sequence==sequence).one()
         reeBill.issued = 1
 
     def account_exists(self, session, account):
@@ -191,7 +226,8 @@ class StateDB:
         # subquery examples use multiple queries but that shouldn't be
         # necessary
         customer = session.query(Customer).filter(Customer.account==account).one()
-        sequences = session.query(ReeBill.sequence).with_lockmode("read").filter(ReeBill.customer_id==customer.id).all()
+        sequences = session.query(ReeBill.sequence).with_lockmode("read") \
+                .filter(ReeBill.customer_id==customer.id).all()
 
         # sequences is a list of tuples of numbers, so convert it into a plain list
         result = map((lambda x: x[0]), sequences)
@@ -207,44 +243,60 @@ class StateDB:
 
         return slice, count
 
-
-    '''Queries the database for account, start date, and
-    end date of bills in a slice of the utilbills table; returns the slice and the
-    total number of rows in the table (for paging).'''
-    def list_utilbills(self, session, account, start, limit):
+    def list_utilbills(self, session, account, start=None, limit=None):
+        '''Queries the database for account, start date, and end date of bills
+        in a slice of the utilbills table; returns the slice and the total
+        number of rows in the table (for paging). If 'start' is not given, all
+        bills are returned. If 'start' is given but 'limit' is not, all bills
+        starting with index 'start'. If both 'start' and 'limit' are given,
+        returns bills with indices in [start, start + limit).'''
 
         # SQLAlchemy query to get account & dates for all utilbills
         query = session.query(UtilBill).with_lockmode('read').join(Customer). \
             filter(Customer.account==account).order_by(Customer.account, UtilBill.period_start)
 
+        if start is None:
+            return query, query.count()
+        if limit is None:
+            return query[start:], query.count()
         # SQLAlchemy does SQL 'limit' with Python list slicing
-        slice = query[start:start + limit]
+        return query[start:start + limit], query.count()
 
-        count = query.count()
+    def record_utilbill_in_database(self, session, account, begin_date,
+            end_date, date_received):
+        '''Inserts a row into the utilbill table when a utility bill file has
+        been uploaded. Currently this only works for a Complete bill (see
+        comment in db_objects.UtilBill for explanation of utility bill states).
+        The bill is initially marked as un-processed.'''
+        # get customer id from account number
+        customer = session.query(Customer).filter(Customer.account==account).one()
 
-        return slice, count
+        # make a new UtilBill with the customer id and dates (UtilBill
+        # constructor defaults to processed=False)
+        utilbill = UtilBill(customer, state=UtilBill.Complete,
+                period_start=begin_date, period_end=end_date,
+                date_received=date_received)
 
-    '''Inserts a a row into the utilbill table when the bill file has been
-    uploaded.'''
-    def insert_bill_in_database(self, session, account, begin_date, end_date):
+        # put the new UtilBill in the database
+        session.add(utilbill)
+    
+    def fill_in_hypothetical_utilbills(self, session, account, begin_date,
+            end_date):
+        '''Creates hypothetical bills in MySQL covering the period [begin_date, end_date).'''
+        # TODO could this be combined with record_utilbill_in_database?
 
         # get customer id from account number
         customer = session.query(Customer).filter(Customer.account==account).one()
 
-        # make a new UtilBill with the customer id and dates:
-        # reebill_id is NULL in the database because there's no ReeBill
-        # associated with this UtilBill yet; estimated is false (0) by default;
-        # processed is false because this is a newly updated bill; recieved is
-        # true because it's assumed that all bills have been recieved except in
-        # unusual cases
-        utilbill = UtilBill(customer, period_start=begin_date, period_end=end_date, 
-            estimated=False, processed=False, received=True)
-
-        # put the new UtilBill in the database
-        session.add(utilbill)
+        for (start, end) in guess_utilbill_periods(begin_date, end_date):
+            # make a UtilBill
+            utilbill = UtilBill(customer, state=UtilBill.Hypothetical,
+                    period_start=start, period_end=end)
+            # put it in the database
+            session.add(utilbill)
+            print 'added utilbill for', start, end
 
     def create_payment(self, session, account, date, description, credit):
-
         customer = session.query(Customer).filter(Customer.account==account).one()
         new_payment = Payment(customer, date, description, credit)
 
@@ -253,7 +305,6 @@ class StateDB:
         return new_payment
 
     def update_payment(self, session, oid, date, description, credit):
-
         # get the object
         payment = session.query(Payment).filter(Payment.id == oid).one()
 
@@ -268,35 +319,30 @@ class StateDB:
         payment.credit = Decimal(credit)
 
     def delete_payment(self, session, oid):
-
         # get the object
         payment = session.query(Payment).filter(Payment.id == oid).one()
 
         session.delete(payment)
 
-    '''periodbegin and periodend must be non-overlapping between bills.  This is in
-    direct opposition to the reebill period concept, which is a period that covers
-    all services for a given reebill and thus overlap between bills.  Therefore, 
-    a non overlapping period could be just the first utility service on the reebill.
-    If the periods overlap, payments will be applied more than once. See 11093293'''
     def find_payment(self, session, account, periodbegin, periodend):
-
+        '''periodbegin and periodend must be non-overlapping between bills.
+        This is in direct opposition to the reebill period concept, which is a
+        period that covers all services for a given reebill and thus overlap
+        between bills.  Therefore, a non overlapping period could be just the
+        first utility service on the reebill. If the periods overlap, payments
+        will be applied more than once. See 11093293'''
         payments = session.query(Payment).filter(Payment.customer_id == Customer.id) \
             .filter(Customer.account == account) \
             .filter(and_(Payment.date >= periodbegin, Payment.date < periodend)) \
             .all()
-
         return payments
         
 
     def payments(self, session, account):
-
         payments = session.query(Payment).join(Customer).filter(Customer.account==account).all()
-
         return payments
 
     def retrieve_status_days_since(self, session, start, limit):
-
         # SQLAlchemy query to get account & dates for all utilbills
         query = session.query(StatusDaysSince).with_lockmode("read")
 
@@ -308,7 +354,6 @@ class StateDB:
         return slice, count
 
     def retrieve_status_unbilled(self, session, start, limit):
-
         # SQLAlchemy query to get account & dates for all utilbills
         query = session.query(StatusUnbilled).with_lockmode("read")
 
