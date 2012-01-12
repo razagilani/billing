@@ -1,14 +1,13 @@
-start transaction;
+use skyline_[ENVIRONMENT]
 
-alter table utilbill add date_recieved datetime
-alter table utilbill rename received state integer;
+alter table utilbill add date_recieved datetime;
+alter table utilbill change received state integer;
 update utilbill set state = 0;
 update utilbill set state = 1 where estimated = 1;
 alter table utilbill drop column estimated;
-update utilbill set state = 4 where customer_id = 5;
+update utilbill set state = 3 where customer_id = 5;
 
-DROP TABLE IF EXISTS `skyline_stage`.`status_days_since`;
-USE `skyline_stage`;
+DROP TABLE IF EXISTS `status_days_since`;
 CREATE  OR REPLACE ALGORITHM=UNDEFINED DEFINER=`root`@`10.0.0.%` SQL SECURITY INVOKER VIEW `status_days_since` AS 
 (select `c`.`id`, `c`.`account` AS `account`,
 `c`.`name` AS `name`,
