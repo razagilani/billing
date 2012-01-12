@@ -611,6 +611,20 @@ class MongoReebill(object):
         meter = next((meter for meter in self.meters_for_service(service) if meter['identifier'] == identifier), None)
         return meter
 
+    def delete_meter(self, service, identifier):
+        meters = self.meters_for_service(service)
+        for meter in meters:
+            print "meter['identifier'] %s %s" % (meter['identifier'], type(meter['identifier']))
+            print "identifier %s %s" % (identifier, type(identifier))
+            print "identifier == meter['identifier']  %s" % (identifier == meter['identifier'])
+            print "identifier is meter['identifier']  %s" % (identifier is meter['identifier'])
+        new_meters = [meter for meter in meters if meter['identifier'] != identifier]
+        print "new set of meters %s" % new_meters
+        
+        for ub in self.dictionary['utilbills']:
+            if ub['service'] == service:
+                ub['meters'] = new_meters
+
     def new_meter(self, service):
 
         new_meter = {
@@ -681,15 +695,58 @@ class MongoReebill(object):
 
     def set_meter_identifier(self, service, old_identifier, new_identifier):
 
+        if old_identifier == new_identifier:
+            return
+
+        # TODO: 23251399 - probably need a better strategy to enforce uniqueness
+        for meter in self.meters_for_service(service):
+            if meter['identifier'] == new_identifier:
+                raise Exception("Duplicate Identifier")
+
         for meter in self.meters_for_service(service):
             if meter['identifier'] == old_identifier:
                 meter['identifier'] = new_identifier
 
+    def set_register_identifier(self, service, old_identifier, new_identifier):
 
+        if old_identifier == new_identifier:
+            return
+
+        # TODO: 23251399 - probably need a better strategy to enforce uniqueness
+        for meter in self.meters_for_service(service):
+            for register in meter['registers']:
+                if register['identifier'] == new_identifier:
+                    raise Exception("Duplicate Identifier")
+
+        for meter in self.meters_for_service(service):
+            for register in meter['registers']:
+                if register['identifier'] == old_identifier:
+                    # sets both actual and shadow regisers
+                    register['identifier'] = new_identifier
+
+    def meter_for_register(self, service, identifier):
+        meters = self.meters_for_service(service)
+
+        for meter in meters:
+            for register in meter['registers']:
+                if register['identifier'] == identifier:
+                    return meter
     @property
     def meters(self):
         '''Returns a dictionary mapping service names to lists of meters.'''
         return dict([(service, self.meters_for_service(service)) for service in self.services])
+
+
+    def actual_register(self, service, identifier):
+
+        actual_register = [register for register in self.actual_registers(service) if register['identifier'] == identifier]
+
+        if len(actual_register) == 0:
+            return None
+        elif len(actual_register) ==1:
+            return actual_register[0]
+        else:
+            raise Exception("More than one actual register named %s" % identifier)
 
     def actual_registers(self, service):
         ''' For all meters of a given service, return all the actual registers.
@@ -910,17 +967,17 @@ class MongoReebill(object):
         # zero out statistics section
         statistics = self.statistics
 
-        statistics["conventional_consumed"] = None
-        statistics["renewable_consumed"] = None
-        statistics["renewable_utilization"] = None
-        statistics["conventional_utilization"] = None
-        statistics["renewable_produced"] = None
-        statistics["co2_offset"] = None
-        statistics["total_savings"] = None
-        statistics["total_renewable_consumed"] = None
-        statistics["total_renewable_produced"] = None
-        statistics["total_trees"] = None
-        statistics["total_co2_offset"] = None
+        statistics["conventional_consumed"] = 0
+        statistics["renewable_consumed"] = 0
+        statistics["renewable_utilization"] = 0
+        statistics["conventional_utilization"] = 0
+        statistics["renewable_produced"] = 0
+        statistics["co2_offset"] = 0
+        statistics["total_savings"] = Decimal("0.00")
+        statistics["total_renewable_consumed"] = 0
+        statistics["total_renewable_produced"] = 0
+        statistics["total_trees"] = 0
+        statistics["total_co2_offset"] = 0
 
         # TODO: 22554017
         # leave consumption trend alone since we want to carry it forward until it is based on the cubes
