@@ -398,15 +398,6 @@ function renderWidgets()
         loadReeBillUIForSequence(accountCombo.getValue(), sequenceCombo.getValue());
     });
 
-    // TODO: 14564121 a hack so that a newly rolled bill may be accessed by directly entering its sequence
-    // remove this when https://www.pivotaltracker.com/story/show/14564121 completes
-    sequenceCombo.on('specialkey', function(field, e) {
-        if (e.getKey() == e.ENTER) {
-            loadReeBillUIForSequence(accountCombo.getValue(), sequenceCombo.getValue());
-        }
-    });
-
-
 
     /////////////////////////////////////////////////////
     // Functions for ReeBill Structure Editor event
@@ -487,6 +478,7 @@ function renderWidgets()
 
     function configureReeBillEditor(account, sequence)
     {
+
         var reeBillTab = tabPanel.getItem('reeBillTab');
 
         var reeBillEditorTree = Ext.getCmp('reeBillEditorTree');
@@ -529,7 +521,11 @@ function renderWidgets()
                 reeBillEditorTreeEditor.startEdit(n.ui.textNode);
             }
 
-            var reeBillEditorTreeLoader = new Ext.tree.TreeLoader({dataUrl:'http://'+location.host+'/reebill/reebill_structure'});
+            var reeBillEditorTreeLoader = new Ext.tree.TreeLoader({
+                dataUrl:'http://'+location.host+'/reebill/reebill_structure',
+                // defaults to true
+                clearOnLoad: true,
+            });
 
             reeBillEditorTree = new Ext.tree.TreePanel({
                 id: 'reeBillEditorTree',
@@ -566,7 +562,6 @@ function renderWidgets()
             onTreeEditComplete = function(treeEditor, n, o) {
                 //o - oldValue
                 //n - newValue
-                console.log("onTreeEditComplete");
                 editReeBillStructureNode('update_reebill_node', n)
             }
 
@@ -1298,17 +1293,12 @@ function renderWidgets()
     // This is due to the necessity to batch upload all records. See Grid Editor save handler.
     // We leave the proxy here for loading data as well as if and when records have entity 
     // id's and row level CRUD can occur.
-    var aChargesStoreProxy = new Ext.data.HttpProxy({
-        method: 'GET',
-        prettyUrls: false,
-        // see options parameter for Ext.Ajax.request
+
+    // make a connections instance so that it may be specifically aborted
+    var aChargesStoreProxyConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/actualCharges',
-        /*api: {
-            // all actions except the following will use above url
-            create  : '',
-            update  : ''
-        }*/
-    });
+    })
+    var aChargesStoreProxy = new Ext.data.HttpProxy(aChargesStoreProxyConn);
 
     var aChargesStore = new Ext.data.GroupingStore({
         proxy: aChargesStoreProxy,
@@ -1665,17 +1655,10 @@ function renderWidgets()
         // This is due to the necessity to batch upload all records. See Grid Editor save handler.
         // We leave the proxy here for loading data as well as if and when records have entity 
         // id's and row level CRUD can occur.
-        var hChargesStoreProxy = new Ext.data.HttpProxy({
-            method: 'GET',
-            prettyUrls: false,
-            // see options parameter for Ext.Ajax.request
+        var hChargesStoreProxyConn = new Ext.data.Connection({
             url: 'http://'+location.host+'/reebill/hypotheticalCharges',
-            /*api: {
-                // all actions except the following will use above url
-                create  : '',
-                update  : ''
-            }*/
-        });
+        })
+        var hChargesStoreProxy = new Ext.data.HttpProxy(hChargesStoreProxyConn);
 
         var hChargesStore = new Ext.data.GroupingStore({
             proxy: hChargesStoreProxy,
@@ -1980,12 +1963,11 @@ function renderWidgets()
             // write all fields, not just those that changed
             writeAllFields: true 
         });
-
-        var CPRSRSIStoreProxy = new Ext.data.HttpProxy({
-            method: 'GET',
-            prettyUrls: false,
+        
+        var CPRSRSIStoreProxyConn = new Ext.data.Connection({
             url: 'http://'+location.host+'/reebill/cprsrsi',
         });
+        var CPRSRSIStoreProxy = new Ext.data.HttpProxy(CPRSRSIStoreProxyConn);
 
         var CPRSRSIStore = new Ext.data.JsonStore({
             proxy: CPRSRSIStoreProxy,
@@ -2230,11 +2212,10 @@ function renderWidgets()
             writeAllFields: true 
         });
 
-        var URSRSIStoreProxy = new Ext.data.HttpProxy({
-            method: 'GET',
-            prettyUrls: false,
+        var URSRSIStoreProxyConn = new Ext.data.Connection({
             url: 'http://'+location.host+'/reebill/ursrsi',
         });
+        var URSRSIStoreProxy = new Ext.data.HttpProxy(URSRSIStoreProxyConn);
 
         var URSRSIStore = new Ext.data.JsonStore({
             proxy: URSRSIStoreProxy,
@@ -3079,7 +3060,6 @@ function renderWidgets()
                                 var jsonData = null;
                                 try {
                                     jsonData = Ext.util.JSON.decode(result.responseText);
-                                    console.log(result.responseText);
                                     if (jsonData.success == false) {
                                         Ext.Msg.alert("Create new account failed: " + jsonData.errors.reason)
                                     }
@@ -3140,7 +3120,6 @@ function renderWidgets()
                             var jsonData = null;
                             try {
                                 jsonData = Ext.util.JSON.decode(result.responseText);
-                                console.log(result.responseText);
                                 if (jsonData.success == false) {
                                     Ext.Msg.alert("setBillImageResolution failed: " + jsonData.errors)
                                 }
@@ -3168,10 +3147,8 @@ function renderWidgets()
                 var jsonData = null;
                 try {
                     jsonData = Ext.util.JSON.decode(result.responseText);
-                    //console.log(result.responseText);
                     if (jsonData.success == true) {
                         resolution = jsonData['resolution'];
-                        //console.log('setting resolution to ' + jsonData['resolution']);
                         billImageResolutionField.setValue(resolution);
                     } else {
                         Ext.Msg.alert("getBillImageResolution failed: " + jsonData.errors);
@@ -3699,8 +3676,10 @@ function renderWidgets()
         updateStatusbar(account, null, null);
     }
 
-    function loadReeBillUIForSequence(account, sequence) {
+    var tid_1 = tid_2 = tid_3 = tid_4 = null;
 
+    function loadReeBillUIForSequence(account, sequence) {
+        
         if (account == null || sequence == null) {
             throw "Account and Sequence must be set";
         }
@@ -3710,7 +3689,10 @@ function renderWidgets()
         journalFormPanel.getForm().findField("sequence").setValue(sequence)
 
         // get utilbill period information from server
-        Ext.Ajax.request({
+
+        // abort previous transaction
+        if (tid_1 != null) Ext.Ajax.abort(tid_1);
+        tid_1 = Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/ubPeriods',
             params: {account: account, sequence: sequence},
             success: function(result, request) {
@@ -3733,7 +3715,9 @@ function renderWidgets()
         });
 
         // get the measured usage dates for each service
-        Ext.Ajax.request({
+        // abort previous transaction
+        if (tid_2 != null) Ext.Ajax.abort(tid_2);
+        tid_2 = Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/ubMeasuredUsages',
             params: {account: account, sequence: sequence},
             success: function(result, request) {
@@ -3756,7 +3740,9 @@ function renderWidgets()
         });
 
         // get the address information for this reebill 
-        Ext.Ajax.request({
+        // abort previous transaction
+        if (tid_3 != null) Ext.Ajax.abort(tid_3);
+        tid_3 = Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/addresses',
             params: {account: account, sequence: sequence},
             success: function(result, request) {
@@ -3778,13 +3764,25 @@ function renderWidgets()
             disableCaching: true,
         });
 
+        // abort this connection if previously loading
+        aChargesStore.proxy.getConnection().autoAbort = true;
         aChargesStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
+
+        // abort this connection if previously loading
+        hChargesStore.proxy.getConnection().autoAbort = true;
         hChargesStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
+
+
+        // abort this connection if previously loading
+        CPRSRSIStore.proxy.getConnection().autoAbort = true;
         CPRSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
+
+        // abort this connection if previously loading
+        URSRSIStore.proxy.getConnection().autoAbort = true;
         URSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
 
+        // TODO:23046181 abort connections in progress
         configureReeBillEditor(account, sequence);
-
 
         // url for getting bill images (calls bill_tool_bridge.getbillimage())
         reeBillImageURL = 'http://' + location.host + '/reebill/getReeBillImage';
@@ -3799,7 +3797,9 @@ function renderWidgets()
         
         // ajax call to generate image, get the name of it, and display it in a
         // new window
-        Ext.Ajax.request({
+        // abort previous transaction
+        if (tid_4 != null) Ext.Ajax.abort(tid_4);
+        tid_4 = Ext.Ajax.request({
             url: reeBillImageURL,
             params: {account: account, sequence: sequence, resolution: resolution},
             success: function(result, request) {
@@ -3827,16 +3827,13 @@ function renderWidgets()
             disablecaching: true,
         });
 
-
         // while waiting for the ajax request to finish, show a loading message
         // in the utilbill image box
         Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div', html:LOADING_MESSAGE, id: 'reebillimage'}, true);
 
-
-
-
         // finally, update the status bar with current selection
         updateStatusbar(account, sequence, 0);
+
     }
 }
 
