@@ -919,6 +919,7 @@ class MongoReebill(object):
 
         self.prior_balance = Decimal("0.00")
         self.total_due = Decimal("0.00")
+        self.balance_due = Decimal("0.00")
         self.payment_received = Decimal("0.00")
         self.balance_forward = Decimal("0.00")
 
