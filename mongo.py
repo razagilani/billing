@@ -255,7 +255,11 @@ class MongoReebill(object):
     
     @property
     def issue_date(self):
-        return python_convert(self.dictionary['issue_date'])
+        # TODO 23305127 17928227 20846595 
+        # If key is missing, return None seems to be best pattern.
+        # this pattern needs to be propogated throughout this class
+        if 'issue_date' in self.dictionary:
+            return python_convert(self.dictionary['issue_date'])
     @issue_date.setter
     def issue_date(self, value):
         self.dictionary['issue_date'] = value
