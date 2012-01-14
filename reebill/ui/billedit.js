@@ -179,6 +179,9 @@ function renderWidgets()
     // TODO maybe find a better way of dealing with date formats than this
     var utilbillGridDateFormat = 'Y-m-d';
 
+
+    // Used in utilBillGrid ajax call to cancel last call
+    var utilbillimg_tid = null;
     // paging grid
     var utilbillGrid = new Ext.grid.GridPanel({
         title:'Utility Bills',
@@ -225,7 +228,10 @@ function renderWidgets()
                     
                     // ajax call to generate image, get the name of it, and display it in a
                     // new window
-                    Ext.Ajax.request({
+                    if (utilbillimg_tid != null) {
+                        Ext.Ajax.abort(utilbillimg_tid);
+                    }
+                    utilbillimg_tid = Ext.Ajax.request({
                         url: theUrl,
                         params: {account: record.data.account, begin_date: formatted_begin_date_string,
                             end_date: formatted_end_date_string, resolution: resolution},
@@ -3678,12 +3684,17 @@ function renderWidgets()
         updateStatusbar(account, null, null);
     }
 
-    var tid_1 = tid_2 = tid_3 = tid_4 = null;
+    var tids = {}
 
     function loadReeBillUIForSequence(account, sequence) {
         
         if (account == null || sequence == null) {
             throw "Account and Sequence must be set";
+        }
+
+        // enumerate prior ajax requests made here and cancel them
+        for (var tid in tids) {
+            Ext.Ajax.abort(tids[tid]);
         }
 
         // update the journal form panel so entries get submitted to currently selected account
@@ -3693,8 +3704,7 @@ function renderWidgets()
         // get utilbill period information from server
 
         // abort previous transaction
-        if (tid_1 != null) Ext.Ajax.abort(tid_1);
-        tid_1 = Ext.Ajax.request({
+        tids.tid_1 = Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/ubPeriods',
             params: {account: account, sequence: sequence},
             success: function(result, request) {
@@ -3718,8 +3728,7 @@ function renderWidgets()
 
         // get the measured usage dates for each service
         // abort previous transaction
-        if (tid_2 != null) Ext.Ajax.abort(tid_2);
-        tid_2 = Ext.Ajax.request({
+        tids.tid_2 = Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/ubMeasuredUsages',
             params: {account: account, sequence: sequence},
             success: function(result, request) {
@@ -3743,8 +3752,7 @@ function renderWidgets()
 
         // get the address information for this reebill 
         // abort previous transaction
-        if (tid_3 != null) Ext.Ajax.abort(tid_3);
-        tid_3 = Ext.Ajax.request({
+        tids.tid_3 = Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/addresses',
             params: {account: account, sequence: sequence},
             success: function(result, request) {
@@ -3786,9 +3794,6 @@ function renderWidgets()
         // TODO:23046181 abort connections in progress
         configureReeBillEditor(account, sequence);
 
-        // url for getting bill images (calls bill_tool_bridge.getbillimage())
-        reeBillImageURL = 'http://' + location.host + '/reebill/getReeBillImage';
-
         // image rendering resolution
         var menu = document.getElementById('reebillresolutionmenu');
         if (menu) {
@@ -3800,9 +3805,9 @@ function renderWidgets()
         // ajax call to generate image, get the name of it, and display it in a
         // new window
         // abort previous transaction
-        if (tid_4 != null) Ext.Ajax.abort(tid_4);
-        tid_4 = Ext.Ajax.request({
-            url: reeBillImageURL,
+        tids.tid_4 = Ext.Ajax.request({
+            url: 'http://' + location.host + '/reebill/getReeBillImage',
+            disablecaching: true,
             params: {account: account, sequence: sequence, resolution: resolution},
             success: function(result, request) {
                 var jsonData = null;
@@ -3820,13 +3825,12 @@ function renderWidgets()
             },
             // this is called when the server returns 500 as well as when there's no response
             failure: function() { 
-                Ext.MessageBox.alert('ajax failure', reeBillImageURL); 
+                Ext.MessageBox.alert('ajax failure loading bill image'); 
 
                 // replace reebill image with a missing graphic
                 Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div',
                     html: NO_REEBILL_FOUND_MESSAGE, id: 'reebillimage'}, true);
             },
-            disablecaching: true,
         });
 
         // while waiting for the ajax request to finish, show a loading message
