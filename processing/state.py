@@ -98,7 +98,7 @@ class StateDB:
         import logging
         logging.basicConfig()
         #logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
-        logging.getLogger('sqlalchemy.pool').setLevel(logging.DEBUG)
+        #logging.getLogger('sqlalchemy.pool').setLevel(logging.DEBUG)
 
         # session
         # global variable for the database session: SQLAlchemy will give an error if
