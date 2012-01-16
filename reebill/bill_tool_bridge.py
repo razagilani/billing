@@ -20,8 +20,6 @@ import uuid as UUID
 import inspect
 import logging
 
-import pymongo
-
 from billing.processing import process
 from billing.processing import state
 from billing.processing import fetch_bill_data as fbd
@@ -36,34 +34,11 @@ from billing.reebill import bill_mailer
 from billing import mongo
 import billing.processing.rate_structure as rs
 from billing.processing import db_objects
+from billing.users import UserDAO, User
 
 sys.stdout = sys.stderr
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
-
-# temporary hard-coded user & password data
-# TODO 20217763 replace with externalized of usernames & password hashes
-# TODO 20217755 save preferences somewhere
-# https://www.pivotaltracker.com/story/show/22735151 
-#USERS = {
-    #'dev': {
-        #'password': 'dev',
-        #'preferences': {'bill_image_resolution': '100'}
-    #},
-    #'djonas': {
-        #'password': 'djonas',
-        #'preferences': {'bill_image_resolution': '250'}
-    #},
-    #'randrews': {
-        #'password': 'randrews',
-        #'preferences': {'bill_image_resolution': '250'}
-    #},
-#}
-DEFAULT_USER_IDENTIFIER = "default"
-DEFAULT_USER_NAME = "Default User"
-DEFAULT_PREFERENCES = {
-    'bill_image_resolution': '250'
-}
 
 # TODO 11454025 rename to ProcessBridge or something
 class BillToolBridge:
@@ -194,10 +169,7 @@ class BillToolBridge:
         self.logger.setLevel(logging.DEBUG)
 
         # load users database
-        users_db_connection = pymongo.Connection(self.config.get('usersdb', 'host'),
-                int(self.config.get('usersdb', 'port')))
-        self.users_collection = users_db_connection[self.config.get('usersdb',
-            'database')][self.config.get('usersdb', 'collection')]
+        self.user_dao = UserDAO(dict(self.config.items('usersdb')))
 
         # create an instance representing the database
         statedb_config_section = self.config.items("statedb")
@@ -255,8 +227,8 @@ class BillToolBridge:
                 #'"%s", remember me: %s, type is %s') % (identifier, password, rememberme, type(rememberme)))
             #raise cherrypy.HTTPRedirect("/login.html")
 
-        user_dict = self.users_collection.find_one({'_id': identifier})
-        if not user_dict:
+        user = self.user_dao.load_user(identifier)
+        if user is None:
             self.logger.info(('login attempt failed: identifier "%s", password'
                 ' "%s", remember me: %s, type is %s') % (identifier, password,
                 rememberme, type(rememberme)))
@@ -281,10 +253,7 @@ class BillToolBridge:
         
         # store identifier & user preferences in cherrypy session object &
         # redirect to main page
-        cherrypy.session['identifier'] = identifier
-        cherrypy.session['username'] = user_dict['username']
-        #cherrypy.session['preferences'] = USERS[username]['preferences']
-        cherrypy.session['preferences'] = user_dict['preferences']
+        cherrypy.session['user'] = user
 
         # TODO logging passwords is obviously a bad idea
         # (also passwords are now ignored because openid doesn't need them)
@@ -300,15 +269,13 @@ class BillToolBridge:
         because it gets called in AJAX requests, which must return actual data
         instead of a redirect.'''
         try:
-            # if authenticated is turned off, skip the check and make sure the
+            # if authentication is turned off, skip the check and make sure the
             # session contains default data
             if not self.authentication_on:
-                if 'preferences' not in cherrypy.session:
-                    # TODO what's the right way to handle the "default user" with openid? do we use a special string to avoid 
-                    cherrypy.session['preferences'] = DEFAULT_PREFERENCES
-                    cherrypy.session['identifier'] = DEFAULT_USER_IDENTIFIER
+                if 'user' not in cherrypy.session:
+                    cherrypy.session['user'] = User.get_default_user()
                 return True
-            if 'identifier' not in cherrypy.session:
+            if 'user' not in cherrypy.session:
                 self.logger.info("Non-logged-in user was denied access to: %s" % \
                         inspect.stack()[1][3])
                 # TODO: 19664107
@@ -329,24 +296,7 @@ class BillToolBridge:
         self.check_authentication()
         try:
             return ju.dumps({'success':True,
-                    'username': cherrypy.session['username']})
-        except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e),
-                    'details':traceback.format_exc()}})
-
-    def save_preferences(self):
-        # for the "default user", do nothing
-        if cherrypy.session['identifier'] == DEFAULT_USER_IDENTIFIER:
-            return
-
-        self.check_authentication()
-        try:
-            # upsert the preferences sub-document of the user document with the
-            # preferences dict in the cherrypy session
-            self.users_collection.update({'_id':cherrypy.session['identifier']},
-                    {'username':cherrypy.session['username'],
-                    'preferences':cherrypy.session['preferences']})
+                    'username': cherrypy.session['user'].username})
         except Exception as e:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return ju.dumps({'success': False, 'errors':{'reason': str(e),
@@ -354,9 +304,9 @@ class BillToolBridge:
 
     @cherrypy.expose
     def logout(self):
-        if 'username' in cherrypy.session:
-            self.logger.info('user "%s" logged out' % (cherrypy.session['username']))
-            del cherrypy.session['username']
+        if 'user' in cherrypy.session:
+            self.logger.info('user "%s" logged out' % (cherrypy.session['user'].username))
+            del cherrypy.session['user']
         raise cherrypy.HTTPRedirect('/login.html')
 
 
@@ -1745,7 +1695,6 @@ class BillToolBridge:
     @cherrypy.expose
     def upload_utility_bill(self, account, begin_date, end_date,
             file_to_upload, **args):
-        print >> sys.stderr, 'started upload_utility_bill'
         self.check_authentication()
         try:
             session = None
@@ -1765,17 +1714,14 @@ class BillToolBridge:
                 self.state_db.fill_in_hypothetical_utilbills(session, account, latest_end_date, begin_date_as_date)
                 session.commit()
 
-            print >> sys.stderr, 'type(file_to_upload) is', type(file_to_upload)
             if file_to_upload.file is None:
                 # if there's no file, this is a "skyline estimated bill":
                 # record it in the database with that state, but don't upload
                 # anything
-                print >> sys.stderr, 'about to write in database'
                 self.state_db.record_utilbill_in_database(session, account,
                         begin_date, end_date, datetime.utcnow(),
                         state=db_objects.UtilBill.SkylineEstimated)
                 session.commit()
-                print >> sys.stderr, 'wrote in database'
                 return ju.dumps({'success':True})
             else:
                 # if there is a file, get the Python file object and name
@@ -1910,7 +1856,7 @@ class BillToolBridge:
         try:
             if not account or not sequence or not resolution:
                 raise ValueError("Bad Parameter Value")
-            resolution = cherrypy.session['preferences']['bill_image_resolution']
+            resolution = cherrypy.session['user'].preferences['bill_image_resolution']
             result = self.billUpload.getReeBillImagePath(account, sequence, resolution)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
@@ -1921,8 +1867,7 @@ class BillToolBridge:
     def getBillImageResolution(self, **kwargs):
         self.check_authentication()
         try:
-            resolution = cherrypy.session['preferences']['bill_image_resolution']
-            self.save_preferences()
+            resolution = cherrypy.session['user'].preferences['bill_image_resolution']
             return ju.dumps({'success':True, 'resolution': resolution})
         except Exception as e:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
@@ -1932,8 +1877,8 @@ class BillToolBridge:
     def setBillImageResolution(self, resolution, **kwargs):
         self.check_authentication()
         try:
-            cherrypy.session['preferences']['bill_image_resolution'] = int(resolution)
-            self.save_preferences()
+            cherrypy.session['user'].preferences['bill_image_resolution'] = int(resolution)
+            self.user_dao.save_user(cherrypy.session['user'])
             return ju.dumps({'success':True})
         except Exception as e:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
