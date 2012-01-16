@@ -1,26 +1,6 @@
 import sys
 import pymongo
 
-# (moved out of BillToolBridge)
-# temporary hard-coded user & password data
-# TODO 20217763 replace with externalized of usernames & password hashes
-# TODO 20217755 save preferences somewhere
-# https://www.pivotaltracker.com/story/show/22735151 
-#USERS = {
-    #'dev': {
-        #'password': 'dev',
-        #'preferences': {'bill_image_resolution': '100'}
-    #},
-    #'djonas': {
-        #'password': 'djonas',
-        #'preferences': {'bill_image_resolution': '250'}
-    #},
-    #'randrews': {
-        #'password': 'randrews',
-        #'preferences': {'bill_image_resolution': '250'}
-    #},
-#}
-
 class User:
     '''A class representing a user account. This is a thin wrapper around a
     Mongo document.'''

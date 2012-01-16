@@ -217,6 +217,7 @@ class BillToolBridge:
 
     ###########################################################################
     # authentication functions
+    # TODO might want to move most of this code (excluding the cherrypy stuff) into users.py
 
     @cherrypy.expose
     def login(self, identifier, password, rememberme='off', **kwargs):
