@@ -343,8 +343,9 @@ class BillToolBridge:
         try:
             # upsert the preferences sub-document of the user document with the
             # preferences dict in the cherrypy session
-            self.users_collection.update({'_id':cherrypy.session['username']},
-                    {'preferences':cherrypy.session['preferences']})
+            self.users_collection.update({'_id':cherrypy.session['identifier']},
+                    {'username':cherrypy.session['username'],
+                    'preferences':cherrypy.session['preferences']})
         except Exception as e:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return ju.dumps({'success': False, 'errors':{'reason': str(e),
