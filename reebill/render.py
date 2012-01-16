@@ -157,7 +157,7 @@ def stringify(d):
     d.update(dict([(k,'') for k,v in d.items() if v is None ]))
     return d
 
-def render(reebill, outputfile, backgrounds, verbose):
+def render(reebill, outputdir, outputfile, backgrounds, verbose):
 
 
     styles = getSampleStyleSheet()
@@ -279,12 +279,14 @@ def render(reebill, outputfile, backgrounds, verbose):
     secondPage = PageTemplate(id=secondPageName,frames=[backgroundF2, measuredUsageHeaderF, measuredUsageF, chargeDetailsHeaderF, chargeDetailsF])
     #
 
-    doc = SIBillDocTemplate(outputfile, pagesize=letter, showBoundary=0, allowSplitting=0)
-    doc.addPageTemplates([firstPage, secondPage])
+    # Create the customer account directory if it is absent
+    if not os.path.exists(outputdir):
+        os.mkdir(outputdir)
 
-    # instantiate a bill which will be bound to reportlab
-    #from billing import bill
-    #bill = bill.Bill(inputbill)
+    # TODO: 17377331 - find out why the failure is silent
+    # for some reasons, if the file path passed in does not exist, SIBillDocTemplate fails silently 
+    doc = SIBillDocTemplate("%s/%s" % (outputdir, outputfile), pagesize=letter, showBoundary=0, allowSplitting=0)
+    doc.addPageTemplates([firstPage, secondPage])
 
     Elements = []
 

@@ -609,8 +609,9 @@ class BillToolBridge:
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
+            # TODO 22598787 - branch awareness
             render.render(reebill, 
-                self.config.get("billdb", "billpath")+ "%s/%s.pdf" % (account, sequence),
+                self.config.get("billdb", "billpath")+ "%s" % account, "%s.pdf" % sequence,
                 "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
                 None,
             )
@@ -1759,8 +1760,10 @@ class BillToolBridge:
             # if begin_date does not match end date of latest existing bill,
             # create hypothetical bills to cover the gap
             latest_end_date = self.state_db.last_utilbill_end_date(session, account)
-            if begin_date_as_date > latest_end_date:
+            if latest_end_date is not None and begin_date_as_date > latest_end_date:
                 self.state_db.fill_in_hypothetical_utilbills(session, account, latest_end_date, begin_date_as_date)
+                # TODO 23165829 not certain we need to commit the guesses, when the upload
+                # is successful, the session does get committed
                 session.commit()
 
             # get Python file object and file name as string from the CherryPy
