@@ -121,7 +121,7 @@ function renderWidgets()
         bodyStyle: 'padding: 10px 10px 0 10px;',
         defaults: {
             anchor: '95%',
-            allowBlank: false,
+            //allowBlank: false,
             msgTarget: 'side'
         },
 
@@ -137,7 +137,7 @@ function renderWidgets()
                 name: 'file_to_upload',
                 buttonText: 'Choose file...',
                 buttonCfg: { width:80 },
-                //allowBlank: true
+                allowBlank: true
                 //disabled: true
             },
         ],
