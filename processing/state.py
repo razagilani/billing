@@ -263,19 +263,21 @@ class StateDB:
         return query[start:start + limit], query.count()
 
     def record_utilbill_in_database(self, session, account, begin_date,
-            end_date, date_received):
+            end_date, date_received, state=UtilBill.Complete):
         '''Inserts a row into the utilbill table when a utility bill file has
-        been uploaded. Currently this only works for a Complete bill (see
-        comment in db_objects.UtilBill for explanation of utility bill states).
-        The bill is initially marked as un-processed.'''
+        been uploaded. The bill is Complete by default but can can have other
+        states (see comment in db_objects.UtilBill for explanation of utility
+        bill states). The bill is initially marked as un-processed.'''
+
+        print >> sys.stderr, 'state of incoming bill is %s', state
+
         # get customer id from account number
         customer = session.query(Customer).filter(Customer.account==account).one()
 
         # make a new UtilBill with the customer id and dates (UtilBill
         # constructor defaults to processed=False)
-        utilbill = UtilBill(customer, state=UtilBill.Complete,
-                period_start=begin_date, period_end=end_date,
-                date_received=date_received)
+        utilbill = UtilBill(customer, state, period_start=begin_date,
+                period_end=end_date, date_received=date_received)
 
         # put the new UtilBill in the database
         session.add(utilbill)

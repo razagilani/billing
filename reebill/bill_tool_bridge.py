@@ -35,6 +35,7 @@ from billing import json_util as ju
 from billing.reebill import bill_mailer
 from billing import mongo
 import billing.processing.rate_structure as rs
+from billing.processing import db_objects
 
 sys.stdout = sys.stderr
 import pprint
@@ -1744,6 +1745,7 @@ class BillToolBridge:
     @cherrypy.expose
     def upload_utility_bill(self, account, begin_date, end_date,
             file_to_upload, **args):
+        print >> sys.stderr, 'started upload_utility_bill'
         self.check_authentication()
         try:
             session = None
@@ -1763,21 +1765,34 @@ class BillToolBridge:
                 self.state_db.fill_in_hypothetical_utilbills(session, account, latest_end_date, begin_date_as_date)
                 session.commit()
 
-            # get Python file object and file name as string from the CherryPy
-            # object 'file_to_upload', and pass those to BillUpload so it's
-            # independent of CherryPy
-            upload_result = self.billUpload.upload(account, begin_date,
-                    end_date, file_to_upload.file, file_to_upload.filename)
-            if upload_result is True:
+            print >> sys.stderr, 'type(file_to_upload) is', type(file_to_upload)
+            if file_to_upload.file is None:
+                # if there's no file, this is a "skyline estimated bill":
+                # record it in the database with that state, but don't upload
+                # anything
+                print >> sys.stderr, 'about to write in database'
                 self.state_db.record_utilbill_in_database(session, account,
-                        begin_date, end_date, datetime.utcnow())
+                        begin_date, end_date, datetime.utcnow(),
+                        state=db_objects.UtilBill.SkylineEstimated)
                 session.commit()
+                print >> sys.stderr, 'wrote in database'
                 return ju.dumps({'success':True})
             else:
-                self.logger.error('file upload failed:', begin_date, end_date,
-                        file_to_upload.filename)
-                return ju.dumps({'success':False, 'errors': {
-                    'reason':'file upload failed', 'details':'Returned False'}})
+                # if there is a file, get the Python file object and name
+                # string from CherryPy, and pass those to BillUpload to upload
+                # the file (so BillUpload can stay independent of CherryPy
+                upload_result = self.billUpload.upload(account, begin_date,
+                        end_date, file_to_upload.file, file_to_upload.filename)
+                if upload_result is True:
+                    self.state_db.record_utilbill_in_database(session, account,
+                            begin_date, end_date, datetime.utcnow())
+                    session.commit()
+                    return ju.dumps({'success':True})
+                else:
+                    self.logger.error('file upload failed:', begin_date, end_date,
+                            file_to_upload.filename)
+                    return ju.dumps({'success':False, 'errors': {
+                        'reason':'file upload failed', 'details':'Returned False'}})
             
         except Exception as e: 
             if session is not None: 
