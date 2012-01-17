@@ -564,8 +564,10 @@ function renderWidgets()
             });
 
             reeBillEditorTree.setRootNode(reeBillEditorTreeRoot);
-            
-            reeBillEditorTreeRoot.expand(false, /*no anim*/ false);
+
+            //this causes the treeloader to fire a request
+            //since we want to lazily create things, don't fire a load request
+            //reeBillEditorTreeRoot.expand(false, /*no anim*/ false);
 
             onTreeEditComplete = function(treeEditor, n, o) {
                 //o - oldValue
@@ -586,11 +588,17 @@ function renderWidgets()
             reeBillTab.add(reeBillEditorTree);
         }
 
-        reeBillEditorTree.getLoader().dataUrl = 'http://'+location.host+'/reebill/reebill_structure';
-        reeBillEditorTree.getLoader().baseParams.account = account;
-        reeBillEditorTree.getLoader().baseParams.sequence = sequence;
-        reeBillEditorTree.getLoader().load(reeBillEditorTree.root);
-        //reeBillEditorTree.expand(false, false);
+        var loader = reeBillEditorTree.getLoader();
+
+        // cancel ajax if it is running
+        if (loader.isLoading()) {
+            loader.abort();
+        }
+
+        // widgets have been lazily instantiated, now go load them.
+        loader.baseParams.account = account;
+        loader.baseParams.sequence = sequence;
+        loader.load(reeBillEditorTree.root);
 
     }
 
