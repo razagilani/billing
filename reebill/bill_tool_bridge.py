@@ -1790,9 +1790,15 @@ class BillToolBridge:
     @cherrypy.expose
     def listUtilBills(self, start, limit, account, **args):
         self.check_authentication()
-        # call getrows to actually query the database; return the result in
-        # JSON format if it succeded or an error if it didn't
         try:
+            # names for utilbill states in the UI
+            state_descriptions = {
+                db_objects.UtilBill.Complete: 'Final',
+                db_objects.UtilBill.UtilityEstimated: 'Utility Estimated',
+                db_objects.UtilBill.SkylineEstimated: 'Skyline Estimated',
+                db_objects.UtilBill.Hypothetical: 'Hypothetical'
+            }
+
             session = None
 
             if not start or not limit or not account:
@@ -1807,12 +1813,15 @@ class BillToolBridge:
             session.commit()
             # note that utilbill customers are eagerly loaded
             full_names = self.full_names_of_accounts([ub.customer.account for ub in utilbills])
-            rows = [dict([('account', ub.customer.account), ('name', full_names[i]),
-                ('period_start', ub.period_start), ('period_end', ub.period_end),
-                ('sequence', ub.reebill.sequence if ub.reebill else None)])
-                 for i, ub in enumerate(utilbills)]
-
-
+            rows = [dict([
+                ('account', ub.customer.account),
+                ('name', full_names[i]),
+                ('period_start', ub.period_start),
+                ('period_end', ub.period_end),
+                ('sequence', ub.reebill.sequence if ub.reebill else None),
+                # TODO this doesn't show up in the gui
+                ('state', state_descriptions[ub.state])
+            ]) for i, ub in enumerate(utilbills)]
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
             try:
