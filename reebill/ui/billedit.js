@@ -3668,6 +3668,37 @@ function renderWidgets()
         // add the account to the upload_account field
         upload_account.setValue(account)
 
+        // set begin date for next utilbill in upload form panel to end date of
+        // last utilbill, if there is one
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/reebill/last_utilbill_end_date',
+            params: {account: account},
+            success: function(result, request) {
+                var jsonData = null;
+                try {
+                    jsonData = Ext.util.JSON.decode(result.responseText);
+                    if (jsonData.success == false) {
+                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                    } else {
+                        // server returns null for the date if there is no utilbill
+                        if (jsonData['date'] == null) {
+                            // clear out date that was there before, if any
+                            upload_begin_date.setValue('');
+                        } else {
+                            var lastUtilbillDate = new Date(jsonData['date']);
+                            // field automatically converts Date into a string
+                            // according to its 'format' property
+                            upload_begin_date.setValue(lastUtilbillDate);
+                        }
+                    } 
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
+                }
+            },
+            failure: function() {alert("ajax failure")},
+            disableCaching: true,
+        });
+
         // clear reebill data when a new account is selected
         // TODO: 1320091681504 if an account is selected w/o a sequence, a journal entry can't be made
         journalFormPanel.getForm().findField("sequence").setValue(null)
@@ -3679,7 +3710,6 @@ function renderWidgets()
         hChargesStore.loadData({rows: 0, succes: true});
         CPRSRSIStore.loadData({rows: 0, success: true});
         URSRSIStore.loadData({rows: 0, success: true});
-
 
         updateStatusbar(account, null, null);
     }
