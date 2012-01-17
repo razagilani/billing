@@ -172,6 +172,7 @@ function renderWidgets()
                 dateFormat: 'Y-m-d'
             },
             {name: 'sequence'},
+            {name: 'state'}
         ],
         url: 'http://' + location.host + '/reebill/listUtilBills',
     });
@@ -277,12 +278,17 @@ function renderWidgets()
                 header: 'End Date',
                 dataIndex: 'period_end',
                 dateFormat: utilbillGridDateFormat,
-            }),{
+            }),
+            {
                 id: 'sequence',
                 header: 'Sequence',
                 dataIndex: 'sequence',
             },
-
+            {
+                id: 'state',
+                header: 'State',
+                dataIndex: 'state',
+            },
         ],
         // paging bar on the bottom
         bbar: new Ext.PagingToolbar({
