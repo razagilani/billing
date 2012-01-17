@@ -217,15 +217,13 @@ class BillToolBridge:
 
     ###########################################################################
     # authentication functions
-    # TODO might want to move most of this code (excluding the cherrypy stuff) into users.py
 
     @cherrypy.expose
     def login(self, identifier, rememberme='off', **kwargs):
         user = self.user_dao.load_user(identifier)
         if user is None:
-            self.logger.info(('login attempt failed: identifier "%s", password'
-                ' "%s", remember me: %s, type is %s') % (identifier, password,
-                rememberme, type(rememberme)))
+            self.logger.info(('login attempt failed: identifier "%s"'
+                ', remember me: %s') % (identifier, rememberme))
             raise cherrypy.HTTPRedirect("/login.html")
 
         # successful login:
@@ -246,7 +244,6 @@ class BillToolBridge:
         # store identifier & user preferences in cherrypy session object &
         # redirect to main page
         cherrypy.session['user'] = user
-
         self.logger.info(('user "%s" logged in: remember '
             'me: "%s" type is %s') % (identifier, rememberme,
             type(rememberme)))
@@ -1825,6 +1822,27 @@ class BillToolBridge:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
     
+    @cherrypy.expose
+    def last_utilbill_end_date(self, account, **kwargs):
+        '''Returns date of last utilbill.'''
+        self.check_authentication()
+        try:
+            session = self.state_db.session()
+            the_date = self.state_db.last_utilbill_end_date(session, account)
+            # the_date will be None (converted to JSON as null) if there are no
+            # utilbills for this account
+            the_datetime = None
+            if the_date is not None:
+                # TODO: a pure date gets converted to JSON as a datetime with
+                # midnight as its time, causing problems in the browser
+                # (https://www.pivotaltracker.com/story/show/23569087). temporary
+                # fix is to make it a datetime with a later time.
+                the_datetime = datetime(the_date.year, the_date.month, the_date.day, 23)
+            return ju.dumps({'success':True, 'date': the_datetime})
+        except Exception as e: 
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
     @cherrypy.expose
     def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
         self.check_authentication()
