@@ -220,14 +220,7 @@ class BillToolBridge:
     # TODO might want to move most of this code (excluding the cherrypy stuff) into users.py
 
     @cherrypy.expose
-    def login(self, identifier, password, rememberme='off', **kwargs):
-        #if username not in USERS or USERS[username]['password'] != password:
-            ## failed login: redirect to the login page (again)
-            ## TODO logging passwords is obviously a bad idea
-            #self.logger.info(('login attempt failed: identifier "%s", password '
-                #'"%s", remember me: %s, type is %s') % (identifier, password, rememberme, type(rememberme)))
-            #raise cherrypy.HTTPRedirect("/login.html")
-
+    def login(self, identifier, rememberme='off', **kwargs):
         user = self.user_dao.load_user(identifier)
         if user is None:
             self.logger.info(('login attempt failed: identifier "%s", password'
@@ -235,7 +228,6 @@ class BillToolBridge:
                 rememberme, type(rememberme)))
             raise cherrypy.HTTPRedirect("/login.html")
 
-        
         # successful login:
 
         # create session object
@@ -250,16 +242,13 @@ class BillToolBridge:
 
         # TODO problem: cherrypy.session.timeout is 60 no matter what
         self.logger.info(cherrypy.session.timeout)
-        #print >> sys.stderr, 'timeout: ' + cherrypy.session.timeout
         
         # store identifier & user preferences in cherrypy session object &
         # redirect to main page
         cherrypy.session['user'] = user
 
-        # TODO logging passwords is obviously a bad idea
-        # (also passwords are now ignored because openid doesn't need them)
-        self.logger.info(('user "%s" logged in with password "%s", remember '
-            'me: "%s" type is %s') % (identifier, password, rememberme,
+        self.logger.info(('user "%s" logged in: remember '
+            'me: "%s" type is %s') % (identifier, rememberme,
             type(rememberme)))
         raise cherrypy.HTTPRedirect("/billentry.html")
 
@@ -285,7 +274,7 @@ class BillToolBridge:
                 return False
             return True
         except Exception as e:
-            #print >> sys.stderr, e, traceback.format_exc()
+            print >> sys.stderr, e, traceback.format_exc()
             self.logger.error(e, traceback.format_exc())
             raise
     
@@ -312,7 +301,8 @@ class BillToolBridge:
 
 
 
-
+    ###########################################################################
+    # bill processing
 
     # TODO: do this on a per service basis 18311877
     @cherrypy.expose
@@ -330,8 +320,6 @@ class BillToolBridge:
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-    ###########################################################################
-    # bill processing
 
     @cherrypy.expose
     def new_account(self, name, account, discount_rate, template_account, **args):
