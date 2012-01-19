@@ -36,9 +36,10 @@ class User:
 class UserDAO:
     '''Data Access Object for reading and writing user data.'''
 
-    # this is a class variable because all instances of UserDAO (if there's
-    # more than one) should have the same _default_user (otherwise
-    # save-prevention would not work)
+    # default user account: the one you get when authentication is turned off,
+    # and the template for newly-created accounts. this is a class variable
+    # because all instances of UserDAO (if there's more than one) should have
+    # the same _default_user (otherwise save-prevention would not work)
     _default_user = User({
         '_id':'default',
         'username':'Default User',
@@ -56,11 +57,6 @@ class UserDAO:
         except Exception as e: 
             print >> sys.stderr, "Exception when connecting to Mongo:" + str(e)
             raise
-        finally:
-            if connection is not None:
-                #self.connection.disconnect()
-                # TODO when to disconnect from the database?
-                pass
             
         self.collection = connection[self.config['database']][self.config['collection']]
     
