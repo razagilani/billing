@@ -40,7 +40,7 @@ class UserDAO:
     # and the template for newly-created accounts. this is a class variable
     # because all instances of UserDAO (if there's more than one) should have
     # the same _default_user (otherwise save-prevention would not work)
-    _default_user = User({
+    default_user = User({
         '_id':'default',
         'username':'Default User',
         'preferences': {
@@ -70,16 +70,11 @@ class UserDAO:
 
         return User(user_dict)
 
-    def get_default_user(self, identifier):
-        '''A user not in the database with default values for all preferences,
-        used when authentication is turned off.'''
-        return self._default_user
-
     def save_user(self, user):
         '''Saves the User object 'user' into the database. This overwrites any
         existing user with the same identifier.'''
         # for the default user, do nothing
-        if user is self._default_user:
+        if user is UserDAO.default_user:
             return
 
         self.collection.save(user.dictionary)

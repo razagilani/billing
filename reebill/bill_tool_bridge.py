@@ -260,7 +260,7 @@ class BillToolBridge:
             # session contains default data
             if not self.authentication_on:
                 if 'user' not in cherrypy.session:
-                    cherrypy.session['user'] = User.get_default_user()
+                    cherrypy.session['user'] = UserDAO.default_user
                 return True
             if 'user' not in cherrypy.session:
                 self.logger.info("Non-logged-in user was denied access to: %s" % \
@@ -547,7 +547,7 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
             render.render(reebill, 
-                self.config.get("billdb", "billpath")+ "%s/%s.pdf" % (account, sequence),
+                self.config.get("billdb", "billpath")+ "%s/%.4d.pdf" % (account, int(sequence)),
                 "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
                 None,
             )
