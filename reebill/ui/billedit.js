@@ -232,33 +232,37 @@ function renderWidgets()
                     if (utilbillimg_tid != null) {
                         Ext.Ajax.abort(utilbillimg_tid);
                     }
-                    utilbillimg_tid = Ext.Ajax.request({
-                        url: theUrl,
-                        params: {account: record.data.account, begin_date: formatted_begin_date_string,
-                            end_date: formatted_end_date_string, resolution: resolution},
-                        success: function(result, request) {
-                            var jsonData = null;
-                            try {
-                                jsonData = Ext.util.JSON.decode(result.responseText);
-                                var imageUrl = '';
-                                if (jsonData.success == true) {
-                                    imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
+                    if (record.data.state == 'Final' || record.data.state == 'Utility Estimated') {
+                        utilbillimg_tid = Ext.Ajax.request({
+                            url: theUrl,
+                            params: {account: record.data.account, begin_date: formatted_begin_date_string,
+                                end_date: formatted_end_date_string, resolution: resolution},
+                            success: function(result, request) {
+                                var jsonData = null;
+                                try {
+                                    jsonData = Ext.util.JSON.decode(result.responseText);
+                                    var imageUrl = '';
+                                    if (jsonData.success == true) {
+                                        imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
+                                    }
+                                    Ext.DomHelper.overwrite('utilbillimagebox',
+                                        getImageBoxHTML(imageUrl, 'Utility bill',
+                                        'utilbill', NO_UTILBILL_SELECTED_MESSAGE),
+                                        true);
+                                } catch (err) {
+                                    Ext.MessageBox.alert('getutilbillimage ERROR', err);
                                 }
-                                Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(imageUrl, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
+                            },
+                            // this is called when the server returns 500 as well as when there's no response
+                            failure: failureCallback, //function() { Ext.MessageBox.alert('Ajax failure', theUrl); },
+                            disableCaching: true,
+                        });
 
-                            } catch (err) {
-                                Ext.MessageBox.alert('getutilbillimage ERROR', err);
-                            }
-                        },
-                        // this is called when the server returns 500 as well as when there's no response
-                        failure: failureCallback, //function() { Ext.MessageBox.alert('Ajax failure', theUrl); },
-                        disableCaching: true,
-                    });
-
-                    // while waiting for the ajax request to finish, show a
-                    // loading message in the utilbill image box
-                    Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
-                            html: LOADING_MESSAGE, id: 'utilbillimage'}, true);
+                            // while waiting for the ajax request to finish, show a
+                            // loading message in the utilbill image box
+                            Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
+                                    html: LOADING_MESSAGE, id: 'utilbillimage'}, true);
+                    }
                 }
             }
         }),
