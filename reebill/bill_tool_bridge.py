@@ -1859,7 +1859,7 @@ class BillToolBridge:
             if not account or not begin_date or not end_date or not resolution:
                 raise ValueError("Bad Parameter Value")
             # TODO: put url here, instead of in billentry.js?
-            resolution = cherrypy.session['preferences']['bill_image_resolution']
+            resolution = cherrypy.session['user'].preferences['bill_image_resolution']
             result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date, resolution)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
