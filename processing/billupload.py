@@ -199,7 +199,7 @@ class BillUpload(object):
 
         # get path of reebill
         reebill_file_path = os.path.join(self.reebill_directory, account, \
-                sequence + '.' + REEBILL_EXTENSION)
+                "%.4d" % int(sequence) + '.' + REEBILL_EXTENSION)
 
         # make sure it exists and can be read
         if not os.access(reebill_file_path, os.R_OK):
@@ -213,7 +213,6 @@ class BillUpload(object):
         bill_image_path_without_extension = os.path.join(
                 self.bill_image_directory,
                 bill_image_name_without_extension)
-        print 'looking for', bill_image_name_without_extension
 
         # create bill image directory if it doesn't exist already
         create_directory_if_necessary(self.bill_image_directory, self.logger)
