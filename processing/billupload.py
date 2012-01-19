@@ -37,12 +37,6 @@ REEBILL_EXTENSION = 'pdf'
 # TODO put in config file
 IMAGE_EXTENSION = 'png'
 
-# sampling density (pixels per inch?) for converting bills in a vector format
-# (like PDF) to raster images
-# if this is too big, rendering can be slow
-IMAGE_RENDERING_DENSITY = 100
-
-
 class BillUpload(object):
 
     def __init__(self, config, logger):
@@ -214,11 +208,12 @@ class BillUpload(object):
 
         # name and path of bill image: name includes date so it's always unique
         bill_image_name_without_extension = 'reebill_' + account + '_' \
-                + sequence + str(datetime.datetime.today()).replace(' ', '') \
+                + ("%.4d" % int(sequence)) + str(datetime.datetime.today()).replace(' ', '') \
                 .replace('.','').replace(':','')
         bill_image_path_without_extension = os.path.join(
                 self.bill_image_directory,
                 bill_image_name_without_extension)
+        print 'looking for', bill_image_name_without_extension
 
         # create bill image directory if it doesn't exist already
         create_directory_if_necessary(self.bill_image_directory, self.logger)

@@ -74,6 +74,20 @@ def estimate_month(start_date, end_date):
                 max_year = year
     return max_year, max_month
 
+def months_of_past_year(year, month):
+    '''Returns a list of (year, month) tuples representing all months in the
+    year preceding 'dt', including ('year', 'month') itself (and not including
+    the same month in the previous year).'''
+    result = []
+    a_year = year - 1 if month < 12 else year
+    a_month = month % 12 + 1 # i.e. the month after 'month' in 1-based numbering
+    while a_year < year or (a_year == year and a_month <= month):
+        result.append((a_year, a_month))
+        if a_month == 12:
+            a_year += 1
+        a_month = a_month % 12 + 1
+    return result
+
 def date_generator(from_date, to_date):
     """Yields dates based on from_date up to but excluding to_date.  The reason
     for the exclusion of to_date is that utility billing periods do not include
@@ -241,6 +255,25 @@ class DateUtilsTest(unittest.TestCase):
 
         # start & end very far apart: prefer first month with 31 days
         self.assertEquals(estimate_month(jul15, aug122012), (2011, 8))
+
+    def test_months_of_past_year(self):
+        self.assertEquals(
+            [(2011,2), (2011,3), (2011,4), (2011,5), (2011,6), (2011,7),
+            (2011,8), (2011,9), (2011,10), (2011,11), (2011,12), (2012,1)],
+            months_of_past_year(2012,1))
+        self.assertEquals(
+            [(2011,3), (2011,4), (2011,5), (2011,6), (2011,7), (2011,8),
+            (2011,9), (2011,10), (2011,11), (2011,12), (2012,1), (2012,2)],
+            months_of_past_year(2012,2))
+        self.assertEquals(
+            [(2011,4), (2011,5), (2011,6), (2011,7), (2011,8), (2011,9),
+            (2011,10), (2011,11), (2011,12), (2012,1), (2012,2), (2012,3)],
+            months_of_past_year(2012,3))
+        self.assertEquals(
+            [(2012,1), (2012,2), (2012,3), (2012,4), (2012,5), (2012,6),
+            (2012,7), (2012,8), (2012,9), (2012,10), (2012,11), (2012,12)],
+            months_of_past_year(2012,12))
+
 
     def test_date_generator(self):
         oct1 = date(2011,10,1)
