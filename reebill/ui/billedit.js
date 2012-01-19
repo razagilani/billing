@@ -3728,10 +3728,13 @@ function renderWidgets()
             throw "Account and Sequence must be set";
         }
 
+
         // enumerate prior ajax requests made here and cancel them
         for (var tid in tids) {
             Ext.Ajax.abort(tids[tid]);
         }
+
+        registerAjaxEvents();
 
         // update the journal form panel so entries get submitted to currently selected account
         // need to set account into a hidden field here since there is no data store behind the form
@@ -3908,28 +3911,49 @@ function pctChange(val){
     return val;
 }
 
-function showSpinner()
-{
-    Ext.Msg.show({title: "Please Wait...", closable: false})
-}
 
-function hideSpinner()
-{
-    Ext.Msg.hide()
-    unregisterAjaxEvents()
-}
+/**
+* Used by Ajax calls to block the UI
+* by setting global Ajax listeners for the duration
+* of the call.
+* Since there is only one block to the UI and possibly
+* more than one Ajax call, we keep a counter.
+*/
+var blockUICounter = 0;
 
 function registerAjaxEvents()
 {
+    console.log("RegisterAjaxEvents");
     Ext.Ajax.addListener('beforerequest', this.showSpinner, this);
     Ext.Ajax.addListener('requestcomplete', this.hideSpinner, this);
     Ext.Ajax.addListener('requestexception', this.hideSpinner, this);
 }
+
 function unregisterAjaxEvents()
 {
+    console.log("UnregisterAjaxEvents");
     Ext.Ajax.removeListener('beforerequest', this.showSpinner, this);
     Ext.Ajax.removeListener('requestcomplete', this.hideSpinner, this);
     Ext.Ajax.removeListener('requestexception', this.hideSpinner, this);
+}
+
+function showSpinner()
+{
+    console.log("showSpinner()");
+    blockUICounter++;
+    Ext.Msg.show({title: "Please Wait..." + blockUICounter, closable: false});
+    console.log("ShowingSpinnger " + blockUICounter);
+}
+
+function hideSpinner()
+{
+    console.log("hideSpinner()");
+    blockUICounter--;
+    if (!blockUICounter) {
+        Ext.Msg.hide();
+        unregisterAjaxEvents();
+        console.log("HiddingSpinner " + blockUICounter);
+    }
 }
 
 var NO_UTILBILL_SELECTED_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill.png"/></td></tr></table></div>';
