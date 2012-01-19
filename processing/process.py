@@ -455,9 +455,6 @@ class Process(object):
                 'quantity': therms
             })
              
-        print '*'*80
-        print next_stats['consumption_trend']
-        print '*'*80
         next_bill.statistics = next_stats
 
 
