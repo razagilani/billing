@@ -43,7 +43,7 @@ class UserDAO:
         '_id':'default',
         'username':'Default User',
         'preferences': {
-            'bill_image_resolution': 250
+            'bill_image_resolution': 80
         }
     })
 
