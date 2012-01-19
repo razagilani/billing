@@ -3,41 +3,34 @@
 File: process.py
 Description: Various utility procedures to process bills
 """
-
-#
-# runtime support
-#
 import sys
 sys.stdout = sys.stderr
 import os  
 from optparse import OptionParser
-
-import datetime
-
 import copy
+import datetime
+import calendar
+import pprint
+#
+# uuid collides with locals so both the locals and package are renamed
+import uuid as UUID
 
-from billing import bill
-
-
-# for testing
-#import StringIO
+import yaml
 
 # used for processing fixed point monetary decimal numbers
 from decimal import *
 from billing import bill
 
-import pprint
-
-import yaml
+import skyliner
 import rate_structure
+from billing import bill
 from billing.processing import state
 from billing.mongo import MongoReebill
 from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state
 from billing.mongo import ReebillDAO
-
-# uuid collides with locals so both the locals and package are renamed
-import uuid as UUID
+from billing import nexus_util
+from billing import dateutils
 
 class Process(object):
     """ Class with a variety of utility procedures for processing bills.
@@ -429,24 +422,43 @@ class Process(object):
         # externalize this calculation to utilities
         next_stats['total_trees'] = next_stats['total_co2_offset']/Decimal("1300.0")
         
-
         # determine re consumption trend
-        # last day of re bill period is taken to be the month of consumption (This is ultimately utility dependent - 
-        # especially when graphing ce from the utilty bill)
-        #billdate = next_bill.rebill_summary.end
-        billdate = next_bill.period_end
+        ## last day of re bill period is taken to be the month of consumption (This is ultimately utility dependent - 
+        ## especially when graphing ce from the utilty bill)
+        ##billdate = next_bill.rebill_summary.end
+        #billdate = next_bill.period_end
+        ## determine current month (this needs to be quantized according to some logic)
+        #month = billdate.strftime("%b")
 
-        # determine current month (this needs to be quantized according to some logic)
-        month = billdate.strftime("%b")
+        #for period in next_stats['consumption_trend']:
+            #if(period['month'] == month):
+                #period['quantity'] = re/Decimal("100000.0")
 
-        for period in next_stats['consumption_trend']:
-            if(period['month'] == month):
-                period['quantity'] = re/Decimal("100000.0")
+        # objects for getting olap data
+        olap_id = nexus_util.NexusUtil().olap_id(reebill.account)
+        splinter = skyliner.splinter.Splinter('http://duino-drop.appspot.com/', "tyrell", "dev")
+        install = splinter.get_install_obj_for(olap_id)
+        monguru = skyliner.skymap.monguru.Monguru('tyrell', 'dev') # TODO don't hard-code this
 
+        bill_year, bill_month = dateutils.estimate_month(
+                next_bill.period_begin,
+                next_bill.period_end)
+        next_stats['consumption_trend'] = []
+        for year, month in dateutils.months_of_past_year(bill_year, bill_month):
+            # could also use DataHandler.get_single_chunk_for_range() but that
+            # gets data from OLTP, which is slow; Monguru relies on monthly
+            # OLAP documents
+            renewable_energy_btus = monguru.get_data_for_month(install, year, month).energy_sold
+            therms = Decimal(renewable_energy_btus) / Decimal('100000.0')
+            next_stats['consumption_trend'].append({
+                'month': calendar.month_abbr[month],
+                'quantity': therms
+            })
+             
+        print '*'*80
+        print next_stats['consumption_trend']
+        print '*'*80
         next_bill.statistics = next_stats
-
-        # save in mongo
-        #self.reebill_dao.save_reebill(next_bill)
 
 
     def calculate_reperiod(self, reebill):
