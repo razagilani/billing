@@ -240,6 +240,8 @@ class BillToolBridge:
 
         # TODO problem: cherrypy.session.timeout is 60 no matter what
         self.logger.info(cherrypy.session.timeout)
+        #cherrypy.request.config.update({'tools.sessions.timeout':60}) 
+        #self.logger.info(cherrypy.session.timeout)
         
         # store identifier & user preferences in cherrypy session object &
         # redirect to main page
@@ -2236,7 +2238,8 @@ else:
     # WSGI Mode
     cherrypy.config.update({
         'environment': 'embedded',
-        'tools.sessions.on': True
+        'tools.sessions.on': True,
+        'tools.sessions.timeout': 240
     })
 
     if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:
