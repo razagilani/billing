@@ -262,7 +262,7 @@ class BillToolBridge:
             # session contains default data
             if not self.authentication_on:
                 if 'user' not in cherrypy.session:
-                    cherrypy.session['user'] = User.get_default_user()
+                    cherrypy.session['user'] = UserDAO.default_user
                 return True
             if 'user' not in cherrypy.session:
                 self.logger.info("Non-logged-in user was denied access to: %s" % \
@@ -549,7 +549,7 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
             render.render(reebill, 
-                self.config.get("billdb", "billpath")+ "%s/%s.pdf" % (account, sequence),
+                self.config.get("billdb", "billpath")+ "%s/%.4d.pdf" % (account, int(sequence)),
                 "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
                 None,
             )
@@ -1861,7 +1861,7 @@ class BillToolBridge:
             if not account or not begin_date or not end_date or not resolution:
                 raise ValueError("Bad Parameter Value")
             # TODO: put url here, instead of in billentry.js?
-            resolution = cherrypy.session['preferences']['bill_image_resolution']
+            resolution = cherrypy.session['user'].preferences['bill_image_resolution']
             result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date, resolution)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
