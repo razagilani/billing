@@ -366,14 +366,7 @@ function renderWidgets()
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
                 {text: 'Compute Bill', handler: bindRSOperation},
-                //{text: 'Calculate REPeriod', handler: calcREPeriodOperation},
-                //{text: 'Pay', handler: payOperation},
-                //{text: 'Sum', handler: sumOperation},
-                //{text: 'CalcStats', handler: calcStatsOperation},
-                //{text: 'Set Issue Date', handler: issueOperation},
                 {text: 'Render', handler: renderOperation},
-                //{text: 'Commit', handler: commitOperation},
-                //{text: 'Issue to Customer', handler: issueToCustomerOperation},
             ]
         })
     });
@@ -747,119 +740,11 @@ function renderWidgets()
     {
     }
 
-    function issueToCustomerOperation()
-    {
-        registerAjaxEvents()
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/issueToCustomer',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue()
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("Issue to customer response fail");
-            }
-        });
-    }
-
-    function calcStatsOperation()
-    {
-        registerAjaxEvents()
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/calcstats',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue()
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("Calc response fail");
-            }
-        });
-    }
-
-    function sumOperation()
-    {
-        registerAjaxEvents()
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/sum',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue()
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("Sum response fail");
-            }
-        });
-    }
-
-    function payOperation()
-    {
-        // example modal pattern. 
-        /*
-        Ext.Msg.prompt('Amount Paid', 'Enter amount paid:', function(btn, text){
-            if (btn == 'ok')
-            {
-                registerAjaxEvents()
-                var amountPaid = parseFloat(text)
-
-                account = accountCombo.getValue();
-                sequence = sequenceCombo.getValue();
-
-                Ext.Ajax.request({
-                    url: 'http://'+location.host+'/reebill/pay',
-                    params: { 
-                        account: accountCombo.getValue(),
-                        sequence: sequence,
-                        amount: amountPaid
-                    },
-                    disableCaching: true,
-                    success: successResponse,
-                });
-            }
-        });*/
-
-        registerAjaxEvents()
-
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/pay',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue(),
-            },
-            disableCaching: true,
-            success: successResponse,
-        });
-
-    }
-
     function bindRSOperation()
     {
         registerAjaxEvents()
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/bindrs',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue()
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("Bind RS response fail");
-            }
-        });
-    }
-
-    function calcREPeriodOperation()
-    {
-        registerAjaxEvents()
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/calc_reperiod',
             params: { 
                 account: accountCombo.getValue(),
                 sequence: sequenceCombo.getValue()
@@ -921,23 +806,6 @@ function renderWidgets()
         });
     }
 
-    function issueOperation()
-    {
-        registerAjaxEvents()
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/issue',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue()
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("Issue response fail");
-            }
-        });
-    }
-
     function renderOperation()
     {
         registerAjaxEvents()
@@ -953,27 +821,6 @@ function renderWidgets()
                 alert("Render response fail");
             }
         });
-    }
-
-    function commitOperation()
-    {
-        account = accountCombo.getValue();
-        sequence = sequenceCombo.getValue();
-
-        registerAjaxEvents();
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/commit',
-            params: {
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue(),
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("commit response fail");
-            }
-        });
-
     }
 
     function mailReebillOperation(sequences)
