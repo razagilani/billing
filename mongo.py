@@ -288,6 +288,14 @@ class MongoReebill(object):
         self.dictionary['period_end'] = value
     
     @property
+    def discount_rate(self):
+        '''Discount rate is a Decimal.'''
+        return self.dictionary['discount_rate']
+    @discount_rate.setter
+    def discount_rate(self, value):
+        self.dictionary['discount_rate'] = value
+
+    @property
     def balance_due(self):
         '''Returns a Decimal.'''
         return self.dictionary['balance_due']
@@ -1088,9 +1096,9 @@ class ReebillDAO:
         document is replaced with this one.'''
         mongo_doc = bson_convert(copy.deepcopy(reebill.dictionary))
 
-        mongo_doc['_id'] = {'account': mongo_doc['account'],
-            'sequence': mongo_doc['sequence'],
-            'branch': mongo_doc['branch']}
+        #mongo_doc['_id'] = {'account': mongo_doc['account'],
+            #'sequence': mongo_doc['sequence'],
+            #'branch': mongo_doc['branch']}
 
         self.collection.save(mongo_doc)
 
