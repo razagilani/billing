@@ -170,11 +170,14 @@ class StateDB:
         return max_sequence
         
     def last_utilbill_end_date(self, session, account):
-        '''Returns the end date of the latest utilbill for the customer given by 'account'.'''
+        '''Returns the end date of the latest utilbill for the customer given
+        by 'account', or None if there are no utilbills.'''
         customer = session.query(Customer).filter(Customer.account==account).one()
-        max_end_date = session.query(sqlalchemy.func.max(UtilBill.period_end)) \
-                .filter(UtilBill.customer_id==customer.id).one()[0]
-        return max_end_date
+        query_results = session.query(sqlalchemy.func.max(UtilBill.period_end)) \
+                .filter(UtilBill.customer_id==customer.id).one()
+        if len(query_results) > 0:
+            return query_results[0]
+        return None
 
     def new_rebill(self, session, account, sequence):
 
