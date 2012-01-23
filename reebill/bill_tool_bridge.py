@@ -283,11 +283,6 @@ class BillToolBridge:
         #        persistent=(rememberme == 'on'))
         #cherrypy.session.regenerate()
 
-        # TODO problem: cherrypy.session.timeout is 60 no matter what
-        self.logger.info(cherrypy.session.timeout)
-        #cherrypy.request.config.update({'tools.sessions.timeout':60}) 
-        #self.logger.info(cherrypy.session.timeout)
-        
         # store identifier & user preferences in cherrypy session object &
         # redirect to main page
         cherrypy.session['user'] = user
@@ -524,6 +519,7 @@ class BillToolBridge:
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
+            # TODO 22598787 - branch awareness
             self.renderer.render(reebill, 
                 self.config.get("billdb", "billpath")+ "%s/%.4d.pdf" % (account, int(sequence)),
                 "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
@@ -1645,8 +1641,10 @@ class BillToolBridge:
             # if begin_date does not match end date of latest existing bill,
             # create hypothetical bills to cover the gap
             latest_end_date = self.state_db.last_utilbill_end_date(session, account)
-            if begin_date_as_date > latest_end_date:
+            if latest_end_date is not None and begin_date_as_date > latest_end_date:
                 self.state_db.fill_in_hypothetical_utilbills(session, account, latest_end_date, begin_date_as_date)
+                # TODO 23165829 not certain we need to commit the guesses, when the upload
+                # is successful, the session does get committed
                 session.commit()
 
             if file_to_upload.file is None:
