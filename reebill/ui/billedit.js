@@ -172,6 +172,7 @@ function renderWidgets()
                 dateFormat: 'Y-m-d'
             },
             {name: 'sequence'},
+            {name: 'state'}
         ],
         url: 'http://' + location.host + '/reebill/listUtilBills',
     });
@@ -231,33 +232,37 @@ function renderWidgets()
                     if (utilbillimg_tid != null) {
                         Ext.Ajax.abort(utilbillimg_tid);
                     }
-                    utilbillimg_tid = Ext.Ajax.request({
-                        url: theUrl,
-                        params: {account: record.data.account, begin_date: formatted_begin_date_string,
-                            end_date: formatted_end_date_string, resolution: resolution},
-                        success: function(result, request) {
-                            var jsonData = null;
-                            try {
-                                jsonData = Ext.util.JSON.decode(result.responseText);
-                                var imageUrl = '';
-                                if (jsonData.success == true) {
-                                    imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
+                    if (record.data.state == 'Final' || record.data.state == 'Utility Estimated') {
+                        utilbillimg_tid = Ext.Ajax.request({
+                            url: theUrl,
+                            params: {account: record.data.account, begin_date: formatted_begin_date_string,
+                                end_date: formatted_end_date_string, resolution: resolution},
+                            success: function(result, request) {
+                                var jsonData = null;
+                                try {
+                                    jsonData = Ext.util.JSON.decode(result.responseText);
+                                    var imageUrl = '';
+                                    if (jsonData.success == true) {
+                                        imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
+                                    }
+                                    Ext.DomHelper.overwrite('utilbillimagebox',
+                                        getImageBoxHTML(imageUrl, 'Utility bill',
+                                        'utilbill', NO_UTILBILL_SELECTED_MESSAGE),
+                                        true);
+                                } catch (err) {
+                                    Ext.MessageBox.alert('getutilbillimage ERROR', err);
                                 }
-                                Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(imageUrl, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
+                            },
+                            // this is called when the server returns 500 as well as when there's no response
+                            failure: failureCallback, //function() { Ext.MessageBox.alert('Ajax failure', theUrl); },
+                            disableCaching: true,
+                        });
 
-                            } catch (err) {
-                                Ext.MessageBox.alert('getutilbillimage ERROR', err);
-                            }
-                        },
-                        // this is called when the server returns 500 as well as when there's no response
-                        failure: failureCallback, //function() { Ext.MessageBox.alert('Ajax failure', theUrl); },
-                        disableCaching: true,
-                    });
-
-                    // while waiting for the ajax request to finish, show a
-                    // loading message in the utilbill image box
-                    Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
-                            html: LOADING_MESSAGE, id: 'utilbillimage'}, true);
+                            // while waiting for the ajax request to finish, show a
+                            // loading message in the utilbill image box
+                            Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
+                                    html: LOADING_MESSAGE, id: 'utilbillimage'}, true);
+                    }
                 }
             }
         }),
@@ -277,12 +282,17 @@ function renderWidgets()
                 header: 'End Date',
                 dataIndex: 'period_end',
                 dateFormat: utilbillGridDateFormat,
-            }),{
+            }),
+            {
                 id: 'sequence',
                 header: 'Sequence',
                 dataIndex: 'sequence',
             },
-
+            {
+                id: 'state',
+                header: 'State',
+                dataIndex: 'state',
+            },
         ],
         // paging bar on the bottom
         bbar: new Ext.PagingToolbar({
@@ -356,14 +366,7 @@ function renderWidgets()
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
                 {text: 'Compute Bill', handler: bindRSOperation},
-                //{text: 'Calculate REPeriod', handler: calcREPeriodOperation},
-                //{text: 'Pay', handler: payOperation},
-                //{text: 'Sum', handler: sumOperation},
-                //{text: 'CalcStats', handler: calcStatsOperation},
-                //{text: 'Set Issue Date', handler: issueOperation},
                 {text: 'Render', handler: renderOperation},
-                //{text: 'Commit', handler: commitOperation},
-                //{text: 'Issue to Customer', handler: issueToCustomerOperation},
             ]
         })
     });
@@ -745,119 +748,11 @@ function renderWidgets()
     {
     }
 
-    function issueToCustomerOperation()
-    {
-        registerAjaxEvents()
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/issueToCustomer',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue()
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("Issue to customer response fail");
-            }
-        });
-    }
-
-    function calcStatsOperation()
-    {
-        registerAjaxEvents()
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/calcstats',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue()
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("Calc response fail");
-            }
-        });
-    }
-
-    function sumOperation()
-    {
-        registerAjaxEvents()
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/sum',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue()
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("Sum response fail");
-            }
-        });
-    }
-
-    function payOperation()
-    {
-        // example modal pattern. 
-        /*
-        Ext.Msg.prompt('Amount Paid', 'Enter amount paid:', function(btn, text){
-            if (btn == 'ok')
-            {
-                registerAjaxEvents()
-                var amountPaid = parseFloat(text)
-
-                account = accountCombo.getValue();
-                sequence = sequenceCombo.getValue();
-
-                Ext.Ajax.request({
-                    url: 'http://'+location.host+'/reebill/pay',
-                    params: { 
-                        account: accountCombo.getValue(),
-                        sequence: sequence,
-                        amount: amountPaid
-                    },
-                    disableCaching: true,
-                    success: successResponse,
-                });
-            }
-        });*/
-
-        registerAjaxEvents()
-
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/pay',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue(),
-            },
-            disableCaching: true,
-            success: successResponse,
-        });
-
-    }
-
     function bindRSOperation()
     {
         registerAjaxEvents()
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/bindrs',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue()
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("Bind RS response fail");
-            }
-        });
-    }
-
-    function calcREPeriodOperation()
-    {
-        registerAjaxEvents()
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/calc_reperiod',
             params: { 
                 account: accountCombo.getValue(),
                 sequence: sequenceCombo.getValue()
@@ -919,23 +814,6 @@ function renderWidgets()
         });
     }
 
-    function issueOperation()
-    {
-        registerAjaxEvents()
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/issue',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue()
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("Issue response fail");
-            }
-        });
-    }
-
     function renderOperation()
     {
         registerAjaxEvents()
@@ -951,27 +829,6 @@ function renderWidgets()
                 alert("Render response fail");
             }
         });
-    }
-
-    function commitOperation()
-    {
-        account = accountCombo.getValue();
-        sequence = sequenceCombo.getValue();
-
-        registerAjaxEvents();
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/commit',
-            params: {
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue(),
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("commit response fail");
-            }
-        });
-
     }
 
     function mailReebillOperation(sequences)
@@ -3676,6 +3533,37 @@ function renderWidgets()
         // add the account to the upload_account field
         upload_account.setValue(account)
 
+        // set begin date for next utilbill in upload form panel to end date of
+        // last utilbill, if there is one
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/reebill/last_utilbill_end_date',
+            params: {account: account},
+            success: function(result, request) {
+                var jsonData = null;
+                try {
+                    jsonData = Ext.util.JSON.decode(result.responseText);
+                    if (jsonData.success == false) {
+                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                    } else {
+                        // server returns null for the date if there is no utilbill
+                        if (jsonData['date'] == null) {
+                            // clear out date that was there before, if any
+                            upload_begin_date.setValue('');
+                        } else {
+                            var lastUtilbillDate = new Date(jsonData['date']);
+                            // field automatically converts Date into a string
+                            // according to its 'format' property
+                            upload_begin_date.setValue(lastUtilbillDate);
+                        }
+                    } 
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
+                }
+            },
+            failure: function() {alert("ajax failure")},
+            disableCaching: true,
+        });
+
         // clear reebill data when a new account is selected
         // TODO: 1320091681504 if an account is selected w/o a sequence, a journal entry can't be made
         journalFormPanel.getForm().findField("sequence").setValue(null)
@@ -3688,7 +3576,6 @@ function renderWidgets()
         CPRSRSIStore.loadData({rows: 0, success: true});
         URSRSIStore.loadData({rows: 0, success: true});
 
-
         updateStatusbar(account, null, null);
     }
 
@@ -3700,10 +3587,13 @@ function renderWidgets()
             throw "Account and Sequence must be set";
         }
 
+
         // enumerate prior ajax requests made here and cancel them
         for (var tid in tids) {
             Ext.Ajax.abort(tids[tid]);
         }
+
+        registerAjaxEvents();
 
         // update the journal form panel so entries get submitted to currently selected account
         // need to set account into a hidden field here since there is no data store behind the form
@@ -3880,28 +3770,49 @@ function pctChange(val){
     return val;
 }
 
-function showSpinner()
-{
-    Ext.Msg.show({title: "Please Wait...", closable: false})
-}
 
-function hideSpinner()
-{
-    Ext.Msg.hide()
-    unregisterAjaxEvents()
-}
+/**
+* Used by Ajax calls to block the UI
+* by setting global Ajax listeners for the duration
+* of the call.
+* Since there is only one block to the UI and possibly
+* more than one Ajax call, we keep a counter.
+*/
+var blockUICounter = 0;
 
 function registerAjaxEvents()
 {
+    console.log("RegisterAjaxEvents");
     Ext.Ajax.addListener('beforerequest', this.showSpinner, this);
     Ext.Ajax.addListener('requestcomplete', this.hideSpinner, this);
     Ext.Ajax.addListener('requestexception', this.hideSpinner, this);
 }
+
 function unregisterAjaxEvents()
 {
+    console.log("UnregisterAjaxEvents");
     Ext.Ajax.removeListener('beforerequest', this.showSpinner, this);
     Ext.Ajax.removeListener('requestcomplete', this.hideSpinner, this);
     Ext.Ajax.removeListener('requestexception', this.hideSpinner, this);
+}
+
+function showSpinner()
+{
+    console.log("showSpinner()");
+    blockUICounter++;
+    Ext.Msg.show({title: "Please Wait..." + blockUICounter, closable: false});
+    console.log("ShowingSpinnger " + blockUICounter);
+}
+
+function hideSpinner()
+{
+    console.log("hideSpinner()");
+    blockUICounter--;
+    if (!blockUICounter) {
+        Ext.Msg.hide();
+        unregisterAjaxEvents();
+        console.log("HiddingSpinner " + blockUICounter);
+    }
 }
 
 var NO_UTILBILL_SELECTED_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill.png"/></td></tr></table></div>';

@@ -686,7 +686,8 @@ class BillToolBridge:
                 except:
                     print "Could not rollback session"
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return json.dumps({'success': False, 'errors':{'reason': str(e),
+                    'details':traceback.format_exc()}})
 
 
     def full_names_of_accounts(self, accounts):
@@ -1811,6 +1812,14 @@ class BillToolBridge:
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
+            # names for utilbill states in the UI
+            state_descriptions = {
+                db_objects.UtilBill.Complete: 'Final',
+                db_objects.UtilBill.UtilityEstimated: 'Utility Estimated',
+                db_objects.UtilBill.SkylineEstimated: 'Skyline Estimated',
+                db_objects.UtilBill.Hypothetical: 'Hypothetical'
+            }
+
             session = None
 
             if not start or not limit or not account:
@@ -1825,12 +1834,15 @@ class BillToolBridge:
             session.commit()
             # note that utilbill customers are eagerly loaded
             full_names = self.full_names_of_accounts([ub.customer.account for ub in utilbills])
-            rows = [dict([('account', ub.customer.account), ('name', full_names[i]),
-                ('period_start', ub.period_start), ('period_end', ub.period_end),
-                ('sequence', ub.reebill.sequence if ub.reebill else None)])
-                 for i, ub in enumerate(utilbills)]
-
-
+            rows = [dict([
+                ('account', ub.customer.account),
+                ('name', full_names[i]),
+                ('period_start', ub.period_start),
+                ('period_end', ub.period_end),
+                ('sequence', ub.reebill.sequence if ub.reebill else none),
+                # todo this doesn't show up in the gui
+                ('state', state_descriptions[ub.state])
+            ]) for i, ub in enumerate(utilbills)]
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
             try:
@@ -1841,13 +1853,34 @@ class BillToolBridge:
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
     
     @cherrypy.expose
+    def last_utilbill_end_date(self, account, **kwargs):
+        '''Returns date of last utilbill.'''
+        self.check_authentication()
+        try:
+            session = self.state_db.session()
+            the_date = self.state_db.last_utilbill_end_date(session, account)
+            # the_date will be None (converted to JSON as null) if there are no
+            # utilbills for this account
+            the_datetime = None
+            if the_date is not None:
+                # TODO: a pure date gets converted to JSON as a datetime with
+                # midnight as its time, causing problems in the browser
+                # (https://www.pivotaltracker.com/story/show/23569087). temporary
+                # fix is to make it a datetime with a later time.
+                the_datetime = datetime(the_date.year, the_date.month, the_date.day, 23)
+            return ju.dumps({'success':True, 'date': the_datetime})
+        except Exception as e: 
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+    @cherrypy.expose
     def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
         self.check_authentication()
         try:
             if not account or not begin_date or not end_date or not resolution:
                 raise ValueError("Bad Parameter Value")
             # TODO: put url here, instead of in billentry.js?
-            resolution = cherrypy.session['preferences']['bill_image_resolution']
+            resolution = cherrypy.session['user'].preferences['bill_image_resolution']
             result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date, resolution)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
@@ -2224,7 +2257,8 @@ else:
     # WSGI Mode
     cherrypy.config.update({
         'environment': 'embedded',
-        'tools.sessions.on': True
+        'tools.sessions.on': True,
+        'tools.sessions.timeout': 240
     })
 
     if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:

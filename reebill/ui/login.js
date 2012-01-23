@@ -19,7 +19,7 @@ var prettyField = function(name, label, inputType) {
 // TODO change "Username" label to "identifier"
 var nameField = new prettyField('identifier', 'Username');
 
-var passwordField = new prettyField('password', 'Password', 'password');
+//var passwordField = new prettyField('password', 'Password', 'password');
 
 var rememberMeCheckbox = new Ext.form.Checkbox({
     name: 'rememberme',
@@ -40,7 +40,7 @@ var loginFormPanel = new Ext.form.FormPanel({
     width: 300,
     //defaults: {width: 350},
     defaultType: 'textfield', // if this is wrong, including anything in 'items results in 'undefined is not a function'
-    items: [nameField, passwordField, rememberMeCheckbox],
+    items: [nameField, /*passwordField,*/ rememberMeCheckbox],
     buttons: [{
         /* button style requires "cls:'buttonstyle'" attribute in button,
          * separate css file with ".buttonstyle {...}" */
