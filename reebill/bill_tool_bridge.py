@@ -240,6 +240,8 @@ class BillToolBridge:
 
         # TODO problem: cherrypy.session.timeout is 60 no matter what
         self.logger.info(cherrypy.session.timeout)
+        #cherrypy.request.config.update({'tools.sessions.timeout':60}) 
+        #self.logger.info(cherrypy.session.timeout)
         
         # store identifier & user preferences in cherrypy session object &
         # redirect to main page
@@ -296,8 +298,6 @@ class BillToolBridge:
             del cherrypy.session['user']
         raise cherrypy.HTTPRedirect('/login.html')
 
-
-
     ###########################################################################
     # bill processing
 
@@ -316,7 +316,6 @@ class BillToolBridge:
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
 
     @cherrypy.expose
     def new_account(self, name, account, discount_rate, template_account, **args):
@@ -473,72 +472,6 @@ class BillToolBridge:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-
-    @cherrypy.expose
-    def calc_reperiod(self, account, sequence, **args):
-        self.check_authentication()
-        try:
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
-            self.process.calculate_reperiod(account, sequence)
-
-        except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
-        return json.dumps({'success': True})
-
-    @cherrypy.expose
-    def calcstats(self, account, sequence, **args):
-        self.check_authentication()
-        try:
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
-            self.process.calculate_statistics(account, sequence)
-        except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-        return json.dumps({'success': True})
-
-    @cherrypy.expose
-    def sum(self, account, sequence, **args):
-        self.check_authentication()
-        try:
-            session = None
-
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
-            present_reebill = self.reebill_dao.load_reebill(account, sequence)
-            prior_reebill = self.reebill_dao.load_reebill(account, int(sequence)-1)
-        
-            session = self.state_db.session()
-            self.process.sum_bill(session, prior_reebill, present_reebill)
-            session.commit()
-            self.reebill_dao.save_reebill(present_reebill)
-
-            return json.dumps({'success': True})
-
-        except Exception as e:
-            if session is not None: 
-                try:
-                    if session is not None: session.rollback()
-                except:
-                    print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-        
-    @cherrypy.expose
-    def issue(self, account, sequence, **args):
-        self.check_authentication()
-        try:
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
-            self.process.issue(account, sequence)
-        except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-        return json.dumps({'success': True})
-
     @cherrypy.expose
     def render(self, account, sequence, **args):
         self.check_authentication()
@@ -556,48 +489,6 @@ class BillToolBridge:
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
         return json.dumps({'success': True})
-
-    @cherrypy.expose
-    def commit(self, account, sequence, **args):
-        self.check_authentication()
-        try:
-            session = None
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
-            session = self.state_db.session()
-            self.process.commit_rebill(session, account, sequence)
-            session.commit()
-            return json.dumps({'success': True})
-        except Exception as e:
-            if session is not None: 
-                try:
-                    if session is not None: session.rollback()
-                except:
-                    print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
-    @cherrypy.expose
-    def issueToCustomer(self, account, sequence, **args):
-        self.check_authentication()
-        try:
-            session = None
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
-            session = self.state_db.session()
-            self.process.issue_to_customer(session, account, sequence)
-            session.commit()
-            return json.dumps({'success': True})
-
-        except Exception as e:
-            if session is not None: 
-                try:
-                    if session is not None: session.rollback()
-                except:
-                    print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
 
     @cherrypy.expose
     def mail(self, account, sequences, recipients, **args):
@@ -2249,7 +2140,8 @@ else:
     # WSGI Mode
     cherrypy.config.update({
         'environment': 'embedded',
-        'tools.sessions.on': True
+        'tools.sessions.on': True,
+        'tools.sessions.timeout': 240
     })
 
     if cherrypy.__version__.startswith('3.0') and cherrypy.engine.state == 0:
