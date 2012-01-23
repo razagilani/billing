@@ -1,13 +1,4 @@
 #!/usr/bin/python
-'''
-File: BillTemplate.py
-Author: Rich Andrews
-Description: A template for our bill engine
-'''
-
-#
-# runtime environment
-#
 import sys
 import os  
 from pprint import pprint
@@ -15,15 +6,11 @@ from types import NoneType
 import math
 from decimal import *
 from itertools import groupby
+from datetime import datetime
 
-from billing import mongo
-
-#
-# Types for ReportLab
-#
+import reportlab  
 from reportlab.platypus import BaseDocTemplate, Paragraph, Table, TableStyle, Spacer, Image, PageTemplate, Frame, PageBreak, NextPageTemplate
 from reportlab.platypus.flowables import UseUpSpace
-
 from reportlab.lib.styles import getSampleStyleSheet,ParagraphStyle
 from reportlab.rl_config import defaultPageSize
 from reportlab.lib.units import inch
@@ -31,13 +18,8 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
 from reportlab.lib import colors
 from reportlab.lib import colors
-
 from reportlab.pdfgen import canvas
 from reportlab.pdfgen.pathobject import PDFPathObject 
-
-
-# for font management
-import reportlab  
 from reportlab.pdfbase import pdfmetrics  
 from reportlab.pdfbase.ttfonts import TTFont  
 from reportlab.pdfgen.canvas import Canvas  
@@ -53,7 +35,14 @@ pychartdir.setLicenseCode('DEVP-2HYW-CAU5-4YTR-6EA6-57AC')
 
 from pychartdir import Center, Left, TopLeft, DataColor, XYChart, PieChart
 
-from datetime import datetime
+
+from billing import mongo
+
+# TODO render should not depend on BillUpload--move this function out to its
+# own file
+from billing.processing.billupload import create_directory_if_necessary
+
+sys.stdout = sys.stderr
 
 #
 #  Load Fonts
@@ -92,7 +81,6 @@ registerFontFamily('Inconsolata',
                     bold = 'Inconsolata',
                     italic = 'Inconsolata')
 
-
 #
 # Globals
 #
@@ -103,11 +91,6 @@ pageinfo = "Skyline Bill"
 firstPageName = 'FirstPage'
 secondPageName = 'SecondPage'
 resource_dir = os.path.dirname(__file__)
-
-#TODO 22925361 - determine platform independent means to do this, plus make it so multiple installs don't conflict
-tmp_dir = "/tmp"
-
-
 
 class SIBillDocTemplate(BaseDocTemplate):
     """Structure Skyline Innovations Bill. """
@@ -157,591 +140,604 @@ def stringify(d):
     d.update(dict([(k,'') for k,v in d.items() if v is None ]))
     return d
 
-def render(reebill, outputfile, backgrounds, verbose):
-    styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(name='BillLabel', fontName='VerdanaB', fontSize=10, leading=10))
-    styles.add(ParagraphStyle(name='BillLabelRight', fontName='VerdanaB', fontSize=10, leading=10, alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='BillLabelLg', fontName='VerdanaB', fontSize=12, leading=14))
-    styles.add(ParagraphStyle(name='BillLabelLgRight', fontName='VerdanaB', fontSize=12, leading=14, alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='BillLabelSm', fontName='VerdanaB', fontSize=8, leading=8))
-    styles.add(ParagraphStyle(name='BillLabelSmRight', fontName='VerdanaB', fontSize=8, leading=8, alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='BillLabelSmCenter', fontName='VerdanaB', fontSize=8, leading=8, alignment=TA_CENTER))
-    styles.add(ParagraphStyle(name='GraphLabel', fontName='Verdana', fontSize=6, leading=6))
-    styles.add(ParagraphStyle(name='BillField', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_LEFT))
-    styles.add(ParagraphStyle(name='BillFieldLg', fontName='Inconsolata', fontSize=12, leading=12, alignment=TA_LEFT))
-    styles.add(ParagraphStyle(name='BillFieldRight', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='BillFieldLeft', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_LEFT))
-    styles.add(ParagraphStyle(name='BillFieldSm', fontName='Inconsolata', fontSize=8, leading=8, alignment=TA_LEFT))
-    styles.add(ParagraphStyle(name='BillLabelFake', fontName='VerdanaB', fontSize=8, leading=8, textColor=colors.white))
-    style = styles['BillLabel']
+class ReebillRenderer:
+    def __init__(self, config, logger):
+        '''Config should be a dict of configuration keys and values.'''
+        # directory for temporary image file storage
+        self.temp_directory = config['temp_directory']
 
-    _showBoundaries = 0
+        # global reebill logger for reporting errors
+        self.logger = logger
 
-    # canvas: x,y,612w,792h w/ origin bottom left
-    # 72 dpi
-    # frame (x,y,w,h)
+        # create temp directory if it doesn't exist
+        create_directory_if_necessary(self.temp_directory, self.logger)
 
-    #page one frames; divided into three sections:  Summary, graphs, Charge Details
+    def render(self, reebill, outputfile, backgrounds, verbose):
+        print '^'*80 + 'temp directory is', self.temp_directory
+        styles = getSampleStyleSheet()
+        styles.add(ParagraphStyle(name='BillLabel', fontName='VerdanaB', fontSize=10, leading=10))
+        styles.add(ParagraphStyle(name='BillLabelRight', fontName='VerdanaB', fontSize=10, leading=10, alignment=TA_RIGHT))
+        styles.add(ParagraphStyle(name='BillLabelLg', fontName='VerdanaB', fontSize=12, leading=14))
+        styles.add(ParagraphStyle(name='BillLabelLgRight', fontName='VerdanaB', fontSize=12, leading=14, alignment=TA_RIGHT))
+        styles.add(ParagraphStyle(name='BillLabelSm', fontName='VerdanaB', fontSize=8, leading=8))
+        styles.add(ParagraphStyle(name='BillLabelSmRight', fontName='VerdanaB', fontSize=8, leading=8, alignment=TA_RIGHT))
+        styles.add(ParagraphStyle(name='BillLabelSmCenter', fontName='VerdanaB', fontSize=8, leading=8, alignment=TA_CENTER))
+        styles.add(ParagraphStyle(name='GraphLabel', fontName='Verdana', fontSize=6, leading=6))
+        styles.add(ParagraphStyle(name='BillField', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_LEFT))
+        styles.add(ParagraphStyle(name='BillFieldLg', fontName='Inconsolata', fontSize=12, leading=12, alignment=TA_LEFT))
+        styles.add(ParagraphStyle(name='BillFieldRight', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_RIGHT))
+        styles.add(ParagraphStyle(name='BillFieldLeft', fontName='Inconsolata', fontSize=10, leading=10, alignment=TA_LEFT))
+        styles.add(ParagraphStyle(name='BillFieldSm', fontName='Inconsolata', fontSize=8, leading=8, alignment=TA_LEFT))
+        styles.add(ParagraphStyle(name='BillLabelFake', fontName='VerdanaB', fontSize=8, leading=8, textColor=colors.white))
+        style = styles['BillLabel']
 
-    backgroundF1 = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background1', showBoundary=_showBoundaries)
+        _showBoundaries = 0
 
-    # 1/3 (612)w x (792pt-279pt=)h (to fit #9 envelope) 
+        # canvas: x,y,612w,792h w/ origin bottom left
+        # 72 dpi
+        # frame (x,y,w,h)
 
-    # Skyline Account number frame
-    billIdentificationF = Frame(90, 657, 227, 37, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='accountNumber', showBoundary=_showBoundaries)
+        #page one frames; divided into three sections:  Summary, graphs, Charge Details
 
-    # Due date and Amount frame
-    amountDueF = Frame(353, 657, 227, 37, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='amountDue', showBoundary=_showBoundaries)
+        backgroundF1 = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background1', showBoundary=_showBoundaries)
 
-    # Customer service address Frame
-    serviceAddressF = Frame(371, 570, 227, 70, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='serviceAddress', showBoundary=_showBoundaries)
+        # 1/3 (612)w x (792pt-279pt=)h (to fit #9 envelope) 
 
-    # Staples envelope (for bill send)
-    # #10 (4-1/8" (297pt)  x 9-1/2")
-    # Left window position fits standard formats
-    # Window size: 1-1/8" x 4-1/2" (324pt)
-    # Window placement: 7/8" (63pt) from left and 1/2" (36pt) from bottom
+        # Skyline Account number frame
+        billIdentificationF = Frame(90, 657, 227, 37, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='accountNumber', showBoundary=_showBoundaries)
 
-    # Customer billing address frame
-    #billingAddressF = Frame(78, 600, 250, 60, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
-    billingAddressF = Frame(78, 600, 390, 60, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
+        # Due date and Amount frame
+        amountDueF = Frame(353, 657, 227, 37, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='amountDue', showBoundary=_showBoundaries)
 
-    # 2/3
+        # Customer service address Frame
+        serviceAddressF = Frame(371, 570, 227, 70, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='serviceAddress', showBoundary=_showBoundaries)
 
-    # graph one frame
-    graphOneF = Frame(30, 400, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphOne', showBoundary=_showBoundaries)
+        # Staples envelope (for bill send)
+        # #10 (4-1/8" (297pt)  x 9-1/2")
+        # Left window position fits standard formats
+        # Window size: 1-1/8" x 4-1/2" (324pt)
+        # Window placement: 7/8" (63pt) from left and 1/2" (36pt) from bottom
 
-    # graph two frame
-    graphTwoF = Frame(310, 400, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphTwo', showBoundary=_showBoundaries)
+        # Customer billing address frame
+        #billingAddressF = Frame(78, 600, 250, 60, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
+        billingAddressF = Frame(78, 600, 390, 60, leftPadding=10, bottomPadding=0, rightPadding=0, topPadding=0, id='billingAddress', showBoundary=_showBoundaries)
 
-    # graph three frame
-    graphThreeF = Frame(30, 264, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphThree', showBoundary=_showBoundaries)
+        # 2/3
 
-    # graph four frame
-    graphFourF = Frame(310, 264, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphFour', showBoundary=_showBoundaries)
+        # graph one frame
+        graphOneF = Frame(30, 400, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphOne', showBoundary=_showBoundaries)
 
-    # 3/3
+        # graph two frame
+        graphTwoF = Frame(310, 400, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphTwo', showBoundary=_showBoundaries)
 
-    # summary background block
-    summaryBackgroundF = Frame(141, 75, 443, 152, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='summaryBackground', showBoundary=_showBoundaries)
+        # graph three frame
+        graphThreeF = Frame(30, 264, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphThree', showBoundary=_showBoundaries)
 
-    billPeriodTableF = Frame(30, 167, 241, 90, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billPeriod', showBoundary=_showBoundaries)
+        # graph four frame
+        graphFourF = Frame(310, 264, 270, 127, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=2, id='graphFour', showBoundary=_showBoundaries)
 
-    # summary charges block
-    summaryChargesTableF = Frame(328, 167, 252, 90, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='summaryCharges', showBoundary=_showBoundaries)
+        # 3/3
 
-    # balance block
-    balanceF = Frame(78, 100, 265, 55, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balance', showBoundary=_showBoundaries)
+        # summary background block
+        summaryBackgroundF = Frame(141, 75, 443, 152, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='summaryBackground', showBoundary=_showBoundaries)
 
-    # current charges block
-    currentChargesF = Frame(360, 100, 220, 55, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='currentCharges', showBoundary=_showBoundaries)
+        billPeriodTableF = Frame(30, 167, 241, 90, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billPeriod', showBoundary=_showBoundaries)
 
-    # balance forward block
-    balanceForwardF = Frame(360, 75, 220, 21, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balance', showBoundary=_showBoundaries)
+        # summary charges block
+        summaryChargesTableF = Frame(328, 167, 252, 90, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='summaryCharges', showBoundary=_showBoundaries)
 
-    # balance due block
-    balanceDueF = Frame(360, 41, 220, 25, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balanceDue', showBoundary=_showBoundaries)
+        # balance block
+        balanceF = Frame(78, 100, 265, 55, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balance', showBoundary=_showBoundaries)
 
-    # Special instructions frame
-    motdF = Frame(30, 41, 220, 50, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='motd', showBoundary=_showBoundaries)
+        # current charges block
+        currentChargesF = Frame(360, 100, 220, 55, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='currentCharges', showBoundary=_showBoundaries)
 
+        # balance forward block
+        balanceForwardF = Frame(360, 75, 220, 21, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balance', showBoundary=_showBoundaries)
 
-    # build page container for flowables to populate
-    firstPage = PageTemplate(id=firstPageName,frames=[backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, graphOneF, graphTwoF, graphThreeF, graphFourF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, currentChargesF, balanceForwardF, balanceDueF, motdF])
-    #
+        # balance due block
+        balanceDueF = Frame(360, 41, 220, 25, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balanceDue', showBoundary=_showBoundaries)
+
+        # Special instructions frame
+        motdF = Frame(30, 41, 220, 50, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='motd', showBoundary=_showBoundaries)
 
-    # page two frames
 
-    # page two background frame
-    backgroundF2 = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background2', showBoundary=_showBoundaries)
+        # build page container for flowables to populate
+        firstPage = PageTemplate(id=firstPageName,frames=[backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, graphOneF, graphTwoF, graphThreeF, graphFourF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, currentChargesF, balanceForwardF, balanceDueF, motdF])
+        #
+
+        # page two frames
 
-    # Staples envelope (for bill return)
-    # #9 standard invoice (3-7/8" (279pt) x 8-7/8" (639pt))
-    # Left window position fits standard formats
-    # Window size: 1-1/8" (81pt) x 4-1/2" (324pt)
-    # Window placement: 7/8" (63pt) from left and 1/2" (36pt) from bottom
-
-    # Measured Usage header frame
-    measuredUsageHeaderF = Frame(30, 500, 550, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='measuredUsageHeader', showBoundary=_showBoundaries)
-
-    # measured usage meter summaries
-    measuredUsageF = Frame(30, 400, 550, 105, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billableUsage', showBoundary=_showBoundaries)
-
-    # Charge details header frame
-    chargeDetailsHeaderF = Frame(30, 350, 550, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetailsHeader', showBoundary=_showBoundaries)
-
-    # charge details frame
-    chargeDetailsF = Frame(30, 1, 550, 350, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetails', showBoundary=_showBoundaries)
-
-    # build page container for flowables to populate
-    secondPage = PageTemplate(id=secondPageName,frames=[backgroundF2, measuredUsageHeaderF, measuredUsageF, chargeDetailsHeaderF, chargeDetailsF])
-    #
-
-    doc = SIBillDocTemplate(outputfile, pagesize=letter, showBoundary=0, allowSplitting=0)
-    doc.addPageTemplates([firstPage, secondPage])
-
-    # instantiate a bill which will be bound to reportlab
-    #from billing import bill
-    #bill = bill.Bill(inputbill)
-
-    Elements = []
-
-    # grab the backgrounds that were passed in
-    backgrounds = backgrounds.split(",")
-
-
-    #
-    # First Page
-    #
-
-    # populate backgroundF1
-    pageOneBackground = Image(os.path.join(os.path.join(resource_dir, 'images'), backgrounds.pop(0)),letter[0], letter[1])
-    Elements.append(pageOneBackground)
-
-    # populate account number, bill id & issue date
-    accountNumber = [
-        [Paragraph("Account Number", styles['BillLabelRight']),Paragraph(reebill.account + " " + str(reebill.sequence),styles['BillField'])], 
-        [Paragraph("Issue Date", styles['BillLabelRight']), Paragraph(str(reebill.issue_date), styles['BillField'])]
-    ]
-
-    t = Table(accountNumber, [135,85])
-    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black)]))
-    Elements.append(t)
-    #fits perfectly
-    #Elements.append(UseUpSpace())
-
-    # populate due date and amount
-    dueDateAndAmount = [
-        [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(str(reebill.due_date), styles['BillFieldRight'])], 
-        [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(reebill.balance_due.quantize(Decimal("0.00"))), styles['BillFieldRight'])]
-    ]
-    
-    t = Table(dueDateAndAmount, [135,85])
-    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black)]))
-    Elements.append(t)
-    Elements.append(UseUpSpace())
-    
-    # populate service address
-    Elements.append(Spacer(100,10))
-    Elements.append(Paragraph("Service Location", styles['BillLabel']))
-
-    sa = stringify(reebill.service_address)
-    Elements.append(Paragraph(sa.get('sa_addressee', ""), styles['BillField']))
-    Elements.append(Paragraph(sa.get('sa_street1',""), styles['BillField']))
-    Elements.append(Paragraph(" ".join((sa.get('sa_city', ""), sa.get('sa_state', ""), sa.get('sa_postalcode', ""))), styles['BillField']))
-    Elements.append(UseUpSpace())
-
-    # populate special instructions
-    #Elements.append(Spacer(50,50))
-    #Elements.append(UseUpSpace())
-    
-    # populate billing address
-    Elements.append(Spacer(100,20))
-    ba = stringify(reebill.billing_address)
-    Elements.append(Paragraph(ba.get('ba_addressee', ""), styles['BillFieldLg']))
-    Elements.append(Paragraph(ba.get('ba_street1', ""), styles['BillFieldLg']))
-    Elements.append(Paragraph(" ".join((ba.get('ba_city', ""), ba.get('ba_state', ""), ba.get('ba_postalcode',""))), styles['BillFieldLg']))
-    Elements.append(UseUpSpace())
-
-
-    # statistics
-
-    st = reebill.statistics
-
-    # populate graph one
-
-    # Construct period consumption/production ratio graph
-    # TODO: 20846595 17928227 why does render bill have to check for the presence of keys? And then check for the presence of a value?  This sucks.
-    renewableUtilization = st.get('renewable_utilization', "n/a")
-    conventionalUtilization = st.get('conventional_utilization', "n/a")
-    data = [renewableUtilization if renewableUtilization is not None else 0,
-        conventionalUtilization if conventionalUtilization is not None else 0]
-    labels = ["Renewable", "Conventional"]
-    c = PieChart(10*270, 10*127)
-    c.addTitle2(TopLeft, "<*underline=8*>Energy Utilization This Period", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
-
-    # Configure the labels using CDML to include the icon images
-    c.setLabelFormat("{label} {percent|1}%")
-
-
-    c.setColors2(DataColor, [0x007437,0x5a8f47]) 
-    c.setPieSize((10*270)/2.2, (10*127)/1.65, ((10*127)/3.5))
-    c.setData(data, labels)
-    c.setLabelStyle('Inconsolata.ttf', 64)
-    image_filename = "utilization-%s.png" % datetime.now()
-    image_path = os.path.join(tmp_dir, image_filename)
-    c.makeChart(image_path)
-   
-    Elements.append(Image(image_path, 270*.9, 127*.9))
-    Elements.append(UseUpSpace())
-
-
-
-    # populate graph two 
-    
-    # construct period environmental benefit
-
-    periodRenewableConsumed = st.get('renewable_consumed', 0)
-    periodRenewableConsumed = str(Decimal(str(periodRenewableConsumed))) if periodRenewableConsumed is not None else "0"
-
-    periodPoundsCO2Offset = st.get('co2_offset', 0)
-    periodPoundsCO2Offset = str(Decimal(str(periodPoundsCO2Offset))) if periodPoundsCO2Offset is not None else "0"
-    
-    environmentalBenefit = [
-        [Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("%s BTUs" % periodRenewableConsumed, styles['BillFieldSm'])],
-        [Paragraph("Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(periodPoundsCO2Offset, styles['BillFieldSm'])],
-    ]
-
-    t = Table(environmentalBenefit, [180,90])
-    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
-
-    Elements.append(t)
-    Elements.append(UseUpSpace())
-
-
-    # populate graph three 
-    
-    # construct system life cumulative numbers table
-
-    total_renewable_consumed = st.get('total_renewable_consumed', 0)
-    total_renewable_consumed = str(Decimal(str(total_renewable_consumed if total_renewable_consumed is not None else "0")).quantize(Decimal("0")))
-    total_co2_offset = st.get('total_co2_offset', 0)
-    total_co2_offset = str(Decimal(str(total_co2_offset if total_co2_offset is not None else "0")).quantize(Decimal("0")))
-
-    total_trees = st.get('total_trees', 0)
-    total_trees = str(Decimal(str(total_trees if total_trees is not None else "0")).quantize(Decimal("0.0")))
-
-    systemLife = [
-        [Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
-        [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph(str(st.get('total_savings', "n/a")), styles['BillFieldSm'])],
-        [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(total_renewable_consumed + " BTUs", styles['BillFieldSm'])],
-        [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(total_co2_offset, styles['BillFieldSm'])],
-        [Paragraph("Equivalent to This Many Trees", styles['BillLabelSm']), Paragraph(total_trees, styles['BillFieldSm'])]
-    ]
-
-    t = Table(systemLife, [180,90])
-    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
-
-    Elements.append(t)
-    Elements.append(Spacer(100,20))
-    
-    # build string for trees:
-    # each tree image represents either 10 or 100 trees (scale is changed so tree images fit)
-    if float(total_trees) <= 10:
-        tree_images = float(total_trees)
-        tree_label = 'Trees'
-    else:
-        tree_images = float(total_trees) / 10.0
-        tree_label = 'Tens of Trees'
-    # number of whole trees to show is the floor of tree_images; the fractional
-    # tree image that is shown (if any) is determined by the fractional part of
-    # tree_images
-    tree_image_fraction, whole_tree_images = math.modf(tree_images)
-    whole_tree_images = int(whole_tree_images)
-    # round the fractional part to the nearest tenth, and convert it into a string
-    # (so it's now one of the digits 0-9)
-    tree_image_fraction = str(int(math.floor(10 * tree_image_fraction)))
-
-
-    treeString = ""
-    while (whole_tree_images) > 0:
-        treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(resource_dir, "images", "tree3.png") +"\"/>"
-        whole_tree_images -= 1
-
-    if (tree_image_fraction != 0): treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(resource_dir, "images","tree3-" + tree_image_fraction + ".png") + "\"/>"
-
-    Elements.append(Paragraph("<para leftIndent=\"6\">"+treeString+"</para>", styles['BillLabel']))
-
-    Elements.append(Spacer(100,5))
-    Elements.append(Paragraph("<para leftIndent=\"50\">%s</para>" % tree_label, styles['GraphLabel']))
-
-    Elements.append(UseUpSpace())
-
-
-    # populate graph four 
-    
-    # construct annual production graph
-    data = []
-    labels = []
-    for period in (st.get('consumption_trend',[])):
-        labels.append(str(period.get("month")))
-        data.append(float(period.get("quantity")))
-
-    c = XYChart(10*270, 10*127)
-    c.setPlotArea((10*270)/6, (10*127)/6.5, (10*270)*.8, (10*127)*.70)
-    c.setColors2(DataColor, [0x9bbb59]) 
-    c.addBarLayer(data)
-    c.addTitle2(TopLeft, "<*underline=8*>Monthly Renewable Energy Consumption", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
-    c.yAxis().setLabelStyle('Inconsolata.ttf', 64)
-    c.yAxis().setTickDensity(100)
-    c.yAxis().setTitle("Therms", 'Inconsolata.ttf', 52)
-    c.xAxis().setLabels(labels)
-    c.xAxis().setLabelStyle('Inconsolata.ttf', 64)
-    image_filename = "Graph4-%s.png" % datetime.now()
-    c.makeChart(os.path.join(tmp_dir,image_filename))    
-
-    Elements.append(Image(os.path.join(tmp_dir,image_filename), 270*.9, 127*.9))
-    Elements.append(UseUpSpace())
-
-
-    # populate summary background
-    Elements.append(Image(os.path.join(resource_dir,'images','SummaryBackground.png'), 443, 151))
-    Elements.append(UseUpSpace())
-
-    # populate billPeriodTableF
-    # spacer so rows can line up with those in summarChargesTableF rows
-    serviceperiod = [
-            [Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake'])],
-            [Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
-        ] + [
+        # page two background frame
+        backgroundF2 = Frame(0,0, letter[0], letter[1], leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='background2', showBoundary=_showBoundaries)
+
+        # Staples envelope (for bill return)
+        # #9 standard invoice (3-7/8" (279pt) x 8-7/8" (639pt))
+        # Left window position fits standard formats
+        # Window size: 1-1/8" (81pt) x 4-1/2" (324pt)
+        # Window placement: 7/8" (63pt) from left and 1/2" (36pt) from bottom
+
+        # Measured Usage header frame
+        measuredUsageHeaderF = Frame(30, 500, 550, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='measuredUsageHeader', showBoundary=_showBoundaries)
+
+        # measured usage meter summaries
+        measuredUsageF = Frame(30, 400, 550, 105, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='billableUsage', showBoundary=_showBoundaries)
+
+        # Charge details header frame
+        chargeDetailsHeaderF = Frame(30, 350, 550, 20, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetailsHeader', showBoundary=_showBoundaries)
+
+        # charge details frame
+        chargeDetailsF = Frame(30, 1, 550, 350, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='chargeDetails', showBoundary=_showBoundaries)
+
+        # build page container for flowables to populate
+        secondPage = PageTemplate(id=secondPageName,frames=[backgroundF2, measuredUsageHeaderF, measuredUsageF, chargeDetailsHeaderF, chargeDetailsF])
+        #
+
+        doc = SIBillDocTemplate(outputfile, pagesize=letter, showBoundary=0, allowSplitting=0)
+        doc.addPageTemplates([firstPage, secondPage])
+
+        # instantiate a bill which will be bound to reportlab
+        #from billing import bill
+        #bill = bill.Bill(inputbill)
+
+        Elements = []
+
+        # grab the backgrounds that were passed in
+        backgrounds = backgrounds.split(",")
+
+
+        #
+        # First Page
+        #
+
+        # populate backgroundF1
+        pageOneBackground = Image(os.path.join(os.path.join(resource_dir, 'images'), backgrounds.pop(0)),letter[0], letter[1])
+        Elements.append(pageOneBackground)
+
+        # populate account number, bill id & issue date
+        accountNumber = [
+            [Paragraph("Account Number", styles['BillLabelRight']),Paragraph(reebill.account + " " + str(reebill.sequence),styles['BillField'])], 
+            [Paragraph("Issue Date", styles['BillLabelRight']), Paragraph(str(reebill.issue_date), styles['BillField'])]
+        ]
+
+        t = Table(accountNumber, [135,85])
+        t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black)]))
+        Elements.append(t)
+        #fits perfectly
+        #Elements.append(UseUpSpace())
+
+        # populate due date and amount
+        dueDateAndAmount = [
+            [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(str(reebill.due_date), styles['BillFieldRight'])], 
+            [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(reebill.balance_due.quantize(Decimal("0.00"))), styles['BillFieldRight'])]
+        ]
+        
+        t = Table(dueDateAndAmount, [135,85])
+        t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black)]))
+        Elements.append(t)
+        Elements.append(UseUpSpace())
+        
+        # populate service address
+        Elements.append(Spacer(100,10))
+        Elements.append(Paragraph("Service Location", styles['BillLabel']))
+
+        sa = stringify(reebill.service_address)
+        Elements.append(Paragraph(sa.get('sa_addressee', ""), styles['BillField']))
+        Elements.append(Paragraph(sa.get('sa_street1',""), styles['BillField']))
+        Elements.append(Paragraph(" ".join((sa.get('sa_city', ""), sa.get('sa_state', ""), sa.get('sa_postalcode', ""))), styles['BillField']))
+        Elements.append(UseUpSpace())
+
+        # populate special instructions
+        #Elements.append(Spacer(50,50))
+        #Elements.append(UseUpSpace())
+        
+        # populate billing address
+        Elements.append(Spacer(100,20))
+        ba = stringify(reebill.billing_address)
+        Elements.append(Paragraph(ba.get('ba_addressee', ""), styles['BillFieldLg']))
+        Elements.append(Paragraph(ba.get('ba_street1', ""), styles['BillFieldLg']))
+        Elements.append(Paragraph(" ".join((ba.get('ba_city', ""), ba.get('ba_state', ""), ba.get('ba_postalcode',""))), styles['BillFieldLg']))
+        Elements.append(UseUpSpace())
+
+
+        # statistics
+
+        st = reebill.statistics
+
+        # populate graph one
+
+        # Construct period consumption/production ratio graph
+        # TODO: 20846595 17928227 why does render bill have to check for the presence of keys? And then check for the presence of a value?  This sucks.
+        renewableUtilization = st.get('renewable_utilization', "n/a")
+        conventionalUtilization = st.get('conventional_utilization', "n/a")
+        data = [renewableUtilization if renewableUtilization is not None else 0,
+            conventionalUtilization if conventionalUtilization is not None else 0]
+        labels = ["Renewable", "Conventional"]
+        c = PieChart(10*270, 10*127)
+        c.addTitle2(TopLeft, "<*underline=8*>Energy Utilization This Period", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
+
+        # Configure the labels using CDML to include the icon images
+        c.setLabelFormat("{label} {percent|1}%")
+
+
+        c.setColors2(DataColor, [0x007437,0x5a8f47]) 
+        c.setPieSize((10*270)/2.2, (10*127)/1.65, ((10*127)/3.5))
+        c.setData(data, labels)
+        c.setLabelStyle('Inconsolata.ttf', 64)
+        image_filename = "utilization-%s.png" % datetime.now()
+        image_path = os.path.join(self.temp_directory, image_filename)
+        c.makeChart(image_path)
+       
+        Elements.append(Image(image_path, 270*.9, 127*.9))
+        Elements.append(UseUpSpace())
+
+
+
+        # populate graph two 
+        
+        # construct period environmental benefit
+
+        periodRenewableConsumed = st.get('renewable_consumed', 0)
+        periodRenewableConsumed = str(Decimal(str(periodRenewableConsumed))) if periodRenewableConsumed is not None else "0"
+
+        periodPoundsCO2Offset = st.get('co2_offset', 0)
+        periodPoundsCO2Offset = str(Decimal(str(periodPoundsCO2Offset))) if periodPoundsCO2Offset is not None else "0"
+        
+        environmentalBenefit = [
+            [Paragraph("<u>Environmental Benefit This Period</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
+            [Paragraph("Renewable Energy Consumed", styles['BillLabelSm']), Paragraph("%s BTUs" % periodRenewableConsumed, styles['BillFieldSm'])],
+            [Paragraph("Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(periodPoundsCO2Offset, styles['BillFieldSm'])],
+        ]
+
+        t = Table(environmentalBenefit, [180,90])
+        t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
+
+        Elements.append(t)
+        Elements.append(UseUpSpace())
+
+
+        # populate graph three 
+        
+        # construct system life cumulative numbers table
+
+        total_renewable_consumed = st.get('total_renewable_consumed', 0)
+        total_renewable_consumed = str(Decimal(str(total_renewable_consumed if total_renewable_consumed is not None else "0")).quantize(Decimal("0")))
+        total_co2_offset = st.get('total_co2_offset', 0)
+        total_co2_offset = str(Decimal(str(total_co2_offset if total_co2_offset is not None else "0")).quantize(Decimal("0")))
+
+        total_trees = st.get('total_trees', 0)
+        total_trees = str(Decimal(str(total_trees if total_trees is not None else "0")).quantize(Decimal("0.0")))
+
+        systemLife = [
+            [Paragraph("<u>System Life To Date</u>", styles['BillLabelSm']), Paragraph('', styles['BillLabelSm'])], 
+            [Paragraph("Total Dollar Savings", styles['BillLabelSm']), Paragraph(str(st.get('total_savings', "n/a")), styles['BillFieldSm'])],
+            [Paragraph("Total Renewable Energy Consumed", styles['BillLabelSm']), Paragraph(total_renewable_consumed + " BTUs", styles['BillFieldSm'])],
+            [Paragraph("Total Pounds Carbon Dioxide Offset", styles['BillLabelSm']), Paragraph(total_co2_offset, styles['BillFieldSm'])],
+            [Paragraph("Equivalent to This Many Trees", styles['BillLabelSm']), Paragraph(total_trees, styles['BillFieldSm'])]
+        ]
+
+        t = Table(systemLife, [180,90])
+        t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'LEFT'), ('ALIGN',(1,0),(1,-1),'LEFT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5)]))
+
+        Elements.append(t)
+        Elements.append(Spacer(100,20))
+        
+        # build string for trees:
+        # each tree image represents either 10 or 100 trees (scale is changed so tree images fit)
+        if float(total_trees) <= 10:
+            tree_images = float(total_trees)
+            tree_label = 'Trees'
+        else:
+            tree_images = float(total_trees) / 10.0
+            tree_label = 'Tens of Trees'
+        # number of whole trees to show is the floor of tree_images; the fractional
+        # tree image that is shown (if any) is determined by the fractional part of
+        # tree_images
+        tree_image_fraction, whole_tree_images = math.modf(tree_images)
+        whole_tree_images = int(whole_tree_images)
+        # round the fractional part to the nearest tenth, and convert it into a string
+        # (so it's now one of the digits 0-9)
+        tree_image_fraction = str(int(math.floor(10 * tree_image_fraction)))
+
+
+        treeString = ""
+        while (whole_tree_images) > 0:
+            treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(resource_dir, "images", "tree3.png") +"\"/>"
+            whole_tree_images -= 1
+
+        if (tree_image_fraction != 0): treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(resource_dir, "images","tree3-" + tree_image_fraction + ".png") + "\"/>"
+
+        Elements.append(Paragraph("<para leftIndent=\"6\">"+treeString+"</para>", styles['BillLabel']))
+
+        Elements.append(Spacer(100,5))
+        Elements.append(Paragraph("<para leftIndent=\"50\">%s</para>" % tree_label, styles['GraphLabel']))
+
+        Elements.append(UseUpSpace())
+
+
+        # populate graph four 
+        
+        # construct annual production graph
+        data = []
+        labels = []
+        for period in (st.get('consumption_trend',[])):
+            labels.append(str(period.get("month")))
+            data.append(float(period.get("quantity")))
+
+        c = XYChart(10*270, 10*127)
+        c.setPlotArea((10*270)/6, (10*127)/6.5, (10*270)*.8, (10*127)*.70)
+        c.setColors2(DataColor, [0x9bbb59]) 
+        c.addBarLayer(data)
+        c.addTitle2(TopLeft, "<*underline=8*>Monthly Renewable Energy Consumption", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
+        c.yAxis().setLabelStyle('Inconsolata.ttf', 64)
+        c.yAxis().setTickDensity(100)
+        c.yAxis().setTitle("Therms", 'Inconsolata.ttf', 52)
+        c.xAxis().setLabels(labels)
+        c.xAxis().setLabelStyle('Inconsolata.ttf', 64)
+        image_filename = "Graph4-%s.png" % datetime.now()
+        c.makeChart(os.path.join(self.temp_directory,image_filename))    
+
+        Elements.append(Image(os.path.join(self.temp_directory,image_filename), 270*.9, 127*.9))
+        Elements.append(UseUpSpace())
+
+
+        # populate summary background
+        Elements.append(Image(os.path.join(resource_dir,'images','SummaryBackground.png'), 443, 151))
+        Elements.append(UseUpSpace())
+
+        # populate billPeriodTableF
+        # spacer so rows can line up with those in summarChargesTableF rows
+        serviceperiod = [
+                [Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake']), Paragraph("spacer", styles['BillLabelFake'])],
+                [Paragraph("", styles['BillLabelSm']), Paragraph("From", styles['BillLabelSm']), Paragraph("To", styles['BillLabelSm'])]
+            ] + [
+                [
+                    Paragraph(service + u' service',styles['BillLabelSmRight']), 
+                    Paragraph(str(reebill.utilbill_period_for_service(service)[0]), styles['BillFieldRight']), 
+                    Paragraph(str(reebill.utilbill_period_for_service(service)[1]), styles['BillFieldRight'])
+                ] for service in reebill.services
+            ]
+
+        t = Table(serviceperiod, colWidths=[115,63,63])
+
+        t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'CENTER'), ('ALIGN',(2,0),(2,-1),'CENTER'), ('RIGHTPADDING', (0,2),(0,-1), 8), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,2), (-1,-1), 0.25, colors.black), ('BOX', (1,2), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,2),(-1,-1),colors.white)]))
+        Elements.append(t)
+        Elements.append(UseUpSpace())
+
+        utilitycharges = [
+            [Paragraph("Your Utility Charges", styles['BillLabelSmCenter']),Paragraph("", styles['BillLabelSm']),Paragraph("Green Energy", styles['BillLabelSmCenter'])],
+            [Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
+        ]+[
             [
-                Paragraph(service + u' service',styles['BillLabelSmRight']), 
-                Paragraph(str(reebill.utilbill_period_for_service(service)[0]), styles['BillFieldRight']), 
-                Paragraph(str(reebill.utilbill_period_for_service(service)[1]), styles['BillFieldRight'])
+                Paragraph(str(reebill.hypothetical_total_for_service(service).quantize(Decimal(".00"))),styles['BillFieldRight']), 
+                Paragraph(str(reebill.actual_total_for_service(service).quantize(Decimal(".00"))),styles['BillFieldRight']), 
+                Paragraph(str(reebill.ree_value_for_service(service).quantize(Decimal(".00"))),styles['BillFieldRight'])
             ] for service in reebill.services
         ]
 
-    t = Table(serviceperiod, colWidths=[115,63,63])
+        t = Table(utilitycharges, colWidths=[84,84,84])
 
-    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'CENTER'), ('ALIGN',(2,0),(2,-1),'CENTER'), ('RIGHTPADDING', (0,2),(0,-1), 8), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,2), (-1,-1), 0.25, colors.black), ('BOX', (1,2), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,2),(-1,-1),colors.white)]))
-    Elements.append(t)
-    Elements.append(UseUpSpace())
+        t.setStyle(TableStyle([('SPAN', (0,0), (1,0)), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (0,2), (-1,-1), 0.25, colors.black), ('BOX', (0,2), (-1,-1), 0.25, colors.black), ('BACKGROUND',(0,2),(-1,-1),colors.white)]))
+        Elements.append(t)
+        Elements.append(UseUpSpace())
 
-    utilitycharges = [
-        [Paragraph("Your Utility Charges", styles['BillLabelSmCenter']),Paragraph("", styles['BillLabelSm']),Paragraph("Green Energy", styles['BillLabelSmCenter'])],
-        [Paragraph("w/o Renewable", styles['BillLabelSmCenter']),Paragraph("w/ Renewable", styles['BillLabelSmCenter']),Paragraph("Value", styles['BillLabelSmCenter'])]
-    ]+[
-        [
-            Paragraph(str(reebill.hypothetical_total_for_service(service).quantize(Decimal(".00"))),styles['BillFieldRight']), 
-            Paragraph(str(reebill.actual_total_for_service(service).quantize(Decimal(".00"))),styles['BillFieldRight']), 
-            Paragraph(str(reebill.ree_value_for_service(service).quantize(Decimal(".00"))),styles['BillFieldRight'])
-        ] for service in reebill.services
-    ]
+        # populate balances
+        balances = [
+            [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(reebill.prior_balance.quantize(Decimal(".00"))),styles['BillFieldRight'])],
+            [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(reebill.payment_received.quantize(Decimal(".00"))), styles['BillFieldRight'])],
+            [Paragraph("Adjustments", styles['BillLabelRight']), Paragraph(str(reebill.total_adjustment.quantize(Decimal(".00"))), styles['BillFieldRight'])],
+        ]
 
-    t = Table(utilitycharges, colWidths=[84,84,84])
+        t = Table(balances, [180,85])
+        t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,0),(-1,-1),colors.white)]))
+        Elements.append(t)
+        Elements.append(UseUpSpace())
 
-    t.setStyle(TableStyle([('SPAN', (0,0), (1,0)), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (0,2), (-1,-1), 0.25, colors.black), ('BOX', (0,2), (-1,-1), 0.25, colors.black), ('BACKGROUND',(0,2),(-1,-1),colors.white)]))
-    Elements.append(t)
-    Elements.append(UseUpSpace())
+        # populate current charges
+        currentCharges = [
+            [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(reebill.ree_savings.quantize(Decimal(".00"))), styles['BillFieldRight'])],
+            [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(reebill.ree_charges.quantize(Decimal(".00"))), styles['BillFieldRight'])]
+        ]
 
-    # populate balances
-    balances = [
-        [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(reebill.prior_balance.quantize(Decimal(".00"))),styles['BillFieldRight'])],
-        [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(reebill.payment_received.quantize(Decimal(".00"))), styles['BillFieldRight'])],
-        [Paragraph("Adjustments", styles['BillLabelRight']), Paragraph(str(reebill.total_adjustment.quantize(Decimal(".00"))), styles['BillFieldRight'])],
-    ]
+        t = Table(currentCharges, [135,85])
+        t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,0),(-1,-1),colors.white)]))
+        Elements.append(t)
+        Elements.append(UseUpSpace())
 
-    t = Table(balances, [180,85])
-    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,0),(-1,-1),colors.white)]))
-    Elements.append(t)
-    Elements.append(UseUpSpace())
+        # populate balanceForward
+        balance = [
+            [Paragraph("Balance Forward", styles['BillLabelRight']), Paragraph(str(reebill.balance_forward.quantize(Decimal(".00"))), styles['BillFieldRight'])]
+        ]
 
-    # populate current charges
-    currentCharges = [
-        [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(reebill.ree_savings.quantize(Decimal(".00"))), styles['BillFieldRight'])],
-        [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(reebill.ree_charges.quantize(Decimal(".00"))), styles['BillFieldRight'])]
-    ]
-
-    t = Table(currentCharges, [135,85])
-    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,0),(-1,-1),colors.white)]))
-    Elements.append(t)
-    Elements.append(UseUpSpace())
-
-    # populate balanceForward
-    balance = [
-        [Paragraph("Balance Forward", styles['BillLabelRight']), Paragraph(str(reebill.balance_forward.quantize(Decimal(".00"))), styles['BillFieldRight'])]
-    ]
-
-    t = Table(balance, [135,85])
-    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,0),(-1,-1),colors.white)]))
-    Elements.append(t)
-    Elements.append(UseUpSpace())
+        t = Table(balance, [135,85])
+        t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,0),(-1,-1),colors.white)]))
+        Elements.append(t)
+        Elements.append(UseUpSpace())
 
 
 
-    # populate balanceDueFrame
-    balanceDue = [
-        [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph(str(reebill.balance_due.quantize(Decimal(".00"))), styles['BillFieldRight'])]
-    ]
+        # populate balanceDueFrame
+        balanceDue = [
+            [Paragraph("Balance Due", styles['BillLabelLgRight']), Paragraph(str(reebill.balance_due.quantize(Decimal(".00"))), styles['BillFieldRight'])]
+        ]
 
-    t = Table(balanceDue, [135,85])
-    t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(0,0),(-1,-1),colors.white)]))
-    Elements.append(t)
-    Elements.append(UseUpSpace())
+        t = Table(balanceDue, [135,85])
+        t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(0,0),(-1,-1),colors.white)]))
+        Elements.append(t)
+        Elements.append(UseUpSpace())
 
-    # populate motd
-    Elements.append(Paragraph(reebill.motd if reebill.motd is not None else "", styles['BillFieldSm']))
-    Elements.append(UseUpSpace())
-
-
-
-    #
-    # Second Page
-    #
-    Elements.append(NextPageTemplate("SecondPage"));
-    Elements.append(PageBreak());
+        # populate motd
+        Elements.append(Paragraph(reebill.motd if reebill.motd is not None else "", styles['BillFieldSm']))
+        Elements.append(UseUpSpace())
 
 
 
-    pageTwoBackground = Image(os.path.join(resource_dir,'images',backgrounds.pop(0)),letter[0], letter[1])
-    Elements.append(pageTwoBackground)
-
-    #populate measured usage header frame
-    Elements.append(Paragraph("Measured renewable and conventional energy.", styles['BillLabel']))
-    Elements.append(UseUpSpace())
-
-
-    # list of the rows
-    measuredUsage = [
-        ["Utility Register", "Description", "Quantity", "", "",""],
-        [None, None, "Renewable", "Utility", "Total", None],
-        [None, None, None, None,  None, None,]
-    ]
-
-    # make a dictionary like Bill.measured_usage() using data from MongoReeBill:
-    mongo_measured_usage = dict((service,reebill.meters_for_service(service)) for service in reebill.services)
-
-    # TODO: show both the utilty and shadow register as separate line items such that both their descriptions and rules could be shown
-    for service, meters in mongo_measured_usage.items():
-        for meter in meters:
-            keyfunc = lambda register:register['identifier']
-            # sort the registers by identifier to ensure similar identifiers are adjacent
-            registers = sorted(meter['registers'], key=keyfunc )
-
-            # group by the identifier attribute of each register
-            for identifier, register_group in groupby(registers, key=keyfunc):
-
-                shadow_total = None
-                utility_total = None
-                total = 0
-
-                # TODO validate that there is only a utility and shadow register
-                for register in register_group:
-                    if register['shadow'] is True:
-                        shadow_total = register['quantity']
-                        total += register['quantity']
-                    if register['shadow'] is False:
-                        utility_total = register['quantity']
-                        total += register['quantity']
-
-                measuredUsage.append([
-                    # TODO unless some wrapper class exists (pivotal 13643807) check for errors
-                    register['identifier'],
-                    register['description'],
-                    # as in the case of a second meter that doesn't have a shadow register (see family laundry)
-                    # TODO 21314105 shadow_total is an int if RE was bound and its value was zero (non communicating site)? 
-                    shadow_total.quantize(Decimal("0.00")) if shadow_total is not None else "",
-                    utility_total,
-                    total.quantize(Decimal("0.00")),
-                    register['quantity_units'],
-                ])
-
-    measuredUsage.append([None, None, None, None, None, None])
-
-    # total width 550
-    t = Table(measuredUsage, [100, 250, 55, 55, 55, 35])
-
-    t.setStyle(TableStyle([
-        ('SPAN',(2,0),(5,0)),
-        ('SPAN',(4,1),(5,1)),
-        ('BOX', (0,0), (-1,-1), 0.25, colors.black),
-        ('BOX', (0,2), (0,-1), 0.25, colors.black),
-        ('BOX', (1,2), (1,-1), 0.25, colors.black),
-        ('BOX', (2,2), (2,-1), 0.25, colors.black),
-        ('BOX', (3,2), (3,-1), 0.25, colors.black),
-        ('BOX', (4,2), (5,-1), 0.25, colors.black),
-        ('TOPPADDING', (0,0), (-1,-1), 0), 
-        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
-        ('RIGHTPADDING', (4,2), (4,-1), 2), 
-        ('LEFTPADDING', (5,2), (5,-1), 1), 
-        ('FONT', (0,0),(-1,0), 'VerdanaB'), # Bill Label Style
-        ('FONTSIZE', (0,0), (-1,0), 10),
-        ('FONT', (0,1),(-1,-1), 'Inconsolata'),
-        ('FONTSIZE', (0,1), (-1,-1), 7),
-        ('LEADING', (0,1), (-1,-1), 9),
-        ('ALIGN',(0,0),(0,0),'LEFT'),
-        ('ALIGN',(1,0),(5,0),'CENTER'),
-        ('ALIGN',(2,1),(3,1),'CENTER'),
-        ('ALIGN',(4,1),(5,1),'CENTER'),
-        ('ALIGN',(2,2),(2,-1),'RIGHT'),
-        ('ALIGN',(3,2),(3,-1),'RIGHT'),
-        ('ALIGN',(4,2),(4,-1),'RIGHT'),
-        ('ALIGN',(4,2),(4,-1),'RIGHT'),
-        ('ALIGN',(5,2),(5,-1),'LEFT'),
-    ]))
-
-    Elements.append(t)
-    Elements.append(UseUpSpace())
+        #
+        # Second Page
+        #
+        Elements.append(NextPageTemplate("SecondPage"));
+        Elements.append(PageBreak());
 
 
-    Elements.append(Paragraph("Original utility charges prior to renewable energy.", styles['BillLabel']))
-    Elements.append(UseUpSpace())
 
-    # list of the rows
-    chargeDetails = [
-        ["Service", "Charge Description", "Quantity","", "Rate","", "Total"],
-        [None, None, None, None, None, None, None],
-        [None, None, None, None, None, None, None]
-    ]
+        pageTwoBackground = Image(os.path.join(resource_dir,'images',backgrounds.pop(0)),letter[0], letter[1])
+        Elements.append(pageTwoBackground)
 
-    for service in reebill.services:
-        # MongoReebill.hypothetical_chargegroups_for_service() returns a dict
-        # mapping charge types (e.g. "All Charges") to lists of chargegroups.
-        chargegroups_dict = reebill.hypothetical_chargegroups_for_service(service)
-        for charge_type in chargegroups_dict.keys():
-            chargeDetails.append([service, None, None, None, None, None, None])
-            for i, charge in enumerate(chargegroups_dict[charge_type]):
-                chargeDetails.append([
-                    charge_type if i == 0 else "",
-                    charge.get('description', "No description"),
-                    charge['quantity'].quantize(Decimal(".000")) if 'quantity' in charge else Decimal("1"),
-                    charge.get('quantity_units', ""),
-                    charge['rate'].quantize(Decimal(".00000")) if 'rate' in charge else "",
-                    charge.get('rate_units', ""), 
-                    charge['total'].quantize(Decimal(".00")) if 'total' in charge else "",
-                ])
-        # spacer
-        chargeDetails.append([None, None, None, None, None, None, None])
-        chargeDetails.append([None, None, None, None, None, None, reebill.hypothetical_total_for_service(service).quantize(Decimal(".00"))])
+        #populate measured usage header frame
+        Elements.append(Paragraph("Measured renewable and conventional energy.", styles['BillLabel']))
+        Elements.append(UseUpSpace())
 
-    t = Table(chargeDetails, [80, 180, 70, 40, 70, 40, 70])
 
-    #('BOX', (0,0), (-1,-1), 0.25, colors.black), 
-    t.setStyle(TableStyle([
-        #('INNERGRID', (1,0), (-1,1), 0.25, colors.black), 
-        ('BOX', (0,2), (0,-1), 0.25, colors.black),
-        ('BOX', (1,2), (1,-1), 0.25, colors.black),
-        ('BOX', (2,2), (3,-1), 0.25, colors.black),
-        ('BOX', (4,2), (5,-1), 0.25, colors.black),
-        ('BOX', (6,2), (6,-1), 0.25, colors.black),
-        ('TOPPADDING', (0,0), (-1,-1), 0), 
-        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
-        ('RIGHTPADDING', (2,2), (2,-1), 2), 
-        ('LEFTPADDING', (3,2), (3,-1), 1), 
-        ('RIGHTPADDING', (4,2), (4,-1), 2), 
-        ('LEFTPADDING', (5,2), (5,-1), 1), 
-        ('FONT', (0,0),(-1,0), 'VerdanaB'), # Bill Label Style
-        ('FONTSIZE', (0,0), (-1,0), 10),
-        ('FONT', (0,1),(-1,-1), 'Inconsolata'),
-        ('FONTSIZE', (0,1), (-1,-1), 7),
-        ('LEADING', (0,1), (-1,-1), 9),
-        ('ALIGN',(0,0),(0,0),'LEFT'),
-        ('ALIGN',(1,0),(1,0),'CENTER'),
-        ('ALIGN',(2,0),(2,-1),'RIGHT'),
-        ('ALIGN',(4,0),(4,-1),'RIGHT'),
-        ('ALIGN',(6,0),(6,-1),'RIGHT'),
-    ]))
+        # list of the rows
+        measuredUsage = [
+            ["Utility Register", "Description", "Quantity", "", "",""],
+            [None, None, "Renewable", "Utility", "Total", None],
+            [None, None, None, None,  None, None,]
+        ]
 
-    Elements.append(t)
-    Elements.append(UseUpSpace())
+        # make a dictionary like Bill.measured_usage() using data from MongoReeBill:
+        mongo_measured_usage = dict((service,reebill.meters_for_service(service)) for service in reebill.services)
 
-    # render the document    
-    doc.setProgressCallBack(progress)
-    try:
-        doc.build(Elements)
-    except Exception as e:
-        print str(e)
+        # TODO: show both the utilty and shadow register as separate line items such that both their descriptions and rules could be shown
+        for service, meters in mongo_measured_usage.items():
+            for meter in meters:
+                keyfunc = lambda register:register['identifier']
+                # sort the registers by identifier to ensure similar identifiers are adjacent
+                registers = sorted(meter['registers'], key=keyfunc )
+
+                # group by the identifier attribute of each register
+                for identifier, register_group in groupby(registers, key=keyfunc):
+
+                    shadow_total = None
+                    utility_total = None
+                    total = 0
+
+                    # TODO validate that there is only a utility and shadow register
+                    for register in register_group:
+                        if register['shadow'] is True:
+                            shadow_total = register['quantity']
+                            total += register['quantity']
+                        if register['shadow'] is False:
+                            utility_total = register['quantity']
+                            total += register['quantity']
+
+                    measuredUsage.append([
+                        # TODO unless some wrapper class exists (pivotal 13643807) check for errors
+                        register['identifier'],
+                        register['description'],
+                        # as in the case of a second meter that doesn't have a shadow register (see family laundry)
+                        # TODO 21314105 shadow_total is an int if RE was bound and its value was zero (non communicating site)? 
+                        shadow_total.quantize(Decimal("0.00")) if shadow_total is not None else "",
+                        utility_total,
+                        total.quantize(Decimal("0.00")),
+                        register['quantity_units'],
+                    ])
+
+        measuredUsage.append([None, None, None, None, None, None])
+
+        # total width 550
+        t = Table(measuredUsage, [100, 250, 55, 55, 55, 35])
+
+        t.setStyle(TableStyle([
+            ('SPAN',(2,0),(5,0)),
+            ('SPAN',(4,1),(5,1)),
+            ('BOX', (0,0), (-1,-1), 0.25, colors.black),
+            ('BOX', (0,2), (0,-1), 0.25, colors.black),
+            ('BOX', (1,2), (1,-1), 0.25, colors.black),
+            ('BOX', (2,2), (2,-1), 0.25, colors.black),
+            ('BOX', (3,2), (3,-1), 0.25, colors.black),
+            ('BOX', (4,2), (5,-1), 0.25, colors.black),
+            ('TOPPADDING', (0,0), (-1,-1), 0), 
+            ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+            ('RIGHTPADDING', (4,2), (4,-1), 2), 
+            ('LEFTPADDING', (5,2), (5,-1), 1), 
+            ('FONT', (0,0),(-1,0), 'VerdanaB'), # Bill Label Style
+            ('FONTSIZE', (0,0), (-1,0), 10),
+            ('FONT', (0,1),(-1,-1), 'Inconsolata'),
+            ('FONTSIZE', (0,1), (-1,-1), 7),
+            ('LEADING', (0,1), (-1,-1), 9),
+            ('ALIGN',(0,0),(0,0),'LEFT'),
+            ('ALIGN',(1,0),(5,0),'CENTER'),
+            ('ALIGN',(2,1),(3,1),'CENTER'),
+            ('ALIGN',(4,1),(5,1),'CENTER'),
+            ('ALIGN',(2,2),(2,-1),'RIGHT'),
+            ('ALIGN',(3,2),(3,-1),'RIGHT'),
+            ('ALIGN',(4,2),(4,-1),'RIGHT'),
+            ('ALIGN',(4,2),(4,-1),'RIGHT'),
+            ('ALIGN',(5,2),(5,-1),'LEFT'),
+        ]))
+
+        Elements.append(t)
+        Elements.append(UseUpSpace())
+
+
+        Elements.append(Paragraph("Original utility charges prior to renewable energy.", styles['BillLabel']))
+        Elements.append(UseUpSpace())
+
+        # list of the rows
+        chargeDetails = [
+            ["Service", "Charge Description", "Quantity","", "Rate","", "Total"],
+            [None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None]
+        ]
+
+        for service in reebill.services:
+            # MongoReebill.hypothetical_chargegroups_for_service() returns a dict
+            # mapping charge types (e.g. "All Charges") to lists of chargegroups.
+            chargegroups_dict = reebill.hypothetical_chargegroups_for_service(service)
+            for charge_type in chargegroups_dict.keys():
+                chargeDetails.append([service, None, None, None, None, None, None])
+                for i, charge in enumerate(chargegroups_dict[charge_type]):
+                    chargeDetails.append([
+                        charge_type if i == 0 else "",
+                        charge.get('description', "No description"),
+                        charge['quantity'].quantize(Decimal(".000")) if 'quantity' in charge else Decimal("1"),
+                        charge.get('quantity_units', ""),
+                        charge['rate'].quantize(Decimal(".00000")) if 'rate' in charge else "",
+                        charge.get('rate_units', ""), 
+                        charge['total'].quantize(Decimal(".00")) if 'total' in charge else "",
+                    ])
+            # spacer
+            chargeDetails.append([None, None, None, None, None, None, None])
+            chargeDetails.append([None, None, None, None, None, None, reebill.hypothetical_total_for_service(service).quantize(Decimal(".00"))])
+
+        t = Table(chargeDetails, [80, 180, 70, 40, 70, 40, 70])
+
+        #('BOX', (0,0), (-1,-1), 0.25, colors.black), 
+        t.setStyle(TableStyle([
+            #('INNERGRID', (1,0), (-1,1), 0.25, colors.black), 
+            ('BOX', (0,2), (0,-1), 0.25, colors.black),
+            ('BOX', (1,2), (1,-1), 0.25, colors.black),
+            ('BOX', (2,2), (3,-1), 0.25, colors.black),
+            ('BOX', (4,2), (5,-1), 0.25, colors.black),
+            ('BOX', (6,2), (6,-1), 0.25, colors.black),
+            ('TOPPADDING', (0,0), (-1,-1), 0), 
+            ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+            ('RIGHTPADDING', (2,2), (2,-1), 2), 
+            ('LEFTPADDING', (3,2), (3,-1), 1), 
+            ('RIGHTPADDING', (4,2), (4,-1), 2), 
+            ('LEFTPADDING', (5,2), (5,-1), 1), 
+            ('FONT', (0,0),(-1,0), 'VerdanaB'), # Bill Label Style
+            ('FONTSIZE', (0,0), (-1,0), 10),
+            ('FONT', (0,1),(-1,-1), 'Inconsolata'),
+            ('FONTSIZE', (0,1), (-1,-1), 7),
+            ('LEADING', (0,1), (-1,-1), 9),
+            ('ALIGN',(0,0),(0,0),'LEFT'),
+            ('ALIGN',(1,0),(1,0),'CENTER'),
+            ('ALIGN',(2,0),(2,-1),'RIGHT'),
+            ('ALIGN',(4,0),(4,-1),'RIGHT'),
+            ('ALIGN',(6,0),(6,-1),'RIGHT'),
+        ]))
+
+        Elements.append(t)
+        Elements.append(UseUpSpace())
+
+        # render the document    
+        doc.setProgressCallBack(progress)
+        try:
+            doc.build(Elements)
+        except Exception as e:
+            print str(e)
 
 # remove all calculations to helpers
 def poundsCarbonFromGas(therms = 0):
