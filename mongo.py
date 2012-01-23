@@ -1096,10 +1096,6 @@ class ReebillDAO:
         document is replaced with this one.'''
         mongo_doc = bson_convert(copy.deepcopy(reebill.dictionary))
 
-        #mongo_doc['_id'] = {'account': mongo_doc['account'],
-            #'sequence': mongo_doc['sequence'],
-            #'branch': mongo_doc['branch']}
-
         self.collection.save(mongo_doc)
 
 
