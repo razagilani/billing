@@ -35,6 +35,8 @@ from billing import mongo
 import billing.processing.rate_structure as rs
 from billing.processing import db_objects
 from billing.users import UserDAO, User
+from billing import dateutils
+from skyliner import splinter
 
 sys.stdout = sys.stderr
 import pprint
@@ -125,14 +127,21 @@ class BillToolBridge:
             # directory where bill images are temporarily stored
             DEFAULT_BILL_IMAGE_DIRECTORY = '/tmp/billimages'
 
+            # directory to store temporary files for pdf rendering
+            DEFAULT_RENDERING_TEMP_DIRECTORY = '/tmp'
+
             # log file info
             self.config.add_section('log')
             self.config.set('log', 'log_file_name', DEFAULT_LOG_FILE_NAME)
             self.config.set('log', 'log_format', DEFAULT_LOG_FORMAT)
 
-            # bill rendering
-            self.config.add_section('billrendering')
-            self.config.set('billrendering', 'bill_image_directory', DEFAULT_BILL_IMAGE_DIRECTORY)
+            # bill image rendering
+            self.config.add_section('billimages')
+            self.config.set('billimages', 'bill_image_directory', DEFAULT_BILL_IMAGE_DIRECTORY)
+
+            # reebill pdf rendering
+            self.config.add_section('reebillrendering')
+            self.config.set('reebillrendering', 'temp_directory', DEFAULT_RENDERING_TEMP_DIRECTORY)
 
 
             # Writing our configuration file to 'example.cfg'
@@ -193,6 +202,9 @@ class BillToolBridge:
         # create one Process object to use for all related bill processing
         self.process = process.Process(self.config, self.state_db, self.reebill_dao, self.ratestructure_dao)
 
+        # create a ReebillRenderer
+        self.renderer = render.ReebillRenderer(dict(self.config.items('reebillrendering')), self.logger)
+
         # configure mailer
         # TODO: pass in specific configs?
         bill_mailer.config = self.config
@@ -215,27 +227,50 @@ class BillToolBridge:
         else:
             raise cherrypy.HTTPRedirect('/login.html')
 
+    @cherrypy.expose
+    def reconciliation(self):
+        '''Reconciliation report for reebills.'''
+        try:
+            result = ''
+            session = self.state_db.session()
+            for account in self.state_db.listAccounts(session):
+                olap_id = nu.NexusUtil().olap_id(account)
+                install = splinter.Splinter(None, "tyrell", "dev") \
+                        .get_install_obj_for(olap_id)
+                for sequence in self.state_db.listSequences(session, account):
+                    reebill = self.reebill_dao.load_reebill(account, sequence)
+                    try:
+                        bill_therms = reebill.total_renewable_energy
+                        oltp_therms = sum(install.get_energy_consumed_by_service(
+                                day, 'service type is ignored!', [0,23]) for day
+                                in dateutils.date_generator(reebill.period_begin,
+                                reebill.period_end))
+                        #for day in dateutils.date_generator(reebill.period_begin, reebill.period_end):
+                            #oltp_therms = install.get_energy_consumed_by_service(
+                                    #day, 'service type is ignored!', [0,23])
+                    except:
+                        raise
+                        energy_string = 'error'
+                    else:
+                        energy_string = '%s, %s' % (total_therms, oltp_therms)
+                    result += '<p>%s-%s: %s' % (account, sequence, energy_string)
+            return result
+        except Exception as e:
+            print >> sys.stderr, e, traceback.format_exc()
+            self.logger.error(e, traceback.format_exc())
+            raise
+
     ###########################################################################
     # authentication functions
-    # TODO might want to move most of this code (excluding the cherrypy stuff) into users.py
 
     @cherrypy.expose
-    def login(self, identifier, password, rememberme='off', **kwargs):
-        #if username not in USERS or USERS[username]['password'] != password:
-            ## failed login: redirect to the login page (again)
-            ## TODO logging passwords is obviously a bad idea
-            #self.logger.info(('login attempt failed: identifier "%s", password '
-                #'"%s", remember me: %s, type is %s') % (identifier, password, rememberme, type(rememberme)))
-            #raise cherrypy.HTTPRedirect("/login.html")
-
+    def login(self, identifier, rememberme='off', **kwargs):
         user = self.user_dao.load_user(identifier)
         if user is None:
-            self.logger.info(('login attempt failed: identifier "%s", password'
-                ' "%s", remember me: %s, type is %s') % (identifier, password,
-                rememberme, type(rememberme)))
+            self.logger.info(('login attempt failed: identifier "%s"'
+                ', remember me: %s') % (identifier, rememberme))
             raise cherrypy.HTTPRedirect("/login.html")
 
-        
         # successful login:
 
         # create session object
@@ -248,18 +283,11 @@ class BillToolBridge:
         #        persistent=(rememberme == 'on'))
         #cherrypy.session.regenerate()
 
-        # TODO problem: cherrypy.session.timeout is 60 no matter what
-        self.logger.info(cherrypy.session.timeout)
-        #print >> sys.stderr, 'timeout: ' + cherrypy.session.timeout
-        
         # store identifier & user preferences in cherrypy session object &
         # redirect to main page
         cherrypy.session['user'] = user
-
-        # TODO logging passwords is obviously a bad idea
-        # (also passwords are now ignored because openid doesn't need them)
-        self.logger.info(('user "%s" logged in with password "%s", remember '
-            'me: "%s" type is %s') % (identifier, password, rememberme,
+        self.logger.info(('user "%s" logged in: remember '
+            'me: "%s" type is %s') % (identifier, rememberme,
             type(rememberme)))
         raise cherrypy.HTTPRedirect("/billentry.html")
 
@@ -274,7 +302,7 @@ class BillToolBridge:
             # session contains default data
             if not self.authentication_on:
                 if 'user' not in cherrypy.session:
-                    cherrypy.session['user'] = User.get_default_user()
+                    cherrypy.session['user'] = UserDAO.default_user
                 return True
             if 'user' not in cherrypy.session:
                 self.logger.info("Non-logged-in user was denied access to: %s" % \
@@ -285,7 +313,7 @@ class BillToolBridge:
                 return False
             return True
         except Exception as e:
-            #print >> sys.stderr, e, traceback.format_exc()
+            print >> sys.stderr, e, traceback.format_exc()
             self.logger.error(e, traceback.format_exc())
             raise
     
@@ -310,9 +338,8 @@ class BillToolBridge:
             del cherrypy.session['user']
         raise cherrypy.HTTPRedirect('/login.html')
 
-
-
-
+    ###########################################################################
+    # bill processing
 
     # TODO: do this on a per service basis 18311877
     @cherrypy.expose
@@ -329,9 +356,6 @@ class BillToolBridge:
 
         except Exception as e:
                 return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
-    ###########################################################################
-    # bill processing
 
     @cherrypy.expose
     def new_account(self, name, account, discount_rate, template_account, **args):
@@ -488,72 +512,6 @@ class BillToolBridge:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-
-    @cherrypy.expose
-    def calc_reperiod(self, account, sequence, **args):
-        self.check_authentication()
-        try:
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
-            self.process.calculate_reperiod(account, sequence)
-
-        except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
-        return json.dumps({'success': True})
-
-    @cherrypy.expose
-    def calcstats(self, account, sequence, **args):
-        self.check_authentication()
-        try:
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
-            self.process.calculate_statistics(account, sequence)
-        except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-        return json.dumps({'success': True})
-
-    @cherrypy.expose
-    def sum(self, account, sequence, **args):
-        self.check_authentication()
-        try:
-            session = None
-
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
-            present_reebill = self.reebill_dao.load_reebill(account, sequence)
-            prior_reebill = self.reebill_dao.load_reebill(account, int(sequence)-1)
-        
-            session = self.state_db.session()
-            self.process.sum_bill(session, prior_reebill, present_reebill)
-            session.commit()
-            self.reebill_dao.save_reebill(present_reebill)
-
-            return json.dumps({'success': True})
-
-        except Exception as e:
-            if session is not None: 
-                try:
-                    if session is not None: session.rollback()
-                except:
-                    print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-        
-    @cherrypy.expose
-    def issue(self, account, sequence, **args):
-        self.check_authentication()
-        try:
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
-            self.process.issue(account, sequence)
-        except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-        return json.dumps({'success': True})
-
     @cherrypy.expose
     def render(self, account, sequence, **args):
         self.check_authentication()
@@ -562,8 +520,8 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
             # TODO 22598787 - branch awareness
-            render.render(reebill, 
-                self.config.get("billdb", "billpath")+ "%s" % account, "%s.pdf" % sequence,
+            self.renderer.render(reebill, 
+                self.config.get("billdb", "billpath")+ "%s/%.4d.pdf" % (account, int(sequence)),
                 "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
                 None,
             )
@@ -574,48 +532,6 @@ class BillToolBridge:
         return json.dumps({'success': True})
 
     @cherrypy.expose
-    def commit(self, account, sequence, **args):
-        self.check_authentication()
-        try:
-            session = None
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
-            session = self.state_db.session()
-            self.process.commit_rebill(session, account, sequence)
-            session.commit()
-            return json.dumps({'success': True})
-        except Exception as e:
-            if session is not None: 
-                try:
-                    if session is not None: session.rollback()
-                except:
-                    print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
-    @cherrypy.expose
-    def issueToCustomer(self, account, sequence, **args):
-        self.check_authentication()
-        try:
-            session = None
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
-            session = self.state_db.session()
-            self.process.issue_to_customer(session, account, sequence)
-            session.commit()
-            return json.dumps({'success': True})
-
-        except Exception as e:
-            if session is not None: 
-                try:
-                    if session is not None: session.rollback()
-                except:
-                    print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
-
-    @cherrypy.expose
     def mail(self, account, sequences, recipients, **args):
         self.check_authentication()
         try:
@@ -623,32 +539,38 @@ class BillToolBridge:
             if not account or not sequences or not recipients:
                 raise ValueError("Bad Parameter Value")
 
-            # look up this value and fail early if there is something wrong with the session.
-            current_user = cherrypy.session['username']
-
+            # look up this value and fail early if there is something wrong
+            # with the session.
+            current_user = cherrypy.session['user'].username
             session = self.state_db.session()
 
             # sequences will come in as a string if there is one element in post data. 
             # If there are more, it will come in as a list of strings
             if type(sequences) is not list: sequences = [sequences]
-            # acquire the most recent reebill from the sequence list and use its values for the merge
+            # acquire the most recent reebill from the sequence list and use
+            # its values for the merge
             sequences = [sequence for sequence in sequences]
             # sequences is [u'17']
-            all_bills = [self.reebill_dao.load_reebill(account, sequence) for sequence in sequences]
+            all_bills = [self.reebill_dao.load_reebill(account, sequence) for
+                    sequence in sequences]
 
             # set issue date 
             for reebill in all_bills:
                 self.process.issue(reebill.account, reebill.sequence)
-                self.process.issue_to_customer(session, reebill.account, reebill.sequence)
+                self.process.issue_to_customer(session, reebill.account,
+                        reebill.sequence)
 
             #  TODO: 21305875  Do this until reebill is being passed around
-            # problem is all_bills is not reloaded after .issue and .issue_to_customer
-            all_bills = [self.reebill_dao.load_reebill(account, sequence) for sequence in sequences]
+            #  problem is all_bills is not reloaded after .issue and
+            #  .issue_to_customer
+            all_bills = [self.reebill_dao.load_reebill(account, sequence) for
+                    sequence in sequences]
 
             # render all the bills
             for reebill in all_bills:
                 render.render(reebill, 
-                    self.config.get("billdb", "billpath")+ "%s/%s.pdf" % (reebill.account, reebill.sequence),
+                    self.config.get("billdb", "billpath")+ "%s/%s.pdf" % (
+                        reebill.account, reebill.sequence),
                     "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
                     None,
                 )
@@ -667,14 +589,20 @@ class BillToolBridge:
             merge_fields["bill_dates"] = bill_dates
             merge_fields["last_bill"] = bill_file_names[-1]
 
-            bill_mailer.mail(recipients, merge_fields, os.path.join(self.config.get("billdb", "billpath"), account), bill_file_names);
+            bill_mailer.mail(recipients, merge_fields,
+                    os.path.join(self.config.get("billdb", "billpath"),
+                        account), bill_file_names);
 
-            # set issued to customer flag
+
+            # set issued to customer flagnflict.
             # Commit bill
             for reebill in all_bills:
-                self.journal_dao.journal(reebill.account, reebill.sequence, "Mailed to %s by %s" % (recipients, current_user))
-                self.process.issue_to_customer(session, reebill.account, reebill.sequence)
-                self.process.commit_reebill(session, reebill.account, reebill.sequence)
+                self.journal_dao.journal(reebill.account, reebill.sequence,
+                        "Mailed to %s by %s" % (recipients, current_user))
+                self.process.issue_to_customer(session, reebill.account,
+                        reebill.sequence)
+                self.process.commit_reebill(session, reebill.account,
+                        reebill.sequence)
 
             session.commit()
             return json.dumps({'success': True})
@@ -1809,8 +1737,6 @@ class BillToolBridge:
     @cherrypy.expose
     def listUtilBills(self, start, limit, account, **args):
         self.check_authentication()
-        # call getrows to actually query the database; return the result in
-        # JSON format if it succeded or an error if it didn't
         try:
             # names for utilbill states in the UI
             state_descriptions = {
@@ -1839,8 +1765,8 @@ class BillToolBridge:
                 ('name', full_names[i]),
                 ('period_start', ub.period_start),
                 ('period_end', ub.period_end),
-                ('sequence', ub.reebill.sequence if ub.reebill else none),
-                # todo this doesn't show up in the gui
+                ('sequence', ub.reebill.sequence if ub.reebill else None),
+                # TODO this doesn't show up in the gui
                 ('state', state_descriptions[ub.state])
             ]) for i, ub in enumerate(utilbills)]
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
