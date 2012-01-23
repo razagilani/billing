@@ -232,26 +232,28 @@ class MongoReebill(object):
     # depending on needs in render.py or other consumers. return values are
     # strings unless otherwise noted.
     
+    # TODO should _id fields even have setters? they're never supposed to
+    # change.
     @property
     def account(self):
-        return self.dictionary['account']
+        return self.dictionary['_id']['account']
     @account.setter
     def account(self, value):
-        self.dictionary['account'] = value
+        self.dictionary['_id']['account'] = value
     
     @property
     def sequence(self):
-        return self.dictionary['sequence']
+        return self.dictionary['_id']['sequence']
     @sequence.setter
     def sequence(self, value):
-        self.dictionary['sequence'] = value
+        self.dictionary['_id']['sequence'] = value
 
     @property
     def branch(self):
-        return self.dictionary['branch']
+        return self.dictionary['_id']['branch']
     @branch.setter
     def branch(self, value):
-        self.dictionary['branch'] = int(value)
+        self.dictionary['_id']['branch'] = int(value)
     
     @property
     def issue_date(self):
@@ -285,6 +287,14 @@ class MongoReebill(object):
     def period_end(self, value):
         self.dictionary['period_end'] = value
     
+    @property
+    def discount_rate(self):
+        '''Discount rate is a Decimal.'''
+        return self.dictionary['discount_rate']
+    @discount_rate.setter
+    def discount_rate(self, value):
+        self.dictionary['discount_rate'] = value
+
     @property
     def balance_due(self):
         '''Returns a Decimal.'''
@@ -846,10 +856,35 @@ class MongoReebill(object):
         hypothetical utility bill.'''
         return self.dictionary['ree_value']
 
+    @property
+    def total_renewable_energy(self):
+        '''Returns all renewable energy distributed among shadow registers of
+        this reebill, in BTU.'''
+        # TODO: CCF is not an energy unit, and registers actually hold CCF
+        # instead of therms. we need to start keeping track of CCF-to-therms
+        # conversion factors.
+        # https://www.pivotaltracker.com/story/show/22171391
+        total_therms = Decimal(0)
+        for utilbill in self.dictionary['utilbills']:
+            for meter in utilbill['meters']:
+                for register in meter['registers']:
+                    if register['shadow'] == True:
+                        quantity = register['quantity']
+                        unit = register['quantity_units'].lower()
+                        if unit == 'therms':
+                            total_therms += quantity
+                        elif unit == 'btu':
+                            total_therms += quantity / Decimal(100000.0)
+                        elif unit == 'kwh':
+                            total_therms += quantity / Decimal(.0341214163)
+                        else:
+                            raise Exception('Unknown energy unit: "%s"' % \
+                                    register['quantity_units'])
+        return total_therms
+
     #
     # Helper functions
     #
-
 
     # the following functions are all about flattening nested chargegroups for the UI grid
     def hypothetical_chargegroups_flattened(self, service, chargegroups='hypothetical_chargegroups'):
@@ -1085,10 +1120,6 @@ class ReebillDAO:
         with the same account & sequence number already exists, the existing
         document is replaced with this one.'''
         mongo_doc = bson_convert(copy.deepcopy(reebill.dictionary))
-
-        mongo_doc['_id'] = {'account': mongo_doc['account'],
-            'sequence': mongo_doc['sequence'],
-            'branch': mongo_doc['branch']}
 
         self.collection.save(mongo_doc)
 
