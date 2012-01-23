@@ -35,6 +35,8 @@ from billing import mongo
 import billing.processing.rate_structure as rs
 from billing.processing import db_objects
 from billing.users import UserDAO, User
+from billing import dateutils
+from skyliner import splinter
 
 sys.stdout = sys.stderr
 import pprint
@@ -224,6 +226,39 @@ class BillToolBridge:
             raise cherrypy.HTTPRedirect('/billentry.html')
         else:
             raise cherrypy.HTTPRedirect('/login.html')
+
+    @cherrypy.expose
+    def reconciliation(self):
+        '''Reconciliation report for reebills.'''
+        try:
+            result = ''
+            session = self.state_db.session()
+            for account in self.state_db.listAccounts(session):
+                olap_id = nu.NexusUtil().olap_id(account)
+                install = splinter.Splinter(None, "tyrell", "dev") \
+                        .get_install_obj_for(olap_id)
+                for sequence in self.state_db.listSequences(session, account):
+                    reebill = self.reebill_dao.load_reebill(account, sequence)
+                    try:
+                        bill_therms = reebill.total_renewable_energy
+                        oltp_therms = sum(install.get_energy_consumed_by_service(
+                                day, 'service type is ignored!', [0,23]) for day
+                                in dateutils.date_generator(reebill.period_begin,
+                                reebill.period_end))
+                        #for day in dateutils.date_generator(reebill.period_begin, reebill.period_end):
+                            #oltp_therms = install.get_energy_consumed_by_service(
+                                    #day, 'service type is ignored!', [0,23])
+                    except:
+                        raise
+                        energy_string = 'error'
+                    else:
+                        energy_string = '%s, %s' % (total_therms, oltp_therms)
+                    result += '<p>%s-%s: %s' % (account, sequence, energy_string)
+            return result
+        except Exception as e:
+            print >> sys.stderr, e, traceback.format_exc()
+            self.logger.error(e, traceback.format_exc())
+            raise
 
     ###########################################################################
     # authentication functions
