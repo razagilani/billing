@@ -607,32 +607,39 @@ class BillToolBridge:
             if not account or not sequences or not recipients:
                 raise ValueError("Bad Parameter Value")
 
-            # look up this value and fail early if there is something wrong with the session.
-            current_user = cherrypy.session['username']
+            # look up this value and fail early if there is something wrong
+            # with the session.
+            current_user = cherrypy.session['user'].username
 
             session = self.state_db.session()
 
             # sequences will come in as a string if there is one element in post data. 
             # If there are more, it will come in as a list of strings
             if type(sequences) is not list: sequences = [sequences]
-            # acquire the most recent reebill from the sequence list and use its values for the merge
+            # acquire the most recent reebill from the sequence list and use
+            # its values for the merge
             sequences = [sequence for sequence in sequences]
             # sequences is [u'17']
-            all_bills = [self.reebill_dao.load_reebill(account, sequence) for sequence in sequences]
+            all_bills = [self.reebill_dao.load_reebill(account, sequence) for
+                    sequence in sequences]
 
             # set issue date 
             for reebill in all_bills:
                 self.process.issue(reebill.account, reebill.sequence)
-                self.process.issue_to_customer(session, reebill.account, reebill.sequence)
+                self.process.issue_to_customer(session, reebill.account,
+                        reebill.sequence)
 
             #  TODO: 21305875  Do this until reebill is being passed around
-            # problem is all_bills is not reloaded after .issue and .issue_to_customer
-            all_bills = [self.reebill_dao.load_reebill(account, sequence) for sequence in sequences]
+            #  problem is all_bills is not reloaded after .issue and
+            #  .issue_to_customer
+            all_bills = [self.reebill_dao.load_reebill(account, sequence) for
+                    sequence in sequences]
 
             # render all the bills
             for reebill in all_bills:
                 render.render(reebill, 
-                    self.config.get("billdb", "billpath")+ "%s/%s.pdf" % (reebill.account, reebill.sequence),
+                    self.config.get("billdb", "billpath")+ "%s/%s.pdf" % (
+                        reebill.account, reebill.sequence),
                     "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
                     None,
                 )
@@ -651,14 +658,19 @@ class BillToolBridge:
             merge_fields["bill_dates"] = bill_dates
             merge_fields["last_bill"] = bill_file_names[-1]
 
-            bill_mailer.mail(recipients, merge_fields, os.path.join(self.config.get("billdb", "billpath"), account), bill_file_names);
+            bill_mailer.mail(recipients, merge_fields,
+                    os.path.join(self.config.get("billdb", "billpath"),
+                        account), bill_file_names);
 
-            # set issued to customer flag
+            # set issued to customer flagnflict.
             # Commit bill
             for reebill in all_bills:
-                self.journal_dao.journal(reebill.account, reebill.sequence, "Mailed to %s by %s" % (recipients, current_user))
-                self.process.issue_to_customer(session, reebill.account, reebill.sequence)
-                self.process.commit_reebill(session, reebill.account, reebill.sequence)
+                self.journal_dao.journal(reebill.account, reebill.sequence,
+                        "Mailed to %s by %s" % (recipients, current_user))
+                self.process.issue_to_customer(session, reebill.account,
+                        reebill.sequence)
+                self.process.commit_reebill(session, reebill.account,
+                        reebill.sequence)
 
             session.commit()
             return json.dumps({'success': True})
@@ -670,7 +682,8 @@ class BillToolBridge:
                 except:
                     print "Could not rollback session"
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return json.dumps({'success': False, 'errors':{'reason': str(e),
+                    'details':traceback.format_exc()}})
 
 
     def full_names_of_accounts(self, accounts):

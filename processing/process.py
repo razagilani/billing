@@ -245,9 +245,7 @@ class Process(object):
         reebill = self.reebill_dao.load_reebill(account, sequence)
         begin = reebill.period_begin
         end = reebill.period_end
-
         self.state_db.commit_bill(session, account, sequence, begin, end)
-
 
     def bind_rate_structure(self, reebill):
 
