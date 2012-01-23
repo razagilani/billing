@@ -232,26 +232,28 @@ class MongoReebill(object):
     # depending on needs in render.py or other consumers. return values are
     # strings unless otherwise noted.
     
+    # TODO should _id fields even have setters? they're never supposed to
+    # change.
     @property
     def account(self):
-        return self.dictionary['account']
+        return self.dictionary['_id']['account']
     @account.setter
     def account(self, value):
-        self.dictionary['account'] = value
+        self.dictionary['_id']['account'] = value
     
     @property
     def sequence(self):
-        return self.dictionary['sequence']
+        return self.dictionary['_id']['sequence']
     @sequence.setter
     def sequence(self, value):
-        self.dictionary['sequence'] = value
+        self.dictionary['_id']['sequence'] = value
 
     @property
     def branch(self):
-        return self.dictionary['branch']
+        return self.dictionary['_id']['branch']
     @branch.setter
     def branch(self, value):
-        self.dictionary['branch'] = int(value)
+        self.dictionary['_id']['branch'] = int(value)
     
     @property
     def issue_date(self):
