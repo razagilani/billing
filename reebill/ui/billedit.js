@@ -366,14 +366,7 @@ function renderWidgets()
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
                 {text: 'Compute Bill', handler: bindRSOperation},
-                //{text: 'Calculate REPeriod', handler: calcREPeriodOperation},
-                //{text: 'Pay', handler: payOperation},
-                //{text: 'Sum', handler: sumOperation},
-                //{text: 'CalcStats', handler: calcStatsOperation},
-                //{text: 'Set Issue Date', handler: issueOperation},
                 {text: 'Render', handler: renderOperation},
-                //{text: 'Commit', handler: commitOperation},
-                //{text: 'Issue to Customer', handler: issueToCustomerOperation},
             ]
         })
     });
@@ -747,119 +740,11 @@ function renderWidgets()
     {
     }
 
-    function issueToCustomerOperation()
-    {
-        registerAjaxEvents()
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/issueToCustomer',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue()
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("Issue to customer response fail");
-            }
-        });
-    }
-
-    function calcStatsOperation()
-    {
-        registerAjaxEvents()
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/calcstats',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue()
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("Calc response fail");
-            }
-        });
-    }
-
-    function sumOperation()
-    {
-        registerAjaxEvents()
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/sum',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue()
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("Sum response fail");
-            }
-        });
-    }
-
-    function payOperation()
-    {
-        // example modal pattern. 
-        /*
-        Ext.Msg.prompt('Amount Paid', 'Enter amount paid:', function(btn, text){
-            if (btn == 'ok')
-            {
-                registerAjaxEvents()
-                var amountPaid = parseFloat(text)
-
-                account = accountCombo.getValue();
-                sequence = sequenceCombo.getValue();
-
-                Ext.Ajax.request({
-                    url: 'http://'+location.host+'/reebill/pay',
-                    params: { 
-                        account: accountCombo.getValue(),
-                        sequence: sequence,
-                        amount: amountPaid
-                    },
-                    disableCaching: true,
-                    success: successResponse,
-                });
-            }
-        });*/
-
-        registerAjaxEvents()
-
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/pay',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue(),
-            },
-            disableCaching: true,
-            success: successResponse,
-        });
-
-    }
-
     function bindRSOperation()
     {
         registerAjaxEvents()
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/bindrs',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue()
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("Bind RS response fail");
-            }
-        });
-    }
-
-    function calcREPeriodOperation()
-    {
-        registerAjaxEvents()
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/calc_reperiod',
             params: { 
                 account: accountCombo.getValue(),
                 sequence: sequenceCombo.getValue()
@@ -921,23 +806,6 @@ function renderWidgets()
         });
     }
 
-    function issueOperation()
-    {
-        registerAjaxEvents()
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/issue',
-            params: { 
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue()
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("Issue response fail");
-            }
-        });
-    }
-
     function renderOperation()
     {
         registerAjaxEvents()
@@ -953,27 +821,6 @@ function renderWidgets()
                 alert("Render response fail");
             }
         });
-    }
-
-    function commitOperation()
-    {
-        account = accountCombo.getValue();
-        sequence = sequenceCombo.getValue();
-
-        registerAjaxEvents();
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/commit',
-            params: {
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue(),
-            },
-            disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("commit response fail");
-            }
-        });
-
     }
 
     function mailReebillOperation(sequences)
@@ -3732,10 +3579,13 @@ function renderWidgets()
             throw "Account and Sequence must be set";
         }
 
+
         // enumerate prior ajax requests made here and cancel them
         for (var tid in tids) {
             Ext.Ajax.abort(tids[tid]);
         }
+
+        registerAjaxEvents();
 
         // update the journal form panel so entries get submitted to currently selected account
         // need to set account into a hidden field here since there is no data store behind the form
@@ -3912,28 +3762,49 @@ function pctChange(val){
     return val;
 }
 
-function showSpinner()
-{
-    Ext.Msg.show({title: "Please Wait...", closable: false})
-}
 
-function hideSpinner()
-{
-    Ext.Msg.hide()
-    unregisterAjaxEvents()
-}
+/**
+* Used by Ajax calls to block the UI
+* by setting global Ajax listeners for the duration
+* of the call.
+* Since there is only one block to the UI and possibly
+* more than one Ajax call, we keep a counter.
+*/
+var blockUICounter = 0;
 
 function registerAjaxEvents()
 {
+    console.log("RegisterAjaxEvents");
     Ext.Ajax.addListener('beforerequest', this.showSpinner, this);
     Ext.Ajax.addListener('requestcomplete', this.hideSpinner, this);
     Ext.Ajax.addListener('requestexception', this.hideSpinner, this);
 }
+
 function unregisterAjaxEvents()
 {
+    console.log("UnregisterAjaxEvents");
     Ext.Ajax.removeListener('beforerequest', this.showSpinner, this);
     Ext.Ajax.removeListener('requestcomplete', this.hideSpinner, this);
     Ext.Ajax.removeListener('requestexception', this.hideSpinner, this);
+}
+
+function showSpinner()
+{
+    console.log("showSpinner()");
+    blockUICounter++;
+    Ext.Msg.show({title: "Please Wait..." + blockUICounter, closable: false});
+    console.log("ShowingSpinnger " + blockUICounter);
+}
+
+function hideSpinner()
+{
+    console.log("hideSpinner()");
+    blockUICounter--;
+    if (!blockUICounter) {
+        Ext.Msg.hide();
+        unregisterAjaxEvents();
+        console.log("HiddingSpinner " + blockUICounter);
+    }
 }
 
 var NO_UTILBILL_SELECTED_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill.png"/></td></tr></table></div>';
