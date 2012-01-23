@@ -856,10 +856,35 @@ class MongoReebill(object):
         hypothetical utility bill.'''
         return self.dictionary['ree_value']
 
+    @property
+    def total_renewable_energy(self):
+        '''Returns all renewable energy distributed among shadow registers of
+        this reebill, in BTU.'''
+        # TODO: CCF is not an energy unit, and registers actually hold CCF
+        # instead of therms. we need to start keeping track of CCF-to-therms
+        # conversion factors.
+        # https://www.pivotaltracker.com/story/show/22171391
+        total_therms = Decimal(0)
+        for utilbill in self.dictionary['utilbills']:
+            for meter in utilbill['meters']:
+                for register in meter['registers']:
+                    if register['shadow'] == True:
+                        quantity = register['quantity']
+                        unit = register['quantity_units'].lower()
+                        if unit == 'therms':
+                            total_therms += quantity
+                        elif unit == 'btu':
+                            total_therms += quantity / Decimal(100000.0)
+                        elif unit == 'kwh':
+                            total_therms += quantity / Decimal(.0341214163)
+                        else:
+                            raise Exception('Unknown energy unit: "%s"' % \
+                                    register['quantity_units'])
+        return total_therms
+
     #
     # Helper functions
     #
-
 
     # the following functions are all about flattening nested chargegroups for the UI grid
     def hypothetical_chargegroups_flattened(self, service, chargegroups='hypothetical_chargegroups'):
