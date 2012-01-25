@@ -1,0 +1,348 @@
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
+<ub:bill xmlns:ub="bill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" account="10009" xsi:schemaLocation="bill ../UtilityBill.xsd" id="4">
+	<ub:rebill>
+		<ub:car>
+			<ub:serviceaddress>
+				<ub:addressee>Briana L Erickson, Ayrianne P Parks</ub:addressee>
+				<ub:street>3001 13th Street NW #2</ub:street>
+				<ub:city>Washington</ub:city>
+				<ub:state>DC</ub:state>
+				<ub:country/>
+				<ub:postalcode>20009-5303</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>Briana L Erickson, Ayrianne P Parks</ub:addressee>
+				<ub:street>3001 13th Street NW #2</ub:street>
+				<ub:city>Washington</ub:city>
+				<ub:state>DC</ub:state>
+				<ub:country>20009-5303</ub:country>
+				<ub:postalcode/>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
+		<ub:billperiodbegin>2010-08-02</ub:billperiodbegin>
+		<ub:billperiodend>2010-08-30</ub:billperiodend>
+		<ub:priorbalance>42.31</ub:priorbalance>
+		<ub:paymentreceived>42.31</ub:paymentreceived>
+		<ub:totaladjustment>0.00</ub:totaladjustment>
+		<ub:balanceforward>0.00</ub:balanceforward>
+		<ub:hypotheticalecharges>113.087770112</ub:hypotheticalecharges>
+		<ub:actualecharges>84.0294208</ub:actualecharges>
+		<ub:revalue>29.058349312</ub:revalue>
+		<ub:recharges>18.88</ub:recharges>
+		<ub:resavings>10.18</ub:resavings>
+		<ub:currentcharges>0.00</ub:currentcharges>
+		<ub:totaldue>18.88</ub:totaldue>
+		<ub:duedate>2010-11-30</ub:duedate>
+		<ub:issued>2010-11-12</ub:issued>
+		<ub:message/>
+	</ub:rebill>
+	<ub:utilbill rsbinding="pepco" service="Electric">
+		<ub:car>
+			<ub:accountnumber>1022216053</ub:accountnumber>
+			<ub:serviceaddress>
+				<ub:addressee>Briana L Erickson, Ayrianne P Parks</ub:addressee>
+				<ub:street>3001 13th Street NW #2</ub:street>
+				<ub:city>Washington</ub:city>
+				<ub:state>DC</ub:state>
+				<ub:country/>
+				<ub:postalcode>20009-5303</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>Briana L Erickson, Ayrianne P Parks</ub:addressee>
+				<ub:street>3001 13th Street NW #2</ub:street>
+				<ub:city>Washington</ub:city>
+				<ub:state>DC</ub:state>
+				<ub:country>20009-5303</ub:country>
+				<ub:postalcode/>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
+		<ub:billperiodbegin>2010-08-02</ub:billperiodbegin>
+		<ub:billperiodend>2010-08-30</ub:billperiodend>
+		<ub:hypotheticalecharges>113.087770112</ub:hypotheticalecharges>
+		<ub:actualecharges>84.0294208</ub:actualecharges>
+		<ub:revalue>29.058349312</ub:revalue>
+		<ub:recharges>18.88</ub:recharges>
+		<ub:resavings>10.18</ub:resavings>
+	</ub:utilbill>
+	<ub:details service="Electric">
+		<ub:rateschedule rsbinding="DC Residential-R-Summer">
+			<ub:name>DC Residential R</ub:name>
+			<ub:rateineffect/>
+		</ub:rateschedule>
+		<ub:chargegroup type="Distribution">
+			<ub:charges type="actual">
+				<ub:charge rsbinding="CUSTOMER_CHARGE">
+					<ub:description>Monthly flat charge</ub:description>
+					<ub:quantity>1</ub:quantity>
+					<ub:rate>6.65</ub:rate>
+					<ub:total>6.65</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="DISTRIBUTION_ENERGY_FIRST_BLOCK">
+					<ub:description>First 400 kWh usage</ub:description>
+					<ub:quantity units="kWh">400</ub:quantity>
+					<ub:rate units="dollars">0.005</ub:rate>
+					<ub:total>2.0</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="DISTRIBUTION_ENERGY_SECOND_BLOCK">
+					<ub:description>kWh usage after 400 kWh</ub:description>
+					<ub:quantity units="kWh">171.0</ub:quantity>
+					<ub:rate units="dollars">0.0190058</ub:rate>
+					<ub:total>3.2499918</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="EATF">
+					<ub:description>Energy Assistance Trust Fund</ub:description>
+					<ub:quantity units="kWh">571.0</ub:quantity>
+					<ub:rate units="dollars">0.00075</ub:rate>
+					<ub:total>0.42825</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="SETF">
+					<ub:description>Sustainable Energy Trust Fund</ub:description>
+					<ub:quantity units="kWh">571.0</ub:quantity>
+					<ub:rate units="dollars">0.0013</ub:rate>
+					<ub:total>0.7423</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="PSOS">
+					<ub:description>Public Space Occupancy Surcharge</ub:description>
+					<ub:quantity units="kWh">571.0</ub:quantity>
+					<ub:rate units="dollars">0.00183</ub:rate>
+					<ub:total>1.04493</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="DELIVERY_TAX">
+					<ub:description>Delivery Tax</ub:description>
+					<ub:quantity units="kWh">571.0</ub:quantity>
+					<ub:rate units="dollars">0.007</ub:rate>
+					<ub:total>3.997</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="RADS">
+					<ub:description>Residential Aid Discount Surcharge</ub:description>
+					<ub:quantity units="kWh">571.0</ub:quantity>
+					<ub:rate units="dollars">0.00005</ub:rate>
+					<ub:total>0.02855</ub:total>
+				</ub:charge>
+				<ub:total>18.1410218</ub:total>
+			</ub:charges>
+			<ub:charges type="hypothetical">
+				<ub:charge rsbinding="CUSTOMER_CHARGE">
+					<ub:description>Monthly flat charge</ub:description>
+					<ub:quantity>1</ub:quantity>
+					<ub:rate>6.65</ub:rate>
+					<ub:total>6.65</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="DISTRIBUTION_ENERGY_FIRST_BLOCK">
+					<ub:description>First 400 kWh usage</ub:description>
+					<ub:quantity units="kWh">400</ub:quantity>
+					<ub:rate units="dollars">0.005</ub:rate>
+					<ub:total>2.0</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="DISTRIBUTION_ENERGY_SECOND_BLOCK">
+					<ub:description>kWh usage after 400 kWh</ub:description>
+					<ub:quantity units="kWh">370.98203302</ub:quantity>
+					<ub:rate units="dollars">0.0190058</ub:rate>
+					<ub:total>7.05081032317</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="EATF">
+					<ub:description>Energy Assistance Trust Fund</ub:description>
+					<ub:quantity units="kWh">770.98203302</ub:quantity>
+					<ub:rate units="dollars">0.00075</ub:rate>
+					<ub:total>0.578236524765</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="SETF">
+					<ub:description>Sustainable Energy Trust Fund</ub:description>
+					<ub:quantity units="kWh">770.98203302</ub:quantity>
+					<ub:rate units="dollars">0.0013</ub:rate>
+					<ub:total>1.00227664293</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="PSOS">
+					<ub:description>Public Space Occupancy Surcharge</ub:description>
+					<ub:quantity units="kWh">770.98203302</ub:quantity>
+					<ub:rate units="dollars">0.00183</ub:rate>
+					<ub:total>1.41089712043</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="DELIVERY_TAX">
+					<ub:description>Delivery Tax</ub:description>
+					<ub:quantity units="kWh">770.98203302</ub:quantity>
+					<ub:rate units="dollars">0.007</ub:rate>
+					<ub:total>5.39687423114</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="RADS">
+					<ub:description>Residential Aid Discount Surcharge</ub:description>
+					<ub:quantity units="kWh">770.98203302</ub:quantity>
+					<ub:rate units="dollars">0.00005</ub:rate>
+					<ub:total>0.038549101651</ub:total>
+				</ub:charge>
+				<ub:total>24.1276439441</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:chargegroup type="Generation/Supply">
+			<ub:charges type="actual">
+				<ub:charge rsbinding="GENERATION_ENERGY_MINIMUM_CHARGE">
+					<ub:description>Minimum charge for generation</ub:description>
+					<ub:quantity units="kWh">30</ub:quantity>
+					<ub:rate units="dollars">0.1113</ub:rate>
+					<ub:total>3.34</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="GENERATION_ENERGY">
+					<ub:description>Energy charge for generation</ub:description>
+					<ub:quantity units="kWh">541.0</ub:quantity>
+					<ub:rate units="dollars">0.11147</ub:rate>
+					<ub:total>60.30527</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="PCA">
+					<ub:description>Procurement cost adjustment</ub:description>
+					<ub:quantity units="kWh">571.0</ub:quantity>
+					<ub:rate units="dollars">0.000459</ub:rate>
+					<ub:total>0.262089</ub:total>
+				</ub:charge>
+				<ub:total>63.907359</ub:total>
+			</ub:charges>
+			<ub:charges type="hypothetical">
+				<ub:charge rsbinding="GENERATION_ENERGY_MINIMUM_CHARGE">
+					<ub:description>Minimum charge for generation</ub:description>
+					<ub:quantity units="kWh">30</ub:quantity>
+					<ub:rate units="dollars">0.1113</ub:rate>
+					<ub:total>3.34</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="GENERATION_ENERGY">
+					<ub:description>Energy charge for generation</ub:description>
+					<ub:quantity units="kWh">740.98203302</ub:quantity>
+					<ub:rate units="dollars">0.11147</ub:rate>
+					<ub:total>82.5972672207</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="PCA">
+					<ub:description>Procurement cost adjustment</ub:description>
+					<ub:quantity units="kWh">770.98203302</ub:quantity>
+					<ub:rate units="dollars">0.000459</ub:rate>
+					<ub:total>0.353880753156</ub:total>
+				</ub:charge>
+				<ub:total>86.2911479739</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:chargegroup type="Transmission">
+			<ub:charges type="actual">
+				<ub:charge rsbinding="TRANSMISSION_ENERGY_MINIMUM_CHARGE">
+					<ub:description>Minimum charge for transmission</ub:description>
+					<ub:quantity units="kWh">30</ub:quantity>
+					<ub:rate units="dollars">0.004</ub:rate>
+					<ub:total>0.12</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="TRANSMISSION_ENERGY">
+					<ub:description>Energy charge for generation</ub:description>
+					<ub:quantity units="kWh">541.0</ub:quantity>
+					<ub:rate units="dollars">0.00344</ub:rate>
+					<ub:total>1.86104</ub:total>
+				</ub:charge>
+				<ub:total>1.98104</ub:total>
+			</ub:charges>
+			<ub:charges type="hypothetical">
+				<ub:charge rsbinding="TRANSMISSION_ENERGY_MINIMUM_CHARGE">
+					<ub:description>Minimum charge for transmission</ub:description>
+					<ub:quantity units="kWh">30</ub:quantity>
+					<ub:rate units="dollars">0.004</ub:rate>
+					<ub:total>0.12</ub:total>
+				</ub:charge>
+				<ub:charge rsbinding="TRANSMISSION_ENERGY">
+					<ub:description>Energy charge for generation</ub:description>
+					<ub:quantity units="kWh">740.98203302</ub:quantity>
+					<ub:rate units="dollars">0.00344</ub:rate>
+					<ub:total>2.54897819359</ub:total>
+				</ub:charge>
+				<ub:total>2.66897819359</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:total type="actual">84.0294208</ub:total>
+		<ub:total type="hypothetical">113.087770112</ub:total>
+	</ub:details>
+	<ub:billableusage service="Electric">
+		<ub:rateschedule>
+			<ub:name/>
+		</ub:rateschedule>
+		<ub:usage>
+			<ub:description>Total kWh</ub:description>
+			<ub:quantity>0</ub:quantity>
+		</ub:usage>
+		<ub:total>0</ub:total>
+	</ub:billableusage>
+	<ub:measuredusage service="Electric">
+		<ub:meter>
+			<ub:estimated>false</ub:estimated>
+			<ub:priorreaddate>2010-08-02</ub:priorreaddate>
+			<ub:presentreaddate>2010-08-30</ub:presentreaddate>
+			<ub:identifier>7715</ub:identifier>
+			<ub:register rsbinding="REG_TOTAL" shadow="false" type="total">
+				<ub:identifier>7715</ub:identifier>
+				<ub:description>Kilowatt Hour Meter</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:presentreading>0</ub:presentreading>
+				<ub:total>571</ub:total>
+			</ub:register>
+			<ub:register rsbinding="REG_TOTAL" shadow="true" type="total">
+				<ub:identifier>7715</ub:identifier>
+				<ub:description>Kilowatt Hour Meter</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>kWh</ub:units>
+				<ub:presentreading>0</ub:presentreading>
+				<ub:total>199.98203302</ub:total>
+			</ub:register>
+		</ub:meter>
+	</ub:measuredusage>
+	<ub:statistics>
+		<ub:conventionalconsumed>2733124</ub:conventionalconsumed>
+		<ub:renewableconsumed>682539</ub:renewableconsumed>
+		<ub:renewableutilization>0.26</ub:renewableutilization>
+		<ub:conventionalutilization>0.74</ub:conventionalutilization>
+		<ub:renewableproduced>0</ub:renewableproduced>
+		<ub:co2offset>259.376696827</ub:co2offset>
+		<ub:totalsavings>58.96</ub:totalsavings>
+		<ub:totalrenewableconsumed>2221475</ub:totalrenewableconsumed>
+		<ub:totalrenewableproduced>0</ub:totalrenewableproduced>
+		<ub:totaltrees>0.947692307692</ub:totaltrees>
+		<ub:totalco2offset>1491.4</ub:totalco2offset>
+		<ub:consumptiontrend>
+			<ub:period quantity="0" month="Nov"/>
+			<ub:period quantity="0" month="Dec"/>
+			<ub:period quantity="0" month="Jan"/>
+			<ub:period quantity="0" month="Feb"/>
+			<ub:period quantity="0" month="Mar"/>
+			<ub:period quantity="0" month="Apr"/>
+			<ub:period quantity="2.72" month="May"/>
+			<ub:period quantity="14.63" month="Jun"/>
+			<ub:period quantity="15.39" month="Jul"/>
+			<ub:period quantity="6.8" month="Aug"/>
+			<ub:period quantity="0" month="Sep"/>
+			<ub:period quantity="0" month="Oct"/>
+		</ub:consumptiontrend>
+	</ub:statistics>
+</ub:bill>
