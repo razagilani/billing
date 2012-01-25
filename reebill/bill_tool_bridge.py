@@ -235,25 +235,30 @@ class BillToolBridge:
             session = self.state_db.session()
             for account in self.state_db.listAccounts(session):
                 olap_id = nu.NexusUtil().olap_id(account)
-                install = splinter.Splinter(None, "tyrell", "dev") \
-                        .get_install_obj_for(olap_id)
+                # TODO don't hard code parameters
+                s = splinter.Splinter('http://duino-drop.appspot.com/',
+                        "tyrell", "dev")
+                print 'INSTALL IDS', s.install_ids
+                install = s.get_install_obj_for(olap_id)
+                print 'install is', install, '; olap id is', olap_id
                 for sequence in self.state_db.listSequences(session, account):
                     reebill = self.reebill_dao.load_reebill(account, sequence)
                     try:
                         bill_therms = reebill.total_renewable_energy
-                        oltp_therms = sum(install.get_energy_consumed_by_service(
-                                day, 'service type is ignored!', [0,23]) for day
-                                in dateutils.date_generator(reebill.period_begin,
-                                reebill.period_end))
-                        #for day in dateutils.date_generator(reebill.period_begin, reebill.period_end):
-                            #oltp_therms = install.get_energy_consumed_by_service(
-                                    #day, 'service type is ignored!', [0,23])
+                        oltp_therms = sum(
+                            install.get_energy_consumed_by_service(
+                                    dateutils.date_to_datetime(day),
+                                    'service type is ignored!', [0,23]) 
+                            for day in dateutils.date_generator(
+                                    reebill.period_begin,
+                                    reebill.period_end)
+                        )
                     except:
                         raise
-                        energy_string = 'error'
+                        energy_str = 'error'
                     else:
-                        energy_string = '%s, %s' % (total_therms, oltp_therms)
-                    result += '<p>%s-%s: %s' % (account, sequence, energy_string)
+                        energy_str = '%s, %s' % (total_therms, oltp_therms)
+                    result += '<p>%s-%s: %s' % (account, sequence, energy_str)
             return result
         except Exception as e:
             print >> sys.stderr, e, traceback.format_exc()

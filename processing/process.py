@@ -446,7 +446,8 @@ class Process(object):
             # could also use DataHandler.get_single_chunk_for_range() but that
             # gets data from OLTP, which is slow; Monguru relies on monthly
             # OLAP documents
-            renewable_energy_btus = monguru.get_data_for_month(install, year, month).energy_sold
+            renewable_energy_btus = monguru.get_data_for_month(install, year,
+                    month).energy_sold
             therms = Decimal(renewable_energy_btus) / Decimal('100000.0')
             next_stats['consumption_trend'].append({
                 'month': calendar.month_abbr[month],
