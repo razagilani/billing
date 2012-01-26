@@ -437,27 +437,25 @@ class Process(object):
         splinter = skyliner.splinter.Splinter('http://duino-drop.appspot.com/', "tyrell", "dev")
         install = splinter.get_install_obj_for(olap_id)
         monguru = skyliner.skymap.monguru.Monguru('tyrell', 'dev') # TODO don't hard-code this
-        def get_data_for_month(install, year, month):
-            month_doc = monguru.get_cube('monthly')
-            docs =  [doc for doc in  month_doc.find({"install.name": install.name, "year":year, "month": month})]
-            renewable_energy_btus = 1
-            if (docs):
-                renewable_energy_btus = docs[0]['measures']['Energy Sold']
-            return str(renewable_energy_btus)
 
         bill_year, bill_month = dateutils.estimate_month(
                 next_bill.period_begin,
                 next_bill.period_end)
         next_stats['consumption_trend'] = []
+
+        first_month = install.install_completed.month
         for year, month in dateutils.months_of_past_year(bill_year, bill_month):
+            #if datetime.date(year, month, 1) < datetime.date(year, first_month, 1):
+                #continue
+
             # could also use DataHandler.get_single_chunk_for_range() but that
             # gets data from OLTP, which is slow; Monguru relies on monthly
             # OLAP documents
-            #renewable_energy_btus = monguru.get_data_for_month(install, year, month).energy_sold
-
-            # commit and push your code dufus! You left a dependency hanging. :-)
-            renewable_energy_btus = get_data_for_month(install, year, month)
-            therms = Decimal(renewable_energy_btus) / Decimal('100000.0')
+            try:
+                renewable_energy_btus = monguru.get_data_for_month(install, year, month).energy_sold
+            except:
+                renewable_energy_btus = 0
+            therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
             next_stats['consumption_trend'].append({
                 'month': calendar.month_abbr[month],
                 'quantity': therms
