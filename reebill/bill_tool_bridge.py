@@ -234,7 +234,7 @@ class BillToolBridge:
         try:
             result = ''
             session = self.state_db.session()
-            for account in ['10003']: #self.state_db.listAccounts(session):
+            for account in self.state_db.listAccounts(session):
                 olap_id = nu.NexusUtil().olap_id(account)
                 # TODO don't hard code parameters
                 s = splinter.Splinter('http://duino-drop.appspot.com/',
