@@ -229,11 +229,12 @@ class BillToolBridge:
 
     @cherrypy.expose
     def reconciliation(self):
-        '''Reconciliation report for reebills.'''
+        '''Reconciliation report for energy quantities in reebills.'''
+        # TODO nice formatting
         try:
             result = ''
             session = self.state_db.session()
-            for account in self.state_db.listAccounts(session):
+            for account in ['10003']: #self.state_db.listAccounts(session):
                 olap_id = nu.NexusUtil().olap_id(account)
                 # TODO don't hard code parameters
                 s = splinter.Splinter('http://duino-drop.appspot.com/',
@@ -245,19 +246,14 @@ class BillToolBridge:
                     reebill = self.reebill_dao.load_reebill(account, sequence)
                     try:
                         bill_therms = reebill.total_renewable_energy
-                        oltp_therms = sum(
-                            install.get_energy_consumed_by_service(
-                                    dateutils.date_to_datetime(day),
-                                    'service type is ignored!', [0,23]) 
-                            for day in dateutils.date_generator(
-                                    reebill.period_begin,
-                                    reebill.period_end)
-                        )
+                        oltp_therms = Decimal(0)
+                        for day in dateutils.date_generator(reebill.period_begin, reebill.period_end):
+                            print day
+                            oltp_therms += install.get_billable_energy(day, (0,23))
                     except:
-                        raise
                         energy_str = 'error'
                     else:
-                        energy_str = '%s, %s' % (total_therms, oltp_therms)
+                        energy_str = '%s, %s' % (bill_therms, oltp_therms)
                     result += '<p>%s-%s: %s' % (account, sequence, energy_str)
             return result
         except Exception as e:
