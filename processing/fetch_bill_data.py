@@ -104,7 +104,10 @@ def usage_data_to_virtual_register(install, reebill, server=None):
 #                    print "DataHandler has no energy values for %s %s" \
 #                            % (day, hourrange)
 #                    energy_today = 0
-                energy_today = inst_obj.get_billable_energy(day, hourrange)
+                # 5 digits after the decimal points is an arbitrary decision
+                # TODO decide what our precision actually is: see
+                # https://www.pivotaltracker.com/story/show/24088787
+                energy_today = inst_obj.get_billable_energy(day, hourrange, places=5)
                 
                 # convert units from BTU to kWh (for electric) or therms (for gas)
                 if register['quantity_units'].lower() == 'kwh':
