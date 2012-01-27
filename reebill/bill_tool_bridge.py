@@ -245,11 +245,15 @@ class BillToolBridge:
                 for sequence in self.state_db.listSequences(session, account):
                     reebill = self.reebill_dao.load_reebill(account, sequence)
                     try:
+                        # get total renewable energy from bill
                         bill_therms = reebill.total_renewable_energy
+
+                        # get the same energy from OLTP
                         oltp_therms = Decimal(0)
                         for day in dateutils.date_generator(reebill.period_begin, reebill.period_end):
                             print day
                             oltp_therms += install.get_billable_energy(day, (0,23))
+                        oltp_therms = oltp_therms.quantize(Decimal('1.00000'))
                     except:
                         energy_str = 'error'
                     else:
