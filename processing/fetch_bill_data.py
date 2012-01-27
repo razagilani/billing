@@ -84,26 +84,27 @@ def usage_data_to_virtual_register(install, reebill, server=None):
 
             energy_today = None
             for hourrange in hour_ranges:
-                # get energy, using this register's service type
-                # (convert numpy types to float)
-                try:
-                    if service_of_this_register.lower() == 'electric':
-                        energy_today = float(inst_obj.\
-                                get_energy_consumed_by_service(
-                                datetime(day.year, day.month, day.day),
-                                "elec", hourrange))
-                    elif service_of_this_register.lower() == 'gas':
-                        energy_today = float(inst_obj.\
-                                get_energy_consumed_by_service(
-                                datetime(day.year, day.month, day.day),
-                                "gas", hourrange))
-                    else:
-                        raise Exception('register has unknown service type: %s' \
-                                % service_of_this_register)
-                except DataHandlerError:
-                    print "DataHandler has no energy values for %s %s" \
-                            % (day, hourrange)
-                    energy_today = 0
+#                # get energy, using this register's service type
+#                # (convert numpy types to float)
+#                try:
+#                    if service_of_this_register.lower() == 'electric':
+#                        energy_today = float(inst_obj.\
+#                                get_energy_consumed_by_service(
+#                                datetime(day.year, day.month, day.day),
+#                                "elec", hourrange))
+#                    elif service_of_this_register.lower() == 'gas':
+#                        energy_today = float(inst_obj.\
+#                                get_energy_consumed_by_service(
+#                                datetime(day.year, day.month, day.day),
+#                                "gas", hourrange))
+#                    else:
+#                        raise Exception('register has unknown service type: %s' \
+#                                % service_of_this_register)
+#                except DataHandlerError:
+#                    print "DataHandler has no energy values for %s %s" \
+#                            % (day, hourrange)
+#                    energy_today = 0
+                energy_today = get_billable_energy(day, hourrange)
                 
                 # convert units from BTU to kWh (for electric) or therms (for gas)
                 if register['quantity_units'].lower() == 'kwh':
