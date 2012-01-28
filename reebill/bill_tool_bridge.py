@@ -568,7 +568,7 @@ class BillToolBridge:
 
             # render all the bills
             for reebill in all_bills:
-                render.render(reebill, 
+                self.renderer.render(reebill, 
                     self.config.get("billdb", "billpath")+ "%s/%s.pdf" % (
                         reebill.account, reebill.sequence),
                     "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
