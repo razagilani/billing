@@ -15,6 +15,14 @@ from billing.nexus_util import NexusUtil
 from billing import json_util
 from billing import dateutils
 
+def close_enough(x,y):
+    # TODO figure out what's really close enough
+    x = float(x)
+    y = float(y)
+    if y == 0:
+        return abs(x) < .001
+    return abs(x - y) / y. < .001
+
 # setup
 billdb_config = {
     'billpath': '/db-dev/skyline/bills/',
@@ -43,7 +51,6 @@ output_file = open(os.path.join(os.path.dirname(os.path.realpath('billing')), 'r
 accounts = sorted(state_db.listAccounts(session))
 # TODO it would be faster to do this sorting in MySQL instead of Python when
 # this list gets long
-
 for account in accounts:
     install = splinter.get_install_obj_for(NexusUtil().olap_id(account))
     for sequence in state_db.listSequences(session, account):
@@ -88,6 +95,8 @@ for account in accounts:
                 'error': '%s\n%s' % (error, traceback.format_exc())
             }))
         else:
+            if close_enough(bill_therms, olap_therms):
+                continue
             output_file.write(json_util.dumps({
                 'success': True,
                 'account': account,
@@ -95,4 +104,5 @@ for account in accounts:
                 'bill_therms': bill_therms,
                 'olap_therms': olap_therms
             }))
-        output_file.write('\n')
+            output_file.write('\n')
+
