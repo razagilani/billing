@@ -1,4 +1,9 @@
-'''Reconciliation report for reebills.'''
+#!/usr/bin/python
+'''Script to generate a "reconciliation report" comparing energy quantities in
+reebills to the same quantities in OLAP.
+
+This should be run by cron to generate a static JSON file, which can be loaded
+by BillToolBridge and returned for display in an Ext-JS grid in the browser.'''
 import os
 import traceback
 from billing import mongo
@@ -32,7 +37,7 @@ splinter = Splinter('http://duino-drop.appspot.com/', "tyrell", 'dev')
 monguru = Monguru('tyrell', 'dev')
 
 # file where the report goes: json format
-output_file = open(os.path.join(os.path.dirname(os.path.realpath('billing')),
+output_file = open(os.path.join(os.path.dirname(os.path.realpath('billing')), 'reebill',
         'reconciliation_report.json'), 'w')
 
 accounts = sorted(state_db.listAccounts(session))
@@ -47,12 +52,12 @@ for account in accounts:
         try:
             # get energy from the bill
             bill_therms = reebill.total_renewable_energy
+            
+            # OLTP is more accurate but way too slow to generate this report in a reasonable time
             #oltp_therms = sum(install.get_energy_consumed_by_service(
                     #day, 'service type is ignored!', [0,23]) for day
                     #in dateutils.date_generator(reebill.period_begin,
                     #reebill.period_end))
-
-            # OLTP is more accurate but way too slow to generate this report in a reasonable time
             
             # now get energy from OLAP: start by adding up energy
             # sold for each day, whether billable or not (assuming
