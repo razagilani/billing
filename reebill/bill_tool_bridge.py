@@ -302,11 +302,21 @@ class BillToolBridge:
     @cherrypy.expose
     def reconciliation(self):
         '''Show reconciliation report.'''
+        self.check_authentication()
         result = '''<h1>Reconciliation Report</h1>
                  <p><h4>Showing only bills that have a significant discrepancy from OLAP and ones that cause errors.</h4>'''
-        for line in open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'reconciliation_report.json')).readlines():
-            result += '<p>' + line.replace('\n', '<p>')
-            #json_dict = ju.loads(line)
+        #for line in open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'reconciliation_report.json')).readlines():
+            #result += '<p>' + line.replace('\n', '<p>')
+            ##json_dict = ju.loads(line)
+        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'reconciliation_report.json')) as report_file:
+            text = report_file.read()
+            lines = text.split('\n')
+            json_array = json.loads(text)
+            for line, json_dict in zip(lines, json_array):
+                if 'success' in json_dict and json_dict['success'] is True:
+                    result += '<p>' + line
+                else:
+                    result += '<p><font color="#ff0000">' + line + '</font>'
         return result
 
 #    @cherrypy.expose
@@ -1844,6 +1854,7 @@ class BillToolBridge:
  
     @cherrypy.expose
     def listUtilBills(self, start, limit, account, **args):
+        '''Handles AJAX call to populate Ext grid of utility bills.'''
         self.check_authentication()
         try:
             # names for utilbill states in the UI

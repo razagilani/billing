@@ -6,6 +6,7 @@ This should be run by cron to generate a static JSON file, which can be loaded
 by BillToolBridge and returned for display in an Ext-JS grid in the browser.'''
 import os
 import traceback
+import datetime
 from billing import mongo
 from billing.reebill import render
 from billing.processing import state
@@ -21,7 +22,7 @@ def close_enough(x,y):
     y = float(y)
     if y == 0:
         return abs(x) < .001
-    return abs(x - y) / y. < .001
+    return abs(x - y) / y < .001
 
 # setup
 billdb_config = {
@@ -44,16 +45,20 @@ session = state_db.session()
 splinter = Splinter('http://duino-drop.appspot.com/', "tyrell", 'dev')
 monguru = Monguru('tyrell', 'dev')
 
-# file where the report goes: json format
-output_file = open(os.path.join(os.path.dirname(os.path.realpath('billing')), 'reebill',
-        'reconciliation_report.json'), 'w')
+# it's a bad idea to build a huge string in memory, but i need to avoid putting
+# a comma after the last object in the array, and i can't un-write the comma if
+# i'm writing to a file (and i can't know what the last item of the array is
+# going to be in advance because i'm only including items that have an error or
+# a difference from olap)
+result = '['
 
 accounts = sorted(state_db.listAccounts(session))
 # TODO it would be faster to do this sorting in MySQL instead of Python when
 # this list gets long
 for account in accounts:
     install = splinter.get_install_obj_for(NexusUtil().olap_id(account))
-    for sequence in state_db.listSequences(session, account):
+    sequences = state_db.listSequences(session, account)
+    for sequence in sequences:
         print 'reconciliation report for %s-%s' % (account, sequence)
         reebill = reebill_dao.load_reebill(account, sequence)
         try:
@@ -88,21 +93,31 @@ for account in accounts:
                     olap_btu -= hourly_doc.energy_sold
             olap_therms = olap_btu / 100000
         except Exception as error:
-            output_file.write(json_util.dumps({
+            result += json_util.dumps({
                 'success': False,
                 'account': account,
                 'sequence': sequence,
+                'timestamp': datetime.datetime.utcnow(),
                 'error': '%s\n%s' % (error, traceback.format_exc())
-            }))
+            })
+            result +=',\n'
         else:
             if close_enough(bill_therms, olap_therms):
                 continue
-            output_file.write(json_util.dumps({
+            result += json_util.dumps({
                 'success': True,
                 'account': account,
                 'sequence': sequence,
+                'timestamp': datetime.datetime.utcnow(),
                 'bill_therms': bill_therms,
                 'olap_therms': olap_therms
-            }))
-            output_file.write('\n')
+            })
+            result += ',\n'
 
+result = result[:-2] # remove final ',\n'
+result += ']'
+
+# file where the report goes: json format
+with open(os.path.join(os.path.dirname(os.path.realpath('billing')), 'reebill',
+        'reconciliation_report.json'), 'w') as output_file:
+    output_file.write(result)
