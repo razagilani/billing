@@ -586,7 +586,7 @@ class BillToolBridge:
             # the last element
             most_recent_bill = all_bills[-1]
 
-            bill_file_names = ["%s.pdf" % sequence for sequence in sequences]
+            bill_file_names = ["%.4d.pdf" % int(sequence) for sequence in sequences]
             bill_dates = ["%s" % (b.period_end) for b in all_bills]
             bill_dates = ", ".join(bill_dates)
 
