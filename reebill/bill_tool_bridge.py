@@ -521,9 +521,10 @@ class BillToolBridge:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             # TODO 22598787 - branch awareness
             self.renderer.render(reebill, 
-                self.config.get("billdb", "billpath")+ "%s/%.4d.pdf" % (account, int(sequence)),
+                self.config.get("billdb", "billpath")+ "%s" % account, 
+                "%.4d.pdf" % int(sequence),
                 "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
-                None,
+                False
             )
         except Exception as e:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
@@ -568,11 +569,12 @@ class BillToolBridge:
 
             # render all the bills
             for reebill in all_bills:
+                # TODO 22598787 - branch awareness
                 self.renderer.render(reebill, 
-                    self.config.get("billdb", "billpath")+ "%s/%s.pdf" % (
-                        reebill.account, reebill.sequence),
+                    self.config.get("billdb", "billpath")+ "%s" % reebill.account, 
+                    "%.4d.pdf" % int(reebill.sequence),
                     "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
-                    None,
+                    True
                 )
                 
 
