@@ -2041,6 +2041,253 @@ function renderWidgets()
             CPRSRSIStore.setBaseParam("account", accountCombo.getValue());
             CPRSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
         });
+        
+        // the UPRS
+        var initialUPRSRSI = {
+            rows: [
+            ]
+        };
+
+        var UPRSRSIReader = new Ext.data.JsonReader({
+            // metadata configuration options:
+            // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
+            //idProperty: 'id',
+            root: 'rows',
+
+            // the fields config option will internally create an Ext.data.Record
+            // constructor that provides mapping for reading the record data objects
+            fields: [
+                // map Record's field to json object's key of same name
+                {name: 'uuid', mapping: 'uuid'},
+                {name: 'rsi_binding', mapping: 'rsi_binding'},
+                {name: 'description', mapping: 'description'},
+                {name: 'quantity', mapping: 'quantity'},
+                {name: 'quantityunits', mapping: 'quantityunits'},
+                {name: 'rate', mapping: 'rate'},
+                {name: 'rateunits', mapping: 'rateunits'},
+                {name: 'roundrule', mapping:'roundrule'},
+                {name: 'total', mapping: 'total'},
+            ]
+        });
+
+        var UPRSRSIWriter = new Ext.data.JsonWriter({
+            encode: true,
+            // write all fields, not just those that changed
+            writeAllFields: true 
+        });
+
+        var UPRSRSIStoreProxyConn = new Ext.data.Connection({
+            url: 'http://'+location.host+'/reebill/ursrsi',
+        });
+        var UPRSRSIStoreProxy = new Ext.data.HttpProxy(UPRSRSIStoreProxyConn);
+
+        var UPRSRSIStore = new Ext.data.JsonStore({
+            proxy: UPRSRSIStoreProxy,
+            autoSave: false,
+            reader: UPRSRSIReader,
+            writer: UPRSRSIWriter,
+            // or, autosave must be used to save each action
+            autoSave: true,
+            // won't be updated when combos change, so do this in event
+            // perhaps also can be put in the options param for the ajax request
+            baseParams: { account:accountCombo.getValue(), sequence: sequenceCombo.getValue()},
+            data: initialUPRSRSI,
+            root: 'rows',
+            idProperty: 'uuid',
+            fields: [
+                {name: 'uuid'},
+                {name: 'rsi_binding'},
+                {name: 'description'},
+                {name: 'quantity'},
+                {name: 'quantityunits'},
+                {name: 'rate'},
+                {name: 'rateunits'},
+                {name: 'roundrule'},
+                {name: 'total'},
+            ],
+        });
+
+        var UPRSRSIColModel = new Ext.grid.ColumnModel(
+        {
+            columns: [
+                /*{
+                    header: 'UUID',
+                    sortable: true,
+                    dataIndex: 'uuid',
+                    editable: false,
+                    editor: new Ext.form.TextField({allowBlank: false})
+                },*/{
+                    header: 'RSI Binding',
+                    sortable: true,
+                    dataIndex: 'rsi_binding',
+                    editable: true,
+                    editor: new Ext.form.TextField({allowBlank: false})
+                },{
+                    header: 'Description',
+                    sortable: true,
+                    dataIndex: 'description',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Quantity',
+                    sortable: true,
+                    dataIndex: 'quantity',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Units',
+                    sortable: true,
+                    dataIndex: 'quantityunits',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Rate',
+                    sortable: true,
+                    dataIndex: 'rate',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Units',
+                    sortable: true,
+                    dataIndex: 'rateunits',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Round Rule',
+                    sortable: true,
+                    dataIndex: 'roundrule',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                },{
+                    header: 'Total', 
+                    sortable: true, 
+                    dataIndex: 'total', 
+                    summaryType: 'sum',
+                    align: 'right',
+                    editor: new Ext.form.TextField({allowBlank: true})
+                }
+            ]
+        });
+
+        var UPRSRSIToolbar = new Ext.Toolbar({
+            items: [
+                {
+                    xtype: 'button',
+                    // ref places a name for this component into the grid so it may be referenced as grid.insertBtn...
+                    id: 'UPRSRSIInsertBtn',
+                    iconCls: 'icon-add',
+                    text: 'Insert',
+                    disabled: false,
+                    handler: function()
+                    {
+                        UPRSRSIGrid.stopEditing();
+
+                        // grab the current selection - only one row may be selected per singlselect configuration
+                        var selection = UPRSRSIGrid.getSelectionModel().getSelected();
+
+                        // make the new record
+                        var UPRSRSIType = UPRSRSIGrid.getStore().recordType;
+                        var defaultData = 
+                        {
+                        };
+                        var r = new UPRSRSIType(defaultData);
+            
+                        // select newly inserted record
+                        var insertionPoint = URSRSIStore.indexOf(selection);
+                        UPRSRSIStore.insert(insertionPoint + 1, r);
+                        UPRSRSIGrid.startEditing(insertionPoint +1,1);
+                        
+                        // An inserted record must be saved 
+                        UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(false);
+                    }
+                },{
+                    xtype: 'tbseparator'
+                },{
+                    xtype: 'button',
+                    // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                    id: 'UPRSRSIRemoveBtn',
+                    iconCls: 'icon-delete',
+                    text: 'Remove',
+                    disabled: true,
+                    handler: function()
+                    {
+                        UPRSRSIGrid.stopEditing();
+                        UPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+                        UPRSRSIStore.setBaseParam("account", accountCombo.getValue());
+                        UPRSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
+
+                        // TODO single row selection only, test allowing multirow selection
+                        var s = UPRSRSIGrid.getSelectionModel().getSelections();
+                        for(var i = 0, r; r = s[i]; i++)
+                        {
+                            UPRSRSIStore.remove(r);
+                        }
+                        UPRSRSIStore.save(); 
+                        UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
+                    }
+                },{
+                    xtype:'tbseparator'
+                },{
+                    xtype: 'button',
+                    // places reference to this button in grid.  
+                    id: 'UPRSRSISaveBtn',
+                    iconCls: 'icon-save',
+                    text: 'Save',
+                    disabled: true,
+                    handler: function()
+                    {
+                        // disable the save button for the save attempt.
+                        // is there a closer place for this to the actual button click due to the possibility of a double
+                        // clicked button submitting two ajax requests?
+                        UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
+
+                        // stop grid editing so that widgets like comboboxes in rows don't stay focused
+                        UPRSRSIGrid.stopEditing();
+
+                        UPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+                        UPRSRSIStore.setBaseParam("account", accountCombo.getValue());
+                        UPRSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
+
+                        UPRSRSIStore.save(); 
+                    }
+                }
+            ]
+        });
+
+        var UPRSRSIGrid = new Ext.grid.EditorGridPanel({
+            tbar: UPRSRSIToolbar,
+            colModel: UPRSRSIColModel,
+            selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+            store: UPRSRSIStore,
+            enableColumnMove: true,
+            frame: true,
+            collapsible: false,
+            animCollapse: false,
+            stripeRows: true,
+            viewConfig: {
+                // doesn't seem to work
+                forceFit: true,
+            },
+            title: 'Utility Periodic Rate Structure',
+            clicksToEdit: 2
+        });
+
+        UPRSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
+            // if a selection is made, allow it to be removed
+            // if the selection was deselected to nothing, allow no 
+            // records to be removed.
+
+            UPRSRSIGrid.getTopToolbar().findById('UPRSRSIRemoveBtn').setDisabled(sm.getCount() <1);
+
+            // if there was a selection, allow an insertion
+            //UPRSRSIGrid.getTopToolbar().findById('UPRSRSIInsertBtn').setDisabled(sm.getCount() <1);
+        });
+      
+        // grid's data store callback for when data is edited
+        // when the store backing the grid is edited, enable the save button
+        UPRSRSIStore.on('update', function(){
+            UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(false);
+        });
+
+        UPRSRSIStore.on('beforesave', function() {
+            UPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+            UPRSRSIStore.setBaseParam("account", accountCombo.getValue());
+            UPRSRSIStore.setBaseParam("sequence", sequenceCombo.getValue());
+        });
 
 
         // the URS
@@ -3354,16 +3601,17 @@ function renderWidgets()
                 //margins: '5 5 0 0',
                 items: [CPRSRSIGrid]
             },{
-                region: 'center',     // center region is required, no width/height specified
+                region: 'center',
                 xtype: 'container',
                 layout: 'fit',
                 //margins: '5 5 0 0',
                 items: [URSRSIGrid]
-            }/* placeholder for UPRS,{
+            },{
                 region:'south',
                 //collapsible: true,   // make collapsible
                 layout: 'fit',
-            }*/]
+                items: [UPRSRSIGrid]
+            }]
         },{
             title: 'Charge Items',
             xtype: 'panel',
