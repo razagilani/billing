@@ -1,0 +1,54 @@
+<html>
+    <head>
+    </head>
+    <body>
+        <script language="javascript">
+            // get list of accounts
+            var listAccountsRequest = new XMLHttpRequest();
+            listAccountsRequest.open("GET", "http://" + location.host + "/reebill/listAccounts", false);
+            var accountsJson;
+            listAccountsRequest.onreadystatechange = function() {
+                accountsJson = eval("("+listAccountsRequest.responseText+")");
+            };
+            listAccountsRequest.send(null);
+            var accounts = accountsJson.rows.map(function(item) {return item.account});
+            //console.log(accounts);
+
+            var requests = [];
+            // request reconciliation data for each account
+            //var account;
+            //for (i in accounts) {
+            for (var i = 0; i < accounts.length; i++) {
+                var account = accounts[i];
+
+                var formData = new FormData();
+                formData.append("account", account);
+
+                var requests = [];
+                var recRequest = new XMLHttpRequest();
+                var url ="http://" + location.host + "/reebill/reconciliation_for_account?account="+account;
+                recRequest.open("GET", url, true);
+                recRequest.account = account;
+                var recJson;
+                recRequest.onreadystatechange = function() {
+                    console.log('request for '+this.account+' returned');
+                    //if (this.readystate != 4) return;
+                    try {
+                        recJson = eval(this.responseText);
+                        console.log('this is ok: '+this.responseText);
+                    } catch (error) {
+                        console.log('unparseable json: "'+this.responseText+'"');
+                    }
+                    if (recJson.success) {
+                        document.write("<p>" + this.account + ": success");
+                    } else {
+                        document.write("<p>" + this.account + ": error " + recJson.errors);
+                    }
+                }
+                requests.push(recRequest);
+
+                recRequest.send(null);
+            }
+        </script>
+    </body>
+</html>
