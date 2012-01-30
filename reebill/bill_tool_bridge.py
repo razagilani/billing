@@ -228,29 +228,34 @@ class BillToolBridge:
         else:
             raise cherrypy.HTTPRedirect('/login.html')
 
-#    @cherrypy.expose
-#    def reconciliation(self):
+    @cherrypy.expose
+#    def generate_reconciliation_report(self):
 #        '''Reconciliation report for reebills.'''
 #        try:
-#            result = ''
+#            # file where the report goes: json format
+#            output_file = open(os.path.join(os.path.dirname(
+#                os.path.realpath(__file__)), 'reconciliation_report.json'), 'w')
+#
 #            session = self.state_db.session()
 #            monguru = Monguru('tyrell', 'dev') # TODO don't hard-code
+#
 #            for account in self.state_db.listAccounts(session):
-#                olap_id = nu.NexusUtil().olap_id(account)
-#                install = splinter.Splinter('http://duino-drop.appspot.com/', "tyrell", "dev") \
-#                        .get_install_obj_for(olap_id)
+#                # TODO don't hard-code
+#                install = splinter.Splinter('http://duino-drop.appspot.com/',
+#                        "tyrell", "dev").get_install_obj_for(nu.NexusUtil() \
+#                        .olap_id(account))
 #                for sequence in self.state_db.listSequences(session, account):
+#                    print 'reconciliation report for %s-%s' % (account, sequence)
 #                    reebill = self.reebill_dao.load_reebill(account, sequence)
-#                    print '%s-%s' % (account, sequence)
 #                    try:
 #                        # get energy from the bill
 #                        bill_therms = reebill.total_renewable_energy
+#
+#                        # OLTP is more accurate but way too slow to generate this report in a reasonable time
 #                        #oltp_therms = sum(install.get_energy_consumed_by_service(
 #                                #day, 'service type is ignored!', [0,23]) for day
 #                                #in dateutils.date_generator(reebill.period_begin,
 #                                #reebill.period_end))
-#
-#                        # OLTP is more accurate but way too slow to generate this report in a reasonable time
 #                        
 #                        # now get energy from OLAP: start by adding up energy
 #                        # sold for each day, whether billable or not (assuming
@@ -274,18 +279,29 @@ class BillToolBridge:
 #                                olap_btu -= hourly_doc.energy_sold
 #                        olap_therms = olap_btu / 100000
 #                    except Exception as error:
-#                        energy_string = 'error: %s' % error
+#                        output_file.write(ju.dumps({
+#                            'success': False,
+#                            'account': account,
+#                            'sequence': sequence,
+#                            'error': '%s\n%s' % (error, traceback.format_exc()
+#                        }))
 #                    else:
-#                        energy_string = '%s, %s' % (bill_therms, olap_therms)
-#                    result += '<p>%s-%s: %s' % (account, sequence, energy_string)
-#            return result
+#                        output_file.write(ju.dumps({
+#                            'success': True,
+#                            'account': account,
+#                            'sequence': sequence,
+#                            'bill_therms': bill_therms,
+#                            'olap_therms': olap_therms
+#                        }))
+#                    output_file.write('\n')
 #        except Exception as e:
 #            print >> sys.stderr, e, traceback.format_exc()
 #            self.logger.error(e, traceback.format_exc())
 #            raise
-#
+
     @cherrypy.expose
     def reconciliation(self):
+        '''Show reconciliation report.'''
         #return open('billing/reebill/ui/reconciliation.html').read()
         return open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ui', 'reconciliation.html'))
 
