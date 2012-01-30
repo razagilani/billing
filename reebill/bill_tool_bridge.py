@@ -547,7 +547,6 @@ class BillToolBridge:
             # look up this value and fail early if there is something wrong
             # with the session.
             current_user = cherrypy.session['user'].username
-
             session = self.state_db.session()
 
             # sequences will come in as a string if there is one element in post data. 
@@ -574,7 +573,7 @@ class BillToolBridge:
 
             # render all the bills
             for reebill in all_bills:
-                render.render(reebill, 
+                self.renderer.render(reebill, 
                     self.config.get("billdb", "billpath")+ "%s/%s.pdf" % (
                         reebill.account, reebill.sequence),
                     "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
@@ -598,6 +597,7 @@ class BillToolBridge:
             bill_mailer.mail(recipients, merge_fields,
                     os.path.join(self.config.get("billdb", "billpath"),
                         account), bill_file_names);
+
 
             # set issued to customer flagnflict.
             # Commit bill

@@ -442,19 +442,22 @@ class Process(object):
                 next_bill.period_begin,
                 next_bill.period_end)
         next_stats['consumption_trend'] = []
+
+        first_month = install.install_completed.month
         for year, month in dateutils.months_of_past_year(bill_year, bill_month):
             # could also use DataHandler.get_single_chunk_for_range() but that
             # gets data from OLTP, which is slow; Monguru relies on monthly
             # OLAP documents
-            renewable_energy_btus = monguru.get_data_for_month(install, year,
-                    month).energy_sold
-            therms = Decimal(renewable_energy_btus) / Decimal('100000.0')
+            try:
+                renewable_energy_btus = monguru.get_data_for_month(install, year, month).energy_sold
+            except:
+                renewable_energy_btus = 0
+            therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
             next_stats['consumption_trend'].append({
                 'month': calendar.month_abbr[month],
                 'quantity': therms
             })
              
-        next_bill.statistics = next_stats
 
 
     def calculate_reperiod(self, reebill):

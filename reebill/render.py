@@ -153,7 +153,6 @@ class ReebillRenderer:
         create_directory_if_necessary(self.temp_directory, self.logger)
 
     def render(self, reebill, outputfile, backgrounds, verbose):
-        print '^'*80 + 'temp directory is', self.temp_directory
         styles = getSampleStyleSheet()
         styles.add(ParagraphStyle(name='BillLabel', fontName='VerdanaB', fontSize=10, leading=10))
         styles.add(ParagraphStyle(name='BillLabelRight', fontName='VerdanaB', fontSize=10, leading=10, alignment=TA_RIGHT))
