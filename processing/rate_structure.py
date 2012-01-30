@@ -278,10 +278,20 @@ class RateStructureDAO(object):
         return urs
 
     # TODO: consider just accepting a reebill
-    def load_uprs(self, utility_name, rate_structure_name, begin_period, end_period):
+    def load_uprs(self, utility_name, rate_structure_name, effective, expires):
 
         # eventually, return a uprs that may have useful information that matches this service period 
         uprs = {'_id': None}
+
+        query = {
+            "_id.type":"UPRS",
+            "_id.utility_name": utility_name,
+            "_id.rate_structure_name": rate_structure_name,
+            "_id.effective": effective,
+            "_id.expires": expires,
+        }
+
+        uprs = self.collection.find_one(query)
 
         return uprs
 
@@ -313,6 +323,21 @@ class RateStructureDAO(object):
             # TODO: support date ranges for URS
             #'effective': effective,
             #'expires': expires
+        }
+
+
+        rate_structure_data = bson_convert(rate_structure_data)
+
+        self.collection.save(rate_structure_data)
+
+    def save_uprs(self, utility_name, rate_structure_name, effective, expires, rate_structure_data):
+
+        rate_structure_data['_id'] = { 
+            "type":"UPRS",
+            "utility_name": utility_name,
+            "rate_structure_name": rate_structure_name,
+            'effective': effective,
+            'expires': expires
         }
 
 

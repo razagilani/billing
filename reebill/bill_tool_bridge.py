@@ -229,31 +229,36 @@ class BillToolBridge:
 
     @cherrypy.expose
     def reconciliation(self):
-        '''Reconciliation report for reebills.'''
+        '''Reconciliation report for energy quantities in reebills.'''
+        # TODO nice formatting
         try:
             result = ''
             session = self.state_db.session()
             for account in self.state_db.listAccounts(session):
                 olap_id = nu.NexusUtil().olap_id(account)
-                install = splinter.Splinter(None, "tyrell", "dev") \
-                        .get_install_obj_for(olap_id)
+                # TODO don't hard code parameters
+                s = splinter.Splinter('http://duino-drop.appspot.com/',
+                        "tyrell", "dev")
+                print 'INSTALL IDS', s.install_ids
+                install = s.get_install_obj_for(olap_id)
+                print 'install is', install, '; olap id is', olap_id
                 for sequence in self.state_db.listSequences(session, account):
                     reebill = self.reebill_dao.load_reebill(account, sequence)
                     try:
+                        # get total renewable energy from bill
                         bill_therms = reebill.total_renewable_energy
-                        oltp_therms = sum(install.get_energy_consumed_by_service(
-                                day, 'service type is ignored!', [0,23]) for day
-                                in dateutils.date_generator(reebill.period_begin,
-                                reebill.period_end))
-                        #for day in dateutils.date_generator(reebill.period_begin, reebill.period_end):
-                            #oltp_therms = install.get_energy_consumed_by_service(
-                                    #day, 'service type is ignored!', [0,23])
+
+                        # get the same energy from OLTP
+                        oltp_therms = Decimal(0)
+                        for day in dateutils.date_generator(reebill.period_begin, reebill.period_end):
+                            print day
+                            oltp_therms += install.get_billable_energy(day, (0,23))
+                        oltp_therms = oltp_therms.quantize(Decimal('1.00000'))
                     except:
-                        raise
-                        energy_string = 'error'
+                        energy_str = 'error'
                     else:
-                        energy_string = '%s, %s' % (total_therms, oltp_therms)
-                    result += '<p>%s-%s: %s' % (account, sequence, energy_string)
+                        energy_str = '%s, %s' % (bill_therms, oltp_therms)
+                    result += '<p>%s-%s: %s' % (account, sequence, energy_str)
             return result
         except Exception as e:
             print >> sys.stderr, e, traceback.format_exc()
@@ -1015,6 +1020,133 @@ class BillToolBridge:
                     reebill.branch,
                     reebill.utility_name_for_service(service),
                     reebill.rate_structure_name_for_service(service),
+                    rate_structure
+                )
+
+                return json.dumps({'success':True})
+
+        except Exception as e:
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+    @cherrypy.expose
+    def uprsrsi(self, xaction, account, sequence, service, begin_period, end_period, **kwargs):
+        self.check_authentication()
+        try:
+            if not xaction or not account or not sequence or not service:
+                raise ValueError("Bad Parameter Value")
+
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+
+            # It is possible that there is no reebill for the requested rate structure 
+            # if this is the case, return no rate structure.  
+            # This is done so that the UI can configure itself with no data for the
+            # requested rate structure 
+            if reebill is None:
+                return ju.dumps({'success':True})
+
+            utility_name = reebill.utility_name_for_service(service)
+            rs_name = reebill.rate_structure_name_for_service(service)
+            rate_structure = self.ratestructure_dao.load_uprs(utility_name, rs_name, begin_period, end_period)
+
+            if rate_structure is None:
+                raise Exception("Could not load UPRS for %s, %s %s to %s" % (utility_name, rs_name, begin_period, end_period) )
+
+            rates = rate_structure["rates"]
+
+            if xaction == "read":
+                return json.dumps({'success': True, 'rows':rates})
+
+            elif xaction == "update":
+
+                rows = json.loads(kwargs["rows"])
+
+                # single edit comes in not in a list
+                if type(rows) is dict: rows = [rows]
+
+                # process list of edits
+                for row in rows:
+
+                    # identify the RSI descriptor of the posted data
+                    rsi_uuid = row['uuid']
+
+                    # identify the rsi, and update it with posted data
+                    matches = [rsi_match for rsi_match in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
+                    # there should only be one match
+                    if (len(matches) == 0):
+                        raise Exception("Did not match an RSI UUID which should not be possible")
+                    if (len(matches) > 1):
+                        raise Exception("Matched more than one RSI UUID which should not be possible")
+                    rsi = matches[0]
+
+                    # eliminate attributes that have empty strings or None as these mustn't 
+                    # be added to the RSI so the RSI knows to compute for those values
+                    for k,v in row.items():
+                        if v is None or v == "":
+                            del row[k]
+
+                    # now that blank values are removed, ensure that required fields were sent from client 
+                    if 'uuid' not in row: raise Exception("RSI must have a uuid")
+                    if 'rsi_binding' not in row: raise Exception("RSI must have an rsi_binding")
+
+                    # now take the legitimate values from the posted data and update the RSI
+                    # clear it so that the old emptied attributes are removed
+                    rsi.clear()
+                    rsi.update(row)
+
+                self.ratestructure_dao.save_uprs(
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    None,
+                    None,
+                    rate_structure
+                )
+
+                return json.dumps({'success':True})
+
+            elif xaction == "create":
+
+                new_rate = {"uuid": str(UUID.uuid1())}
+                new_rate['rsi_binding'] = "Temporary RSI Binding"
+                rates.append(new_rate)
+
+                self.ratestructure_dao.save_uprs(
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    None,
+                    None,
+                    rate_structure
+                )
+
+                return json.dumps({'success':True, 'rows':new_rate})
+
+            elif xaction == "destroy":
+
+                uuids = json.loads(kwargs["rows"])
+
+                # single edit comes in not in a list
+                # TODO: understand why this is a unicode coming up from browser
+                if type(uuids) is unicode: uuids = [uuids]
+
+                # process list of removals
+                for rsi_uuid in uuids:
+
+                    # identify the rsi
+                    matches = [result for result in it.ifilter(lambda x: x['uuid']==rsi_uuid, rates)]
+
+                    if (len(matches) == 0):
+                        raise Exception("Did not match an RSI UUID which should not be possible")
+                    if (len(matches) > 1):
+                        raise Exception("Matched more than one RSI UUID which should not be possible")
+                    rsi = matches[0]
+
+                    rates.remove(rsi)
+
+                self.ratestructure_dao.save_urs(
+                    reebill.utility_name_for_service(service),
+                    reebill.rate_structure_name_for_service(service),
+                    None,
+                    None,
                     rate_structure
                 )
 

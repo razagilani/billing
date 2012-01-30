@@ -1,6 +1,6 @@
 '''Date/time/datetime-related utility functions.'''
 import calendar
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 import unittest
 
 def timedelta_in_hours(delta):
@@ -20,6 +20,11 @@ def timedelta_in_hours(delta):
     if total_hours >= 0:
         return int(math.floor(total_hours))
     return - int(math.floor(abs(total_hours)))
+
+def date_to_datetime(d):
+    '''Returns a datetime whose date component is d and whose time component is
+    midnight.'''
+    return datetime(d.year, d.month, d.day, 0)
 
 def days_in_month(year, month, start_date, end_date):
     '''Returns the number of days in 'month' of 'year' between start_date

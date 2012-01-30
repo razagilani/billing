@@ -445,9 +445,6 @@ class Process(object):
 
         first_month = install.install_completed.month
         for year, month in dateutils.months_of_past_year(bill_year, bill_month):
-            #if datetime.date(year, month, 1) < datetime.date(year, first_month, 1):
-                #continue
-
             # could also use DataHandler.get_single_chunk_for_range() but that
             # gets data from OLTP, which is slow; Monguru relies on monthly
             # OLAP documents
@@ -460,9 +457,7 @@ class Process(object):
                 'month': calendar.month_abbr[month],
                 'quantity': therms
             })
-
-
-
+             
 
 
     def calculate_reperiod(self, reebill):
