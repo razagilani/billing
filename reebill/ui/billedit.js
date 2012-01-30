@@ -4030,7 +4030,6 @@ var blockUICounter = 0;
 
 function registerAjaxEvents()
 {
-    console.log("RegisterAjaxEvents");
     Ext.Ajax.addListener('beforerequest', this.showSpinner, this);
     Ext.Ajax.addListener('requestcomplete', this.hideSpinner, this);
     Ext.Ajax.addListener('requestexception', this.hideSpinner, this);
@@ -4038,7 +4037,6 @@ function registerAjaxEvents()
 
 function unregisterAjaxEvents()
 {
-    console.log("UnregisterAjaxEvents");
     Ext.Ajax.removeListener('beforerequest', this.showSpinner, this);
     Ext.Ajax.removeListener('requestcomplete', this.hideSpinner, this);
     Ext.Ajax.removeListener('requestexception', this.hideSpinner, this);
@@ -4046,20 +4044,16 @@ function unregisterAjaxEvents()
 
 function showSpinner()
 {
-    console.log("showSpinner()");
     blockUICounter++;
     Ext.Msg.show({title: "Please Wait..." + blockUICounter, closable: false});
-    console.log("ShowingSpinnger " + blockUICounter);
 }
 
 function hideSpinner()
 {
-    console.log("hideSpinner()");
     blockUICounter--;
     if (!blockUICounter) {
         Ext.Msg.hide();
         unregisterAjaxEvents();
-        console.log("HiddingSpinner " + blockUICounter);
     }
 }
 
