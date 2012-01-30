@@ -1,6 +1,6 @@
 use skyline_[ENVIRONMENT]
 
-alter table utilbill add date_recieved datetime;
+alter table utilbill add date_received datetime;
 alter table utilbill change received state integer;
 update utilbill set state = 0;
 update utilbill set state = 1 where estimated = 1;
