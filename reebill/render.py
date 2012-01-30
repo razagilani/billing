@@ -152,7 +152,7 @@ class ReebillRenderer:
         # create temp directory if it doesn't exist
         create_directory_if_necessary(self.temp_directory, self.logger)
 
-    def render(self, reebill, outputfile, backgrounds, verbose):
+    def render(self, reebill, outputdir, outputfile, backgrounds, verbose):
         styles = getSampleStyleSheet()
         styles.add(ParagraphStyle(name='BillLabel', fontName='VerdanaB', fontSize=10, leading=10))
         styles.add(ParagraphStyle(name='BillLabelRight', fontName='VerdanaB', fontSize=10, leading=10, alignment=TA_RIGHT))
@@ -271,13 +271,14 @@ class ReebillRenderer:
         # build page container for flowables to populate
         secondPage = PageTemplate(id=secondPageName,frames=[backgroundF2, measuredUsageHeaderF, measuredUsageF, chargeDetailsHeaderF, chargeDetailsF])
         #
+        # Create the customer account directory if it is absent
+        if not os.path.exists(outputdir):
+            os.mkdir(outputdir)
 
-        doc = SIBillDocTemplate(outputfile, pagesize=letter, showBoundary=0, allowSplitting=0)
+        # TODO: 17377331 - find out why the failure is silent
+        # for some reasons, if the file path passed in does not exist, SIBillDocTemplate fails silently 
+        doc = SIBillDocTemplate("%s/%s" % (outputdir, outputfile), pagesize=letter, showBoundary=0, allowSplitting=0)
         doc.addPageTemplates([firstPage, secondPage])
-
-        # instantiate a bill which will be bound to reportlab
-        #from billing import bill
-        #bill = bill.Bill(inputbill)
 
         Elements = []
 
