@@ -302,7 +302,12 @@ class BillToolBridge:
     @cherrypy.expose
     def reconciliation(self):
         '''Show reconciliation report.'''
-        return open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'reconciliation_report.json')).read().replace('\n', '<p>')
+        result = '''<h1>Reconciliation Report</h1>
+                 <p><h4>Showing only bills that have a significant discrepancy from OLAP and ones that cause errors.</h4>'''
+        for line in open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'reconciliation_report.json')).readlines():
+            result += '<p>' + line.replace('\n', '<p>')
+            #json_dict = ju.loads(line)
+        return result
 
 #    @cherrypy.expose
 #    def reconciliation_for_account(self, account, **kwargs):
