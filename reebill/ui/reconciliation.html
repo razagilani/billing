@@ -1,74 +1,94 @@
 <html>
     <head>
         <title>ReeBill Reconciliation Report</title>
-        <script type="text/javascript" src="ui/ext-3.2.1/adapter/ext/ext-base.js"></script>
-        <script type="text/javascript" src="ui/ext-3.2.1/ext-all-debug.js"></script>
+        <script type="text/javascript" src="ext-3.2.1/adapter/ext/ext-base.js"></script>
+        <script type="text/javascript" src="ext-3.2.1/ext-all-debug.js"></script>
         <script type="text/javascript">
-            Ext.MessageBox.alert('Ext did load', 'this is a test');
+            //Ext.MessageBox.alert('Ext did load', 'this is a test');
 
-//            var gridStore = new Ext.data.JsonStore({
-//                root: 'rows',
-//                totalProperty: 'results',
-//                pageSize: 50,
-//                //baseParams: {},
-//                paramNames: {start: 'start', limit: 'limit'},
-//                //autoLoad: {params:{start: 0, limit: 25}},
-//
-//                // default sort
-//                sortInfo: {field: 'sequence', direction: 'ASC'}, // descending is DESC
-//                remoteSort: true,
-//                fields: [
-//                    {name: 'account'},
-//                    {name: 'sequence'},
-//                    {name: 'bill_energy'},
-//                    {name: 'olap_energy'}
-//                ],
-//                url: 'http://' + location.host + '/reebill/listUtilBills',
+            var gridStore = new Ext.data.JsonStore({
+                root: 'rows',
+                totalProperty: 'results',
+                pageSize: 50,
+                //baseParams: {},
+                paramNames: {start: 'start', limit: 'limit'},
+                //autoLoad: {params:{start: 0, limit: 25}},
+
+                // default sort
+                sortInfo: {field: 'sequence', direction: 'ASC'}, // descending is DESC
+                remoteSort: true,
+                fields: [
+                    {name: 'account'},
+                    {name: 'sequence'},
+                    {name: 'bill_energy'},
+                    {name: 'olap_energy'}
+                ],
+                url: 'http://' + location.host + '/reebill/get_reconciliation_data',
+            });
+
+            var grid = new Ext.grid.GridPanel({
+                title:'Reconciliation Report',
+                store: gridStore,
+                trackMouseOver:false,
+                //flex:1,
+                layout: 'fit',
+                sortable: true,
+
+                // grid columns
+                columns:[{
+                        id: 'account',
+                        header: 'Account',
+                        dataIndex: 'account',
+                        width:300,
+                    },
+                    {
+                        id: 'sequence',
+                        header: 'Sequence',
+                        dataIndex: 'sequence',
+                    },
+                    {
+                        id: 'bill_energy',
+                        header: 'Bill Energy',
+                        dataIndex: 'bill_energy',
+                    },
+                    {
+                        id: 'olap_energy',
+                        header: 'OLAP Energy',
+                        dataIndex: 'olap_energy',
+                    },
+                ],
+                // paging bar on the bottom
+                bbar: new Ext.PagingToolbar({
+                    pageSize: 50,
+                    store: gridStore,
+                    displayInfo: true,
+                    displayMsg: 'Displaying {0} - {1} of {2}',
+                    emptyMsg: "Nothing to display",
+                }),
+            });
+
+//            var p = new Ext.Panel({
+//                title: 'Fit Layout',
+//                layout:'fit',
+//                items: {
+//                    title: 'Inner Panel',
+//                    html: '<p>This is the inner panel content</p>',
+//                    border: false
+//                }
 //            });
-//
-//            var grid = new Ext.grid.GridPanel({
-//                title:'Reconciliation Report',
-//                store: gridStore,
-//                trackMouseOver:false,
-//                flex:1,
-//                layout: 'fit',
-//                sortable: true,
-//
-//                // grid columns
-//                columns:[{
-//                        id: 'account',
-//                        header: 'Account',
-//                        dataIndex: 'account',
-//                        width:300,
-//                    },
-//                    {
-//                        id: 'sequence',
-//                        header: 'Sequence',
-//                        dataIndex: 'sequence',
-//                    },
-//                    {
-//                        id: 'bill_energy',
-//                        header: 'Bill Energy',
-//                        dataIndex: 'bill_energy',
-//                    },
-//                    {
-//                        id: 'olap_energy',
-//                        header: 'OLAP Energy',
-//                        dataIndex: 'olap_energy',
-//                    },
-//                ],
-//                // paging bar on the bottom
-//                bbar: new Ext.PagingToolbar({
-//                    pageSize: 50,
-//                    store: gridStore,
-//                    displayInfo: true,
-//                    displayMsg: 'Displaying {0} - {1} of {2}',
-//                    emptyMsg: "Nothing to display",
-//                }),
-//            });
+
+            Ext.onReady(function() {
+                grid.render("grid");
+                //p.render('grid');
+
+                // populate the grid with data when the page first loads
+                grid.getBottomToolbar().doRefresh();
+            });
+
         </script>
-        <link rel="stylesheet" type="text/css" href="ui/ext-3.2.1/resources/css/ext-all.css">
+        <link rel="stylesheet" type="text/css" href="ext-3.2.1/resources/css/ext-all.css">
     </head>
     <body>
+        <div id="grid"></div>
     </body>
 </html>
