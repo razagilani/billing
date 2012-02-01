@@ -228,151 +228,44 @@ class BillToolBridge:
         else:
             raise cherrypy.HTTPRedirect('/login.html')
 
-#    @cherrypy.expose
-#    def generate_reconciliation_report(self):
-#        '''Reconciliation report for reebills.'''
-#        try:
-#            # file where the report goes: json format
-#            output_file = open(os.path.join(os.path.dirname(
-#                os.path.realpath(__file__)), 'reconciliation_report.json'), 'w')
-#
-#            session = self.state_db.session()
-#            monguru = Monguru('tyrell', 'dev') # TODO don't hard-code
-#
-#            for account in self.state_db.listAccounts(session):
-#                # TODO don't hard-code
-#                install = splinter.Splinter('http://duino-drop.appspot.com/',
-#                        "tyrell", "dev").get_install_obj_for(nu.NexusUtil() \
-#                        .olap_id(account))
-#                for sequence in self.state_db.listSequences(session, account):
-#                    print 'reconciliation report for %s-%s' % (account, sequence)
-#                    reebill = self.reebill_dao.load_reebill(account, sequence)
-#                    try:
-#                        # get energy from the bill
-#                        bill_therms = reebill.total_renewable_energy
-#
-#                        # OLTP is more accurate but way too slow to generate this report in a reasonable time
-#                        #oltp_therms = sum(install.get_energy_consumed_by_service(
-#                                #day, 'service type is ignored!', [0,23]) for day
-#                                #in dateutils.date_generator(reebill.period_begin,
-#                                #reebill.period_end))
-#                        
-#                        # now get energy from OLAP: start by adding up energy
-#                        # sold for each day, whether billable or not (assuming
-#                        # that periods of missing data from OLTP will have
-#                        # contributed 0 to the OLAP aggregate)
-#                        olap_btu = 0
-#                        for day in dateutils.date_generator(reebill.period_begin,
-#                                reebill.period_end):
-#                            olap_btu += monguru.get_data_for_day(install,
-#                                    day).energy_sold
-#
-#                        # now find out how much energy was unbillable by
-#                        # subtracting energy sold during all unbillable
-#                        # annotations from the previous total
-#                        for anno in [anno for anno in install.get_annotations() if
-#                                anno.unbillable]:
-#                            # i think annotation datetimes are in whole hours
-#                            # and their ends are exclusive
-#                            for hour in sky_handlers.cross_range(anno._from, anno._to):
-#                                hourly_doc = monguru.get_data_for_hour(install, hour)
-#                                olap_btu -= hourly_doc.energy_sold
-#                        olap_therms = olap_btu / 100000
-#                    except Exception as error:
-#                        output_file.write(ju.dumps({
-#                            'success': False,
-#                            'account': account,
-#                            'sequence': sequence,
-#                            'error': '%s\n%s' % (error, traceback.format_exc()
-#                        }))
-#                    else:
-#                        output_file.write(ju.dumps({
-#                            'success': True,
-#                            'account': account,
-#                            'sequence': sequence,
-#                            'bill_therms': bill_therms,
-#                            'olap_therms': olap_therms
-#                        }))
-#                    output_file.write('\n')
-#        except Exception as e:
-#            print >> sys.stderr, e, traceback.format_exc()
-#            self.logger.error(e, traceback.format_exc())
-#            raise
     @cherrypy.expose
     def reconciliation(self):
         '''Show reconciliation report.'''
         self.check_authentication()
-        result = '''<h1>Reconciliation Report</h1>
-                 <p><h4>Showing only bills that have a significant discrepancy from OLAP and ones that cause errors.</h4>'''
-        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'reconciliation_report.json')) as report_file:
-            text = report_file.read()
-            lines = text.split('\n')
-            json_array = json.loads(text)
-            for line, json_dict in zip(lines, json_array):
-                if 'success' in json_dict and json_dict['success'] is True:
-                    result += '<p>' + line
-                else:
-                    result += '<p><font color="#ff0000">' + line + '</font>'
-        return result
+        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ui', 'reconciliation.html')) as reconciliation_html:
+            return reconciliation_html.read()
+        #result = '''<h1>Reconciliation Report</h1>
+                 #<p><h4>Showing only bills that have a significant discrepancy from OLAP and ones that cause errors.</h4>'''
+        #with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'reconciliation_report.json')) as report_file:
+            #text = report_file.read()
+            #lines = text.split('\n')
+            #json_array = json.loads(text)
+            #for line, json_dict in zip(lines, json_array):
+                #if 'success' in json_dict and json_dict['success'] is True:
+                    #result += '<p>' + line
+                #else:
+                    #result += '<p><font color="#ff0000">' + line + '</font>'
+        #return result
 
-#    @cherrypy.expose
-#    def reconciliation_for_account(self, account, **kwargs):
-#        '''Returns JSON representing the reconciliation data for all reebills
-#        belonging to a single customer account.'''
-#        try:
-#            result = []
-#            olap_id = nu.NexusUtil().olap_id(account)
-#            install = splinter.Splinter('http://duino-drop.appspot.com/', "tyrell", "dev") \
-#                    .get_install_obj_for(olap_id)
-#            monguru = Monguru('tyrell', 'dev') # TODO don't hard-code
-#            session = self.state_db.session()
-#            for sequence in self.state_db.listSequences(session, account):
-#                reebill = self.reebill_dao.load_reebill(account, sequence)
-#                print '%s-%s' % (account, sequence)
-#                try:
-#                    # get energy from the bill
-#                    bill_therms = reebill.total_renewable_energy
-#                    #oltp_therms = sum(install.get_energy_consumed_by_service(
-#                            #day, 'service type is ignored!', [0,23]) for day
-#                            #in dateutils.date_generator(reebill.period_begin,
-#                            #reebill.period_end))
-#
-#                    # OLTP is more accurate but way too slow to generate this report in a reasonable time
-#                    
-#                    # now get energy from OLAP: start by adding up energy
-#                    # sold for each day, whether billable or not (assuming
-#                    # that periods of missing data from OLTP will have
-#                    # contributed 0 to the OLAP aggregate)
-#                    olap_btu = 0
-#                    for day in dateutils.date_generator(reebill.period_begin,
-#                            reebill.period_end):
-#                        olap_btu += monguru.get_data_for_day(install,
-#                                day).energy_sold
-#
-#                    # now find out how much energy was unbillable by
-#                    # subtracting energy sold during all unbillable
-#                    # annotations from the previous total
-#                    # TODO worry about floating-point errors
-#                    for anno in [anno for anno in install.get_annotations() if
-#                            anno.unbillable]:
-#                        # i think annotation datetimes are in whole hours
-#                        # and their ends are exclusive
-#                        for hour in sky_handlers.cross_range(anno._from, anno._to):
-#                            hourly_doc = monguru.get_data_for_hour(install, hour)
-#                            olap_btu -= hourly_doc.energy_sold
-#                    olap_therms = olap_btu / 100000.
-#                except Exception as error:
-#                    result.append({'sequence': sequence, 'success': False,
-#                        'error': error})
-#                else:
-#                    result.append({'sequence': sequence, 'success': True,
-#                        'bill_therms': bill_therms, 'olap_therms':
-#                        olap_therms})
-#            return ju.dumps(result)
-#        except Exception as e:
-#            print >> sys.stderr, e, traceback.format_exc()
-#            self.logger.error(e, traceback.format_exc())
-#            raise
+    @cherrypy.expose
+    def get_reconciliation_data(self, start, limit, **kwargs):
+        '''Handles AJAX request for data to fill reconciliation report grid.'''
+        self.check_authentication()
+        try:
+            start, limit = int(start), int(limit)
+            with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'reconciliation_report.json')) as json_file:
+                # load all data from json file: a list of dictionaries
+                items = ju.loads(json_file.read())
+                return ju.dumps({
+                    'success': True,
+                    'rows': items[start:start+limit],
+                    'results': len(items) # total number of items
+                })
+        except Exception as e:
+            print >> sys.stderr, e, traceback.format_exc()
+            self.logger.error(e, traceback.format_exc())
+            raise
+
     ###########################################################################
     # authentication functions
 
