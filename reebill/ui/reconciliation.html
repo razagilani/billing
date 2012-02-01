@@ -33,6 +33,8 @@
                 //flex:1,
                 layout: 'fit',
                 sortable: true,
+                height:500,
+                //autoHeight: true,
 
                 // grid columns
                 columns:[{
@@ -82,6 +84,11 @@
 //                }
 //            });
 
+//            var panel = new Ext.Panel({
+//                title: 'maybe a panel needs to be here',
+//                layour: 'fit',
+//                items: [grid],
+//            });
             Ext.onReady(function() {
                 grid.render("grid");
                 //p.render('grid');
