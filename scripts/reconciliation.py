@@ -102,7 +102,6 @@ def generate_report(billdb_config, statedb_config, splinter_config,
                 olap_therms = olap_btu / 100000
             except Exception as error:
                 result += json_util.dumps({
-                    'success': False,
                     'account': account,
                     'sequence': sequence,
                     'timestamp': datetime.datetime.utcnow(),
@@ -113,7 +112,6 @@ def generate_report(billdb_config, statedb_config, splinter_config,
                 if close_enough(bill_therms, olap_therms):
                     continue
                 result += json_util.dumps({
-                    'success': True,
                     'account': account,
                     'sequence': sequence,
                     'timestamp': datetime.datetime.utcnow(),

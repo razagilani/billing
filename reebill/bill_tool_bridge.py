@@ -256,6 +256,14 @@ class BillToolBridge:
             with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'reconciliation_report.json')) as json_file:
                 # load all data from json file: a list of dictionaries
                 items = ju.loads(json_file.read())
+
+                #for item in items:
+                    #if item['success'] is True:
+                        #pass
+                    #else:
+                        #item['note'] = item['error']
+                        #del item['errors']
+                    #del item['success']
                 return ju.dumps({
                     'success': True,
                     'rows': items[start:start+limit],
