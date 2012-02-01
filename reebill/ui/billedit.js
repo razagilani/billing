@@ -3515,7 +3515,7 @@ function renderWidgets()
     var reconciliationGridStore = new Ext.data.JsonStore({
         root: 'rows',
         totalProperty: 'results',
-        pageSize: 50,
+        pageSize: 30,
         //baseParams: {},
         paramNames: {start: 'start', limit: 'limit'},
         //autoLoad: {params:{start: 0, limit: 25}},
@@ -3527,20 +3527,18 @@ function renderWidgets()
             {name: 'account'},
             {name: 'sequence'},
             {name: 'bill_therms'},
-            {name: 'olap_therms'}
+            {name: 'olap_therms'},
+            {name: 'error'}
         ],
         url: 'http://' + location.host + '/reebill/get_reconciliation_data',
     });
 
     var reconciliationGrid = new Ext.grid.GridPanel({
-        title:'Reconciliation Report',
+        title:'Reebills with >0.1% difference from OLAP or errors',
         store: reconciliationGridStore,
         trackMouseOver:false,
-        //flex:1,
         layout: 'fit',
         sortable: true,
-        //autoHeight: true,
-        //forceFit:true,
         autoExpandColumn: 'error',
 
         // grid columns
@@ -3570,16 +3568,14 @@ function renderWidgets()
             },
             {
                 id: 'error',
-                header: 'Error',
+                header: 'Error (see reconcilation log for details)',
                 dataIndex: 'error',
-                //width: 500
-                //autoExpandColumn: true,
                 forceFit:true
             },
         ],
         // paging bar on the bottom
         bbar: new Ext.PagingToolbar({
-            pageSize: 50,
+            pageSize: 30,
             store: reconciliationGridStore,
             displayInfo: true,
             displayMsg: 'Displaying {0} - {1} of {2}',

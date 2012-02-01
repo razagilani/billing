@@ -229,25 +229,6 @@ class BillToolBridge:
             raise cherrypy.HTTPRedirect('/login.html')
 
     @cherrypy.expose
-    def reconciliation(self):
-        '''Show reconciliation report.'''
-        self.check_authentication()
-        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ui', 'reconciliation.html')) as reconciliation_html:
-            return reconciliation_html.read()
-        #result = '''<h1>Reconciliation Report</h1>
-                 #<p><h4>Showing only bills that have a significant discrepancy from OLAP and ones that cause errors.</h4>'''
-        #with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'reconciliation_report.json')) as report_file:
-            #text = report_file.read()
-            #lines = text.split('\n')
-            #json_array = json.loads(text)
-            #for line, json_dict in zip(lines, json_array):
-                #if 'success' in json_dict and json_dict['success'] is True:
-                    #result += '<p>' + line
-                #else:
-                    #result += '<p><font color="#ff0000">' + line + '</font>'
-        #return result
-
-    @cherrypy.expose
     def get_reconciliation_data(self, start, limit, **kwargs):
         '''Handles AJAX request for data to fill reconciliation report grid.'''
         self.check_authentication()
@@ -256,14 +237,7 @@ class BillToolBridge:
             with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'reconciliation_report.json')) as json_file:
                 # load all data from json file: a list of dictionaries
                 items = ju.loads(json_file.read())
-
-                #for item in items:
-                    #if item['success'] is True:
-                        #pass
-                    #else:
-                        #item['note'] = item['error']
-                        #del item['errors']
-                    #del item['success']
+                print items
                 return ju.dumps({
                     'success': True,
                     'rows': items[start:start+limit],
