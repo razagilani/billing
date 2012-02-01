@@ -8,6 +8,7 @@ import os
 import traceback
 import datetime
 import argparse
+import logging
 from billing import mongo
 from billing.reebill import render
 from billing.processing import state
@@ -17,6 +18,10 @@ from skyliner import sky_handlers
 from billing.nexus_util import NexusUtil
 from billing import json_util
 from billing import dateutils
+
+OUTPUT_FILE_NAME = 'reconciliation_report.json'
+LOG_FILE_NAME = 'reconciliation.log'
+LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
 def close_enough(x,y):
     # TODO figure out what's really close enough
@@ -28,6 +33,18 @@ def close_enough(x,y):
 
 def generate_report(billdb_config, statedb_config, splinter_config,
         monguru_config):
+    '''Saves JSON data for reconciliation report in the file 'OUTPUT_FILE'.'''
+
+    # logging setup
+    logger = logging.getLogger('reconciliation_report')
+    formatter = logging.Formatter(LOG_FORMAT)
+    log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+            LOG_FILE_NAME)
+    handler = logging.FileHandler(log_file_path)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler) 
+    logger.setLevel(logging.DEBUG)
+
     # objects for database access
     reebill_dao = mongo.ReebillDAO(billdb_config)
     state_db = state.StateDB(statedb_config)
@@ -35,6 +52,10 @@ def generate_report(billdb_config, statedb_config, splinter_config,
     splinter = Splinter(splinter_config['url'], splinter_config['host'],
             splinter_config['db'])
     monguru = Monguru(monguru_config['host'], monguru_config['db'])
+
+    output_file_path = os.path.join(os.path.dirname(
+        os.path.realpath(__file__)), OUTPUT_FILE_NAME)
+    logger.info('Generating reconciliation report at %s' % output_file_path)
 
     # it's a bad idea to build a huge string in memory, but i need to avoid putting
     # a comma after the last object in the array, and i can't un-write the comma if
@@ -53,11 +74,19 @@ def generate_report(billdb_config, statedb_config, splinter_config,
         install = splinter.get_install_obj_for(NexusUtil().olap_id(account))
         sequences = state_db.listSequences(session, account)
         for sequence in sequences:
-            print 'reconciliation report for %s-%s' % (account, sequence)
             reebill = reebill_dao.load_reebill(account, sequence)
+
+            result_dict = {
+                'account': account,
+                'sequence': sequence,
+                'timestamp': datetime.datetime.utcnow(),
+            }
             try:
                 # get energy from the bill
                 bill_therms = reebill.total_renewable_energy
+                result_dict.update({
+                    'bill_therms': bill_therms
+                })
                 
                 # OLTP is more accurate but way too slow to generate this report in
                 # a reasonable time
@@ -101,31 +130,28 @@ def generate_report(billdb_config, statedb_config, splinter_config,
                         olap_btu -= hourly_doc.energy_sold
                 olap_therms = olap_btu / 100000
             except Exception as error:
-                result += json_util.dumps({
-                    'account': account,
-                    'sequence': sequence,
-                    'timestamp': datetime.datetime.utcnow(),
-                    'error': '%s\n%s' % (error, traceback.format_exc())
+                result_dict.update({
+                    #'error': '%s\n%s' % (error, traceback.format_exc())
+                    'error': str(error)
                 })
-                result +=',\n'
+                logger.error('%s-%s: %s\n%s' % (account, sequence, error, traceback.format_exc()))
+                result += json_util.dumps(result_dict) + ',\n'
             else:
                 if close_enough(bill_therms, olap_therms):
-                    continue
-                result += json_util.dumps({
-                    'account': account,
-                    'sequence': sequence,
-                    'timestamp': datetime.datetime.utcnow(),
-                    'bill_therms': bill_therms,
-                    'olap_therms': olap_therms
-                })
-                result += ',\n'
+                    logger.info('%s-%s is OK' % (account, sequence))
+                else:
+                    result_dict.update({
+                        'olap_therms': olap_therms
+                    })
+                    result += json_util.dumps(result_dict) + ',\n'
+                    logger.warning('%s-%s differs from OLAP' % (account, sequence))
 
     result = result[:-2] # remove final ',\n'
     result += ']'
 
     # write the json string to a file
     with open(os.path.join(os.path.dirname(os.path.realpath('billing')), 'reebill',
-            'reconciliation_report.json'), 'w') as output_file:
+            output_file_path), 'w') as output_file:
         output_file.write(result)
 
 def main():
