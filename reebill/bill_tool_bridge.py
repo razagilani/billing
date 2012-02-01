@@ -300,7 +300,6 @@ class BillToolBridge:
 #            raise
     @cherrypy.expose
     def reconciliation(self):
-    def reconciliation(self):
         '''Show reconciliation report.'''
         self.check_authentication()
         result = '''<h1>Reconciliation Report</h1>

@@ -878,9 +878,9 @@ class MongoReebill(object):
                         elif unit == 'kwh':
                             total_therms += quantity / Decimal(.0341214163)
                         elif unit == 'ccf':
-                            raise Exception('''Register contains gas measured in
-                                    ccf: can't convert that into energy without
-                                    the multiplier.''')
+                            raise Exception(("Register contains gas measured "
+                                "in ccf: can't convert that into energy "
+                                "without the multiplier."))
                         else:
                             raise Exception('Unknown energy unit: "%s"' % \
                                     register['quantity_units'])
