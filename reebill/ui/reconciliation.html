@@ -1,54 +1,74 @@
 <html>
     <head>
+        <title>ReeBill Reconciliation Report</title>
+        <script type="text/javascript" src="ui/ext-3.2.1/adapter/ext/ext-base.js"></script>
+        <script type="text/javascript" src="ui/ext-3.2.1/ext-all-debug.js"></script>
+        <script type="text/javascript">
+            Ext.MessageBox.alert('Ext did load', 'this is a test');
+
+//            var gridStore = new Ext.data.JsonStore({
+//                root: 'rows',
+//                totalProperty: 'results',
+//                pageSize: 50,
+//                //baseParams: {},
+//                paramNames: {start: 'start', limit: 'limit'},
+//                //autoLoad: {params:{start: 0, limit: 25}},
+//
+//                // default sort
+//                sortInfo: {field: 'sequence', direction: 'ASC'}, // descending is DESC
+//                remoteSort: true,
+//                fields: [
+//                    {name: 'account'},
+//                    {name: 'sequence'},
+//                    {name: 'bill_energy'},
+//                    {name: 'olap_energy'}
+//                ],
+//                url: 'http://' + location.host + '/reebill/listUtilBills',
+//            });
+//
+//            var grid = new Ext.grid.GridPanel({
+//                title:'Reconciliation Report',
+//                store: gridStore,
+//                trackMouseOver:false,
+//                flex:1,
+//                layout: 'fit',
+//                sortable: true,
+//
+//                // grid columns
+//                columns:[{
+//                        id: 'account',
+//                        header: 'Account',
+//                        dataIndex: 'account',
+//                        width:300,
+//                    },
+//                    {
+//                        id: 'sequence',
+//                        header: 'Sequence',
+//                        dataIndex: 'sequence',
+//                    },
+//                    {
+//                        id: 'bill_energy',
+//                        header: 'Bill Energy',
+//                        dataIndex: 'bill_energy',
+//                    },
+//                    {
+//                        id: 'olap_energy',
+//                        header: 'OLAP Energy',
+//                        dataIndex: 'olap_energy',
+//                    },
+//                ],
+//                // paging bar on the bottom
+//                bbar: new Ext.PagingToolbar({
+//                    pageSize: 50,
+//                    store: gridStore,
+//                    displayInfo: true,
+//                    displayMsg: 'Displaying {0} - {1} of {2}',
+//                    emptyMsg: "Nothing to display",
+//                }),
+//            });
+        </script>
+        <link rel="stylesheet" type="text/css" href="ui/ext-3.2.1/resources/css/ext-all.css">
     </head>
     <body>
-        <script language="javascript">
-            // get list of accounts
-            var listAccountsRequest = new XMLHttpRequest();
-            listAccountsRequest.open("GET", "http://" + location.host + "/reebill/listAccounts", false);
-            var accountsJson;
-            listAccountsRequest.onreadystatechange = function() {
-                accountsJson = eval("("+listAccountsRequest.responseText+")");
-            };
-            listAccountsRequest.send(null);
-            var accounts = accountsJson.rows.map(function(item) {return item.account});
-            //console.log(accounts);
-
-            var requests = [];
-            // request reconciliation data for each account
-            //var account;
-            //for (i in accounts) {
-            for (var i = 0; i < accounts.length; i++) {
-                var account = accounts[i];
-
-                var formData = new FormData();
-                formData.append("account", account);
-
-                var requests = [];
-                var recRequest = new XMLHttpRequest();
-                var url ="http://" + location.host + "/reebill/reconciliation_for_account?account="+account;
-                recRequest.open("GET", url, true);
-                recRequest.account = account;
-                var recJson;
-                recRequest.onreadystatechange = function() {
-                    console.log('request for '+this.account+' returned');
-                    //if (this.readystate != 4) return;
-                    try {
-                        recJson = eval(this.responseText);
-                        console.log('this is ok: '+this.responseText);
-                    } catch (error) {
-                        console.log('unparseable json: "'+this.responseText+'"');
-                    }
-                    if (recJson.success) {
-                        document.write("<p>" + this.account + ": success");
-                    } else {
-                        document.write("<p>" + this.account + ": error " + recJson.errors);
-                    }
-                }
-                requests.push(recRequest);
-
-                recRequest.send(null);
-            }
-        </script>
     </body>
 </html>
