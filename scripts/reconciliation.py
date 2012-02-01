@@ -5,6 +5,7 @@ reebills to the same quantities in OLAP.
 This should be run by cron to generate a static JSON file, which can be loaded
 by BillToolBridge and returned for display in an Ext-JS grid in the browser.'''
 import os
+import errno
 import traceback
 import datetime
 import argparse
@@ -35,11 +36,20 @@ def generate_report(billdb_config, statedb_config, splinter_config,
         monguru_config):
     '''Saves JSON data for reconciliation report in the file 'OUTPUT_FILE'.'''
 
+    # log file goes in billing/reebill (where reebill.log also goes)
+    log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+            '..', 'reebill', LOG_FILE_NAME)
+
+    # delete old log file
+    try:
+        os.remove(log_file_path)
+    except OSError as oserr:
+        if oserr.errno != errno.ENOENT:
+            raise
+
     # logging setup
     logger = logging.getLogger('reconciliation_report')
     formatter = logging.Formatter(LOG_FORMAT)
-    log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-            LOG_FILE_NAME)
     handler = logging.FileHandler(log_file_path)
     handler.setFormatter(formatter)
     logger.addHandler(handler) 
@@ -53,8 +63,9 @@ def generate_report(billdb_config, statedb_config, splinter_config,
             splinter_config['db'])
     monguru = Monguru(monguru_config['host'], monguru_config['db'])
 
+    # save output in billing/reebill
     output_file_path = os.path.join(os.path.dirname(
-        os.path.realpath(__file__)), OUTPUT_FILE_NAME)
+        os.path.realpath(__file__)), '..', 'reebill', OUTPUT_FILE_NAME)
     logger.info('Generating reconciliation report at %s' % output_file_path)
 
     # it's a bad idea to build a huge string in memory, but i need to avoid putting
