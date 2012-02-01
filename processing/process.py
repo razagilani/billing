@@ -41,12 +41,13 @@ class Process(object):
 
     config = None
     
-    def __init__(self, config, state_db, reebill_dao, rate_structure_dao):
+    def __init__(self, config, state_db, reebill_dao, rate_structure_dao, splinter):
         self.config = config
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
         #TODO: why do we need a reebill_dao? Reebills get passed in to this helper class
         self.reebill_dao = reebill_dao
+        self.splinter = splinter
 
     # compute the value, charges and savings of renewable energy
     def sum_bill(self, session, prior_reebill, present_reebill):
@@ -434,8 +435,7 @@ class Process(object):
 
         # objects for getting olap data
         olap_id = nexus_util.NexusUtil().olap_id(reebill.account)
-        splinter = skyliner.splinter.Splinter('http://duino-drop.appspot.com/', "tyrell", "dev")
-        install = splinter.get_install_obj_for(olap_id)
+        install = self.splinter.get_install_obj_for(olap_id)
         monguru = skyliner.skymap.monguru.Monguru('tyrell', 'dev') # TODO don't hard-code this
 
         bill_year, bill_month = dateutils.estimate_month(
