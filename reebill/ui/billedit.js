@@ -371,6 +371,35 @@ function renderWidgets()
         })
     });
 
+    var deleteButton = new Ext.Button({
+        text: 'Delete selected reebill',
+        //disabled: true, // TODO should be disabled when there's no reebill selected or the currently-selected bill is not deletable
+        handler: function() {
+            // TODO integerate this into the ajax request canceling/delaying system
+            deleteBillRequest = Ext.Ajax.request({
+                url: 'http://' + location.host + '/reebill/delete_reebill',
+                params: {
+                    account: accountCombo.getValue(),
+                    sequence: sequenceCombo.getValue()
+                },
+                success: function(result, request) {
+                    var jsonData = null;
+                    try {
+                        jsonData = Ext.util.JSON.decode(result.responseText);
+                        var imageUrl = '';
+                        if (jsonData.success == true) {
+                            // TODO reload a lot of stuff?
+                        }
+                    } catch (err) {
+                        Ext.MessageBox.alert('delete reebill ERROR', err);
+                    }
+                },
+                // this is called when the server returns 500 as well as when there's no response
+                failure: function() { Ext.MessageBox.alert('Ajax failure', 'delete reebill'); },
+                disableCaching: true,
+            });
+        }
+    })
 
     var reebillFormPanel = new Ext.form.FormPanel({
         title: 'Select ReeBill',
@@ -391,7 +420,8 @@ function renderWidgets()
             }),
             accountCombo,
             sequenceCombo,
-            billOperationButton
+            billOperationButton,
+            deleteButton,
         ],
     });
 

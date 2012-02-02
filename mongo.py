@@ -1127,6 +1127,13 @@ class ReebillDAO:
 
         self.collection.save(mongo_doc)
 
+    def delete_reebill(self, account, sequence, branch=0):
+        self.collection.remove({
+            '_id.account': str(account),
+            '_id.sequence': int(sequence),
+            '_id.branch': int(branch)
+        }, safe=True)
+
     def get_first_bill_date_for_account(self, account):
         '''Returns the start date of the account's earliest reebill, or None if
         no reebills exist for the customer.'''

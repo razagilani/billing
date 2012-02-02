@@ -410,6 +410,18 @@ class BillToolBridge:
 
 
     @cherrypy.expose
+    def delete_reebill(self, account, sequence, **args):
+        self.check_authentication()
+        try:
+            session = self.state_db.session()
+            self.process.delete_reebill(session, account, sequence)
+            session.commit()
+            return json.dumps({'success': True})
+        except Exception as e:
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+
+    @cherrypy.expose
     def pay(self, account, sequence, **args):
         self.check_authentication()
         try:
