@@ -45,12 +45,6 @@ class UtilBill(object):
         self.date_received = date_received
         self.processed = processed
 
-    @property
-    def state_string(self):
-        '''Returns a human-readable name of this utilbill's stae.'''
-        return {0:'complete', 1:'hypothetical', 2:'skyline estimated',
-                3:'utility estimated'}[self.state]
-
     def __repr__(self):
         return '<UtilBill(%s, %s, %s)>' \
                 % (self.customer, self.period_start, self.period_end)
