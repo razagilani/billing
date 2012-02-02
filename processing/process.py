@@ -141,7 +141,7 @@ class Process(object):
 
     def roll_bill(self, session, reebill):
         """
-        Create rebill for next period, based on prior bill.
+        Create reebill for next period, based on prior bill.
         """
 
         # obtain the last Reebill sequence from the state database
@@ -185,6 +185,9 @@ class Process(object):
             # a utility specific business rule
             old_period = (old_period[1], None)
             reebill.set_utilbill_period_for_service(service, old_period)
+
+        # set discount rate to the value in MySQL
+        reebill.discount_rate = self.state_db.discount_rate(reebill.account)
 
         reebill.reset()
 
