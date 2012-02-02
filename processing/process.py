@@ -443,15 +443,25 @@ class Process(object):
                 next_bill.period_end)
         next_stats['consumption_trend'] = []
 
+        first_bill_date = self.reebill_dao \
+                .get_first_bill_date_for_account(reebill.account)
+        first_bill_year = first_bill_date.year
+        first_bill_month = first_bill_date.month
+
         first_month = install.install_completed.month
         for year, month in dateutils.months_of_past_year(bill_year, bill_month):
-            # could also use DataHandler.get_single_chunk_for_range() but that
-            # gets data from OLTP, which is slow; Monguru relies on monthly
-            # OLAP documents
-            try:
-                renewable_energy_btus = monguru.get_data_for_month(install, year, month).energy_sold
-            except:
+            # months before first bill have 0 energy, even if data were
+            # collected during that time.
+            if year < first_bill_year or month < first_bill_month:
                 renewable_energy_btus = 0
+            else:
+                # get billing data from OLAP (instead of
+                # DataHandler.get_single_chunk_for_range()) for speed only.
+                # we insist that data should be available during the month of
+                # first billing and all following months; if get_data_for_month()
+                # fails, that's a real error that we shouldn't ignore.
+                renewable_energy_btus = monguru.get_data_for_month(install, year, month).energy_sold
+
             therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
             next_stats['consumption_trend'].append({
                 'month': calendar.month_abbr[month],
