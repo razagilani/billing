@@ -1127,6 +1127,18 @@ class ReebillDAO:
 
         self.collection.save(mongo_doc)
 
+    def get_first_bill_date_for_account(self, account):
+        '''Returns the start date of the account's earliest reebill, or None if
+        no reebills exist for the customer.'''
+        query = {
+            '_id.account': account,
+            '_id.sequence': 0,
+        }
+        results = self.collection.find(query)
+        if results == []:
+            return None
+        return results[0]
+
 
 class NoRateStructureError(Exception):
     pass

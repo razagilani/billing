@@ -203,7 +203,8 @@ class BillToolBridge:
         # create one Process object to use for all related bill processing
         self.process = process.Process(self.config, self.state_db,
                 self.reebill_dao, self.ratestructure_dao,
-                # TODO don't hard-code these
+                # TODO it's theoretically bad to hard-code these, but all
+                # skyliner configuration is hard-coded right now anyway
                 splinter.Splinter('http://duino-drop.appspot.com/', "tyrell", "dev"))
 
         # create a ReebillRenderer
