@@ -35,7 +35,7 @@ class UtilBill(object):
     Complete, UtilityEstimated, SkylineEstimated, Hypothetical = range(4)
 
     def __init__(self, customer, state, period_start=None, period_end=None,
-            date_received=None, processed=False):
+            date_received=None, processed=False, reebill=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
         self.customer = customer
@@ -44,6 +44,7 @@ class UtilBill(object):
         self.period_end = period_end
         self.date_received = date_received
         self.processed = processed
+        self.reebill = reebill # newly-created utilbill has NULL in reebill_id column
 
     def __repr__(self):
         return '<UtilBill(%s, %s, %s)>' \

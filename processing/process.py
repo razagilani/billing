@@ -45,7 +45,6 @@ class Process(object):
         self.config = config
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
-        #TODO: why do we need a reebill_dao? Reebills get passed in to this helper class
         self.reebill_dao = reebill_dao
         self.splinter = splinter
 
@@ -194,6 +193,25 @@ class Process(object):
 
         # create an initial rebill record to which the utilbills are later associated
         self.state_db.new_rebill(session, reebill.account, reebill.sequence)
+
+    def delete_reebill(self, session, account, sequence):
+        '''Deletes the reebill given by 'account' and 'sequence': removes state
+        data and utility bill associations from MySQL, and actual bill data
+        from Mongo. A reebill that has been issued can't be deleted.'''
+        # TODO add branch, which MySQL doesn't have yet:
+        # https://www.pivotaltracker.com/story/show/24374911 
+
+        # don't delete an issued or committed bill
+        # TODO decide if it should be issued or committed, and what "committed" means: see 
+        # https://www.pivotaltracker.com/story/show/24382885
+        if self.state_db.is_issued(session, account, sequence):
+            raise Exception("Can't delete an issued reebill.")
+
+        # delete reebill document from Mongo
+        self.reebill_dao.delete_reebill(account, sequence)
+
+        # delete reebill state data from MySQL and dissociate utilbills from it
+        self.state_db.delete_reebill(session, account, sequence)
 
     def create_new_account(self, session, account, name, discount_rate, template_account):
 
