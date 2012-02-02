@@ -201,9 +201,10 @@ class BillToolBridge:
         self.journal_dao = journal.JournalDAO(dict(journaldb_config_section))
 
         # create one Process object to use for all related bill processing
-        self.process = process.Process(self.config, self.state_db, self.reebill_dao, self.ratestructure_dao
+        self.process = process.Process(self.config, self.state_db,
+                self.reebill_dao, self.ratestructure_dao,
                 # TODO don't hard-code these
-                splinter.Splinter('http://duino-drop.appspot.com/', "tyrell", "dev")
+                splinter.Splinter('http://duino-drop.appspot.com/', "tyrell", "dev"))
 
         # create a ReebillRenderer
         self.renderer = render.ReebillRenderer(dict(self.config.items('reebillrendering')), self.logger)
