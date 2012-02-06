@@ -5,6 +5,7 @@ reebills to the same quantities in OLAP.
 This should be run by cron to generate a static JSON file, which can be loaded
 by BillToolBridge and returned for display in an Ext-JS grid in the browser.'''
 import os
+import sys
 import errno
 import traceback
 import datetime
@@ -32,29 +33,9 @@ def close_enough(x,y):
         return abs(x) < .001
     return abs(x - y) / y < .001
 
-def generate_report(billdb_config, statedb_config, splinter_config,
+def generate_report(logger, billdb_config, statedb_config, splinter_config,
         monguru_config):
     '''Saves JSON data for reconciliation report in the file 'OUTPUT_FILE'.'''
-
-    # log file goes in billing/reebill (where reebill.log also goes)
-    log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-            '..', 'reebill', LOG_FILE_NAME)
-
-    # delete old log file
-    try:
-        os.remove(log_file_path)
-    except OSError as oserr:
-        if oserr.errno != errno.ENOENT:
-            raise
-
-    # logging setup
-    logger = logging.getLogger('reconciliation_report')
-    formatter = logging.Formatter(LOG_FORMAT)
-    handler = logging.FileHandler(log_file_path)
-    handler.setFormatter(formatter)
-    logger.addHandler(handler) 
-    logger.setLevel(logging.DEBUG)
-
     # objects for database access
     reebill_dao = mongo.ReebillDAO(billdb_config)
     state_db = state.StateDB(statedb_config)
@@ -73,8 +54,11 @@ def generate_report(billdb_config, statedb_config, splinter_config,
     # i'm writing to a file (and i can't know what the last item of the array is
     # going to be in advance because i'm only including items that have an error or
     # a difference from olap)
-    # TODO: fix this if it becomes a problem when the number of bills gets really
-    # large
+    # TODO: fix this if it becomes a problem when the number of bills gets
+    # really large. if the file is not being written all at once, it should be
+    # written in a separate location while it's incomplete and then moved to
+    # replace the existing file when it's done, so BillToolBridge never tries
+    # to load an incomplete file.
     result = '['
 
     # get account numbers of all customers in sorted order
@@ -92,13 +76,16 @@ def generate_report(billdb_config, statedb_config, splinter_config,
                 'sequence': sequence,
                 'timestamp': datetime.datetime.utcnow(),
             }
+
+            bill_error, oltp_error, olap_error = None, None, None
+
             try:
                 # get energy from the bill
                 bill_therms = reebill.total_renewable_energy
                 result_dict.update({
                     'bill_therms': bill_therms
                 })
-                
+
                 # find the date to start getting data from OLAP: in some cases the
                 # date when OLAP data begins is later than the beginning of the
                 # first billing period. if we billed the customer for a period
@@ -111,21 +98,26 @@ def generate_report(billdb_config, statedb_config, splinter_config,
                 # better be 0 or our bill is very wrong.)
                 start_date = max(reebill.period_begin, install.install_completed.date())
                 
-#                # OLTP is more accurate but way too slow to generate this report in
-#                # a reasonable time
-#                # TODO: maybe switch over to OLTP when it becomes faster (because
-#                # OLTP is more accurate and it's what we actually use to create
-#                # bills)
-#                oltp_btu = sum(install.get_billable_energy(day, [0,23]) for
-#                        day in dateutils.date_generator(start_date,
-#                        reebill.period_end))
-#                oltp_therms = oltp_btu / 100000
+            except Exception as e:
+                bill_error = e
+                logger.error('%s-%s: %s\n%s' % (account, sequence, e, traceback.format_exc()))
                 
-                # now get energy from OLAP: start by adding up energy
-                # sold for each day, whether billable or not (assuming
-                # that periods of missing data from OLTP will have
-                # contributed 0 to the OLAP aggregate)
+            # get energy from OLTP (very slow but more accurate and less
+            # error-prone than OLAP)
+            try:
+                oltp_btu = sum(install.get_billable_energy(day, [0,23]) for
+                        day in dateutils.date_generator(start_date,
+                        reebill.period_end))
+                oltp_therms = oltp_btu / 100000
+                
+            except Exception as e:
+                oltp_error = e
+                logger.error('%s-%s: %s\n%s' % (account, sequence, e, traceback.format_exc()))
 
+            # get energy from OLAP: add up energy sold for each day, whether
+            # billable or not (assuming that periods of missing data from OLTP
+            # will have contributed 0 to the OLAP aggregate)
+            try:
                 olap_btu = 0
                 for day in dateutils.date_generator(start_date, reebill.period_end):
                     olap_btu += monguru.get_data_for_day(install, day).energy_sold
@@ -141,22 +133,33 @@ def generate_report(billdb_config, statedb_config, splinter_config,
                         hourly_doc = monguru.get_data_for_hour(install, hour.date(), hour.hour)
                         olap_btu -= hourly_doc.energy_sold
                 olap_therms = olap_btu / 100000
-            except Exception as error:
-                result_dict.update({
-                    #'error': '%s\n%s' % (error, traceback.format_exc())
-                    'error': str(error)
-                })
-                logger.error('%s-%s: %s\n%s' % (account, sequence, error, traceback.format_exc()))
-                result += json_util.dumps(result_dict) + ',\n'
-            else:
-                if close_enough(bill_therms, olap_therms):
+            except Exception as e:
+                olap_error = e
+                logger.error('%s-%s: %s\n%s' % (account, sequence, e, traceback.format_exc()))
+            
+            error_messages = []
+            if bill_error is not None:
+                error_messages.append('Bill error: '+str(bill_error))
+            if oltp_error is not None:
+                error_messages.append('OLTP error: '+str(oltp_error))
+            if olap_error is not None:
+                error_messages.append('OLAP error: '+str(olap_error))
+
+            if error_messages == []:
+                # no errors: log bill as OK or include it in report if its
+                # energy doesn't match OLTP
+                if close_enough(bill_therms, oltp_therms):
                     logger.info('%s-%s is OK' % (account, sequence))
                 else:
                     result_dict.update({
-                        'olap_therms': olap_therms
+                        'olap_therms': olap_therms,
+                        'oltp_therms': oltp_therms
                     })
-                    result += json_util.dumps(result_dict) + ',\n'
-                    logger.warning('%s-%s differs from OLAP' % (account, sequence))
+                    logger.warning('%s-%s differs from OLTP' % (account, sequence))
+            else:
+                # put errors in report
+                result_dict.update({ 'errors': '. '.join(error_messages)+'.' })
+            result += json_util.dumps(result_dict) + ',\n'
 
     result = result[:-2] # remove final ',\n'
     result += ']'
@@ -183,7 +186,7 @@ def main():
             help='name of OLAP database (default: dev)')
     args = parser.parse_args()
 
-    # setup
+    # set up config dicionaries for data access objects used in generate_report
     billdb_config = {
         'database': args.billdb,
         'collection': 'reebills',
@@ -206,8 +209,30 @@ def main():
         'db': args.olapdb
     }
 
-    generate_report(billdb_config, statedb_config, splinter_config,
-            monguru_config)
+    # log file goes in billing/reebill (where reebill.log also goes)
+    log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+            '..', 'reebill', LOG_FILE_NAME)
+    # delete old log file
+    try:
+        os.remove(log_file_path)
+    except OSError as oserr:
+        if oserr.errno != errno.ENOENT:
+            raise
+    # set up logger
+    logger = logging.getLogger('reconciliation_report')
+    formatter = logging.Formatter(LOG_FORMAT)
+    handler = logging.FileHandler(log_file_path)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler) 
+    logger.setLevel(logging.DEBUG)
+
+    try:
+        generate_report(logger, billdb_config, statedb_config, splinter_config,
+                monguru_config)
+    except Exception as e:
+        print >> sys.stderr, '%s\n%s' % (e, traceback.format_exc())
+        logger.critical("Couldn't generate reconciliation report: %s\n%s"
+                % (e, traceback.format_exc()))
 
 if __name__ == '__main__':
     main()
