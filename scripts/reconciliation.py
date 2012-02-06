@@ -99,16 +99,6 @@ def generate_report(billdb_config, statedb_config, splinter_config,
                     'bill_therms': bill_therms
                 })
                 
-                # OLTP is more accurate but way too slow to generate this report in
-                # a reasonable time
-                # TODO: maybe switch over to OLTP when it becomes faster (because
-                # OLTP is more accurate and it's what we actually use to create
-                # bills)
-                #oltp_therms = sum(install.get_energy_consumed_by_service(
-                        #day, 'service type is ignored!', [0,23]) for day
-                        #in dateutils.date_generator(reebill.period_begin,
-                        #reebill.period_end))
-                
                 # find the date to start getting data from OLAP: in some cases the
                 # date when OLAP data begins is later than the beginning of the
                 # first billing period. if we billed the customer for a period
@@ -121,10 +111,21 @@ def generate_report(billdb_config, statedb_config, splinter_config,
                 # better be 0 or our bill is very wrong.)
                 start_date = max(reebill.period_begin, install.install_completed.date())
                 
+#                # OLTP is more accurate but way too slow to generate this report in
+#                # a reasonable time
+#                # TODO: maybe switch over to OLTP when it becomes faster (because
+#                # OLTP is more accurate and it's what we actually use to create
+#                # bills)
+#                oltp_btu = sum(install.get_billable_energy(day, [0,23]) for
+#                        day in dateutils.date_generator(start_date,
+#                        reebill.period_end))
+#                oltp_therms = oltp_btu / 100000
+                
                 # now get energy from OLAP: start by adding up energy
                 # sold for each day, whether billable or not (assuming
                 # that periods of missing data from OLTP will have
                 # contributed 0 to the OLAP aggregate)
+
                 olap_btu = 0
                 for day in dateutils.date_generator(start_date, reebill.period_end):
                     olap_btu += monguru.get_data_for_day(install, day).energy_sold
