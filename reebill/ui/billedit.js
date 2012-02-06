@@ -2053,7 +2053,7 @@ function renderWidgets()
                 // doesn't seem to work
                 forceFit: true,
             },
-            title: 'Customer Bill Period Rate Structure',
+            title: 'Customer Periodic',
             clicksToEdit: 2
         });
 
@@ -2115,7 +2115,7 @@ function renderWidgets()
         });
 
         var UPRSRSIStoreProxyConn = new Ext.data.Connection({
-            url: 'http://'+location.host+'/reebill/ursrsi',
+            url: 'http://'+location.host+'/reebill/uprsrsi',
         });
         var UPRSRSIStoreProxy = new Ext.data.HttpProxy(UPRSRSIStoreProxyConn);
 
@@ -2300,7 +2300,7 @@ function renderWidgets()
                 // doesn't seem to work
                 forceFit: true,
             },
-            title: 'Utility Periodic Rate Structure',
+            title: 'Utility Periodic',
             clicksToEdit: 2
         });
 
@@ -2548,7 +2548,7 @@ function renderWidgets()
                 // doesn't seem to work
                 forceFit: true,
             },
-            title: 'Utility Global Rate Structure',
+            title: 'Utility Global',
             clicksToEdit: 2
         });
 
@@ -3699,27 +3699,23 @@ function renderWidgets()
         },{
             id: 'rateStructureTab',
             title: 'Rate Structure',
-            xtype: 'panel',
             layout: 'border',
             items: [
             {
                 region: 'north',
-                xtype: 'container',
-                split: true,
                 layout: 'fit',
-                //margins: '5 5 0 0',
+                split: true,
                 items: [CPRSRSIGrid]
             },{
                 region: 'center',
-                xtype: 'container',
                 layout: 'fit',
-                //margins: '5 5 0 0',
-                items: [URSRSIGrid]
+                split: true,
+                items: [UPRSRSIGrid]
             },{
                 region:'south',
-                //collapsible: true,   // make collapsible
                 layout: 'fit',
-                items: [UPRSRSIGrid]
+                split: true,
+                items: [URSRSIGrid]
             }]
         },{
             title: 'Charge Items',
@@ -3776,7 +3772,7 @@ function renderWidgets()
         },{
             id: 'aboutTab',
             title: 'About',
-            html: '<p>' + SKYLINE_VERSIONINFO + '</p>'
+            html: '<table style="width: 100%; border: 0; margin-top:20px;"><tr><td align="center">' + SKYLINE_VERSIONINFO + '</td></tr><tr><td align="center"><img width="50%" src="MrJonas.png"/></td></tr><tr><td align="center"><font style="font-family: impact; font-size:68pt;">Masterbiller</font></td></tr></table>'
         }]
     });
 
@@ -3936,6 +3932,7 @@ function renderWidgets()
         hChargesStore.loadData({rows: 0, succes: true});
         CPRSRSIStore.loadData({rows: 0, success: true});
         URSRSIStore.loadData({rows: 0, success: true});
+        UPRSRSIStore.loadData({rows: 0, success: true});
 
         updateStatusbar(account, null, null);
     }
@@ -4050,6 +4047,10 @@ function renderWidgets()
         URSRSIStore.proxy.getConnection().autoAbort = true;
         URSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
 
+        // abort this connection if previously loading
+        UPRSRSIStore.proxy.getConnection().autoAbort = true;
+        UPRSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}});
+
         // TODO:23046181 abort connections in progress
         configureReeBillEditor(account, sequence);
 
@@ -4158,7 +4159,7 @@ function unregisterAjaxEvents()
 function showSpinner()
 {
     blockUICounter++;
-    Ext.Msg.show({title: "Please Wait..." + blockUICounter, closable: false});
+    Ext.Msg.show({title: "Please Wait...", closable: false});
 }
 
 function hideSpinner()
