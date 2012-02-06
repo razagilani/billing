@@ -299,7 +299,8 @@ class RateStructureDAO(object):
         # the same behavior should probably be implemented for URS and CPRS so that they can be lazily created
         # TODO 24253017
         if uprs is None:
-            uprs = {rates:[]} see if this works
+            # see if this works - 2/5/12
+            uprs = {rates:[]} 
             uprs = self.save_uprs(utility_name, rate_structure_name, effective, expires, uprs)
 
         return uprs
