@@ -3558,18 +3558,19 @@ function renderWidgets()
             {name: 'sequence'},
             {name: 'bill_therms'},
             {name: 'olap_therms'},
-            {name: 'error'}
+            {name: 'oltp_therms'},
+            {name: 'errors'}
         ],
         url: 'http://' + location.host + '/reebill/get_reconciliation_data',
     });
 
     var reconciliationGrid = new Ext.grid.GridPanel({
-        title:'Reebills with >0.1% difference from OLAP or errors',
+        title:'Reebills with >0.1% difference from OLTP or errors',
         store: reconciliationGridStore,
         trackMouseOver:false,
         layout: 'fit',
         sortable: true,
-        autoExpandColumn: 'error',
+        autoExpandColumn: 'errors',
 
         // grid columns
         columns:[{
@@ -3597,9 +3598,15 @@ function renderWidgets()
                 width: 150
             },
             {
-                id: 'error',
-                header: 'Error (see reconcilation log for details)',
-                dataIndex: 'error',
+                id: 'oltp_energy',
+                header: 'OLTP Energy (therms)',
+                dataIndex: 'olap_therms',
+                width: 150
+            },
+            {
+                id: 'errors',
+                header: 'Errors (see reconcilation log for details)',
+                dataIndex: 'errors',
                 forceFit:true
             },
         ],
