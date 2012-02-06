@@ -371,6 +371,35 @@ function renderWidgets()
         })
     });
 
+    var deleteButton = new Ext.Button({
+        text: 'Delete selected reebill',
+        //disabled: true, // TODO should be disabled when there's no reebill selected or the currently-selected bill is not deletable
+        handler: function() {
+            // TODO integerate this into the ajax request canceling/delaying system
+            deleteBillRequest = Ext.Ajax.request({
+                url: 'http://' + location.host + '/reebill/delete_reebill',
+                params: {
+                    account: accountCombo.getValue(),
+                    sequence: sequenceCombo.getValue()
+                },
+                success: function(result, request) {
+                    var jsonData = null;
+                    try {
+                        jsonData = Ext.util.JSON.decode(result.responseText);
+                        var imageUrl = '';
+                        if (jsonData.success == true) {
+                            // TODO reload a lot of stuff?
+                        }
+                    } catch (err) {
+                        Ext.MessageBox.alert('delete reebill ERROR', err);
+                    }
+                },
+                // this is called when the server returns 500 as well as when there's no response
+                failure: function() { Ext.MessageBox.alert('Ajax failure', 'delete reebill'); },
+                disableCaching: true,
+            });
+        }
+    })
 
     var reebillFormPanel = new Ext.form.FormPanel({
         title: 'Select ReeBill',
@@ -391,7 +420,8 @@ function renderWidgets()
             }),
             accountCombo,
             sequenceCombo,
-            billOperationButton
+            billOperationButton,
+            deleteButton,
         ],
     });
 
@@ -3511,6 +3541,77 @@ function renderWidgets()
         labelPad: 8           // defaults to 5, must specify labelWidth to be honored
     });
 
+    // reconciliation report
+    var reconciliationGridStore = new Ext.data.JsonStore({
+        root: 'rows',
+        totalProperty: 'results',
+        pageSize: 30,
+        //baseParams: {},
+        paramNames: {start: 'start', limit: 'limit'},
+        //autoLoad: {params:{start: 0, limit: 25}},
+
+        // default sort
+        sortInfo: {field: 'sequence', direction: 'ASC'}, // descending is DESC
+        remoteSort: true,
+        fields: [
+            {name: 'account'},
+            {name: 'sequence'},
+            {name: 'bill_therms'},
+            {name: 'olap_therms'},
+            {name: 'error'}
+        ],
+        url: 'http://' + location.host + '/reebill/get_reconciliation_data',
+    });
+
+    var reconciliationGrid = new Ext.grid.GridPanel({
+        title:'Reebills with >0.1% difference from OLAP or errors',
+        store: reconciliationGridStore,
+        trackMouseOver:false,
+        layout: 'fit',
+        sortable: true,
+        autoExpandColumn: 'error',
+
+        // grid columns
+        columns:[{
+                id: 'account',
+                header: 'Account',
+                dataIndex: 'account',
+                width: 80
+            },
+            {
+                id: 'sequence',
+                header: 'Sequence',
+                dataIndex: 'sequence',
+                width: 80
+            },
+            {
+                id: 'bill_energy',
+                header: 'Bill Energy (therms)',
+                dataIndex: 'bill_therms',
+                width: 150
+            },
+            {
+                id: 'olap_energy',
+                header: 'OLAP Energy (therms)',
+                dataIndex: 'olap_therms',
+                width: 150
+            },
+            {
+                id: 'error',
+                header: 'Error (see reconcilation log for details)',
+                dataIndex: 'error',
+                forceFit:true
+            },
+        ],
+        // paging bar on the bottom
+        bbar: new Ext.PagingToolbar({
+            pageSize: 30,
+            store: reconciliationGridStore,
+            displayInfo: true,
+            displayMsg: 'Displaying {0} - {1} of {2}',
+            emptyMsg: "Click the refresh button to show some data.",
+        }),
+    });
 
     // end of tab widgets
     ////////////////////////////////////////////////////////////////////////////
@@ -3646,6 +3747,18 @@ function renderWidgets()
                 pack : 'start'
             },
             items: [journalGrid]
+        },{
+            id: 'reconciliationTab',
+            title: 'Reconciliation Report',
+            xtype: 'panel',
+            layout: 'fit',
+            //layoutConfig : {
+                //align : 'stretch',
+                //pack : 'start'
+            //},
+            items: [
+                reconciliationGrid,
+            ],
         },{
             id: 'preferencesTab',
             title: 'Preferences',

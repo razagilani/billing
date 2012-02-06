@@ -41,12 +41,12 @@ class Process(object):
 
     config = None
     
-    def __init__(self, config, state_db, reebill_dao, rate_structure_dao):
+    def __init__(self, config, state_db, reebill_dao, rate_structure_dao, splinter):
         self.config = config
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
-        #TODO: why do we need a reebill_dao? Reebills get passed in to this helper class
         self.reebill_dao = reebill_dao
+        self.splinter = splinter
 
     # compute the value, charges and savings of renewable energy
     def sum_bill(self, session, prior_reebill, present_reebill):
@@ -140,7 +140,7 @@ class Process(object):
 
     def roll_bill(self, session, reebill):
         """
-        Create rebill for next period, based on prior bill.
+        Create reebill for next period, based on prior bill.
         """
 
         # obtain the last Reebill sequence from the state database
@@ -185,11 +185,33 @@ class Process(object):
             old_period = (old_period[1], None)
             reebill.set_utilbill_period_for_service(service, old_period)
 
+        # set discount rate to the value in MySQL
+        reebill.discount_rate = self.state_db.discount_rate(reebill.account)
+
         reebill.reset()
 
 
         # create an initial rebill record to which the utilbills are later associated
         self.state_db.new_rebill(session, reebill.account, reebill.sequence)
+
+    def delete_reebill(self, session, account, sequence):
+        '''Deletes the reebill given by 'account' and 'sequence': removes state
+        data and utility bill associations from MySQL, and actual bill data
+        from Mongo. A reebill that has been issued can't be deleted.'''
+        # TODO add branch, which MySQL doesn't have yet:
+        # https://www.pivotaltracker.com/story/show/24374911 
+
+        # don't delete an issued or committed bill
+        # TODO decide if it should be issued or committed, and what "committed" means: see 
+        # https://www.pivotaltracker.com/story/show/24382885
+        if self.state_db.is_issued(session, account, sequence):
+            raise Exception("Can't delete an issued reebill.")
+
+        # delete reebill document from Mongo
+        self.reebill_dao.delete_reebill(account, sequence)
+
+        # delete reebill state data from MySQL and dissociate utilbills from it
+        self.state_db.delete_reebill(session, account, sequence)
 
     def create_new_account(self, session, account, name, discount_rate, template_account):
 
@@ -434,8 +456,7 @@ class Process(object):
 
         # objects for getting olap data
         olap_id = nexus_util.NexusUtil().olap_id(reebill.account)
-        splinter = skyliner.splinter.Splinter('http://duino-drop.appspot.com/', "tyrell", "dev")
-        install = splinter.get_install_obj_for(olap_id)
+        install = self.splinter.get_install_obj_for(olap_id)
         monguru = skyliner.skymap.monguru.Monguru('tyrell', 'dev') # TODO don't hard-code this
 
         bill_year, bill_month = dateutils.estimate_month(
@@ -443,15 +464,25 @@ class Process(object):
                 next_bill.period_end)
         next_stats['consumption_trend'] = []
 
+        first_bill_date = self.reebill_dao \
+                .get_first_bill_date_for_account(reebill.account)
+        first_bill_year = first_bill_date.year
+        first_bill_month = first_bill_date.month
+
         first_month = install.install_completed.month
         for year, month in dateutils.months_of_past_year(bill_year, bill_month):
-            # could also use DataHandler.get_single_chunk_for_range() but that
-            # gets data from OLTP, which is slow; Monguru relies on monthly
-            # OLAP documents
-            try:
-                renewable_energy_btus = monguru.get_data_for_month(install, year, month).energy_sold
-            except:
+            # months before first bill have 0 energy, even if data were
+            # collected during that time.
+            if year < first_bill_year or month < first_bill_month:
                 renewable_energy_btus = 0
+            else:
+                # get billing data from OLAP (instead of
+                # DataHandler.get_single_chunk_for_range()) for speed only.
+                # we insist that data should be available during the month of
+                # first billing and all following months; if get_data_for_month()
+                # fails, that's a real error that we shouldn't ignore.
+                renewable_energy_btus = monguru.get_data_for_month(install, year, month).energy_sold
+
             therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
             next_stats['consumption_trend'].append({
                 'month': calendar.month_abbr[month],

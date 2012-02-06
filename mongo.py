@@ -877,6 +877,10 @@ class MongoReebill(object):
                             total_therms += quantity / Decimal(100000.0)
                         elif unit == 'kwh':
                             total_therms += quantity / Decimal(.0341214163)
+                        elif unit == 'ccf':
+                            raise Exception(("Register contains gas measured "
+                                "in ccf: can't convert that into energy "
+                                "without the multiplier."))
                         else:
                             raise Exception('Unknown energy unit: "%s"' % \
                                     register['quantity_units'])
@@ -1122,6 +1126,25 @@ class ReebillDAO:
         mongo_doc = bson_convert(copy.deepcopy(reebill.dictionary))
 
         self.collection.save(mongo_doc)
+
+    def delete_reebill(self, account, sequence, branch=0):
+        self.collection.remove({
+            '_id.account': str(account),
+            '_id.sequence': int(sequence),
+            '_id.branch': int(branch)
+        }, safe=True)
+
+    def get_first_bill_date_for_account(self, account):
+        '''Returns the start date of the account's earliest reebill, or None if
+        no reebills exist for the customer.'''
+        query = {
+            '_id.account': account,
+            '_id.sequence': 0,
+        }
+        results = self.collection.find(query)
+        if results == []:
+            return None
+        return results[0]
 
 
 class NoRateStructureError(Exception):
