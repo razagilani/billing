@@ -416,6 +416,7 @@ class BillToolBridge:
             session = self.state_db.session()
             self.process.delete_reebill(session, account, sequence)
             session.commit()
+            self.journal_dao.journal(customer.account, sequence, "Deleted")
             return json.dumps({'success': True})
         except Exception as e:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
@@ -685,8 +686,13 @@ class BillToolBridge:
             session = self.state_db.session()
             sequences = self.state_db.listSequences(session, account)
             #session.commit() # no reason to commit after no change, right? why was this line here?
+            # TODO "issued" is used for the value of "committed" here because
+            # committed is ill-defined: currently StateDB.is_committed()
+            # returns true iff the reebill has associated utilbills, which
+            # doesn't make sense.
+            # https://www.pivotaltracker.com/story/show/24382885
             rows = [{'sequence': sequence,
-                'committed': self.state_db.is_committed(session, account, sequence)}
+                'committed': self.state_db.is_issued(session, account, sequence)}
                 for sequence in sequences]
             return json.dumps({'success': True, 'rows':rows})
         except Exception as e:
