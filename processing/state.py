@@ -58,8 +58,10 @@ class StateDB:
         user = config['user']
         password = config['password']
 
-        # put "echo=True" in the call to create_engine to print the SQL statements that are executed
-        engine = create_engine('mysql://%s:%s@%s:3306/%s' % (user, password, host, db), pool_recycle=3600)
+        # put "echo=True" in the call to create_engine to print the SQL
+        # statements that are executed
+        engine = create_engine('mysql://%s:%s@%s:3306/%s' % (user, password,
+                host, db), pool_recycle=3600)
         metadata = MetaData(engine)
 
         # table objects loaded automatically from database
@@ -135,6 +137,7 @@ class StateDB:
             utilbill.processed = True
 
     def is_committed(self, session, account, sequence, branch=0 ):
+        # TODO this doesn't do what it says it does
 
         # get customer id from account and the reebill from account and sequence
         customer = session.query(Customer).filter(Customer.account==account).one()
@@ -146,6 +149,24 @@ class StateDB:
             return False
 
         return True
+
+    def delete_reebill(self, session, account, sequence):
+        # TODO add branch, which MySQL doesn't have yet:
+        # https://www.pivotaltracker.com/story/show/24374911 
+
+        # get customer id from account
+        customer = session.query(Customer).filter(Customer.account==account).one()
+
+        # look up reebill by account, sequence
+        reebill = session.query(ReeBill).filter(ReeBill.customer==customer) \
+                .filter(ReeBill.sequence==sequence).one()
+        
+        # find all utilbills associated with this reebill and dissociate them
+        for utilbill in session.query(UtilBill).filter(UtilBill.reebill==reebill):
+            utilbill.reebill = None
+
+        # delete the reebill
+        session.delete(reebill)
 
     def discount_rate(self, session, account):
 
@@ -193,6 +214,13 @@ class StateDB:
                 .filter(ReeBill.customer_id==customer.id) \
                 .filter(ReeBill.sequence==sequence).one()
         reeBill.issued = 1
+
+    def is_issued(self, session, account, sequence):
+        customer = session.query(Customer).filter(Customer.account==account).one()
+        reebill = session.query(ReeBill) \
+                .filter(ReeBill.customer_id==customer.id) \
+                .filter(ReeBill.sequence==sequence).one()
+        return reebill.issued == 1
 
     def account_exists(self, session, account):
         try:
