@@ -376,7 +376,7 @@ function renderWidgets()
         //disabled: true, // TODO should be disabled when there's no reebill selected or the currently-selected bill is not deletable
         handler: function() {
             // TODO integerate this into the ajax request canceling/delaying system
-            deleteBillRequest = Ext.Ajax.request({
+            var deleteBillRequest = Ext.Ajax.request({
                 url: 'http://' + location.host + '/reebill/delete_reebill',
                 params: {
                     account: accountCombo.getValue(),

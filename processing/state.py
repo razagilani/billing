@@ -315,11 +315,11 @@ class StateDB:
     
     def fill_in_hypothetical_utilbills(self, session, account, begin_date,
             end_date):
-        '''Creates hypothetical bills in MySQL covering the period [begin_date, end_date).'''
-        # TODO could this be combined with record_utilbill_in_database?
-
+        '''Creates hypothetical utility bills in MySQL covering the period
+        [begin_date, end_date).'''
         # get customer id from account number
-        customer = session.query(Customer).filter(Customer.account==account).one()
+        customer = session.query(Customer).filter(Customer.account==account) \
+                .one()
 
         for (start, end) in guess_utilbill_periods(begin_date, end_date):
             # make a UtilBill
