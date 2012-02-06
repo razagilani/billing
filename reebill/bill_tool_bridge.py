@@ -684,9 +684,9 @@ class BillToolBridge:
             # eventually, this data will have to support pagination
             session = self.state_db.session()
             sequences = self.state_db.listSequences(session, account)
-            session.commit()
+            #session.commit() # no reason to commit after no change, right? why was this line here?
             rows = [{'sequence': sequence,
-                'committed': self.state_db.is_committed(account, sequence)}
+                'committed': self.state_db.is_committed(session, account, sequence)}
                 for sequence in sequences]
             return json.dumps({'success': True, 'rows':rows})
         except Exception as e:

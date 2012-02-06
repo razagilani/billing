@@ -343,7 +343,7 @@ function renderWidgets()
         storeId: 'sequencesStore',
         root: 'rows',
         idProperty: 'sequence',
-        fields: ['sequence'],
+        fields: ['sequence', 'committed'],
     });
 
     var sequenceCombo = new Ext.form.ComboBox({
@@ -3944,6 +3944,18 @@ function renderWidgets()
         if (account == null || sequence == null) {
             throw "Account and Sequence must be set";
         }
+
+        // enable or disable the reebill delete button depending on whether the
+        // selected reebill is committed: only un-committed bills should be
+        // deletable.
+        // apparently there is no way to get the selected index of a combobox;
+        // you have to get the value of the selection and then search for it in
+        // the data store. better hope the values are unique.
+        // http://stackoverflow.com/questions/6014593/how-do-i-get-the-selected-index-of-an-extjs-combobox
+        var selectedSequence = sequenceCombo.getValue();
+        var sequenceRecordIndex = sequencesStore.find('sequence', selectedSequence);
+        var sequenceRecord = sequencesStore.getAt(sequenceRecordIndex);
+        deleteButton.setDisabled(sequenceRecord.get('committed'))
 
 
         // enumerate prior ajax requests made here and cancel them
