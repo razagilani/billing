@@ -466,7 +466,7 @@ class ReebillRenderer:
 
         c = XYChart(10*270, 10*127)
         c.setPlotArea((10*270)/6, (10*127)/6.5, (10*270)*.8, (10*127)*.70)
-        c.setColors2(DataColor, [0x9bbb59]) 
+        c.setColors2(DataColor, [0x9bbb59, 0xff0000]) 
         c.addBarLayer(data)
         c.addTitle2(TopLeft, "<*underline=8*>Monthly Renewable Energy Consumption", "verdanab.ttf", 72, 0x000000).setMargin2(0, 0, 30, 0)
         c.yAxis().setLabelStyle('Inconsolata.ttf', 64)

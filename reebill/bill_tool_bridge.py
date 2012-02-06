@@ -673,6 +673,8 @@ class BillToolBridge:
 
     @cherrypy.expose
     def listSequences(self, account, **kwargs):
+        '''Handles AJAX request to get reebill sequences for each account and
+        whether each reebill has been committed.'''
         self.check_authentication()
         try:
             session = None
@@ -683,7 +685,9 @@ class BillToolBridge:
             session = self.state_db.session()
             sequences = self.state_db.listSequences(session, account)
             session.commit()
-            rows = [{'sequence': sequence} for sequence in sequences]
+            rows = [{'sequence': sequence,
+                'committed': self.state_db.is_committed(account, sequence)}
+                for sequence in sequences]
             return json.dumps({'success': True, 'rows':rows})
         except Exception as e:
             try:
