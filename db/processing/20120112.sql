@@ -25,3 +25,4 @@ where `u`.`id` is null
 group by c.`account` 
 order by c.`account`);
 
+ALTER TABLE `customer` ADD UNIQUE(`account`);
