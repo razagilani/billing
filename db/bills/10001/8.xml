@@ -1,0 +1,287 @@
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
+<ub:bill xmlns:ub="bill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" account="10001" xsi:schemaLocation="bill ../UtilityBill.xsd" id="8">
+	<ub:rebill>
+		<ub:car>
+			<ub:serviceaddress>
+				<ub:addressee>College Park Car Wash Inc.</ub:addressee>
+				<ub:street>8616 Baltimore Ave</ub:street>
+				<ub:city>College Park</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode/>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>College Park Car Wash</ub:addressee>
+				<ub:street>7106 Ridgewood Ave</ub:street>
+				<ub:city>Chevy Chase</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode>20815-5148</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
+		<ub:billperiodbegin>2010-06-02</ub:billperiodbegin>
+		<ub:billperiodend>2010-07-01</ub:billperiodend>
+		<ub:priorbalance>144.29</ub:priorbalance>
+		<ub:paymentreceived>144.29</ub:paymentreceived>
+		<ub:totaladjustment>0.00</ub:totaladjustment>
+		<ub:balanceforward>0.00</ub:balanceforward>
+		<ub:hypotheticalecharges>268.33</ub:hypotheticalecharges>
+		<ub:actualecharges>176.07</ub:actualecharges>
+		<ub:revalue>92.26</ub:revalue>
+		<ub:recharges>78.42</ub:recharges>
+		<ub:resavings>13.84</ub:resavings>
+		<ub:currentcharges>0.00</ub:currentcharges>
+		<ub:totaldue>78.42</ub:totaldue>
+		<ub:duedate>2010-09-15</ub:duedate>
+		<ub:issued>2010-08-21</ub:issued>
+		<ub:message/>
+	</ub:rebill>
+	<ub:utilbill service="Gas">
+		<ub:car>
+			<ub:accountnumber>2051065106</ub:accountnumber>
+			<ub:serviceaddress>
+				<ub:addressee>College Park Car Wash Inc.</ub:addressee>
+				<ub:street>8616 Baltimore Ave</ub:street>
+				<ub:city>College Park</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode>20740</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:serviceaddress>
+			<ub:billingaddress>
+				<ub:addressee>College Park Car Wash</ub:addressee>
+				<ub:street>7106 Ridgewood Ave</ub:street>
+				<ub:city>Chevy Chase</ub:city>
+				<ub:state>MD</ub:state>
+				<ub:country/>
+				<ub:postalcode>20815-5148</ub:postalcode>
+				<ub:telephonenumber/>
+				<ub:hours/>
+			</ub:billingaddress>
+		</ub:car>
+		<ub:billperiodbegin>2010-06-02</ub:billperiodbegin>
+		<ub:billperiodend>2010-07-01</ub:billperiodend>
+		<ub:hypotheticalecharges>268.33</ub:hypotheticalecharges>
+		<ub:actualecharges>176.07</ub:actualecharges>
+		<ub:revalue>92.26</ub:revalue>
+		<ub:recharges>78.42</ub:recharges>
+		<ub:resavings>13.84</ub:resavings>
+	</ub:utilbill>
+	<ub:details service="Gas">
+		<ub:rateschedule>
+			<ub:name>Commercial Heat/Cool</ub:name>
+		</ub:rateschedule>
+		<ub:chargegroup type="Distribution">
+			<ub:charges type="actual">
+				<ub:charge>
+					<ub:description>Distribution Charge</ub:description>
+					<ub:quantity units="Therms">101.8</ub:quantity>
+					<ub:rate units="dollars">0.3345</ub:rate>
+					<ub:total>34.05</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>System Charge</ub:description>
+					<ub:total>36.25</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Sales Tax - Distribution</ub:description>
+					<ub:quantity units="dollars">70.30</ub:quantity>
+					<ub:rate units="percent">6.0</ub:rate>
+					<ub:total>4.22</ub:total>
+					<ub:processingnote>sales Tax on sum(usage + sys charge)  0.02 rounding error - actual: 30.30.  Units on bill incorrect, rate shown as $, not %</ub:processingnote>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Gross Receipts Surcharge</ub:description>
+					<ub:total>0.02</ub:total>
+					<ub:processingnote>Computation unknown</ub:processingnote>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>PG County Energy Tax</ub:description>
+					<ub:quantity units="Therms">101.8</ub:quantity>
+					<ub:rate units="dollars">0.07</ub:rate>
+					<ub:total>7.13</ub:total>
+					<ub:processingnote>Total Therms * Rate ($/therm).  Web version does not show rate.</ub:processingnote>
+				</ub:charge>
+				<ub:total>81.67</ub:total>
+			</ub:charges>
+			<ub:charges type="hypothetical">
+				<ub:charge>
+					<ub:description>Distribution Charge</ub:description>
+					<ub:quantity units="Therms">170.05</ub:quantity>
+					<ub:rate units="dollars">0.3345</ub:rate>
+					<ub:total>56.88</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>System Charge</ub:description>
+					<ub:total>36.25</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Sales Tax - Distribution</ub:description>
+					<ub:quantity units="dollars">93.13</ub:quantity>
+					<ub:rate units="percent">6.0</ub:rate>
+					<ub:total>5.59</ub:total>
+					<ub:processingnote>sales Tax on sum(usage + sys charge)  0.02 rounding error - actual: 30.30.  Units on bill incorrect, rate shown as $, not %</ub:processingnote>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Gross Receipts Surcharge</ub:description>
+					<ub:total>0.02</ub:total>
+					<ub:processingnote>Computation unknown</ub:processingnote>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>PG County Energy Tax</ub:description>
+					<ub:quantity units="Therms">170.05</ub:quantity>
+					<ub:rate units="dollars">0.07</ub:rate>
+					<ub:total>11.90</ub:total>
+					<ub:processingnote>Total Therms * Rate ($/therm).  Web version does not show rate.</ub:processingnote>
+				</ub:charge>
+				<ub:total>110.64</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:chargegroup type="Generation/Supply">
+			<ub:charges type="actual">
+				<ub:charge>
+					<ub:description>Supply Service</ub:description>
+					<ub:quantity units="Therms">101.8</ub:quantity>
+					<ub:rate units="dollars">0.86</ub:rate>
+					<ub:total>87.55</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Balancing</ub:description>
+					<ub:quantity units="Therms">101.8</ub:quantity>
+					<ub:rate units="dollars">0.0148</ub:rate>
+					<ub:total>1.51</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Sales Tax - Commodity</ub:description>
+					<ub:quantity units="dollars">89.06</ub:quantity>
+					<ub:rate units="percent">6.0</ub:rate>
+					<ub:total>5.34</ub:total>
+					<ub:processingnote>Tax on Supply Service, Balancing. Rate units on bill incorrect, shown as $, not %</ub:processingnote>
+				</ub:charge>
+				<ub:total>94.40</ub:total>
+			</ub:charges>
+			<ub:charges type="hypothetical">
+				<ub:charge>
+					<ub:description>Supply Service</ub:description>
+					<ub:quantity units="Therms">170.05</ub:quantity>
+					<ub:rate units="dollars">0.86</ub:rate>
+					<ub:total>146.24</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>Balancing</ub:description>
+					<ub:quantity units="Therms">170.05</ub:quantity>
+					<ub:rate units="dollars">0.0148</ub:rate>
+					<ub:total>2.52</ub:total>
+				</ub:charge>
+				<ub:charge>
+					<ub:description>MD Sales Tax - Commodity</ub:description>
+					<ub:quantity units="dollars">148.76</ub:quantity>
+					<ub:rate units="percent">6.0</ub:rate>
+					<ub:total>8.93</ub:total>
+					<ub:processingnote>Tax on Supply Service, Balancing. Rate units on bill incorrect, shown as $, not %</ub:processingnote>
+				</ub:charge>
+				<ub:total>157.69</ub:total>
+			</ub:charges>
+		</ub:chargegroup>
+		<ub:total type="actual">176.07</ub:total>
+		<ub:total type="hypothetical">268.33</ub:total>
+	</ub:details>
+	<ub:billableusage service="Gas">
+		<ub:rateschedule>
+			<ub:name>Commercial Heat/Cool</ub:name>
+		</ub:rateschedule>
+		<ub:usage>
+			<ub:description>Therms Used</ub:description>
+			<ub:quantity>0</ub:quantity>
+		</ub:usage>
+		<ub:total>0</ub:total>
+	</ub:billableusage>
+	<ub:billableusage service="Electric">
+		<ub:rateschedule>
+			<ub:name>Non-Residential-MGT-LV IIB</ub:name>
+		</ub:rateschedule>
+		<ub:usage>
+			<ub:description>Total kWh</ub:description>
+			<ub:quantity>0</ub:quantity>
+		</ub:usage>
+		<ub:total>0</ub:total>
+	</ub:billableusage>
+	<ub:measuredusage service="Gas">
+		<ub:meter>
+			<ub:estimated>false</ub:estimated>
+			<ub:priorreaddate>2010-06-02</ub:priorreaddate>
+			<ub:presentreaddate>2010-07-01</ub:presentreaddate>
+			<ub:identifier>T37110</ub:identifier>
+			<ub:register shadow="false">
+				<ub:identifier>T37110</ub:identifier>
+				<ub:description>Therms</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>therms</ub:units>
+				<ub:total>101.8</ub:total>
+			</ub:register>
+			<ub:register shadow="true">
+				<ub:identifier>T37110</ub:identifier>
+				<ub:description>Therms</ub:description>
+				<ub:effective>
+					<ub:inclusions>
+						<ub:fromhour>00:00:00</ub:fromhour>
+						<ub:tohour>23:00:00</ub:tohour>
+						<ub:weekday>1</ub:weekday>
+						<ub:weekday>2</ub:weekday>
+						<ub:weekday>3</ub:weekday>
+						<ub:weekday>4</ub:weekday>
+						<ub:weekday>5</ub:weekday>
+						<ub:weekday>6</ub:weekday>
+						<ub:weekday>7</ub:weekday>
+					</ub:inclusions>
+				</ub:effective>
+				<ub:units>therms</ub:units>
+				<ub:total>68.25</ub:total>
+			</ub:register>
+		</ub:meter>
+	</ub:measuredusage>
+	<ub:statistics>
+		<ub:conventionalconsumed>10180000</ub:conventionalconsumed>
+		<ub:renewableconsumed>6825181 </ub:renewableconsumed>
+		<ub:renewableutilization>.67</ub:renewableutilization>
+		<ub:conventionalutilization>.33</ub:conventionalutilization>
+		<ub:renewableproduced>0</ub:renewableproduced>
+		<ub:co2offset>918</ub:co2offset>
+		<ub:totalsavings>58.73</ub:totalsavings>
+		<ub:totalrenewableconsumed>20150302</ub:totalrenewableconsumed>
+		<ub:totalrenewableproduced>0</ub:totalrenewableproduced>
+		<ub:totaltrees>2.9</ub:totaltrees>
+		<ub:totalco2offset>3751.98</ub:totalco2offset>
+		<ub:consumptiontrend>
+			<ub:period quantity="6.2" month="Nov"/>
+			<ub:period quantity="19.4" month="Dec"/>
+			<ub:period quantity="21.2" month="Jan"/>
+			<ub:period quantity="11.26" month="Feb"/>
+			<ub:period quantity="17.23" month="Mar"/>
+			<ub:period quantity="64.5" month="Apr"/>
+			<ub:period quantity="61.7" month="May"/>
+			<ub:period quantity="68.3" month="Jun"/>
+			<ub:period quantity="0" month="Jul"/>
+			<ub:period quantity="0" month="Aug"/>
+			<ub:period quantity="0" month="Sep"/>
+			<ub:period quantity="0" month="Oct"/>
+		</ub:consumptiontrend>
+	</ub:statistics>
+</ub:bill>
