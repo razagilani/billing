@@ -1029,7 +1029,7 @@ class BillToolBridge:
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
-    def uprsrsi(self, xaction, account, sequence, service, begin_period, end_period, **kwargs):
+    def uprsrsi(self, xaction, account, sequence, service, **kwargs):
         self.check_authentication()
         try:
             if not xaction or not account or not sequence or not service:
@@ -1046,10 +1046,13 @@ class BillToolBridge:
 
             utility_name = reebill.utility_name_for_service(service)
             rs_name = reebill.rate_structure_name_for_service(service)
-            rate_structure = self.ratestructure_dao.load_uprs(utility_name, rs_name, begin_period, end_period)
+            (effective, expires) = reebill.utilbill_period_for_service(service)
+            rate_structure = self.ratestructure_dao.load_uprs(utility_name, rs_name, effective, expires)
 
+            # It is possible the a UPRS does not exist for the utility billing period.
+            # If this is the case, create it
             if rate_structure is None:
-                raise Exception("Could not load UPRS for %s, %s %s to %s" % (utility_name, rs_name, begin_period, end_period) )
+                raise Exception("Could not load UPRS for %s, %s %s to %s" % (utility_name, rs_name, effective, expires) )
 
             rates = rate_structure["rates"]
 
@@ -1096,8 +1099,8 @@ class BillToolBridge:
                 self.ratestructure_dao.save_uprs(
                     reebill.utility_name_for_service(service),
                     reebill.rate_structure_name_for_service(service),
-                    None,
-                    None,
+                    effective,
+                    expires,
                     rate_structure
                 )
 
@@ -1112,8 +1115,8 @@ class BillToolBridge:
                 self.ratestructure_dao.save_uprs(
                     reebill.utility_name_for_service(service),
                     reebill.rate_structure_name_for_service(service),
-                    None,
-                    None,
+                    effective,
+                    expires,
                     rate_structure
                 )
 
@@ -1144,8 +1147,8 @@ class BillToolBridge:
                 self.ratestructure_dao.save_urs(
                     reebill.utility_name_for_service(service),
                     reebill.rate_structure_name_for_service(service),
-                    None,
-                    None,
+                    effective,
+                    expires,
                     rate_structure
                 )
 
