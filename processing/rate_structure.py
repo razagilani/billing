@@ -14,6 +14,8 @@ import uuid
 from billing.mongo_utils import bson_convert, python_convert
 import yaml
 
+from datetime import datetime
+
 import pprint
 pp = pprint.PrettyPrinter(indent=1)
 
@@ -287,11 +289,18 @@ class RateStructureDAO(object):
             "_id.type":"UPRS",
             "_id.utility_name": utility_name,
             "_id.rate_structure_name": rate_structure_name,
-            "_id.effective": effective,
-            "_id.expires": expires,
+            "_id.effective": datetime(effective.year, effective.month, effective.day),
+            "_id.expires": datetime(expires.year, expires.month, expires.day),
         }
 
         uprs = self.collection.find_one(query)
+
+        # create it if it does not exist
+        # the same behavior should probably be implemented for URS and CPRS so that they can be lazily created
+        # TODO 24253017
+        if uprs is None:
+            uprs = {rates:[]} see if this works
+            uprs = self.save_uprs(utility_name, rate_structure_name, effective, expires, uprs)
 
         return uprs
 
@@ -330,6 +339,8 @@ class RateStructureDAO(object):
 
         self.collection.save(rate_structure_data)
 
+        return rate_structure_data
+
     def save_uprs(self, utility_name, rate_structure_name, effective, expires, rate_structure_data):
 
         rate_structure_data['_id'] = { 
@@ -344,6 +355,8 @@ class RateStructureDAO(object):
         rate_structure_data = bson_convert(rate_structure_data)
 
         self.collection.save(rate_structure_data)
+
+        return rate_structure_data
 
     # TODO: consider just accepting a ReeBill
     # TODO: rate_structure_data should come first in param list?
@@ -363,6 +376,9 @@ class RateStructureDAO(object):
 
         self.collection.save(rate_structure_data)
 
+        return rate_structure_data
+
+    # TODO delete me 24252553
     def save_rs(self, account, sequence, rsbinding, rate_structure):
 
         yaml.safe_dump(rate_structure, open(os.path.join(self.config["rspath"], rsbinding, account, sequence+".yaml"), "w"), default_flow_style=False)
