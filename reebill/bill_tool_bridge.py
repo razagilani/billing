@@ -334,7 +334,6 @@ class BillToolBridge:
     # bill processing
 
     # TODO: do this on a per service basis 18311877
-    @cherrypy.expose
     def copyactual(self, account, sequence, **args):
         try:
             if not account or not sequence:
@@ -1645,6 +1644,10 @@ class BillToolBridge:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             reebill.set_actual_chargegroups_flattened(service, flattened_charges)
             self.reebill_dao.save_reebill(reebill)
+
+
+            # copy actual charges to hypothetical
+            self.copyactual(account, sequence)
 
             return ju.dumps({'success': True})
 
