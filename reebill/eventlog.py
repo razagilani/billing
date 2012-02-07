@@ -49,7 +49,7 @@ class EventLogger(object):
 # enumeration of events:
 # from https://www.pivotaltracker.com/story/show/23830853
 # Outside this class, always refer to these as EventDao.ReeBillRolled, etc.
-events_names = [
+event_names = [
     'ReeBillRolled',
     'ReeBillBoundtoREE',
     'ReeBillUsagePeriodUpdated',
