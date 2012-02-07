@@ -1434,40 +1434,6 @@ function renderWidgets()
                 }
             },{
                 xtype:'tbseparator'
-            },{
-                xtype: 'button',
-                text: 'Copy to Hypo',
-                disabled: false,
-                handler: function()
-                {
-                    // disable the save button for the save attempt.
-                    // is there a closer place for this to the actual button click due to the possibility of a double
-                    // clicked button submitting two ajax requests?
-                    aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(true);
-
-                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    aChargesGrid.stopEditing();
-
-                    // take the records that are maintained in the store
-                    // and update the bill document with them.
-                    //setActualCharges(bill, aChargesStore.getRange());
-
-                    account = accountCombo.getValue();
-                    sequence = sequenceCombo.getValue();
-
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/reebill/copyactual',
-                        params: {account: account, sequence: sequence},
-                        success: function() { 
-                            // TODO: check success status in json package
-
-                            // reload the store to clear dirty flags
-                            aChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}})
-                            hChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}})
-                        },
-                        failure: function() { alert("ajax fail"); },
-                    });
-                }
             }
         ]
     });
