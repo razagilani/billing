@@ -8,15 +8,15 @@ db = 'skyline-prod'
 
 keys = set()
 
-def add_keys(x):
+def add_keys(x, parent_keys=[]):
     if type(x) is dict:
         for key, value in x.iteritems():
             if '_' not in key and ' ' not in key:
-                keys.add(key)
-            add_keys(value)
+                keys.add('.'.join(parent_keys + [key]))
+            add_keys(value, parent_keys + [key])
     elif type(x) is list:
         for element in x:
-            add_keys(element)
+            add_keys(element, parent_keys)
 
 #dao = ReebillDAO()
 #for account in range(10001, 10020):
