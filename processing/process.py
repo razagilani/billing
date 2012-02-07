@@ -186,7 +186,7 @@ class Process(object):
             reebill.set_utilbill_period_for_service(service, old_period)
 
         # set discount rate to the value in MySQL
-        reebill.discount_rate = self.state_db.discount_rate(reebill.account)
+        reebill.discount_rate = self.state_db.discount_rate(session, reebill.account)
 
         reebill.reset()
 
