@@ -24,7 +24,6 @@ class EventLogger(object):
         self.database = self.connection[self.config['database']]
         self.collection = self.database[self.config['collection']]
 
-
     def __del__(self):
         # TODO: 17928569 clean up mongo resources here?
         pass
@@ -35,7 +34,7 @@ class EventLogger(object):
         all other data to include with the event (e.g. account, sequence,
         branch for reebills).'''
         if event not in event_names:
-            raise ValueError('Unkown event ' + str(event))
+            raise ValueError('Unkown event: ' + str(event))
 
         document = {
             'timestamp': datetime.utcnow(),
@@ -50,7 +49,7 @@ class EventLogger(object):
         '''Retrieve all events of type 'event', which must be one of the
         properties defined in 'event_names'.'''
         if event not in event_names:
-            raise ValueError('Unkown event ' + event)
+            raise ValueError('Unkown event: ' + event)
 
         entries = self.collection.find({
             'event': event
