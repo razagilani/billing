@@ -63,7 +63,7 @@ class BillToolBridge:
     - initialize this variable to None, so that if an exception is subsequently raised
       the local will not be undefined.
     - pass the session into a statedb function.
-    - commit the session.
+    - commit the session once, immediately before returning out of the WSGI function
     - if an exception was raised, and the local variable pointing to the session is
       initialized, then rollback.
     """
@@ -399,8 +399,8 @@ class BillToolBridge:
             session = self.state_db.session()
             self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
-            session.commit()
             self.journal_dao.journal(account, sequence, "ReeBill rolled")
+            session.commit()
             return json.dumps({'success': True})
         except Exception as e:
             if session is not None: 
@@ -416,12 +416,18 @@ class BillToolBridge:
     def delete_reebill(self, account, sequence, **args):
         self.check_authentication()
         try:
+            session = None
             session = self.state_db.session()
             self.process.delete_reebill(session, account, sequence)
-            session.commit()
             self.journal_dao.journal(customer.account, sequence, "Deleted")
+            session.commit()
             return json.dumps({'success': True})
         except Exception as e:
+            if session is not None: 
+                try:
+                    if session is not None: session.rollback()
+                except:
+                    print "Could not rollback session"
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
@@ -429,15 +435,15 @@ class BillToolBridge:
     def pay(self, account, sequence, **args):
         self.check_authentication()
         try:
-            session = None
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
+            session = None
+            session = self.state_db.session()
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
-            session = self.state_db.session()
             self.process.pay_bill(session, reebill)
-            session.commit()
             self.reebill_dao.save_reebill(reebill)
+            session.commit()
             return json.dumps({'success': True})
 
         except Exception as e:
@@ -479,8 +485,8 @@ class BillToolBridge:
     @cherrypy.expose
     def bindrs(self, account, sequence, **args):
         self.check_authentication()
-        session = None
         try:
+            session = None
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
 
@@ -548,10 +554,11 @@ class BillToolBridge:
             if not account or not sequences or not recipients:
                 raise ValueError("Bad Parameter Value")
 
+            session = self.state_db.session()
+
             # look up this value and fail early if there is something wrong
             # with the session.
             current_user = cherrypy.session['user'].username
-            session = self.state_db.session()
 
             # sequences will come in as a string if there is one element in post data. 
             # If there are more, it will come in as a list of strings
@@ -661,9 +668,9 @@ class BillToolBridge:
             # eventually, this data will have to support pagination
             session = self.state_db.session()
             accounts = self.state_db.listAccounts(session)
-            session.commit()
             rows = [{'account': account, 'name': full_name} for account,
                     full_name in zip(accounts, self.full_names_of_accounts(accounts))]
+            session.commit()
             return json.dumps({'success': True, 'rows':rows})
         except Exception as e:
             if session is not None: 
@@ -697,6 +704,7 @@ class BillToolBridge:
             rows = [{'sequence': sequence,
                 'committed': self.state_db.is_issued(session, account, sequence)}
                 for sequence in sequences]
+            session.commit()
             return json.dumps({'success': True, 'rows':rows})
         except Exception as e:
             try:
@@ -720,11 +728,11 @@ class BillToolBridge:
             # {account: full name, dayssince: days}
             session = self.state_db.session()
             statuses, totalCount = self.state_db.retrieve_status_days_since(session, int(start), int(limit))
-            session.commit()
             full_names = self.full_names_of_accounts([s.account for s in statuses])
             rows = [dict([('account', status.account), ('fullname', full_names[i]), ('dayssince', status.dayssince)])
                     for i, status in enumerate(statuses)]
 
+            session.commit()
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
             try:
@@ -754,7 +762,6 @@ class BillToolBridge:
             rows = self.process.summary_ree_charges(session, accounts, full_names)
 
             session.commit()
-
 
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
 
@@ -799,7 +806,6 @@ class BillToolBridge:
 
             session = self.state_db.session()
             rows, total_count = self.process.all_ree_charges(session)
-            session.commit()
 
             import csv
             import StringIO
@@ -842,6 +848,7 @@ class BillToolBridge:
                 cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s.csv' % datetime.now().strftime("%Y%m%d")
 
 
+            session.commit()
             return buf.getvalue()
 
         except Exception as e:
@@ -860,7 +867,6 @@ class BillToolBridge:
 
             session = self.state_db.session()
             rows, total_count = self.process.all_ree_charges(session)
-            session.commit()
 
             import csv
             import StringIO
@@ -895,6 +901,7 @@ class BillToolBridge:
                 cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s.csv' % datetime.now().strftime("%Y%m%d")
 
 
+            session.commit()
             return buf.getvalue()
 
         except Exception as e:
@@ -1311,7 +1318,6 @@ class BillToolBridge:
 
                 session = self.state_db.session()
                 payments = self.state_db.payments(session, account)
-                session.commit()
 
                 payments = [{
                     'id': payment.id, 
@@ -1321,6 +1327,7 @@ class BillToolBridge:
                 } for payment in payments]
 
                 
+                session.commit()
                 return json.dumps({'success': True, 'rows':payments})
 
             elif xaction == "update":
@@ -1353,7 +1360,6 @@ class BillToolBridge:
                 from datetime import date
 
                 new_payment = self.state_db.create_payment(session, account, date.today(), "New Entry", "0.00")
-                session.commit()
                 # TODO: is there a better way to populate a dictionary from an ORM object dict?
                 row = [{
                     'id': new_payment.id, 
@@ -1363,6 +1369,7 @@ class BillToolBridge:
                     }]
 
 
+                session.commit()
                 return json.dumps({'success':True, 'rows':row})
 
             elif xaction == "destroy":
@@ -1403,13 +1410,12 @@ class BillToolBridge:
                 session = self.state_db.session()
 
                 reebills, totalCount = self.state_db.listReebills(session, int(start), int(limit), account)
-                session.commit()
 
                 # convert the result into a list of dictionaries for returning as
                 # JSON to the browser
                 rows = [{'sequence': reebill.sequence} for reebill in reebills]
 
-
+                session.commit()
                 return json.dumps({'success': True, 'rows':rows, 'results':totalCount})
 
             elif xaction == "update":
@@ -1796,9 +1802,6 @@ class BillToolBridge:
             latest_end_date = self.state_db.last_utilbill_end_date(session, account)
             if latest_end_date is not None and begin_date_as_date > latest_end_date:
                 self.state_db.fill_in_hypothetical_utilbills(session, account, latest_end_date, begin_date_as_date)
-                # TODO 23165829 not certain we need to commit the guesses, when the upload
-                # is successful, the session does get committed
-                session.commit()
 
             if file_to_upload.file is None:
                 # if there's no file, this is a "skyline estimated bill":
@@ -1823,6 +1826,7 @@ class BillToolBridge:
                 else:
                     self.logger.error('file upload failed:', begin_date, end_date,
                             file_to_upload.filename)
+                    session.commit()
                     return ju.dumps({'success':False, 'errors': {
                         'reason':'file upload failed', 'details':'Returned False'}})
             
@@ -1892,6 +1896,9 @@ class BillToolBridge:
         '''Handles AJAX call to populate Ext grid of utility bills.'''
         self.check_authentication()
         try:
+            session = None
+            session = self.state_db.session()
+
             # names for utilbill states in the UI
             state_descriptions = {
                 db_objects.UtilBill.Complete: 'Final',
@@ -1900,18 +1907,15 @@ class BillToolBridge:
                 db_objects.UtilBill.Hypothetical: 'Hypothetical'
             }
 
-            session = None
 
             if not start or not limit or not account:
                 raise ValueError("Bad Parameter Value")
 
-            session = self.state_db.session()
 
             # result is a list of dictionaries of the form {account: account
             # number, name: full name, period_start: date, period_end: date,
             # sequence: reebill sequence number (if present)}
             utilbills, totalCount = self.state_db.list_utilbills(session, account, int(start), int(limit))
-            session.commit()
             # note that utilbill customers are eagerly loaded
             full_names = self.full_names_of_accounts([ub.customer.account for ub in utilbills])
             rows = [dict([
@@ -1923,6 +1927,9 @@ class BillToolBridge:
                 # TODO this doesn't show up in the gui
                 ('state', state_descriptions[ub.state])
             ]) for i, ub in enumerate(utilbills)]
+
+            session.commit()
+
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
             try:
@@ -1937,7 +1944,9 @@ class BillToolBridge:
         '''Returns date of last utilbill.'''
         self.check_authentication()
         try:
+            session = None
             session = self.state_db.session()
+
             the_date = self.state_db.last_utilbill_end_date(session, account)
             # the_date will be None (converted to JSON as null) if there are no
             # utilbills for this account
@@ -1948,8 +1957,13 @@ class BillToolBridge:
                 # (https://www.pivotaltracker.com/story/show/23569087). temporary
                 # fix is to make it a datetime with a later time.
                 the_datetime = datetime(the_date.year, the_date.month, the_date.day, 23)
+            session.commit()
             return ju.dumps({'success':True, 'date': the_datetime})
         except Exception as e: 
+            try:
+                if session is not None: session.rollback()
+            except:
+                print "Could not rollback session"
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
@@ -2097,6 +2111,7 @@ class BillToolBridge:
                 # we want to return success to ajax call and then load the tree in page
                 #return ju.dumps({'success':True, 'reebill_structure':tree});
                 # but the TreeLoader doesn't abide by the above ajax packet
+                session.commit()
                 return ju.dumps(tree);
 
         except Exception as e:
@@ -2303,7 +2318,6 @@ class BillToolBridge:
             session.commit()
 
             return ju.dumps({'success': True, 'node':updated_node})
-            #return ju.dumps({'success': True})
 
         except Exception as e:
             try:
