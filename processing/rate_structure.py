@@ -300,7 +300,8 @@ class RateStructureDAO(object):
         # TODO 24253017
         if uprs is None:
             # commented this out because it breaks bill processing; TODO fix asap
-            #uprs = {rates:[]} #see if this works
+            # see if this works - 2/5/12
+            uprs = {rates:[]} 
             uprs = self.save_uprs(utility_name, rate_structure_name, effective, expires, uprs)
 
         return uprs
