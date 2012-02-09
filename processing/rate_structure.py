@@ -130,7 +130,7 @@ class RateStructureDAO(object):
         if 'rates' in uprs:
             for uprs_rate in uprs['rates']:
                 # find a matching rate in URS
-                urs_rate = [rate for rate in urs['rates'] if rate['descriptor'] == uprs_rate['descriptor']]
+                urs_rate = [rate for rate in urs['rates'] if rate['rsi_binding'] == uprs_rate['rsi_binding']]
                 # URS does not have a rate for UPRS to override, so add it.
                 if len(urs_rate) == 0:
                     urs['rates'].append(uprs_rate)
@@ -138,7 +138,6 @@ class RateStructureDAO(object):
                 if len(urs_rate) == 1:
                     urs_rate[0].update(uprs_rate)
                 if len(urs_rate) > 1: raise Exception('more than one URS rate matches a UPRS rate')
-
 
         # UPRS/URS is overridden and augmented by rates in CPRS
 
@@ -299,9 +298,7 @@ class RateStructureDAO(object):
         # the same behavior should probably be implemented for URS and CPRS so that they can be lazily created
         # TODO 24253017
         if uprs is None:
-            # commented this out because it breaks bill processing; TODO fix asap
-            # see if this works - 2/5/12
-            uprs = {rates:[]} 
+            uprs = {'rates':[]} 
             uprs = self.save_uprs(utility_name, rate_structure_name, effective, expires, uprs)
 
         return uprs
