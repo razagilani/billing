@@ -2438,45 +2438,36 @@ function renderWidgets()
                     header: 'RSI Binding',
                     sortable: true,
                     dataIndex: 'rsi_binding',
-                    editable: true,
-                    editor: new Ext.form.TextField({allowBlank: false})
                 },{
                     header: 'Description',
                     sortable: true,
                     dataIndex: 'description',
-                    editor: new Ext.form.TextField({allowBlank: true})
                 },{
                     header: 'Quantity',
                     sortable: true,
                     dataIndex: 'quantity',
-                    editor: new Ext.form.TextField({allowBlank: true})
                 },{
                     header: 'Units',
                     sortable: true,
                     dataIndex: 'quantityunits',
-                    editor: new Ext.form.TextField({allowBlank: true})
                 },{
                     header: 'Rate',
                     sortable: true,
                     dataIndex: 'rate',
-                    editor: new Ext.form.TextField({allowBlank: true})
                 },{
                     header: 'Units',
                     sortable: true,
                     dataIndex: 'rateunits',
-                    editor: new Ext.form.TextField({allowBlank: true})
                 },{
                     header: 'Round Rule',
                     sortable: true,
                     dataIndex: 'roundrule',
-                    editor: new Ext.form.TextField({allowBlank: true})
                 },{
                     header: 'Total', 
                     sortable: true, 
                     dataIndex: 'total', 
                     summaryType: 'sum',
                     align: 'right',
-                    editor: new Ext.form.TextField({allowBlank: true})
                 }
             ]
         });
@@ -2489,7 +2480,7 @@ function renderWidgets()
                     id: 'URSRSIInsertBtn',
                     iconCls: 'icon-add',
                     text: 'Insert',
-                    disabled: false,
+                    disabled: true,
                     handler: function()
                     {
                         URSRSIGrid.stopEditing();
@@ -2589,7 +2580,8 @@ function renderWidgets()
             // if the selection was deselected to nothing, allow no 
             // records to be removed.
 
-            URSRSIGrid.getTopToolbar().findById('URSRSIRemoveBtn').setDisabled(sm.getCount() <1);
+            // disallow editing of the URS
+            //URSRSIGrid.getTopToolbar().findById('URSRSIRemoveBtn').setDisabled(sm.getCount() <1);
 
             // if there was a selection, allow an insertion
             //URSRSIGrid.getTopToolbar().findById('URSRSIInsertBtn').setDisabled(sm.getCount() <1);
@@ -2598,7 +2590,9 @@ function renderWidgets()
         // grid's data store callback for when data is edited
         // when the store backing the grid is edited, enable the save button
         URSRSIStore.on('update', function(){
-            URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
+
+            // disallow editing of the URS
+            //URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
         });
 
         URSRSIStore.on('beforesave', function() {
