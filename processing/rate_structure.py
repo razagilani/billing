@@ -157,6 +157,7 @@ class RateStructureDAO(object):
         # the URS has been thoroughly overridden by the UPRS and CPRS
         return urs
 
+    # TODO:24769013 delete me 
     def convert_rs_yaml(self, reebill):
 
         account = reebill.account
