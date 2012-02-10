@@ -3928,7 +3928,7 @@ function renderWidgets()
         var selectedSequence = sequenceCombo.getValue();
         var sequenceRecordIndex = sequencesStore.find('sequence', selectedSequence);
         var sequenceRecord = sequencesStore.getAt(sequenceRecordIndex);
-        deleteButton.setDisabled(sequenceRecord.get('committed'))
+        //deleteButton.setDisabled(sequenceRecord.get('committed'))
 
 
         // enumerate prior ajax requests made here and cancel them

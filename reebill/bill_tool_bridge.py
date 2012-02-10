@@ -1164,7 +1164,7 @@ class BillToolBridge:
 
                     rates.remove(rsi)
 
-                self.ratestructure_dao.save_urs(
+                self.ratestructure_dao.save_uprs(
                     reebill.utility_name_for_service(service),
                     reebill.rate_structure_name_for_service(service),
                     effective,
