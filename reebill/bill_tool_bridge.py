@@ -1967,6 +1967,12 @@ class BillToolBridge:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
+    #@cherrypy.expose
+    def edit_utilbill_dates(self, **kwargs):
+        print 'EDIT UTILBILL DATES'
+        print kwargs
+        return ju.dumps({'success': True, 'rows': []})
+
     @cherrypy.expose
     def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
         self.check_authentication()

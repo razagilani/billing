@@ -147,17 +147,48 @@ function renderWidgets()
 
 
     // data store for paging grid
-    var utilbillGridStore = new Ext.data.JsonStore({
+
+    var initialUtilBills = {
+        rows: [
+        ]
+    };
+
+    var utilbillReader = new Ext.data.JsonReader({
         root: 'rows',
+        fields: [
+            {name: 'name', mapping: 'name'},
+            {name: 'period_start', mapping: 'period_start'},
+            {name: 'period_end', mapping: 'period_end'},
+            {name: 'sequence', mapping: 'sequence'},
+            {name: 'state', mapping: 'state'},
+        ]
+    });
+    var utilbillWriter = new Ext.data.JsonWriter({
+        encode: true,
+        writeAllFields: true 
+    });
+    var utilbillStoreProxyConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/edit_utilbill_dates',
+    })
+    var utilbillStoreProxy = new Ext.data.HttpProxy(utilbillStoreProxyConn);
+
+    var utilbillGridStore = new Ext.data.JsonStore({
+        proxy: utilbillStoreProxy,
+        autoSave: false,
+        reader: utilbillReader,
+        writer: utilbillWriter,
+        data: initialUtilBills,
+        sortInfo: {field: 'sequence', direction: 'ASC'}, // descending is DESC
+        //remoteSort: true,
         totalProperty: 'results',
         pageSize: 25,
         //baseParams: {},
         paramNames: {start: 'start', limit: 'limit'},
         //autoLoad: {params:{start: 0, limit: 25}},
+        //root: 'rows',
+        //url: 'http://' + location.host + '/reebill/listUtilBills',
+        //baseParams: {'start': 0, 'limit': 25, account: '10001'},
 
-        // default sort
-        sortInfo: {field: 'sequence', direction: 'ASC'}, // descending is DESC
-        remoteSort: true,
         fields: [
             {name: 'name'},
             {name: 'account'},
@@ -174,7 +205,6 @@ function renderWidgets()
             {name: 'sequence'},
             {name: 'state'}
         ],
-        url: 'http://' + location.host + '/reebill/listUtilBills',
     });
     
     // TODO maybe find a better way of dealing with date formats than this
@@ -184,13 +214,14 @@ function renderWidgets()
     // Used in utilBillGrid ajax call to cancel last call
     var utilbillimg_tid = null;
     // paging grid
-    var utilbillGrid = new Ext.grid.GridPanel({
+    var utilbillGrid = new Ext.grid.EditorGridPanel({
         title:'Utility Bills',
         store: utilbillGridStore,
         trackMouseOver:false,
         flex:1,
         layout: 'fit',
         sortable: true,
+        clicksToEdit: 2,
         selModel: new Ext.grid.RowSelectionModel({
             singleSelect: true,
             listeners: {
@@ -277,11 +308,15 @@ function renderWidgets()
                 header: 'Start Date',
                 dataIndex: 'period_start',
                 dateFormat: utilbillGridDateFormat,
+                editable: true,
+                editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'})
             }),
             new Ext.grid.DateColumn({
                 header: 'End Date',
                 dataIndex: 'period_end',
                 dateFormat: utilbillGridDateFormat,
+                editable: true,
+                editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'})
             }),
             {
                 id: 'sequence',
@@ -1844,7 +1879,7 @@ function renderWidgets()
             reader: CPRSRSIReader,
             writer: CPRSRSIWriter,
             // or, autosave must be used to save each action
-            autoSave: true,
+            //autoSave: true,
             // won't be updated when combos change, so do this in event
             // perhaps also can be put in the options param for the ajax request
             baseParams: { account:accountCombo.getValue(), sequence: sequenceCombo.getValue()},
