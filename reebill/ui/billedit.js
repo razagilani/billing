@@ -251,41 +251,19 @@ function renderWidgets()
         ],
     });
 
-    var utilbillToolbar = new Ext.Toolbar({
-        items: [
-            {
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                id: 'utilbillMailBtn',
-                iconCls: 'icon-mail-go',
-                text: 'Mail',
-                disabled: false,
-                handler: function()
-                {
-                    sequences = []
-                    var s = utilbillGrid.getSelectionModel().getSelections();
-                    for(var i = 0, r; r = s[i]; i++)
-                    {
-                        sequences.push(r.data.sequence);
-                    }
 
-                    mailutilbillOperation(sequences);
-                }
-            }
-        ]
-    });
-
+    // Used in utilBillGrid ajax call to cancel last call
+    var utilbillimg_tid = null;
     // in the mail tab
     var utilbillGrid = new Ext.grid.EditorGridPanel({
         flex: 1,
-        tbar: utilbillToolbar,
         bbar: new Ext.PagingToolbar({
             // TODO: constant
             pageSize: 25,
             store: utilbillGridStore,
             displayInfo: true,
             displayMsg: 'Displaying {0} - {1} of {2}',
-            emptyMsg: "No utilbills to display",
+            emptyMsg: "No Utility Bills to display",
         }),
         colModel: utilbillColModel,
         selModel: new Ext.grid.RowSelectionModel({singleSelect: false}),
@@ -299,7 +277,7 @@ function renderWidgets()
             // doesn't seem to work
             forceFit: true,
         },
-        title: 'utilbills',
+        title: 'Utility Bills',
         clicksToEdit: 2,
         selModel: new Ext.grid.RowSelectionModel({
             singleSelect: true,
