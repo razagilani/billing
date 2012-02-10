@@ -1137,14 +1137,16 @@ class ReebillDAO:
     def get_first_bill_date_for_account(self, account):
         '''Returns the start date of the account's earliest reebill, or None if
         no reebills exist for the customer.'''
+        #TODO 24722017 it isn't clear which date is intended - the date of the earliest service? Or, the dates of the individual services?
+        # It is assummed that the date of the earliest service period is desired.
         query = {
             '_id.account': account,
-            '_id.sequence': 0,
+            '_id.sequence': 1,
         }
         results = self.collection.find(query)
         if results == []:
             return None
-        return results[0]
+        return MongoReebill(results[0]).period_begin
 
 
 class NoRateStructureError(Exception):
