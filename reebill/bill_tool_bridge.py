@@ -1967,10 +1967,22 @@ class BillToolBridge:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
-    #@cherrypy.expose
-    def edit_utilbill_dates(self, **kwargs):
-        print 'EDIT UTILBILL DATES'
+    @cherrypy.expose
+    def utilbill_grid(self, xaction, **kwargs):
+        '''Handles AJAX requests to read and write data for the list of utility
+        bills. Ext-JS provides the 'xaction' parameter, which is "read" when it
+        wants to read data.'''
+        print 'UTILBILL GRID'
         print kwargs
+        
+        # for just reading, forward the request to the old function that was
+        # doing this
+        if xaction == 'read':
+            print 'xaction is read'
+            result = self.listUtilBills(**kwargs)
+            print 'returning:', result
+            return result
+
         return ju.dumps({'success': True, 'rows': []})
 
     @cherrypy.expose

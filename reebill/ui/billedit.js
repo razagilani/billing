@@ -147,47 +147,41 @@ function renderWidgets()
 
 
     // data store for paging grid
-
-    var initialUtilBills = {
-        rows: [
-        ]
-    };
-
-    var utilbillReader = new Ext.data.JsonReader({
-        root: 'rows',
-        fields: [
-            {name: 'name', mapping: 'name'},
-            {name: 'period_start', mapping: 'period_start'},
-            {name: 'period_end', mapping: 'period_end'},
-            {name: 'sequence', mapping: 'sequence'},
-            {name: 'state', mapping: 'state'},
-        ]
-    });
-    var utilbillWriter = new Ext.data.JsonWriter({
-        encode: true,
-        writeAllFields: true 
-    });
-    var utilbillStoreProxyConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/edit_utilbill_dates',
-    })
-    var utilbillStoreProxy = new Ext.data.HttpProxy(utilbillStoreProxyConn);
-
     var utilbillGridStore = new Ext.data.JsonStore({
-        proxy: utilbillStoreProxy,
-        autoSave: false,
-        reader: utilbillReader,
-        writer: utilbillWriter,
-        data: initialUtilBills,
+        proxy: new Ext.data.HttpProxy(
+            new Ext.data.Connection({
+                method: 'GET',
+                prettyUrls: false,
+                url: 'http://'+location.host+'/reebill/utilbill_grid',
+            })
+        ),
+        reader: new Ext.data.JsonReader({
+            root: 'rows',
+            fields: [
+                {name: 'name', mapping: 'name'},
+                {name: 'account', mapping: 'account'},
+                {name: 'period_start', mapping: 'period_start'},
+                {name: 'period_end', mapping: 'period_end'},
+                {name: 'sequence', mapping: 'sequence'},
+                {name: 'state', mapping: 'state'},
+            ]
+        }),
+        writer: new Ext.data.JsonWriter({
+            encode: true,
+            writeAllFields: true 
+        }),
         sortInfo: {field: 'sequence', direction: 'ASC'}, // descending is DESC
-        //remoteSort: true,
+        remoteSort: true,
         totalProperty: 'results',
         pageSize: 25,
-        //baseParams: {},
         paramNames: {start: 'start', limit: 'limit'},
-        //autoLoad: {params:{start: 0, limit: 25}},
-        //root: 'rows',
-        //url: 'http://' + location.host + '/reebill/listUtilBills',
-        //baseParams: {'start': 0, 'limit': 25, account: '10001'},
+        //baseParams: {account: 'none'}, // account: 'none' is not right
+        autoLoad: {params:{start: 0, limit: 25}},
+        autoSave: true,
+
+        data: {rows: [{"account": "10003", "name": "10003 - Agni - Monroe Towers - 3501 13th St NW", "sequence": 2, "state": "Final", "period_end": "2010-09-14", "period_start": "2010-08-13"} ] },
+        idProperty: 'account',
+
 
         fields: [
             {name: 'name'},
@@ -214,90 +208,7 @@ function renderWidgets()
     // Used in utilBillGrid ajax call to cancel last call
     var utilbillimg_tid = null;
     // paging grid
-    var utilbillGrid = new Ext.grid.EditorGridPanel({
-        title:'Utility Bills',
-        store: utilbillGridStore,
-        trackMouseOver:false,
-        flex:1,
-        layout: 'fit',
-        sortable: true,
-        clicksToEdit: 2,
-        selModel: new Ext.grid.RowSelectionModel({
-            singleSelect: true,
-            listeners: {
-                rowselect: function (selModel, index, record) {
-
-                    // a row was slected in the UI
-                    // update the current account and sequence
-
-
-                    // Can we loadReeBillUIForAccount and then load for sequence if there is  a sequence?
-                    if (record.data.sequence != null) {
-                        loadReeBillUIForSequence(record.data.account, record.data.sequence);
-                    } else {
-                        // already called by accountGrid
-                        //loadReeBillUIForAccount(record.data.account);
-                    }
-
-                    // convert the parsed date into a string in the format expected by the back end
-                    var formatted_begin_date_string = record.data.period_start.format('Y-m-d');
-                    var formatted_end_date_string = record.data.period_end.format('Y-m-d');
-
-                    // url for getting bill images (calls bill_tool_bridge.getBillImage())
-                    theUrl = 'http://' + location.host + '/reebill/getUtilBillImage';
-
-                    // image rendering resolution
-                    var menu = document.getElementById('billresolutionmenu');
-                    if (menu) {
-                        resolution = menu.value;
-                    } else {
-                        resolution = DEFAULT_RESOLUTION;
-                    }
-
-                    function failureCallback() {
-                        Ext.MessageBox.alert('Ajax failure', theUrl);
-                    }
-                    
-                    // ajax call to generate image, get the name of it, and display it in a
-                    // new window
-                    if (utilbillimg_tid != null) {
-                        Ext.Ajax.abort(utilbillimg_tid);
-                    }
-                    if (record.data.state == 'Final' || record.data.state == 'Utility Estimated') {
-                        utilbillimg_tid = Ext.Ajax.request({
-                            url: theUrl,
-                            params: {account: record.data.account, begin_date: formatted_begin_date_string,
-                                end_date: formatted_end_date_string, resolution: resolution},
-                            success: function(result, request) {
-                                var jsonData = null;
-                                try {
-                                    jsonData = Ext.util.JSON.decode(result.responseText);
-                                    var imageUrl = '';
-                                    if (jsonData.success == true) {
-                                        imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
-                                    }
-                                    Ext.DomHelper.overwrite('utilbillimagebox',
-                                        getImageBoxHTML(imageUrl, 'Utility bill',
-                                        'utilbill', NO_UTILBILL_SELECTED_MESSAGE),
-                                        true);
-                                } catch (err) {
-                                    Ext.MessageBox.alert('getutilbillimage ERROR', err);
-                                }
-                            },
-                            // this is called when the server returns 500 as well as when there's no response
-                            failure: failureCallback, //function() { Ext.MessageBox.alert('Ajax failure', theUrl); },
-                            disableCaching: true,
-                        });
-
-                            // while waiting for the ajax request to finish, show a
-                            // loading message in the utilbill image box
-                            Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
-                                    html: LOADING_MESSAGE, id: 'utilbillimage'}, true);
-                    }
-                }
-            }
-        }),
-        // grid columns
+    var utilbillGridColModel = new Ext.grid.ColumnModel({
         columns:[{
                 id: 'name',
                 header: 'Name',
@@ -329,7 +240,23 @@ function renderWidgets()
                 dataIndex: 'state',
             },
         ],
-        // paging bar on the bottom
+    });
+
+    var utilbillGrid = new Ext.grid.EditorGridPanel({
+        colModel: utilbillGridColModel,
+        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+        store: utilbillGridStore,
+        enableColumnMove: true,
+        frame: true,
+        collapsible: false,
+        animCollapse: false,
+        stripeRows: true,
+        viewConfig: {
+            // doesn't seem to work
+            forceFit: true,
+        },
+        title: 'Customer Periodic',
+        clicksToEdit: 2,
         bbar: new Ext.PagingToolbar({
             pageSize: 25,
             store: utilbillGridStore,
@@ -338,6 +265,130 @@ function renderWidgets()
             emptyMsg: "No utility bills to display",
         }),
     });
+    //var utilbillGrid = new Ext.grid.EditorGridPanel({
+        //title:'Utility Bills',
+        //store: utilbillGridStore,
+        //trackMouseOver:false,
+        //flex:1,
+        //layout: 'fit',
+        //sortable: true,
+        //clicksToEdit: 2,
+        //selModel: new Ext.grid.RowSelectionModel({
+            //singleSelect: true,
+            //listeners: {
+                //rowselect: function (selModel, index, record) {
+
+                    //// a row was slected in the UI
+                    //// update the current account and sequence
+
+
+                    //// Can we loadReeBillUIForAccount and then load for sequence if there is  a sequence?
+                    //if (record.data.sequence != null) {
+                        //loadReeBillUIForSequence(record.data.account, record.data.sequence);
+                    //} else {
+                        //// already called by accountGrid
+                        ////loadReeBillUIForAccount(record.data.account);
+                    //}
+
+                    //// convert the parsed date into a string in the format expected by the back end
+                    //var formatted_begin_date_string = record.data.period_start.format('Y-m-d');
+                    //var formatted_end_date_string = record.data.period_end.format('Y-m-d');
+
+                    //// url for getting bill images (calls bill_tool_bridge.getBillImage())
+                    //theUrl = 'http://' + location.host + '/reebill/getUtilBillImage';
+
+                    //// image rendering resolution
+                    //var menu = document.getElementById('billresolutionmenu');
+                    //if (menu) {
+                        //resolution = menu.value;
+                    //} else {
+                        //resolution = DEFAULT_RESOLUTION;
+                    //}
+
+                    //function failureCallback() {
+                        //Ext.MessageBox.alert('Ajax failure', theUrl);
+                    //}
+                    
+                    //// ajax call to generate image, get the name of it, and display it in a
+                    //// new window
+                    //if (utilbillimg_tid != null) {
+                        //Ext.Ajax.abort(utilbillimg_tid);
+                    //}
+                    //if (record.data.state == 'Final' || record.data.state == 'Utility Estimated') {
+                        //utilbillimg_tid = Ext.Ajax.request({
+                            //url: theUrl,
+                            //params: {account: record.data.account, begin_date: formatted_begin_date_string,
+                                //end_date: formatted_end_date_string, resolution: resolution},
+                            //success: function(result, request) {
+                                //var jsonData = null;
+                                //try {
+                                    //jsonData = Ext.util.JSON.decode(result.responseText);
+                                    //var imageUrl = '';
+                                    //if (jsonData.success == true) {
+                                        //imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
+                                    //}
+                                    //Ext.DomHelper.overwrite('utilbillimagebox',
+                                        //getImageBoxHTML(imageUrl, 'Utility bill',
+                                        //'utilbill', NO_UTILBILL_SELECTED_MESSAGE),
+                                        //true);
+                                //} catch (err) {
+                                    //Ext.MessageBox.alert('getutilbillimage ERROR', err);
+                                //}
+                            //},
+                            //// this is called when the server returns 500 as well as when there's no response
+                            //failure: failureCallback, //function() { Ext.MessageBox.alert('Ajax failure', theUrl); },
+                            //disableCaching: true,
+                        //});
+
+                            //// while waiting for the ajax request to finish, show a
+                            //// loading message in the utilbill image box
+                            //Ext.DomHelper.overwrite('utilbillimagebox', {tag: 'div',
+                                    //html: LOADING_MESSAGE, id: 'utilbillimage'}, true);
+                    //}
+                //}
+            //}
+        //}),
+        //// grid columns
+        //columns:[{
+                //id: 'name',
+                //header: 'Name',
+                //dataIndex: 'name',
+                //width:300,
+            //},
+            //new Ext.grid.DateColumn({
+                //header: 'Start Date',
+                //dataIndex: 'period_start',
+                //dateFormat: utilbillGridDateFormat,
+                //editable: true,
+                //editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'})
+            //}),
+            //new Ext.grid.DateColumn({
+                //header: 'End Date',
+                //dataIndex: 'period_end',
+                //dateFormat: utilbillGridDateFormat,
+                //editable: true,
+                //editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'})
+            //}),
+            //{
+                //id: 'sequence',
+                //header: 'Sequence',
+                //dataIndex: 'sequence',
+            //},
+            //{
+                //id: 'state',
+                //header: 'State',
+                //dataIndex: 'state',
+            //},
+        //],
+        //// paging bar on the bottom
+        //bbar: new Ext.PagingToolbar({
+            //pageSize: 25,
+            //store: utilbillGridStore,
+            //displayInfo: true,
+            //displayMsg: 'Displaying {0} - {1} of {2}',
+            //emptyMsg: "No utility bills to display",
+        //}),
+    //});
 
           
     ////////////////////////////////////////////////////////////////////////////
@@ -353,7 +404,7 @@ function renderWidgets()
         url: 'http://'+location.host+'/reebill/listAccounts',
         storeId: 'accountsStore',
         root: 'rows',
-        idProperty: 'account',
+        idProperty: 'acc//ount',
         fields: ['account', 'name'],
     });
 
@@ -2799,7 +2850,7 @@ function renderWidgets()
             data: initialreebill,
             root: 'rows',
             totalProperty: 'results',
-            idProperty: 'sequence',
+            //idProperty: 'sequence',
             fields: [
                 {name: 'sequence'},
             ],
@@ -2841,6 +2892,7 @@ function renderWidgets()
             ]
         });
 
+        // in the mail tab
         var reebillGrid = new Ext.grid.EditorGridPanel({
             flex: 1,
             tbar: reebillToolbar,
@@ -2947,6 +2999,7 @@ function renderWidgets()
                 listeners: {
                     rowselect: function (selModel, index, record) {
                         loadReeBillUIForAccount(record.data.account);
+                        console.log(utilbillGridStore);
                     }
                 }
             }),
