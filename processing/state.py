@@ -224,7 +224,7 @@ class StateDB:
 
     def account_exists(self, session, account):
         try:
-           customer = session.query(Customer).filter(Customer.account==account).one()
+           customer = session.query(Customer).with_lockmode("read").filter(Customer.account==account).one()
         except NoResultFound:
             return False
 
