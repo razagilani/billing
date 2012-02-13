@@ -1919,13 +1919,19 @@ class BillToolBridge:
             # note that utilbill customers are eagerly loaded
             full_names = self.full_names_of_accounts([ub.customer.account for ub in utilbills])
             rows = [dict([
+                # TODO: sending real database ids to the client a security
+                # risk; these should be encrypted
+                ('id', ub.id),
                 ('account', ub.customer.account),
                 ('name', full_names[i]),
                 ('period_start', ub.period_start),
                 ('period_end', ub.period_end),
                 ('sequence', ub.reebill.sequence if ub.reebill else None),
                 # TODO this doesn't show up in the gui
-                ('state', state_descriptions[ub.state])
+                ('state', state_descriptions[ub.state]),
+                # utility bill rows are only editable if they don't have a
+                # reebill associated with them
+                ('editable', ub.has_reebill)
             ]) for i, ub in enumerate(utilbills)]
 
             session.commit()
@@ -1969,21 +1975,47 @@ class BillToolBridge:
 
     @cherrypy.expose
     def utilbill_grid(self, xaction, **kwargs):
-        '''Handles AJAX requests to read and write data for the list of utility
+        '''Handles AJAX requests to read and write data for the grid of utility
         bills. Ext-JS provides the 'xaction' parameter, which is "read" when it
-        wants to read data.'''
-        print 'UTILBILL GRID'
-        print kwargs
-        
-        # for just reading, forward the request to the old function that was
-        # doing this
-        if xaction == 'read':
-            print 'xaction is read'
-            result = self.listUtilBills(**kwargs)
-            print 'returning:', result
-            return result
+        wants to read data and "update" when a cell in the grid was edited.'''
+        self.check_authentication()
+        try:
+            session = None
+            if xaction == 'read':
+                # for just reading, forward the request to the old function that
+                # was doing this
+                return self.listUtilBills(**kwargs)
+            elif xaction == 'update':
+                # only the start and end dates can be updated.
+                # parse data from the client: for some reason it returns single
+                # utility bill row in a JSON string called "rows"
+                rows = ju.loads(kwargs['rows'])
+                utilbill_id = rows['id']
+                new_period_start = rows['period_start']
+                new_period_end = rows['period_end']
 
-        return ju.dumps({'success': True, 'rows': []})
+                # find utilbill in MySQL and update its dates
+                session = self.state_db.session()
+                utilbill = session.query(db_objects.UtilBill).filter(db_objects.UtilBill.id==utilbill_id).one()
+                if utilbill.has_reebill:
+                    raise Exception("Can't edit utility bills that have already been attached to a reebill.")
+                utilbill.period_start = new_period_start
+                utilbill.period_end = new_period_end
+                session.commit()
+
+                return ju.dumps({'success': True})
+            elif xaction == 'create':
+                # creation happens via upload_utility_bill
+                raise Exception('utilbill_grid() does not accept xaction "create"')
+            elif xaction == 'destroy':
+                raise Exception('utilbill_grid() does not accept xaction "destroy"')
+        except Exception as e:
+            try:
+                if session is not None: session.rollback()
+            except:
+                print "Could not rollback session"
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
     def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):

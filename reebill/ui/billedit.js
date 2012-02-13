@@ -185,7 +185,7 @@ function renderWidgets()
 
     var utilbillGridStore = new Ext.data.JsonStore({
         proxy: utilbillStoreProxy,
-        autoSave: false,
+        autoSave: true,
         reader: utilbillReader,
         writer: utilbillWriter,
         autoSave: true,
@@ -228,14 +228,14 @@ function renderWidgets()
                 header: 'Start Date',
                 dataIndex: 'period_start',
                 dateFormat: 'Y-m-d',
-                editable: false,
+                editable: true,
                 editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'})
             }),
             new Ext.grid.DateColumn({
                 header: 'End Date',
                 dataIndex: 'period_end',
                 dateFormat: 'Y-m-d',
-                editable: false,
+                editable: true,
                 editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'})
             }),
             {
