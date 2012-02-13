@@ -532,6 +532,10 @@ class BillToolBridge:
     def render(self, account, sequence, **args):
         self.check_authentication()
         try:
+            if not self.config.getboolean('billimages', 'show_reebill_images'):
+                return ju.dumps({'success': False, 'errors': {'reason':
+                        ('"Render" does nothing because reebill images have '
+                        'been turned off.'), 'details': ''}})
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
