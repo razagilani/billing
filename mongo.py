@@ -4,12 +4,8 @@ import datetime
 from datetime import date, time, datetime
 from decimal import Decimal
 import pymongo
-import billing.bill as bill
 from billing.mutable_named_tuple import MutableNamedTuple
 
-from lxml import etree
-from lxml.etree import _ElementStringResult
-from exceptions import TypeError
 from urlparse import urlparse
 import httplib
 import string
