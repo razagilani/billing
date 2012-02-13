@@ -27,6 +27,7 @@ from billing.reebill import render
 from billing.reebill import journal
 from billing.reebill import eventlog
 from billing.processing.billupload import BillUpload
+from billing.processing import billupload
 from billing import nexus_util as nu
 from billing.nexus_util import NexusUtil
 from billing import bill
@@ -1795,6 +1796,10 @@ class BillToolBridge:
             begin_date_as_date = datetime.strptime(begin_date, '%Y-%m-%d').date()
             end_date_as_date = datetime.strptime(end_date, '%Y-%m-%d').date()
 
+            # validate dates
+            self.validate_utilbill_period(begin_date, end_date)
+
+
             session = self.state_db.session()
 
             # if begin_date does not match end date of latest existing bill,
@@ -1931,7 +1936,7 @@ class BillToolBridge:
                 ('state', state_descriptions[ub.state]),
                 # utility bill rows are only editable if they don't have a
                 # reebill associated with them
-                ('editable', ub.has_reebill)
+                ('editable', not ub.has_reebill)
             ]) for i, ub in enumerate(utilbills)]
 
             session.commit()
@@ -1973,6 +1978,15 @@ class BillToolBridge:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
+    def validate_utilbill_period(self, start, end):
+        '''Raises an exception if the dates 'start' and 'end' are unreasonable
+        as a utility bill period: "reasonable" means start < end and (end -
+        start) < 1 year.'''
+        if start >= end:
+            raise Exception('Utility bill start date must precede end.')
+        if (end - start).days > 365:
+            raise Exception('Utility billing period lasts longer than a year?!')
+
     @cherrypy.expose
     def utilbill_grid(self, xaction, **kwargs):
         '''Handles AJAX requests to read and write data for the grid of utility
@@ -1991,10 +2005,35 @@ class BillToolBridge:
                 # utility bill row in a JSON string called "rows"
                 rows = ju.loads(kwargs['rows'])
                 utilbill_id = rows['id']
-                new_period_start = rows['period_start']
-                new_period_end = rows['period_end']
+                new_period_start = datetime.strptime(rows['period_start'], '%Y-%m-%dT%H:%M:%S').date() # ISO 8601
+                new_period_end = datetime.strptime(rows['period_end'], '%Y-%m-%dT%H:%M:%S').date()
 
-                # find utilbill in MySQL and update its dates
+                # check that new dates are reasonable
+                self.validate_utilbill_period(new_period_start, new_period_end)
+
+                # find utilbill in MySQL
+                session = self.state_db.session()
+                utilbill = session.query(db_objects.UtilBill).filter(
+                        db_objects.UtilBill.id==utilbill_id).one()
+                customer = session.query(db_objects.Customer).filter(
+                        db_objects.Customer.id==utilbill.customer_id).one()
+
+                # utility bills that have reebills shouldn't be editable
+                if utilbill.has_reebill:
+                    raise Exception("Can't edit utility bills that have already been attached to a reebill.")
+
+                # move the file
+                self.billUpload.move_utilbill_file(customer.account,
+                        # don't trust the client to say what the original dates were
+                        # TODO don't pass dates into BillUpload as strings
+                        # https://www.pivotaltracker.com/story/show/24869817
+                        utilbill.period_start,
+                        utilbill.period_end,
+                        #datetime.strftime(utilbill.period_start, billupload.INPUT_DATE_FORMAT),
+                        #datetime.strftime(utilbill.period_end, billupload.INPUT_DATE_FORMAT),
+                        new_period_start, new_period_end)
+
+                # change dates in MySQL
                 session = self.state_db.session()
                 utilbill = session.query(db_objects.UtilBill).filter(db_objects.UtilBill.id==utilbill_id).one()
                 if utilbill.has_reebill:

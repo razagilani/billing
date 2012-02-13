@@ -12,7 +12,6 @@ import shutil
 import ConfigParser
 from db_objects import Customer, UtilBill
 
-
 sys.stdout = sys.stderr
 
 # strings allowed as account names
@@ -113,6 +112,74 @@ class BillUpload(object):
 
         return True
 
+    def get_utilbill_file_path(self, account, begin_date, end_date, extension=None):
+        '''Returns the path to the file containing the utility bill for the
+        given account and dates.
+        If 'extension' is given, the path to a hypothetical file is constructed
+        and returned whether or not the file with that name exists.
+        If 'extension' is not given, at least one bill file is assumed to exist and the
+        one with the first extension found in 'UTILBILL_EXTENSIONS' is chosen.
+        (An exception will be raised if the file does not exist.)'''
+        # convert dates into the proper format, & report error if that fails
+        formatted_begin_date = datetime.datetime.strftime(begin_date, OUTPUT_DATE_FORMAT)
+        formatted_end_date = datetime.datetime.strftime(end_date, OUTPUT_DATE_FORMAT)
+
+        # name of bill file (in its original format), without extension:
+        # [begin_date]-[end_date].[extension]
+        bill_file_name_without_extension = formatted_begin_date + '-' + \
+                formatted_end_date
+
+        # path to the bill file (in its original format):
+        # [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]
+        path_without_extension = os.path.join(self.save_directory, \
+                account, bill_file_name_without_extension)
+         
+        if extension == None:
+            # extension not provided, so look for an actual file that already
+            # exists.
+            # there could be multiple files with the same name but different
+            # extensions. pick the one whose extension comes first in
+            # UTILBILL_EXTENSIONS, if there is one. if not, it's an error
+            i = 0
+            for ext in UTILBILL_EXTENSIONS:
+                if os.access(path_without_extension+'.'+ext, os.R_OK):
+                    extension = ext
+                    break
+                i += 1
+            if i == len(UTILBILL_EXTENSIONS):
+                error_text = 'Could not find a readable bill file whose path \
+                        (without extension) is "%s"' \
+                        % path_without_extension
+                raise IOError(error_text)
+
+        # if extension is provided, this is the path of a file that may not
+        # (yet) exist
+        return path_without_extension + '.' + extension
+
+    def move_utilbill_file(self, account, old_period_start, old_period_end,
+            new_period_start, new_period_end):
+        '''Moves the utility bill file identified by 'account',
+        'old_period_start', and 'old_period_end' to a new file name identified
+        by 'new_period_start, new_period_end.'''
+        # TODO this only works when there's one file with the given account and
+        # dates: see
+        # https://www.pivotaltracker.com/story/show/24866603
+
+        # get old path (this must be a file that actually exists)
+        old_path = self.get_utilbill_file_path(account, old_period_start,
+                old_period_end)
+
+        # get new path (this must not be a file that exists)
+        extension = os.path.splitext(old_path)[1][1:] # splitext includes the '.'!
+        new_path = self.get_utilbill_file_path(account, new_period_start,
+                new_period_end, extension=extension)
+
+        # move
+        shutil.move(old_path, new_path)
+
+    def get_reebill_file_path(self, account, sequence, branch=0):
+        # TODO implement like the utilbill version
+        pass
 
     # TODO rename: ImagePath -> ImageName
     def getUtilBillImagePath(self, account, begin_date, end_date, resolution):
@@ -125,39 +192,20 @@ class BillUpload(object):
         if not validate_account(account):
             raise ValueError('invalid account name: "%s"' % account)
 
-        # convert dates into the proper format, & report error if that fails
+        # check dates
+        # TODO don't pass around dates as strings; convert these in BillToolBridge
         try:
-            formatted_begin_date = format_date(begin_date)
-            formatted_end_date = format_date(end_date)
+            begin_date = datetime.datetime.strptime(begin_date, INPUT_DATE_FORMAT)
+            end_date = datetime.datetime.strptime(end_date, INPUT_DATE_FORMAT)
         except Exception as e:
             raise ValueError('unexpected date format(s): %s, %s: %s' \
                     % (begin_date, end_date, str(e)))
 
-        # name of bill file (in its original format), without extension:
-        # [begin_date]-[end_date].[extension]
-        bill_file_name_without_extension = formatted_begin_date + '-' + \
-                formatted_end_date
-
-        # path to the bill file (in its original format):
-        # [SAVE_DIRECTORY]/[account]/[begin_date]-[end_date].[extension]
-        bill_file_path_without_extension = os.path.join(self.save_directory, \
-                account, bill_file_name_without_extension)
-         
-        # there could be multiple files with the same name but different
-        # extensions. pick the one whose extension comes first in
-        # UTILBILL_EXTENSIONS, if there is one. if not, it's an error
-        i = 0
-        for ext in UTILBILL_EXTENSIONS:
-            if os.access(bill_file_path_without_extension+'.'+ext, os.R_OK):
-                extension = ext
-                break
-            i += 1
-        if i == len(UTILBILL_EXTENSIONS):
-            error_text = 'Could not find a readable bill file whose path \
-                    (without extension) is "%s"' \
-                    % bill_file_path_without_extension
-            raise IOError(error_text)
-        bill_file_path = bill_file_path_without_extension + '.' + extension
+        bill_file_path = self.get_utilbill_file_path(account, begin_date,
+                end_date)
+        bill_file_name = os.path.split(bill_file_path)[1]
+        bill_file_name_without_extension = os.path.splitext(bill_file_name)[0]
+        extension = os.path.splitext(bill_file_name)[1][1:] # splitext includes '.'!
 
         # name and path of bill image: name includes date so it's always unique
         bill_image_name_without_extension = 'utilbill_' + account + '_' \
@@ -298,9 +346,8 @@ class BillUpload(object):
         # it printed to stderr
         if montage_result.returncode != 0:
             error_text = montage_result.communicate()[1]
-            raise Exception('"%s %s %s" failed: ' % (montage_command, \
-                    bill_file_path, bill_image_path_without_extension) \
-                    + error_text)
+            raise Exception('"%s" failed: %s' % (' '.join(montage_command),
+                error_text))
     
         # delete the individual page images now that they've been joined
         for bill_image_name in bill_image_names:
@@ -342,12 +389,15 @@ def validate_account(account):
         return False
 
 def format_date(date_string):
+    # TODO this function should go away when we stop passing dates into
+    # BillUpload as strings
+    # https://www.pivotaltracker.com/story/show/24869817
     '''Takes a date formatted according to INPUT_DATE_FORMAT and returns one
     formatted according to OUTPUT_DATE_FORMAT. if the argument dose not match
     INPUT_DATE_FORMAT, raises an exception.'''
     # convert to a time.struct_time object
     try:
-        date_object = time.strptime(date_string, INPUT_DATE_FORMAT)
+        date_object = datetime.datetime.strptime(date_string, INPUT_DATE_FORMAT)
     except:
         raise
     # convert back
