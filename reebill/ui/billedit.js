@@ -3091,7 +3091,7 @@ function renderWidgets()
                 {
                     xtype: 'linkbutton',
                     // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                    href: "http://reebill-dev/reebill/all_ree_charges_csv",
+                    href: "http://"+location.host+"/reebill/all_ree_charges_csv",
                     id: 'accountReeValueExportCSVBtn',
                     iconCls: 'icon-application-go',
                     text: 'Export',
