@@ -146,6 +146,7 @@ class BillToolBridge:
             self.config.add_section('reebillrendering')
             self.config.set('reebillrendering', 'temp_directory', DEFAULT_RENDERING_TEMP_DIRECTORY)
 
+            # TODO default config file is incomplete
 
             # Writing our configuration file to 'example.cfg'
             with open(config_file_path, 'wb') as new_config_file:
@@ -2074,6 +2075,9 @@ class BillToolBridge:
     def getReeBillImage(self, account, sequence, resolution, **args):
         self.check_authentication()
         try:
+            if not self.config.getboolean('billimages', 'show_reebill_images'):
+                return ju.dumps({'success': False, 'errors': {'reason':
+                        'Reebill images have been turned off.'}})
             if not account or not sequence or not resolution:
                 raise ValueError("Bad Parameter Value")
             resolution = cherrypy.session['user'].preferences['bill_image_resolution']
