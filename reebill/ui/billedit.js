@@ -70,6 +70,7 @@ function renderWidgets()
     });
     var reeBillImageBox = new Ext.Panel({
         collapsible: true,
+        collapsed: true,
         // content is initially just a message saying no image is selected
         // (will be replaced with an image when the user chooses a bill)
         html: {tag: 'div', id: 'reebillimagebox', children: [{tag: 'div', html: NO_REEBILL_SELECTED_MESSAGE,
