@@ -1,7 +1,6 @@
 import datetime
 from datetime import date, time, datetime
 from decimal import Decimal
-from lxml.etree import _ElementStringResult
 from billing.mutable_named_tuple import MutableNamedTuple
 from bson.objectid import ObjectId
 
@@ -13,9 +12,6 @@ def python_convert(x):
         return x
     if type(x) is Decimal:
         return x
-    # lxml gives us string_result types for strings
-    if type(x) is _ElementStringResult:
-        return str(x)
     if type(x) is unicode:
         return str(x)
     if type(x) is time:
