@@ -38,6 +38,8 @@ class UtilBill(object):
             date_received=None, processed=False, reebill=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
+        # utility bill objects also have an 'id' property that SQLAlchemy
+        # automatically adds from the database column
         self.customer = customer
         self.state = state
         self.period_start = period_start
@@ -45,6 +47,10 @@ class UtilBill(object):
         self.date_received = date_received
         self.processed = processed
         self.reebill = reebill # newly-created utilbill has NULL in reebill_id column
+
+    @property
+    def has_reebill(self):
+        return self.reebill != None
 
     def __repr__(self):
         return '<UtilBill(%s, %s, %s)>' \
