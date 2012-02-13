@@ -197,6 +197,7 @@ function renderWidgets()
         data: initialutilbill,
         root: 'rows',
         totalProperty: 'results',
+        // defaults to id? probably should explicity state it until we are ext experts
         //idProperty: 'sequence',
         fields: [
         {name: 'name'},
@@ -212,7 +213,8 @@ function renderWidgets()
             dateFormat: 'Y-m-d'
         },
         {name: 'sequence'},
-        {name: 'state'}
+        {name: 'state'},
+        {name: 'editable'},
         ],
     });
 
@@ -368,6 +370,15 @@ function renderWidgets()
 
     utilbillGridStore.on('beforesave', function() {
         utilbillGridStore.setBaseParam("account", accountCombo.getValue());
+    });
+
+    // disallow rowediting of utility bills that are associated to reebills
+    utilbillGrid.on('beforeedit', function(e) {
+        if (!e.record.data.editable) {
+            Ext.Msg.alert("Utility bill date ranges cannot be edited once associated to a ReeBill.");
+            return false;
+        }
+
     });
 
           
