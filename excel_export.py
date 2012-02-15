@@ -22,10 +22,10 @@ LOG_FILE_NAME = 'xls_export.log'
 LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
 class Exporter(object):
-    def __init__(self, reebill_dao, state_db, verbose=False):
+    def __init__(self, state_db, reebill_dao, verbose=False):
         # objects for database access
-        self.reebill_dao = reebill_dao
         self.state_db = state_db
+        self.reebill_dao = reebill_dao
         self.verbose = verbose
 
     def write_sheet(self, session, workbook, account, sequence, output_file):
@@ -57,13 +57,11 @@ class Exporter(object):
                     sheet.write(row, 2, total)
                 row += 1
 
-    def export_all(self, output_file):
+    def export_all(self, statedb_session, output_file):
         workbook = xlwt.Workbook(encoding="utf-8")
-        session = self.state_db.session()
-        for account in sorted(self.state_db.listAccounts(session)):
-            for sequence in sorted(self.state_db.listSequences(session, account)):
-                self.write_sheet(session, workbook, account, sequence, output_file)
-        session.commit()
+        for account in sorted(self.state_db.listAccounts(statedb_session)):
+            for sequence in sorted(self.state_db.listSequences(statedb_session, account)):
+                self.write_sheet(statedb_session, workbook, account, sequence, output_file)
         workbook.save(output_file)
 
 def main():
@@ -79,29 +77,19 @@ def main():
         'database': 'skyline_dev',
         'user': 'dev'
     }
-    splinter_config = {
-        'url': 'http://duino-drop.appspot.com/',
-        'host': 'localhost',
-        'db': 'dev'
-    }
 
-    log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), LOG_FILE_NAME)
-
-    # set up logger
-    logger = logging.getLogger('export_xls')
-    formatter = logging.Formatter(LOG_FORMAT)
-    handler = logging.FileHandler(log_file_path)
-    handler.setFormatter(formatter)
-    logger.addHandler(handler) 
-    logger.setLevel(logging.DEBUG)
+    state_db = state.StateDB(statedb_config)
 
     exporter = Exporter(
+        state_db,
         mongo.ReebillDAO(billdb_config),
-        state.StateDB(statedb_config),
         verbose=True
     )
+
+    session = state_db.session()
     with open('output.xls', 'wb') as output_file:
-        exporter.export_all(output_file)
+        exporter.export_all(session, output_file)
+    session.commit()
 
 
 if __name__ == '__main__':
