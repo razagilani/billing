@@ -424,6 +424,14 @@ function renderWidgets()
         fields: ['sequence', 'committed'],
     });
 
+    sequencesStore.on('load', function() {
+        console.log('load');
+        // select() is the right way to do this but it only works when the list
+        // is "expanded", whatever this means
+        sequenceCombo.setValue(""+(sequencesStore.getTotalCount()));
+        loadReeBillUIForSequence(accountCombo.getValue(), sequenceCombo.getValue());
+    });
+
     var sequenceCombo = new Ext.form.ComboBox({
         store: sequencesStore,
         fieldLabel: 'Sequence',
