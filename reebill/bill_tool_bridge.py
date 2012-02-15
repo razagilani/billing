@@ -38,6 +38,7 @@ import billing.processing.rate_structure as rs
 from billing.processing import db_objects
 from billing.users import UserDAO, User
 from billing import dateutils
+from billing import excel_export
 from skyliner import splinter
 from skyliner.skymap.monguru import Monguru
 
@@ -185,15 +186,15 @@ class BillToolBridge:
         self.user_dao = UserDAO(dict(self.config.items('usersdb')))
 
         # create an instance representing the database
-        statedb_config_section = self.config.items("statedb")
-        self.state_db = state.StateDB(dict(statedb_config_section)) 
+        self.statedb_config = dict(self.config.items("statedb"))
+        self.state_db = state.StateDB(self.statedb_config) 
 
         # create one BillUpload object to use for all BillUpload-related methods
         self.billUpload = BillUpload(self.config, self.logger)
 
         # create a MongoReeBillDAO
-        billdb_config_section = self.config.items("billdb")
-        self.reebill_dao = mongo.ReebillDAO(dict(billdb_config_section))
+        self.billdb_config = dict(self.config.items("billdb"))
+        self.reebill_dao = mongo.ReebillDAO(self.billdb_config)
 
         # create a RateStructureDAO
         rsdb_config_section = self.config.items("rsdb")
@@ -207,11 +208,17 @@ class BillToolBridge:
         self.eventlogger = eventlog.EventLogger(dict(self.config.items('eventlog')))
 
         # create one Process object to use for all related bill processing
+        # TODO it's theoretically bad to hard-code these, but all skyliner
+        # configuration is hard-coded right now anyway
+        self.splinter_config = {
+                'url': 'http://duino-drop.appspot.com/',
+                'host': "tyrell",
+                'db': 'dev'
+        }
         self.process = process.Process(self.config, self.state_db,
                 self.reebill_dao, self.ratestructure_dao,
-                # TODO it's theoretically bad to hard-code these, but all
-                # skyliner configuration is hard-coded right now anyway
-                splinter.Splinter('http://duino-drop.appspot.com/', "tyrell", "dev"))
+                splinter.Splinter(self.splinter_config['url'],
+                self.splinter_config['host'], self.splinter_config['db']))
 
         # create a ReebillRenderer
         self.renderer = render.ReebillRenderer(dict(self.config.items('reebillrendering')), self.logger)
@@ -919,6 +926,22 @@ class BillToolBridge:
             print >> sys.stderr, e
             return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
+    @cherrypy.expose
+    def excel_export(self, **kwargs):
+        try:
+            # spreadsheet goes in reebill directory
+            spreadsheet_path = os.path.join(os.path.dirname(os.path.realpath(
+                    __file__)),'all_bills.xls')
+
+            exporter = excel_export.Exporter(self.reebill_dao, self.state_db)
+            with open(spreadsheet_path, 'wb') as spreadsheet_file:
+                exporter.export_all(spreadsheet_file)
+
+            return ju.dumps({'success': True})
+        except Exception as e:
+            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            return ju.dumps({'success': False, 'errors':{'reason': str(e),
+                    'details':traceback.format_exc()}})
 
     @cherrypy.expose
     # TODO see 15415625 about the problem passing in service to get at a set of RSIs
