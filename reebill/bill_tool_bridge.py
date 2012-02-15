@@ -80,6 +80,9 @@ class BillToolBridge:
             # can't log this because logger hasn't been created yet (log file
             # name & associated info comes from config file)
             print >> sys.stderr, 'Config file "%s" not found; creating it with default values'
+            self.config.add_section('runtime')
+            self.config.set('runtime', 'integrate_oltp', 'true')
+            self.config.set('runtime', 'nexus', 'true')
             self.config.add_section('journaldb')
             self.config.set('journaldb', 'host', 'localhost')
             self.config.set('journaldb', 'port', '27017')
@@ -215,10 +218,16 @@ class BillToolBridge:
                 'host': "tyrell",
                 'db': 'dev'
         }
-        self.process = process.Process(self.config, self.state_db,
-                self.reebill_dao, self.ratestructure_dao,
-                splinter.Splinter(self.splinter_config['url'],
-                self.splinter_config['host'], self.splinter_config['db']))
+        if self.config.getboolean('runtime', 'integrate_oltp') is True:
+            self.process = process.Process(self.config, self.state_db,
+                    self.reebill_dao, self.ratestructure_dao,
+                    splinter.Splinter(self.splinter_config['url'],
+                    self.splinter_config['host'], self.splinter_config['db']))
+        else:
+            self.process = process.Process(self.config, self.state_db,
+                    self.reebill_dao, self.ratestructure_dao,
+                    None)
+
 
         # create a ReebillRenderer
         self.renderer = render.ReebillRenderer(dict(self.config.items('reebillrendering')), self.logger)
@@ -472,6 +481,10 @@ class BillToolBridge:
         try:
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
+            if self.config.getboolean('runtime', 'integrate_oltp') is False:
+                raise Exception("OLTP is not integrated")
+            if self.config.getboolean('runtime', 'integrate_nexus') is False:
+                raise Exception("Nexus is not integrated")
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
             fbd.fetch_bill_data(
@@ -653,6 +666,9 @@ class BillToolBridge:
         containing the "full name" of each account, each of which is of the
         form "accountnumber - codename - casualname - primus". Names that do not
         exist for a given account are skipped.'''
+        if self.config.getboolean('runtime', 'integrate_nexus') is False:
+            return accounts
+
         all_accounts_all_names = NexusUtil().all_ids_for_accounts("billing", accounts)
         result = []
         for account, all_names in zip(accounts, all_accounts_all_names):
