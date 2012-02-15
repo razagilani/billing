@@ -14,11 +14,11 @@ from datetime import datetime
 from datetime import date
 import itertools as it
 from decimal import *
-
-# uuid collides with locals so both module and locals are renamed
-import uuid as UUID
+import uuid as UUID # uuid collides with locals so both module and locals are renamed
 import inspect
 import logging
+import csv
+from StringIO import StringIO
 
 from billing.processing import process
 from billing.processing import state
@@ -820,10 +820,7 @@ class BillToolBridge:
             session = self.state_db.session()
             rows, total_count = self.process.all_ree_charges(session)
 
-            import csv
-            import StringIO
-
-            buf = StringIO.StringIO()
+            buf = StringIO()
 
             writer = csv.writer(buf)
 
@@ -929,15 +926,21 @@ class BillToolBridge:
     @cherrypy.expose
     def excel_export(self, **kwargs):
         try:
-            # spreadsheet goes in reebill directory
-            spreadsheet_path = os.path.join(os.path.dirname(os.path.realpath(
-                    __file__)),'all_bills.xls')
+            session = self.state_db.session()
 
-            exporter = excel_export.Exporter(self.reebill_dao, self.state_db)
-            with open(spreadsheet_path, 'wb') as spreadsheet_file:
-                exporter.export_all(spreadsheet_file)
+            spreadsheet_name = 'utility_bills.xls'
+            exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
 
-            return ju.dumps({'success': True})
+            # write excel spreadsheet into a StringIO buffer (file-like)
+            buf = StringIO()
+            exporter.export_all(session, buf)
+
+            session.commit()
+
+            # set MIME type for file download
+            cherrypy.response.headers['Content-Type'] = 'appliation/excel'
+            cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
+            return buf.getvalue()
         except Exception as e:
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             return ju.dumps({'success': False, 'errors':{'reason': str(e),
