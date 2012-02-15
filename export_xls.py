@@ -16,6 +16,8 @@ from billing.nexus_util import NexusUtil
 from billing import json_util
 from billing import dateutils
 import xlwt
+import pprint
+pformat = pprint.PrettyPrinter().pformat
 
 LOG_FILE_NAME = 'xls_export.log'
 LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
@@ -31,33 +33,42 @@ class Exporter(object):
                 splinter_config['db'])
         self.monguru = Monguru(monguru_config['host'], monguru_config['db'])
 
-    def export(self, account, sequence, output_file):
-        session = self.state_db.session()
+    def write_sheet(self, session, workbook, account, sequence, output_file):
+        print '%s-%s' % (account, sequence)
+        reebill = self.reebill_dao.load_reebill(account, sequence)
 
+        # each reebill gets its own sheet
+        sheet = workbook.add_sheet('%s-%s' % (account, sequence))
+
+        # write column headers
+        # (indices are row, column)
+        sheet.write(0, 0, 'Group')
+        sheet.write(0, 1,'Name')
+        sheet.write(0, 2, 'Charge Total')
+
+        # write charges starting at row 1
+        chargegroups = [reebill.actual_chargegroups_flattened(service) for service in reebill.services]
+        row = 1
+        for chargegroup in chargegroups:
+            for charge in chargegroup:
+                try:
+                    group, description, total = charge['chargegroup'], charge['description'], charge['total']
+                except Exception as e:
+                    print '%s-%s ERROR %s: %s' % (account, sequence, e, pformat(charge))
+                else:
+                    sheet.write(row, 0, group)
+                    sheet.write(row, 1, description)
+                    sheet.write(row, 2, total)
+                row += 1
+
+    def export_all(self, output_file):
         workbook = xlwt.Workbook(encoding="utf-8")
-
-        for sequence in self.state_db.listSequences(session, account):
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-
-            # each reebill gets its own sheet
-            sheet = workbook.add_sheet('%s-%s' % (account, sequence))
-
-            # write column headers
-            # (row, column)
-            sheet.write(0, 1, 'Name')
-            sheet.write(0, 2, 'Charge Total')
-
-            # write charges starting at row 1
-            chargegroups = reebill.chargegroups_flattened
-            for row, charge in [(i+1, c) for (i, c) in zip(*enumerate(chargegroups))]:
-                print row, charge
-
-
-
-
-
-            session.commit()
-
+        session = self.state_db.session()
+        for account in sorted(self.state_db.listAccounts(session)):
+            for sequence in sorted(self.state_db.listSequences(session, account)):
+                self.write_sheet(session, workbook, account, sequence, output_file)
+        session.commit()
+        workbook.save(output_file)
 
 def main():
     billdb_config = {
@@ -78,9 +89,7 @@ def main():
         'db': 'dev'
     }
     monguru_config = {
-        'host': 'localhost',
-        'db': 'dev'
-    }
+        'host': 'localhost', 'db': 'dev' }
 
     log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), LOG_FILE_NAME)
 
@@ -95,7 +104,7 @@ def main():
     exporter = Exporter(logger, billdb_config, statedb_config, splinter_config,
             monguru_config)
     with open('output.xls', 'wb') as output_file:
-        exporter.export('10003', 16, output_file)
+        exporter.export_all(output_file)
 
 
 if __name__ == '__main__':
