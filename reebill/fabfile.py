@@ -8,14 +8,54 @@ import fabric.contrib as fabcontrib
 from fabric.colors import red, green
 import os
 
-fabapi.env.hosts = ['tyrell']
+#fabapi.env.hosts = ['tyrell', 'ec2-107-21-175-174.compute-1.amazonaws.com']
+fabapi.env.roledefs = {'atsite': ['ec2-user@ec2-107-21-175-174.compute-1.amazonaws.com'], 'skyline': ['tyrell']}
+
+# how do keys get mapped to hosts? Works like magic.
+fabapi.env.key_filename = ['/home/randrews/Dropbox/Skyline-IT/ec2keys/reebill-atsite.pem']
+
 root_dir = os.path.dirname(os.path.abspath(__file__))
 exclude_from = 'fabexcludes.txt'
 
-configurations = {
-    "dev": ["reebill-dev", "reebill-dev", "reebill-dev", "reebill-dev-template.cfg"],
-    "stage": ["reebill-stage", "reebill-stage", "reebill-stage", "reebill-stage-template.cfg"],
-    "prod": ["reebill-prod", "reebill-prod", "reebill-prod", "reebill-prod-template.cfg"]
+
+host_configurations = {
+    "tyrell": {"httpd":"Apache2"},
+    "ec2-107-21-175-174.compute-1.amazonaws.com": {"httpd":"httpd"},
+}
+
+env_configurations = {
+    "dev": {
+        "project":"reebill-dev", 
+        "user":"reebill-dev", 
+        "group":"reebill-dev", 
+        "config":"reebill-dev-template.cfg",
+        "dir":"lib/python2.6/site-packages",
+        "httpd":"Apache2"
+    },
+    "stage": {
+        "project":"reebill-stage", 
+        "user":"reebill-stage", 
+        "group":"reebill-stage",
+        "config":"reebill-stage-template.cfg",
+        "dir":"lib/python2.6/site-packages",
+        "httpd":"Apache2"
+    },
+    "prod": {
+        "project":"reebill-prod", 
+        "user":"reebill-prod", 
+        "group":"reebill-prod", 
+        "config":"reebill-prod-template.cfg",
+        "dir":"lib/python2.6/site-packages",
+        "httpd":"Apache2"
+    },
+    "dedicated": {
+        "project":"reebill", 
+        "user":"reebill", 
+        "group":"reebill", 
+        "config":"reebill-dedicated-template.cfg",
+        "dir":"",
+        "httpd":"httpd"
+    }
 }
 
 def prepare_deploy(project, environment):
@@ -35,7 +75,7 @@ def prepare_deploy(project, environment):
     fabops.local('tar czvf /tmp/%s.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../reebill' % (project, exclude_from))
 
     # grab other billing code
-    fabops.local('tar czvf /tmp/bill_framework_code.tar.z ../*.py ../processing/*.py ../db_upgrade_scripts')
+    fabops.local('tar czvf /tmp/bill_framework_code.tar.z ../*.py ../processing/*.py ../db_upgrade_scripts ../db/processing/billdb.sql')
 
     # try and put back sane values since the software was likely deployed from a development environment
     fabops.local("sed -i 's/SKYLINE_VERSIONINFO=\".*\".*$/SKYLINE_VERSIONINFO=\"UNSPECIFIED\"/g' ui/billedit.js")
@@ -49,13 +89,15 @@ def deploy():
         if clobber.lower() != "yes":
             fabutils.abort(green("Not clobbering production"))
 
-    if environment not in configurations:
+    if environment not in env_configurations:
         fabutils.abort(red("No such configuration"))
 
-    project = configurations[environment][0]
-    user = configurations[environment][1]
-    group = configurations[environment][2]
-    config_file = configurations[environment][3]
+    project = env_configurations[environment]["project"]
+    user = env_configurations[environment]["user"]
+    group = env_configurations[environment]["group"]
+    config_file = env_configurations[environment]["config"]
+    directory = env_configurations[environment]["dir"]
+    httpd = host_configurations[fabapi.env.host]["httpd"]
             
     prepare_deploy(project, environment)
     if  fabcontrib.files.exists("/tmp/%s_deploy" % (project), use_sudo=True) is False:
@@ -66,18 +108,18 @@ def deploy():
     fabapi.put('/tmp/bill_framework_code.tar.z', '/tmp/%s_deploy' % (project))
 
     # making billing module if missing
-    if  fabcontrib.files.exists("/var/local/%s/lib/python2.6/site-packages/billing" % (project), use_sudo=True) is False:
-        print green("Creating directory /var/local/%s/lib/python2.6/site-packages/billing" % (project))
-        fabops.sudo('mkdir /var/local/%s/lib/python2.6/site-packages/billing' % (project)) 
+    if  fabcontrib.files.exists("/var/local/%s/%s/billing" % (project, directory), use_sudo=True) is False:
+        print green("Creating directory /var/local/%s/%s/billing" % (project, directory))
+        fabops.sudo('mkdir /var/local/%s/%s/billing' % (project, directory)) 
 
-    #  install ui and application code into site-packages
+    #  install ui and application code into directory 
     with fabcontext.hide('stdout'):
-        with fabcontext.cd('/var/local/%s/lib/python2.6/site-packages/billing' % (project)):
+        with fabcontext.cd('/var/local/%s/%s/billing' % (project, directory)):
             fabops.sudo('tar xvzf /tmp/%s_deploy/%s.tar.z' % (project, project), user='root')
    
     with (fabcontext.settings(warn_only=True)):
         #with fabcontext.hide('stdout'):
-        with fabcontext.cd('/var/local/%s/lib/python2.6/site-packages/billing/reebill' % (project)):
+        with fabcontext.cd('/var/local/%s/%s/billing/reebill' % (project, directory)):
             # does the config file exist?
             exists = fabcontrib.files.exists("reebill.cfg")
             if exists is False:
@@ -91,15 +133,15 @@ def deploy():
                 else:
                     print green("Deployment template configuration file being used")
 
-    # install other billing code into site-packages
+    # install other billing code into directory 
     with fabcontext.hide('stdout'):
-        with fabcontext.cd('/var/local/%s/lib/python2.6/site-packages/billing/' % (project)):
+        with fabcontext.cd('/var/local/%s/%s/billing/' % (project, directory)):
             fabops.sudo('tar xvzf /tmp/%s_deploy/bill_framework_code.tar.z' % (project), user='root')
 
-    #  install skyline framework into site-packages
+    #  install skyline framework into directory 
     with fabcontext.hide('stdout'):
-        with fabcontext.cd('/var/local/%s/lib/python2.6/site-packages/' % (project)):
+        with fabcontext.cd('/var/local/%s/%s/' % (project, directory)):
             fabops.sudo('tar xvzf /tmp/%s_deploy/skyliner.tar.z' % (project), user='root')
 
     fabops.sudo('chown -R %s:%s /var/local/%s' % (user, group, project), user='root')
-    fabops.sudo('service apache2 restart')
+    fabops.sudo('service %s restart' % (httpd))
