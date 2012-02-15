@@ -10,7 +10,6 @@ from billing import mongo
 from billing.reebill import render
 from billing.processing import state
 from skyliner.splinter import Splinter
-from skyliner.skymap.monguru import Monguru
 from skyliner import sky_handlers
 from billing.nexus_util import NexusUtil
 from billing import json_util
@@ -23,18 +22,15 @@ LOG_FILE_NAME = 'xls_export.log'
 LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
 class Exporter(object):
-    def __init__(self, logger, billdb_config, statedb_config, splinter_config, monguru_config):
-        self.logger = logger
-
+    def __init__(self, reebill_dao, state_db, verbose=False):
         # objects for database access
-        self.reebill_dao = mongo.ReebillDAO(billdb_config)
-        self.state_db = state.StateDB(statedb_config)
-        self.splinter = Splinter(splinter_config['url'], splinter_config['host'],
-                splinter_config['db'])
-        self.monguru = Monguru(monguru_config['host'], monguru_config['db'])
+        self.reebill_dao = reebill_dao
+        self.state_db = state_db
+        self.verbose = verbose
 
     def write_sheet(self, session, workbook, account, sequence, output_file):
-        print '%s-%s' % (account, sequence)
+        if self.verbose:
+            print '%s-%s' % (account, sequence)
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # each reebill gets its own sheet
@@ -88,8 +84,6 @@ def main():
         'host': 'localhost',
         'db': 'dev'
     }
-    monguru_config = {
-        'host': 'localhost', 'db': 'dev' }
 
     log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), LOG_FILE_NAME)
 
@@ -101,8 +95,11 @@ def main():
     logger.addHandler(handler) 
     logger.setLevel(logging.DEBUG)
 
-    exporter = Exporter(logger, billdb_config, statedb_config, splinter_config,
-            monguru_config)
+    exporter = Exporter(
+        mongo.ReebillDAO(billdb_config),
+        state.StateDB(statedb_config),
+        verbose=True
+    )
     with open('output.xls', 'wb') as output_file:
         exporter.export_all(output_file)
 
