@@ -269,11 +269,11 @@ class BillToolBridge:
     # authentication functions
 
     @cherrypy.expose
-    def login(self, identifier, rememberme='off', **kwargs):
-        user = self.user_dao.load_user(identifier)
+    def login(self, username, password, rememberme='off', **kwargs):
+        user = self.user_dao.load_user(username, password)
         if user is None:
-            self.logger.info(('login attempt failed: identifier "%s"'
-                ', remember me: %s') % (identifier, rememberme))
+            self.logger.info(('login attempt failed: username "%s"'
+                ', remember me: %s') % (username, rememberme))
             raise cherrypy.HTTPRedirect("/login.html")
 
         # successful login:
@@ -292,7 +292,7 @@ class BillToolBridge:
         # redirect to main page
         cherrypy.session['user'] = user
         self.logger.info(('user "%s" logged in: remember '
-            'me: "%s" type is %s') % (identifier, rememberme,
+            'me: "%s" type is %s') % (username, rememberme,
             type(rememberme)))
         raise cherrypy.HTTPRedirect("/billentry.html")
 

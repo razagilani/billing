@@ -17,9 +17,10 @@ var prettyField = function(name, label, inputType) {
 };
 
 // TODO change "Username" label to "identifier"
-var nameField = new prettyField('identifier', 'Username');
+var nameField = new prettyField('username', 'Username');
+var passwordField = new prettyField('password', 'Password', 'password');
 
-//var passwordField = new prettyField('password', 'Password', 'password');
+var openIdIdentifierField = new prettyField('identifier', 'Identifier');
 
 var rememberMeCheckbox = new Ext.form.Checkbox({
     name: 'rememberme',
@@ -40,7 +41,7 @@ var loginFormPanel = new Ext.form.FormPanel({
     width: 300,
     //defaults: {width: 350},
     defaultType: 'textfield', // if this is wrong, including anything in 'items results in 'undefined is not a function'
-    items: [nameField, /*passwordField,*/ rememberMeCheckbox],
+    items: [nameField, passwordField, rememberMeCheckbox],
     buttons: [{
         /* button style requires "cls:'buttonstyle'" attribute in button,
          * separate css file with ".buttonstyle {...}" */
@@ -53,6 +54,24 @@ var loginFormPanel = new Ext.form.FormPanel({
     }]
 });
 
+var openIDButton = new Ext.Button({
+    text: 'Log in With Your Google Account',
+    //cls:'x-btn-text-icon',
+    disabled: true,
+});
+
+var outerPanel = new Ext.Panel({
+    items: [loginFormPanel, openIDButton],
+    layout: new Ext.layout.VBoxLayout({
+        align: 'center',
+        padding: 0,
+        defaultMargins: {top: 10, left: 10, right: 10, bottom: 10},
+    }),
+    border: false,
+    height: 200, // TODO these should be set by the size of the contents instead of hard-coded
+    width: 350,
+})
+
 
 function submitHandler() {
     loginFormPanel.getForm().getEl().dom.action = 'http://' + location.host + '/reebill/login'
@@ -62,7 +81,7 @@ function submitHandler() {
 
 Ext.onReady(function() {
 
-    loginFormPanel.render('loginform');
+    outerPanel.render('loginform');
 
     //nameField.setValue("Username");
     //passwordField.setValue("Password");

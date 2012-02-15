@@ -60,13 +60,30 @@ class UserDAO:
             
         self.collection = connection[self.config['database']][self.config['collection']]
     
-    def load_user(self, identifier):
-        '''Returns a User object representing the user given by 'identifier'
-        (generally an OpenID URL).'''
-        user_dict = self.collection.find_one({'_id': identifier})
-
+    def load_user(self, username, password):
+        '''Returns a User object representing the user given by 'username' and
+        'password'. Returns None if the username/password combination was
+        wrong.'''
+        user_dict = self.collection.find_one({'_id': username,
+            'password': password})
         if user_dict is None:
             return None
+        return User(user_dict)
+
+    def load_openid_user(self, identifier):
+        '''Returns a User object representing the user given by 'identifier'
+        (username or an OpenID URL), or None if the user is not found.'''
+        user_dict = self.collection.find_one({'_id': identifier})
+        if user_dict is None:
+            return None
+
+        if password != None:
+            if 'password' in user_dict:
+                if password != user_dict['password']:
+                    return None
+            else:
+                # if password is provided but not needed, ignore it
+                pass
 
         return User(user_dict)
 
