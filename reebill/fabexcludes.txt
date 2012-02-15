@@ -52,7 +52,6 @@ ext-3.3.1/examples/README.txt
 ext-3.3.1/examples/resizable
 ext-3.3.1/examples/restful
 ext-3.3.1/examples/samples.css
-ext-3.3.1/examples/shared
 ext-3.3.1/examples/simple-widgets
 ext-3.3.1/examples/slider
 ext-3.3.1/examples/spinner
