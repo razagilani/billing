@@ -9,7 +9,7 @@ from fabric.colors import red, green
 import os
 
 #fabapi.env.hosts = ['tyrell', 'ec2-107-21-175-174.compute-1.amazonaws.com']
-fabapi.env.roledefs = {'atsite': ['ec2-user@ec2-107-21-175-174.compute-1.amazonaws.com'], 'skyline': ['tyrell']}
+fabapi.env.roledefs = {'atsite': ['ec2-user@ec2-50-16-73-74.compute-1.amazonaws.com'], 'skyline': ['tyrell']}
 
 # how do keys get mapped to hosts? Works like magic.
 fabapi.env.key_filename = ['/home/randrews/Dropbox/Skyline-IT/ec2keys/reebill-atsite.pem']
@@ -20,7 +20,7 @@ exclude_from = 'fabexcludes.txt'
 
 host_configurations = {
     "tyrell": {"httpd":"Apache2"},
-    "ec2-107-21-175-174.compute-1.amazonaws.com": {"httpd":"httpd"},
+    "ec2-50-16-73-74.compute-1.amazonaws.com": {"httpd":"httpd"},
 }
 
 env_configurations = {
