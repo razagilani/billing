@@ -15,9 +15,6 @@ from datetime import datetime
 from datetime import time
 from datetime import date
 
-# for xml processing
-from lxml import etree
-import lxml
 import copy
 
 # used for processing fixed point monetary decimal numbers
