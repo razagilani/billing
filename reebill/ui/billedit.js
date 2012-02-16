@@ -4,6 +4,14 @@ function renderWidgets()
 {
     // global ajax timeout
     Ext.Ajax.timeout = 960000; //16 minutes
+    Ext.util.Observable.observeClass(Ext.data.Connection); 
+    Ext.data.Connection.on('requestcomplete', function(dataconn, response) { 
+        var jsonData = Ext.util.JSON.decode(response.responseText);
+        console.log(jsonData);
+        if (jsonData.success == false) {
+            document.location = "../"; 
+        }
+    });
 
     // pass configuration information to containing webpage
     var SKYLINE_VERSIONINFO="UNSPECIFIED"

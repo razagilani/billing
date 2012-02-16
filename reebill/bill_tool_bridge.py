@@ -46,6 +46,9 @@ sys.stdout = sys.stderr
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
+class Unauthenticated(Exception):
+    pass
+
 # TODO 11454025 rename to ProcessBridge or something
 class BillToolBridge:
     """ A monolithic class encapsulating the behavior to:  handle an incoming http request """
@@ -248,17 +251,17 @@ class BillToolBridge:
     
     @cherrypy.expose
     def index(self):
-        print >> sys.stderr, 'index was called'
-        if self.check_authentication():
-            raise cherrypy.HTTPRedirect('/billentry.html')
-        else:
+        try:
+            if self.check_authentication():
+                raise cherrypy.HTTPRedirect('/billentry.html')
+        except Unauthenticated:
             raise cherrypy.HTTPRedirect('/login.html')
 
     @cherrypy.expose
     def get_reconciliation_data(self, start, limit, **kwargs):
         '''Handles AJAX request for data to fill reconciliation report grid.'''
-        self.check_authentication()
         try:
+            self.check_authentication()
             start, limit = int(start), int(limit)
             with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'reconciliation_report.json')) as json_file:
                 # load all data from json file: a list of dictionaries
@@ -270,9 +273,7 @@ class BillToolBridge:
                     'results': len(items) # total number of items
                 })
         except Exception as e:
-            print >> sys.stderr, e, traceback.format_exc()
-            self.logger.error(e, traceback.format_exc())
-            raise
+            return self.handle_exception(e)
 
     ###########################################################################
     # authentication functions
@@ -306,44 +307,49 @@ class BillToolBridge:
         raise cherrypy.HTTPRedirect("/billentry.html")
 
     def check_authentication(self):
-        '''Decorator to check authentication for HTTP request functions:
+        '''Function to check authentication for HTTP request functions:
         returns True if the user is logged in; if not, sets the HTTP status
         code to 401 and returns False. Does not redirect to the login page,
         because it gets called in AJAX requests, which must return actual data
         instead of a redirect.'''
-        try:
-            # if authentication is turned off, skip the check and make sure the
-            # session contains default data
-            if not self.authentication_on:
-                if 'user' not in cherrypy.session:
-                    cherrypy.session['user'] = UserDAO.default_user
-                return True
+        # if authentication is turned off, skip the check and make sure the
+        # session contains default data
+        if not self.authentication_on:
             if 'user' not in cherrypy.session:
-                self.logger.info("Non-logged-in user was denied access to: %s" % \
-                        inspect.stack()[1][3])
-                # TODO: 19664107
-                # 401 = unauthorized--can't reply to an ajax call with a redirect
-                cherrypy.response.status = 401
-                return False
+                cherrypy.session['user'] = UserDAO.default_user
             return True
-        except Exception as e:
-            print >> sys.stderr, e, traceback.format_exc()
-            self.logger.error(e, traceback.format_exc())
-            raise
-    
+        if 'user' not in cherrypy.session:
+            self.logger.info("Non-logged-in user was denied access to: %s" % \
+                    inspect.stack()[1][3])
+            # TODO: 19664107
+            # 401 = unauthorized--can't reply to an ajax call with a redirect
+            cherrypy.response.status = 401
+            raise Unauthenticated("No Session")
+
+        return True
+
+
+    def handle_exception(self, e):
+
+        if type(e) is Unauthenticated:
+            return ju.dumps({'success': False, 'errors':{'reason': str(e),
+                    'details':traceback.format_exc()}})
+        else:
+            return ju.dumps({'success': False, 'errors':{'reason': str(e),
+                    'details':traceback.format_exc()}})
+
     @cherrypy.expose
     def getUsername(self, **kwargs):
         '''This returns the username of the currently logged-in user--not to be
         confused with the identifier. The identifier is a unique id but the
         username is not.'''
-        self.check_authentication()
         try:
+            self.check_authentication()
             return ju.dumps({'success':True,
                     'username': cherrypy.session['user'].username})
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e),
-                    'details':traceback.format_exc()}})
+            return self.handle_exception(e)
+            
 
     @cherrypy.expose
     def logout(self):
@@ -358,6 +364,7 @@ class BillToolBridge:
     # TODO: do this on a per service basis 18311877
     def copyactual(self, account, sequence, **args):
         try:
+            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
 
@@ -368,7 +375,7 @@ class BillToolBridge:
             return json.dumps({'success': True})
 
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.handle_exception(e)
 
     @cherrypy.expose
     def new_account(self, name, account, discount_rate, template_account, **args):
