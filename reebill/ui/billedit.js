@@ -4,12 +4,28 @@ function renderWidgets()
 {
     // global ajax timeout
     Ext.Ajax.timeout = 960000; //16 minutes
+
+    // handle global success:false responses
     Ext.util.Observable.observeClass(Ext.data.Connection); 
     Ext.data.Connection.on('requestcomplete', function(dataconn, response) { 
-        var jsonData = Ext.util.JSON.decode(response.responseText);
-        console.log(jsonData);
-        if (jsonData.success == false) {
-            document.location = "../"; 
+        try {
+            var jsonData = Ext.util.JSON.decode(response.responseText);
+            // handle the various failure modes
+            if (jsonData.success == false) {
+                if (jsonData.errors.reason == "No Session") {
+                    console.log("Not logged in, redirecting")
+                    Ext.MessageBox.alert("Authentication", "Not logged in, or session expiration", function(){ document.location = "../"});
+                } else {
+                    console.log(response.responseText)
+                }
+                
+            }
+
+        } catch (e) {
+            console.log("Unexpected failure while processing requestcomplete");
+            console.log(response)
+            // TODO: evaluate response to see if the object is well formed
+            Ext.MessageBox.alert("Unexpected failure while processing requestcomplete: " + response.responseText);
         }
     });
 
@@ -26,10 +42,12 @@ function renderWidgets()
     Ext.Ajax.request({
         url: 'http://' + location.host + '/reebill/getUsername',
         success: function(result, request) {
+            // check success status
             var jsonData = Ext.util.JSON.decode(result.responseText);
             var username = jsonData['username'];
             Ext.DomHelper.overwrite('LOGIN_INFO',
                 "You're logged in as <b>" + username + "</b>; " + logoutLink)
+            // handle failure if needed
         },
         failure: function() {
              Ext.MessageBox.alert('Ajax failure', 'http://' + location.host + '/getUsername');
@@ -344,6 +362,7 @@ function renderWidgets()
                                     if (jsonData.success == true) {
                                         imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
                                     }
+                                    // TODO handle failure if needed
                                     Ext.DomHelper.overwrite('utilbillimagebox',
                                         getImageBoxHTML(imageUrl, 'Utility bill',
                                         'utilbill', NO_UTILBILL_SELECTED_MESSAGE),
@@ -484,6 +503,7 @@ function renderWidgets()
                         if (jsonData.success == true) {
                             // TODO reload a lot of stuff?
                         }
+                        // handle failure if needed
                     } catch (err) {
                         Ext.MessageBox.alert('delete reebill ERROR', err);
                     }
@@ -583,7 +603,7 @@ function renderWidgets()
                 try {
                     jsonData = Ext.util.JSON.decode(result.responseText);
                     if (jsonData.success == false) {
-                        Ext.Msg.alert("Edit ReeBill Failed: " + jsonData.errors.reason)
+                        // handle failure here if necessary
                     } else {
                         if (action == 'insert_reebill_sibling_node') {
                             var newNode = jsonData.node
@@ -3276,7 +3296,7 @@ function renderWidgets()
                                 try {
                                     jsonData = Ext.util.JSON.decode(result.responseText);
                                     if (jsonData.success == false) {
-                                        Ext.Msg.alert("Create new account failed: " + jsonData.errors.reason)
+                                        // handle failure here if necessary
                                     }
                                 } catch (err) {
                                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
@@ -3338,6 +3358,7 @@ function renderWidgets()
                                 if (jsonData.success == false) {
                                     Ext.Msg.alert("setBillImageResolution failed: " + jsonData.errors)
                                 }
+                                // handle failure here if necessary
                             } catch (err) {
                                 Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
                             }
@@ -3366,14 +3387,14 @@ function renderWidgets()
                         resolution = jsonData['resolution'];
                         billImageResolutionField.setValue(resolution);
                     } else {
-                        Ext.Msg.alert("getBillImageResolution failed: " + jsonData.errors);
+                        // handle success:false here if needed
                     }
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
                 }
             },
             failure: function () {
-                Ext.Msg.alert("setBillImageResolution request failed");
+                Ext.Msg.alert("getBillImageResolution request failed");
             }
         });
 
@@ -3972,7 +3993,7 @@ function renderWidgets()
                 try {
                     jsonData = Ext.util.JSON.decode(result.responseText);
                     if (jsonData.success == false) {
-                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                        // handle failure here if necessary
                     } else {
                         // server returns null for the date if there is no utilbill
                         if (jsonData['date'] == null) {
@@ -4053,11 +4074,10 @@ function renderWidgets()
                     jsonData = Ext.util.JSON.decode(result.responseText);
                     if (jsonData.success == false)
                     {
-                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                        // handle failure here if necessary
                     } else {
-                        //Ext.MessageBox.alert('Success', 'Decode of stringData OK<br />jsonData.data = ' + jsonData);
+                        configureUBPeriodsForms(account, sequence, jsonData);
                     } 
-                    configureUBPeriodsForms(account, sequence, jsonData);
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
                 }
@@ -4077,11 +4097,10 @@ function renderWidgets()
                     jsonData = Ext.util.JSON.decode(result.responseText);
                     if (jsonData.success == false)
                     {
-                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                        // handle failure here if necessary
                     } else {
-                        //Ext.MessageBox.alert('Success', 'Decode of stringData OK<br />jsonData.data = ' + jsonData);
+                        configureUBMeasuredUsagesForms(account, sequence, jsonData);
                     } 
-                    configureUBMeasuredUsagesForms(account, sequence, jsonData);
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
                 }
@@ -4101,11 +4120,11 @@ function renderWidgets()
                     jsonData = Ext.util.JSON.decode(result.responseText);
                     if (jsonData.success == false)
                     {
-                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                        //Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                        // handle failure here if necessary
                     } else {
-                        //Ext.MessageBox.alert('Success', 'Decode of stringData OK<br />jsonData.data = ' + jsonData);
+                        configureAddressForm(account, sequence, jsonData);
                     } 
-                    configureAddressForm(account, sequence, jsonData);
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
                 }
@@ -4161,6 +4180,7 @@ function renderWidgets()
                     if (jsonData.success == true) {
                         imageUrl = 'http://' + location.host + '/utilitybillimages/' + jsonData.imageName;
                     }
+                    // handle failure if needed
                     Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML(imageUrl, 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
 
                 } catch (err) {
