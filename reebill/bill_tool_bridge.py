@@ -1789,7 +1789,7 @@ class BillToolBridge:
             end_date_as_date = datetime.strptime(end_date, '%Y-%m-%d').date()
 
             # validate dates
-            self.validate_utilbill_period(begin_date, end_date)
+            self.validate_utilbill_period(begin_date_as_date, end_date_as_date)
 
 
             session = self.state_db.session()

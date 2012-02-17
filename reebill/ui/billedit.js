@@ -455,7 +455,7 @@ function renderWidgets()
         console.log('load');
         // select() is the right way to do this but it only works when the list
         // is "expanded", whatever this means
-        sequenceCombo.setValue(""+(sequencesStore.getTotalCount()));
+        //sequenceCombo.setValue(""+(sequencesStore.getTotalCount()));
         loadReeBillUIForSequence(accountCombo.getValue(), sequenceCombo.getValue());
     });
 
@@ -4263,7 +4263,7 @@ function unregisterAjaxEvents()
 function showSpinner()
 {
     blockUICounter++;
-    Ext.Msg.show({title: "Please Wait...", closable: false});
+    Ext.Msg.show({title: "Please Wait...", closable: true});
 }
 
 function hideSpinner()
