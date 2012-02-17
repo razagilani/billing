@@ -61,6 +61,7 @@ Install the following packages with sudo pip install [package]
     reportlab
     simplejson
     MySQL-Python
+    xlwt
     
 
 Chart Director 'pychartdir'

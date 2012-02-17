@@ -46,6 +46,9 @@ sys.stdout = sys.stderr
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
+class Unauthenticated(Exception):
+    pass
+
 # TODO 11454025 rename to ProcessBridge or something
 class BillToolBridge:
     """ A monolithic class encapsulating the behavior to:  handle an incoming http request """
@@ -245,17 +248,17 @@ class BillToolBridge:
     
     @cherrypy.expose
     def index(self):
-        print >> sys.stderr, 'index was called'
-        if self.check_authentication():
-            raise cherrypy.HTTPRedirect('/billentry.html')
-        else:
+        try:
+            if self.check_authentication():
+                raise cherrypy.HTTPRedirect('/billentry.html')
+        except Unauthenticated:
             raise cherrypy.HTTPRedirect('/login.html')
 
     @cherrypy.expose
     def get_reconciliation_data(self, start, limit, **kwargs):
         '''Handles AJAX request for data to fill reconciliation report grid.'''
-        self.check_authentication()
         try:
+            self.check_authentication()
             start, limit = int(start), int(limit)
             with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'reconciliation_report.json')) as json_file:
                 # load all data from json file: a list of dictionaries
@@ -267,9 +270,7 @@ class BillToolBridge:
                     'results': len(items) # total number of items
                 })
         except Exception as e:
-            print >> sys.stderr, e, traceback.format_exc()
-            self.logger.error(e, traceback.format_exc())
-            raise
+            return self.handle_exception(e)
 
     ###########################################################################
     # authentication functions
@@ -303,44 +304,62 @@ class BillToolBridge:
         raise cherrypy.HTTPRedirect("/billentry.html")
 
     def check_authentication(self):
-        '''Decorator to check authentication for HTTP request functions:
+        '''Function to check authentication for HTTP request functions:
         returns True if the user is logged in; if not, sets the HTTP status
         code to 401 and returns False. Does not redirect to the login page,
         because it gets called in AJAX requests, which must return actual data
         instead of a redirect.'''
-        try:
-            # if authentication is turned off, skip the check and make sure the
-            # session contains default data
-            if not self.authentication_on:
-                if 'user' not in cherrypy.session:
-                    cherrypy.session['user'] = UserDAO.default_user
-                return True
+        # if authentication is turned off, skip the check and make sure the
+        # session contains default data
+        if not self.authentication_on:
             if 'user' not in cherrypy.session:
-                self.logger.info("Non-logged-in user was denied access to: %s" % \
-                        inspect.stack()[1][3])
-                # TODO: 19664107
-                # 401 = unauthorized--can't reply to an ajax call with a redirect
-                cherrypy.response.status = 401
-                return False
+                cherrypy.session['user'] = UserDAO.default_user
             return True
-        except Exception as e:
-            print >> sys.stderr, e, traceback.format_exc()
-            self.logger.error(e, traceback.format_exc())
-            raise
-    
+        if 'user' not in cherrypy.session:
+            self.logger.info("Non-logged-in user was denied access to: %s" % \
+                    inspect.stack()[1][3])
+            # TODO: 19664107
+            # 401 = unauthorized--can't reply to an ajax call with a redirect
+            #cherrypy.response.status = 401
+            raise Unauthenticated("No Session")
+
+        return True
+
+    def rollback_session(self, session):
+
+        try:
+            if session is not None: session.rollback()
+        except:
+            try:
+                self.logger.error('Could not rollback session:\n%s' % traceback.format_exc())
+            except:
+                print >> sys.stderr, 'Logger not functioning\nCould not rollback session:\n%s' % traceback.format_exc()
+
+    def handle_exception(self, e):
+
+        if type(e) is Unauthenticated:
+            return ju.dumps({'success': False, 'errors':{'reason': str(e),
+                    'details':'none'}})
+        else:
+            try:
+                self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
+            except:
+                print >> sys.stderr, "Logger not functioning\n%s:\n%s" % (e, traceback.format_exc())
+            return ju.dumps({'success': False, 'errors':{'reason': str(e),
+                    'details':traceback.format_exc()}})
+
     @cherrypy.expose
     def getUsername(self, **kwargs):
         '''This returns the username of the currently logged-in user--not to be
         confused with the identifier. The identifier is a unique id but the
         username is not.'''
-        self.check_authentication()
         try:
+            self.check_authentication()
             return ju.dumps({'success':True,
                     'username': cherrypy.session['user'].username})
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e),
-                    'details':traceback.format_exc()}})
+            return self.handle_exception(e)
+            
 
     @cherrypy.expose
     def logout(self):
@@ -355,6 +374,7 @@ class BillToolBridge:
     # TODO: do this on a per service basis 18311877
     def copyactual(self, account, sequence, **args):
         try:
+            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
 
@@ -365,13 +385,13 @@ class BillToolBridge:
             return json.dumps({'success': True})
 
         except Exception as e:
-                return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def new_account(self, name, account, discount_rate, template_account, **args):
-        self.check_authentication()
         try:
             session = None
+            self.check_authentication()
             if not name or not account or not discount_rate or not template_account:
                 raise ValueError("Bad Parameter Value")
 
@@ -393,19 +413,14 @@ class BillToolBridge:
             return json.dumps({'success': True})
 
         except Exception as e:
-            if session is not None: 
-                try:
-                    if session is not None: session.rollback()
-                except:
-                    print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def roll(self, account, sequence, **args):
-        self.check_authentication()
         try:
             session = None
+            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
 
@@ -418,41 +433,31 @@ class BillToolBridge:
             session.commit()
             return json.dumps({'success': True})
         except Exception as e:
-            if session is not None: 
-                try:
-                    if session is not None: session.rollback()
-                except:
-                    print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
 
     @cherrypy.expose
     def delete_reebill(self, account, sequence, **args):
-        self.check_authentication()
         try:
             session = None
+            self.check_authentication()
             session = self.state_db.session()
             self.process.delete_reebill(session, account, sequence)
             self.journal_dao.journal(customer.account, sequence, "Deleted")
             session.commit()
             return json.dumps({'success': True})
         except Exception as e:
-            if session is not None: 
-                try:
-                    if session is not None: session.rollback()
-                except:
-                    print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def pay(self, account, sequence, **args):
-        self.check_authentication()
         try:
+            session = None
+            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
-            session = None
             session = self.state_db.session()
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
@@ -462,20 +467,15 @@ class BillToolBridge:
             return json.dumps({'success': True})
 
         except Exception as e:
-            if session is not None: 
-                try:
-                    if session is not None: session.rollback()
-                except:
-                    print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
 
     @cherrypy.expose
     def bindree(self, account, sequence, **args):
-        self.check_authentication()
         from billing.processing import fetch_bill_data as fbd
         try:
+            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
             if self.config.getboolean('runtime', 'integrate_oltp') is False:
@@ -497,15 +497,14 @@ class BillToolBridge:
             return json.dumps({'success': True})
 
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
 
     @cherrypy.expose
     def bindrs(self, account, sequence, **args):
-        self.check_authentication()
         try:
             session = None
+            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
 
@@ -537,24 +536,19 @@ class BillToolBridge:
 
             return json.dumps({'success': True})
         except Exception as e:
-            if session is not None: 
-                try:
-                    if session is not None: session.rollback()
-                except:
-                    print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def render(self, account, sequence, **args):
-        self.check_authentication()
         try:
+            self.check_authentication()
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
             if not self.config.getboolean('billimages', 'show_reebill_images'):
                 return ju.dumps({'success': False, 'errors': {'reason':
                         ('"Render" does nothing because reebill images have '
                         'been turned off.'), 'details': ''}})
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
             # TODO 22598787 - branch awareness
             self.renderer.render(reebill, 
@@ -563,17 +557,15 @@ class BillToolBridge:
                 "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
                 False
             )
+            return json.dumps({'success': True})
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
-
-        return json.dumps({'success': True})
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def mail(self, account, sequences, recipients, **args):
-        self.check_authentication()
         try:
             session = None
+            self.check_authentication()
             if not account or not sequences or not recipients:
                 raise ValueError("Bad Parameter Value")
 
@@ -648,14 +640,8 @@ class BillToolBridge:
             return json.dumps({'success': True})
 
         except Exception as e:
-            if session is not None: 
-                try:
-                    if session is not None: session.rollback()
-                except:
-                    print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e),
-                    'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
 
     def full_names_of_accounts(self, accounts):
@@ -687,9 +673,9 @@ class BillToolBridge:
 
     @cherrypy.expose
     def listAccounts(self, **kwargs):
-        self.check_authentication()
         try:
             session = None
+            self.check_authentication()
             accounts = []
             # eventually, this data will have to support pagination
             session = self.state_db.session()
@@ -699,22 +685,17 @@ class BillToolBridge:
             session.commit()
             return json.dumps({'success': True, 'rows':rows})
         except Exception as e:
-            if session is not None: 
-                try:
-                    if session is not None: session.rollback()
-                except:
-                    print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
 
     @cherrypy.expose
     def listSequences(self, account, **kwargs):
         '''Handles AJAX request to get reebill sequences for each account and
         whether each reebill has been committed.'''
-        self.check_authentication()
         try:
             session = None
+            self.check_authentication()
             sequences = []
             if not account:
                 raise ValueError("Bad Parameter Value")
@@ -733,21 +714,17 @@ class BillToolBridge:
             session.commit()
             return json.dumps({'success': True, 'rows':rows})
         except Exception as e:
-            try:
-                if session is not None: session.rollback()
-            except:
-                print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
 
     @cherrypy.expose
     def retrieve_account_status(self, start, limit, **args):
-        self.check_authentication()
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
             session = None
+            self.check_authentication()
             if not start or not limit:
                 raise ValueError("Bad Parameter Value")
             # result is a list of dictionaries of the form
@@ -761,20 +738,16 @@ class BillToolBridge:
             session.commit()
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
-            try:
-                if session is not None: session.rollback()
-            except:
-                print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def summary_ree_charges(self, start, limit, **args):
-        self.check_authentication()
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
             session = None
+            self.check_authentication()
 
             if not start or not limit:
                 raise ValueError("Bad Parameter Value")
@@ -792,21 +765,16 @@ class BillToolBridge:
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
 
         except Exception as e:
-            try:
-                if session is not None: session.rollback()
-            except:
-                print "Could not rollback session"
-            # TODO 20217999: log errors?
-            print >> sys.stderr, e
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def all_ree_charges(self, **args):
 
-        self.check_authentication()
 
         try:
             session = None
+            self.check_authentication()
 
             session = self.state_db.session()
 
@@ -817,18 +785,14 @@ class BillToolBridge:
             return ju.dumps({'success': True, 'rows':rows, 'results':total_count})
 
         except Exception as e:
-            try:
-                if session is not None: session.rollback()
-            except:
-                print "Could not rollback session"
-            # TODO 20217999: log errors?
-            print >> sys.stderr, e
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def all_ree_charges_csv(self, **args):
         try:
             session = None
+            self.check_authentication()
 
             session = self.state_db.session()
             rows, total_count = self.process.all_ree_charges(session)
@@ -871,22 +835,19 @@ class BillToolBridge:
                 cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s.csv' % datetime.now().strftime("%Y%m%d")
 
 
+            data = buf.getvalue()
             session.commit()
-            return buf.getvalue()
+            return data
 
         except Exception as e:
-            try:
-                if session is not None: session.rollback()
-            except:
-                print "Could not rollback session"
-            # TODO 20217999: log errors?
-            print >> sys.stderr, e
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def all_ree_charges_csv_altitude(self, **args):
         try:
             session = None
+            self.check_authentication()
 
             session = self.state_db.session()
             rows, total_count = self.process.all_ree_charges(session)
@@ -924,22 +885,21 @@ class BillToolBridge:
                 cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s.csv' % datetime.now().strftime("%Y%m%d")
 
 
+            data = buf.getvalue()
             session.commit()
-            return buf.getvalue()
+            return data
 
         except Exception as e:
-            try:
-                if session is not None: session.rollback()
-            except:
-                print "Could not rollback session"
-            # TODO 20217999: log errors?
-            print >> sys.stderr, e
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def excel_export(self, **kwargs):
         try:
             session = None
+
+            self.check_authentication()
+
             session = self.state_db.session()
 
             spreadsheet_name = 'utility_bills.xls'
@@ -949,25 +909,25 @@ class BillToolBridge:
             buf = StringIO()
             exporter.export_all(session, buf)
 
-            session.commit()
 
             # set MIME type for file download
             cherrypy.response.headers['Content-Type'] = 'appliation/excel'
             cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
-            return buf.getvalue()
+
+            data = buf.getvalue()
+
+            session.commit()
+
+            return data 
         except Exception as e:
-            try:
-                if session is not None: session.rollback()
-            except:
-                print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
     @cherrypy.expose
     # TODO see 15415625 about the problem passing in service to get at a set of RSIs
     def cprsrsi(self, xaction, account, sequence, service, **kwargs):
-        self.check_authentication()
         try:
+            self.check_authentication()
             if not xaction or not sequence or not service:
                 raise ValueError("Bad Parameter Value")
 
@@ -1094,13 +1054,12 @@ class BillToolBridge:
                 return json.dumps({'success':True})
 
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def uprsrsi(self, xaction, account, sequence, service, **kwargs):
-        self.check_authentication()
         try:
+            self.check_authentication()
             if not xaction or not account or not sequence or not service:
                 raise ValueError("Bad Parameter Value")
 
@@ -1224,13 +1183,12 @@ class BillToolBridge:
                 return json.dumps({'success':True})
 
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def ursrsi(self, xaction, account, sequence, service, **kwargs):
-        self.check_authentication()
         try:
+            self.check_authentication()
             if not xaction or not account or not sequence or not service:
                 raise ValueError("Bad Parameter Value")
 
@@ -1351,14 +1309,13 @@ class BillToolBridge:
                 return json.dumps({'success':True})
 
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def payment(self, xaction, account, **kwargs):
-        self.check_authentication()
         try:
             session = None
+            self.check_authentication()
             if not xaction or not account:
                 raise ValueError("Bad parameter value")
 
@@ -1438,18 +1395,14 @@ class BillToolBridge:
                 return json.dumps({'success':True})
 
         except Exception as e:
-            try:
-                if session is not None: session.rollback()
-            except:
-                print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def reebill(self, xaction, start, limit, account, **kwargs):
-        self.check_authentication()
         try:
             session = None
+            self.check_authentication()
 
             if not xaction or not start or not limit:
                 raise ValueError("Bad Parameter Value")
@@ -1480,24 +1433,20 @@ class BillToolBridge:
                 return json.dumps({'success':False})
 
         except Exception as e:    
-            try:
-               if session is not None: session.rollback()
-            except:
-                print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
     ################
     # Handle addresses
 
     @cherrypy.expose
     def addresses(self, account, sequence, **args):
-        self.check_authentication()
         """
         Return the billing and service address so that it may be edited.
         """
 
         try:
+            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
 
@@ -1533,7 +1482,7 @@ class BillToolBridge:
             return ju.dumps(addresses)
 
         except Exception as e:
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
 
     @cherrypy.expose
@@ -1545,8 +1494,8 @@ class BillToolBridge:
         Update both the billing and service address.
         """
 
-        self.check_authentication()
         try:
+            self.check_authentication()
             if not account or not sequence \
             or not ba_addressee or not ba_street1 or not ba_city or not ba_state or not ba_postal_code \
             or not sa_addressee or not sa_street1 or not sa_city or not sa_state or not sa_postal_code:
@@ -1574,7 +1523,7 @@ class BillToolBridge:
             return ju.dumps({'success':True})
 
         except Exception as e:
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
     #
     ################
@@ -1584,13 +1533,13 @@ class BillToolBridge:
 
     @cherrypy.expose
     def ubPeriods(self, account, sequence, **args):
-        self.check_authentication()
         """
         Return all of the utilbill periods on a per service basis so that the forms may be
         dynamically created.
         """
 
         try:
+            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
 
@@ -1614,16 +1563,16 @@ class BillToolBridge:
             return ju.dumps(utilbill_periods)
 
         except Exception as e:
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def setUBPeriod(self, account, sequence, service, begin, end, **args):
-        self.check_authentication()
         """ 
         Utilbill period forms are dynamically created in browser, and post back to here individual periods.
         """ 
 
         try:
+            self.check_authentication()
             if not account or not sequence or not service or not begin or not end:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -1633,8 +1582,7 @@ class BillToolBridge:
             return ju.dumps({'success':True})
 
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
 
     #
@@ -1645,8 +1593,8 @@ class BillToolBridge:
 
     @cherrypy.expose
     def actualCharges(self, service, account, sequence, **args):
-        self.check_authentication()
         try:
+            self.check_authentication()
             if not account or not sequence or not service:
                 raise ValueError("Bad Parameter Value")
 
@@ -1663,14 +1611,13 @@ class BillToolBridge:
             return ju.dumps({'success': True, 'rows': flattened_charges})
 
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
 
     @cherrypy.expose
     def hypotheticalCharges(self, service, account, sequence, **args):
-        self.check_authentication()
         try:
+            self.check_authentication()
             if not account or not sequence or not service:
                 raise ValueError("Bad Parameter Value")
 
@@ -1687,14 +1634,13 @@ class BillToolBridge:
             return ju.dumps({'success': True, 'rows': flattened_charges})
 
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
 
     @cherrypy.expose
     def saveActualCharges(self, service, account, sequence, rows, **args):
-        self.check_authentication()
         try:
+            self.check_authentication()
             if not account or not sequence or not service or not rows:
                 raise ValueError("Bad Parameter Value")
 
@@ -1711,14 +1657,13 @@ class BillToolBridge:
             return ju.dumps({'success': True})
 
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
 
     @cherrypy.expose
     def saveHypotheticalCharges(self, service, account, sequence, rows, **args):
-        self.check_authentication()
         try:
+            self.check_authentication()
             if not account or not sequence or not service or not rows:
                 raise ValueError("Bad Parameter Value")
             flattened_charges = ju.loads(rows)
@@ -1730,8 +1675,7 @@ class BillToolBridge:
             return ju.dumps({'success': True})
 
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
 
     ################
@@ -1764,8 +1708,8 @@ class BillToolBridge:
         ]}
         """
 
-        self.check_authentication()
         try:
+            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -1782,13 +1726,12 @@ class BillToolBridge:
             return ju.dumps(meters)
 
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def setMeter(self, account, sequence, service, meter_identifier, presentreaddate, priorreaddate):
-        self.check_authentication()
         try:
+            self.check_authentication()
             if not account or not sequence or not service or not meter_identifier \
                 or not presentreaddate or not priorreaddate:
                 raise ValueError("Bad Parameter Value")
@@ -1804,13 +1747,12 @@ class BillToolBridge:
             return ju.dumps({'success':True})
 
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def setActualRegister(self, account, sequence, service, register_identifier, meter_identifier, quantity):
-        self.check_authentication()
         try:
+            self.check_authentication()
             if not account or not sequence or not service or not register_identifier \
                 or not meter_identifier or not quantity:
                 raise ValueError("Bad Parameter Value")
@@ -1822,8 +1764,7 @@ class BillToolBridge:
             return ju.dumps({'success':True})
 
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
     #
     ################
@@ -1834,9 +1775,9 @@ class BillToolBridge:
     @cherrypy.expose
     def upload_utility_bill(self, account, begin_date, end_date,
             file_to_upload, **args):
-        self.check_authentication()
         try:
             session = None
+            self.check_authentication()
             if not account or not begin_date or not end_date or not file_to_upload:
                 raise ValueError("Bad Parameter Value")
 
@@ -1845,7 +1786,7 @@ class BillToolBridge:
             end_date_as_date = datetime.strptime(end_date, '%Y-%m-%d').date()
 
             # validate dates
-            self.validate_utilbill_period(begin_date, end_date)
+            self.validate_utilbill_period(begin_date_as_date, end_date_as_date)
 
 
             session = self.state_db.session()
@@ -1884,22 +1825,16 @@ class BillToolBridge:
                         'reason':'file upload failed', 'details':'Returned False'}})
             
         except Exception as e: 
-            if session is not None: 
-                try:
-                    if session is not None: session.rollback()
-                except:
-                    print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e),
-                'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
     #
     ################
 
     @cherrypy.expose
     def journal(self, xaction, account, **kwargs):
-        self.check_authentication()
         try:
+            self.check_authentication()
             if not xaction or not account:
                 raise ValueError("Bad Parameter Value")
 
@@ -1924,13 +1859,12 @@ class BillToolBridge:
                 return json.dumps({'success':False, 'errors':{'reason':'Not supported'}})
 
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def save_journal_entry(self, account, sequence, entry, **kwargs):
-        self.check_authentication()
         try:
+            self.check_authentication()
             # TODO: 1320091681504  allow a journal entry to be made without a sequence
             if not account or not sequence or not entry:
                 raise ValueError("Bad Parameter Value")
@@ -1940,16 +1874,15 @@ class BillToolBridge:
             return json.dumps({'success':True})
 
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
  
     @cherrypy.expose
     def listUtilBills(self, start, limit, account, **args):
         '''Handles AJAX call to populate Ext grid of utility bills.'''
-        self.check_authentication()
         try:
             session = None
+            self.check_authentication()
             session = self.state_db.session()
 
             # names for utilbill states in the UI
@@ -1991,19 +1924,15 @@ class BillToolBridge:
 
             return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
-            try:
-                if session is not None: session.rollback()
-            except:
-                print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
     
     @cherrypy.expose
     def last_utilbill_end_date(self, account, **kwargs):
         '''Returns date of last utilbill.'''
-        self.check_authentication()
         try:
             session = None
+            self.check_authentication()
             session = self.state_db.session()
 
             the_date = self.state_db.last_utilbill_end_date(session, account)
@@ -2019,12 +1948,8 @@ class BillToolBridge:
             session.commit()
             return ju.dumps({'success':True, 'date': the_datetime})
         except Exception as e: 
-            try:
-                if session is not None: session.rollback()
-            except:
-                print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
     def validate_utilbill_period(self, start, end):
         '''Raises an exception if the dates 'start' and 'end' are unreasonable
@@ -2040,9 +1965,9 @@ class BillToolBridge:
         '''Handles AJAX requests to read and write data for the grid of utility
         bills. Ext-JS provides the 'xaction' parameter, which is "read" when it
         wants to read data and "update" when a cell in the grid was edited.'''
-        self.check_authentication()
         try:
             session = None
+            self.check_authentication()
             if xaction == 'read':
                 # for just reading, forward the request to the old function that
                 # was doing this
@@ -2097,17 +2022,13 @@ class BillToolBridge:
             elif xaction == 'destroy':
                 raise Exception('utilbill_grid() does not accept xaction "destroy"')
         except Exception as e:
-            try:
-                if session is not None: session.rollback()
-            except:
-                print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
-        self.check_authentication()
         try:
+            self.check_authentication()
             if not account or not begin_date or not end_date or not resolution:
                 raise ValueError("Bad Parameter Value")
             # TODO: put url here, instead of in billentry.js?
@@ -2115,51 +2036,47 @@ class BillToolBridge:
             result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date, resolution)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def getReeBillImage(self, account, sequence, resolution, **args):
-        self.check_authentication()
         try:
+            self.check_authentication()
+            if not account or not sequence or not resolution:
+                raise ValueError("Bad Parameter Value")
             if not self.config.getboolean('billimages', 'show_reebill_images'):
                 return ju.dumps({'success': False, 'errors': {'reason':
                         'Reebill images have been turned off.'}})
-            if not account or not sequence or not resolution:
-                raise ValueError("Bad Parameter Value")
             resolution = cherrypy.session['user'].preferences['bill_image_resolution']
             result = self.billUpload.getReeBillImagePath(account, sequence, resolution)
             return ju.dumps({'success':True, 'imageName':result})
         except Exception as e: 
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
     
     @cherrypy.expose
     def getBillImageResolution(self, **kwargs):
-        self.check_authentication()
         try:
+            self.check_authentication()
             resolution = cherrypy.session['user'].preferences['bill_image_resolution']
             return ju.dumps({'success':True, 'resolution': resolution})
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def setBillImageResolution(self, resolution, **kwargs):
-        self.check_authentication()
         try:
+            self.check_authentication()
             cherrypy.session['user'].preferences['bill_image_resolution'] = int(resolution)
             self.user_dao.save_user(cherrypy.session['user'])
             return ju.dumps({'success':True})
         except Exception as e:
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def reebill_structure(self, account, sequence=None, **args):
-        self.check_authentication()
         try:
             session = None
+            self.check_authentication()
             if not account:
                 raise ValueError("Bad Parameter Value: account")
 
@@ -2255,23 +2172,16 @@ class BillToolBridge:
                 return ju.dumps(tree);
 
         except Exception as e:
-            try:
-                if session is not None: session.rollback()
-            except:
-                print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-
-            # TreePanel doesn't do error handling
-            # Maybe the TreeLoader can be made to respond to something.
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def insert_reebill_sibling_node(self, service, account, sequence, node_type, node_key, **args):
         """
         """
-        self.check_authentication()
         try:
             session = None
+            self.check_authentication()
             if not service or not account or not sequence or not node_type or not node_key:
                 raise ValueError("Bad Parameter Value")
 
@@ -2337,21 +2247,16 @@ class BillToolBridge:
             return ju.dumps({'success': True, 'node':new_node })
 
         except Exception as e:
-            try:
-                if session is not None: session.rollback()
-            except:
-                print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def delete_reebill_node(self, service, account, sequence, node_type, node_key, text, **args):
         """
         """
-        self.check_authentication()
         try:
             session = None
+            self.check_authentication()
             if not service or not account or not sequence or not node_type or not node_key or not text:
                 raise ValueError("Bad Parameter Value")
 
@@ -2375,13 +2280,8 @@ class BillToolBridge:
             return ju.dumps({'success': True })
 
         except Exception as e:
-            try:
-                if session is not None: session.rollback()
-            except:
-                print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
     @cherrypy.expose
     def update_reebill_node(self, service, account, sequence, node_type, node_key, text, **args):
@@ -2460,13 +2360,8 @@ class BillToolBridge:
             return ju.dumps({'success': True, 'node':updated_node})
 
         except Exception as e:
-            try:
-                if session is not None: session.rollback()
-            except:
-                print "Could not rollback session"
-            self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-
-            return ju.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
+            self.rollback_session(session)
+            return self.handle_exception(e)
 
         
 # TODO: place instantiation in main, so this module can be loaded without btb being instantiated
