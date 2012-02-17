@@ -213,16 +213,13 @@ class BillToolBridge:
         # create one Process object to use for all related bill processing
         # TODO it's theoretically bad to hard-code these, but all skyliner
         # configuration is hard-coded right now anyway
-        self.splinter_config = {
-                'url': 'http://duino-drop.appspot.com/',
-                'host': "tyrell",
-                'db': 'dev'
-        }
+        self.runtime_config = dict(self.config.items('runtime'))
         if self.config.getboolean('runtime', 'integrate_oltp') is True:
             self.process = process.Process(self.config, self.state_db,
                     self.reebill_dao, self.ratestructure_dao,
-                    splinter.Splinter(self.splinter_config['url'],
-                    self.splinter_config['host'], self.splinter_config['db']))
+                    splinter.Splinter(self.runtime_config['oltp_url'],
+                        self.runtime_config['oltp_host'],
+                        self.runtime_config['oltp_database']))
         else:
             self.process = process.Process(self.config, self.state_db,
                     self.reebill_dao, self.ratestructure_dao,
