@@ -66,8 +66,9 @@ class BillUpload(object):
 
         # convert dates into the proper format, & report error if that fails
         try:
-            formatted_begin_date = format_date(begin_date)
-            formatted_end_date = format_date(end_date)
+            print "WTF %s %s " % (begin_date, end_date)
+            formatted_begin_date = format_date(str(begin_date))
+            formatted_end_date = format_date(str(end_date))
         except Exception as e:
             raise ValueError('unexpected date format(s): %s, %s: %s' \
                     % (begin_date, end_date, str(e)))
@@ -401,7 +402,7 @@ def format_date(date_string):
     except:
         raise
     # convert back
-    return time.strftime(OUTPUT_DATE_FORMAT, date_object)
+    return datetime.date.strftime(date_object, OUTPUT_DATE_FORMAT)
 
 def validate_sequence_number(sequence):
     '''Returns true iff the sequence number is valid (just checks against a
