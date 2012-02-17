@@ -942,6 +942,7 @@ class BillToolBridge:
     @cherrypy.expose
     def excel_export(self, **kwargs):
         try:
+            session = None
             session = self.state_db.session()
 
             spreadsheet_name = 'utility_bills.xls'
@@ -958,9 +959,12 @@ class BillToolBridge:
             cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
             return buf.getvalue()
         except Exception as e:
+            try:
+                if session is not None: session.rollback()
+            except:
+                print "Could not rollback session"
             self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
-            return ju.dumps({'success': False, 'errors':{'reason': str(e),
-                    'details':traceback.format_exc()}})
+            return json.dumps({'success': False, 'errors':{'reason': str(e), 'details':traceback.format_exc()}})
 
     @cherrypy.expose
     # TODO see 15415625 about the problem passing in service to get at a set of RSIs
