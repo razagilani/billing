@@ -19,7 +19,7 @@ exclude_from = 'fabexcludes.txt'
 
 
 host_configurations = {
-    "tyrell": {"httpd":"Apache2"},
+    "tyrell": {"httpd":"apache2"},
     "ec2-50-16-73-74.compute-1.amazonaws.com": {"httpd":"httpd"},
 }
 
@@ -75,7 +75,7 @@ def prepare_deploy(project, environment):
     fabops.local('tar czvf /tmp/%s.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../reebill' % (project, exclude_from))
 
     # grab other billing code
-    fabops.local('tar czvf /tmp/bill_framework_code.tar.z ../*.py ../processing/*.py ../db_upgrade_scripts ../db/processing/billdb.sql')
+    fabops.local('tar czvf /tmp/bill_framework_code.tar.z ../*.py ../processing/*.py ../db_upgrade_scripts ../scripts ../db/processing/billdb.sql')
 
     # try and put back sane values since the software was likely deployed from a development environment
     fabops.local("sed -i 's/SKYLINE_VERSIONINFO=\".*\".*$/SKYLINE_VERSIONINFO=\"UNSPECIFIED\"/g' ui/billedit.js")
