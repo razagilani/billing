@@ -1,0 +1,97 @@
+<html>
+<head>
+
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title id="pagetitle">TITLE</title>
+
+    <head profile="http://www.w3.org/2005/10/profile">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+    <script type="text/javascript" src="jquery-1.4.2.js"></script>
+
+
+    <!-- overrides to base library -->
+
+    <!-- page specific -->
+    <link rel="stylesheet" type="text/css" href="billedit.css" />
+
+    <script type="text/javascript" src="DateFormat-minified.js"></script>
+
+    <style type=text/css>
+        /* style rows on mouseover */
+        .x-grid3-row-over .x-grid3-cell-inner {
+            font-weight: bold;
+        }
+        .icon-application-go {
+            background-image: url(ext-3.3.1/examples/shared/icons/fam/application_go.png) !important;
+        }
+        .icon-mail-go {
+            background-image: url(ext-3.3.1/examples/layout-browser/images/email_go.png) !important;
+        }
+        .icon-add {
+            background-image: url(ext-3.3.1/examples/shared/icons/fam/add.png) !important;
+        }
+        .icon-delete {
+            background-image: url(ext-3.3.1/examples/shared/icons/fam/delete.gif) !important;
+        }
+        .icon-save {
+            background-image: url(ext-3.3.1/examples/shared/icons/fam/accept.png) !important;
+        }
+    </style>
+
+    <!-- ** CSS ** -->
+    <!-- base library -->
+    <link rel="stylesheet" type="text/css" href="ext-3.3.1/resources/css/ext-all.css" />
+    <link rel="stylesheet" type="text/css" href="ext-3.3.1/examples/ux/css/Spinner.css" /> 
+
+    <!-- ** Javascript ** -->
+    <!-- ExtJS library: base/adapter -->
+    <script type="text/javascript" src="ext-3.3.1/adapter/ext/ext-base.js"></script>
+
+    <!-- ExtJS library: all widgets -->
+    <script type="text/javascript" src="ext-3.3.1/ext-all-debug.js"></script>
+    <!--script type="text/javascript" src="ext-3.3.1/ext-all.js"></script-->
+
+    <!-- extensions -->
+
+    <!-- ToDo: move out of examples -->
+    <script type="text/javascript" src="ext-3.3.1/examples/ux/Spinner.js"></script>
+    <script type="text/javascript" src="ext-3.3.1/examples/ux/SpinnerField.js"></script>
+
+    <script type="text/javascript" src="ext-3.3.1/examples/ux/GroupSummary.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="fileuploadfield.css"/> 
+    <script type="text/javascript" src="FileUploadField.js"></script>
+
+    <!-- ext status bar -->
+    <script type="text/javascript" src="statusbar/StatusBar.js"></script>
+
+    <!-- Animal's linkbutton -->
+    <script type="text/javascript" src="linkbutton.js"></script>
+    <link rel="stylesheet" type="text/css" href="linkbutton.css" />
+
+    <!-- overrides to base library -->
+
+    <!-- page specific -->
+    <script type="text/javascript" src="billedit.js"></script>
+
+    <!-- start the execution of javascript code -->
+    <script type="text/javascript">
+        $(document).ready(function() {
+            renderWidgets();
+          });
+    </script>
+
+</head>
+<body>
+    <div id="header" style="height:100%; background-image:url('green_stripe.jpg'); background-repeat: repeat;">
+        <table style="border-collapse: collapse;"><tr><td><img src="skyline_logo.png"/></td><td><img src="reebill_logo.png"/></td><td style="width: 85%; text-align: right;"><img src="money_chaser.png"/></td></tr></table>
+    </div>
+    <div id="footer" style="height:100%; background-image:url('green_stripe.jpg'); background-repeat: repeat; padding-top:6px;">
+        <div style="display: inline; float: left;">&#169;2009-2012 <a href="http://www.skylineinnovations.com">Skyline Innovations Inc.</a></div>
+        <div id="LOGIN_INFO" style="display: inline; padding:0px 15px 0px 15px;">LOGIN INFO</div>
+        <div id="SKYLINE_VERSIONINFO" style="display: inline; float: right; padding:0px 15px 0px 15px;">VERSION INFO</div>
+        <div id="SKYLINE_DEPLOYENV" style="display: inline; float: right;">DEPLOYMENT ENV</div>
+    </div>
+</body>
+</html>
