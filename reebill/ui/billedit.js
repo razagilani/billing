@@ -1,7 +1,22 @@
 var DEFAULT_RESOLUTION = 100; 
 
+
+// Ext 4 fires events when ajax is aborted
+// so this is an Ext 3 workaround
+// If Ajax is aborted, we need to generate an event to unblock the UI
+Ext.Ajax.addEvents({requestaborted:true});
+Ext.override(Ext.data.Connection, {
+    abort : function(transId){
+        if(transId || this.isLoading()){
+            Ext.lib.Ajax.abort(transId || this.transId);
+            this.fireEvent('requestaborted', this, this.transId);
+        }
+    }
+});
+
 function renderWidgets()
 {
+    registerAjaxEvents();
     // global ajax timeout
     Ext.Ajax.timeout = 960000; //16 minutes
 
@@ -16,7 +31,8 @@ function renderWidgets()
                     console.log("Not logged in, redirecting")
                     Ext.MessageBox.alert("Authentication", "Not logged in, or session expiration", function(){ document.location = "../"});
                 } else {
-                    console.log(response.responseText)
+                    // turn on to log application failures
+                    //console.log(response.responseText)
                 }
                 
             }
@@ -313,16 +329,9 @@ function renderWidgets()
             listeners: {
                 rowselect: function (selModel, index, record) {
 
-                    // a row was slected in the UI
-                    // update the current account and sequence
-
-
-                    // Can we loadReeBillUIForAccount and then load for sequence if there is  a sequence?
+                    // a row was selected in the UI, update subordinate ReeBill Data
                     if (record.data.sequence != null) {
                         loadReeBillUIForSequence(record.data.account, record.data.sequence);
-                    } else {
-                        // already called by accountGrid
-                        //loadReeBillUIForAccount(record.data.account);
                     }
 
                     // convert the parsed date into a string in the format expected by the back end
@@ -452,7 +461,6 @@ function renderWidgets()
     });
 
     sequencesStore.on('load', function() {
-        console.log('load');
         // select() is the right way to do this but it only works when the list
         // is "expanded", whatever this means
         //sequenceCombo.setValue(""+(sequencesStore.getTotalCount()));
@@ -677,7 +685,7 @@ function renderWidgets()
             }
 
             var reeBillEditorTreeLoader = new Ext.tree.TreeLoader({
-                dataUrl:'http://'+location.host+'/reebill/reebill_structure',
+                dataUrl:'http://'+location.host+'/reebill/reebill_structure_editor',
                 // defaults to true
                 clearOnLoad: true,
             });
@@ -894,7 +902,6 @@ function renderWidgets()
 
     function bindRSOperation()
     {
-        registerAjaxEvents()
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/bindrs',
             params: { 
@@ -912,7 +919,6 @@ function renderWidgets()
     function bindREEOperation()
     {
 
-        registerAjaxEvents()
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/bindree',
             params: { 
@@ -929,7 +935,6 @@ function renderWidgets()
 
     function rollOperation()
     {
-        registerAjaxEvents()
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/roll',
             params: { 
@@ -960,7 +965,6 @@ function renderWidgets()
 
     function renderOperation()
     {
-        registerAjaxEvents()
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/render',
             params: { 
@@ -980,8 +984,6 @@ function renderWidgets()
         Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', function(btn, recipients){
             if (btn == 'ok')
             {
-                registerAjaxEvents();
-
                 Ext.Ajax.request({
                     url: 'http://'+location.host+'/reebill/mail',
                     params: {
@@ -3021,7 +3023,6 @@ function renderWidgets()
                 listeners: {
                     rowselect: function (selModel, index, record) {
                         loadReeBillUIForAccount(record.data.account);
-                        console.log(utilbillGridStore);
                     }
                 }
             }),
@@ -4056,8 +4057,6 @@ function renderWidgets()
             Ext.Ajax.abort(tids[tid]);
         }
 
-        registerAjaxEvents();
-
         // update the journal form panel so entries get submitted to currently selected account
         // need to set account into a hidden field here since there is no data store behind the form
         journalFormPanel.getForm().findField("sequence").setValue(sequence)
@@ -4248,32 +4247,51 @@ var blockUICounter = 0;
 
 function registerAjaxEvents()
 {
-    Ext.Ajax.addListener('beforerequest', this.showSpinner, this);
-    Ext.Ajax.addListener('requestcomplete', this.hideSpinner, this);
-    Ext.Ajax.addListener('requestexception', this.hideSpinner, this);
+    Ext.Ajax.addListener('beforerequest', this.showSpinnerBeforeRequest, this);
+    Ext.Ajax.addListener('requestcomplete', this.hideSpinnerRequestComplete, this);
+    Ext.Ajax.addListener('requestexception', this.hideSpinnerRequestException, this);
+    Ext.Ajax.addListener('requestaborted', this.hideSpinnerRequestAborted, this);
 }
 
 function unregisterAjaxEvents()
 {
     Ext.Ajax.removeListener('beforerequest', this.showSpinner, this);
     Ext.Ajax.removeListener('requestcomplete', this.hideSpinner, this);
-    Ext.Ajax.removeListener('requestexception', this.hideSpinner, this);
+    Ext.Ajax.removeListener('requestexception', this.hideSpinnerException, this);
+    Ext.Ajax.removeListener('requestaborted', this.hideSpinnerRequestAborted, this);
 }
 
-function showSpinner()
+function showSpinnerBeforeRequest(conn, options)
 {
     blockUICounter++;
-    Ext.Msg.show({title: "Please Wait...", closable: true});
+    Ext.Msg.show({title: "Please Wait..." + blockUICounter, closable: false});
 }
 
-function hideSpinner()
+function hideSpinnerRequestComplete(conn, options)
 {
     blockUICounter--;
     if (!blockUICounter) {
         Ext.Msg.hide();
-        unregisterAjaxEvents();
+        //unregisterAjaxEvents();
     }
 }
+
+function hideSpinnerRequestException(conn, response, options)
+{
+    blockUICounter--;
+    if (!blockUICounter) {
+        Ext.Msg.hide();
+    }
+}
+
+function hideSpinnerRequestAborted(conn, response, options)
+{
+    blockUICounter--;
+    if (!blockUICounter) {
+        Ext.Msg.hide();
+    }
+}
+
 
 var NO_UTILBILL_SELECTED_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill.png"/></td></tr></table></div>';
 var NO_UTILBILL_FOUND_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill_notfound.png"/></td></tr></table></div>';

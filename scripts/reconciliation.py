@@ -26,7 +26,7 @@ LOG_FILE_NAME = 'reconciliation.log'
 LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
 def close_enough(x,y):
-    # TODO figure out what's really close enough
+    # TODO 25207215 figure out what's really close enough
     x = float(x)
     y = float(y)
     if y == 0:
@@ -54,7 +54,7 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
     # i'm writing to a file (and i can't know what the last item of the array is
     # going to be in advance because i'm only including items that have an error or
     # a difference from olap)
-    # TODO: fix this if it becomes a problem when the number of bills gets
+    # TODO 25207303: fix this if it becomes a problem when the number of bills gets
     # really large. if the file is not being written all at once, it should be
     # written in a separate location while it's incomplete and then moved to
     # replace the existing file when it's done, so BillToolBridge never tries

@@ -84,8 +84,12 @@ class BillToolBridge:
             # name & associated info comes from config file)
             print >> sys.stderr, 'Config file "%s" not found; creating it with default values'
             self.config.add_section('runtime')
-            self.config.set('runtime', 'integrate_oltp', 'true')
+            self.config.set('runtime', 'integrate_skyline_backend', 'true')
             self.config.set('runtime', 'nexus', 'true')
+            self.config.add_section('skyline_backend')
+            self.config.set('skyline_backend', 'oltp_url', 'http://duino-drop.appspot.com/')
+            self.config.set('skyline_backend', 'olap_host', 'tyrell')
+            self.config.set('skyline_backend', 'olap_database', 'dev')
             self.config.add_section('journaldb')
             self.config.set('journaldb', 'host', 'localhost')
             self.config.set('journaldb', 'port', '27017')
@@ -217,12 +221,12 @@ class BillToolBridge:
         # TODO it's theoretically bad to hard-code these, but all skyliner
         # configuration is hard-coded right now anyway
         self.runtime_config = dict(self.config.items('runtime'))
-        if self.config.getboolean('runtime', 'integrate_oltp') is True:
+        if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
             self.process = process.Process(self.config, self.state_db,
                     self.reebill_dao, self.ratestructure_dao,
-                    splinter.Splinter(self.runtime_config['oltp_url'],
-                        self.runtime_config['oltp_host'],
-                        self.runtime_config['oltp_database']))
+                    splinter.Splinter(self.config.get('skyline_backend', 'oltp_url'),
+                        self.config.get('skyline_backend', 'olap_host'),
+                        self.config.get('skyline_backend', 'olap_database')))
         else:
             self.process = process.Process(self.config, self.state_db,
                     self.reebill_dao, self.ratestructure_dao,
@@ -245,6 +249,10 @@ class BillToolBridge:
 
         # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
+
+    def dumps(self, data):
+        data['url'] = cherrypy.url()
+        return ju.dumps(data)
     
     @cherrypy.expose
     def index(self):
@@ -264,7 +272,7 @@ class BillToolBridge:
                 # load all data from json file: a list of dictionaries
                 items = ju.loads(json_file.read())
                 print items
-                return ju.dumps({
+                return self.dumps({
                     'success': True,
                     'rows': items[start:start+limit],
                     'results': len(items) # total number of items
@@ -338,14 +346,14 @@ class BillToolBridge:
     def handle_exception(self, e):
 
         if type(e) is Unauthenticated:
-            return ju.dumps({'success': False, 'errors':{'reason': str(e),
+            return self.dumps({'success': False, 'errors':{'reason': str(e),
                     'details':'none'}})
         else:
             try:
                 self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             except:
                 print >> sys.stderr, "Logger not functioning\n%s:\n%s" % (e, traceback.format_exc())
-            return ju.dumps({'success': False, 'errors':{'reason': str(e),
+            return self.dumps({'success': False, 'errors':{'reason': str(e),
                     'details':traceback.format_exc()}})
 
     @cherrypy.expose
@@ -355,7 +363,7 @@ class BillToolBridge:
         username is not.'''
         try:
             self.check_authentication()
-            return ju.dumps({'success':True,
+            return self.dumps({'success':True,
                     'username': cherrypy.session['user'].username})
         except Exception as e:
             return self.handle_exception(e)
@@ -382,7 +390,7 @@ class BillToolBridge:
             self.process.copy_actual_charges(reebill)
             self.reebill_dao.save_reebill(reebill)
 
-            return json.dumps({'success': True})
+            return self.dumps({'success': True})
 
         except Exception as e:
             return self.handle_exception(e)
@@ -410,7 +418,7 @@ class BillToolBridge:
 
             session.commit()
 
-            return json.dumps({'success': True})
+            return self.dumps({'success': True})
 
         except Exception as e:
             self.rollback_session(session)
@@ -431,7 +439,7 @@ class BillToolBridge:
             self.reebill_dao.save_reebill(reebill)
             self.journal_dao.journal(account, sequence, "ReeBill rolled")
             session.commit()
-            return json.dumps({'success': True})
+            return self.dumps({'success': True})
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)
@@ -446,7 +454,7 @@ class BillToolBridge:
             self.process.delete_reebill(session, account, sequence)
             self.journal_dao.journal(customer.account, sequence, "Deleted")
             session.commit()
-            return json.dumps({'success': True})
+            return self.dumps({'success': True})
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)
@@ -464,7 +472,7 @@ class BillToolBridge:
             self.process.pay_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
             session.commit()
-            return json.dumps({'success': True})
+            return self.dumps({'success': True})
 
         except Exception as e:
             self.rollback_session(session)
@@ -484,17 +492,18 @@ class BillToolBridge:
                 raise Exception("Nexus is not integrated")
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
-            fbd.fetch_bill_data(
-                "http://duino-drop.appspot.com/",
-                nu.NexusUtil().olap_id(account),
-                reebill
-            )
+            if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
+                fbd.fetch_bill_data(
+                    self.config.get('skyline_backend', 'oltp_url'),
+                    nu.NexusUtil().olap_id(account),
+                    reebill
+                )
+
+                self.journal_dao.journal(account, sequence, "RE&E Bound")
 
             self.reebill_dao.save_reebill(reebill)
 
-            self.journal_dao.journal(account, sequence, "RE&E Bound")
-
-            return json.dumps({'success': True})
+            return self.dumps({'success': True})
 
         except Exception as e:
             return self.handle_exception(e)
@@ -534,7 +543,7 @@ class BillToolBridge:
 
             session.commit()
 
-            return json.dumps({'success': True})
+            return self.dumps({'success': True})
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)
@@ -546,7 +555,7 @@ class BillToolBridge:
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
             if not self.config.getboolean('billimages', 'show_reebill_images'):
-                return ju.dumps({'success': False, 'errors': {'reason':
+                return self.dumps({'success': False, 'errors': {'reason':
                         ('"Render" does nothing because reebill images have '
                         'been turned off.'), 'details': ''}})
             reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -557,7 +566,7 @@ class BillToolBridge:
                 "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
                 False
             )
-            return json.dumps({'success': True})
+            return self.dumps({'success': True})
         except Exception as e:
             return self.handle_exception(e)
 
@@ -637,7 +646,7 @@ class BillToolBridge:
                         reebill.sequence)
 
             session.commit()
-            return json.dumps({'success': True})
+            return self.dumps({'success': True})
 
         except Exception as e:
             self.rollback_session(session)
@@ -683,7 +692,7 @@ class BillToolBridge:
             rows = [{'account': account, 'name': full_name} for account,
                     full_name in zip(accounts, self.full_names_of_accounts(accounts))]
             session.commit()
-            return json.dumps({'success': True, 'rows':rows})
+            return self.dumps({'success': True, 'rows':rows})
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)
@@ -712,7 +721,7 @@ class BillToolBridge:
                 'committed': self.state_db.is_issued(session, account, sequence)}
                 for sequence in sequences]
             session.commit()
-            return json.dumps({'success': True, 'rows':rows})
+            return self.dumps({'success': True, 'rows':rows})
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)
@@ -736,7 +745,7 @@ class BillToolBridge:
                     for i, status in enumerate(statuses)]
 
             session.commit()
-            return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
+            return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)
@@ -762,7 +771,7 @@ class BillToolBridge:
 
             session.commit()
 
-            return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
+            return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
 
         except Exception as e:
             self.rollback_session(session)
@@ -782,7 +791,7 @@ class BillToolBridge:
 
             session.commit()
 
-            return ju.dumps({'success': True, 'rows':rows, 'results':total_count})
+            return self.dumps({'success': True, 'rows':rows, 'results':total_count})
 
         except Exception as e:
             self.rollback_session(session)
@@ -938,7 +947,7 @@ class BillToolBridge:
             # This is done so that the UI can configure itself with no data for the
             # requested rate structure 
             if reebill is None:
-                return ju.dumps({'success':True})
+                return self.dumps({'success':True})
 
             rate_structure = self.ratestructure_dao.load_cprs(
                 reebill.account, 
@@ -951,7 +960,7 @@ class BillToolBridge:
             rates = rate_structure["rates"]
 
             if xaction == "read":
-                return json.dumps({'success': True, 'rows':rates})
+                return self.dumps({'success': True, 'rows':rates})
 
             elif xaction == "update":
 
@@ -999,7 +1008,7 @@ class BillToolBridge:
                     rate_structure
                 )
 
-                return json.dumps({'success':True})
+                return self.dumps({'success':True})
 
             elif xaction == "create":
 
@@ -1018,7 +1027,7 @@ class BillToolBridge:
                     rate_structure
                 )
 
-                return json.dumps({'success':True, 'rows':new_rate})
+                return self.dumps({'success':True, 'rows':new_rate})
 
             elif xaction == "destroy":
 
@@ -1051,7 +1060,7 @@ class BillToolBridge:
                     rate_structure
                 )
 
-                return json.dumps({'success':True})
+                return self.dumps({'success':True})
 
         except Exception as e:
             return self.handle_exception(e)
@@ -1070,7 +1079,7 @@ class BillToolBridge:
             # This is done so that the UI can configure itself with no data for the
             # requested rate structure 
             if reebill is None:
-                return ju.dumps({'success':True})
+                return self.dumps({'success':True})
 
             utility_name = reebill.utility_name_for_service(service)
             rs_name = reebill.rate_structure_name_for_service(service)
@@ -1085,7 +1094,7 @@ class BillToolBridge:
             rates = rate_structure["rates"]
 
             if xaction == "read":
-                return json.dumps({'success': True, 'rows':rates})
+                return self.dumps({'success': True, 'rows':rates})
 
             elif xaction == "update":
 
@@ -1132,7 +1141,7 @@ class BillToolBridge:
                     rate_structure
                 )
 
-                return json.dumps({'success':True})
+                return self.dumps({'success':True})
 
             elif xaction == "create":
 
@@ -1148,7 +1157,7 @@ class BillToolBridge:
                     rate_structure
                 )
 
-                return json.dumps({'success':True, 'rows':new_rate})
+                return self.dumps({'success':True, 'rows':new_rate})
 
             elif xaction == "destroy":
 
@@ -1180,7 +1189,7 @@ class BillToolBridge:
                     rate_structure
                 )
 
-                return json.dumps({'success':True})
+                return self.dumps({'success':True})
 
         except Exception as e:
             return self.handle_exception(e)
@@ -1199,7 +1208,7 @@ class BillToolBridge:
             # This is done so that the UI can configure itself with no data for the
             # requested rate structure 
             if reebill is None:
-                return ju.dumps({'success':True})
+                return self.dumps({'success':True})
 
             utility_name = reebill.utility_name_for_service(service)
             rs_name = reebill.rate_structure_name_for_service(service)
@@ -1211,7 +1220,7 @@ class BillToolBridge:
             rates = rate_structure["rates"]
 
             if xaction == "read":
-                return json.dumps({'success': True, 'rows':rates})
+                return self.dumps({'success': True, 'rows':rates})
 
             elif xaction == "update":
 
@@ -1258,7 +1267,7 @@ class BillToolBridge:
                     rate_structure
                 )
 
-                return json.dumps({'success':True})
+                return self.dumps({'success':True})
 
             elif xaction == "create":
 
@@ -1274,7 +1283,7 @@ class BillToolBridge:
                     rate_structure
                 )
 
-                return json.dumps({'success':True, 'rows':new_rate})
+                return self.dumps({'success':True, 'rows':new_rate})
 
             elif xaction == "destroy":
 
@@ -1306,7 +1315,7 @@ class BillToolBridge:
                     rate_structure
                 )
 
-                return json.dumps({'success':True})
+                return self.dumps({'success':True})
 
         except Exception as e:
             return self.handle_exception(e)
@@ -1334,7 +1343,7 @@ class BillToolBridge:
 
                 
                 session.commit()
-                return json.dumps({'success': True, 'rows':payments})
+                return self.dumps({'success': True, 'rows':payments})
 
             elif xaction == "update":
 
@@ -1357,7 +1366,7 @@ class BillToolBridge:
                 
                 session.commit()
 
-                return json.dumps({'success':True})
+                return self.dumps({'success':True})
 
             elif xaction == "create":
 
@@ -1376,7 +1385,7 @@ class BillToolBridge:
 
 
                 session.commit()
-                return json.dumps({'success':True, 'rows':row})
+                return self.dumps({'success':True, 'rows':row})
 
             elif xaction == "destroy":
 
@@ -1392,7 +1401,7 @@ class BillToolBridge:
 
                 session.commit()
                          
-                return json.dumps({'success':True})
+                return self.dumps({'success':True})
 
         except Exception as e:
             self.rollback_session(session)
@@ -1418,19 +1427,19 @@ class BillToolBridge:
                 rows = [{'sequence': reebill.sequence} for reebill in reebills]
 
                 session.commit()
-                return json.dumps({'success': True, 'rows':rows, 'results':totalCount})
+                return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
 
             elif xaction == "update":
 
-                return json.dumps({'success':False})
+                return self.dumps({'success':False})
 
             elif xaction == "create":
 
-                return json.dumps({'success':False})
+                return self.dumps({'success':False})
 
             elif xaction == "destroy":
 
-                return json.dumps({'success':False})
+                return self.dumps({'success':False})
 
         except Exception as e:    
             self.rollback_session(session)
@@ -1456,7 +1465,7 @@ class BillToolBridge:
             # if this is the case, return no periods.  
             # This is done so that the UI can configure itself with no data
             if reebill is None:
-                return ju.dumps({})
+                return self.dumps({})
 
             ba = reebill.billing_address
             sa = reebill.service_address
@@ -1479,7 +1488,7 @@ class BillToolBridge:
                 'sa_postal_code': sa['sa_postal_code'] if 'sa_postal_code' in sa else '',
             }
 
-            return ju.dumps(addresses)
+            return self.dumps(addresses)
 
         except Exception as e:
             return self.handle_exception(e)
@@ -1520,7 +1529,7 @@ class BillToolBridge:
 
             self.reebill_dao.save_reebill(reebill)
 
-            return ju.dumps({'success':True})
+            return self.dumps({'success':True})
 
         except Exception as e:
             return self.handle_exception(e)
@@ -1550,7 +1559,7 @@ class BillToolBridge:
             # This is done so that the UI can configure itself with no data for the
             # requested measured usage
             if reebill is None:
-                return ju.dumps({})
+                return self.dumps({})
             
             utilbill_periods = {}
             for service in reebill.services:
@@ -1560,7 +1569,7 @@ class BillToolBridge:
                     'end': end
                     }
 
-            return ju.dumps(utilbill_periods)
+            return self.dumps(utilbill_periods)
 
         except Exception as e:
             return self.handle_exception(e)
@@ -1579,7 +1588,7 @@ class BillToolBridge:
             reebill.set_utilbill_period_for_service(service, (datetime.strptime(begin, "%Y-%m-%d"),datetime.strptime(end, "%Y-%m-%d")))
             self.reebill_dao.save_reebill(reebill)
 
-            return ju.dumps({'success':True})
+            return self.dumps({'success':True})
 
         except Exception as e:
             return self.handle_exception(e)
@@ -1605,10 +1614,10 @@ class BillToolBridge:
             # This is done so that the UI can configure itself with no data for the
             # requested charges 
             if reebill is None:
-                return ju.dumps({'success':True, 'rows':[]})
+                return self.dumps({'success':True, 'rows':[]})
 
             flattened_charges = reebill.actual_chargegroups_flattened(service)
-            return ju.dumps({'success': True, 'rows': flattened_charges})
+            return self.dumps({'success': True, 'rows': flattened_charges})
 
         except Exception as e:
             return self.handle_exception(e)
@@ -1628,10 +1637,10 @@ class BillToolBridge:
             # This is done so that the UI can configure itself with no data for the
             # requested charges 
             if reebill is None:
-                return ju.dumps({'success':True, 'rows':[]})
+                return self.dumps({'success':True, 'rows':[]})
 
             flattened_charges = reebill.hypothetical_chargegroups_flattened(service)
-            return ju.dumps({'success': True, 'rows': flattened_charges})
+            return self.dumps({'success': True, 'rows': flattened_charges})
 
         except Exception as e:
             return self.handle_exception(e)
@@ -1654,7 +1663,7 @@ class BillToolBridge:
             # copy actual charges to hypothetical
             self.copyactual(account, sequence)
 
-            return ju.dumps({'success': True})
+            return self.dumps({'success': True})
 
         except Exception as e:
             return self.handle_exception(e)
@@ -1672,7 +1681,7 @@ class BillToolBridge:
             reebill.set_hypothetical_chargegroups_flattened(service, flattened_charges)
             self.reebill_dao.save_reebill(reebill)
         
-            return ju.dumps({'success': True})
+            return self.dumps({'success': True})
 
         except Exception as e:
             return self.handle_exception(e)
@@ -1719,11 +1728,11 @@ class BillToolBridge:
             # This is done so that the UI can configure itself with no data for the
             # requested measured usage
             if reebill is None:
-                return ju.dumps({'success': True})
+                return self.dumps({'success': True})
 
             meters = reebill.meters
 
-            return ju.dumps(meters)
+            return self.dumps(meters)
 
         except Exception as e:
             return self.handle_exception(e)
@@ -1744,7 +1753,7 @@ class BillToolBridge:
 
             self.reebill_dao.save_reebill(reebill)
 
-            return ju.dumps({'success':True})
+            return self.dumps({'success':True})
 
         except Exception as e:
             return self.handle_exception(e)
@@ -1761,7 +1770,7 @@ class BillToolBridge:
             reebill.set_meter_actual_register(service, meter_identifier, register_identifier, Decimal(quantity))
             self.reebill_dao.save_reebill(reebill)
 
-            return ju.dumps({'success':True})
+            return self.dumps({'success':True})
 
         except Exception as e:
             return self.handle_exception(e)
@@ -1805,7 +1814,7 @@ class BillToolBridge:
                         begin_date, end_date, datetime.utcnow(),
                         state=db_objects.UtilBill.SkylineEstimated)
                 session.commit()
-                return ju.dumps({'success':True})
+                return self.dumps({'success':True})
             else:
                 # if there is a file, get the Python file object and name
                 # string from CherryPy, and pass those to BillUpload to upload
@@ -1816,12 +1825,12 @@ class BillToolBridge:
                     self.state_db.record_utilbill_in_database(session, account,
                             begin_date, end_date, datetime.utcnow())
                     session.commit()
-                    return ju.dumps({'success':True})
+                    return self.dumps({'success':True})
                 else:
                     self.logger.error('file upload failed:', begin_date, end_date,
                             file_to_upload.filename)
                     session.commit()
-                    return ju.dumps({'success':False, 'errors': {
+                    return self.dumps({'success':False, 'errors': {
                         'reason':'file upload failed', 'details':'Returned False'}})
             
         except Exception as e: 
@@ -1841,22 +1850,22 @@ class BillToolBridge:
             journal_entries = self.journal_dao.load_entries(account)
 
             if xaction == "read":
-                return ju.dumps({'success': True, 'rows':journal_entries})
+                return self.dumps({'success': True, 'rows':journal_entries})
 
             elif xaction == "update":
 
                 # TODO: 20493983 eventually allow admin user to override and edit
-                return json.dumps({'success':False, 'errors':{'reason':'Not supported'}})
+                return self.dumps({'success':False, 'errors':{'reason':'Not supported'}})
 
             elif xaction == "create":
 
                 # TODO: 20493983 necessary for adding new journal entries directy to grid
-                return json.dumps({'success':False, 'errors':{'reason':'Not supported'}})
+                return self.dumps({'success':False, 'errors':{'reason':'Not supported'}})
 
             elif xaction == "destroy":
 
                 # TODO: 20493983 eventually allow admin user to override and edit
-                return json.dumps({'success':False, 'errors':{'reason':'Not supported'}})
+                return self.dumps({'success':False, 'errors':{'reason':'Not supported'}})
 
         except Exception as e:
             return self.handle_exception(e)
@@ -1871,7 +1880,7 @@ class BillToolBridge:
 
             self.journal_dao.journal(account, sequence, entry)
 
-            return json.dumps({'success':True})
+            return self.dumps({'success':True})
 
         except Exception as e:
             return self.handle_exception(e)
@@ -1922,7 +1931,7 @@ class BillToolBridge:
 
             session.commit()
 
-            return ju.dumps({'success': True, 'rows':rows, 'results':totalCount})
+            return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)
@@ -1946,7 +1955,7 @@ class BillToolBridge:
                 # fix is to make it a datetime with a later time.
                 the_datetime = datetime(the_date.year, the_date.month, the_date.day, 23)
             session.commit()
-            return ju.dumps({'success':True, 'date': the_datetime})
+            return self.dumps({'success':True, 'date': the_datetime})
         except Exception as e: 
             self.rollback_session(session)
             return self.handle_exception(e)
@@ -2015,7 +2024,7 @@ class BillToolBridge:
                 utilbill.period_end = new_period_end
                 session.commit()
 
-                return ju.dumps({'success': True})
+                return self.dumps({'success': True})
             elif xaction == 'create':
                 # creation happens via upload_utility_bill
                 raise Exception('utilbill_grid() does not accept xaction "create"')
@@ -2034,7 +2043,7 @@ class BillToolBridge:
             # TODO: put url here, instead of in billentry.js?
             resolution = cherrypy.session['user'].preferences['bill_image_resolution']
             result = self.billUpload.getUtilBillImagePath(account, begin_date, end_date, resolution)
-            return ju.dumps({'success':True, 'imageName':result})
+            return self.dumps({'success':True, 'imageName':result})
         except Exception as e: 
             return self.handle_exception(e)
 
@@ -2045,11 +2054,11 @@ class BillToolBridge:
             if not account or not sequence or not resolution:
                 raise ValueError("Bad Parameter Value")
             if not self.config.getboolean('billimages', 'show_reebill_images'):
-                return ju.dumps({'success': False, 'errors': {'reason':
+                return self.dumps({'success': False, 'errors': {'reason':
                         'Reebill images have been turned off.'}})
             resolution = cherrypy.session['user'].preferences['bill_image_resolution']
             result = self.billUpload.getReeBillImagePath(account, sequence, resolution)
-            return ju.dumps({'success':True, 'imageName':result})
+            return self.dumps({'success':True, 'imageName':result})
         except Exception as e: 
             return self.handle_exception(e)
     
@@ -2058,7 +2067,7 @@ class BillToolBridge:
         try:
             self.check_authentication()
             resolution = cherrypy.session['user'].preferences['bill_image_resolution']
-            return ju.dumps({'success':True, 'resolution': resolution})
+            return self.dumps({'success':True, 'resolution': resolution})
         except Exception as e:
             return self.handle_exception(e)
 
@@ -2068,7 +2077,7 @@ class BillToolBridge:
             self.check_authentication()
             cherrypy.session['user'].preferences['bill_image_resolution'] = int(resolution)
             self.user_dao.save_user(cherrypy.session['user'])
-            return ju.dumps({'success':True})
+            return self.dumps({'success':True})
         except Exception as e:
             return self.handle_exception(e)
 
@@ -2166,10 +2175,10 @@ class BillToolBridge:
                     tree.append(utilbill_node)
 
                 # we want to return success to ajax call and then load the tree in page
-                #return ju.dumps({'success':True, 'reebill_structure':tree});
+                #return self.dumps({'success':True, 'reebill_structure':tree});
                 # but the TreeLoader doesn't abide by the above ajax packet
                 session.commit()
-                return ju.dumps(tree);
+                return self.dumps(tree);
 
         except Exception as e:
             self.rollback_session(session)
@@ -2244,7 +2253,7 @@ class BillToolBridge:
 
             session.commit()
 
-            return ju.dumps({'success': True, 'node':new_node })
+            return self.dumps({'success': True, 'node':new_node })
 
         except Exception as e:
             self.rollback_session(session)
@@ -2277,7 +2286,7 @@ class BillToolBridge:
 
             session.commit()
 
-            return ju.dumps({'success': True })
+            return self.dumps({'success': True })
 
         except Exception as e:
             self.rollback_session(session)
@@ -2357,7 +2366,7 @@ class BillToolBridge:
 
             session.commit()
 
-            return ju.dumps({'success': True, 'node':updated_node})
+            return self.dumps({'success': True, 'node':updated_node})
 
         except Exception as e:
             self.rollback_session(session)
