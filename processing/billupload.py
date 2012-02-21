@@ -306,6 +306,7 @@ class BillUpload(object):
                     str(density), bill_file_path, \
                     bill_image_path_without_extension + '.' + IMAGE_EXTENSION]
 
+        print convert_command
         convert_result = subprocess.Popen(convert_command, \
                 stderr=subprocess.PIPE)
 

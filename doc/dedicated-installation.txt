@@ -62,6 +62,11 @@ Install the following packages with sudo pip install [package]
     simplejson
     MySQL-Python
     xlwt
+
+For Rendering Images
+    sudo yum install ImageMagick
+    sudo yum install html2ps
+    sudo yum install poppler-utils (for pdftoppm)
     
 
 Chart Director 'pychartdir'
@@ -195,46 +200,45 @@ Configure Apache2
 
     Example virtual host config directive
     -------------------------------------
-
         <VirtualHost *:80>
-            ServerName atsite
+                ServerName atsite.skylineinnovations.net
 
-            ServerAdmin admin@skylineinnovations.com
+                ServerAdmin admin@skylineinnovations.com
 
                 DocumentRoot /var/local/reebill/billing/reebill/ui
                 <Directory /var/local/reebill/billing/reebill/ui>
-                DirectoryIndex /reebill 
+                        DirectoryIndex /reebill
                         Options FollowSymLinks
                         AllowOverride None
                 </Directory>
-            # directory where utility bill images are saved
-            Alias /utilitybillimages /tmp/billimages-prod
-            #<Directory /tmp/billimages-prod>
-                #Order deny,allow
-                #Allow from all
-                #Options Indexes FollowSymLinks MultiViews
-                #AllowOverride None
-            #</Directory>
+                # directory where utility bill images are saved
+                Alias /utilitybillimages /tmp/billimages
+                #<Directory /tmp/billimages-prod>
+                    #Order deny,allow
+                    #Allow from all
+                    #Options Indexes FollowSymLinks MultiViews
+                    #AllowOverride None
+                #</Directory>
 
 
-            ErrorLog ${APACHE_LOG_DIR}/reebill-error.log
+                ErrorLog /var/log/httpd/reebill-error.log
 
-            # Possible values include: debug, info, notice, warn, error, crit,
-            # alert, emerg.
-            LogLevel error
+                # Possible values include: debug, info, notice, warn, error, crit,
+                # alert, emerg.
+                LogLevel error
 
-            CustomLog ${APACHE_LOG_DIR}/reebill-access.log combined
+                CustomLog /var/log/httpd/reebill-access.log combined
 
                 WSGIScriptAlias /reebill /var/local/reebill/billing/reebill/bill_tool_bridge.py
 
                 #WSGIDaemonProcess reebill user=reebill group=reebill processes=1 threads=10 python-path=/var/local/reebill/lib/python2.6/site-packages/ChartDirector/lib/:/var/local/reebill-prod/lib/python2.6/site-packages
-            # dedicated host, shared python environment
-                WSGIDaemonProcess reebill user=reebill group=reebill processes=1 threads=10 
+                # dedicated host, shared python environment
+                WSGIDaemonProcess reebill user=reebill group=reebill processes=1 threads=10 python-path=/var/local/reebill/:/usr/lib/python2.6/site-packages/ChartDirector/lib
 
-            WSGIProcessGroup reebill
+                WSGIProcessGroup reebill
+
 
         </VirtualHost>
-
 
 
 
@@ -270,6 +274,10 @@ fabexcludes no longer excludes them
 
 
 
+MISC
+====
+
+The WSGI user must own the /db directory
 
 
 
