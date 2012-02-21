@@ -442,52 +442,45 @@ class Process(object):
         # externalize this calculation to utilities
         next_stats['total_trees'] = next_stats['total_co2_offset']/Decimal("1300.0")
         
-        # determine re consumption trend
-        ## last day of re bill period is taken to be the month of consumption (This is ultimately utility dependent - 
-        ## especially when graphing ce from the utilty bill)
-        ##billdate = next_bill.rebill_summary.end
-        #billdate = next_bill.period_end
-        ## determine current month (this needs to be quantized according to some logic)
-        #month = billdate.strftime("%b")
 
-        #for period in next_stats['consumption_trend']:
-            #if(period['month'] == month):
-                #period['quantity'] = re/Decimal("100000.0")
+        # TODO 25227967 clean this up - we should probably be passing in the back end objects
+        # vs instantiating them here.
 
-        # objects for getting olap data
-        olap_id = nexus_util.NexusUtil().olap_id(reebill.account)
-        install = self.splinter.get_install_obj_for(olap_id)
-        monguru = skyliner.skymap.monguru.Monguru('tyrell', 'dev') # TODO don't hard-code this
+        if (self.config.get('runtime', 'integrate_skyline_backend') is True):
+            # objects for getting olap data
+            olap_id = nexus_util.NexusUtil().olap_id(reebill.account)
+            install = self.splinter.get_install_obj_for(olap_id)
+            monguru = skyliner.skymap.monguru.Monguru('tyrell', 'dev') # TODO don't hard-code this
 
-        bill_year, bill_month = dateutils.estimate_month(
-                next_bill.period_begin,
-                next_bill.period_end)
-        next_stats['consumption_trend'] = []
+            bill_year, bill_month = dateutils.estimate_month(
+                    next_bill.period_begin,
+                    next_bill.period_end)
+            next_stats['consumption_trend'] = []
 
-        first_bill_date = self.reebill_dao \
-                .get_first_bill_date_for_account(reebill.account)
-        first_bill_year = first_bill_date.year
-        first_bill_month = first_bill_date.month
+            first_bill_date = self.reebill_dao \
+                    .get_first_bill_date_for_account(reebill.account)
+            first_bill_year = first_bill_date.year
+            first_bill_month = first_bill_date.month
 
-        first_month = install.install_completed.month
-        for year, month in dateutils.months_of_past_year(bill_year, bill_month):
-            # months before first bill have 0 energy, even if data were
-            # collected during that time.
-            if year < first_bill_year or month < first_bill_month:
-                renewable_energy_btus = 0
-            else:
-                # get billing data from OLAP (instead of
-                # DataHandler.get_single_chunk_for_range()) for speed only.
-                # we insist that data should be available during the month of
-                # first billing and all following months; if get_data_for_month()
-                # fails, that's a real error that we shouldn't ignore.
-                renewable_energy_btus = monguru.get_data_for_month(install, year, month).energy_sold
+            first_month = install.install_completed.month
+            for year, month in dateutils.months_of_past_year(bill_year, bill_month):
+                # months before first bill have 0 energy, even if data were
+                # collected during that time.
+                if year < first_bill_year or month < first_bill_month:
+                    renewable_energy_btus = 0
+                else:
+                    # get billing data from OLAP (instead of
+                    # DataHandler.get_single_chunk_for_range()) for speed only.
+                    # we insist that data should be available during the month of
+                    # first billing and all following months; if get_data_for_month()
+                    # fails, that's a real error that we shouldn't ignore.
+                    renewable_energy_btus = monguru.get_data_for_month(install, year, month).energy_sold
 
-            therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
-            next_stats['consumption_trend'].append({
-                'month': calendar.month_abbr[month],
-                'quantity': therms
-            })
+                therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
+                next_stats['consumption_trend'].append({
+                    'month': calendar.month_abbr[month],
+                    'quantity': therms
+                })
              
 
 
