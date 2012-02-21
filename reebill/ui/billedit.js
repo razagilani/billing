@@ -34,7 +34,7 @@ function renderWidgets()
                     Ext.MessageBox.alert("Authentication", "Not logged in, or session expiration", function(){ document.location = "../"});
                 } else {
                     // turn on to log application failures
-                    //console.log(response.responseText);
+                    console.log(response.responseText);
                 }
                 
             }
@@ -3742,18 +3742,21 @@ function renderWidgets()
         {
             id: 'statusTab',
             title: 'Accounts',
+            disabled: accountsTabDisabled,
             xtype: 'panel',
             layout: 'accordion',
             items: [accountGrid,accountReeValueGrid,newAccountFormPanel, ]
         },{
             id: 'paymentTab',
             title: 'Pay',
+            disabled: paymentTabDisabled,
             xtype: 'panel',
             layout: 'accordion',
             items: [paymentGrid]
         },{
             id: 'utilityBillTab',
             title: 'Utility Bill',
+            disabled: utilityBillTabDisabled,
             xtype: 'panel',
             layout: 'vbox',
             layoutConfig : {
@@ -3769,6 +3772,7 @@ function renderWidgets()
         },{
             id: 'reeBillTab',
             title: 'ReeBill',
+            disabled: reeBillTabDisabled,
             xtype: 'panel',
             layout: 'accordion',
             /*layoutConfig : {
@@ -3781,11 +3785,13 @@ function renderWidgets()
         },{
             id: 'ubPeriodsTab',
             title: 'Bill Periods',
+            disabled: billPeriodsTabDisabled,
             xtype: 'panel',
             items: null // configureUBPeriodForm set this
         },{
             id: 'ubMeasuredUsagesTab',
             title: 'Usage Periods',
+            disabled: usagePeriodsTabDisabled,
             xtype: 'panel',
             layout: 'vbox',
             layoutConfig : {
@@ -3796,6 +3802,7 @@ function renderWidgets()
         },{
             id: 'rateStructureTab',
             title: 'Rate Structure',
+            disabled: rateStructureTabDisabled,
             layout: 'border',
             items: [
             {
@@ -3815,7 +3822,9 @@ function renderWidgets()
                 items: [URSRSIGrid]
             }]
         },{
+            id: 'chargeItemsTab',
             title: 'Charge Items',
+            disabled: chargeItemsTabDisabled,
             xtype: 'panel',
             layout: 'accordion',
             items: [
@@ -3825,6 +3834,7 @@ function renderWidgets()
         },{
             id: 'mailTab',
             title: 'Mail',
+            disabled: mailTabDisabled,
             xtype: 'panel',
             layout: 'vbox',
             layoutConfig : {
@@ -3836,6 +3846,7 @@ function renderWidgets()
         },{
             id: 'journalTab',
             title: 'Journal',
+            disabled: journalTabDisabled,
             xtype: 'panel',
             layout: 'vbox',
             layoutConfig : {
@@ -3847,6 +3858,7 @@ function renderWidgets()
         },{
             id: 'reconciliationTab',
             title: 'Reconciliation Report',
+            disabled: reconciliationTabDisabled,
             xtype: 'panel',
             layout: 'fit',
             //layoutConfig : {
@@ -3859,6 +3871,7 @@ function renderWidgets()
         },{
             id: 'preferencesTab',
             title: 'Preferences',
+            disabled: preferencesTabDisabled,
             xtype: 'panel',
             layout: 'vbox',
             layoutConfig : {
@@ -3869,6 +3882,7 @@ function renderWidgets()
         },{
             id: 'aboutTab',
             title: 'About',
+            disabled: aboutTabDisabled,
             html: '<table style="width: 100%; border: 0; margin-top:20px;"><tr><td align="center">' + SKYLINE_VERSIONINFO + '</td></tr><tr><td align="center"><img width="50%" src="MrJonas.png"/></td></tr><tr><td align="center"><font style="font-family: impact; font-size:68pt;">Masterbiller</font></td></tr></table>'
         }]
     });
