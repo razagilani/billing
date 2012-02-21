@@ -251,7 +251,10 @@ class BillToolBridge:
         self.logger.info('BillToolBridge initialized')
 
     def dumps(self, data):
-        data['url'] = cherrypy.url()
+        # don't turn this on unless you need the json results to return
+        # the url that was called. This is a good client side debug feature
+        # when you need to associate ajax calls with ajax responses.
+        #data['url'] = cherrypy.url()
         return ju.dumps(data)
     
     @cherrypy.expose
