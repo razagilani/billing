@@ -48,8 +48,8 @@ function renderWidgets()
     });
 
     // pass configuration information to containing webpage
-    var SKYLINE_VERSIONINFO="UNSPECIFIED";
-    var SKYLINE_DEPLOYENV="UNSPECIFIED";
+    var SKYLINE_VERSIONINFO="UNSPECIFIED"
+    var SKYLINE_DEPLOYENV="UNSPECIFIED"
     versionInfo = Ext.get('SKYLINE_VERSIONINFO');
     versionInfo.update(SKYLINE_VERSIONINFO);
     deployEnv = Ext.get('SKYLINE_DEPLOYENV');
