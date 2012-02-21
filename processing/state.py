@@ -26,6 +26,8 @@ def guess_utilbill_periods(start_date, end_date):
     # hard-coded average period length of existing utilbills (computed using
     # utilbill_histogram.py), and round to nearest integer--but never go below
     # 1, since there must be at least 1 bill
+    # TODO this hard-coded constant was the average period length of a sample
+    # of reebills; replace it with something smarter
     num_bills = max(1, int(round((end_date - start_date).days / 30.872)))
 
     # each bill's period will have the same length (except possibly the last one)
@@ -41,6 +43,38 @@ def guess_utilbill_periods(start_date, end_date):
     periods.append((start_date + timedelta(days= (num_bills-1) * period_length),
         end_date))
     return periods
+
+#def guess_next_reebill_end_date(session, account, start_date):
+#    '''Returns the probable end date of a newly-created reebill given its start
+#    date.'''
+#    # The method is based on the assumption that each customer has only one
+#    # utility bill per service during each reebill period. If you iterate in
+#    # roughly chronological order through utility bills whose start date
+#    # exceeds start_date and that are not associated with a reebill, and you
+#    # collect the bills up until the first one whose service has already been
+#    # seen, you'll get the set of utility bills that probably belong to this
+#    # reebill. The latest end date in that set is the end date of the reebill.
+#    # date of all bills.
+#
+#    # get all this customer's utility bill that aren't associated with a
+#    # reebill and whose date comes after 'start_date', in order of when their
+#    # period starts
+#    customer = session.query(Customer).filter(Customer.account==account).one()
+#    possible_utilbills = session.query(UtilBill) \
+#            .filter(UtilBill.customer_id == customer.id) \
+#            .filter(Utilbill.reebill_id == None) \
+#            .filter(Utilbill.period_start > start_date) \
+#            .order_by(Utilbill.period_start)
+#
+#    # find the subset of the possible_utilbills that probably belong to this
+#    # reebill
+#    services = set()
+#    probable_utilbills = []
+#    for utilbill in possible_utilbills:
+#        # TODO get service--not in mysql
+#        pass
+#
+#    return max(ub.period_end for ub in probable_utilbills)
 
 class StateDB:
 
