@@ -4,6 +4,7 @@ var DEFAULT_RESOLUTION = 100;
 // Ext 4 fires events when ajax is aborted
 // so this is an Ext 3 workaround
 // If Ajax is aborted, we need to generate an event to unblock the UI
+/*
 Ext.Ajax.addEvents({requestaborted:true});
 Ext.override(Ext.data.Connection, {
     abort : function(transId){
@@ -13,10 +14,11 @@ Ext.override(Ext.data.Connection, {
         }
     }
 });
+*/
 
 function renderWidgets()
 {
-    registerAjaxEvents();
+    //registerAjaxEvents();
     // global ajax timeout
     Ext.Ajax.timeout = 960000; //16 minutes
 
@@ -28,11 +30,11 @@ function renderWidgets()
             // handle the various failure modes
             if (jsonData.success == false) {
                 if (jsonData.errors.reason == "No Session") {
-                    console.log("Not logged in, redirecting")
+                    console.log("Not logged in, redirecting");
                     Ext.MessageBox.alert("Authentication", "Not logged in, or session expiration", function(){ document.location = "../"});
                 } else {
                     // turn on to log application failures
-                    //console.log(response.responseText)
+                    //console.log(response.responseText);
                 }
                 
             }
@@ -46,8 +48,8 @@ function renderWidgets()
     });
 
     // pass configuration information to containing webpage
-    var SKYLINE_VERSIONINFO="UNSPECIFIED"
-    var SKYLINE_DEPLOYENV="UNSPECIFIED"
+    var SKYLINE_VERSIONINFO="UNSPECIFIED";
+    var SKYLINE_DEPLOYENV="UNSPECIFIED";
     versionInfo = Ext.get('SKYLINE_VERSIONINFO');
     versionInfo.update(SKYLINE_VERSIONINFO);
     deployEnv = Ext.get('SKYLINE_DEPLOYENV');
@@ -3136,6 +3138,7 @@ function renderWidgets()
                     disabled: false,
                 },
                 {
+                    // TODO:25227403 - export on account at a time 
                     xtype: 'linkbutton',
                     // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
                     href: "http://"+location.host+"/reebill/excel_export",
@@ -3944,7 +3947,10 @@ function renderWidgets()
     // load things global to the account
     function loadReeBillUIForAccount(account) {
 
+        // TODO: 25226989 ajax cancelled???
+
         // unload previously loaded utility and reebill images
+        // TODO 25226739: don't overwrite if they don't need to be updated.  Causes UI to flash.
         Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(null, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
         Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML(null, 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
 
@@ -3986,6 +3992,7 @@ function renderWidgets()
 
         // set begin date for next utilbill in upload form panel to end date of
         // last utilbill, if there is one
+        // TODO 25226989:tId not tracked! 
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/last_utilbill_end_date',
             params: {account: account},
@@ -4034,7 +4041,9 @@ function renderWidgets()
     var tids = {}
 
     function loadReeBillUIForSequence(account, sequence) {
-        
+
+        // TODO: 25227109 properly reset reebill UI if no sequence is selected
+
         if (account == null || sequence == null) {
             throw "Account and Sequence must be set";
         }
@@ -4242,7 +4251,6 @@ function pctChange(val){
 * of the call.
 * Since there is only one block to the UI and possibly
 * more than one Ajax call, we keep a counter.
-*/
 var blockUICounter = 0;
 
 function registerAjaxEvents()
@@ -4263,22 +4271,24 @@ function unregisterAjaxEvents()
 
 function showSpinnerBeforeRequest(conn, options)
 {
+    console.log("showSpinnerBeforeRequest " + blockUICounter)
     blockUICounter++;
-    Ext.Msg.show({title: "Please Wait..." + blockUICounter, closable: false});
+    Ext.Msg.show({title: "Please Wait...", closable: false});
 }
 
 function hideSpinnerRequestComplete(conn, options)
 {
     blockUICounter--;
+    console.log("hideSpinnerRequestComplete " + blockUICounter)
     if (!blockUICounter) {
         Ext.Msg.hide();
-        //unregisterAjaxEvents();
     }
 }
 
 function hideSpinnerRequestException(conn, response, options)
 {
     blockUICounter--;
+    console.log("hideSpinnerRequestException " + blockUICounter)
     if (!blockUICounter) {
         Ext.Msg.hide();
     }
@@ -4287,10 +4297,12 @@ function hideSpinnerRequestException(conn, response, options)
 function hideSpinnerRequestAborted(conn, response, options)
 {
     blockUICounter--;
+    console.log("hideSpinnerRequestAborted " + blockUICounter)
     if (!blockUICounter) {
         Ext.Msg.hide();
     }
 }
+*/
 
 
 var NO_UTILBILL_SELECTED_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill.png"/></td></tr></table></div>';
