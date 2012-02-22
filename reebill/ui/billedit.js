@@ -1982,6 +1982,9 @@ function renderWidgets()
             ],
         });
 
+        CPRSRSIStore.on('save', function (store, batch, data) {
+        });
+
         var CPRSRSIColModel = new Ext.grid.ColumnModel(
         {
             columns: [
@@ -3728,6 +3731,83 @@ function renderWidgets()
     ////////////////////////////////////////////////////////////////////////////
     // construct tabpanel for viewport
 
+
+    // instantiate tabs and hook into their events
+    /*
+        },{
+            id: 'rateStructureTab',
+            title: 'Rate Structure',
+            disabled: rateStructureTabDisabled,
+            layout: 'border',
+            items: [
+            {
+                region: 'north',
+                layout: 'fit',
+                split: true,
+                items: [CPRSRSIGrid]
+            },{
+                region: 'center',
+                layout: 'fit',
+                split: true,
+                items: [UPRSRSIGrid]
+            },{
+                region:'south',
+                layout: 'fit',
+                split: true,
+                items: [URSRSIGrid]
+            }]
+        },{
+    */
+
+    var rateStructurePanel = new Ext.Panel({
+        id: 'rateStructureTab',
+        title: 'Rate Structure',
+        disabled: rateStructureTabDisabled,
+        layout: 'border',
+        items: [
+        {
+            region: 'north',
+            layout: 'fit',
+            split: true,
+            items: [CPRSRSIGrid]
+        },{
+            region: 'center',
+            layout: 'fit',
+            split: true,
+            items: [UPRSRSIGrid]
+        },{
+            region:'south',
+            layout: 'fit',
+            split: true,
+            items: [URSRSIGrid]
+        }]
+    });
+
+    rateStructurePanel.on('activate', function () {
+    });
+
+
+    var chargeItemsPanel = new Ext.Panel({
+        id: 'chargeItemsTab',
+        title: 'Charge Items',
+        disabled: chargeItemsTabDisabled,
+        xtype: 'panel',
+        layout: 'accordion',
+        items: [
+            aChargesGrid,
+            hChargesGrid,
+        ]
+    });
+
+    chargeItemsPanel.on('activate', function () {
+        // load
+        // TODO 25293729: probably will need to disable/enable the widget on the beforeload and afterload events
+        console.log("charge items panel active");
+        aChargesStore.reload();
+    });
+
+
+
     var tabPanel = new Ext.TabPanel({
         region:'center',
         deferredRender:false,
@@ -3799,39 +3879,10 @@ function renderWidgets()
                 align : 'stretch',
             },
             items: null // configureUBMeasuredUsagesForm sets this
-        },{
-            id: 'rateStructureTab',
-            title: 'Rate Structure',
-            disabled: rateStructureTabDisabled,
-            layout: 'border',
-            items: [
-            {
-                region: 'north',
-                layout: 'fit',
-                split: true,
-                items: [CPRSRSIGrid]
-            },{
-                region: 'center',
-                layout: 'fit',
-                split: true,
-                items: [UPRSRSIGrid]
-            },{
-                region:'south',
-                layout: 'fit',
-                split: true,
-                items: [URSRSIGrid]
-            }]
-        },{
-            id: 'chargeItemsTab',
-            title: 'Charge Items',
-            disabled: chargeItemsTabDisabled,
-            xtype: 'panel',
-            layout: 'accordion',
-            items: [
-                aChargesGrid,
-                hChargesGrid,
-            ]
-        },{
+        },
+        rateStructurePanel,
+        chargeItemsPanel,
+        {
             id: 'mailTab',
             title: 'Mail',
             disabled: mailTabDisabled,
