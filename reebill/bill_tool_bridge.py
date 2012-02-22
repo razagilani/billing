@@ -906,31 +906,32 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
-    def excel_export(self, **kwargs):
+    def excel_export(self, account=None, **kwargs):
+        '''Responds with an excel spreadsheet containing all actual charges for
+        all utility bills for the given account, or every account (1 per sheet)
+        if 'account' is not given.'''
         try:
             session = None
-
             self.check_authentication()
-
             session = self.state_db.session()
 
-            spreadsheet_name = 'utility_bills.xls'
+            if account is not None:
+                spreadsheet_name = account + '.xls'
+            else:
+                spreadsheet_name = 'all_accounts.xls'
+
             exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
 
             # write excel spreadsheet into a StringIO buffer (file-like)
             buf = StringIO()
-            exporter.export_all(session, buf)
-
+            exporter.export(session, buf, account)
 
             # set MIME type for file download
             cherrypy.response.headers['Content-Type'] = 'appliation/excel'
             cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
 
-            data = buf.getvalue()
-
             session.commit()
-
-            return data 
+            return buf.getvalue()
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)

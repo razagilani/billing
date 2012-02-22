@@ -3137,7 +3137,7 @@ function renderWidgets()
                     href: "http://"+location.host+"/reebill/all_ree_charges_csv",
                     id: 'accountReeValueExportCSVBtn',
                     iconCls: 'icon-application-go',
-                    text: 'Export',
+                    text: 'Export REE Value CSV',
                     disabled: false,
                 },
                 {
@@ -3149,12 +3149,20 @@ function renderWidgets()
                     iconCls: 'icon-application-go',
                     text: 'Export All Utility Bills to Excel',
                     disabled: false,
+                },
+                {
+                    xtype: 'linkbutton',
+                    // account parameter for URL is set in loadReeBillUIForAccount()
+                    href: "http://"+location.host+"/reebill/excel_export",
+                    id: 'atsiteExportAccountButton',
+                    iconCls: 'icon-application-go',
+                    text: "Export Selected Account's Utility Bills to Excel",
+                    disabled: true, // becomes enabled when an account is selected
                 }
             ]
         });
 
         // this grid tracks the state of the currently selected account
-
         var accountReeValueGrid = new Ext.grid.GridPanel({
             colModel: accountReeValueColModel,
             selModel: new Ext.grid.RowSelectionModel({
@@ -3175,7 +3183,7 @@ function renderWidgets()
                 // doesn't seem to work
                 forceFit: true,
             },
-            title: 'REE Value',
+            title: 'Summary and Export',
             tbar: accountReeValueToolbar,
             bbar: new Ext.PagingToolbar({
                 pageSize: 25,
@@ -4101,6 +4109,9 @@ function renderWidgets()
         UPRSRSIStore.loadData({rows: 0, success: true});
 
         updateStatusbar(account, null, null);
+
+        Ext.getCmp('atsiteExportAccountButton').setDisabled(false);
+        Ext.getCmp('atsiteExportAccountButton').setParams({'account': account});
     }
 
     var tids = {}
