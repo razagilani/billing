@@ -82,21 +82,23 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
             try:
                 # get energy from the bill
                 bill_therms = reebill.total_renewable_energy
-                result_dict.update({
-                    'bill_therms': bill_therms
-                })
+                result_dict.update({ 'bill_therms': bill_therms })
 
-                # find the date to start getting data from OLAP: in some cases the
-                # date when OLAP data begins is later than the beginning of the
-                # first billing period. if we billed the customer for a period
-                # containing during which we were unable to measure the energy some
-                # of the time, the right thing to do would be to omit all energy
-                # that we couldn't measure. if that's what we did, the energy on
-                # the bill will be the same as the total metered energy starting
-                # from the date when data is first available. (note that if date of
-                # earliest data comes after the bill's end date, the bill's energy
-                # better be 0 or our bill is very wrong.)
-                start_date = max(reebill.period_begin, install.install_completed.date())
+                # find the date to start getting data from OLAP: in some cases
+                # the date when OLAP data begins is later than the beginning of
+                # the first billing period, but in general it should be earlier
+                # (because data collection starts during the sales process, and
+                # after the installation is done, there's a delay before we
+                # declare it billable). if we billed the customer for a period
+                # during which we were unable to measure the energy some of the
+                # time, the right thing to do would be to omit all energy that
+                # we couldn't measure. if that's what we did, the energy on the
+                # bill will be the same as the total metered energy starting
+                # from the date of first billable data. (note that if date of
+                # earliest data comes after the bill's end date, the bill's
+                # energy better be 0 or our bill is very wrong.)
+                start_date = max(reebill.period_begin,
+                        install.install_commissioned.date())
                 
             except Exception as e:
                 bill_error = e
