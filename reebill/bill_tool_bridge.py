@@ -436,7 +436,7 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value")
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
-
+    
             session = self.state_db.session()
             self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
