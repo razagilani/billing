@@ -447,6 +447,8 @@ class Process(object):
         # vs instantiating them here.
 
         if (self.config.get('runtime', 'integrate_skyline_backend') is True):
+            # fill in data for "Monthly Renewable Energy Consumption" graph
+
             # objects for getting olap data
             olap_id = nexus_util.NexusUtil().olap_id(reebill.account)
             install = self.splinter.get_install_obj_for(olap_id)
@@ -462,10 +464,14 @@ class Process(object):
             first_bill_year = first_bill_date.year
             first_bill_month = first_bill_date.month
 
-            first_month = install.install_completed.month
+            first_month = install.install_commissioned.month
             for year, month in dateutils.months_of_past_year(bill_year, bill_month):
                 # months before first bill have 0 energy, even if data were
-                # collected during that time.
+                # collected during that time. however, the graph shows ALL the
+                # renewable energy sold during the month of the first bill,
+                # including energy sold before the install was "commissioned"
+                # (meaning its data have been declared valid for billing).
+                # TODO: change this to include only energy after install_commissioned?
                 if year < first_bill_year or month < first_bill_month:
                     renewable_energy_btus = 0
                 else:
