@@ -76,6 +76,27 @@ def guess_utilbill_periods(start_date, end_date):
 #
 #    return max(ub.period_end for ub in probable_utilbills)
 
+def guess_next_reebill_end_date(session, account, start_date):
+    # get length of last reebill (note that we don't store dates for reebills
+    # in MySQL)
+    customer = session.query(Customer).filter(Customer.account==account).one()
+    last_reebill = session.query(ReeBill) \
+            .filter(ReeBill.customer_id==customer.id) \
+            .order_by(ReeBill.sequence)[0]
+    last_reebill_utilbills = session.query(UtilBill).filter(UtilBill.rebill_id==last_reebill.id)
+    earliest_start = min(ub.period_start for ub in last_reebill_utilbills)
+    latest_end = max(ub.period_end for ub in last_reebill_utilbills)
+    length = (latest_end - earliest_start)
+
+    # first guess that this reebill's period has the same length as the last,
+    # then adjust that guess to the closest utility bill end date (either
+    # forward or back)
+    probable_end_date = start_date + length
+    utilbills_after_start_date = session.query(UtilBill) \
+            .filter(UtilBill.period_end > start_date)
+    return min([ub.period_end for ub in utilbills_after_start_date],
+            key = lambda x: abs(probable_end_date - x))
+
 class StateDB:
 
     config = None
