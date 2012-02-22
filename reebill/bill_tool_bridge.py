@@ -1011,6 +1011,9 @@ class BillToolBridge:
                     rate_structure
                 )
 
+
+                # 23417235 temporary hack
+                result = self.bindrs(account, sequence)
                 return self.dumps({'success':True})
 
             elif xaction == "create":
@@ -1030,6 +1033,8 @@ class BillToolBridge:
                     rate_structure
                 )
 
+                # 23417235 temporary hack
+                self.bindrs(account, sequence)
                 return self.dumps({'success':True, 'rows':new_rate})
 
             elif xaction == "destroy":
@@ -1063,6 +1068,8 @@ class BillToolBridge:
                     rate_structure
                 )
 
+                # 23417235 temporary hack
+                self.bindrs(account, sequence)
                 return self.dumps({'success':True})
 
         except Exception as e:
@@ -1144,6 +1151,8 @@ class BillToolBridge:
                     rate_structure
                 )
 
+                # 23417235 temporary hack
+                self.bindrs(account, sequence)
                 return self.dumps({'success':True})
 
             elif xaction == "create":
@@ -1160,6 +1169,8 @@ class BillToolBridge:
                     rate_structure
                 )
 
+                # 23417235 temporary hack
+                self.bindrs(account, sequence)
                 return self.dumps({'success':True, 'rows':new_rate})
 
             elif xaction == "destroy":
@@ -1192,6 +1203,8 @@ class BillToolBridge:
                     rate_structure
                 )
 
+                # 23417235 temporary hack
+                self.bindrs(account, sequence)
                 return self.dumps({'success':True})
 
         except Exception as e:
@@ -1270,6 +1283,8 @@ class BillToolBridge:
                     rate_structure
                 )
 
+                # 23417235 temporary hack
+                self.bindrs(account, sequence)
                 return self.dumps({'success':True})
 
             elif xaction == "create":
@@ -1286,6 +1301,8 @@ class BillToolBridge:
                     rate_structure
                 )
 
+                # 23417235 temporary hack
+                self.bindrs(account, sequence)
                 return self.dumps({'success':True, 'rows':new_rate})
 
             elif xaction == "destroy":
@@ -1318,6 +1335,8 @@ class BillToolBridge:
                     rate_structure
                 )
 
+                # 23417235 temporary hack
+                self.bindrs(account, sequence)
                 return self.dumps({'success':True})
 
         except Exception as e:
