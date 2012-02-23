@@ -77,6 +77,12 @@ def guess_utilbill_periods(start_date, end_date):
 #    return max(ub.period_end for ub in probable_utilbills)
 
 def guess_next_reebill_end_date(session, account, start_date):
+    '''Returns a guess for the end date of a reebill for 'account' that starts
+    on 'start_date'.'''
+    # TODO: test this method with multi-service customers. it works very well
+    # for customers with one utility service, but the more utility bills the
+    # customer has, the less accurate it will be.
+
     # get length of last reebill (note that we don't store dates for reebills
     # in MySQL)
     customer = session.query(Customer).filter(Customer.account==account).one()
@@ -88,13 +94,24 @@ def guess_next_reebill_end_date(session, account, start_date):
     latest_end = max(ub.period_end for ub in last_reebill_utilbills)
     length = (latest_end - earliest_start)
 
-    # first guess that this reebill's period has the same length as the last,
-    # then adjust that guess to the closest utility bill end date (either
-    # forward or back)
+    # first guess that this reebill's period has the same length as the last.
+    # this guess will be adjusted to match the closest utility bill end date
+    # after 'start_date', if there are any such utility bills.
     probable_end_date = start_date + length
+
+    # get all utility bills that end after start_date
     utilbills_after_start_date = session.query(UtilBill) \
             .filter(UtilBill.customer_id==customer.id) \
-            .filter(UtilBill.period_end > start_date)
+            .filter(UtilBill.period_end > start_date).all()
+
+    # if there are no utility bills that might be associated with this reebill,
+    # we can't guess very well--just assume that this reebill's period will be
+    # exactly the same length as its predecessor's.
+    if len(utilbills_after_start_date) == 0:
+        return probable_end_date
+
+    # otherwise, adjust the guess to the closest utility bill end date (either
+    # forward or back)
     return min([ub.period_end for ub in utilbills_after_start_date],
             key = lambda x: abs(probable_end_date - x))
 
@@ -257,14 +274,11 @@ class StateDB:
         return None
 
     def new_rebill(self, session, account, sequence):
-
         customer = session.query(Customer).filter(Customer.account==account).one()
         new_reebill = ReeBill(customer, sequence)
-
         session.add(new_reebill)
 
     def issue(self, session, account, sequence):
-
         customer = session.query(Customer).filter(Customer.account==account).one()
         reeBill = session.query(ReeBill) \
                 .filter(ReeBill.customer_id==customer.id) \
