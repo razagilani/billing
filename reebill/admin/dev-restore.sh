@@ -1,14 +1,15 @@
 #!/bin/bash
-'''Script to restore development MySQL, Mongo collections, and filesystem from
-backups on tyrell. Based on billing/reebill/admin/destage.bash. '''
+# Script to restore development MySQL, Mongo collections, and filesystem from
+# backups on tyrell. Based on billing/reebill/admin/destage.bash.
 now=`date +"%Y%m%d"`
 
 # copy mysql dump file (generated last night via cron) from tyrell to local
-# /tmp, then restore mysql dev database (which happens to be on tyrell) from
-# that file
+# /tmp, then restore mysql dev database (on localhost) from that file
 scp dklothe@tyrell:/tmp/${now}billing_mysql.dmp /tmp
-mysql --verbose -udev -pdev -htyrell -D skyline_dev < /tmp/${now}billing_mysql.dmp
-# TODO this script doesn't restore status_days_since--it must not be in the dump
+#mysql --verbose -udev -pdev -htyrell -D skyline_dev < /tmp/${now}billing_mysql.dmp
+# apparently only root can restore the database?
+# "Access denied; you need the SUPER privilege for this operation"
+mysql --verbose -uroot -proot -D skyline_dev < /tmp/${now}billing_mysql.dmp
 
 # copy mongo dump files from tyrell to local /tmp and restore mongo collections from them
 scp -r dklothe@tyrell:/tmp/${now}ratestructure_mongo /tmp
