@@ -4021,7 +4021,7 @@ function renderWidgets()
             ],
         },{
             id: 'ubPeriodsTab',
-            title: 'Utility Bill Periods',
+            title: 'Bill Periods',
             disabled: billPeriodsTabDisabled,
             xtype: 'panel',
             items: null // configureUBPeriodForm set this
