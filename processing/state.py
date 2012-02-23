@@ -93,6 +93,7 @@ def guess_next_reebill_end_date(session, account, start_date):
     # forward or back)
     probable_end_date = start_date + length
     utilbills_after_start_date = session.query(UtilBill) \
+            .filter(UtilBill.customer_id==customer.id) \
             .filter(UtilBill.period_end > start_date)
     return min([ub.period_end for ub in utilbills_after_start_date],
             key = lambda x: abs(probable_end_date - x))
