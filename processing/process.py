@@ -185,16 +185,15 @@ class Process(object):
             old_period = (old_period[1], None)
             reebill.set_utilbill_period_for_service(service, old_period)
 
-        # put in a guess of what the reebill's end date will be
-        reebill.period_end = state.guess_next_reebill_end_date(session,
-                reebill.account, reebill.period_begin)
-
         # set discount rate to the value in MySQL
         reebill.discount_rate = self.state_db.discount_rate(session,
                 reebill.account)
 
         reebill.reset()
 
+        # put in a guess of what the reebill's end date will be
+        reebill.period_end = state.guess_next_reebill_end_date(session,
+                reebill.account, reebill.period_begin)
 
         # create an initial rebill record to which the utilbills are later associated
         self.state_db.new_rebill(session, reebill.account, reebill.sequence)
