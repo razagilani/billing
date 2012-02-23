@@ -456,9 +456,7 @@ class BillToolBridge:
             self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
-
             reebill = self.reebill_dao.load_reebill(account, sequence)
-
             session = self.state_db.session()
             self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
@@ -1614,11 +1612,8 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     def ubPeriods(self, account, sequence, **args):
-        """
-        Return all of the utilbill periods on a per service basis so that the forms may be
-        dynamically created.
-        """
-
+        """ Return all of the utilbill periods on a per service basis so that the forms may be
+        dynamically created."""
         try:
             self.check_authentication()
             if not account or not sequence:
@@ -1636,10 +1631,7 @@ class BillToolBridge:
             utilbill_periods = {}
             for service in reebill.services:
                 (begin, end) = reebill.utilbill_period_for_service(service)
-                utilbill_periods[service] = {
-                    'begin': begin,
-                    'end': end
-                    }
+                utilbill_periods[service] = { 'begin': begin, 'end': end }
 
             return self.dumps(utilbill_periods)
 

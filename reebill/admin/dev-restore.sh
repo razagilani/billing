@@ -9,7 +9,7 @@ scp dklothe@tyrell:/tmp/${now}billing_mysql.dmp /tmp
 #mysql --verbose -udev -pdev -htyrell -D skyline_dev < /tmp/${now}billing_mysql.dmp
 # apparently only root can restore the database?
 # "Access denied; you need the SUPER privilege for this operation"
-mysql --verbose -uroot -proot -D skyline_dev < /tmp/${now}billing_mysql.dmp
+mysql -uroot -proot -D skyline_dev < /tmp/${now}billing_mysql.dmp
 
 # copy mongo dump files from tyrell to local /tmp and restore mongo collections from them
 scp -r dklothe@tyrell:/tmp/${now}ratestructure_mongo /tmp

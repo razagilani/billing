@@ -1079,11 +1079,8 @@ function renderWidgets()
 
         var ubPeriodsFormPanels = [];
         
-        for (var service in periods)
-        {
-
-            var ubPeriodsFormPanel = new Ext.FormPanel(
-            {
+        for (var service in periods) { 
+            var ubPeriodsFormPanel = new Ext.FormPanel({
                 id: service + 'UBPeriodsFormPanel',
                 title: 'Service ' + service,
                 header: true,
@@ -1093,8 +1090,7 @@ function renderWidgets()
                 labelWidth: 125,
                 bodyStyle:'padding:10px 10px 0px 10px',
                 items:[], // added by configureUBPeriodsForm()
-                buttons: 
-                [
+                buttons: [
                     // TODO: the save button is generic in function, refactor
                     {
                         text   : 'Save',
@@ -4308,8 +4304,7 @@ function renderWidgets()
                 var jsonData = null;
                 try {
                     jsonData = Ext.util.JSON.decode(result.responseText);
-                    if (jsonData.success == false)
-                    {
+                    if (jsonData.success == false) {
                         // handle failure here if necessary
                     } else {
                         configureUBPeriodsForms(account, sequence, jsonData);

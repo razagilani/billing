@@ -139,61 +139,67 @@ class Process(object):
         reebill.payment_received = Decimal(sum([payment.credit for payment in payments]))
 
     def roll_bill(self, session, reebill):
-        """
-        Create reebill for next period, based on prior bill.
-        """
+        '''Modifies 'reebill' to convert it into a template for the reebill of
+        the next period. 'reebill' must be its customer's last bill before
+        roll_bill is called. This method does not save the reebill in Mongo,
+        but it DOES create new CPRS documents in Mongo (by copying the ones
+        originally associated with the reebill).'''
 
         # obtain the last Reebill sequence from the state database
         # TODO: database connection needs to be passed through here
         # such that transactions encompassing the http request can be done
-        last_sequence = self.state_db.last_sequence(session, reebill.account)
-
-        if (int(reebill.sequence) < int(last_sequence)):
+        if reebill.sequence < self.state_db.last_sequence(session, reebill.account):
             raise Exception("Not the last sequence")
 
-        next_sequence = int(last_sequence + 1)
-
+        # duplicate the CPRS for each service
         # TODO: 22597151 refactor
-        # for each service, duplicate the CPRS
         for service in reebill.services:
-
             utility_name = reebill.utility_name_for_service(service)
             rate_structure_name = reebill.rate_structure_name_for_service(service)
 
             # load current CPRS
             cprs = self.rate_structure_dao.load_cprs(reebill.account, reebill.sequence,
                 reebill.branch, utility_name, rate_structure_name)
+            if cprs is None:
+                raise Exception("No current CPRS")
 
-            if cprs is None: raise Exception("No current CPRS")
-
-            # save the next CPRS
-            self.rate_structure_dao.save_cprs(reebill.account, next_sequence,
+            # save it with same account, next sequence
+            self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence + 1,
                 reebill.branch, utility_name, rate_structure_name, cprs)
 
-        # increment reebill sequence
-        reebill.sequence = next_sequence
+        # increment sequence
+        reebill.sequence = reebill.sequence + 1
 
-        # pre-populate the utilbill period by taking the end period date
-        # of the last bill, and make it the begin period of this reebill
+        # set start date of each utility bill in this reebill to the end date
+        # of the previous utility bill for that service
         for service in reebill.services:
+            prev_start, prev_end = reebill.utilbill_period_for_service(service)
+            reebill.set_utilbill_period_for_service(service, (prev_end, None))
 
-            # set utility period dates
-            old_period = reebill.utilbill_period_for_service(service)
-            # end is now begin
-            # TODO: the end date might not be the begin date, so this could be
-            # a utility specific business rule
-            old_period = (old_period[1], None)
-            reebill.set_utilbill_period_for_service(service, old_period)
+        # save original end date of reebill before resetting: this will become
+        # the new begin date and is needed to guess the new end date
+        old_period_end = reebill.period_end
+
+        # clear out much but not all data in the bill, including dates
+        reebill.reset()
+        # TODO: unclear that call to reset() belongs here. it should go as
+        # early in the method as possible; putting it here suggests that
+        # reset() wipes out everything below this call but not any of the
+        # things preceding it, which is probably not true. and if it were, why
+        # does reset() only reset such an arbitrary subset of the reebill's
+        # data?
+        # we do have a story suggesting that the reset method should/will go
+        # away:
+        # https://www.pivotaltracker.com/story/show/22547583
+
+        # set reebill begin date and probable end date
+        reebill.period_begin = old_period_end
+        reebill.period_end = state.guess_next_reebill_end_date(session,
+                reebill.account, old_period_end)
 
         # set discount rate to the value in MySQL
         reebill.discount_rate = self.state_db.discount_rate(session,
                 reebill.account)
-
-        reebill.reset()
-
-        # put in a guess of what the reebill's end date will be
-        reebill.period_end = state.guess_next_reebill_end_date(session,
-                reebill.account, reebill.period_begin)
 
         # create an initial rebill record to which the utilbills are later associated
         self.state_db.new_rebill(session, reebill.account, reebill.sequence)

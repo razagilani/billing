@@ -935,13 +935,12 @@ class MongoReebill(object):
                 ub[chargegroups] = new_chargegroups
 
 
-    # TODO: 22547583
-    # Resets a previously populated ReeBill
-    # this code is related to what must be done when constructing a
-    # new instance of a reebill.  What is missing is setting up initial
-    # chargegroups and registers, for example.
-
     def reset(self):
+        # TODO: 22547583
+        # Resets a previously populated ReeBill
+        # this code is related to what must be done when constructing a
+        # new instance of a reebill.  What is missing is setting up initial
+        # chargegroups and registers, for example.
 
         # process rebill
         self.period_begin = None
@@ -956,6 +955,10 @@ class MongoReebill(object):
         self.issue_date = None
         self.motd = None
 
+        # this should always be set from the value in MySQL, which holds the
+        # "current" discount rate for each customer
+        self.discount_rate = Decimal("0.00")
+
         self.prior_balance = Decimal("0.00")
         self.total_due = Decimal("0.00")
         self.balance_due = Decimal("0.00")
@@ -963,7 +966,6 @@ class MongoReebill(object):
         self.balance_forward = Decimal("0.00")
 
         for service in self.services:
-
             # get utilbill numbers and zero them out
             self.set_actual_total_for_service(service, Decimal("0.00")) 
             self.set_hypothetical_total_for_service(service, Decimal("0.00")) 
