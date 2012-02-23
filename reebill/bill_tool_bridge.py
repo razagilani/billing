@@ -46,6 +46,19 @@ sys.stdout = sys.stderr
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
+
+
+# decorator for stressing ajax asynchronicity
+import random
+import time
+def random_wait(target):
+    def random_wait_wrapper(*args, **kwargs):
+        t = random.random()
+        print('Waiting %s' % t)
+        time.sleep(t)
+        return target(*args, **kwargs)
+    return random_wait_wrapper
+
 class Unauthenticated(Exception):
     pass
 
@@ -250,6 +263,8 @@ class BillToolBridge:
         # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
 
+        
+
     def dumps(self, data):
         # don't turn this on unless you need the json results to return
         # the url that was called. This is a good client side debug feature
@@ -258,6 +273,7 @@ class BillToolBridge:
         return ju.dumps(data)
     
     @cherrypy.expose
+    @random_wait
     def index(self):
         try:
             if self.check_authentication():
@@ -266,6 +282,7 @@ class BillToolBridge:
             raise cherrypy.HTTPRedirect('/login.html')
 
     @cherrypy.expose
+    @random_wait
     def get_reconciliation_data(self, start, limit, **kwargs):
         '''Handles AJAX request for data to fill reconciliation report grid.'''
         try:
@@ -287,6 +304,7 @@ class BillToolBridge:
     # authentication functions
 
     @cherrypy.expose
+    @random_wait
     def login(self, username, password, rememberme='off', **kwargs):
         user = self.user_dao.load_user(username, password)
         if user is None:
@@ -360,6 +378,7 @@ class BillToolBridge:
                     'details':traceback.format_exc()}})
 
     @cherrypy.expose
+    @random_wait
     def getUsername(self, **kwargs):
         '''This returns the username of the currently logged-in user--not to be
         confused with the identifier. The identifier is a unique id but the
@@ -373,6 +392,7 @@ class BillToolBridge:
             
 
     @cherrypy.expose
+    @random_wait
     def logout(self):
         if 'user' in cherrypy.session:
             self.logger.info('user "%s" logged out' % (cherrypy.session['user'].username))
@@ -399,6 +419,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def new_account(self, name, account, discount_rate, template_account, **args):
         try:
             session = None
@@ -428,6 +449,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def roll(self, account, sequence, **args):
         try:
             session = None
@@ -436,7 +458,7 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value")
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
-    
+
             session = self.state_db.session()
             self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
@@ -449,6 +471,7 @@ class BillToolBridge:
 
 
     @cherrypy.expose
+    @random_wait
     def delete_reebill(self, account, sequence, **args):
         try:
             session = None
@@ -463,6 +486,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def pay(self, account, sequence, **args):
         try:
             session = None
@@ -483,6 +507,7 @@ class BillToolBridge:
 
 
     @cherrypy.expose
+    @random_wait
     def bindree(self, account, sequence, **args):
         from billing.processing import fetch_bill_data as fbd
         try:
@@ -513,6 +538,7 @@ class BillToolBridge:
 
 
     @cherrypy.expose
+    @random_wait
     def bindrs(self, account, sequence, **args):
         try:
             session = None
@@ -552,6 +578,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def render(self, account, sequence, **args):
         try:
             self.check_authentication()
@@ -574,6 +601,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def mail(self, account, sequences, recipients, **args):
         try:
             session = None
@@ -684,6 +712,7 @@ class BillToolBridge:
         return result
 
     @cherrypy.expose
+    @random_wait
     def listAccounts(self, **kwargs):
         try:
             session = None
@@ -702,6 +731,7 @@ class BillToolBridge:
 
 
     @cherrypy.expose
+    @random_wait
     def listSequences(self, account, **kwargs):
         '''Handles AJAX request to get reebill sequences for each account and
         whether each reebill has been committed.'''
@@ -731,6 +761,7 @@ class BillToolBridge:
 
 
     @cherrypy.expose
+    @random_wait
     def retrieve_account_status(self, start, limit, **args):
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
@@ -754,6 +785,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def summary_ree_charges(self, start, limit, **args):
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
@@ -781,6 +813,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def all_ree_charges(self, **args):
 
 
@@ -801,6 +834,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def all_ree_charges_csv(self, **args):
         try:
             session = None
@@ -856,6 +890,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def all_ree_charges_csv_altitude(self, **args):
         try:
             session = None
@@ -906,13 +941,16 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def excel_export(self, account=None, **kwargs):
         '''Responds with an excel spreadsheet containing all actual charges for
         all utility bills for the given account, or every account (1 per sheet)
         if 'account' is not given.'''
         try:
             session = None
+
             self.check_authentication()
+
             session = self.state_db.session()
 
             if account is not None:
@@ -926,17 +964,21 @@ class BillToolBridge:
             buf = StringIO()
             exporter.export(session, buf, account)
 
+
             # set MIME type for file download
             cherrypy.response.headers['Content-Type'] = 'appliation/excel'
             cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
 
+
             session.commit()
             return buf.getvalue()
+
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     # TODO see 15415625 about the problem passing in service to get at a set of RSIs
     def cprsrsi(self, xaction, account, sequence, service, **kwargs):
         try:
@@ -1077,6 +1119,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def uprsrsi(self, xaction, account, sequence, service, **kwargs):
         try:
             self.check_authentication()
@@ -1212,6 +1255,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def ursrsi(self, xaction, account, sequence, service, **kwargs):
         try:
             self.check_authentication()
@@ -1344,6 +1388,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def payment(self, xaction, account, **kwargs):
         try:
             session = None
@@ -1431,6 +1476,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def reebill(self, xaction, start, limit, account, **kwargs):
         try:
             session = None
@@ -1472,6 +1518,7 @@ class BillToolBridge:
     # Handle addresses
 
     @cherrypy.expose
+    @random_wait
     def addresses(self, account, sequence, **args):
         """
         Return the billing and service address so that it may be edited.
@@ -1518,6 +1565,7 @@ class BillToolBridge:
 
 
     @cherrypy.expose
+    @random_wait
     def set_addresses(self, account, sequence, 
         ba_addressee, ba_street1, ba_city, ba_state, ba_postal_code,
         sa_addressee, sa_street1, sa_city, sa_state, sa_postal_code,
@@ -1564,6 +1612,7 @@ class BillToolBridge:
     # Handle ubPeriods
 
     @cherrypy.expose
+    @random_wait
     def ubPeriods(self, account, sequence, **args):
         """
         Return all of the utilbill periods on a per service basis so that the forms may be
@@ -1598,6 +1647,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def setUBPeriod(self, account, sequence, service, begin, end, **args):
         """ 
         Utilbill period forms are dynamically created in browser, and post back to here individual periods.
@@ -1624,6 +1674,7 @@ class BillToolBridge:
     # handle actual and hypothetical charges 
 
     @cherrypy.expose
+    @random_wait
     def actualCharges(self, service, account, sequence, **args):
         try:
             self.check_authentication()
@@ -1647,6 +1698,7 @@ class BillToolBridge:
 
 
     @cherrypy.expose
+    @random_wait
     def hypotheticalCharges(self, service, account, sequence, **args):
         try:
             self.check_authentication()
@@ -1670,6 +1722,7 @@ class BillToolBridge:
 
 
     @cherrypy.expose
+    @random_wait
     def saveActualCharges(self, service, account, sequence, rows, **args):
         try:
             self.check_authentication()
@@ -1686,6 +1739,7 @@ class BillToolBridge:
             # copy actual charges to hypothetical
             self.copyactual(account, sequence)
 
+
             return self.dumps({'success': True})
 
         except Exception as e:
@@ -1693,6 +1747,7 @@ class BillToolBridge:
 
 
     @cherrypy.expose
+    @random_wait
     def saveHypotheticalCharges(self, service, account, sequence, rows, **args):
         try:
             self.check_authentication()
@@ -1714,6 +1769,7 @@ class BillToolBridge:
     # Handle measuredUsages
 
     @cherrypy.expose
+    @random_wait
     def ubMeasuredUsages(self, account, sequence, branch=0, **args):
         """
         Return all of the measuredusages on a per service basis so that the forms may be
@@ -1761,6 +1817,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def setMeter(self, account, sequence, service, meter_identifier, presentreaddate, priorreaddate):
         try:
             self.check_authentication()
@@ -1782,6 +1839,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def setActualRegister(self, account, sequence, service, register_identifier, meter_identifier, quantity):
         try:
             self.check_authentication()
@@ -1805,6 +1863,7 @@ class BillToolBridge:
     # Handle utility bill upload
 
     @cherrypy.expose
+    @random_wait
     def upload_utility_bill(self, account, begin_date, end_date,
             file_to_upload, **args):
         try:
@@ -1864,6 +1923,7 @@ class BillToolBridge:
     ################
 
     @cherrypy.expose
+    @random_wait
     def journal(self, xaction, account, **kwargs):
         try:
             self.check_authentication()
@@ -1894,6 +1954,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def save_journal_entry(self, account, sequence, entry, **kwargs):
         try:
             self.check_authentication()
@@ -1910,6 +1971,7 @@ class BillToolBridge:
 
  
     @cherrypy.expose
+    @random_wait
     def listUtilBills(self, start, limit, account, **args):
         '''Handles AJAX call to populate Ext grid of utility bills.'''
         try:
@@ -1960,6 +2022,7 @@ class BillToolBridge:
             return self.handle_exception(e)
     
     @cherrypy.expose
+    @random_wait
     def last_utilbill_end_date(self, account, **kwargs):
         '''Returns date of last utilbill.'''
         try:
@@ -1993,6 +2056,7 @@ class BillToolBridge:
             raise Exception('Utility billing period lasts longer than a year?!')
 
     @cherrypy.expose
+    @random_wait
     def utilbill_grid(self, xaction, **kwargs):
         '''Handles AJAX requests to read and write data for the grid of utility
         bills. Ext-JS provides the 'xaction' parameter, which is "read" when it
@@ -2058,6 +2122,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
         try:
             self.check_authentication()
@@ -2071,6 +2136,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def getReeBillImage(self, account, sequence, resolution, **args):
         try:
             self.check_authentication()
@@ -2086,6 +2152,7 @@ class BillToolBridge:
             return self.handle_exception(e)
     
     @cherrypy.expose
+    @random_wait
     def getBillImageResolution(self, **kwargs):
         try:
             self.check_authentication()
@@ -2095,6 +2162,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def setBillImageResolution(self, resolution, **kwargs):
         try:
             self.check_authentication()
@@ -2105,6 +2173,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def reebill_structure(self, account, sequence=None, **args):
         try:
             session = None
@@ -2208,6 +2277,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def insert_reebill_sibling_node(self, service, account, sequence, node_type, node_key, **args):
         """
         """
@@ -2283,6 +2353,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def delete_reebill_node(self, service, account, sequence, node_type, node_key, text, **args):
         """
         """
@@ -2316,6 +2387,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
+    @random_wait
     def update_reebill_node(self, service, account, sequence, node_type, node_key, text, **args):
         """
         """
