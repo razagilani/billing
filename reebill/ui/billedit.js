@@ -466,7 +466,7 @@ function renderWidgets()
         // select() is the right way to do this but it only works when the list
         // is "expanded", whatever this means
         //sequenceCombo.setValue(""+(sequencesStore.getTotalCount()));
-        loadReeBillUIForSequence(accountCombo.getValue(), sequenceCombo.getValue());
+        //loadReeBillUIForSequence(accountCombo.getValue(), sequenceCombo.getValue());
     });
 
     var sequenceCombo = new Ext.form.ComboBox({
@@ -3151,9 +3151,7 @@ function renderWidgets()
         ]
     });
 
-
     // this grid tracks the state of the currently selected account
-
     var accountGrid = new Ext.grid.GridPanel({
         colModel: accountColModel,
         selModel: new Ext.grid.RowSelectionModel({
@@ -3174,7 +3172,7 @@ function renderWidgets()
             // doesn't seem to work
             forceFit: true,
         },
-        title: 'Processing Status',
+        title: 'Account Processing Status',
         // paging bar on the bottom
         bbar: new Ext.PagingToolbar({
             pageSize: 25,
@@ -3184,6 +3182,7 @@ function renderWidgets()
             emptyMsg: "No statuses to display",
         }),
     });
+
 
     ///////////////////////////////////////
     // account ree_charges status
@@ -3264,34 +3263,30 @@ function renderWidgets()
 
     var accountReeValueToolbar = new Ext.Toolbar({
         items: [
-                {
-                    xtype: 'linkbutton',
-                    // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                    href: "http://"+location.host+"/reebill/all_ree_charges_csv",
-                    id: 'accountReeValueExportCSVBtn',
-                    iconCls: 'icon-application-go',
-                    text: 'Export REE Value CSV',
-                    disabled: false,
-                },
-                {
-                    // TODO:25227403 - export on account at a time 
-                    xtype: 'linkbutton',
-                    // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
-                    href: "http://"+location.host+"/reebill/excel_export",
-                    id: 'atsiteExportButton',
-                    iconCls: 'icon-application-go',
-                    text: 'Export All Utility Bills to Excel',
-                    disabled: false,
-                },
-                {
-                    xtype: 'linkbutton',
-                    // account parameter for URL is set in loadReeBillUIForAccount()
-                    href: "http://"+location.host+"/reebill/excel_export",
-                    id: 'atsiteExportAccountButton',
-                    iconCls: 'icon-application-go',
-                    text: "Export Selected Account's Utility Bills to Excel",
-                    disabled: true, // becomes enabled when an account is selected
-                }
+            {
+                id: 'accountReeValueExportCSVBtn',
+                iconCls: 'icon-application-go',
+                xtype: 'linkbutton',
+                href: "http://"+location.host+"/reebill/all_ree_charges_csv",
+                text: 'Export REE Value CSV',
+                disabled: true,
+            },{
+                id: 'exportButton',
+                iconCls: 'icon-application-go',
+                // TODO:25227403 - export on account at a time 
+                xtype: 'linkbutton',
+                href: "http://"+location.host+"/reebill/excel_export",
+                text: 'Export All Utility Bills to Excel',
+                disabled: true,
+            },{
+                id: 'exportAccountButton',
+                iconCls: 'icon-application-go',
+                xtype: 'linkbutton',
+                // account parameter for URL is set in loadReeBillUIForAccount()
+                href: "http://"+location.host+"/reebill/excel_export",
+                text: "Export Selected Account's Utility Bills to Excel",
+                disabled: true, 
+            }
         ]
     });
 
@@ -3868,43 +3863,17 @@ function renderWidgets()
         items: [journalFormPanel]
     });
 
-
-
     ////////////////////////////////////////////////////////////////////////////
-    // construct tabpanel for viewport
+    // construct tabpanel and the panels it contains for the viewport
+    // instantiate tab content and hook into their events
 
-
-    // instantiate tabs and hook into their events
-    /*
-        },{
-            id: 'rateStructureTab',
-            title: 'Rate Structure',
-            disabled: rateStructureTabDisabled,
-            layout: 'border',
-            items: [
-            {
-                region: 'north',
-                layout: 'fit',
-                split: true,
-                items: [CPRSRSIGrid]
-            },{
-                region: 'center',
-                layout: 'fit',
-                split: true,
-                items: [UPRSRSIGrid]
-            },{
-                region:'south',
-                layout: 'fit',
-                split: true,
-                items: [URSRSIGrid]
-            }]
-        },{
-    */
-
+    //
+    // Instantiate the Rate Structure panel 
+    //
     var rateStructurePanel = new Ext.Panel({
         id: 'rateStructureTab',
         title: 'Rate Structure',
-        disabled: rateStructureTabDisabled,
+        disabled: rateStructurePanelDisabled,
         layout: 'border',
         items: [
         {
@@ -3928,11 +3897,13 @@ function renderWidgets()
     rateStructurePanel.on('activate', function () {
     });
 
-
+    //
+    // Instantiate the Charge Items panel
+    //
     var chargeItemsPanel = new Ext.Panel({
         id: 'chargeItemsTab',
         title: 'Charge Items',
-        disabled: chargeItemsTabDisabled,
+        disabled: chargeItemsPanelDisabled,
         xtype: 'panel',
         layout: 'accordion',
         items: [
@@ -3967,8 +3938,153 @@ function renderWidgets()
         //console.log(panel);
     });
 
+    //
+    // Instantiate the Accounts panel
+    //
+    var accountsPanel = new Ext.Panel({
+        id: 'statusTab',
+        title: 'Accounts',
+        disabled: accountsPanelDisabled,
+        layout: 'accordion',
+        items: [accountGrid,accountReeValueGrid,newAccountFormPanel, ]
+    });
 
+    //
+    // Instantiate the Payments panel
+    //
+    var paymentsPanel = new Ext.Panel({
+        id: 'paymentTab',
+        title: 'Pay',
+        disabled: paymentPanelDisabled,
+        layout: 'accordion',
+        items: [paymentGrid, ]
+    });
 
+    //
+    // Instantiate the Utility Bill panel
+    //
+    var utilityBillPanel = new Ext.Panel({
+        id: 'utilityBillTab',
+        title: 'Utility Bill',
+        disabled: utilityBillPanelDisabled,
+        layout: 'vbox',
+        layoutConfig : {
+            align : 'stretch',
+            pack : 'start'
+        },
+        // utility bill image on one side, upload form & list of bills on the
+        // other side (using 2 panels)
+        items: [
+            upload_form_panel,
+            utilbillGrid,
+        ],
+    });
+
+    //
+    // Instantiate the ReeBill panel
+    //
+    var reeBillPanel = new Ext.Panel({
+        id: 'reeBillTab',
+        title: 'ReeBill',
+        disabled: reeBillPanelDisabled,
+        layout: 'accordion',
+        items: [reebillFormPanel, ],
+    });
+
+    //
+    // Instantiate the Utility Bill Periods panel
+    //
+    var ubBillPeriodsPanel = new Ext.Panel({
+        id: 'ubPeriodsTab',
+        title: 'Bill Periods',
+        disabled: billPeriodsPanelDisabled,
+        items: null // configureUBPeriodForm set this
+    });
+
+    //
+    // Instantiate the Utility Bill Measured Usages panel
+    //
+    var ubMeasuredUsagesPanel = new Ext.Panel({
+        id: 'ubMeasuredUsagesTab',
+        title: 'Usage Periods',
+        disabled: usagePeriodsPanelDisabled,
+        layout: 'vbox',
+        layoutConfig : {
+            pack : 'start',
+            align : 'stretch',
+        },
+        items: null // configureUBMeasuredUsagesForm sets this
+    });
+
+    //
+    // Instantiate the Journal panel
+    //
+    var journalPanel = new Ext.Panel({
+        id: 'journalTab',
+        title: 'Journal',
+        disabled: journalPanelDisabled,
+        xtype: 'panel',
+        layout: 'vbox',
+        layoutConfig : {
+            align : 'stretch',
+            pack : 'start'
+        },
+        items: [journalGrid, ]
+    });
+
+    //
+    // Instantiate the Mail panel
+    //
+    var mailPanel = new Ext.Panel({
+        id: 'mailTab',
+        title: 'Mail',
+        disabled: mailPanelDisabled,
+        layout: 'vbox',
+        layoutConfig : {
+            align : 'stretch',
+            pack : 'start'
+        },
+        items: [reebillGrid, ]
+    });
+
+    //
+    // Instantiate the Reconciliation panel
+    //
+    var reconciliationPanel = new Ext.Panel({
+        id: 'reconciliationTab',
+        title: 'Reconciliation Report',
+        disabled: reconciliationPanelDisabled,
+        xtype: 'panel',
+        layout: 'fit',
+        items: [reconciliationGrid, ],
+    });
+
+    //
+    // Instantiate the Preference panel
+    //
+    var preferencesPanel = new Ext.Panel({
+        id: 'preferencesTab',
+        title: 'Preferences',
+        disabled: preferencesPanelDisabled,
+        layout: 'vbox',
+        layoutConfig : {
+            pack : 'start',
+            align : 'stretch',
+        },
+        items: [preferencesFormPanel, ],
+    });
+
+    //
+    // Instantiate the About panel
+    //
+    var aboutPanel = new Ext.Panel({
+        id: 'aboutTab',
+        title: 'About',
+        disabled: aboutPanelDisabled,
+        html: '<table style="width: 100%; border: 0; margin-top:20px;"><tr><td align="center">' + SKYLINE_VERSIONINFO + '</td></tr><tr><td align="center"><img width="50%" src="MrJonas.png"/></td></tr><tr><td align="center"><font style="font-family: impact; font-size:68pt;">Masterbiller</font></td></tr></table>',
+    });
+
+    // Assemble all of the above panels into a parent tab panel
     var tabPanel = new Ext.TabPanel({
         region:'center',
         deferredRender:false,
@@ -3980,123 +4096,20 @@ function renderWidgets()
         bbar: statusBar,
         border:true,
         items:[
-        {
-            id: 'statusTab',
-            title: 'Accounts',
-            disabled: accountsTabDisabled,
-            xtype: 'panel',
-            layout: 'accordion',
-            items: [accountGrid,accountReeValueGrid,newAccountFormPanel, ]
-        },{
-            id: 'paymentTab',
-            title: 'Pay',
-            disabled: paymentTabDisabled,
-            xtype: 'panel',
-            layout: 'accordion',
-            items: [paymentGrid]
-        },{
-            id: 'utilityBillTab',
-            title: 'Utility Bill',
-            disabled: utilityBillTabDisabled,
-            xtype: 'panel',
-            layout: 'vbox',
-            layoutConfig : {
-                align : 'stretch',
-                pack : 'start'
-            },
-            // utility bill image on one side, upload form & list of bills on the
-            // other side (using 2 panels)
-            items: [
-                upload_form_panel,
-                utilbillGrid,
-            ],
-        },{
-            id: 'reeBillTab',
-            title: 'ReeBill',
-            disabled: reeBillTabDisabled,
-            xtype: 'panel',
-            layout: 'accordion',
-            /*layoutConfig : {
-                align : 'stretch',
-                pack : 'start'
-            },*/
-            items: [
-                reebillFormPanel,
-            ],
-        },{
-            id: 'ubPeriodsTab',
-            title: 'Bill Periods',
-            disabled: billPeriodsTabDisabled,
-            xtype: 'panel',
-            items: null // configureUBPeriodForm set this
-        },{
-            id: 'ubMeasuredUsagesTab',
-            title: 'Usage Periods',
-            disabled: usagePeriodsTabDisabled,
-            xtype: 'panel',
-            layout: 'vbox',
-            layoutConfig : {
-                pack : 'start',
-                align : 'stretch',
-            },
-            items: null // configureUBMeasuredUsagesForm sets this
-        },
-        rateStructurePanel,
-        chargeItemsPanel,
-        {
-            id: 'mailTab',
-            title: 'Mail',
-            disabled: mailTabDisabled,
-            xtype: 'panel',
-            layout: 'vbox',
-            layoutConfig : {
-                //type : 'vbox',
-                align : 'stretch',
-                pack : 'start'
-            },
-            items: [reebillGrid]
-        },{
-            id: 'journalTab',
-            title: 'Journal',
-            disabled: journalTabDisabled,
-            xtype: 'panel',
-            layout: 'vbox',
-            layoutConfig : {
-                //type : 'vbox',
-                align : 'stretch',
-                pack : 'start'
-            },
-            items: [journalGrid]
-        },{
-            id: 'reconciliationTab',
-            title: 'Reconciliation Report',
-            disabled: reconciliationTabDisabled,
-            xtype: 'panel',
-            layout: 'fit',
-            //layoutConfig : {
-                //align : 'stretch',
-                //pack : 'start'
-            //},
-            items: [
-                reconciliationGrid,
-            ],
-        },{
-            id: 'preferencesTab',
-            title: 'Preferences',
-            disabled: preferencesTabDisabled,
-            xtype: 'panel',
-            layout: 'vbox',
-            layoutConfig : {
-                pack : 'start',
-                align : 'stretch',
-            },
-            items: [preferencesFormPanel]
-        },{
-            id: 'aboutTab',
-            title: 'About',
-            disabled: aboutTabDisabled,
-            html: '<table style="width: 100%; border: 0; margin-top:20px;"><tr><td align="center">' + SKYLINE_VERSIONINFO + '</td></tr><tr><td align="center"><img width="50%" src="MrJonas.png"/></td></tr><tr><td align="center"><font style="font-family: impact; font-size:68pt;">Masterbiller</font></td></tr></table>'
-        }]
+            accountsPanel,
+            paymentsPanel,
+            utilityBillPanel,
+            reeBillPanel,
+            ubBillPeriodsPanel,
+            ubMeasuredUsagesPanel,
+            rateStructurePanel,
+            chargeItemsPanel,
+            journalPanel,
+            mailPanel,
+            reconciliationPanel,
+            preferencesPanel,
+            aboutPanel,
+        ]
     });
 
     // end of tab widgets
@@ -4262,8 +4275,19 @@ function renderWidgets()
         UPRSRSIStore.loadData({rows: 0, success: true});
 
         updateStatusbar(account, null, null);
-        Ext.getCmp('atsiteExportAccountButton').setDisabled(false);
-        Ext.getCmp('atsiteExportAccountButton').setParams({'account': account});
+
+
+        // enable export buttons 
+        Ext.getCmp('exportAccountButton').setDisabled(false);
+        Ext.getCmp('exportAccountButton').setParams({'account': account});
+        Ext.getCmp('exportButton').setDisabled(false);
+        Ext.getCmp('accountReeValueExportCSVBtn').setDisabled(false);
+
+        // an account has been selected, so enable tabs that act on an account
+        reeBillPanel.setDisabled(false);
+        paymentsPanel.setDisabled(false);
+        utilityBillPanel.setDisabled(false);
+
     }
 
     var tids = {}
@@ -4436,6 +4460,17 @@ function renderWidgets()
         // while waiting for the ajax request to finish, show a loading message
         // in the utilbill image box
         Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div', html:LOADING_MESSAGE, id: 'reebillimage'}, true);
+
+
+        // Now that a ReeBill has been loaded, enable the tabs that act on a ReeBill
+        ubBillPeriodsPanel.setDisabled(false);
+        ubMeasuredUsagesPanel.setDisabled(false);
+        rateStructurePanel.setDisabled(false);
+        chargeItemsPanel.setDisabled(false);
+        journalPanel.setDisabled(false);
+        mailPanel.setDisabled(false);
+        
+
 
         // finally, update the status bar with current selection
         updateStatusbar(account, sequence, 0);
