@@ -1,4 +1,4 @@
-    #!/usr/bin/python
+#!/usr/bin/python
 '''
 File: bill_tool_bridge.py
 Description: Allows bill tool to be invoked as a CGI
@@ -39,7 +39,7 @@ from billing.processing import db_objects
 from billing.users import UserDAO, User
 from billing import dateutils
 from billing import excel_export
-from skyliner import splinter
+from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
 
 sys.stdout = sys.stderr
@@ -54,8 +54,8 @@ import time
 def random_wait(target):
     def random_wait_wrapper(*args, **kwargs):
         t = random.random()
-        print('Waiting %s' % t)
-        time.sleep(t)
+        #print('Waiting %s' % t)
+        #time.sleep(t)
         return target(*args, **kwargs)
     return random_wait_wrapper
 
@@ -235,11 +235,15 @@ class BillToolBridge:
         # configuration is hard-coded right now anyway
         self.runtime_config = dict(self.config.items('runtime'))
         if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
-            self.process = process.Process(self.config, self.state_db,
-                    self.reebill_dao, self.ratestructure_dao,
-                    splinter.Splinter(self.config.get('skyline_backend', 'oltp_url'),
-                        self.config.get('skyline_backend', 'olap_host'),
-                        self.config.get('skyline_backend', 'olap_database')))
+            self.process = process.Process(
+                self.config, self.state_db, self.reebill_dao,
+                self.ratestructure_dao,
+                Splinter(self.config.get('skyline_backend', 'oltp_url'),
+                    self.config.get('skyline_backend', 'olap_host'),
+                    self.config.get('skyline_backend', 'olap_database')),
+                Monguru(self.config.get('skyline_backend', 'olap_host'),
+                    self.config.get('skyline_backend', 'olap_database'))
+            )
         else:
             self.process = process.Process(self.config, self.state_db,
                     self.reebill_dao, self.ratestructure_dao,
