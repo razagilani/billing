@@ -143,7 +143,7 @@ class Process(object):
         the next period. 'reebill' must be its customer's last bill before
         roll_bill is called. This method does not save the reebill in Mongo,
         but it DOES create new CPRS documents in Mongo (by copying the ones
-        originally associated with the reebill).'''
+        originally attached to the reebill).'''
 
         # obtain the last Reebill sequence from the state database
         # TODO: database connection needs to be passed through here
@@ -202,7 +202,8 @@ class Process(object):
         reebill.discount_rate = self.state_db.discount_rate(session,
                 reebill.account)
 
-        # create an initial rebill record to which the utilbills are later associated
+        # create an initial rebill record to which the utilbills are later
+        # attached
         self.state_db.new_rebill(session, reebill.account, reebill.sequence)
 
     def delete_reebill(self, session, account, sequence):
@@ -272,7 +273,7 @@ class Process(object):
 
 
     # TODO 21052893: probably want to set up the next reebill here.  Automatically roll?
-    def associate_utilbills(self, session, account, sequence):
+    def attach_utilbills(self, session, account, sequence):
         '''Creates association between the reebill given by 'account',
         'sequence' and all utilbills belonging to that customer whose entire
         periods are within the date interval [start, end]. The utility bills
@@ -280,7 +281,7 @@ class Process(object):
         reebill = self.reebill_dao.load_reebill(account, sequence)
         begin = reebill.period_begin
         end = reebill.period_end
-        self.state_db.associate_utilbills(session, account, sequence, begin, end)
+        self.state_db.attach_utilbills(session, account, sequence, begin, end)
 
     def bind_rate_structure(self, reebill):
             # process the actual charges across all services
@@ -530,8 +531,10 @@ class Process(object):
         reebill.period_end = rebill_periodenddate
 
     def issue(self, account, sequence, issuedate=None):
-        """ Set the Renewable Energy bill Period """
-
+        # TODO rename to set_issue_date
+        # TODO this method should also set issued = 1 for the reebill (call StateDB.issue())
+        '''Sets the issue date of the reebill given by account, sequence to
+        'issuedate', or 30 days from 'today' by default.'''
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         if issuedate is None:
@@ -546,11 +549,6 @@ class Process(object):
 
         # save in mongo
         self.reebill_dao.save_reebill(reebill)
-
-    def issue_to_customer(self, session, account, sequence):
-
-        # issue to customer
-        self.state_db.issue(session, account, sequence)
 
     def all_ree_charges(self, session):
 

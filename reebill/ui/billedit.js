@@ -489,6 +489,7 @@ function renderWidgets()
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
                 {text: 'Compute Bill', handler: bindRSOperation},
+                {text: 'Attach Utility Bills to Reebill', handler: attachOperation},
                 {text: 'Render', handler: renderOperation},
             ]
         })
@@ -978,6 +979,22 @@ function renderWidgets()
             failure: function () {
                 alert("Render response fail");
             }
+        });
+    }
+
+    function attachOperation() {
+        /* Finalize association of utilbills with reebill. */
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/reebill/attach_utilbills',
+            params: {
+                account: accountCombo.getValue(),
+                sequence: sequenceCombo.getValue(),
+                disableCaching: true,
+                success: successResponse,
+                failure: function() {
+                    alert("Attach Utility Bills failed");
+                }
+            },
         });
     }
 
