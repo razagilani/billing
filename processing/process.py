@@ -41,25 +41,30 @@ class Process(object):
 
     config = None
     
-    def __init__(self, config, state_db, reebill_dao, rate_structure_dao, splinter):
+    def __init__(self, config, state_db, reebill_dao, rate_structure_dao,
+            splinter, monguru):
         self.config = config
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
         self.reebill_dao = reebill_dao
         self.splinter = splinter
+        self.monguru = monguru
 
     # compute the value, charges and savings of renewable energy
     def sum_bill(self, session, prior_reebill, present_reebill):
 
         # get discount rate
-        discount_rate = Decimal(str(self.state_db.discount_rate(session, present_reebill.account)))
+        discount_rate = Decimal(str(self.state_db.discount_rate(session,
+            present_reebill.account)))
 
-        # reset ree_charges, ree_value, ree_savings so we can accumulate across all services
+        # reset ree_charges, ree_value, ree_savings so we can accumulate across
+        # all services
         present_reebill.ree_value = Decimal("0")
         present_reebill.ree_charges = Decimal("0")
         present_reebill.ree_savings = Decimal("0")
 
-        # reset hypothetical and actual totals so we can accumulate across all services
+        # reset hypothetical and actual totals so we can accumulate across all
+        # services
         present_reebill.hypothetical_total = Decimal("0")
         present_reebill.actual_total = Decimal("0")
 
@@ -456,8 +461,6 @@ class Process(object):
         next_stats['total_trees'] = next_stats['total_co2_offset']/Decimal("1300.0")
         
 
-        # TODO 25227967 clean this up - we should probably be passing in the back end objects
-        # vs instantiating them here.
 
         if (self.config.get('runtime', 'integrate_skyline_backend') is True):
             # fill in data for "Monthly Renewable Energy Consumption" graph
@@ -465,7 +468,6 @@ class Process(object):
             # objects for getting olap data
             olap_id = nexus_util.NexusUtil().olap_id(reebill.account)
             install = self.splinter.get_install_obj_for(olap_id)
-            monguru = skyliner.skymap.monguru.Monguru('tyrell', 'dev') # TODO don't hard-code this
 
             bill_year, bill_month = dateutils.estimate_month(
                     next_bill.period_begin,
@@ -493,7 +495,8 @@ class Process(object):
                     # we insist that data should be available during the month of
                     # first billing and all following months; if get_data_for_month()
                     # fails, that's a real error that we shouldn't ignore.
-                    renewable_energy_btus = monguru.get_data_for_month(install, year, month).energy_sold
+                    renewable_energy_btus = self.monguru.get_data_for_month(
+                            install, year, month).energy_sold
 
                 therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
                 next_stats['consumption_trend'].append({
