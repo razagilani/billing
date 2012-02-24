@@ -166,11 +166,11 @@ class StateDB:
         return new_customer
 
 
-    def associate_utilbills(self, session, account, sequence, start, end):
-        '''Creates association between the reebill given by 'account',
-        'sequence' and all utilbills belonging to that customer whose entire
-        periods are within the date interval [start, end]. The utility bills
-        are marked as processed.'''
+    def attach_utilbills(self, session, account, sequence, start, end):
+        '''Records in MySQL the association between the reebill given by
+        'account', 'sequence' and all utilbills belonging to that customer
+        whose entire periods are within the date interval [start, end]. The
+        utility bills are marked as processed.'''
         # get customer id from account and the reebill from account and sequence
         customer = session.query(Customer).filter(Customer.account==account).one()
         reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
@@ -199,7 +199,7 @@ class StateDB:
         reebill = session.query(ReeBill).filter(ReeBill.customer==customer) \
                 .filter(ReeBill.sequence==sequence).one()
         
-        # find all utilbills associated with this reebill and dissociate them
+        # find all utilbills attached to this reebill and detach them
         for utilbill in session.query(UtilBill).filter(UtilBill.reebill==reebill):
             utilbill.reebill = None
 

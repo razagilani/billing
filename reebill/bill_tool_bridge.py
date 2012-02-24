@@ -351,7 +351,6 @@ class BillToolBridge:
             # 401 = unauthorized--can't reply to an ajax call with a redirect
             #cherrypy.response.status = 401
             raise Unauthenticated("No Session")
-
         return True
 
     def rollback_session(self, session):
@@ -601,6 +600,38 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    def attach_utilbills(self, account, sequence, **args):
+        '''Finalizes association between the reebill given by 'account',
+        'sequence' and its utility bills by recording it in the state database
+        and marking the utility bills as processed. Note that this does not
+        issue the reebill or give it an issue date.'''
+        try:
+            session = None
+            self.check_authentication()
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
+            session = self.state_db.session()
+
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            if reebill is None:
+                raise Exception('No reebill for account %s, sequence %s')
+
+            # finalize utility bill association
+            self.process.attach_utilbills(session, reebill.account,
+                    reebill.sequence)
+
+            self.journal_dao.journal(reebill.account, reebill.sequence,
+                    "User %s attached utilbills to reebill %s-%s" % (
+                    cherrypy.session['user'].username, account, sequence))
+            session.commit()
+            return self.dumps({'success': True})
+        except Exception as e:
+            self.rollback_session(session)
+            return self.handle_exception(e)
+
+
+    @cherrypy.expose
+    @random_wait
     def mail(self, account, sequences, recipients, **args):
         try:
             session = None
@@ -609,10 +640,6 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value")
 
             session = self.state_db.session()
-
-            # look up this value and fail early if there is something wrong
-            # with the session.
-            current_user = cherrypy.session['user'].username
 
             # sequences will come in as a string if there is one element in post data. 
             # If there are more, it will come in as a list of strings
@@ -670,7 +697,7 @@ class BillToolBridge:
                         "Mailed to %s by %s" % (recipients, current_user))
                 self.process.issue_to_customer(session, reebill.account,
                         reebill.sequence)
-                self.process.associate_utilbills(session, reebill.account,
+                self.process.attach_utilbills(session, reebill.account,
                         reebill.sequence)
 
             session.commit()
@@ -743,7 +770,7 @@ class BillToolBridge:
             sequences = self.state_db.listSequences(session, account)
             # TODO "issued" is used for the value of "committed" here because
             # committed is ill-defined: currently StateDB.is_committed()
-            # returns true iff the reebill has associated utilbills, which
+            # returns true iff the reebill has attached utilbills, which
             # doesn't make sense.
             # https://www.pivotaltracker.com/story/show/24382885
             rows = [{'sequence': sequence,
@@ -1986,7 +2013,7 @@ class BillToolBridge:
                 # TODO this doesn't show up in the gui
                 ('state', state_descriptions[ub.state]),
                 # utility bill rows are only editable if they don't have a
-                # reebill associated with them
+                # reebill attached to them
                 ('editable', not ub.has_reebill)
             ]) for i, ub in enumerate(utilbills)]
 
