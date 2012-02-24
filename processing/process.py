@@ -212,9 +212,7 @@ class Process(object):
         # TODO add branch, which MySQL doesn't have yet:
         # https://www.pivotaltracker.com/story/show/24374911 
 
-        # don't delete an issued or committed bill
-        # TODO decide if it should be issued or committed, and what "committed"
-        # means: see https://www.pivotaltracker.com/story/show/24382885
+        # don't delete an issued reebill
         if self.state_db.is_issued(session, account, sequence):
             raise Exception("Can't delete an issued reebill.")
 
@@ -274,14 +272,17 @@ class Process(object):
 
 
     # TODO 21052893: probably want to set up the next reebill here.  Automatically roll?
-    def commit_reebill(self, session, account, sequence):
+    def associate_utilbills(self, session, account, sequence):
+        '''Creates association between the reebill given by 'account',
+        'sequence' and all utilbills belonging to that customer whose entire
+        periods are within the date interval [start, end]. The utility bills
+        are marked as processed.'''
         reebill = self.reebill_dao.load_reebill(account, sequence)
         begin = reebill.period_begin
         end = reebill.period_end
-        self.state_db.commit_bill(session, account, sequence, begin, end)
+        self.state_db.associate_utilbills(session, account, sequence, begin, end)
 
     def bind_rate_structure(self, reebill):
-
             # process the actual charges across all services
             self.bindrs(reebill, self.rate_structure_dao)
 

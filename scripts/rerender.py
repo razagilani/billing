@@ -15,14 +15,18 @@ billdb_config = {
     'port': '27017'
 }
 statedb_config = {
-    'host': 'tyrell',
+    'host': 'localhost',
     'password': 'dev',
     'database': 'skyline_dev',
     'user': 'dev'
 }
+renderer_config = {
+    'temp_directory': '/tmp/reebill_rendering_files'
+}
 
 reebill_dao = mongo.ReebillDAO(billdb_config)
 state_db = state.StateDB(statedb_config)
+renderer = render.ReebillRenderer(renderer_config, None)
 
 session = state_db.session()
 accounts = state_db.listAccounts(session)
@@ -33,11 +37,12 @@ for account in accounts:
         print '%s-%s' % (account, sequence)
         try:
             reebill = reebill_dao.load_reebill(account, sequence)
-            render.render(
+            renderer.render(
                 reebill, 
-                billdb_config["billpath"]+ "%s/%.4d.pdf" % (account, int(sequence)),
+                billdb_config["billpath"] + account,
+                "%.4d.pdf" % int(sequence),
                 "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
-                None,
+                False
             )
         except Exception as e:
             print e, traceback.format_exc()

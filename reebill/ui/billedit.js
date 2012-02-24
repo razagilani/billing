@@ -459,7 +459,7 @@ function renderWidgets()
         storeId: 'sequencesStore',
         root: 'rows',
         idProperty: 'sequence',
-        fields: ['sequence', 'committed'],
+        fields: ['sequence', 'issued'],
     });
 
     sequencesStore.on('load', function() {
@@ -4273,7 +4273,7 @@ function renderWidgets()
         }
 
         // enable or disable the reebill delete button depending on whether the
-        // selected reebill is committed: only un-committed bills should be
+        // selected reebill is issued: only un-issued bills should be
         // deletable.
         // apparently there is no way to get the selected index of a combobox;
         // you have to get the value of the selection and then search for it in
@@ -4282,7 +4282,7 @@ function renderWidgets()
         var selectedSequence = sequenceCombo.getValue();
         var sequenceRecordIndex = sequencesStore.find('sequence', selectedSequence);
         var sequenceRecord = sequencesStore.getAt(sequenceRecordIndex);
-        //deleteButton.setDisabled(sequenceRecord.get('committed'))
+        //deleteButton.setDisabled(sequenceRecord.get('issued'))
 
 
         // enumerate prior ajax requests made here and cancel them
