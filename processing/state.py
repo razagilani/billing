@@ -16,9 +16,10 @@ from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, St
 sys.stdout = sys.stderr
 
 def guess_utilbill_periods(start_date, end_date):
-    '''Returns a list of (start, end) tuples representing a guess of
-    utility bill periods in the date range [start_date, end_date). This is
-    for producing "hypothetical" utility bills.'''
+    '''Returns a list of (start, end) tuples representing a the number and
+    periods of "hypothetical" utility bills covering the date range
+    [start_date, end_date). "Hypothetical" utility bills are used for filling
+    in a time gap between existing utility bills and a newly-uploaded one.'''
     if end_date <= start_date:
         raise ValueError('start date must precede end date.')
 
@@ -27,7 +28,9 @@ def guess_utilbill_periods(start_date, end_date):
     # utilbill_histogram.py), and round to nearest integer--but never go below
     # 1, since there must be at least 1 bill
     # TODO this hard-coded constant was the average period length of a sample
-    # of reebills; replace it with something smarter
+    # of many customers' utility bills; replace it with something smarter. we
+    # should probably use a customer-specific average period length, since some
+    # customers have 2-month utility bills.
     num_bills = max(1, int(round((end_date - start_date).days / 30.872)))
 
     # each bill's period will have the same length (except possibly the last one)
@@ -44,41 +47,11 @@ def guess_utilbill_periods(start_date, end_date):
         end_date))
     return periods
 
-#def guess_next_reebill_end_date(session, account, start_date):
-#    '''Returns the probable end date of a newly-created reebill given its start
-#    date.'''
-#    # The method is based on the assumption that each customer has only one
-#    # utility bill per service during each reebill period. If you iterate in
-#    # roughly chronological order through utility bills whose start date
-#    # exceeds start_date and that are not associated with a reebill, and you
-#    # collect the bills up until the first one whose service has already been
-#    # seen, you'll get the set of utility bills that probably belong to this
-#    # reebill. The latest end date in that set is the end date of the reebill.
-#    # date of all bills.
-#
-#    # get all this customer's utility bill that aren't associated with a
-#    # reebill and whose date comes after 'start_date', in order of when their
-#    # period starts
-#    customer = session.query(Customer).filter(Customer.account==account).one()
-#    possible_utilbills = session.query(UtilBill) \
-#            .filter(UtilBill.customer_id == customer.id) \
-#            .filter(Utilbill.reebill_id == None) \
-#            .filter(Utilbill.period_start > start_date) \
-#            .order_by(Utilbill.period_start)
-#
-#    # find the subset of the possible_utilbills that probably belong to this
-#    # reebill
-#    services = set()
-#    probable_utilbills = []
-#    for utilbill in possible_utilbills:
-#        # TODO get service--not in mysql
-#        pass
-#
-#    return max(ub.period_end for ub in probable_utilbills)
-
-def guess_next_reebill_end_date(session, account, start_date):
-    '''Returns a guess for the end date of a reebill for 'account' that starts
-    on 'start_date'.'''
+def guess_utilbills_and_end_date(session, account, start_date):
+    '''Returns a tuple ([utilbills], end_date): a list of utility bills that
+    will probably be associated with a newly-created reebill for the customer
+    given by 'account' starting on 'start_date', and a guess for the reebills'
+    end date.'''
     # TODO: test this method with multi-service customers. it works very well
     # for customers with one utility service, but the more utility bills the
     # customer has, the less accurate it will be.
@@ -108,12 +81,15 @@ def guess_next_reebill_end_date(session, account, start_date):
     # we can't guess very well--just assume that this reebill's period will be
     # exactly the same length as its predecessor's.
     if len(utilbills_after_start_date) == 0:
-        return probable_end_date
+        return probable_end_date, []
 
     # otherwise, adjust the guess to the closest utility bill end date (either
-    # forward or back)
-    return min([ub.period_end for ub in utilbills_after_start_date],
+    # forward or back); return that date and all utilbills that end in the date
+    # interval (start_date, probable_end_date].
+    probable_end_date = min([u.period_end for u in utilbills_after_start_date],
             key = lambda x: abs(probable_end_date - x))
+    return probable_end_date, [u for u in utilbills_after_start_date if
+            u.period_end <= probable_end_date]
 
 class StateDB:
 
