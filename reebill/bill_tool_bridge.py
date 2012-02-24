@@ -53,9 +53,9 @@ import random
 import time
 def random_wait(target):
     def random_wait_wrapper(*args, **kwargs):
-        #t = random.random()
-        #print('Waiting %s' % t)
-        #time.sleep(t)
+        t = random.random()
+        print('Waiting %s' % t)
+        time.sleep(t)
         return target(*args, **kwargs)
     return random_wait_wrapper
 
