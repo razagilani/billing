@@ -199,7 +199,7 @@ def main():
         'host': args.host,
         'password': args.statepw,
         'database': args.statedb,
-        'user': 'dev'
+        'user': args.stateuser
     }
     splinter_config = {
         'url': 'http://duino-drop.appspot.com/',
@@ -210,6 +210,7 @@ def main():
         'host': args.host,
         'db': args.olapdb
     }
+    print billdb_config, statedb_config
 
     # log file goes in billing/reebill (where reebill.log also goes)
     log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
