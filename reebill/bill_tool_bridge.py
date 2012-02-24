@@ -643,7 +643,8 @@ class BillToolBridge:
 
             # sequences will come in as a string if there is one element in post data. 
             # If there are more, it will come in as a list of strings
-            if type(sequences) is not list: sequences = [sequences]
+            if type(sequences) is not list:
+                sequences = [sequences]
             # acquire the most recent reebill from the sequence list and use
             # its values for the merge
             sequences = [sequence for sequence in sequences]
@@ -653,13 +654,10 @@ class BillToolBridge:
 
             # set issue date 
             for reebill in all_bills:
-                self.process.issue(reebill.account, reebill.sequence)
-                self.process.issue_to_customer(session, reebill.account,
-                        reebill.sequence)
+                self.process.issue(session, reebill.account, reebill.sequence)
 
             #  TODO: 21305875  Do this until reebill is being passed around
-            #  problem is all_bills is not reloaded after .issue and
-            #  .issue_to_customer
+            #  problem is all_bills is not reloaded after .issue
             all_bills = [self.reebill_dao.load_reebill(account, sequence) for
                     sequence in sequences]
 
@@ -691,12 +689,11 @@ class BillToolBridge:
                     os.path.join(self.config.get("billdb", "billpath"),
                         account), bill_file_names);
 
-
             for reebill in all_bills:
                 self.journal_dao.journal(reebill.account, reebill.sequence,
-                        "Mailed to %s by %s" % (recipients, current_user))
-                self.process.issue_to_customer(session, reebill.account,
-                        reebill.sequence)
+                        "Mailed to %s by %s" % (recipients,
+                        cherrypy.session['user'].username))
+                self.process.issue(session, reebill.account, reebill.sequence)
                 self.process.attach_utilbills(session, reebill.account,
                         reebill.sequence)
 
