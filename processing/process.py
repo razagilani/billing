@@ -194,8 +194,9 @@ class Process(object):
 
         # set reebill begin date and probable end date
         reebill.period_begin = old_period_end
-        reebill.period_end = state.guess_next_reebill_end_date(session,
+        utilbills, new_period_end = state.guess_utilbills_and_end_date(session,
                 reebill.account, old_period_end)
+        reebill.period_end = new_period_end
 
         # set discount rate to the value in MySQL
         reebill.discount_rate = self.state_db.discount_rate(session,
@@ -212,8 +213,8 @@ class Process(object):
         # https://www.pivotaltracker.com/story/show/24374911 
 
         # don't delete an issued or committed bill
-        # TODO decide if it should be issued or committed, and what "committed" means: see 
-        # https://www.pivotaltracker.com/story/show/24382885
+        # TODO decide if it should be issued or committed, and what "committed"
+        # means: see https://www.pivotaltracker.com/story/show/24382885
         if self.state_db.is_issued(session, account, sequence):
             raise Exception("Can't delete an issued reebill.")
 
