@@ -1,4 +1,4 @@
-#!/usr/bin/python
+    #!/usr/bin/python
 '''
 File: bill_tool_bridge.py
 Description: Allows bill tool to be invoked as a CGI
@@ -364,8 +364,10 @@ class BillToolBridge:
                 print >> sys.stderr, 'Logger not functioning\nCould not rollback session:\n%s' % traceback.format_exc()
 
     def handle_exception(self, e):
-
-        if type(e) is Unauthenticated:
+        if type(e) is cherrypy.HTTPRedirect:
+            # don't treat cherrypy redirect as an error
+            raise
+        elif type(e) is Unauthenticated:
             return self.dumps({'success': False, 'errors':{'reason': str(e),
                     'details':'none'}})
         else:
@@ -955,7 +957,14 @@ class BillToolBridge:
         try:
             session = None
 
-            self.check_authentication()
+            try:
+                self.check_authentication()
+            except Unauthenticated:
+                # http status code 401 is "unauthorized" but should be used
+                # with a special header and tells the browser try to repeat the
+                # request with http authentication, which is not what we want
+                cherrypy.response.status = 403
+                raise cherrypy.HTTPRedirect('/login.html')
 
             session = self.state_db.session()
 
