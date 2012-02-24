@@ -3287,9 +3287,7 @@ function renderWidgets()
                     disabled: false,
                 },
                 {
-                    // TODO:25227403 - export on account at a time 
                     xtype: 'linkbutton',
-                    // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
                     href: "http://"+location.host+"/reebill/excel_export",
                     id: 'atsiteExportButton',
                     iconCls: 'icon-application-go',
