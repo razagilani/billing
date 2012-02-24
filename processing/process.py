@@ -530,25 +530,24 @@ class Process(object):
         reebill.period_begin = rebill_periodbegindate
         reebill.period_end = rebill_periodenddate
 
-    def issue(self, account, sequence, issuedate=None):
-        # TODO rename to set_issue_date
-        # TODO this method should also set issued = 1 for the reebill (call StateDB.issue())
+    def issue(self, session, account, sequence, issuedate=None):
         '''Sets the issue date of the reebill given by account, sequence to
-        'issuedate', or 30 days from 'today' by default.'''
+        'issuedate' (or today by default) and the due date to 30 days from the
+        issue date. The reebill is marked as issued in the state database.'''
+        # set issue date and due date in mongo
         reebill = self.reebill_dao.load_reebill(account, sequence)
-
         if issuedate is None:
             issuedate = datetime.date.today()
         else:
             issuedate = datetime.datetime.strptime(issuedate, "%Y-%m-%d")
         # TODO: parameterize for dependence on customer 
         duedate = issuedate + datetime.timedelta(days=30)
-
         reebill.issue_date = issuedate
         reebill.due_date = duedate
-
-        # save in mongo
         self.reebill_dao.save_reebill(reebill)
+
+        # mark as issued in mysql
+        self.state_db.issue(session, account, sequence)
 
     def all_ree_charges(self, session):
 
