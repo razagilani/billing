@@ -4,12 +4,13 @@ import traceback
 import argparse
 from datetime import date, timedelta
 from calendar import Calendar
+from decimal import Decimal
 from billing import mongo
 from billing import dateutils
 
 calendar = Calendar()
 
-def daily_average_energy(reebill_dao, account, day, service='Gas'):
+def daily_average_energy(reebill_dao, account, day, service='Gas', unit='therms'):
     # find out what reebill covers this day and has a utility bill of the right
     # service that covers day
     # TODO put method in ReebillDAO to do this kind of query--needs to be fast
@@ -27,7 +28,6 @@ def daily_average_energy(reebill_dao, account, day, service='Gas'):
     if reebill is None:
         raise Exception("No reebills found for %s" % day)
 
-    # TODO unit should only be therms if the service is gas
     total_therms = 0
     meters = reebill.meters_for_service(service)
     for meter in meters:
@@ -37,14 +37,14 @@ def daily_average_energy(reebill_dao, account, day, service='Gas'):
             # a "total" register?
             if register['shadow'] == False:
                 quantity = register['quantity']
-                unit = register['quantity_units'].lower()
-                if unit == 'therms':
+                quantity_unit = register['quantity_units'].lower()
+                if quantity_unit == 'therms':
                     total_therms += quantity
-                elif unit == 'btu':
+                elif quantity_unit == 'btu':
                     total_therms += quantity / Decimal(100000.0)
-                elif unit == 'kwh':
+                elif quantity_unit == 'kwh':
                     total_therms += quantity / Decimal(.0341214163)
-                elif unit == 'ccf':
+                elif quantity_unit == 'ccf':
                     raise Exception(("Register contains gas measured "
                         "in ccf: can't convert that into energy "
                         "without the multiplier."))
@@ -52,15 +52,26 @@ def daily_average_energy(reebill_dao, account, day, service='Gas'):
                     raise Exception('Unknown energy unit: "%s"' % \
                             register['quantity_units'])
 
+    # convert therms into the caller's preferred energy unit
+    if unit == 'therms':
+        total_energy = total_therms
+    elif unit == 'btu':
+        total_energy = total_therms * Decimal(100000.0)
+    elif unit == 'kwh':
+        total_energy = total_therms * Decimal(.0341214163)
+    else:
+        raise Exception('Unknown energy unit: "%s"' % unit)
+
+    # average total energy over number of days in utility bill period
     start_date, end_date = reebill.utilbill_period_for_service(service)
     days_in_period = (end_date - start_date).days
+    return float(total_energy) / float(days_in_period)
 
-    return float(total_therms) / float(days_in_period)
-
-def monthly_average_energy(reebill_dao, account, year, month, service='Gas'):
+def monthly_average_energy(reebill_dao, account, year, month, service='Gas', unit='therms'):
     total = 0
     for day in calendar.itermonthdates(year, month):
-        total += daily_average_energy(reebill_dao, account, day, service)
+        total += daily_average_energy(reebill_dao, account, day,
+                service=service, unit=unit)
     return total
 
 def main():
@@ -81,6 +92,8 @@ def main():
     }
     reebill_dao = mongo.ReebillDAO(billdb_config)
     print daily_average_energy(reebill_dao, '10001', date(2011, 1, 1))
+    print daily_average_energy(reebill_dao, '10001', date(2011, 1, 1), unit='btu')
+    print daily_average_energy(reebill_dao, '10001', date(2011, 1, 1), unit='kwh')
     print monthly_average_energy(reebill_dao, '10001', 2011, 1)
 
 if __name__ == '__main__':
