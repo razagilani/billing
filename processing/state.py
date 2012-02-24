@@ -166,8 +166,11 @@ class StateDB:
         return new_customer
 
 
-    def commit_bill(self, session, account, sequence, start, end):
-
+    def associate_utilbills(self, session, account, sequence, start, end):
+        '''Creates association between the reebill given by 'account',
+        'sequence' and all utilbills belonging to that customer whose entire
+        periods are within the date interval [start, end]. The utility bills
+        are marked as processed.'''
         # get customer id from account and the reebill from account and sequence
         customer = session.query(Customer).filter(Customer.account==account).one()
         reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
@@ -184,20 +187,6 @@ class StateDB:
         for utilbill in utilbills:
             utilbill.reebill = reebill
             utilbill.processed = True
-
-    def is_committed(self, session, account, sequence, branch=0 ):
-        # TODO this doesn't do what it says it does
-
-        # get customer id from account and the reebill from account and sequence
-        customer = session.query(Customer).filter(Customer.account==account).one()
-        reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
-                .filter(ReeBill.sequence==sequence).one()
-        try:
-            utilbill = session.query(UtilBill).filter(UtilBill.reebill==reebill).one()
-        except NoResultFound as nrf: 
-            return False
-
-        return True
 
     def delete_reebill(self, session, account, sequence):
         # TODO add branch, which MySQL doesn't have yet:

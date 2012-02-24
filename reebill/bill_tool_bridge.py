@@ -53,9 +53,9 @@ import random
 import time
 def random_wait(target):
     def random_wait_wrapper(*args, **kwargs):
-        t = random.random()
-        print('Waiting %s' % t)
-        time.sleep(t)
+        #t = random.random()
+        #print('Waiting %s' % t)
+        #time.sleep(t)
         return target(*args, **kwargs)
     return random_wait_wrapper
 
@@ -588,7 +588,8 @@ class BillToolBridge:
                         'been turned off.'), 'details': ''}})
             reebill = self.reebill_dao.load_reebill(account, sequence)
             # TODO 22598787 - branch awareness
-            self.renderer.render(reebill, 
+            self.renderer.render(
+                reebill, 
                 self.config.get("billdb", "billpath")+ "%s" % account, 
                 "%.4d.pdf" % int(sequence),
                 "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
@@ -636,16 +637,16 @@ class BillToolBridge:
                     sequence in sequences]
 
             # render all the bills
+            # TODO this fails if reebill rendering is turned off--there should be a better error message
             for reebill in all_bills:
-                # TODO 22598787 - branch awareness
                 self.renderer.render(reebill, 
                     self.config.get("billdb", "billpath")+ "%s" % reebill.account, 
                     "%.4d.pdf" % int(reebill.sequence),
+                    # TODO 22598787 - branch awareness
                     "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
                     True
                 )
                 
-
             # the last element
             most_recent_bill = all_bills[-1]
 
@@ -664,14 +665,12 @@ class BillToolBridge:
                         account), bill_file_names);
 
 
-            # set issued to customer flagnflict.
-            # Commit bill
             for reebill in all_bills:
                 self.journal_dao.journal(reebill.account, reebill.sequence,
                         "Mailed to %s by %s" % (recipients, current_user))
                 self.process.issue_to_customer(session, reebill.account,
                         reebill.sequence)
-                self.process.commit_reebill(session, reebill.account,
+                self.process.associate_utilbills(session, reebill.account,
                         reebill.sequence)
 
             session.commit()
@@ -742,7 +741,6 @@ class BillToolBridge:
             # eventually, this data will have to support pagination
             session = self.state_db.session()
             sequences = self.state_db.listSequences(session, account)
-            #session.commit() # no reason to commit after no change, right? why was this line here?
             # TODO "issued" is used for the value of "committed" here because
             # committed is ill-defined: currently StateDB.is_committed()
             # returns true iff the reebill has associated utilbills, which
@@ -776,20 +774,6 @@ class BillToolBridge:
             rows = [dict([('account', status.account), ('fullname', full_names[i]), ('dayssince', status.dayssince)])
                     for i, status in enumerate(statuses)]
 
-            session.commit()
-            return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
-        except Exception as e:
-            self.rollback_session(session)
-            return self.handle_exception(e)
-
-    @cherrypy.expose
-    @random_wait
-    def summary_ree_charges(self, start, limit, **args):
-        # call getrows to actually query the database; return the result in
-        # JSON format if it succeded or an error if it didn't
-        try:
-            session = None
-            self.check_authentication()
 
             if not start or not limit:
                 raise ValueError("Bad Parameter Value")
