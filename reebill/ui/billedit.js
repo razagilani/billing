@@ -332,6 +332,12 @@ function renderWidgets()
     });
 
 
+    // put this by the other dataconnection instantiations
+    var utilbillImageDataConn = new Ext.data.Connection({
+        url: 'http://' + location.host + '/reebill/getUtilBillImage',
+    });
+    utilbillImageDataConn.autoAbort = true;
+
     // in the mail tab
     var utilbillGrid = new Ext.grid.EditorGridPanel({
         flex: 1,
@@ -384,11 +390,7 @@ function renderWidgets()
                     // new window
                     if (record.data.state == 'Final' || record.data.state == 'Utility Estimated') {
 
-                        // TODO: 25495677 memory leak 
-                        var utilbillImageDataConn = new Ext.data.Connection({
-                            url: 'http://' + location.host + '/reebill/getUtilBillImage',
-                        });
-                        utilbillImageDataConn.request( {
+                        utilbillImageDataConn.request({
                             params: {account: record.data.account, begin_date: formatted_begin_date_string,
                                 end_date: formatted_end_date_string, resolution: resolution},
                             success: function(result, request) {
@@ -410,7 +412,7 @@ function renderWidgets()
                             },
                             // this is called when the server returns 500 as well as when there's no response
                             failure: function () {
-                                Ext.MessageBox.alert('Ajax failure', theUrl);
+                                Ext.MessageBox.alert('Ajax failure');
                             },
                             disableCaching: true,
                         });
