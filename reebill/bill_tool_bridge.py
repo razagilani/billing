@@ -54,6 +54,7 @@ import time
 def random_wait(target):
     def random_wait_wrapper(*args, **kwargs):
         t = random.random()
+        t = 0
         print('Waiting %s' % t)
         time.sleep(t)
         return target(*args, **kwargs)
@@ -2173,7 +2174,6 @@ class BillToolBridge:
             return self.handle_exception(e)
 
     @cherrypy.expose
-    @random_wait
     def reebill_structure(self, account, sequence=None, **args):
         try:
             session = None
