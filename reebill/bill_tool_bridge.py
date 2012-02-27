@@ -48,6 +48,7 @@ pp = pprint.PrettyPrinter(indent=4)
 
 
 
+
 # decorator for stressing ajax asynchronicity
 import random
 import time
@@ -512,7 +513,6 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     def bindree(self, account, sequence, **args):
-        from billing.processing import fetch_bill_data as fbd
         try:
             self.check_authentication()
             if not account or not sequence:
@@ -543,6 +543,7 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     def bindrs(self, account, sequence, **args):
+        '''Handler for the front end's "Compute Bill" operation.'''
         try:
             session = None
             self.check_authentication()
