@@ -668,7 +668,7 @@ class BillToolBridge:
                     sequence in sequences]
 
             # render all the bills
-            # TODO this fails if reebill rendering is turned off--there should be a better error message
+            # TODO 25560415 this fails if reebill rendering is turned off--there should be a better error message
             for reebill in all_bills:
                 self.renderer.render(reebill, 
                     self.config.get("billdb", "billpath")+ "%s" % reebill.account, 
@@ -804,6 +804,20 @@ class BillToolBridge:
             rows = [dict([('account', status.account), ('fullname', full_names[i]), ('dayssince', status.dayssince)])
                     for i, status in enumerate(statuses)]
 
+            session.commit()
+            return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
+        except Exception as e:
+            self.rollback_session(session)
+            return self.handle_exception(e)
+
+    @cherrypy.expose
+    @random_wait
+    def summary_ree_charges(self, start, limit, **args):
+        # call getrows to actually query the database; return the result in
+        # JSON format if it succeded or an error if it didn't
+        try:
+            session = None
+            self.check_authentication()
 
             if not start or not limit:
                 raise ValueError("Bad Parameter Value")
