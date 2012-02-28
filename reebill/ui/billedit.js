@@ -84,6 +84,7 @@ function renderWidgets()
 
     // show username & logout link in the footer
     var logoutLink = '<a href="http://' + location.host + '/reebill/logout">log out</a>';
+    //TODO: 25593817
     Ext.Ajax.request({
         url: 'http://' + location.host + '/reebill/getUsername',
         success: function(result, request) {
@@ -124,7 +125,7 @@ function renderWidgets()
 
 
     ////////////////////////////////////////////////////////////////////////////
-    // Upload tab
+    // Utility Bill Tab
     //
     //
     
@@ -450,6 +451,38 @@ function renderWidgets()
 
     });
 
+    //
+    // Instantiate the Utility Bill panel
+    //
+    var utilityBillPanel = new Ext.Panel({
+        id: 'utilityBillTab',
+        title: 'Utility Bill',
+        disabled: utilityBillPanelDisabled,
+        layout: 'vbox',
+        layoutConfig : {
+            align : 'stretch',
+            pack : 'start'
+        },
+        // utility bill image on one side, upload form & list of bills on the
+        // other side (using 2 panels)
+        items: [
+            upload_form_panel,
+            utilbillGrid,
+        ],
+    });
+
+    // this event is received when the tab panel tab is clicked on
+    // and the panels it contains are displayed in accordion layout
+    utilityBillPanel.on('activate', function (panel) {
+
+        // because this tab is being displayed, demand the grids that it contain 
+        // be populated
+        utilbillGrid.setDisabled(true);
+        utilbillGridStore.proxy.getConnection().autoAbort = true;
+        utilbillGridStore.reload({params: {start:0, limit:25, service: Ext.getCmp('service_for_charges').getValue(), account: selected_account}});
+
+    });
+
           
     ////////////////////////////////////////////////////////////////////////////
     // ReeBill Tab
@@ -533,7 +566,7 @@ function renderWidgets()
         text: 'Delete selected reebill',
         //disabled: true, // TODO should be disabled when there's no reebill selected or the currently-selected bill is not deletable
         handler: function() {
-            // TODO integerate this into the ajax request canceling/delaying system
+            // TODO: 25593817
             var deleteBillRequest = Ext.Ajax.request({
                 url: 'http://' + location.host + '/reebill/delete_reebill',
                 params: {
@@ -649,6 +682,29 @@ function renderWidgets()
         ],
     });
 
+    reeBillStore.on('beforesave', function() {
+    });
+
+    reeBillStore.on('update', function(){
+    });
+
+    // this event is never fired because we manually save the aCharges
+    reeBillStore.on('save', function () {
+    });
+
+    reeBillStore.on('beforeload', function () {
+        //console.log('aChargesStore beforeload');
+    });
+
+    // fired when the datastore has completed loading
+    reeBillStore.on('load', function (store, records, options) {
+        //console.log('aChargesStore load');
+        // the grid is disabled by the panel that contains it  
+        // prior to loading, and must be enabled when loading is complete
+        // the datastore enables when it is done loading
+        reeBillGrid.setDisabled(false);
+    });
+
     var reeBillColModel = new Ext.grid.ColumnModel(
     {
         columns: [
@@ -721,6 +777,7 @@ function renderWidgets()
             singleSelect: true,
             listeners: {
                 rowselect: function (selModel, index, record) {
+                    // TODO: have other widgets pull when this selection is made
                     loadReeBillUIForSequence(selected_account, record.data.sequence);
                 }
             }
@@ -742,14 +799,6 @@ function renderWidgets()
     reeBillGrid.getSelectionModel().on('selectionchange', function(sm){
     });
   
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    reeBillStore.on('update', function(){
-    });
-
-    reeBillStore.on('beforesave', function() {
-        //reebillStore.setBaseParam("account", selected_account);
-    });
 
 
     /////////////////////////////////////////////////////
@@ -782,6 +831,7 @@ function renderWidgets()
         // TODO: 22792659 disabled widgets have to be reenabled if there is an exception 
         cmp.disable();
 
+        // TODO:25593817 this has to be converted to a data.connection
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/' + action,
             params: { 
@@ -845,7 +895,7 @@ function renderWidgets()
                     {
                         xtype: 'button',
 
-                        // ref places a name for this component into the grid so it may be referenced as aChargesGrid.insertBtn...
+                        // ref places a name for this component into the grid so it may be referenced as [name]Grid.insertBtn...
                         id: 'nodeInsertBtn',
                         iconCls: 'icon-add',
                         text: 'Insert',
@@ -857,7 +907,7 @@ function renderWidgets()
                         xtype: 'tbseparator'
                     },{
                         xtype: 'button',
-                        // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                        // ref places a name for this component into the grid so it may be referenced as [name]Grid.removeBtn...
                         id: 'nodeRemoveBtn',
                         iconCls: 'icon-delete',
                         text: 'Remove',
@@ -948,46 +998,41 @@ function renderWidgets()
 
     }
 
+
+    var addressFormPanel = new Ext.FormPanel(
+    {
+        id: 'billingAddressFormPanel',
+        title: 'Billing Address',
+        header: true,
+        url: 'http://'+location.host+'/reebill/set_addresses',
+        border: false,
+        frame: true,
+        flex: 1,
+        bodyStyle:'padding:10px 10px 0px 10px',
+        defaults: {
+            anchor: '-20',
+            allowBlank: false,
+        },
+        items:[], 
+        buttons: 
+        [
+            // TODO: the save button is generic in function, refactor
+            {
+                text   : 'Save',
+                handler: saveForm
+            },{
+                text   : 'Reset',
+                handler: function() {
+                    var formPanel = this.findParentByType(Ext.form.FormPanel);
+                    formPanel.getForm().reset();
+                }
+            }
+        ]
+    })
+
     function configureAddressForm(account, sequence, addresses)
     {
-        var reeBillTab = tabPanel.getItem('reeBillTab');
-
         var addressFormPanel = Ext.getCmp('billingAddressFormPanel');
-
-        // lazily create it if it does not exist
-        if (addressFormPanel === undefined) {
-            addressFormPanel = new Ext.FormPanel(
-            {
-                id: 'billingAddressFormPanel',
-                title: 'Billing Address',
-                header: true,
-                url: 'http://'+location.host+'/reebill/set_addresses',
-                border: false,
-                frame: true,
-                flex: 1,
-                bodyStyle:'padding:10px 10px 0px 10px',
-                defaults: {
-                    anchor: '-20',
-                    allowBlank: false,
-                },
-                items:[], 
-                buttons: 
-                [
-                    // TODO: the save button is generic in function, refactor
-                    {
-                        text   : 'Save',
-                        handler: saveForm
-                    },{
-                        text   : 'Reset',
-                        handler: function() {
-                            var formPanel = this.findParentByType(Ext.form.FormPanel);
-                            formPanel.getForm().reset();
-                        }
-                    }
-                ]
-            })
-            reeBillTab.add(addressFormPanel);
-        }
 
         addressFormPanel.removeAll(true);
 
@@ -1072,6 +1117,69 @@ function renderWidgets()
         addressFormPanel.getForm().baseParams = {account: account, sequence: sequence}
     }
 
+    // since this panel depends on data from the reeBillGrid, hook into
+    // its activate so that the user has the chance to pick a selected_sequence
+    addressFormPanel.on('activate', function (panel) {
+        // because this tab is being displayed, demand the form that it contain 
+        // be populated
+        // disable it during load, the datastore re-enables when loaded.
+        addressFormPanel.setDisabled(true);
+
+        // get the address information for this reebill 
+        // fire this request when the widget is displayed
+        addressesDataConn.request({
+            params: {account: selected_account, sequence: selected_sequence},
+            success: function(result, request) {
+                var jsonData = null;
+                try {
+                    jsonData = Ext.util.JSON.decode(result.responseText);
+                    if (jsonData.success == false) {
+                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                    } else {
+                        configureAddressForm(selected_account, selected_sequence, jsonData);
+                    } 
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                } finally {
+                    addressFormPanel.setDisabled(false);
+                }
+            },
+            failure: function(result, request) {
+                try {
+                    Ext.MessageBox.alert('Server Error', result.responseText);
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                } finally {
+                    addressFormPanel.setDisabled(false);
+                }
+            },
+            disableCaching: true,
+        });
+    });
+
+
+    // finally, set up the tabe that will contain the above widgets
+    var reeBillPanel = new Ext.Panel({
+        id: 'reeBillTab',
+        title: 'ReeBill',
+        disabled: reeBillPanelDisabled,
+        layout: 'accordion',
+        items: [reeBillGrid, addressFormPanel ],
+    });
+
+    // this event is received when the tab panel tab is clicked on
+    // and the panels it contains are displayed in accordion layout
+    reeBillPanel.on('activate', function (panel) {
+
+        // because this tab is being displayed, demand the grids that it contain 
+        // be populated
+        reeBillGrid.setDisabled(true);
+        reeBillStore.proxy.getConnection().autoAbort = true;
+        reeBillStore.reload({params: {start:0, limit:25, service: Ext.getCmp('service_for_charges').getValue(), account: selected_account}});
+
+
+    });
+
     function successResponse(response, options) 
     {
         var o = {};
@@ -1093,6 +1201,7 @@ function renderWidgets()
 
     function bindRSOperation()
     {
+        // TODO: 25593817
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/bindrs',
             params: { 
@@ -1109,7 +1218,7 @@ function renderWidgets()
 
     function bindREEOperation()
     {
-
+        // TODO: 25593817
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/bindree',
             params: { 
@@ -1126,6 +1235,7 @@ function renderWidgets()
 
     function rollOperation()
     {
+        // TODO: 25593817
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/roll',
             params: { 
@@ -1157,6 +1267,7 @@ function renderWidgets()
 
     function renderOperation()
     {
+        // TODO: 25593817
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/render',
             params: { 
@@ -1173,6 +1284,7 @@ function renderWidgets()
 
     function attachOperation() {
         /* Finalize association of utilbills with reebill. */
+        // TODO: 25593817
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/attach_utilbills',
             params: {
@@ -1192,6 +1304,7 @@ function renderWidgets()
         Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', function(btn, recipients){
             if (btn == 'ok')
             {
+                // TODO: 25593817
                 Ext.Ajax.request({
                     url: 'http://'+location.host+'/reebill/mail',
                     params: {
@@ -1336,8 +1449,18 @@ function renderWidgets()
         ubPeriodsTab.add(ubPeriodsFormPanels);
     }
 
+    //
+    // Instantiate the Utility Bill Periods panel
+    //
+    var ubBillPeriodsPanel = new Ext.Panel({
+        id: 'ubPeriodsTab',
+        title: 'Bill Periods',
+        disabled: billPeriodsPanelDisabled,
+        items: null // configureUBPeriodForm set this
+    });
+
     ////////////////////////////////////////////////////////////////////////////
-    // Measured Usage tab
+    // Measured Usage Tab
     //
     //
     // create a panel to which we can dynamically add/remove components
@@ -1468,6 +1591,21 @@ function renderWidgets()
 
         ubMeasuredUsagesTab.add(ubMeasuredUsagesFormPanels);
     }
+
+    //
+    // Instantiate the Utility Bill Measured Usages panel
+    //
+    var ubMeasuredUsagesPanel = new Ext.Panel({
+        id: 'ubMeasuredUsagesTab',
+        title: 'Measured Usage',
+        disabled: usagePeriodsPanelDisabled,
+        layout: 'vbox',
+        layoutConfig : {
+            pack : 'start',
+            align : 'stretch',
+        },
+        items: null // configureUBMeasuredUsagesForm sets this
+    });
 
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1670,7 +1808,7 @@ function renderWidgets()
             },{
                 xtype: 'button',
 
-                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.insertBtn...
+                // ref places a name for this component into the grid so it may be referenced as [name]Grid.insertBtn...
                 id: 'aChargesInsertBtn',
                 iconCls: 'icon-add',
                 text: 'Insert',
@@ -1717,7 +1855,7 @@ function renderWidgets()
                 xtype: 'tbseparator'
             },{
                 xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as aChargesGrid.removeBtn...
+                // ref places a name for this component into the grid so it may be referenced as [name]Grid.removeBtn...
                 id: 'aChargesRemoveBtn',
                 iconCls: 'icon-delete',
                 text: 'Remove',
@@ -1770,6 +1908,7 @@ function renderWidgets()
                     //account = selected_account;
                     //sequence = selected_sequence;
 
+                    // TODO: 25593817
                     Ext.Ajax.request({
                         url: 'http://'+location.host+'/reebill/saveActualCharges',
                         params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence, rows: jsonData},
@@ -2149,6 +2288,7 @@ function renderWidgets()
                     //account = selected_account;
                     //sequence = selected_sequence;
 
+                    // TODO: 25593817
                     Ext.Ajax.request({
                         url: 'http://'+location.host+'/reebill/saveHypotheticalCharges',
                         params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence, rows: jsonData},
@@ -2243,6 +2383,48 @@ function renderWidgets()
     });
 
 
+    //
+    // Instantiate the Charge Items panel
+    //
+    var chargeItemsPanel = new Ext.Panel({
+        id: 'chargeItemsTab',
+        title: 'Charge Items',
+        disabled: chargeItemsPanelDisabled,
+        xtype: 'panel',
+        layout: 'accordion',
+        items: [
+            aChargesGrid,
+            hChargesGrid,
+        ]
+    });
+
+    // this event is received when the tab panel tab is clicked on
+    // and the panels it contains are displayed in accordion layout
+    chargeItemsPanel.on('activate', function (panel) {
+        //console.log("chargeItemsPanel activated");
+        //console.log(panel);
+
+        // because this tab is being displayed, demand the grids that it contain 
+        // be populated
+        aChargesGrid.setDisabled(true);
+        aChargesStore.proxy.getConnection().autoAbort = true;
+        aChargesStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
+
+        hChargesGrid.setDisabled(true);
+        hChargesStore.proxy.getConnection().autoAbort = true;
+        hChargesStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
+    });
+
+    chargeItemsPanel.on('expand', function (panel) {
+        //console.log("chargeItemsPanel expand");
+        //console.log(panel);
+    });
+    chargeItemsPanel.on('collapse', function (panel) {
+        //console.log("chargeItemsPanel collapse");
+        //console.log(panel);
+    });
+
+
     ///////////////////////////////////////
     // Rate Structure Tab
 
@@ -2313,8 +2495,26 @@ function renderWidgets()
         ],
     });
 
-    //CPRSRSIStore.on('save', function (store, batch, data) {
-    //});
+    // grid's data store callback for when data is edited
+    // when the store backing the grid is edited, enable the save button
+    CPRSRSIStore.on('update', function(){
+        //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
+    });
+
+    CPRSRSIStore.on('save', function (store, batch, data) {
+    });
+
+    CPRSRSIStore.on('beforeload', function () {
+        //console.log('CPRSRSIStore beforeload');
+    });
+
+    // fired when the datastore has completed loading
+    CPRSRSIStore.on('load', function (store, records, options) {
+        // the grid is disabled by the panel that contains it  
+        // prior to loading, and must be enabled when loading is complete
+        // the datastore enables when it is done loading
+        CPRSRSIGrid.setDisabled(false);
+    });
 
     var CPRSRSIColModel = new Ext.grid.ColumnModel(
     {
@@ -2493,7 +2693,6 @@ function renderWidgets()
     // when the store backing the grid is edited, enable the save button
     CPRSRSIStore.on('update', function(){
         console.log('CPRSRSIStore update');
-        console.log('enabling save 1111');
         CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
     });
 
@@ -2566,6 +2765,27 @@ function renderWidgets()
             {name: 'roundrule'},
             {name: 'total'},
         ],
+    });
+
+    // grid's data store callback for when data is edited
+    // when the store backing the grid is edited, enable the save button
+    UPRSRSIStore.on('update', function(){
+        //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(false);
+    });
+
+    UPRSRSIStore.on('save', function (store, batch, data) {
+    });
+
+    UPRSRSIStore.on('beforeload', function () {
+        //console.log('UPRSRSIStore beforeload');
+    });
+
+    // fired when the datastore has completed loading
+    UPRSRSIStore.on('load', function (store, records, options) {
+        // the grid is disabled by the panel that contains it  
+        // prior to loading, and must be enabled when loading is complete
+        // the datastore enables when it is done loading
+        UPRSRSIGrid.setDisabled(false);
     });
 
     var UPRSRSIColModel = new Ext.grid.ColumnModel(
@@ -2816,6 +3036,27 @@ function renderWidgets()
         ],
     });
 
+    // grid's data store callback for when data is edited
+    // when the store backing the grid is edited, enable the save button
+    URSRSIStore.on('update', function(){
+        //URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
+    });
+
+    URSRSIStore.on('save', function (store, batch, data) {
+    });
+
+    URSRSIStore.on('beforeload', function () {
+        //console.log('URSRSIStore beforeload');
+    });
+
+    // fired when the datastore has completed loading
+    URSRSIStore.on('load', function (store, records, options) {
+        // the grid is disabled by the panel that contains it  
+        // prior to loading, and must be enabled when loading is complete
+        // the datastore enables when it is done loading
+        URSRSIGrid.setDisabled(false);
+    });
+
     var URSRSIColModel = new Ext.grid.ColumnModel(
     {
         columns: [
@@ -2990,6 +3231,59 @@ function renderWidgets()
         URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
         URSRSIStore.setBaseParam("account", selected_account);
         URSRSIStore.setBaseParam("sequence", selected_sequence);
+    });
+
+    //
+    // Instantiate the Rate Structure panel 
+    //
+    var rateStructurePanel = new Ext.Panel({
+        id: 'rateStructureTab',
+        title: 'Rate Structure',
+        disabled: rateStructurePanelDisabled,
+        layout: 'border',
+        items: [
+        {
+            region: 'north',
+            layout: 'fit',
+            split: true,
+            items: [CPRSRSIGrid]
+        },{
+            region: 'center',
+            layout: 'fit',
+            split: true,
+            items: [UPRSRSIGrid]
+        },{
+            region:'south',
+            layout: 'fit',
+            split: true,
+            items: [URSRSIGrid]
+        }]
+    });
+
+    // this event is received when the tab panel tab is clicked on
+    // and the panels it contains are displayed in accordion layout
+    rateStructurePanel.on('activate', function (panel) {
+
+        // because this tab is being displayed, demand the grids that it contain 
+        // be populated
+        CPRSRSIGrid.setDisabled(true);
+        CPRSRSIStore.proxy.getConnection().autoAbort = true;
+        CPRSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
+        // abort this connection if previously loading
+        URSRSIGrid.setDisabled(true);
+        URSRSIStore.proxy.getConnection().autoAbort = true;
+        URSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
+
+        // abort this connection if previously loading
+        UPRSRSIGrid.setDisabled(true);
+        UPRSRSIStore.proxy.getConnection().autoAbort = true;
+        UPRSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
+
+    });
+
+    rateStructurePanel.on('expand', function (panel) {
+    });
+    rateStructurePanel.on('collapse', function (panel) {
     });
 
 
@@ -3173,10 +3467,33 @@ function renderWidgets()
         //paymentGrid.getTopToolbar().findById('paymentInsertBtn').setDisabled(sm.getCount() <1);
         paymentGrid.getTopToolbar().findById('paymentRemoveBtn').setDisabled(sm.getCount() <1);
     });
+
+    //
+    // Instantiate the Payments panel
+    //
+    var paymentsPanel = new Ext.Panel({
+        id: 'paymentTab',
+        title: 'Pay',
+        disabled: paymentPanelDisabled,
+        layout: 'accordion',
+        items: [paymentGrid, ]
+    });
+
+    // this event is received when the tab panel tab is clicked on
+    // and the panels it contains are displayed 
+    paymentsPanel.on('activate', function (panel) {
+        // because this tab is being displayed, demand the grids that it contain 
+        // be populated
+        // disable it during load, the datastore re-enables when loaded.
+        paymentGrid.setDisabled(true);
+        paymentStore.proxy.getConnection().autoAbort = true;
+        paymentStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account}});
+
+    });
   
 
     ///////////////////////////////////////
-    // Mail ReeBills Tab
+    // Mail Tab
 
     var initialMailReebill =  {
         rows: [
@@ -3303,6 +3620,21 @@ function renderWidgets()
 
     mailReebillStore.on('beforesave', function() {
         reebillStore.setBaseParam("account", selected_account);
+    });
+
+    //
+    // Instantiate the Mail panel
+    //
+    var mailPanel = new Ext.Panel({
+        id: 'mailTab',
+        title: 'Mail',
+        disabled: mailPanelDisabled,
+        layout: 'vbox',
+        layoutConfig : {
+            align : 'stretch',
+            pack : 'start'
+        },
+        items: [mailReebillGrid, ]
     });
 
     ///////////////////////////////////////
@@ -3665,6 +3997,18 @@ function renderWidgets()
         ],
     });
 
+
+    //
+    // Instantiate the Accounts panel
+    //
+    var accountsPanel = new Ext.Panel({
+        id: 'statusTab',
+        title: 'Accounts',
+        disabled: accountsPanelDisabled,
+        layout: 'accordion',
+        items: [accountGrid,accountReeValueGrid,newAccountFormPanel, ]
+    });
+
     ///////////////////////////////////////////////////////////////////////////
     // preferences tab
     // bill image resolution field in preferences tab (needs a name so its
@@ -3700,6 +4044,7 @@ function renderWidgets()
         new Ext.Button({
             text: 'Save',
             handler: function() {
+                // TODO: 25593817
                 Ext.Ajax.request({
                     url: 'http://'+location.host+'/reebill/setBillImageResolution',
                     params: { 'resolution': billImageResolutionField.getValue() },
@@ -3729,6 +4074,7 @@ function renderWidgets()
     // TODO: 22360193 populating a form from Ajax creates a race condition.  
     // What if the network doesn't return and user enters a value nefore the callback is fired?
     var resolution = null;
+    //TODO 25593817
     Ext.Ajax.request({
         url: 'http://'+location.host+'/reebill/getBillImageResolution',
         disableCaching: true,
@@ -3751,8 +4097,24 @@ function renderWidgets()
         }
     });
 
+
+    //
+    // Instantiate the Preference panel
+    //
+    var preferencesPanel = new Ext.Panel({
+        id: 'preferencesTab',
+        title: 'Preferences',
+        disabled: preferencesPanelDisabled,
+        layout: 'vbox',
+        layoutConfig : {
+            pack : 'start',
+            align : 'stretch',
+        },
+        items: [preferencesFormPanel, ],
+    });
+
     ///////////////////////////////////////
-    // journals Tab
+    // Journal Tab
 
     var initialjournal =  {
         rows: [
@@ -3980,7 +4342,28 @@ function renderWidgets()
         labelPad: 8           // defaults to 5, must specify labelWidth to be honored
     });
 
-    // reconciliation report
+    //
+    // Instantiate the Journal panel
+    //
+    var journalPanel = new Ext.Panel({
+        id: 'journalTab',
+        title: 'Journal',
+        disabled: journalPanelDisabled,
+        xtype: 'panel',
+        layout: 'vbox',
+        layoutConfig : {
+            align : 'stretch',
+            pack : 'start'
+        },
+        items: [journalGrid, ]
+    });
+
+
+
+    ///////////////////////////////////////////
+    // Reconciliation Tab
+    //
+
     var reconciliationGridStore = new Ext.data.JsonStore({
         root: 'rows',
         totalProperty: 'results',
@@ -4059,6 +4442,29 @@ function renderWidgets()
         }),
     });
 
+    //
+    // Instantiate the Reconciliation panel
+    //
+    var reconciliationPanel = new Ext.Panel({
+        id: 'reconciliationTab',
+        title: 'Reconciliation Report',
+        disabled: reconciliationPanelDisabled,
+        xtype: 'panel',
+        layout: 'fit',
+        items: [reconciliationGrid, ],
+    });
+
+
+    ///////////////////////////////////////////
+    // About Tab
+    //
+    var aboutPanel = new Ext.Panel({
+        id: 'aboutTab',
+        title: 'About',
+        disabled: aboutPanelDisabled,
+        html: '<table style="width: 100%; border: 0; margin-top:20px;"><tr><td align="center">' + SKYLINE_VERSIONINFO + '</td></tr><tr><td align="center"><img width="50%" src="MrJonas.png"/></td></tr><tr><td align="center"><font style="font-family: impact; font-size:68pt;">Masterbiller</font></td></tr></table>',
+    });
+
     // end of tab widgets
     ////////////////////////////////////////////////////////////////////////////
 
@@ -4074,248 +4480,6 @@ function renderWidgets()
 
     ////////////////////////////////////////////////////////////////////////////
     // construct tabpanel and the panels it contains for the viewport
-    // instantiate tab content and hook into their events
-
-    //
-    // Instantiate the Rate Structure panel 
-    //
-    var rateStructurePanel = new Ext.Panel({
-        id: 'rateStructureTab',
-        title: 'Rate Structure',
-        disabled: rateStructurePanelDisabled,
-        layout: 'border',
-        items: [
-        {
-            region: 'north',
-            layout: 'fit',
-            split: true,
-            items: [CPRSRSIGrid]
-        },{
-            region: 'center',
-            layout: 'fit',
-            split: true,
-            items: [UPRSRSIGrid]
-        },{
-            region:'south',
-            layout: 'fit',
-            split: true,
-            items: [URSRSIGrid]
-        }]
-    });
-
-    rateStructurePanel.on('activate', function () {
-    });
-
-    //
-    // Instantiate the Charge Items panel
-    //
-    var chargeItemsPanel = new Ext.Panel({
-        id: 'chargeItemsTab',
-        title: 'Charge Items',
-        disabled: chargeItemsPanelDisabled,
-        xtype: 'panel',
-        layout: 'accordion',
-        items: [
-            aChargesGrid,
-            hChargesGrid,
-        ]
-    });
-
-    // this event is received when the tab panel tab is clicked on
-    // and the panels it contains are displayed in accordion layout
-    chargeItemsPanel.on('activate', function (panel) {
-        //console.log("chargeItemsPanel activated");
-        //console.log(panel);
-
-        // because this tab is being displayed, demand the grids that it contain 
-        // be populated
-        aChargesGrid.setDisabled(true);
-        aChargesStore.proxy.getConnection().autoAbort = true;
-        aChargesStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
-
-        hChargesGrid.setDisabled(true);
-        hChargesStore.proxy.getConnection().autoAbort = true;
-        hChargesStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
-    });
-
-    chargeItemsPanel.on('expand', function (panel) {
-        //console.log("chargeItemsPanel expand");
-        //console.log(panel);
-    });
-    chargeItemsPanel.on('collapse', function (panel) {
-        //console.log("chargeItemsPanel collapse");
-        //console.log(panel);
-    });
-
-    //
-    // Instantiate the Accounts panel
-    //
-    var accountsPanel = new Ext.Panel({
-        id: 'statusTab',
-        title: 'Accounts',
-        disabled: accountsPanelDisabled,
-        layout: 'accordion',
-        items: [accountGrid,accountReeValueGrid,newAccountFormPanel, ]
-    });
-
-    //
-    // Instantiate the Payments panel
-    //
-    var paymentsPanel = new Ext.Panel({
-        id: 'paymentTab',
-        title: 'Pay',
-        disabled: paymentPanelDisabled,
-        layout: 'accordion',
-        items: [paymentGrid, ]
-    });
-
-    // this event is received when the tab panel tab is clicked on
-    // and the panels it contains are displayed 
-    paymentsPanel.on('activate', function (panel) {
-        // because this tab is being displayed, demand the grids that it contain 
-        // be populated
-        // disable it during load, the datastore re-enables when loaded.
-        paymentGrid.setDisabled(true);
-        paymentStore.proxy.getConnection().autoAbort = true;
-        paymentStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account}});
-
-    });
-
-    //
-    // Instantiate the Utility Bill panel
-    //
-    var utilityBillPanel = new Ext.Panel({
-        id: 'utilityBillTab',
-        title: 'Utility Bill',
-        disabled: utilityBillPanelDisabled,
-        layout: 'vbox',
-        layoutConfig : {
-            align : 'stretch',
-            pack : 'start'
-        },
-        // utility bill image on one side, upload form & list of bills on the
-        // other side (using 2 panels)
-        items: [
-            upload_form_panel,
-            utilbillGrid,
-        ],
-    });
-
-    // this event is received when the tab panel tab is clicked on
-    // and the panels it contains are displayed in accordion layout
-    utilityBillPanel.on('activate', function (panel) {
-
-        // because this tab is being displayed, demand the grids that it contain 
-        // be populated
-        utilbillGrid.setDisabled(true);
-        utilbillGridStore.proxy.getConnection().autoAbort = true;
-        utilbillGridStore.reload({params: {start:0, limit:25, service: Ext.getCmp('service_for_charges').getValue(), account: selected_account}});
-
-    });
-
-    //
-    // Instantiate the ReeBill panel
-    //
-    var reeBillPanel = new Ext.Panel({
-        id: 'reeBillTab',
-        title: 'ReeBill',
-        disabled: reeBillPanelDisabled,
-        layout: 'accordion',
-        items: [reeBillGrid, ],
-    });
-
-    //
-    // Instantiate the Utility Bill Periods panel
-    //
-    var ubBillPeriodsPanel = new Ext.Panel({
-        id: 'ubPeriodsTab',
-        title: 'Bill Periods',
-        disabled: billPeriodsPanelDisabled,
-        items: null // configureUBPeriodForm set this
-    });
-
-    //
-    // Instantiate the Utility Bill Measured Usages panel
-    //
-    var ubMeasuredUsagesPanel = new Ext.Panel({
-        id: 'ubMeasuredUsagesTab',
-        title: 'Usage Periods',
-        disabled: usagePeriodsPanelDisabled,
-        layout: 'vbox',
-        layoutConfig : {
-            pack : 'start',
-            align : 'stretch',
-        },
-        items: null // configureUBMeasuredUsagesForm sets this
-    });
-
-    //
-    // Instantiate the Journal panel
-    //
-    var journalPanel = new Ext.Panel({
-        id: 'journalTab',
-        title: 'Journal',
-        disabled: journalPanelDisabled,
-        xtype: 'panel',
-        layout: 'vbox',
-        layoutConfig : {
-            align : 'stretch',
-            pack : 'start'
-        },
-        items: [journalGrid, ]
-    });
-
-    //
-    // Instantiate the Mail panel
-    //
-    var mailPanel = new Ext.Panel({
-        id: 'mailTab',
-        title: 'Mail',
-        disabled: mailPanelDisabled,
-        layout: 'vbox',
-        layoutConfig : {
-            align : 'stretch',
-            pack : 'start'
-        },
-        items: [mailReebillGrid, ]
-    });
-
-    //
-    // Instantiate the Reconciliation panel
-    //
-    var reconciliationPanel = new Ext.Panel({
-        id: 'reconciliationTab',
-        title: 'Reconciliation Report',
-        disabled: reconciliationPanelDisabled,
-        xtype: 'panel',
-        layout: 'fit',
-        items: [reconciliationGrid, ],
-    });
-
-    //
-    // Instantiate the Preference panel
-    //
-    var preferencesPanel = new Ext.Panel({
-        id: 'preferencesTab',
-        title: 'Preferences',
-        disabled: preferencesPanelDisabled,
-        layout: 'vbox',
-        layoutConfig : {
-            pack : 'start',
-            align : 'stretch',
-        },
-        items: [preferencesFormPanel, ],
-    });
-
-    //
-    // Instantiate the About panel
-    //
-    var aboutPanel = new Ext.Panel({
-        id: 'aboutTab',
-        title: 'About',
-        disabled: aboutPanelDisabled,
-        html: '<table style="width: 100%; border: 0; margin-top:20px;"><tr><td align="center">' + SKYLINE_VERSIONINFO + '</td></tr><tr><td align="center"><img width="50%" src="MrJonas.png"/></td></tr><tr><td align="center"><font style="font-family: impact; font-size:68pt;">Masterbiller</font></td></tr></table>',
-    });
 
     // Assemble all of the above panels into a parent tab panel
     var tabPanel = new Ext.TabPanel({
@@ -4389,12 +4553,6 @@ function renderWidgets()
       }
     );
 
-    // TODO: move these functions to a separate file for organization purposes
-    // also consider what to do about the Ext.data.Stores and where they should
-    // go since they hit the web for data.
-
-
-
     // update selection in statusbar
     function updateStatusbar(account, sequence, branch)
     {
@@ -4420,6 +4578,7 @@ function renderWidgets()
     function loadReeBillUIForAccount(account) {
 
         selected_account = account;
+        selected_sequence = null;
 
         // a new account has been selected, deactivate subordinate tabs
         ubBillPeriodsPanel.setDisabled(true);
@@ -4448,10 +4607,10 @@ function renderWidgets()
         //paymentStore.reload({params: {account: account}});
 
         // update list of ReeBills (for selection) for this account
-        reeBillStore.setBaseParam("account", account)
+        //reeBillStore.setBaseParam("account", account)
 
         // paging tool bar params must be passed in to keep store in sync with toolbar paging calls - autoload params lost after autoload
-        reeBillStore.reload({params:{start:0, limit:25}});
+        //reeBillStore.reload({params:{start:0, limit:25}});
 
         // update list of ReeBills (for mailing) for this account
         mailReebillStore.setBaseParam("account", account)
@@ -4594,6 +4753,7 @@ function renderWidgets()
         journalFormPanel.getForm().findField("sequence").setValue(sequence)
 
         // get utilbill period information from server
+        // TODO: fire this request only when the form is displayed
         ubPeriodsDataConn.request({
             params: {account: selected_account, sequence: selected_sequence},
             success: function(result, request) {
@@ -4619,6 +4779,7 @@ function renderWidgets()
         });
 
         // get the measured usage dates for each service
+        // TODO: fire this request only when the form is displayed
         ubMeasuredUsagesDataConn.request({
             params: {account: selected_account, sequence: selected_sequence},
             success: function(result, request) {
@@ -4639,48 +4800,6 @@ function renderWidgets()
             disableCaching: true,
         });
 
-        // get the address information for this reebill 
-        addressesDataConn.request({
-            params: {account: selected_account, sequence: selected_sequence},
-            success: function(result, request) {
-                var jsonData = null;
-                try {
-                    jsonData = Ext.util.JSON.decode(result.responseText);
-                    if (jsonData.success == false)
-                    {
-                        //Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                        // handle failure here if necessary
-                    } else {
-                        configureAddressForm(selected_account, selected_sequence, jsonData);
-                    } 
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
-                }
-            },
-            failure: function() {alert("ajax failure")},
-            disableCaching: true,
-        });
-
-        // abort this connection if previously loading
-        //aChargesStore.proxy.getConnection().autoAbort = true;
-        //aChargesStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
-
-        // abort this connection if previously loading
-        hChargesStore.proxy.getConnection().autoAbort = true;
-        hChargesStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
-
-
-        // abort this connection if previously loading
-        CPRSRSIStore.proxy.getConnection().autoAbort = true;
-        CPRSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
-
-        // abort this connection if previously loading
-        URSRSIStore.proxy.getConnection().autoAbort = true;
-        URSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
-
-        // abort this connection if previously loading
-        UPRSRSIStore.proxy.getConnection().autoAbort = true;
-        UPRSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
 
         // TODO:23046181 abort connections in progress
         configureReeBillEditor(selected_account, selected_sequence);
@@ -4728,16 +4847,15 @@ function renderWidgets()
         // in the utilbill image box
         Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div', html:LOADING_MESSAGE, id: 'reebillimage'}, true);
 
-
         // Now that a ReeBill has been loaded, enable the tabs that act on a ReeBill
+        // These enabled tabs will then display widgets that will pull data based on
+        // the global account and sequence selection
         ubBillPeriodsPanel.setDisabled(false);
         ubMeasuredUsagesPanel.setDisabled(false);
         rateStructurePanel.setDisabled(false);
         chargeItemsPanel.setDisabled(false);
         journalPanel.setDisabled(false);
         mailPanel.setDisabled(false);
-        
-
 
         // finally, update the status bar with current selection
         updateStatusbar(selected_account, selected_sequence, 0);
