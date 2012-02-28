@@ -1477,6 +1477,12 @@ class BillToolBridge:
                 from datetime import date
 
                 new_payment = self.state_db.create_payment(session, account, date.today(), "New Entry", "0.00")
+
+                # This session must be committed here, because the ORM
+                # will not populate the id without a commit.
+                # TODO: 25643535 - this commit is dangerously early 
+                session.commit()
+
                 # TODO: is there a better way to populate a dictionary from an ORM object dict?
                 row = [{
                     'id': new_payment.id, 
@@ -1485,8 +1491,6 @@ class BillToolBridge:
                     'credit': str(new_payment.credit),
                     }]
 
-
-                session.commit()
                 return self.dumps({'success':True, 'rows':row})
 
             elif xaction == "destroy":

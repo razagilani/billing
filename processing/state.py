@@ -362,7 +362,6 @@ class StateDB:
                     period_start=start, period_end=end)
             # put it in the database
             session.add(utilbill)
-            print 'added utilbill for', start, end
 
     def create_payment(self, session, account, date, description, credit):
         customer = session.query(Customer).filter(Customer.account==account).one()
