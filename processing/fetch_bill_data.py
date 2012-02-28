@@ -33,7 +33,7 @@ def get_energy_for_time_interval(timestamps, values, t1, t2):
     '''Returns interval meter energy for the time interval [t1, t2) as best we
     can estimate it. We assume that for each i, the energy value at values[i]
     covers the time period between timestamps[i-1] and timestamps[i], and that
-    energy is evenly distrubuted over each period. This is only accurate if t1
+    energy is evenly distrubuted over the period. This is only accurate if t1
     and t2 are in 'timestamps', but they're not, it should be approximately
     right, especially if the time resolution is high.'''
     # binary search the list of timestamps to find the last data point
@@ -45,7 +45,8 @@ def get_energy_for_time_interval(timestamps, values, t1, t2):
 
     # assume the energy associated with the timestamp t1_late is distributed
     # evenly over the time interval (t1_early, t1_late].
-    total_energy = values[t1_early_index] * (t1_late - t1).seconds / (t1_late - t1_early).seconds
+    total_energy = values[t1_early_index] * (t1_late - t1).seconds \
+            / (t1_late - t1_early).seconds
     
     # accumulate energy from data points with timestamps following t1_late up
     # to the last one before t2 (call that t2_early)
@@ -53,15 +54,14 @@ def get_energy_for_time_interval(timestamps, values, t1, t2):
     while timestamps[i] < t2:
         total_energy += values[i]
         i += 1
-    t2_late_index = i
     t2_early_index = i - 1
-    t2_late = timestamps[t2_late_index]
     t2_early = timestamps[t2_early_index]
+    t2_late = timestamps[t2_early_index + 1]
     
     # we have counted energy from the entire interval [t2_early, t2_late)
     # above, so we need to subtract the energy in (t2, t2_late) from the total
-    last_interval_length = (t2_late - t2_early).seconds
-    total_energy -= values[t2_early_index] * (timestamps[t2_late_index] - t2).seconds / last_interval_length
+    total_energy -= values[t2_early_index] * (t2_late - t2).seconds \
+            / (t2_late - t2_early).seconds
 
     return total_energy
 
