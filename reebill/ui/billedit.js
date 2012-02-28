@@ -693,12 +693,12 @@ function renderWidgets()
     });
 
     reeBillStore.on('beforeload', function () {
-        //console.log('aChargesStore beforeload');
+        reeBillStore.setBaseParam("account", selected_account);
+        reeBillStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
     });
 
     // fired when the datastore has completed loading
     reeBillStore.on('load', function (store, records, options) {
-        //console.log('aChargesStore load');
         // the grid is disabled by the panel that contains it  
         // prior to loading, and must be enabled when loading is complete
         // the datastore enables when it is done loading
@@ -738,13 +738,6 @@ function renderWidgets()
                 ],
             },
             { xtype: 'tbseparator' },
-            /*{
-                xtype: 'panel',
-                items: [
-                    accountCombo,
-                ],
-            },
-            { xtype: 'tbseparator' },*/
             {
                 xtype: 'panel',
                 items: [
@@ -798,7 +791,6 @@ function renderWidgets()
 
     reeBillGrid.getSelectionModel().on('selectionchange', function(sm){
     });
-  
 
 
     /////////////////////////////////////////////////////
