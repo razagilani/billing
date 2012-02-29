@@ -469,7 +469,7 @@ class Process(object):
         first_bill_year = first_bill_date.year
         first_bill_month = first_bill_date.month
 
-        first_month = install.install_completed.month
+        first_month = install.install_commissioned.month
         for year, month in dateutils.months_of_past_year(bill_year, bill_month):
             # months before first bill have 0 energy, even if data were
             # collected during that time.
@@ -481,7 +481,11 @@ class Process(object):
                 # we insist that data should be available during the month of
                 # first billing and all following months; if get_data_for_month()
                 # fails, that's a real error that we shouldn't ignore.
-                renewable_energy_btus = monguru.get_data_for_month(install, year, month).energy_sold
+                try:
+                    renewable_energy_btus = monguru.get_data_for_month(install, year, month).energy_sold
+                except:
+                    # TODO: 25721727
+                    renewable_energy_btus = 0
 
             therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
             next_stats['consumption_trend'].append({
