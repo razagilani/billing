@@ -931,7 +931,8 @@ function renderWidgets()
             }
 
             var reeBillEditorTreeLoader = new Ext.tree.TreeLoader({
-                dataUrl:'http://'+location.host+'/reebill/reebill_structure_editor',
+                //dataUrl:'http://'+location.host+'/reebill/reebill_structure_editor',
+                dataUrl:'http://'+location.host+'/reebill/reebill_structure',
                 // defaults to true
                 clearOnLoad: true,
             });
@@ -998,8 +999,8 @@ function renderWidgets()
         }
 
         // widgets have been lazily instantiated, now go load them.
-        loader.baseParams.account = account;
-        loader.baseParams.sequence = sequence;
+        loader.baseParams.account = selected_account;
+        loader.baseParams.sequence = selected_sequence;
         loader.load(reeBillEditorTree.root);
 
     }
