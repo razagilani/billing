@@ -1,5 +1,6 @@
 #!/usr/bin/python
-'''Reports that involve averaging utility bill total energy over the bill period.'''
+'''Reports that involve computing approximate utility bill energy quantities or
+charges over arbitarary periods of time.'''
 import traceback
 import argparse
 from datetime import date, timedelta
@@ -15,7 +16,7 @@ def daily_average_energy(reebill_dao, account, day, service='Gas',
     # find out what reebill covers this day and has a utility bill of the right
     # service that covers day
     possible_reebills = reebill_dao.load_reebills_in_period(account,
-            start_date=day, end_date=day+timedelta(days=1))
+            start_date=day, end_date=day)
     reebill = None
     for possible_reebill in possible_reebills:
         if service in possible_reebill.services \
@@ -30,7 +31,7 @@ def daily_average_energy(reebill_dao, account, day, service='Gas',
     # and make sure there's at least one
     meters = reebill.meters_for_service(service)
     total_registers = [r for r in sum((meter['registers'] for meter in meters),
-        []) if not r['shadow'] and r['register_binding'] == 'REG_TOTAL']
+            []) if not r['shadow'] and r['register_binding'] == 'REG_TOTAL']
     if total_registers == []:
         raise Exception('No REG_TOTAL registers in any meter for %s-%s' % (account, sequence))
 
