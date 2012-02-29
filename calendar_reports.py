@@ -1,5 +1,6 @@
 #!/usr/bin/python
-'''Reports that involve averaging utility bill total energy over the bill period.'''
+'''Reports that involve computing approximate utility bill energy quantities or
+charges over arbitarary periods of time.'''
 import traceback
 import argparse
 from datetime import date, timedelta
@@ -10,14 +11,12 @@ from billing import dateutils
 
 calendar = Calendar()
 
-def daily_average_energy(reebill_dao, account, day, service='Gas', unit='therms'):
+def daily_average_energy(reebill_dao, account, day, service='Gas',
+        unit='therms'):
     # find out what reebill covers this day and has a utility bill of the right
     # service that covers day
-    # TODO put method in ReebillDAO to do this kind of query--needs to be fast
-    # because this gets called repeatedly in monthly_average_energy
     possible_reebills = reebill_dao.load_reebills_in_period(account,
-            start_date=day-timedelta(days=365),
-            end_date=day+timedelta(days=365))
+            start_date=day, end_date=day)
     reebill = None
     for possible_reebill in possible_reebills:
         if service in possible_reebill.services \
@@ -26,31 +25,33 @@ def daily_average_energy(reebill_dao, account, day, service='Gas', unit='therms'
             reebill = possible_reebill
             break
     if reebill is None:
-        raise Exception("No reebills found for %s" % day)
+        raise Exception("No reebills found for %s, %s" % (account, day))
+
+    # get all non-shadow "REG_TOTAL" registers in all meters for this service,
+    # and make sure there's at least one
+    meters = reebill.meters_for_service(service)
+    total_registers = [r for r in sum((meter['registers'] for meter in meters),
+            []) if not r['shadow'] and r['register_binding'] == 'REG_TOTAL']
+    if total_registers == []:
+        raise Exception('No REG_TOTAL registers in any meter for %s-%s' % (account, sequence))
 
     total_therms = 0
-    meters = reebill.meters_for_service(service)
-    for meter in meters:
-        for register in meter['registers']:
-            # TODO only include "total" registers, so we don't count things
-            # like demand registers, etc. can we guarantee that there always is
-            # a "total" register?
-            if register['shadow'] == False:
-                quantity = register['quantity']
-                quantity_unit = register['quantity_units'].lower()
-                if quantity_unit == 'therms':
-                    total_therms += quantity
-                elif quantity_unit == 'btu':
-                    total_therms += quantity / Decimal(100000.0)
-                elif quantity_unit == 'kwh':
-                    total_therms += quantity / Decimal(.0341214163)
-                elif quantity_unit == 'ccf':
-                    raise Exception(("Register contains gas measured "
-                        "in ccf: can't convert that into energy "
-                        "without the multiplier."))
-                else:
-                    raise Exception('Unknown energy unit: "%s"' % \
-                            register['quantity_units'])
+    for register in total_registers:
+        quantity = register['quantity']
+        quantity_unit = register['quantity_units'].lower()
+        if quantity_unit == 'therms':
+            total_therms += quantity
+        elif quantity_unit == 'btu':
+            total_therms += quantity / Decimal(100000.0)
+        elif quantity_unit == 'kwh':
+            total_therms += quantity / Decimal(.0341214163)
+        elif quantity_unit == 'ccf':
+            raise Exception(("Register contains gas measured "
+                "in ccf: can't convert that into energy "
+                "without the multiplier."))
+        else:
+            raise Exception('Unknown energy unit: "%s"' % \
+                    register['quantity_units'])
 
     # convert therms into the caller's preferred energy unit
     if unit == 'therms':
@@ -67,12 +68,17 @@ def daily_average_energy(reebill_dao, account, day, service='Gas', unit='therms'
     days_in_period = (end_date - start_date).days
     return float(total_energy) / float(days_in_period)
 
-def monthly_average_energy(reebill_dao, account, year, month, service='Gas', unit='therms'):
-    total = 0
-    for day in calendar.itermonthdates(year, month):
-        total += daily_average_energy(reebill_dao, account, day,
-                service=service, unit=unit)
-    return total
+def average_energy_for_date_range(reebill_dao, account, start_date, end_date,
+        service='Gas', unit='therms'):
+    '''Returns approximate energy for the date interval [start_date, end_date)
+    using per-day averages.'''
+    return sum(daily_average_energy(reebill_dao, account, day, service=service,
+        unit=unit) for day in dateutils.date_generator(start_date, end_date))
+
+def monthly_average_energy(reebill_dao, account, year, month, service='Gas',
+        unit='therms'):
+    return sum(daily_average_energy(reebill_dao, account, day, service=service,
+        unit=unit) for day in calendar.itermonthdates(year, month))
 
 def main():
     # command-line arguments
@@ -95,6 +101,7 @@ def main():
     print daily_average_energy(reebill_dao, '10001', date(2011, 1, 1), unit='btu')
     print daily_average_energy(reebill_dao, '10001', date(2011, 1, 1), unit='kwh')
     print monthly_average_energy(reebill_dao, '10001', 2011, 1)
+    print average_energy_for_date_range(reebill_dao, '10001', date(2010,10,1), date(2011,6,1))
 
 if __name__ == '__main__':
     main()
