@@ -3,6 +3,9 @@ import calendar
 from datetime import date, datetime, timedelta
 import unittest
 
+# convenient format string
+ISO_8601_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
+
 def timedelta_in_hours(delta):
     '''Returns the given timedelta converted into hours, rounded toward 0 to
     the nearest integer. (Used by scripts/deck/deck_uploader.py)'''

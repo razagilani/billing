@@ -1093,9 +1093,10 @@ class ReebillDAO:
     
     def load_reebills_in_period(self, account, branch=0, start_date=None, end_date=None):
         '''Returns a list of MongoReebills whose period began on or before
-        'end_date' and ended on or after 'start_date'. If 'start_date' and
-        'end_date' are not given or are None, the time period extends to the
-        begining or end of time, respectively.'''
+        'end_date' and ended on or after 'start_date' (i.e. all bills between
+        those dates and all bills whose period includes either endpoint). If
+        'start_date' and 'end_date' are not given or are None, the time period
+        extends to the begining or end of time, respectively.'''
         query = {
             '_id.account': str(account),
             '_id.branch': int(branch),
