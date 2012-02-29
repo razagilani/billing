@@ -54,8 +54,8 @@ import random
 import time
 def random_wait(target):
     def random_wait_wrapper(*args, **kwargs):
-        t = random.random()
-        print('Waiting %s' % t)
+        #t = random.random()
+        t = 0
         time.sleep(t)
         return target(*args, **kwargs)
     return random_wait_wrapper
@@ -2089,6 +2089,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    # TODO: 25650643 explicit params - security risk and other 
     def utilbill_grid(self, xaction, **kwargs):
         '''Handles AJAX requests to read and write data for the grid of utility
         bills. Ext-JS provides the 'xaction' parameter, which is "read" when it
