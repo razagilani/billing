@@ -250,11 +250,14 @@ function renderWidgets()
         writeAllFields: true 
     });
 
-    var utilbillStoreProxy = new Ext.data.HttpProxy({
+    var utilbillStoreDataConn = new Ext.data.Connection({
         method: 'GET',
         prettyUrls: false,
         url: 'http://'+location.host+'/reebill/utilbill_grid',
     });
+    utilbillStoreDataConn.autoAbort = true;
+
+    var utilbillStoreProxy = new Ext.data.HttpProxy(utilbillStoreDataConn);
 
     var utilbillGridStore = new Ext.data.JsonStore({
         proxy: utilbillStoreProxy,
@@ -295,6 +298,23 @@ function renderWidgets()
         // the grid is disabled by the panel that contains it  
         // prior to loading, and must be enabled when loading is complete
         utilbillGrid.setDisabled(false);
+    });
+
+    // grid's data store callback for when data is edited
+    // when the store backing the grid is edited, enable the save button
+    utilbillGridStore.on('update', function(){
+        //utilbillGrid.getTopToolbar().findById('utilbillSaveBtn').setDisabled(false);
+    });
+
+    utilbillGridStore.on('beforesave', function() {
+        utilbillGridStore.setBaseParam("account", selected_account);
+    });
+
+    utilbillGridStore.on('beforeload', function() {
+        utilbillGridStore.setBaseParam("start", 0);
+        utilbillGridStore.setBaseParam("limit", 25);
+        utilbillGridStore.setBaseParam("account", selected_account);
+        utilbillGridStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
     });
 
     var utilbillColModel = new Ext.grid.ColumnModel(
@@ -432,15 +452,6 @@ function renderWidgets()
         //utilbillGrid.getTopToolbar().findById('utilbillInsertBtn').setDisabled(sm.getCount() <1);
     });
   
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    utilbillGridStore.on('update', function(){
-        //utilbillGrid.getTopToolbar().findById('utilbillSaveBtn').setDisabled(false);
-    });
-
-    utilbillGridStore.on('beforesave', function() {
-        utilbillGridStore.setBaseParam("account", selected_account);
-    });
 
     // disallow rowediting of utility bills that are associated to reebills
     utilbillGrid.on('beforeedit', function(e) {
@@ -478,9 +489,7 @@ function renderWidgets()
         // because this tab is being displayed, demand the grids that it contain 
         // be populated
         utilbillGrid.setDisabled(true);
-        utilbillGridStore.proxy.getConnection().autoAbort = true;
-        utilbillGridStore.reload({params: {start:0, limit:25, service: Ext.getCmp('service_for_charges').getValue(), account: selected_account}});
-
+        utilbillGridStore.reload();
     });
 
           
@@ -656,11 +665,14 @@ function renderWidgets()
         writeAllFields: true 
     });
 
-    var reeBillStoreProxy = new Ext.data.HttpProxy({
+    var reeBillStoreDataConn = new Ext.data.Connection({
         method: 'GET',
         prettyUrls: false,
         url: 'http://'+location.host+'/reebill/reebill',
     });
+    reeBillStoreDataConn.autoAbort = true;
+
+    var reeBillStoreProxy = new Ext.data.HttpProxy(reeBillStoreDataConn);
 
     var reeBillStore = new Ext.data.JsonStore({
         proxy: reeBillStoreProxy,
@@ -693,6 +705,8 @@ function renderWidgets()
     });
 
     reeBillStore.on('beforeload', function () {
+        reeBillStore.setBaseParam("start", 0);
+        reeBillStore.setBaseParam("limit", 25);
         reeBillStore.setBaseParam("account", selected_account);
         reeBillStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
     });
@@ -1166,9 +1180,7 @@ function renderWidgets()
         // because this tab is being displayed, demand the grids that it contain 
         // be populated
         reeBillGrid.setDisabled(true);
-        reeBillStore.proxy.getConnection().autoAbort = true;
-        reeBillStore.reload({params: {start:0, limit:25, service: Ext.getCmp('service_for_charges').getValue(), account: selected_account}});
-
+        reeBillStore.reload();
 
     });
 
@@ -1439,6 +1451,7 @@ function renderWidgets()
 
         }
         ubPeriodsTab.add(ubPeriodsFormPanels);
+        ubPeriodsTab.doLayout();
     }
 
     //
@@ -1449,6 +1462,46 @@ function renderWidgets()
         title: 'Bill Periods',
         disabled: billPeriodsPanelDisabled,
         items: null // configureUBPeriodForm set this
+    });
+
+    ubBillPeriodsPanel.on('activate', function () {
+        // because this tab is being displayed, demand the form that it contain 
+        // be populated
+        // disable it during load, the datastore re-enables when loaded.
+        ubBillPeriodsPanel.setDisabled(true);
+
+        // get utilbill period information from server
+        // TODO: fire this request only when the form is displayed
+        ubPeriodsDataConn.request({
+            params: {account: selected_account, sequence: selected_sequence},
+            success: function(result, request) {
+                var jsonData = null;
+                try {
+                    jsonData = Ext.util.JSON.decode(result.responseText);
+                    if (jsonData.success == false)
+                    {
+                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                    } else {
+                        configureUBPeriodsForms(selected_account, selected_sequence, jsonData);
+                    } 
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                } finally {
+                    ubBillPeriodsPanel.setDisabled(false);
+                }
+            },
+            failure: function() {
+                try {
+                    Ext.MessageBox.alert('Server Error', result.responseText);
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                } finally {
+                    ubBillPeriodsPanel.setDisabled(false);
+                }
+            },
+            disableCaching: true,
+        });
+
     });
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1582,6 +1635,7 @@ function renderWidgets()
         }
 
         ubMeasuredUsagesTab.add(ubMeasuredUsagesFormPanels);
+        ubMeasuredUsagesTab.doLayout();
     }
 
     //
@@ -1597,6 +1651,47 @@ function renderWidgets()
             align : 'stretch',
         },
         items: null // configureUBMeasuredUsagesForm sets this
+    });
+
+    // this event is received when the tab panel tab is clicked on
+    // and the panels it contains are displayed in accordion layout
+    ubMeasuredUsagesPanel.on('activate', function (panel) {
+
+        // because this tab is being displayed, demand the form that it contain 
+        // be populated
+        // disable it during load, the datastore re-enables when loaded.
+        ubMeasuredUsagesPanel.setDisabled(true);
+
+        // get the measured usage dates for each service
+        ubMeasuredUsagesDataConn.request({
+            params: {account: selected_account, sequence: selected_sequence},
+            success: function(result, request) {
+                var jsonData = null;
+                try {
+                    jsonData = Ext.util.JSON.decode(result.responseText);
+                    if (jsonData.success == false)
+                    {
+                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                    } else {
+                        configureUBMeasuredUsagesForms(selected_account, selected_sequence, jsonData);
+                    } 
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                } finally {
+                    ubMeasuredUsagesPanel.setDisabled(false);
+                }
+            },
+            failure: function() {
+                try {
+                    Ext.MessageBox.alert('Server Error', result.responseText);
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                } finally {
+                    ubMeasuredUsagesPanel.setDisabled(false);
+                }
+            },
+            disableCaching: true,
+        });
     });
 
 
@@ -1651,6 +1746,8 @@ function renderWidgets()
     var aChargesStoreProxyConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/actualCharges',
     })
+    aChargesStoreProxyConn.autoAbort = true;
+
     var aChargesStoreProxy = new Ext.data.HttpProxy(aChargesStoreProxyConn);
 
     var aChargesStore = new Ext.data.GroupingStore({
@@ -2044,6 +2141,7 @@ function renderWidgets()
     var hChargesStoreProxyConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/hypotheticalCharges',
     })
+    hChargesStoreProxyConn.autoAbort = true;
     var hChargesStoreProxy = new Ext.data.HttpProxy(hChargesStoreProxyConn);
 
     var hChargesStore = new Ext.data.GroupingStore({
@@ -2399,11 +2497,11 @@ function renderWidgets()
         // because this tab is being displayed, demand the grids that it contain 
         // be populated
         aChargesGrid.setDisabled(true);
-        aChargesStore.proxy.getConnection().autoAbort = true;
+        //aChargesStore.proxy.getConnection().autoAbort = true;
         aChargesStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
 
         hChargesGrid.setDisabled(true);
-        hChargesStore.proxy.getConnection().autoAbort = true;
+        //hChargesStore.proxy.getConnection().autoAbort = true;
         hChargesStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
     });
 
@@ -2459,6 +2557,8 @@ function renderWidgets()
     var CPRSRSIStoreProxyConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/cprsrsi',
     });
+    CPRSRSIStoreProxyConn.autoAbort = true;
+    
     var CPRSRSIStoreProxy = new Ext.data.HttpProxy(CPRSRSIStoreProxyConn);
 
     var CPRSRSIStore = new Ext.data.JsonStore({
@@ -2497,7 +2597,9 @@ function renderWidgets()
     });
 
     CPRSRSIStore.on('beforeload', function () {
-        //console.log('CPRSRSIStore beforeload');
+        CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+        CPRSRSIStore.setBaseParam("account", selected_account);
+        CPRSRSIStore.setBaseParam("sequence", selected_sequence);
     });
 
     // fired when the datastore has completed loading
@@ -2506,6 +2608,19 @@ function renderWidgets()
         // prior to loading, and must be enabled when loading is complete
         // the datastore enables when it is done loading
         CPRSRSIGrid.setDisabled(false);
+    });
+
+    // grid's data store callback for when data is edited
+    // when the store backing the grid is edited, enable the save button
+    CPRSRSIStore.on('update', function(){
+        console.log('CPRSRSIStore update');
+        CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
+    });
+
+    CPRSRSIStore.on('beforesave', function() {
+        CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+        CPRSRSIStore.setBaseParam("account", selected_account);
+        CPRSRSIStore.setBaseParam("sequence", selected_sequence);
     });
 
     var CPRSRSIColModel = new Ext.grid.ColumnModel(
@@ -2681,18 +2796,6 @@ function renderWidgets()
         //CPRSRSIGrid.getTopToolbar().findById('CPRSRSIInsertBtn').setDisabled(sm.getCount() <1);
     });
   
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    CPRSRSIStore.on('update', function(){
-        console.log('CPRSRSIStore update');
-        CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
-    });
-
-    CPRSRSIStore.on('beforesave', function() {
-        CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        CPRSRSIStore.setBaseParam("account", selected_account);
-        CPRSRSIStore.setBaseParam("sequence", selected_sequence);
-    });
     
     // the UPRS
     var initialUPRSRSI = {
@@ -2731,6 +2834,8 @@ function renderWidgets()
     var UPRSRSIStoreProxyConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/uprsrsi',
     });
+    UPRSRSIStoreProxyConn.autoAbort = true;
+
     var UPRSRSIStoreProxy = new Ext.data.HttpProxy(UPRSRSIStoreProxyConn);
 
     var UPRSRSIStore = new Ext.data.JsonStore({
@@ -2769,7 +2874,9 @@ function renderWidgets()
     });
 
     UPRSRSIStore.on('beforeload', function () {
-        //console.log('UPRSRSIStore beforeload');
+        UPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+        UPRSRSIStore.setBaseParam("account", selected_account);
+        UPRSRSIStore.setBaseParam("sequence", selected_sequence);
     });
 
     // fired when the datastore has completed loading
@@ -2778,6 +2885,18 @@ function renderWidgets()
         // prior to loading, and must be enabled when loading is complete
         // the datastore enables when it is done loading
         UPRSRSIGrid.setDisabled(false);
+    });
+
+    // grid's data store callback for when data is edited
+    // when the store backing the grid is edited, enable the save button
+    UPRSRSIStore.on('update', function(){
+        UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(false);
+    });
+
+    UPRSRSIStore.on('beforesave', function() {
+        UPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+        UPRSRSIStore.setBaseParam("account", selected_account);
+        UPRSRSIStore.setBaseParam("sequence", selected_sequence);
     });
 
     var UPRSRSIColModel = new Ext.grid.ColumnModel(
@@ -2950,17 +3069,6 @@ function renderWidgets()
         //UPRSRSIGrid.getTopToolbar().findById('UPRSRSIInsertBtn').setDisabled(sm.getCount() <1);
     });
   
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    UPRSRSIStore.on('update', function(){
-        UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(false);
-    });
-
-    UPRSRSIStore.on('beforesave', function() {
-        UPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        UPRSRSIStore.setBaseParam("account", selected_account);
-        UPRSRSIStore.setBaseParam("sequence", selected_sequence);
-    });
 
 
     // the URS
@@ -3000,6 +3108,8 @@ function renderWidgets()
     var URSRSIStoreProxyConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/ursrsi',
     });
+    URSRSIStoreProxyConn.autoAbort = true;
+
     var URSRSIStoreProxy = new Ext.data.HttpProxy(URSRSIStoreProxyConn);
 
     var URSRSIStore = new Ext.data.JsonStore({
@@ -3038,7 +3148,9 @@ function renderWidgets()
     });
 
     URSRSIStore.on('beforeload', function () {
-        //console.log('URSRSIStore beforeload');
+        URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+        URSRSIStore.setBaseParam("account", selected_account);
+        URSRSIStore.setBaseParam("sequence", selected_sequence);
     });
 
     // fired when the datastore has completed loading
@@ -3047,6 +3159,20 @@ function renderWidgets()
         // prior to loading, and must be enabled when loading is complete
         // the datastore enables when it is done loading
         URSRSIGrid.setDisabled(false);
+    });
+
+    // grid's data store callback for when data is edited
+    // when the store backing the grid is edited, enable the save button
+    URSRSIStore.on('update', function(){
+
+        // disallow editing of the URS
+        //URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
+    });
+
+    URSRSIStore.on('beforesave', function() {
+        URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+        URSRSIStore.setBaseParam("account", selected_account);
+        URSRSIStore.setBaseParam("sequence", selected_sequence);
     });
 
     var URSRSIColModel = new Ext.grid.ColumnModel(
@@ -3211,19 +3337,6 @@ function renderWidgets()
         //URSRSIGrid.getTopToolbar().findById('URSRSIInsertBtn').setDisabled(sm.getCount() <1);
     });
   
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    URSRSIStore.on('update', function(){
-
-        // disallow editing of the URS
-        //URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
-    });
-
-    URSRSIStore.on('beforesave', function() {
-        URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        URSRSIStore.setBaseParam("account", selected_account);
-        URSRSIStore.setBaseParam("sequence", selected_sequence);
-    });
 
     //
     // Instantiate the Rate Structure panel 
@@ -3259,17 +3372,13 @@ function renderWidgets()
         // because this tab is being displayed, demand the grids that it contain 
         // be populated
         CPRSRSIGrid.setDisabled(true);
-        CPRSRSIStore.proxy.getConnection().autoAbort = true;
-        CPRSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
-        // abort this connection if previously loading
-        URSRSIGrid.setDisabled(true);
-        URSRSIStore.proxy.getConnection().autoAbort = true;
-        URSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
+        CPRSRSIStore.reload();
 
-        // abort this connection if previously loading
+        URSRSIGrid.setDisabled(true);
+        URSRSIStore.reload();
+
         UPRSRSIGrid.setDisabled(true);
-        UPRSRSIStore.proxy.getConnection().autoAbort = true;
-        UPRSRSIStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}});
+        UPRSRSIStore.reload();
 
     });
 
@@ -3310,11 +3419,14 @@ function renderWidgets()
         writeAllFields: true 
     });
 
-    var paymentStoreProxy = new Ext.data.HttpProxy({
+    var paymentStoreProxyConn = new Ext.data.Connection({
         method: 'GET',
         prettyUrls: false,
         url: 'http://'+location.host+'/reebill/payment',
     });
+    paymentStoreProxyConn.autoAbort = true;
+
+    var paymentStoreProxy = new Ext.data.HttpProxy(paymentStoreProxyConn);
 
     var paymentStore = new Ext.data.JsonStore({
         proxy: paymentStoreProxy,
@@ -3346,6 +3458,11 @@ function renderWidgets()
         paymentGrid.setDisabled(false);
     });
 
+    paymentStore.on('beforeload', function() {
+        paymentStore.setBaseParam("account", selected_account);
+        paymentStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+    });
+
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
     paymentStore.on('update', function(){
@@ -3353,6 +3470,7 @@ function renderWidgets()
     });
 
     paymentStore.on('beforesave', function() {
+        paymentStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
         paymentStore.setBaseParam("account", selected_account);
     });
 
@@ -3478,8 +3596,7 @@ function renderWidgets()
         // be populated
         // disable it during load, the datastore re-enables when loaded.
         paymentGrid.setDisabled(true);
-        paymentStore.proxy.getConnection().autoAbort = true;
-        paymentStore.reload({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account}});
+        paymentStore.reload();
 
     });
   
@@ -3512,11 +3629,13 @@ function renderWidgets()
         writeAllFields: true 
     });
 
-    var mailReebillStoreProxy = new Ext.data.HttpProxy({
+    var mailReeBillStoreProxyConn = new Ext.data.Connection({
         method: 'GET',
         prettyUrls: false,
         url: 'http://'+location.host+'/reebill/reebill',
     });
+    mailReeBillStoreProxyConn.autoAbort = true;
+    var mailReebillStoreProxy = new Ext.data.HttpProxy(mailReeBillStoreProxyConn);
 
     var mailReebillStore = new Ext.data.JsonStore({
         proxy: mailReebillStoreProxy,
@@ -4134,11 +4253,13 @@ function renderWidgets()
         writeAllFields: true 
     });
 
-    var journalStoreProxy = new Ext.data.HttpProxy({
+    var journalStoreProxyConn = new Ext.data.Connection({
         method: 'GET',
         prettyUrls: false,
         url: 'http://'+location.host+'/reebill/journal',
     });
+    journalStoreProxyConn.autoAbort = true;
+    var journalStoreProxy = new Ext.data.HttpProxy(journalStoreProxyConn);
 
     var journalStore = new Ext.data.JsonStore({
         proxy: journalStoreProxy,
@@ -4587,14 +4708,6 @@ function renderWidgets()
         Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(null, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
         Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML(null, 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
 
-        // this store eventually goes away
-        // because accounts are to be selected from the status tables
-        //accountsStore.reload();
-        //accountCombo.setValue(account);
-        //sequencesStore.setBaseParam('account', account);
-        //sequencesStore.load();
-        //sequenceCombo.setValue(null);
-
         // update list of payments for this account
         //paymentStore.reload({params: {account: account}});
 
@@ -4744,53 +4857,7 @@ function renderWidgets()
         // need to set account into a hidden field here since there is no data store behind the form
         journalFormPanel.getForm().findField("sequence").setValue(sequence)
 
-        // get utilbill period information from server
-        // TODO: fire this request only when the form is displayed
-        ubPeriodsDataConn.request({
-            params: {account: selected_account, sequence: selected_sequence},
-            success: function(result, request) {
-                var jsonData = null;
-                try {
-                    jsonData = Ext.util.JSON.decode(result.responseText);
-                    if (jsonData.success == false)
-                    {
-                        // handle failure here if necessary
-                        console.log("failure");
-                    } else {
-                        configureUBPeriodsForms(selected_account, selected_sequence, jsonData);
-                    } 
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
-                }
-            },
-            failure: function() {
-                console.log("Ajax failure");
-                alert("ajax failure");
-            },
-            disableCaching: true,
-        });
 
-        // get the measured usage dates for each service
-        // TODO: fire this request only when the form is displayed
-        ubMeasuredUsagesDataConn.request({
-            params: {account: selected_account, sequence: selected_sequence},
-            success: function(result, request) {
-                var jsonData = null;
-                try {
-                    jsonData = Ext.util.JSON.decode(result.responseText);
-                    if (jsonData.success == false)
-                    {
-                        // handle failure here if necessary
-                    } else {
-                        configureUBMeasuredUsagesForms(selected_account, selected_sequence, jsonData);
-                    } 
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
-                }
-            },
-            failure: function() {alert("ajax failure")},
-            disableCaching: true,
-        });
 
 
         // TODO:23046181 abort connections in progress
