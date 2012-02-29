@@ -65,6 +65,7 @@ def get_energy_for_time_interval(timestamps, values, t1, t2):
 
     return total_energy
 
+
 def get_interval_meter_data_source(csv_file):
     '''Returns a function mapping hours (as datetimes) to hourly energy
     measurements from an interval meter. These measurements should come as a
