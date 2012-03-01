@@ -254,6 +254,7 @@ function renderWidgets()
         method: 'GET',
         prettyUrls: false,
         url: 'http://'+location.host+'/reebill/utilbill_grid',
+        disableCaching: true,
     });
     utilbillStoreDataConn.autoAbort = true;
 
@@ -356,6 +357,7 @@ function renderWidgets()
     // put this by the other dataconnection instantiations
     var utilbillImageDataConn = new Ext.data.Connection({
         url: 'http://' + location.host + '/reebill/getUtilBillImage',
+        disableCaching: true,
     });
     utilbillImageDataConn.autoAbort = true;
 
@@ -435,7 +437,6 @@ function renderWidgets()
                             failure: function () {
                                 Ext.MessageBox.alert('Ajax failure');
                             },
-                            disableCaching: true,
                         });
 
                         // while waiting for the ajax request to finish, show a
@@ -669,6 +670,7 @@ function renderWidgets()
         method: 'GET',
         prettyUrls: false,
         url: 'http://'+location.host+'/reebill/reebill',
+        disableCaching: true,
     });
     reeBillStoreDataConn.autoAbort = true;
 
@@ -683,7 +685,7 @@ function renderWidgets()
         autoLoad: {params:{start: 0, limit: 25}},
         // won't be updated when combos change, so do this in event
         // perhaps also can be put in the options param for the ajax request
-        baseParams: { account:"none"},
+        //baseParams: { account:"none"},
         paramNames: {start: 'start', limit: 'limit'},
         data: initialReebill,
         root: 'rows',
@@ -1160,7 +1162,6 @@ function renderWidgets()
                     addressFormPanel.setDisabled(false);
                 }
             },
-            disableCaching: true,
         });
     });
 
@@ -1208,6 +1209,7 @@ function renderWidgets()
 
     var bindRSOperationConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/bindrs',
+        disableCaching: true,
     });
     bindRSOperationConn.autoAbort = true;
     function bindRSOperation()
@@ -1242,12 +1244,12 @@ function renderWidgets()
                     tabPanel.setDisabled(false);
                 }
             },
-            disableCaching: true,
         });
     }
 
     var bindREEOperationConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/bindree',
+        disableCaching: true,
     });
     bindREEOperationConn.autoAbort = true;
     function bindREEOperation()
@@ -1278,12 +1280,12 @@ function renderWidgets()
                     Ext.Msg.hide();
                 }
             },
-            disableCaching: true,
         });
     }
 
     var rollOperationConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/roll',
+        disableCaching: true,
     });
     rollOperationConn.autoAbort = true;
     function rollOperation()
@@ -1319,38 +1321,7 @@ function renderWidgets()
                     tabPanel.setDisabled(false);
                 }
             },
-            disableCaching: true,
         });
-        // TODO: 25593817
-        /*
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/roll',
-            params: { 
-                account: selected_account,
-                sequence: selected_sequence
-            },
-            disableCaching: true,
-            success: function (response) {
-                var o = {};
-                try {
-                    o = Ext.decode(response.responseText);}
-                catch(e) {
-                    alert("Could not decode JSON data");
-                }
-                if(true !== o.success) {
-                    Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
-                } else {
-                    // TODO: pass  functions such as the ones below into successResponse somehow see 14945431 (for being able to re-use successResponse)
-                    // a new sequence has been made, so load it for the currently selected account
-                    //sequencesStore.load();
-                    // TODO:  25419609 load latest sequence after roll
-                }
-            },
-            failure: function () {
-                alert("Roll response fail");
-            }
-        });
-        */
     }
 
     function renderOperation()
@@ -1583,7 +1554,6 @@ function renderWidgets()
                     ubBillPeriodsPanel.setDisabled(false);
                 }
             },
-            disableCaching: true,
         });
 
     });
@@ -1829,6 +1799,7 @@ function renderWidgets()
     // make a connections instance so that it may be specifically aborted
     var aChargesStoreProxyConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/actualCharges',
+        disableCaching: true,
     })
     aChargesStoreProxyConn.autoAbort = true;
 
@@ -2224,6 +2195,7 @@ function renderWidgets()
     // id's and row level CRUD can occur.
     var hChargesStoreProxyConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/hypotheticalCharges',
+        disableCaching: true,
     })
     hChargesStoreProxyConn.autoAbort = true;
     var hChargesStoreProxy = new Ext.data.HttpProxy(hChargesStoreProxyConn);
@@ -2640,6 +2612,7 @@ function renderWidgets()
     
     var CPRSRSIStoreProxyConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/cprsrsi',
+        disableCaching: true,
     });
     CPRSRSIStoreProxyConn.autoAbort = true;
     
@@ -2917,6 +2890,7 @@ function renderWidgets()
 
     var UPRSRSIStoreProxyConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/uprsrsi',
+        disableCaching: true,
     });
     UPRSRSIStoreProxyConn.autoAbort = true;
 
@@ -3191,6 +3165,7 @@ function renderWidgets()
 
     var URSRSIStoreProxyConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/ursrsi',
+        disableCaching: true,
     });
     URSRSIStoreProxyConn.autoAbort = true;
 
@@ -3507,6 +3482,7 @@ function renderWidgets()
         method: 'GET',
         prettyUrls: false,
         url: 'http://'+location.host+'/reebill/payment',
+        disableCaching: true,
     });
     paymentStoreProxyConn.autoAbort = true;
 
@@ -3717,6 +3693,7 @@ function renderWidgets()
         method: 'GET',
         prettyUrls: false,
         url: 'http://'+location.host+'/reebill/reebill',
+        disableCaching: true,
     });
     mailReeBillStoreProxyConn.autoAbort = true;
     var mailReebillStoreProxy = new Ext.data.HttpProxy(mailReeBillStoreProxyConn);
@@ -4341,6 +4318,7 @@ function renderWidgets()
         method: 'GET',
         prettyUrls: false,
         url: 'http://'+location.host+'/reebill/journal',
+        disableCaching: true,
     });
     journalStoreProxyConn.autoAbort = true;
     var journalStoreProxy = new Ext.data.HttpProxy(journalStoreProxyConn);
@@ -4894,22 +4872,26 @@ function renderWidgets()
     //
     var ubPeriodsDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/ubPeriods',
+        disableCaching: true,
     });
     ubPeriodsDataConn.autoAbort = true;
 
     var ubMeasuredUsagesDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/ubMeasuredUsages',
+        disableCaching: true,
     });
     ubMeasuredUsagesDataConn.autoAbort = true;
 
     var addressesDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/addresses',
+        disableCaching: true,
     });
     addressesDataConn.autoAbort = true;
 
 
     var reeBillImageDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/getReeBillImage',
+        disableCaching: true,
     });
     reeBillImageDataConn.autoAbort = true;
 
