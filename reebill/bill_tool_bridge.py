@@ -462,8 +462,8 @@ class BillToolBridge:
             self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
-            reebill = self.reebill_dao.load_reebill(account, sequence)
             session = self.state_db.session()
+            reebill = self.reebill_dao.load_reebill(account, sequence)
             self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
             self.journal_dao.journal(account, sequence, "ReeBill rolled")
@@ -482,7 +482,7 @@ class BillToolBridge:
             self.check_authentication()
             session = self.state_db.session()
             self.process.delete_reebill(session, account, sequence)
-            self.journal_dao.journal(customer.account, sequence, "Deleted")
+            self.journal_dao.journal(account, sequence, "Deleted")
             session.commit()
             return self.dumps({'success': True})
         except Exception as e:
