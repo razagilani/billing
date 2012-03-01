@@ -1203,45 +1203,126 @@ function renderWidgets()
 
     function allOperations()
     {
+        Ext.Msg.alert('Notice', "One of the operations on this menu must be selected");
     }
 
+    var bindRSOperationConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/bindrs',
+    });
+    bindRSOperationConn.autoAbort = true;
     function bindRSOperation()
     {
-        // TODO: 25593817
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/bindrs',
-            params: { 
-                account: selected_account,
-                sequence: selected_sequence
+
+        //Ext.Msg.show({title: "Please Wait while RS is bound", closable: false});
+        tabPanel.setDisabled(true);
+
+        bindRSOperationConn.request({
+            params: {account: selected_account, sequence: selected_sequence},
+            success: function(result, request) {
+                var jsonData = null;
+                try {
+                    jsonData = Ext.util.JSON.decode(result.responseText);
+                    if (jsonData.success == false) {
+                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                    }
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                } finally {
+                    //Ext.Msg.hide();
+                    tabPanel.setDisabled(false);
+                }
+            },
+            failure: function(result, request) {
+                try {
+                    Ext.MessageBox.alert('Server Error', result.responseText);
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                } finally {
+                    //Ext.Msg.hide();
+                    tabPanel.setDisabled(false);
+                }
             },
             disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("Bind RS response fail");
-            }
         });
     }
 
+    var bindREEOperationConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/bindree',
+    });
+    bindREEOperationConn.autoAbort = true;
     function bindREEOperation()
     {
-        // TODO: 25593817
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/bindree',
-            params: { 
-                account: selected_account,
-                sequence: selected_sequence
+        Ext.Msg.show({title: "Please Wait while OLTP data is fetched", closable: false});
+
+        bindREEOperationConn.request({
+            params: {account: selected_account, sequence: selected_sequence},
+            success: function(result, request) {
+                var jsonData = null;
+                try {
+                    jsonData = Ext.util.JSON.decode(result.responseText);
+                    if (jsonData.success == false) {
+                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                    }
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                } finally {
+                    Ext.Msg.hide();
+                }
+            },
+            failure: function(result, request) {
+                try {
+                    Ext.MessageBox.alert('Server Error', result.responseText);
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                } finally {
+                    Ext.Msg.hide();
+                }
             },
             disableCaching: true,
-            success: successResponse,
-            failure: function () {
-                alert("Bind REE response fail");
-            }
         });
     }
 
+    var rollOperationConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/roll',
+    });
+    rollOperationConn.autoAbort = true;
     function rollOperation()
     {
+        //Ext.Msg.show({title: "Please Wait while OLTP data is fetched", closable: false});
+        tabPanel.setDisabled(true);
+
+        rollOperationConn.request({
+            params: {account: selected_account, sequence: selected_sequence},
+            success: function(result, request) {
+                var jsonData = null;
+                try {
+                    jsonData = Ext.util.JSON.decode(result.responseText);
+                    if (jsonData.success == false) {
+                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                    } else {
+                        // a new sequence has been made, so load it for the currently selected account
+                        //sequencesStore.load();
+                        // TODO:  25419609 load latest sequence after roll
+                    }
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                } finally {
+                    tabPanel.setDisabled(false);
+                }
+            },
+            failure: function(result, request) {
+                try {
+                    Ext.MessageBox.alert('Server Error', result.responseText);
+                } catch (err) {
+                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                } finally {
+                    tabPanel.setDisabled(false);
+                }
+            },
+            disableCaching: true,
+        });
         // TODO: 25593817
+        /*
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/roll',
             params: { 
@@ -1269,6 +1350,7 @@ function renderWidgets()
                 alert("Roll response fail");
             }
         });
+        */
     }
 
     function renderOperation()
