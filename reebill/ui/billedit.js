@@ -1185,6 +1185,7 @@ function renderWidgets()
 
     });
 
+
     function successResponse(response, options) 
     {
         var o = {};
@@ -1194,7 +1195,7 @@ function renderWidgets()
             alert("Could not decode JSON data");
         }
         if(true !== o.success) {
-            Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
+            Ext.Msg.alert('Error', o.errors.reason + " " + o.errors.details);
         } else {
             loadReeBillUIForSequence(selected_account, selected_sequence);
         }
