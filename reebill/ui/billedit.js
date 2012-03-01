@@ -41,7 +41,6 @@ function renderWidgets()
 {
     //registerAjaxEvents();
     // global ajax timeout
-    Ext.Ajax.timeout = 960000; //16 minutes
 
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
@@ -500,33 +499,6 @@ function renderWidgets()
 
     // Select ReeBill
 
-    /*
-    var accountsStore = new Ext.data.JsonStore({
-        // store configs
-        autoDestroy: true,
-        autoLoad: true,
-        url: 'http://'+location.host+'/reebill/listAccounts',
-        storeId: 'accountsStore',
-        root: 'rows',
-        idProperty: 'account',
-        fields: ['account', 'name'],
-    });
-    */
-
-    /*var accountCombo = new Ext.form.ComboBox({
-        store: accountsStore,
-        fieldLabel: 'Account',
-        displayField:'name',
-        valueField:'account',
-        typeAhead: true,
-        triggerAction: 'all',
-        emptyText:'Select...',
-        selectOnFocus:true,
-        readOnly: true,
-        width: 150,
-
-    });*/
-
     var sequencesStore = new Ext.data.JsonStore({
         // store configs
         autoDestroy: true,
@@ -539,22 +511,7 @@ function renderWidgets()
     });
 
     sequencesStore.on('load', function() {
-        // select() is the right way to do this but it only works when the list
-        // is "expanded", whatever this means
-        //sequenceCombo.setValue(""+(sequencesStore.getTotalCount()));
-        //loadReeBillUIForSequence(selected_account, selected_sequence);
     });
-
-    /*var sequenceCombo = new Ext.form.ComboBox({
-        store: sequencesStore,
-        fieldLabel: 'Sequence',
-        displayField:'sequence',
-        typeAhead: true,
-        triggerAction: 'all',
-        emptyText:'Select...',
-        selectOnFocus:true,
-        width: 150,
-    });*/
 
     // forms for calling bill process operations
     var billOperationButton = new Ext.SplitButton({
@@ -572,6 +529,8 @@ function renderWidgets()
         })
     });
 
+
+    // TODO: 25795091 datastore data is being deleted wrong
     var deleteButton = new Ext.Button({
         text: 'Delete selected reebill',
         //disabled: true, // TODO should be disabled when there's no reebill selected or the currently-selected bill is not deletable
@@ -602,44 +561,6 @@ function renderWidgets()
             });
         }
     })
-
-    /*var reebillFormPanel = new Ext.form.FormPanel({
-        title: 'Select ReeBill',
-        frame:true,
-        bodyStyle: 'padding: 10px 10px 0 10px;',
-        defaults: {
-            anchor: '95%',
-            allowBlank: false,
-            msgTarget: 'side',
-        },
-        items: [
-            new Ext.form.ComboBox({
-                id: 'service_for_charges',
-                fieldLabel: 'Service',
-                triggerAction: 'all',
-                store: ['Gas', 'Electric'],
-                value: 'Gas',
-            }),
-            accountCombo,
-            sequenceCombo,
-            billOperationButton,
-            deleteButton,
-        ],
-    });*/
-
-    // event to link the account to the bill combo box
-    /*accountCombo.on('select', function(combobox, record, index) {
-        sequencesStore.setBaseParam('account', record.data.account);
-        sequencesStore.load();
-    });*/
-
-    // fired when the customer bill combo box is selected
-    // because a customer account and bill has been selected, load 
-    // the bill document.  Follow loadReeBillUI() for additional details
-    // ToDo: do not allow selection change if store is unsaved
-    /*sequenceCombo.on('select', function(combobox, record, index) {
-        loadReeBillUIForSequence(selected_account, record.data.sequence);
-    });*/
 
     var initialReebill =  {
         rows: [
@@ -673,6 +594,8 @@ function renderWidgets()
         disableCaching: true,
     });
     reeBillStoreDataConn.autoAbort = true;
+    reeBillStoreDataConn.on('beforerequest', function(conn, options) {
+    });
 
     var reeBillStoreProxy = new Ext.data.HttpProxy(reeBillStoreDataConn);
 
@@ -1250,6 +1173,7 @@ function renderWidgets()
     var bindREEOperationConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/bindree',
         disableCaching: true,
+        timeout: 960000,
     });
     bindREEOperationConn.autoAbort = true;
     function bindREEOperation()
@@ -1347,8 +1271,8 @@ function renderWidgets()
         Ext.Ajax.request({
             url: 'http://'+location.host+'/reebill/attach_utilbills',
             params: {
-                account: accountCombo.getValue(),
-                sequence: sequenceCombo.getValue(),
+                account: selected_account,
+                sequence: selected_sequence,
                 disableCaching: true,
                 success: successResponse,
                 failure: function() {
@@ -2048,10 +1972,6 @@ function renderWidgets()
 
                     var jsonData = Ext.encode(Ext.pluck(aChargesStore.data.items, 'data'));
 
-                    // TODO: refactor out into globals
-                    //account = selected_account;
-                    //sequence = selected_sequence;
-
                     // TODO: 25593817
                     Ext.Ajax.request({
                         url: 'http://'+location.host+'/reebill/saveActualCharges',
@@ -2429,10 +2349,6 @@ function renderWidgets()
                     //hChargesStore.save(); is what we want to do
 
                     var jsonData = Ext.encode(Ext.pluck(hChargesStore.data.items, 'data'));
-
-                    // TODO: refactor out into globals
-                    //account = selected_account;
-                    //sequence = selected_sequence;
 
                     // TODO: 25593817
                     Ext.Ajax.request({
@@ -4769,15 +4685,6 @@ function renderWidgets()
         // TODO 25226739: don't overwrite if they don't need to be updated.  Causes UI to flash.
         Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(null, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
         Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML(null, 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
-
-        // update list of payments for this account
-        //paymentStore.reload({params: {account: account}});
-
-        // update list of ReeBills (for selection) for this account
-        //reeBillStore.setBaseParam("account", account)
-
-        // paging tool bar params must be passed in to keep store in sync with toolbar paging calls - autoload params lost after autoload
-        //reeBillStore.reload({params:{start:0, limit:25}});
 
         // update list of ReeBills (for mailing) for this account
         mailReebillStore.setBaseParam("account", account)
