@@ -222,8 +222,8 @@ def usage_data_to_virtual_register(install, reebill, splinter):
 
 
 # TODO: kill this function
-def fetch_bill_data(server, olap_id, reebill):
+def fetch_bill_data(splinter, olap_id, reebill):
     # update values of shadow registers in reebill with skyline generated energy
-    reebill = usage_data_to_virtual_register(olap_id, reebill, server=server)
+    reebill = usage_data_to_virtual_register(olap_id, reebill, splinter)
 
 

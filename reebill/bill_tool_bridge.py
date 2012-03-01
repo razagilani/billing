@@ -374,7 +374,7 @@ class BillToolBridge:
             raise
         elif type(e) is Unauthenticated:
             return self.dumps({'success': False, 'errors':{'reason': str(e),
-                    'details':'none'}})
+                    'details':'If you are reading this message a client request did not properly handle an invalid session response.'}})
         else:
             try:
                 self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
@@ -517,7 +517,7 @@ class BillToolBridge:
             self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
-            if self.config.getboolean('runtime', 'integrate_oltp') is False:
+            if self.config.getboolean('runtime', 'integrate_skyline_backend') is False:
                 raise Exception("OLTP is not integrated")
             if self.config.getboolean('runtime', 'integrate_nexus') is False:
                 raise Exception("Nexus is not integrated")
@@ -525,7 +525,9 @@ class BillToolBridge:
 
             if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
                 fbd.fetch_bill_data(
-                    self.config.get('skyline_backend', 'oltp_url'),
+                    Splinter(self.config.get('skyline_backend', 'oltp_url'),
+                        self.config.get('skyline_backend', 'olap_host'),
+                        self.config.get('skyline_backend', 'olap_database')),
                     nu.NexusUtil().olap_id(account),
                     reebill
                 )
