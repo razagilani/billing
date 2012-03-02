@@ -14,13 +14,26 @@ import csv
 from bisect import bisect_left
 from optparse import OptionParser
 from skyliner import sky_install
-from skyliner import splinter
 from skyliner import sky_objects
 from skyliner.sky_errors import DataHandlerError
 from billing import mongo
 from billing.dictutils import dict_merge
 from billing import dateutils
 
+def fetch_oltp_data(splinter, olap_id, reebill):
+    '''Update quantities of shadow registers in reebill with Skyline-generated
+    energy from OLTP.'''
+    inst_obj = splinter.get_install_obj_for(olap_id)
+    energy_function = lambda day, hourrange: inst_obj.get_billable_energy(day,
+            hourrange, places=5)
+    reebill = usage_data_to_virtual_register(reebill, energy_function)
+
+def fetch_interval_meter_data(reebill, csv_file):
+    '''Update quantities of shadow registers in reebill with interval-meter
+    energy values from csv_file.'''
+    energy_function = get_interval_meter_data_source(csv_file)
+    reebill = usage_data_to_virtual_register(reebill, energy_function)
+    
 #def get_energy_for_time_interval(timestamps, values, t1, t2):
     #'''Returns interval meter energy for the time interval [t1, t2) as best we
     #can estimate it. We assume that for each i, the energy value at values[i]
@@ -90,7 +103,7 @@ def get_interval_meter_data_source(csv_file):
     reader = csv.reader(csv_file, dialect=csv_dialect)
     for row in reader:
         timestamp_str, value, unit = row
-        timestamp = datetime.strptime(timestamp_str, dateutils.ISO_8601_FORMAT)
+        timestamp = datetime.strptime(timestamp_str, dateutils.ISO_8601_DATETIME)
         if unit == 'therms':
             value = value
         else:
@@ -103,31 +116,40 @@ def get_interval_meter_data_source(csv_file):
 
     # function that will return energy for an hour
     def get_energy_for_hour(day, hour):
-        # convert day, hour to datetime and validate
-        hour_start = datetime(day.year, day.month, day.day, hour)
-        if hour_start < timestamps[0]:
+        # first timestamp for this hour is at hour:15
+        first_timestamp = datetime(day.year, day.month, day.day, hour, 15)
+
+        # validate
+        if first_timestamp < timestamps[0]:
             raise IndexError('hour %s precedes first timestamp %s' % \
-                    (hour_start, timestamps[0]))
-        elif hour_start + timedelta(hours=1) > timestamps[-1]:
+                    (first_timestamp, timestamps[0]))
+        elif first_timestamp + timedelta(hours=1) > timestamps[-1]:
             raise IndexError('end of hour %s (%s:00) exceeds last timestamp %s' \
-                    % (hour_start, hour_start + timedelta(hours=1),
+                    % (first_timestamp, first_timestamp + timedelta(hours=1),
                     timestamps[-1]))
         
-        # binary search the timestamps list to find the first one >= hour_start
-        hour_index = bisect_left(timestamps, hour_start)
+        # binary search the timestamps list to find the first one >=
+        # first_timestamp
+        hour_index = bisect_left(timestamps, first_timestamp)
 
-        # make sure the next 4 timestamps are (hour_start + 15 min, hour_start
-        # + 30 min, hour_start + 45 min, hour_start + 60 min)
-        if not all(timestamps[hour_index + i] == hour_start +
-                timedelta(seconds=15*60*i) for i in [1,2,3,4]):
+        # make sure the 4 timestamps at and following hour_index are
+        # (first_timestamp, first_timestamp + 15 min, first_timestamp + 30 min,
+        # first_timestamp + 45 min)
+        if not all(timestamps[hour_index + i] == first_timestamp +
+                timedelta(seconds=15*60*i) for i in [0,1,2,3]):
             raise Exception('Bad timestamps for %s: expected %s, got %s' % (
-                [timestamps[hour_index + i] for i in [1,2,3,4]],
-                [timedelta(seconds=15*60*i) for i in [1,2,3,4]]))
+                [timestamps[hour_index + i] for i in [0,1,2,3]],
+                [timedelta(seconds=15*60*i) for i in [0,1,2,3]]))
 
         # add up the energy
-        return sum(values[hour_index + i] for i in [1,2,3,4])
+        return sum(values[hour_index + i] for i in [0,1,2,3])
 
-    return get_energy_for_hour
+    # TODO modify get_energy_for_hour to take an hour range and remove this
+    def get_energy_for_hour_range(day, hour_range):
+        return sum(get_energy_for_hour(day, h) for h in range(hour_range[0],
+            hour_range[1] + 1))
+
+    return get_energy_for_hour_range
 
 
 def get_shadow_register_data(reebill):
@@ -146,13 +168,14 @@ def get_shadow_register_data(reebill):
                     }))
     return result
 
-def usage_data_to_virtual_register(install, reebill, splinter):
-    '''Gets energy quantities from OLTP and puts them in the total fields of
-    the appropriate shadow registers in the MongoReebill object reebill.
-    Returns the document so it can be saved in Mongo.'''
+def usage_data_to_virtual_register(reebill, energy_function):
+    '''Gets energy quantities from 'energy_function' and puts them in the total
+    fields of the appropriate shadow registers in the MongoReebill object
+    reebill. 'energy_function' should be a function mapping a date and an hour
+    range (2-tuple of integers in [0,23]) to a Decimal representing energy used
+    during that time. Returns the modified reebill.'''
     # get identifiers of all shadow registers in reebill from mongo
     registers = get_shadow_register_data(reebill)
-    inst_obj = splinter.get_install_obj_for(install)
 
     # now that a list of shadow registers are initialized, accumulate energy
     # into them for the specified date range
@@ -196,7 +219,7 @@ def usage_data_to_virtual_register(install, reebill, splinter):
                 # 5 digits after the decimal points is an arbitrary decision
                 # TODO decide what our precision actually is: see
                 # https://www.pivotaltracker.com/story/show/24088787
-                energy_today = inst_obj.get_billable_energy(day, hourrange, places=5)
+                energy_today = energy_function(day, hourrange)
                 
                 # convert units from BTU to kWh (for electric) or therms (for gas)
                 if register['quantity_units'].lower() == 'kwh':
@@ -218,12 +241,7 @@ def usage_data_to_virtual_register(install, reebill, splinter):
                 register['quantity'])
 
     # return the updated reebill
+    # TODO reebill is modified so this is superfluous
     return reebill
-
-
-# TODO: kill this function
-def fetch_bill_data(splinter, olap_id, reebill):
-    # update values of shadow registers in reebill with skyline generated energy
-    reebill = usage_data_to_virtual_register(olap_id, reebill, splinter)
 
 
