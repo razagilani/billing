@@ -12,6 +12,7 @@ from sqlalchemy.orm import mapper, sessionmaker, scoped_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
+from sqlalchemy.sql.expression import desc
 from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, StatusUnbilled
 sys.stdout = sys.stderr
 
@@ -56,16 +57,30 @@ def guess_utilbills_and_end_date(session, account, start_date):
     # for customers with one utility service, but the more utility bills the
     # customer has, the less accurate it will be.
 
+    if start_date == None:
+        print >> sys.stderr, 'guess_utilbills_and_end_date got start_date == None'
+
     # get length of last reebill (note that we don't store dates for reebills
     # in MySQL)
     customer = session.query(Customer).filter(Customer.account==account).one()
-    last_reebill = session.query(ReeBill) \
+    previous_reebills = session.query(ReeBill) \
             .filter(ReeBill.customer_id==customer.id) \
-            .order_by(ReeBill.sequence)[0]
-    last_reebill_utilbills = session.query(UtilBill).filter(UtilBill.rebill_id==last_reebill.id)
-    earliest_start = min(ub.period_start for ub in last_reebill_utilbills)
-    latest_end = max(ub.period_end for ub in last_reebill_utilbills)
-    length = (latest_end - earliest_start)
+            .order_by(desc(ReeBill.sequence))
+    try:
+        # get last reebill. note that SQLALchemy cursor object has no len (you
+        # have to issue another query with func.count)
+        last_reebill = previous_reebills[0]
+    except IndexError:
+        # if there are no previous bills, guess 30 days
+        # TODO make this guess better?
+        length = timedelta(days=30)
+    else:
+        # otherwise, get length of last bill period
+        last_reebill_utilbills = session.query(UtilBill) \
+                .filter(UtilBill.rebill_id==last_reebill.id)
+        earliest_start = min(ub.period_start for ub in last_reebill_utilbills)
+        latest_end = max(ub.period_end for ub in last_reebill_utilbills)
+        length = (latest_end - earliest_start)
 
     # first guess that this reebill's period has the same length as the last.
     # this guess will be adjusted to match the closest utility bill end date
