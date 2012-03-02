@@ -114,40 +114,41 @@ def get_interval_meter_data_source(csv_file):
         raise Exception('CSV file has only %s rows, but needs at least 4' \
                 % len(timestamps))
 
-    # function that will return energy for an hour
-    def get_energy_for_hour(day, hour):
-        # first timestamp for this hour is at hour:15
-        first_timestamp = datetime(day.year, day.month, day.day, hour, 15)
+    # function that will return energy for an hour range ((start, end) pair,
+    # inclusive)
+    def get_energy_for_hour_range(day, hour_range):
+        # first timestamp is at :15; last is at :00
+        first_timestamp = datetime(day.year, day.month, day.day, hour_range[0], 15)
+        last_timestamp = datetime(day.year, day.month, day.day, hour_range[1]) \
+                + timedelta(hours=1)
 
-        # validate
+        # validate hour range
         if first_timestamp < timestamps[0]:
-            raise IndexError('hour %s precedes first timestamp %s' % \
+            raise IndexError('First timestamp for %s precedes first timestamp %s' % \
                     (first_timestamp, timestamps[0]))
-        elif first_timestamp + timedelta(hours=1) > timestamps[-1]:
-            raise IndexError('end of hour %s (%s:00) exceeds last timestamp %s' \
-                    % (first_timestamp, first_timestamp + timedelta(hours=1),
+        elif last_timestamp > timestamps[-1]:
+            raise IndexError('Last timestamp for %s (%s) exceeds last timestamp %s' \
+                    % (last_timestamp - timedelta(hours=1), last_timestamp,
                     timestamps[-1]))
         
         # binary search the timestamps list to find the first one >=
         # first_timestamp
-        hour_index = bisect_left(timestamps, first_timestamp)
+        first_timestamp_index = bisect_left(timestamps, first_timestamp)
 
-        # make sure the 4 timestamps at and following hour_index are
-        # (first_timestamp, first_timestamp + 15 min, first_timestamp + 30 min,
-        # first_timestamp + 45 min)
-        if not all(timestamps[hour_index + i] == first_timestamp +
-                timedelta(seconds=15*60*i) for i in [0,1,2,3]):
-            raise Exception('Bad timestamps for %s: expected %s, got %s' % (
-                [timestamps[hour_index + i] for i in [0,1,2,3]],
-                [timedelta(seconds=15*60*i) for i in [0,1,2,3]]))
-
-        # add up the energy
-        return sum(values[hour_index + i] for i in [0,1,2,3])
-
-    # TODO modify get_energy_for_hour to take an hour range and remove this
-    def get_energy_for_hour_range(day, hour_range):
-        return sum(get_energy_for_hour(day, h) for h in range(hour_range[0],
-            hour_range[1] + 1))
+        # iterate over the hour range, adding up energy at 15-mintute intervals
+        # and also checking timestamps
+        total = 0
+        i = first_timestamp_index
+        while timestamps[i] <= last_timestamp:
+            expected_timestamp = first_timestamp + timedelta(
+                    hours=.25*(i - first_timestamp_index))
+            if timestamps[i] != expected_timestamp:
+                raise Exception(('Bad timestamps for hour range %s %s: '
+                    'expected %s, found %s') % (day, hour_range,
+                        expected_timestamp, timestamps[i]))
+            total += values[i]
+            i+= 1
+        return total
 
     return get_energy_for_hour_range
 
