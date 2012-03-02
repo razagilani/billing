@@ -513,6 +513,8 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     def bindree(self, account, sequence, **args):
+        '''Puts energy from Skyline OLTP into shadow register so the reebill
+        given by account, sequence.'''
         try:
             self.check_authentication()
             if not account or not sequence:
@@ -524,23 +526,37 @@ class BillToolBridge:
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
             if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
-                fbd.fetch_bill_data(
+                fbd.fetch_oltp_data(
                     Splinter(self.config.get('skyline_backend', 'oltp_url'),
                         self.config.get('skyline_backend', 'olap_host'),
                         self.config.get('skyline_backend', 'olap_database')),
                     nu.NexusUtil().olap_id(account),
                     reebill
                 )
-
-                self.journal_dao.journal(account, sequence, "RE&E Bound")
-
             self.reebill_dao.save_reebill(reebill)
-
+            self.journal_dao.journal(account, sequence, "RE&E Bound")
             return self.dumps({'success': True})
-
         except Exception as e:
             return self.handle_exception(e)
 
+
+    @cherrypy.expose
+    @random_wait
+    def upload_interval_meter_csv(self, account, sequence, csv_file, **args):
+        '''Takes an upload of an interval meter CSV file (cherrypy file upload
+        object) and puts energy from it into the shadow registers of the
+        reebill given by account, sequence.'''
+        try:
+            self.check_authentication()
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            fbd.fetch_interval_meter_data(reebill, csv_file.file)
+            self.reebill_dao.save_reebill(reebill)
+            self.journal_dao.journal(account, sequence, "RE&E Bound")
+            return self.dumps({'success': True})
+        except Exception as e:
+            return self.handle_exception(e)
 
     @cherrypy.expose
     @random_wait
