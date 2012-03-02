@@ -146,6 +146,7 @@ def get_interval_meter_data_source(csv_file):
                 raise Exception(('Bad timestamps for hour range %s %s: '
                     'expected %s, found %s') % (day, hour_range,
                         expected_timestamp, timestamps[i]))
+            print >> sys.stderr, 'got energy for %s' % timestamps[i]
             total += values[i]
             i+= 1
         return total

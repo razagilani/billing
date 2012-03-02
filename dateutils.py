@@ -3,8 +3,9 @@ import calendar
 from datetime import date, datetime, timedelta
 import unittest
 
-# convenient format string
-ISO_8601_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
+# convenient format strings
+ISO_8601_DATETIME = '%Y-%m-%dT%H:%M:%SZ'
+ISO_8601_DATE = '%Y-%m-%d'
 
 def timedelta_in_hours(delta):
     '''Returns the given timedelta converted into hours, rounded toward 0 to

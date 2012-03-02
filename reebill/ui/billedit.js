@@ -67,7 +67,7 @@ function renderWidgets()
 
         } catch (e) {
             console.log("Unexpected failure while processing requestcomplete");
-            console.log(response)
+            console.log(response);
             // TODO: evaluate response to see if the object is well formed
             Ext.MessageBox.alert("Unexpected failure while processing requestcomplete: " + response.responseText);
         }
@@ -522,6 +522,7 @@ function renderWidgets()
                 // these items will render as dropdown menu items when the arrow is clicked:
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
+                {text: 'Bind Interval Meter Data', handler: bindREEOperation},
                 {text: 'Compute Bill', handler: bindRSOperation},
                 {text: 'Attach Utility Bills to Reebill', handler: attachOperation},
                 {text: 'Render', handler: renderOperation},
@@ -1611,6 +1612,85 @@ function renderWidgets()
                 })
             })
         }
+
+        var intervalMeterFormPanel = new Ext.form.FormPanel({
+            fileUpload: true,
+            title: 'Upload Interval Meter CSV',
+            url: 'http://'+location.host+'/reebill/upload_interval_meter_csv',
+            frame:true,
+            bodyStyle: 'padding: 10px 10px 0 10px;',
+            defaults: {
+                anchor: '95%',
+                //allowBlank: false,
+                msgTarget: 'side'
+            },
+
+            items: [
+                //file_chooser - defined in FileUploadField.js
+                {
+                    xtype: 'fileuploadfield',
+                    id: 'interval-meter-csv-field',
+                    emptyText: 'Select a file to upload',
+                    name: 'csv_file',
+                    buttonText: 'Choose file...',
+                    buttonCfg: { width:80 },
+                    allowBlank: true
+                    //disabled: true
+                },
+                //{
+                    //xtype: 'textfield',
+                    //id: 'account',
+                    //value: selected_account
+                //}
+            ],
+
+            buttons: [
+                new Ext.Button({
+                    text: 'Reset',
+                    handler: function() {
+                        this.findParentByType(Ext.form.FormPanel).getForm().reset();
+                    }
+                }),
+                new Ext.Button({ text: 'Submit', handler: function () {
+                        var formPanel = this.findParentByType(Ext.form.FormPanel);
+                        if (! formPanel.getForm().isValid()) {
+                            Ext.MessageBox.alert('Errors', 'Please fix form errors noted.');
+                            return;
+                        }
+                        //formPanel.getForm().setValues({
+                            //'account': selected_account,
+                            //'sequence': selected_sequence,
+                            //'interval-meter-csv-field': 'new value',
+                        //});
+                        formPanel.getForm().submit({
+                            params: {
+                                'account': selected_account,
+                                'sequence': selected_sequence
+                            }, 
+                            waitMsg:'Saving...',
+                            failure: function(form, action) {
+                                switch (action.failureType) {
+                                    case Ext.form.Action.CLIENT_INVALID:
+                                        Ext.Msg.alert('Failure', 'Form fields may not be submitted with invalid values');
+                                        break;
+                                    case Ext.form.Action.CONNECT_FAILURE:
+                                        Ext.Msg.alert('Failure', 'Ajax communication failed');
+                                        break;
+                                    case Ext.form.Action.SERVER_INVALID:
+                                        Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                                    default:
+                                        Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                                }
+                            },
+                            success: function(form, action) {
+                                 //
+                            }
+                        })
+                    }
+                 })
+            ],
+        });
+        ubMeasuredUsagesFormPanels.push(intervalMeterFormPanel);
 
         ubMeasuredUsagesTab.add(ubMeasuredUsagesFormPanels);
         ubMeasuredUsagesTab.doLayout();
