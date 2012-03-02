@@ -90,7 +90,7 @@ class FetchTest(unittest.TestCase):
         
     def test_get_interval_meter_data(self):
         csv_file = StringIO('\n'.join([
-            '2012-01-01T01:00:00Z, 1, therms',
+            # note that 01:00:00 is not included
             '2012-01-01T01:15:00Z, 2, therms',
             '2012-01-01T01:30:00Z, 3, therms',
             '2012-01-01T01:45:00Z, 4, therms',
@@ -105,17 +105,32 @@ class FetchTest(unittest.TestCase):
         ]))
         get_energy_for_hour = get_interval_meter_data_source(csv_file)
 
+        ## outside allowed time range
+        #self.assertRaises(IndexError, get_energy_for_hour, date(2012,12,31), 0)
+        #self.assertRaises(IndexError, get_energy_for_hour, date(2012,1,1), 0)
+        #self.assertRaises(IndexError, get_energy_for_hour, date(2012,1,1), 3)
+        #self.assertRaises(IndexError, get_energy_for_hour, date(2012,1,1), 4)
+        #self.assertRaises(IndexError, get_energy_for_hour, date(2012,1,2), 0)
+
+        ## 1:00 and 2:00 are valid hours
+        #self.assertEquals(14, get_energy_for_hour(date(2012,1,1), 1))
+        #self.assertEquals(30, get_energy_for_hour(date(2012,1,1), 2))
+
         # outside allowed time range
-        self.assertRaises(IndexError, get_energy_for_hour, date(2012,12,31), 0)
-        self.assertRaises(IndexError, get_energy_for_hour, date(2012,1,1), 0)
-        self.assertRaises(IndexError, get_energy_for_hour, date(2012,1,1), 3)
-        self.assertRaises(IndexError, get_energy_for_hour, date(2012,1,1), 4)
-        self.assertRaises(IndexError, get_energy_for_hour, date(2012,1,2), 0)
+        self.assertRaises(IndexError, get_energy_for_hour, date(2012,12,31), [0,0])
+        self.assertRaises(IndexError, get_energy_for_hour, date(2012,12,31), [12,23])
+        self.assertRaises(IndexError, get_energy_for_hour, date(2012,1,1), [0,0])
+        self.assertRaises(IndexError, get_energy_for_hour, date(2012,1,1), [0,1])
+        self.assertRaises(IndexError, get_energy_for_hour, date(2012,1,1), [1,4])
+        self.assertRaises(IndexError, get_energy_for_hour, date(2012,1,1), [3,3])
+        self.assertRaises(IndexError, get_energy_for_hour, date(2012,1,2), [0,0])
+
+        # TODO test bad timestamps
 
         # 1:00 and 2:00 are valid hours
-        self.assertEquals(14, get_energy_for_hour(date(2012,1,1), 1))
-        self.assertEquals(30, get_energy_for_hour(date(2012,1,1), 2))
-
+        self.assertEquals(14, get_energy_for_hour(date(2012,1,1), [1,1]))
+        self.assertEquals(30, get_energy_for_hour(date(2012,1,1), [2,2]))
+        self.assertEquals(44, get_energy_for_hour(date(2012,1,1), [1,2]))
 
 if __name__ == '__main__':
     unittest.main()
