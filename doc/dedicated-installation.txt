@@ -62,6 +62,7 @@ Install the following packages with sudo pip install [package]
     simplejson
     MySQL-Python
     xlwt
+    pyyaml
 
 For Rendering Images
     sudo yum install ImageMagick
@@ -280,4 +281,11 @@ MISC
 The WSGI user must own the /db directory
 
 
+CRON
+====
 
+Necessary cron jobs for running ReeBill
+
+The python path for cron jobs should be .:/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib/
+
+python/var/local/reebill-prod/lib/python2.6/site-packages/billing/reconciliation.py --statedb skyline_prod --stateuser prod --statepw AXUPU4XGMSN --billdb skyline-prod
