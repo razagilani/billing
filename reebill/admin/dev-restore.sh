@@ -14,11 +14,15 @@ mysql -uroot -proot -D skyline_dev < /tmp/${now}billing_mysql.dmp
 # copy mongo dump files from tyrell to local /tmp and restore mongo collections from them
 scp -r dklothe@tyrell:/tmp/${now}ratestructure_mongo /tmp
 scp -r dklothe@tyrell:/tmp/${now}reebills_mongo /tmp
+scp -r dklothe@tyrell:/tmp/${now}journal_mongo /tmp
+scp -r dklothe@tyrell:/tmp/${now}eventlog_mongo /tmp
 scp -r dklothe@tyrell:/tmp/${now}users_mongo /tmp
 
-# TODO add more collections?
+# restore
 mongorestore --drop --db skyline --collection ratestructure /tmp/${now}ratestructure_mongo/skyline-prod/ratestructure.bson
 mongorestore --drop --db skyline --collection reebills /tmp/${now}reebills_mongo/skyline-prod/reebills.bson
+mongorestore --drop --db skyline --collection users /tmp/${now}users_mongo/skyline-prod/journal.bson
+mongorestore --drop --db skyline --collection users /tmp/${now}users_mongo/skyline-prod/eventlog.bson
 mongorestore --drop --db skyline --collection users /tmp/${now}users_mongo/skyline-prod/users.bson
 
 # delete local bill files and replace with a copy from staging on tyrell
