@@ -6,6 +6,8 @@ cd /tmp
 mysqldump -uroot -pvLGhTZu9eq4ULvbbKzlE skyline_prod > ${now}billing_mysql.dmp
 mongodump --db skyline-prod --collection ratestructure --out ${now}ratestructure_mongo
 mongodump --db skyline-prod --collection reebills --out ${now}reebills_mongo
+mongodump --db skyline-prod --collection journal --out ${now}journal_mongo
+mongodump --db skyline-prod --collection eventlog --out ${now}eventlog_mongo
 mongodump --db skyline-prod --collection users --out ${now}users_mongo
 mongodump --db nexus --collection skyline --out ${now}nexus_mongo
 
