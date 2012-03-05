@@ -107,17 +107,17 @@ class SIBillDocTemplate(BaseDocTemplate):
         #print "After Page"
         if self.pageTemplate.id == firstPageName:
             self.canv.saveState()
-            self.canv.setStrokeColorRGB(32,32,32)
-            self.canv.setLineWidth(.05)
-            self.canv.setDash(1,3)
-            self.canv.line(0,537,612,537)
+            #self.canv.setStrokeColorRGB(32,32,32)
+            #self.canv.setLineWidth(.05)
+            #self.canv.setDash(1,3)
+            #self.canv.line(0,537,612,537)
             #self.canv.line(0,264,612,264)
             self.canv.restoreState()
         if self.pageTemplate.id == secondPageName:
             self.canv.saveState()
-            self.canv.setStrokeColorRGB(0,0,0)
-            self.canv.setLineWidth(.05)
-            self.canv.setDash(1,3)
+            #self.canv.setStrokeColorRGB(0,0,0)
+            #self.canv.setLineWidth(.05)
+            #self.canv.setDash(1,3)
             #self.canv.line(0,264,612,264)
             self.canv.restoreState()
         

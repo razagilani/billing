@@ -616,7 +616,7 @@ class BillToolBridge:
                 reebill, 
                 self.config.get("billdb", "billpath")+ "%s" % account, 
                 "%.4d.pdf" % int(sequence),
-                "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
+                "EmeraldCity-FullBleed-New-Address1.png,EmeraldCity-FullBleed-2.png",
                 False
             )
             return self.dumps({'success': True})
