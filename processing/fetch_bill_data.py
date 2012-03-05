@@ -84,14 +84,13 @@ def get_interval_meter_data_source(csv_file):
     # function that will return energy for an hour range ((start, end) pair,
     # inclusive)
     def get_energy_for_hour_range(day, hour_range):
-        # first timestamp is at :15; last is at :00
+        # first timestamp is at [start hour]:15; last is at [end hour + 1]:00
         first_timestamp = datetime(day.year, day.month, day.day, hour_range[0], 15)
         last_timestamp = datetime(day.year, day.month, day.day, hour_range[1]) \
                 + timedelta(hours=1)
 
         # validate hour range
         if first_timestamp < timestamps[0]:
-            # TODO clarify these error messages
             raise IndexError(('First timestamp for %s %s is %s, which precedes'
                 ' earliest timestamp in CSV file: %s') % (day, hour_range,
                 first_timestamp, timestamps[0]))
@@ -108,8 +107,7 @@ def get_interval_meter_data_source(csv_file):
         # and also checking timestamps
         total = 0
         i = first_timestamp_index
-        while timestamps[i] <= last_timestamp:
-            print >> sys.stderr, 'getting energy for %s' % timestamps[i]
+        while timestamps[i] < last_timestamp:
             expected_timestamp = first_timestamp + timedelta(
                     hours=.25*(i - first_timestamp_index))
             if timestamps[i] != expected_timestamp:
@@ -118,6 +116,14 @@ def get_interval_meter_data_source(csv_file):
                         expected_timestamp, timestamps[i]))
             total += values[i]
             i+= 1
+        # unfortunately the last energy value must be gotten separately.
+        # TODO: add a do-while loop to python
+        if timestamps[i] != last_timestamp:
+            raise Exception(('Bad timestamps for hour range %s %s: '
+                'expected %s, found %s') % (day, hour_range,
+                    expected_timestamp, timestamps[i]))
+        total += values[i]
+
         return total
 
     return get_energy_for_hour_range
