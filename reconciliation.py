@@ -38,7 +38,7 @@ def close_enough(x,y):
     return abs(x - y) / y < .001
 
 def generate_report(logger, billdb_config, statedb_config, splinter_config,
-        monguru_config):
+        monguru_config, skip_oltp=False):
     '''Saves JSON data for reconciliation report in the file 'OUTPUT_FILE'.'''
     # objects for database access
     reebill_dao = mongo.ReebillDAO(billdb_config)
@@ -81,7 +81,9 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
                 'timestamp': datetime.datetime.utcnow(),
             }
 
-            bill_error, oltp_error, olap_error = None, None, None
+            bill_error = None
+            olap_error = None
+            oltp_error = None
 
             try:
                 # get energy from the bill
@@ -110,15 +112,16 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
                 
             # get energy from OLTP (very slow but more accurate and less
             # error-prone than OLAP)
-            try:
-                oltp_btu = sum(install.get_billable_energy(day, [0,23]) for
-                        day in dateutils.date_generator(start_date,
-                        reebill.period_end))
-                oltp_therms = oltp_btu / 100000
-                
-            except Exception as e:
-                oltp_error = e
-                logger.error('%s-%s: %s\n%s' % (account, sequence, e, traceback.format_exc()))
+            if not skip_oltp:
+                try:
+                    oltp_btu = sum(install.get_billable_energy(day, [0,23]) for
+                            day in dateutils.date_generator(start_date,
+                            reebill.period_end))
+                    oltp_therms = oltp_btu / 100000
+                    
+                except Exception as e:
+                    oltp_error = e
+                    logger.error('%s-%s: %s\n%s' % (account, sequence, e, traceback.format_exc()))
 
             # get energy from OLAP: add up energy sold for each day, whether
             # billable or not (assuming that periods of missing data from OLTP
@@ -152,16 +155,19 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
                 error_messages.append('OLAP error: '+str(olap_error))
 
             if error_messages == []:
-                # no errors: log bill as OK or include it in report if its
-                # energy doesn't match OLTP
-                if close_enough(bill_therms, oltp_therms):
+                # if there were no errors, log bill as OK or include it in
+                # report if its energy doesn't match OLTP (or OLAP if skip_oltp
+                # is on)
+                correct_therms = olap_therms if skip_oltp else oltp_therms
+                correct_db_name = 'OLAP' if skip_oltp else 'OLTP'
+                if close_enough(bill_therms, correct_therms):
                     logger.info('%s-%s is OK' % (account, sequence))
                 else:
-                    result_dict.update({
-                        'olap_therms': olap_therms,
-                        'oltp_therms': oltp_therms
-                    })
-                    logger.warning('%s-%s differs from OLTP' % (account, sequence))
+                    result_dict.update({ 'olap_therms': olap_therms })
+                    if not skip_oltp:
+                        result_dict.update({ 'oltp_therms': oltp_therms })
+                    logger.warning('%s-%s differs from %s' % (account,
+                        sequence, correct_db_name))
             else:
                 # put errors in report
                 result_dict.update({ 'errors': '. '.join(error_messages)+'.' })
@@ -190,6 +196,8 @@ def main():
             help='name of bill database (default: skyline_dev)')
     parser.add_argument('--olapdb',  default='dev',
             help='name of OLAP database (default: dev)')
+    parser.add_argument('--skip-oltp',  action='store_true',
+            help="Don't include OLTP data (much faster)")
     args = parser.parse_args()
 
     # set up config dicionaries for data access objects used in generate_report
@@ -214,7 +222,7 @@ def main():
         'host': args.host,
         'db': args.olapdb
     }
-    print billdb_config, statedb_config
+    print 'billdb: %s  statedb: %s  splinter: %s  monguru: %s' % (billdb_config, statedb_config, splinter_config, monguru_config)
 
     # log file goes in billing/reebill (where reebill.log also goes)
     log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -235,7 +243,7 @@ def main():
 
     try:
         generate_report(logger, billdb_config, statedb_config, splinter_config,
-                monguru_config)
+                monguru_config, skip_oltp=args.skip_oltp)
     except Exception as e:
         print >> sys.stderr, '%s\n%s' % (e, traceback.format_exc())
         logger.critical("Couldn't generate reconciliation report: %s\n%s"

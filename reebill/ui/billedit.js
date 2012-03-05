@@ -4593,7 +4593,7 @@ function renderWidgets()
             {
                 id: 'oltp_energy',
                 header: 'OLTP Energy (therms)',
-                dataIndex: 'olap_therms',
+                dataIndex: 'oltp_therms',
                 width: 150
             },
             {
