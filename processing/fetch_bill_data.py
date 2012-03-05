@@ -26,50 +26,14 @@ def fetch_oltp_data(splinter, olap_id, reebill):
     inst_obj = splinter.get_install_obj_for(olap_id)
     energy_function = lambda day, hourrange: inst_obj.get_billable_energy(day,
             hourrange, places=5)
-    reebill = usage_data_to_virtual_register(reebill, energy_function)
+    usage_data_to_virtual_register(reebill, energy_function)
 
 def fetch_interval_meter_data(reebill, csv_file):
     '''Update quantities of shadow registers in reebill with interval-meter
     energy values from csv_file.'''
     energy_function = get_interval_meter_data_source(csv_file)
-    reebill = usage_data_to_virtual_register(reebill, energy_function)
+    usage_data_to_virtual_register(reebill, energy_function)
     
-#def get_energy_for_time_interval(timestamps, values, t1, t2):
-    #'''Returns interval meter energy for the time interval [t1, t2) as best we
-    #can estimate it. We assume that for each i, the energy value at values[i]
-    #covers the time period between timestamps[i-1] and timestamps[i], and that
-    #energy is evenly distrubuted over the period. This is only accurate if t1
-    #and t2 are in 'timestamps', but they're not, it should be approximately
-    #right, especially if the time resolution is high.'''
-    ## binary search the list of timestamps to find the last data point
-    ## preceding t1 and the first one following it: call these t1_early and t1_late.
-    ## (if t1 exactly matches a timestamp, t1_early == t1.)
-    #t1_early_index = find_le(timestamps, t1)
-    #t1_early = timestamps[t1_early_index]
-    #t1_late = timestamps[t1_early_index + 1]
-
-    ## assume the energy associated with the timestamp t1_late is distributed
-    ## evenly over the time interval (t1_early, t1_late].
-    #total_energy = values[t1_early_index] * (t1_late - t1).seconds \
-            #/ (t1_late - t1_early).seconds
-    
-    ## accumulate energy from data points with timestamps following t1_late up
-    ## to the last one before t2 (call that t2_early)
-    #i = t1_early_index + 2
-    #while timestamps[i] < t2:
-        #total_energy += values[i]
-        #i += 1
-    #t2_early_index = i - 1
-    #t2_early = timestamps[t2_early_index]
-    #t2_late = timestamps[t2_early_index + 1]
-    
-    ## we have counted energy from the entire interval [t2_early, t2_late)
-    ## above, so we need to subtract the energy in (t2, t2_late) from the total
-    #total_energy -= values[t2_early_index] * (t2_late - t2).seconds \
-            #/ (t2_late - t2_early).seconds
-
-    #return total_energy
-
 
 def get_interval_meter_data_source(csv_file):
     '''Returns a function mapping hours (as datetimes) to hourly energy
@@ -175,7 +139,7 @@ def usage_data_to_virtual_register(reebill, energy_function):
     fields of the appropriate shadow registers in the MongoReebill object
     reebill. 'energy_function' should be a function mapping a date and an hour
     range (2-tuple of integers in [0,23]) to a Decimal representing energy used
-    during that time. Returns the modified reebill.'''
+    during that time.'''
     # get identifiers of all shadow registers in reebill from mongo
     registers = get_shadow_register_data(reebill)
 
@@ -242,8 +206,5 @@ def usage_data_to_virtual_register(reebill, energy_function):
         reebill.set_shadow_register_quantity(register['identifier'],
                 register['quantity'])
 
-    # return the updated reebill
-    # TODO reebill is modified so this is superfluous
-    return reebill
 
 
