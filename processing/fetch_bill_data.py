@@ -38,7 +38,10 @@ def fetch_interval_meter_data(reebill, csv_file):
 def get_interval_meter_data_source(csv_file):
     '''Returns a function mapping hours (as datetimes) to hourly energy
     measurements from an interval meter. These measurements should come as a
-    CSV file with timestamps in the first column and kwh in the second.
+    CSV file with ISO 8601 timestamps in the first column, energy in the second
+    column, and energy units in the third, e.g.:
+            2012-01-01T03:45:00Z, 1.234, therms
+
     Timestamps must be at :00, :15, :30, :45, and the energy value associated
     with each timestamp is assumed to cover the quarter hour preceding that
     timestamp.
@@ -88,12 +91,14 @@ def get_interval_meter_data_source(csv_file):
 
         # validate hour range
         if first_timestamp < timestamps[0]:
-            raise IndexError('First timestamp for %s precedes first timestamp %s' % \
-                    (first_timestamp, timestamps[0]))
+            # TODO clarify these error messages
+            raise IndexError(('First timestamp for %s %s is %s, which precedes'
+                ' earliest timestamp in CSV file: %s') % (day, hour_range,
+                first_timestamp, timestamps[0]))
         elif last_timestamp > timestamps[-1]:
-            raise IndexError('Last timestamp for %s (%s) exceeds last timestamp %s' \
-                    % (last_timestamp - timedelta(hours=1), last_timestamp,
-                    timestamps[-1]))
+            raise IndexError(('Last timestamp for %s %s is %s, which follows'
+                ' latest timestamp in CSV file: %s') % (day, hour_range,
+                last_timestamp, timestamps[-1]))
         
         # binary search the timestamps list to find the first one >=
         # first_timestamp
@@ -104,13 +109,13 @@ def get_interval_meter_data_source(csv_file):
         total = 0
         i = first_timestamp_index
         while timestamps[i] <= last_timestamp:
+            print >> sys.stderr, 'getting energy for %s' % timestamps[i]
             expected_timestamp = first_timestamp + timedelta(
                     hours=.25*(i - first_timestamp_index))
             if timestamps[i] != expected_timestamp:
                 raise Exception(('Bad timestamps for hour range %s %s: '
                     'expected %s, found %s') % (day, hour_range,
                         expected_timestamp, timestamps[i]))
-            print >> sys.stderr, 'got energy for %s' % timestamps[i]
             total += values[i]
             i+= 1
         return total
