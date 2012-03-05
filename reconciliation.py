@@ -50,7 +50,7 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
 
     # save output in billing/reebill
     output_file_path = os.path.join(os.path.dirname(
-        os.path.realpath(__file__)), '..', 'reebill', OUTPUT_FILE_NAME)
+        os.path.realpath(__file__)), 'reebill', OUTPUT_FILE_NAME)
     logger.info('Generating reconciliation report at %s' % output_file_path)
 
     # it's a bad idea to build a huge string in memory, but i need to avoid putting
@@ -218,7 +218,7 @@ def main():
 
     # log file goes in billing/reebill (where reebill.log also goes)
     log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-            '..', 'reebill', LOG_FILE_NAME)
+            'reebill', LOG_FILE_NAME)
     # delete old log file
     try:
         os.remove(log_file_path)
