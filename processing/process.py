@@ -460,9 +460,9 @@ class Process(object):
         next_stats['total_trees'] = next_stats['total_co2_offset']/Decimal("1300.0")
         
 
-
-        if (self.config.get('runtime', 'integrate_skyline_backend') is True):
+        if (self.config.getboolean('runtime', 'integrate_skyline_backend') is True):
             # fill in data for "Monthly Renewable Energy Consumption" graph
+            print 'integrate skyline backend is:', self.config.getboolean('runtime', 'integrate_skyline_backend')
 
             # objects for getting olap data
             olap_id = nexus_util.NexusUtil().olap_id(reebill.account)
@@ -485,8 +485,10 @@ class Process(object):
                 # renewable energy sold during the month of the first bill,
                 # including energy sold before the install was "commissioned"
                 # (meaning its data have been declared valid for billing).
-                # TODO: change this to include only energy after install_commissioned?
-                if year < first_bill_year or month < first_bill_month:
+                # TODO: change this to include only energy after the
+                # install_commissioned date within that month?
+                if year < first_bill_year or (year == first_bill_year and month
+                        < first_bill_month):
                     renewable_energy_btus = 0
                 else:
                     # get billing data from OLAP (instead of
@@ -494,6 +496,9 @@ class Process(object):
                     # we insist that data should be available during the month of
                     # first billing and all following months; if get_data_for_month()
                     # fails, that's a real error that we shouldn't ignore.
+                    # (but, inexplicably, that's not true: we bill webster
+                    # house (10019) starting in october 2011 but its first
+                    # monthly olap doc is in november.)
                     renewable_energy_btus = self.monguru.get_data_for_month(
                             install, year, month).energy_sold
 
