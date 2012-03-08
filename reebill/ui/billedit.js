@@ -265,11 +265,7 @@ function renderWidgets()
         reader: utilbillReader,
         writer: utilbillWriter,
         autoSave: true,
-        autoLoad: {params:{start: 0, limit: 25}},
-        // won't be updated when combos change, so do this in event
-        // perhaps also can be put in the options param for the ajax request
-        baseParams: { account:"none"},
-        paramNames: {start: 'start', limit: 'limit'},
+        baseParams: { start:0, limit: 25, account: null},
         data: initialutilbill,
         root: 'rows',
         totalProperty: 'results',
@@ -307,14 +303,24 @@ function renderWidgets()
     });
 
     utilbillGridStore.on('beforesave', function() {
-        utilbillGridStore.setBaseParam("account", selected_account);
+        // TODO: 26013493 not sure this needs to be set here - should save to last set params
+        //utilbillGridStore.setBaseParam("account", selected_account);
     });
 
-    utilbillGridStore.on('beforeload', function() {
-        utilbillGridStore.setBaseParam("start", 0);
-        utilbillGridStore.setBaseParam("limit", 25);
-        utilbillGridStore.setBaseParam("account", selected_account);
-        utilbillGridStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+    // event for when the store loads, for when it is paged
+    utilbillGridStore.on('beforeload', function(store, options) {
+
+        if (options.params.account && options.params.account != selected_account) {
+            // account changed, reset the paging 
+            options.params.start = 0;
+            options.params.limit = 25;
+        }
+
+        options.params.account = selected_account;
+
+        // set the current selection into the store's baseParams
+        // so that the store can decide to load itself if it wants
+        store.baseParams.account = selected_account;
     });
 
     var utilbillColModel = new Ext.grid.ColumnModel(
@@ -489,7 +495,29 @@ function renderWidgets()
         // because this tab is being displayed, demand the grids that it contain 
         // be populated
         utilbillGrid.setDisabled(true);
+
+        // override options - none of this worked, still need to research API
+        /*lastOptions = {params:{}};
+        if (utilbillGridStore.lastOptions) {
+            Ext.apply(lastOptions.params, {
+                account: selected_account,
+                start: lastOptions.params.start,
+                limit: lastOptions.params.limit,
+            });
+            utilbillGridStore.reload(lastOptions);
+        }*/
+
+        /*utilbillGridStore.reload({params: {
+            account: selected_account,
+            //service: Ext.getCmp('service_for_charges').getValue(),
+            start: 0,
+            limit: 25
+        }});*/
+
+        // demand that the store load itself
+        // we do not configure it here, it configures itself
         utilbillGridStore.reload();
+
     });
 
           
@@ -4780,14 +4808,6 @@ function renderWidgets()
         journalFormPanel.getForm().findField("account").setValue(account)
         // TODO: 1320091681504 if an account is selected w/o a sequence, a journal entry can't be made
 
-        // tell utilBillGrid to filter itself
-        //utilbillGridStore.setBaseParam("account", account)
-        // pass in page params since the pagingtoolbar normally provides paramNames
-        //utilbillGridStore.reload({params:{start:0, limit:25}});
-        // TODO: this should become a hidden field in this form, unless we want
-        // the user to be able to upload for any account, in which case we would 
-        // make a drop down of accounts and then filter by what is selected.
-        //
         // add the account to the upload_account field
         upload_account.setValue(account)
 
