@@ -356,15 +356,52 @@ class StateDB:
         print >> sys.stderr, 'state of incoming bill is %s', state
 
         # get customer id from account number
-        customer = session.query(Customer).filter(Customer.account==account).one()
+        customer = session.query(Customer).filter(Customer.account==account) \
+                .one()
 
-        # make a new UtilBill with the customer id and dates (UtilBill
-        # constructor defaults to processed=False)
-        utilbill = UtilBill(customer, state, period_start=begin_date,
-                period_end=end_date, date_received=date_received)
+        ## new utility bill that will be uploaded (if it's allowed)
+        #new_utilbill = UtilBill(customer, state, period_start=begin_date,
+                #period_end=end_date, date_received=date_received)
+        # NOTE: if new_utilbill is created here, but not added, much less
+        # committed, it appears as a result in the query below, triggering an
+        # error message. 26147819
 
-        # put the new UtilBill in the database
-        session.add(utilbill)
+        # get existing bills matching dates
+        # TODO should also match service to support multi-service customers
+        existing_bills = session.query(UtilBill) \
+                .filter(UtilBill.customer_id==customer.id) \
+                .filter(UtilBill.period_start==begin_date) \
+                .filter(UtilBill.period_end==end_date)
+
+        if list(existing_bills) == []:
+            # nothing to replace; just upload the bill
+            new_utilbill = UtilBill(customer, state, period_start=begin_date,
+                    period_end=end_date, date_received=date_received)
+            session.add(new_utilbill)
+        elif len(list(existing_bills)) > 1:
+            raise Exception(("Can't upload a bill for dates %s, %s because"
+                    " there are already %s of them") % (begin_date, end_date,
+                    len(list(existing_bills))))
+        else:
+            # now there is one existing bill with the same dates. if state is
+            # "more final" than an existing non-final bill that matches this
+            # one, replace that bill
+            # (we can compare with '>' because states are ordered from "most
+            # final" to least (see db_objects.UtilBill)
+            bills_to_replace = existing_bills.filter(UtilBill.state > state)
+
+            if list(bills_to_replace) == []:
+                # TODO this error message is kind of obscure
+                raise Exception(("Can't upload a bill for dates %s, %s because"
+                    " one already exists with a more final state"))
+            bill_to_replace = bills_to_replace.one()
+                
+            # now there is exactly one bill with the same dates and its state is
+            # less final than the one being uploaded, so replace it.
+            session.delete(bill_to_replace)
+            new_utilbill = UtilBill(customer, state, period_start=begin_date,
+                    period_end=end_date, date_received=date_received)
+            session.add(new_utilbill)
     
     def fill_in_hypothetical_utilbills(self, session, account, begin_date,
             end_date):

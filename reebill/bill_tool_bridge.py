@@ -1929,14 +1929,14 @@ class BillToolBridge:
             # validate dates
             self.validate_utilbill_period(begin_date_as_date, end_date_as_date)
 
-
             session = self.state_db.session()
 
             # if begin_date does not match end date of latest existing bill,
             # create hypothetical bills to cover the gap
             latest_end_date = self.state_db.last_utilbill_end_date(session, account)
             if latest_end_date is not None and begin_date_as_date > latest_end_date:
-                self.state_db.fill_in_hypothetical_utilbills(session, account, latest_end_date, begin_date_as_date)
+                self.state_db.fill_in_hypothetical_utilbills(session, account,
+                        latest_end_date, begin_date_as_date)
 
             if file_to_upload.file is None:
                 # if there's no file, this is a "skyline estimated bill":
@@ -1950,7 +1950,7 @@ class BillToolBridge:
             else:
                 # if there is a file, get the Python file object and name
                 # string from CherryPy, and pass those to BillUpload to upload
-                # the file (so BillUpload can stay independent of CherryPy
+                # the file (so BillUpload can stay independent of CherryPy)
                 upload_result = self.billUpload.upload(account, begin_date,
                         end_date, file_to_upload.file, file_to_upload.filename)
                 if upload_result is True:
