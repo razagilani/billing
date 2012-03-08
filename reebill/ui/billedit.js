@@ -264,7 +264,6 @@ function renderWidgets()
         autoSave: true,
         reader: utilbillReader,
         writer: utilbillWriter,
-        autoSave: true,
         baseParams: { start:0, limit: 25, account: null},
         data: initialutilbill,
         root: 'rows',
@@ -323,7 +322,7 @@ function renderWidgets()
 
         // set the current selection into the store's baseParams
         // so that the store can decide to load itself if it wants
-        store.baseParams.account = selected_account;
+        //store.baseParams.account = selected_account;
     });
 
     var utilbillColModel = new Ext.grid.ColumnModel(
@@ -506,20 +505,6 @@ function renderWidgets()
 
     // Select ReeBill
 
-    var sequencesStore = new Ext.data.JsonStore({
-        // store configs
-        autoDestroy: true,
-        autoLoad:false,
-        url: 'http://'+location.host+'/reebill/listSequences',
-        storeId: 'sequencesStore',
-        root: 'rows',
-        idProperty: 'sequence',
-        fields: ['sequence', 'issued'],
-    });
-
-    sequencesStore.on('load', function() {
-    });
-
     // forms for calling bill process operations
     var billOperationButton = new Ext.SplitButton({
         text: 'Process Bill',
@@ -536,7 +521,6 @@ function renderWidgets()
             ]
         })
     });
-
 
     // TODO: 25795091 datastore data is being deleted wrong
     var deleteButton = new Ext.Button({
@@ -613,11 +597,12 @@ function renderWidgets()
         reader: reeBillReader,
         writer: reeBillWriter,
         autoSave: true,
-        autoLoad: {params:{start: 0, limit: 25}},
+        //autoLoad: {params:{start: 0, limit: 25}},
         // won't be updated when combos change, so do this in event
         // perhaps also can be put in the options param for the ajax request
         //baseParams: { account:"none"},
-        paramNames: {start: 'start', limit: 'limit'},
+        baseParams: { start:0, limit: 25, account: null},
+        //paramNames: {start: 'start', limit: 'limit'},
         data: initialReebill,
         root: 'rows',
         totalProperty: 'results',
@@ -637,18 +622,28 @@ function renderWidgets()
     reeBillStore.on('save', function () {
     });
 
-    reeBillStore.on('beforeload', function () {
-        reeBillStore.setBaseParam("start", 0);
-        reeBillStore.setBaseParam("limit", 25);
-        reeBillStore.setBaseParam("account", selected_account);
-        reeBillStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+    reeBillStore.on('beforeload', function (store, options) {
+
+        reeBillGrid.setDisabled(true);
+
+        if (options.params.account && options.params.account != selected_account) {
+            // account changed, reset the paging 
+            // TODO: 26143175 start new account selection on the last page
+            options.params.start = 0;
+            options.params.limit = 25;
+        }
+
+        options.params.account = selected_account;
+        options.params.service = Ext.getCmp('service_for_charges').getValue();
+
+        // set the current selection into the store's baseParams
+        // so that the store can decide to load itself if it wants
+        //store.baseParams.account = selected_account;
     });
 
     // fired when the datastore has completed loading
     reeBillStore.on('load', function (store, records, options) {
-        // the grid is disabled by the panel that contains it  
-        // prior to loading, and must be enabled when loading is complete
-        // the datastore enables when it is done loading
+        // was disabled prior to loading, and must be enabled when loading is complete
         reeBillGrid.setDisabled(false);
     });
 
@@ -1110,9 +1105,6 @@ function renderWidgets()
     // and the panels it contains are displayed in accordion layout
     reeBillPanel.on('activate', function (panel) {
 
-        // because this tab is being displayed, demand the grids that it contain 
-        // be populated
-        reeBillGrid.setDisabled(true);
         reeBillStore.reload();
 
     });
@@ -1234,9 +1226,7 @@ function renderWidgets()
                     if (jsonData.success == false) {
                         Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                     } else {
-                        // a new sequence has been made, so load it for the currently selected account
-                        //sequencesStore.load();
-                        // TODO:  25419609 load latest sequence after roll
+                        reeBillStore.reload();
                     }
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
@@ -3794,7 +3784,6 @@ function renderWidgets()
     });
 
     mailReebillStore.on('beforesave', function() {
-        reebillStore.setBaseParam("account", selected_account);
     });
 
     //
