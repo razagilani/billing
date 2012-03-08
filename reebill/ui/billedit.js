@@ -291,8 +291,7 @@ function renderWidgets()
     });
 
     utilbillGridStore.on('load', function (store, records, options) {
-        // the grid is disabled by the panel that contains it  
-        // prior to loading, and must be enabled when loading is complete
+        // the grid is disabled before loading, reenable it when complete
         utilbillGrid.setDisabled(false);
     });
 
@@ -310,8 +309,12 @@ function renderWidgets()
     // event for when the store loads, for when it is paged
     utilbillGridStore.on('beforeload', function(store, options) {
 
+        // disable the grid before it loads
+        utilbillGrid.setDisabled(true);
+
         if (options.params.account && options.params.account != selected_account) {
             // account changed, reset the paging 
+            // TODO: 26143175 start new account selection on the last page
             options.params.start = 0;
             options.params.limit = 25;
         }
@@ -413,7 +416,6 @@ function renderWidgets()
                         resolution = DEFAULT_RESOLUTION;
                     }
 
-                    
                     // ajax call to generate image, get the name of it, and display it in a
                     // new window
                     if (record.data.state == 'Final' || record.data.state == 'Utility Estimated') {
@@ -492,30 +494,7 @@ function renderWidgets()
     // and the panels it contains are displayed in accordion layout
     utilityBillPanel.on('activate', function (panel) {
 
-        // because this tab is being displayed, demand the grids that it contain 
-        // be populated
-        utilbillGrid.setDisabled(true);
-
-        // override options - none of this worked, still need to research API
-        /*lastOptions = {params:{}};
-        if (utilbillGridStore.lastOptions) {
-            Ext.apply(lastOptions.params, {
-                account: selected_account,
-                start: lastOptions.params.start,
-                limit: lastOptions.params.limit,
-            });
-            utilbillGridStore.reload(lastOptions);
-        }*/
-
-        /*utilbillGridStore.reload({params: {
-            account: selected_account,
-            //service: Ext.getCmp('service_for_charges').getValue(),
-            start: 0,
-            limit: 25
-        }});*/
-
-        // demand that the store load itself
-        // we do not configure it here, it configures itself
+        // demand that the store configure and load itself
         utilbillGridStore.reload();
 
     });
@@ -4869,6 +4848,7 @@ function renderWidgets()
         reeBillPanel.setDisabled(false);
         paymentsPanel.setDisabled(false);
         utilityBillPanel.setDisabled(false);
+        journalPanel.setDisabled(false);
 
     }
 
