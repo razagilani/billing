@@ -296,6 +296,7 @@ function renderWidgets()
         },
         {name: 'sequence'},
         {name: 'state'},
+        {name: 'service'},
         {name: 'editable'},
         ],
     });
@@ -339,26 +340,35 @@ function renderWidgets()
                 id: 'name',
                 header: 'Name',
                 dataIndex: 'name',
-                width:300,
+                width:250,
+            },
+            {
+                id: 'service',
+                header: 'Service',
+                dataIndex: 'service',
+                width: 50,
             },
             new Ext.grid.DateColumn({
                 header: 'Start Date',
                 dataIndex: 'period_start',
                 dateFormat: 'Y-m-d',
                 editable: true,
-                editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'})
+                editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'}),
+                width: 50
             }),
             new Ext.grid.DateColumn({
                 header: 'End Date',
                 dataIndex: 'period_end',
                 dateFormat: 'Y-m-d',
                 editable: true,
-                editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'})
+                editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'}),
+                width: 50
             }),
             {
                 id: 'sequence',
                 header: 'Sequence',
                 dataIndex: 'sequence',
+                width: 30,
             },
             {
                 id: 'state',
