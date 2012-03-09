@@ -158,6 +158,16 @@ class FetchTest(unittest.TestCase):
                 self.assertNotEquals(Decimal(-1234567890), r['quantity'])
             else:
                 self.assertEquals(Decimal(-1234567890), r['quantity'])
+        
+        # make sure that an exception is raised when there's no meter
+        # corresponding to a particular identifier or when the meter with the
+        # given identifier contains no shadow registers
+        csv_file.seek(0)
+        self.assertRaises(Exception, fbd.fetch_interval_meter_data, reebill,
+                csv_file, 'fake meter id')
+        csv_file.seek(0)
+        self.assertRaises(Exception, fbd.fetch_interval_meter_data, reebill,
+                csv_file, '028702956')
 
 if __name__ == '__main__':
     unittest.main()
