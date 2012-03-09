@@ -105,5 +105,17 @@ class FetchTest(unittest.TestCase):
 
         fbd.fetch_interval_meter_data(reebill, csv_file)
 
+
+        # test with a specific meter. here's a bill with 2 meters, both
+        # containing shadow registers:
+        reebill = reebill_dao.load_reebill('10004', 19)
+        assert reebill.period_begin == date(2011,10,4)
+        assert reebill.period_end == date(2011,11,2)
+        shadow_registers = fbd.get_shadow_register_data(reebill)
+        print shadow_registers
+        print len(shadow_registers)
+        assert len(shadow_registers) == 2
+        #assert 028702956
+
 if __name__ == '__main__':
     unittest.main()
