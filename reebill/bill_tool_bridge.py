@@ -1914,7 +1914,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
-    def upload_utility_bill(self, account, begin_date, end_date,
+    def upload_utility_bill(self, account, service, begin_date, end_date,
             file_to_upload, **args):
         try:
             session = None
@@ -1936,14 +1936,14 @@ class BillToolBridge:
             latest_end_date = self.state_db.last_utilbill_end_date(session, account)
             if latest_end_date is not None and begin_date_as_date > latest_end_date:
                 self.state_db.fill_in_hypothetical_utilbills(session, account,
-                        latest_end_date, begin_date_as_date)
+                        service, latest_end_date, begin_date_as_date)
 
             if file_to_upload.file is None:
                 # if there's no file, this is a "skyline estimated bill":
                 # record it in the database with that state, but don't upload
                 # anything
                 self.state_db.record_utilbill_in_database(session, account,
-                        begin_date, end_date, datetime.utcnow(),
+                        service, begin_date, end_date, datetime.utcnow(),
                         state=db_objects.UtilBill.SkylineEstimated)
                 session.commit()
                 return self.dumps({'success':True})
@@ -1955,7 +1955,7 @@ class BillToolBridge:
                         end_date, file_to_upload.file, file_to_upload.filename)
                 if upload_result is True:
                     self.state_db.record_utilbill_in_database(session, account,
-                            begin_date, end_date, datetime.utcnow())
+                            service, begin_date, end_date, datetime.utcnow())
                     session.commit()
                     return self.dumps({'success':True})
                 else:

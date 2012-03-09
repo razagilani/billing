@@ -346,14 +346,14 @@ class StateDB:
         # SQLAlchemy does SQL 'limit' with Python list slicing
         return query[start:start + limit], query.count()
 
-    def record_utilbill_in_database(self, session, account, begin_date,
-            end_date, date_received, state=UtilBill.Complete):
+    def record_utilbill_in_database(self, session, account, service,
+            begin_date, end_date, date_received, state=UtilBill.Complete):
         '''Inserts a row into the utilbill table when a utility bill file has
         been uploaded. The bill is Complete by default but can can have other
         states (see comment in db_objects.UtilBill for explanation of utility
         bill states). The bill is initially marked as un-processed.'''
 
-        print >> sys.stderr, 'state of incoming bill is %s', state
+        print >> sys.stderr, 'incoming utility bill: state %s, service %s' % (state, service)
 
         # get customer id from account number
         customer = session.query(Customer).filter(Customer.account==account) \
@@ -375,8 +375,9 @@ class StateDB:
 
         if list(existing_bills) == []:
             # nothing to replace; just upload the bill
-            new_utilbill = UtilBill(customer, state, period_start=begin_date,
-                    period_end=end_date, date_received=date_received)
+            new_utilbill = UtilBill(customer, state, service,
+                    period_start=begin_date, period_end=end_date,
+                    date_received=date_received)
             session.add(new_utilbill)
         elif len(list(existing_bills)) > 1:
             raise Exception(("Can't upload a bill for dates %s, %s because"
@@ -399,12 +400,13 @@ class StateDB:
             # now there is exactly one bill with the same dates and its state is
             # less final than the one being uploaded, so replace it.
             session.delete(bill_to_replace)
-            new_utilbill = UtilBill(customer, state, period_start=begin_date,
-                    period_end=end_date, date_received=date_received)
+            new_utilbill = UtilBill(customer, state, service,
+                    period_start=begin_date, period_end=end_date,
+                    date_received=date_received)
             session.add(new_utilbill)
     
-    def fill_in_hypothetical_utilbills(self, session, account, begin_date,
-            end_date):
+    def fill_in_hypothetical_utilbills(self, session, account, service,
+            begin_date, end_date):
         '''Creates hypothetical utility bills in MySQL covering the period
         [begin_date, end_date).'''
         # get customer id from account number
@@ -414,7 +416,7 @@ class StateDB:
         for (start, end) in guess_utilbill_periods(begin_date, end_date):
             # make a UtilBill
             utilbill = UtilBill(customer, state=UtilBill.Hypothetical,
-                    period_start=start, period_end=end)
+                    service=service, period_start=start, period_end=end)
             # put it in the database
             session.add(utilbill)
 
