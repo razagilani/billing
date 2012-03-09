@@ -1641,6 +1641,7 @@ function renderWidgets()
                         //allowBlank: false,
                         msgTarget: 'side'
                     },
+                    layout: 'fit',
 
                     items: [
                         //file_chooser - defined in FileUploadField.js
