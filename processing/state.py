@@ -360,16 +360,17 @@ class StateDB:
                 .one()
 
         ## new utility bill that will be uploaded (if it's allowed)
-        #new_utilbill = UtilBill(customer, state, period_start=begin_date,
-                #period_end=end_date, date_received=date_received)
+        #new_utilbill = UtilBill(customer, state, service,
+                #period_start=begin_date, period_end=end_date,
+                #date_received=date_received)
         # NOTE: if new_utilbill is created here, but not added, much less
         # committed, it appears as a result in the query below, triggering an
         # error message. 26147819
 
-        # get existing bills matching dates
-        # TODO should also match service to support multi-service customers
+        # get existing bills matching dates and service
         existing_bills = session.query(UtilBill) \
                 .filter(UtilBill.customer_id==customer.id) \
+                .filter(UtilBill.service==service) \
                 .filter(UtilBill.period_start==begin_date) \
                 .filter(UtilBill.period_end==end_date)
 

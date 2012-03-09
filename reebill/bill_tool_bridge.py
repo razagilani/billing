@@ -2053,11 +2053,11 @@ class BillToolBridge:
                 ('id', ub.id),
                 ('account', ub.customer.account),
                 ('name', full_names[i]),
-                ('service', ub.service),
+                # capitalize service name
+                ('service', ub.service[0].upper() + ub.service[1:]),
                 ('period_start', ub.period_start),
                 ('period_end', ub.period_end),
                 ('sequence', ub.reebill.sequence if ub.reebill else None),
-                # TODO this doesn't show up in the gui
                 ('state', state_descriptions[ub.state]),
                 # utility bill rows are only editable if they don't have a
                 # reebill attached to them
