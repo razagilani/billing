@@ -260,7 +260,7 @@ function renderWidgets()
     });
 
     var utilbillStoreDataConn = new Ext.data.Connection({
-        method: 'GET',
+        //method: 'GET',
         prettyUrls: false,
         url: 'http://'+location.host+'/reebill/utilbill_grid',
         disableCaching: true,
@@ -274,8 +274,7 @@ function renderWidgets()
         autoSave: true,
         reader: utilbillReader,
         writer: utilbillWriter,
-        autoSave: true,
-        baseParams: { start:0, limit: 25, account: null},
+        baseParams: { start:0, limit: 25},
         data: initialutilbill,
         root: 'rows',
         totalProperty: 'results',
@@ -302,8 +301,7 @@ function renderWidgets()
     });
 
     utilbillGridStore.on('load', function (store, records, options) {
-        // the grid is disabled by the panel that contains it  
-        // prior to loading, and must be enabled when loading is complete
+        // the grid is disabled before loading, reenable it when complete
         utilbillGrid.setDisabled(false);
     });
 
@@ -321,17 +319,24 @@ function renderWidgets()
     // event for when the store loads, for when it is paged
     utilbillGridStore.on('beforeload', function(store, options) {
 
-        if (options.params.account && options.params.account != selected_account) {
-            // account changed, reset the paging 
-            options.params.start = 0;
-            options.params.limit = 25;
-        }
+        // disable the grid before it loads
+        utilbillGrid.setDisabled(true);
 
+        // The Ext API is not clear on the relationship between options and baseParams
+        // options appears to override baseParams.  Furthermore, start and limit appear
+        // to be treated differently.  Need to scour the Ext source to figure this out.
+
+        // account changed, reset the paging 
+        if (store.baseParams.account && store.baseParams.account != selected_account) {
+            // TODO: 26143175 start new account selection on the last page
+            // reset pagination since it is a new account being loaded.
+            options.params.start = 0;
+        }
         options.params.account = selected_account;
 
         // set the current selection into the store's baseParams
-        // so that the store can decide to load itself if it wants
         store.baseParams.account = selected_account;
+
     });
 
     var utilbillColModel = new Ext.grid.ColumnModel(
@@ -433,7 +438,6 @@ function renderWidgets()
                         resolution = DEFAULT_RESOLUTION;
                     }
 
-                    
                     // ajax call to generate image, get the name of it, and display it in a
                     // new window
                     if (record.data.state == 'Final' || record.data.state == 'Utility Estimated') {
@@ -512,30 +516,7 @@ function renderWidgets()
     // and the panels it contains are displayed in accordion layout
     utilityBillPanel.on('activate', function (panel) {
 
-        // because this tab is being displayed, demand the grids that it contain 
-        // be populated
-        utilbillGrid.setDisabled(true);
-
-        // override options - none of this worked, still need to research API
-        /*lastOptions = {params:{}};
-        if (utilbillGridStore.lastOptions) {
-            Ext.apply(lastOptions.params, {
-                account: selected_account,
-                start: lastOptions.params.start,
-                limit: lastOptions.params.limit,
-            });
-            utilbillGridStore.reload(lastOptions);
-        }*/
-
-        /*utilbillGridStore.reload({params: {
-            account: selected_account,
-            //service: Ext.getCmp('service_for_charges').getValue(),
-            start: 0,
-            limit: 25
-        }});*/
-
-        // demand that the store load itself
-        // we do not configure it here, it configures itself
+        // demand that the store configure and load itself
         utilbillGridStore.reload();
 
     });
@@ -546,20 +527,6 @@ function renderWidgets()
     //
 
     // Select ReeBill
-
-    var sequencesStore = new Ext.data.JsonStore({
-        // store configs
-        autoDestroy: true,
-        autoLoad:false,
-        url: 'http://'+location.host+'/reebill/listSequences',
-        storeId: 'sequencesStore',
-        root: 'rows',
-        idProperty: 'sequence',
-        fields: ['sequence', 'issued'],
-    });
-
-    sequencesStore.on('load', function() {
-    });
 
     // forms for calling bill process operations
     var billOperationButton = new Ext.SplitButton({
@@ -577,7 +544,6 @@ function renderWidgets()
             ]
         })
     });
-
 
     // TODO: 25795091 datastore data is being deleted wrong
     var deleteButton = new Ext.Button({
@@ -637,8 +603,6 @@ function renderWidgets()
     });
 
     var reeBillStoreDataConn = new Ext.data.Connection({
-        method: 'GET',
-        prettyUrls: false,
         url: 'http://'+location.host+'/reebill/reebill',
         disableCaching: true,
     });
@@ -654,11 +618,7 @@ function renderWidgets()
         reader: reeBillReader,
         writer: reeBillWriter,
         autoSave: true,
-        autoLoad: {params:{start: 0, limit: 25}},
-        // won't be updated when combos change, so do this in event
-        // perhaps also can be put in the options param for the ajax request
-        //baseParams: { account:"none"},
-        paramNames: {start: 'start', limit: 'limit'},
+        baseParams: { start:0, limit: 25},
         data: initialReebill,
         root: 'rows',
         totalProperty: 'results',
@@ -678,18 +638,34 @@ function renderWidgets()
     reeBillStore.on('save', function () {
     });
 
-    reeBillStore.on('beforeload', function () {
-        reeBillStore.setBaseParam("start", 0);
-        reeBillStore.setBaseParam("limit", 25);
-        reeBillStore.setBaseParam("account", selected_account);
-        reeBillStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+    reeBillStore.on('beforeload', function (store, options) {
+
+        // disable the grid before it loads
+        reeBillGrid.setDisabled(true);
+
+        // The Ext API is not clear on the relationship between options and baseParams
+        // options appears to override baseParams.  Furthermore, start and limit appear
+        // to be treated differently.  Need to scour the Ext source to figure this out.
+
+        // account changed, reset the paging 
+        if (store.baseParams.account && store.baseParams.account != selected_account) {
+            // TODO: 26143175 start new account selection on the last page
+            // reset pagination since it is a new account being loaded.
+            options.params.start = 0;
+        }
+
+        options.params.account = selected_account;
+        options.params.service = Ext.getCmp('service_for_charges').getValue();
+
+        // set the current selection into the store's baseParams
+        // so that the store can decide to load itself if it wants
+        store.baseParams.account = selected_account;
+
     });
 
     // fired when the datastore has completed loading
     reeBillStore.on('load', function (store, records, options) {
-        // the grid is disabled by the panel that contains it  
-        // prior to loading, and must be enabled when loading is complete
-        // the datastore enables when it is done loading
+        // was disabled prior to loading, and must be enabled when loading is complete
         reeBillGrid.setDisabled(false);
     });
 
@@ -1151,9 +1127,6 @@ function renderWidgets()
     // and the panels it contains are displayed in accordion layout
     reeBillPanel.on('activate', function (panel) {
 
-        // because this tab is being displayed, demand the grids that it contain 
-        // be populated
-        reeBillGrid.setDisabled(true);
         reeBillStore.reload();
 
     });
@@ -1263,7 +1236,6 @@ function renderWidgets()
     rollOperationConn.autoAbort = true;
     function rollOperation()
     {
-        //Ext.Msg.show({title: "Please Wait while OLTP data is fetched", closable: false});
         tabPanel.setDisabled(true);
 
         rollOperationConn.request({
@@ -1275,9 +1247,7 @@ function renderWidgets()
                     if (jsonData.success == false) {
                         Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                     } else {
-                        // a new sequence has been made, so load it for the currently selected account
-                        //sequencesStore.load();
-                        // TODO:  25419609 load latest sequence after roll
+                        reeBillStore.reload();
                     }
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
@@ -2659,7 +2629,6 @@ function renderWidgets()
     
     var CPRSRSIStoreProxyConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/cprsrsi',
-        disableCaching: true,
     });
     CPRSRSIStoreProxyConn.autoAbort = true;
     
@@ -2674,7 +2643,7 @@ function renderWidgets()
         //autoSave: true,
         // won't be updated when combos change, so do this in event
         // perhaps also can be put in the options param for the ajax request
-        baseParams: { account:selected_account, sequence: selected_sequence},
+        //baseParams: { account:selected_account, sequence: selected_sequence},
         data: initialCPRSRSI,
         root: 'rows',
         idProperty: 'uuid',
@@ -2700,7 +2669,15 @@ function renderWidgets()
     CPRSRSIStore.on('save', function (store, batch, data) {
     });
 
-    CPRSRSIStore.on('beforeload', function () {
+    CPRSRSIStore.on('beforeload', function (store, options) {
+
+        CPRSRSIGrid.setDisabled(true);
+
+        // not sure why options don't have to be explicitly set as they do 
+        // for utilbillGridStore and reeBillStore
+        //options.params.account = selected_account;
+        //options.params.sequence = selected_sequence;
+        //options.params.service = Ext.getCmp('service_for_charges').getValue();
         CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
         CPRSRSIStore.setBaseParam("account", selected_account);
         CPRSRSIStore.setBaseParam("sequence", selected_sequence);
@@ -2721,10 +2698,7 @@ function renderWidgets()
         CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
     });
 
-    CPRSRSIStore.on('beforesave', function() {
-        CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        CPRSRSIStore.setBaseParam("account", selected_account);
-        CPRSRSIStore.setBaseParam("sequence", selected_sequence);
+    CPRSRSIStore.on('beforesave', function(store, data) {
     });
 
     var CPRSRSIColModel = new Ext.grid.ColumnModel(
@@ -2827,9 +2801,9 @@ function renderWidgets()
                 handler: function()
                 {
                     CPRSRSIGrid.stopEditing();
-                    CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    CPRSRSIStore.setBaseParam("account", selected_account);
-                    CPRSRSIStore.setBaseParam("sequence", selected_sequence);
+                    //CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+                    //CPRSRSIStore.setBaseParam("account", selected_account);
+                    //CPRSRSIStore.setBaseParam("sequence", selected_sequence);
 
                     // TODO single row selection only, test allowing multirow selection
                     var s = CPRSRSIGrid.getSelectionModel().getSelections();
@@ -2861,9 +2835,9 @@ function renderWidgets()
                     // stop grid editing so that widgets like comboboxes in rows don't stay focused
                     CPRSRSIGrid.stopEditing();
 
-                    CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    CPRSRSIStore.setBaseParam("account", selected_account);
-                    CPRSRSIStore.setBaseParam("sequence", selected_sequence);
+                    //CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+                    //CPRSRSIStore.setBaseParam("account", selected_account);
+                    //CPRSRSIStore.setBaseParam("sequence", selected_sequence);
 
                     CPRSRSIStore.save(); 
                 }
@@ -3220,7 +3194,6 @@ function renderWidgets()
 
     var URSRSIStore = new Ext.data.JsonStore({
         proxy: URSRSIStoreProxy,
-        autoSave: false,
         reader: URSRSIReader,
         writer: URSRSIWriter,
         // or, autosave must be used to save each action
@@ -3253,10 +3226,13 @@ function renderWidgets()
     URSRSIStore.on('save', function (store, batch, data) {
     });
 
-    URSRSIStore.on('beforeload', function () {
-        URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        URSRSIStore.setBaseParam("account", selected_account);
-        URSRSIStore.setBaseParam("sequence", selected_sequence);
+    URSRSIStore.on('beforeload', function (store, options) {
+
+        URSRSIGrid.setDisabled(true);
+
+        options.params.account = selected_account;
+        options.params.sequence = selected_sequence;
+        options.params.service = Ext.getCmp('service_for_charges').getValue();
     });
 
     // fired when the datastore has completed loading
@@ -3276,9 +3252,6 @@ function renderWidgets()
     });
 
     URSRSIStore.on('beforesave', function() {
-        URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        URSRSIStore.setBaseParam("account", selected_account);
-        URSRSIStore.setBaseParam("sequence", selected_sequence);
     });
 
     var URSRSIColModel = new Ext.grid.ColumnModel(
@@ -3371,9 +3344,6 @@ function renderWidgets()
                 handler: function()
                 {
                     URSRSIGrid.stopEditing();
-                    URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    URSRSIStore.setBaseParam("account", selected_account);
-                    URSRSIStore.setBaseParam("sequence", selected_sequence);
 
                     // TODO single row selection only, test allowing multirow selection
                     var s = URSRSIGrid.getSelectionModel().getSelections();
@@ -3402,10 +3372,6 @@ function renderWidgets()
 
                     // stop grid editing so that widgets like comboboxes in rows don't stay focused
                     URSRSIGrid.stopEditing();
-
-                    URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    URSRSIStore.setBaseParam("account", selected_account);
-                    URSRSIStore.setBaseParam("sequence", selected_sequence);
 
                     URSRSIStore.save(); 
                 }
@@ -3477,13 +3443,13 @@ function renderWidgets()
 
         // because this tab is being displayed, demand the grids that it contain 
         // be populated
-        CPRSRSIGrid.setDisabled(true);
+        //CPRSRSIGrid.setDisabled(true);
         CPRSRSIStore.reload();
 
-        URSRSIGrid.setDisabled(true);
+        //URSRSIGrid.setDisabled(true);
         URSRSIStore.reload();
 
-        UPRSRSIGrid.setDisabled(true);
+        //UPRSRSIGrid.setDisabled(true);
         UPRSRSIStore.reload();
 
     });
@@ -3526,10 +3492,7 @@ function renderWidgets()
     });
 
     var paymentStoreProxyConn = new Ext.data.Connection({
-        method: 'GET',
-        prettyUrls: false,
         url: 'http://'+location.host+'/reebill/payment',
-        disableCaching: true,
     });
     paymentStoreProxyConn.autoAbort = true;
 
@@ -3537,7 +3500,6 @@ function renderWidgets()
 
     var paymentStore = new Ext.data.JsonStore({
         proxy: paymentStoreProxy,
-        autoSave: false,
         reader: paymentReader,
         writer: paymentWriter,
         autoSave: true,
@@ -3737,25 +3699,17 @@ function renderWidgets()
     });
 
     var mailReeBillStoreProxyConn = new Ext.data.Connection({
-        method: 'GET',
-        prettyUrls: false,
         url: 'http://'+location.host+'/reebill/reebill',
-        disableCaching: true,
     });
     mailReeBillStoreProxyConn.autoAbort = true;
-    var mailReebillStoreProxy = new Ext.data.HttpProxy(mailReeBillStoreProxyConn);
+    var mailReeBillStoreProxy = new Ext.data.HttpProxy(mailReeBillStoreProxyConn);
 
-    var mailReebillStore = new Ext.data.JsonStore({
-        proxy: mailReebillStoreProxy,
-        autoSave: false,
+    var mailReeBillStore = new Ext.data.JsonStore({
+        proxy: mailReeBillStoreProxy,
         reader: mailReebillReader,
         writer: mailReebillWriter,
         autoSave: true,
-        autoLoad: {params:{start: 0, limit: 25}},
-        // won't be updated when combos change, so do this in event
-        // perhaps also can be put in the options param for the ajax request
-        baseParams: { account:"none"},
-        paramNames: {start: 'start', limit: 'limit'},
+        baseParams: { start:0, limit: 25},
         data: initialMailReebill,
         root: 'rows',
         totalProperty: 'results',
@@ -3763,6 +3717,45 @@ function renderWidgets()
         fields: [
             {name: 'sequence'},
         ],
+    });
+
+    mailReeBillStore.on('beforesave', function() {
+    });
+
+    mailReeBillStore.on('update', function(){
+    });
+
+    mailReeBillStore.on('save', function () {
+    });
+
+    mailReeBillStore.on('beforeload', function (store, options) {
+
+        // disable the grid before it loads
+        mailReeBillGrid.setDisabled(true);
+
+        // The Ext API is not clear on the relationship between options and baseParams
+        // options appears to override baseParams.  Furthermore, start and limit appear
+        // to be treated differently.  Need to scour the Ext source to figure this out.
+
+        // account changed, reset the paging 
+        if (store.baseParams.account && store.baseParams.account != selected_account) {
+            // TODO: 26143175 start new account selection on the last page
+            // reset pagination since it is a new account being loaded.
+            options.params.start = 0;
+        }
+
+        options.params.account = selected_account;
+
+        // set the current selection into the store's baseParams
+        // so that the store can decide to load itself if it wants
+        store.baseParams.account = selected_account;
+
+    });
+
+    // fired when the datastore has completed loading
+    mailReeBillStore.on('load', function (store, records, options) {
+        // was disabled prior to loading, and must be enabled when loading is complete
+        mailReeBillGrid.setDisabled(false);
     });
 
     var mailReebillColModel = new Ext.grid.ColumnModel(
@@ -3789,7 +3782,7 @@ function renderWidgets()
                 handler: function()
                 {
                     var sequences = [];
-                    var s = mailReebillGrid.getSelectionModel().getSelections();
+                    var s = mailReeBillGrid.getSelectionModel().getSelections();
                     for(var i = 0, r; r = s[i]; i++)
                     {
                         sequences.push(r.data.sequence);
@@ -3802,20 +3795,20 @@ function renderWidgets()
     });
 
     // in the mail tab
-    var mailReebillGrid = new Ext.grid.EditorGridPanel({
+    var mailReeBillGrid = new Ext.grid.EditorGridPanel({
         flex: 1,
         tbar: mailReebillToolbar,
         bbar: new Ext.PagingToolbar({
             // TODO: constant
             pageSize: 25,
-            store: mailReebillStore,
+            store: mailReeBillStore,
             displayInfo: true,
             displayMsg: 'Displaying {0} - {1} of {2}',
             emptyMsg: "No ReeBills to display",
         }),
         colModel: mailReebillColModel,
         selModel: new Ext.grid.RowSelectionModel({singleSelect: false}),
-        store: mailReebillStore,
+        store: mailReeBillStore,
         enableColumnMove: false,
         frame: true,
         collapsible: true,
@@ -3829,16 +3822,15 @@ function renderWidgets()
         clicksToEdit: 2
     });
 
-    mailReebillGrid.getSelectionModel().on('selectionchange', function(sm){
+    mailReeBillGrid.getSelectionModel().on('selectionchange', function(sm){
     });
   
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
-    mailReebillStore.on('update', function(){
+    mailReeBillStore.on('update', function(){
     });
 
-    mailReebillStore.on('beforesave', function() {
-        reebillStore.setBaseParam("account", selected_account);
+    mailReeBillStore.on('beforesave', function() {
     });
 
     //
@@ -3853,8 +3845,16 @@ function renderWidgets()
             align : 'stretch',
             pack : 'start'
         },
-        items: [mailReebillGrid, ]
+        items: [mailReeBillGrid, ]
     });
+    // this event is received when the tab panel tab is clicked on
+    // and the panels it contains are displayed in accordion layout
+    mailPanel.on('activate', function (panel) {
+
+        mailReeBillStore.reload();
+
+    });
+
 
     ///////////////////////////////////////
     // Accounts Tab
@@ -4086,13 +4086,18 @@ function renderWidgets()
 
     ///////////////////////////////////////
     // Create New Account 
+    var newAccountTemplateStoreProxyConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/listAccounts',
+    });
+    newAccountTemplateStoreProxyConn.autoAbort = true;
+    var newAccountTemplateStoreProxy = new Ext.data.HttpProxy(newAccountTemplateStoreProxyConn);
 
+    // TODO: 26169525 lazy load
     var newAccountTemplateStore = new Ext.data.JsonStore({
-        // store configs
+        storeId: 'newAccountTemplateStore',
         autoDestroy: true,
         autoLoad: true,
-        url: 'http://'+location.host+'/reebill/listAccounts',
-        storeId: 'newAccountTemplateStore',
+        proxy: newAccountTemplateStoreProxy,
         root: 'rows',
         idProperty: 'account',
         fields: ['account', 'name'],
@@ -4362,10 +4367,7 @@ function renderWidgets()
     });
 
     var journalStoreProxyConn = new Ext.data.Connection({
-        method: 'GET',
-        prettyUrls: false,
         url: 'http://'+location.host+'/reebill/journal',
-        disableCaching: true,
     });
     journalStoreProxyConn.autoAbort = true;
     var journalStoreProxy = new Ext.data.HttpProxy(journalStoreProxyConn);
@@ -4390,6 +4392,45 @@ function renderWidgets()
             {name: 'sequence'},
             {name: 'msg'},
         ],
+    });
+
+    journalStore.on('beforesave', function() {
+    });
+
+    journalStore.on('update', function(){
+    });
+
+    journalStore.on('save', function () {
+    });
+
+    journalStore.on('beforeload', function (store, options) {
+
+        // disable the grid before it loads
+        journalGrid.setDisabled(true);
+
+        // The Ext API is not clear on the relationship between options and baseParams
+        // options appears to override baseParams.  Furthermore, start and limit appear
+        // to be treated differently.  Need to scour the Ext source to figure this out.
+
+        // account changed, reset the paging 
+        if (store.baseParams.account && store.baseParams.account != selected_account) {
+            // TODO: 26143175 start new account selection on the last page
+            // reset pagination since it is a new account being loaded.
+            options.params.start = 0;
+        }
+
+        options.params.account = selected_account;
+
+        // set the current selection into the store's baseParams
+        // so that the store can decide to load itself if it wants
+        store.baseParams.account = selected_account;
+
+    });
+
+    // fired when the datastore has completed loading
+    journalStore.on('load', function (store, records, options) {
+        // was disabled prior to loading, and must be enabled when loading is complete
+        journalGrid.setDisabled(false);
     });
 
     var journalColModel = new Ext.grid.ColumnModel(
@@ -4492,9 +4533,6 @@ function renderWidgets()
         //journalGrid.getTopToolbar().findById('journalSaveBtn').setDisabled(false);
     });
 
-    journalStore.on('beforesave', function() {
-        journalStore.setBaseParam("account", selected_account);
-    });
     */
 
     var journalGrid = new Ext.grid.EditorGridPanel({
@@ -4578,6 +4616,14 @@ function renderWidgets()
             pack : 'start'
         },
         items: [journalGrid, ]
+    });
+
+    // this event is received when the tab panel tab is clicked on
+    // and the panels it contains are displayed in accordion layout
+    journalPanel.on('activate', function (panel) {
+
+        journalStore.reload();
+
     });
 
 
@@ -4807,8 +4853,7 @@ function renderWidgets()
         ubMeasuredUsagesPanel.setDisabled(true);
         rateStructurePanel.setDisabled(true);
         chargeItemsPanel.setDisabled(true);
-        journalPanel.setDisabled(true);
-        mailPanel.setDisabled(true);
+        //journalPanel.setDisabled(true);
 
         // TODO: 25226989 ajax cancelled???
 
@@ -4818,18 +4863,11 @@ function renderWidgets()
         Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML(null, 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
 
         // update list of ReeBills (for mailing) for this account
-        mailReebillStore.setBaseParam("account", account)
+        //mailReeBillStore.setBaseParam("account", account)
 
         // paging tool bar params must be passed in to keep store in sync with toolbar paging calls - autoload params lost after autoload
-        mailReebillStore.reload({params:{start:0, limit:25}});
+        //mailReeBillStore.reload({params:{start:0, limit:25}});
 
-        // update list of journal entries for this account
-        journalStore.reload({params: {account: account}});
-
-        // update the journal form panel so entries get submitted to currently selected account
-        // need to set account into a hidden field here since there is no data store behind the form
-        journalFormPanel.getForm().findField("account").setValue(account)
-        // TODO: 1320091681504 if an account is selected w/o a sequence, a journal entry can't be made
 
         // add the account to the upload_account field
         upload_account.setValue(account)
@@ -4866,6 +4904,10 @@ function renderWidgets()
             disableCaching: true,
         });
 
+        // update the journal form panel so entries get submitted to currently selected account
+        // need to set account into a hidden field here since there is no data store behind the form
+        journalFormPanel.getForm().findField("account").setValue(account)
+        // TODO: 1320091681504 if an account is selected w/o a sequence, a journal entry can't be made
         // clear reebill data when a new account is selected
         // TODO: 1320091681504 if an account is selected w/o a sequence, a journal entry can't be made
         journalFormPanel.getForm().findField("sequence").setValue(null)
@@ -4892,6 +4934,8 @@ function renderWidgets()
         reeBillPanel.setDisabled(false);
         paymentsPanel.setDisabled(false);
         utilityBillPanel.setDisabled(false);
+        journalPanel.setDisabled(false);
+        mailPanel.setDisabled(false);
 
     }
 
