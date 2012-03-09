@@ -34,14 +34,16 @@ class UtilBill(object):
     # will probably be different than the guessed ones.
     Complete, UtilityEstimated, SkylineEstimated, Hypothetical = range(4)
 
-    def __init__(self, customer, state, period_start=None, period_end=None,
-            date_received=None, processed=False, reebill=None):
+    def __init__(self, customer, state, service, period_start=None,
+            period_end=None, date_received=None, processed=False,
+            reebill=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
         # automatically adds from the database column
         self.customer = customer
         self.state = state
+        self.service = service
         self.period_start = period_start
         self.period_end = period_end
         self.date_received = date_received

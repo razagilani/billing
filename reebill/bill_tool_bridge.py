@@ -1914,7 +1914,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
-    def upload_utility_bill(self, account, begin_date, end_date,
+    def upload_utility_bill(self, account, service, begin_date, end_date,
             file_to_upload, **args):
         try:
             session = None
@@ -1922,13 +1922,11 @@ class BillToolBridge:
             if not account or not begin_date or not end_date or not file_to_upload:
                 raise ValueError("Bad Parameter Value")
 
-            # convert dates, which come in as strings, into actual date objects
+            # pre-process parameters
+            service = service.lower()
             begin_date_as_date = datetime.strptime(begin_date, '%Y-%m-%d').date()
             end_date_as_date = datetime.strptime(end_date, '%Y-%m-%d').date()
-
-            # validate dates
             self.validate_utilbill_period(begin_date_as_date, end_date_as_date)
-
 
             session = self.state_db.session()
 
@@ -1936,26 +1934,27 @@ class BillToolBridge:
             # create hypothetical bills to cover the gap
             latest_end_date = self.state_db.last_utilbill_end_date(session, account)
             if latest_end_date is not None and begin_date_as_date > latest_end_date:
-                self.state_db.fill_in_hypothetical_utilbills(session, account, latest_end_date, begin_date_as_date)
+                self.state_db.fill_in_hypothetical_utilbills(session, account,
+                        service, latest_end_date, begin_date_as_date)
 
             if file_to_upload.file is None:
                 # if there's no file, this is a "skyline estimated bill":
                 # record it in the database with that state, but don't upload
                 # anything
                 self.state_db.record_utilbill_in_database(session, account,
-                        begin_date, end_date, datetime.utcnow(),
+                        service, begin_date, end_date, datetime.utcnow(),
                         state=db_objects.UtilBill.SkylineEstimated)
                 session.commit()
                 return self.dumps({'success':True})
             else:
                 # if there is a file, get the Python file object and name
                 # string from CherryPy, and pass those to BillUpload to upload
-                # the file (so BillUpload can stay independent of CherryPy
+                # the file (so BillUpload can stay independent of CherryPy)
                 upload_result = self.billUpload.upload(account, begin_date,
                         end_date, file_to_upload.file, file_to_upload.filename)
                 if upload_result is True:
                     self.state_db.record_utilbill_in_database(session, account,
-                            begin_date, end_date, datetime.utcnow())
+                            service, begin_date, end_date, datetime.utcnow())
                     session.commit()
                     return self.dumps({'success':True})
                 else:
@@ -2020,6 +2019,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
  
+    # TODO merge into utilbill_grid(); this is not called by the front-end anymore
     @cherrypy.expose
     @random_wait
     def listUtilBills(self, start, limit, account, **args):
@@ -2037,7 +2037,6 @@ class BillToolBridge:
                 db_objects.UtilBill.Hypothetical: 'Hypothetical'
             }
 
-
             if not start or not limit or not account:
                 raise ValueError("Bad Parameter Value")
 
@@ -2054,10 +2053,11 @@ class BillToolBridge:
                 ('id', ub.id),
                 ('account', ub.customer.account),
                 ('name', full_names[i]),
+                # capitalize service name
+                ('service', ub.service[0].upper() + ub.service[1:]),
                 ('period_start', ub.period_start),
                 ('period_end', ub.period_end),
                 ('sequence', ub.reebill.sequence if ub.reebill else None),
-                # TODO this doesn't show up in the gui
                 ('state', state_descriptions[ub.state]),
                 # utility bill rows are only editable if they don't have a
                 # reebill attached to them

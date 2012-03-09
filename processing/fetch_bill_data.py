@@ -28,18 +28,20 @@ def fetch_oltp_data(splinter, olap_id, reebill):
             hourrange, places=5)
     usage_data_to_virtual_register(reebill, energy_function)
 
-def fetch_interval_meter_data(reebill, csv_file):
+def fetch_interval_meter_data(reebill, csv_file, meter_identifier=None):
     '''Update quantities of shadow registers in reebill with interval-meter
-    energy values from csv_file.'''
+    energy values from csv_file. If meter_identifier is given, energy will only
+    go in shadow registers of meters with that identifier'''
     energy_function = get_interval_meter_data_source(csv_file)
-    usage_data_to_virtual_register(reebill, energy_function)
-    
+    usage_data_to_virtual_register(reebill, energy_function,
+            meter_identifier=meter_identifier)
 
 def get_interval_meter_data_source(csv_file):
     '''Returns a function mapping hours (as datetimes) to hourly energy
     measurements from an interval meter. These measurements should come as a
     CSV file with ISO 8601 timestamps in the first column, energy in the second
     column, and energy units in the third, e.g.:
+
             2012-01-01T03:45:00Z, 1.234, therms
 
     Timestamps must be at :00, :15, :30, :45, and the energy value associated
@@ -64,12 +66,18 @@ def get_interval_meter_data_source(csv_file):
 
     # auto-detect csv format variation by reading the file, then reset file
     # pointer to beginning
-    csv_dialect = csv.Sniffer().sniff(csv_file.read(1024))
+    try:
+        csv_dialect = csv.Sniffer().sniff(csv_file.read(1024))
+    except:
+        raise Exception('CSV file is malformed: could not detect the delimiter')
     csv_file.seek(0)
 
     reader = csv.reader(csv_file, dialect=csv_dialect)
     for row in reader:
-        timestamp_str, value, unit = row
+        try:
+            timestamp_str, value, unit = row
+        except ValueError:
+            raise Exception('CSV file is malformed: row does not contain 3 columns')
         timestamp = datetime.strptime(timestamp_str, dateutils.ISO_8601_DATETIME)
         if unit == 'therms':
             value = value
@@ -129,33 +137,36 @@ def get_interval_meter_data_source(csv_file):
     return get_energy_for_hour_range
 
 
-def get_shadow_register_data(reebill):
+def get_shadow_register_data(reebill, meter_identifier=None):
     '''Returns a list of shadow registers in all meters of the given
-    MongoReebill. The returned dictionaries are the same as register
-    subdocuments in mongo plus read dates of their containing meters.'''
+    MongoReebill, or if meter_identifier is given, only meters with that
+    identifier. The returned dictionaries are the same as register subdocuments
+    in mongo plus read dates of their containing meters.'''
     result = []
     service_meters_dict = reebill.meters # poorly-named attribute
     for service, meters in service_meters_dict.iteritems():
         for meter in meters:
-            for register in meter['registers']:
-                if register['shadow'] == True:
-                    result.append(dict_merge(register.copy(), {
-                        'prior_read_date': meter['prior_read_date'],
-                        'present_read_date': meter['present_read_date']
-                    }))
+            if meter_identifier == None or meter['identifier'] == meter_identifier:
+                for register in meter['registers']:
+                    if register['shadow'] == True:
+                        result.append(dict_merge(register.copy(), {
+                            'prior_read_date': meter['prior_read_date'],
+                            'present_read_date': meter['present_read_date']
+                        }))
     return result
 
-def usage_data_to_virtual_register(reebill, energy_function):
+
+def usage_data_to_virtual_register(reebill, energy_function, meter_identifier=None):
     '''Gets energy quantities from 'energy_function' and puts them in the total
     fields of the appropriate shadow registers in the MongoReebill object
     reebill. 'energy_function' should be a function mapping a date and an hour
     range (2-tuple of integers in [0,23]) to a Decimal representing energy used
-    during that time.'''
-    # get identifiers of all shadow registers in reebill from mongo
-    registers = get_shadow_register_data(reebill)
+    during that time. If meter_identifier is given, accumulate energy only into
+    the shadow registers of meters with that identifier.'''
+    # get all shadow registers in reebill from mongo
+    registers = get_shadow_register_data(reebill, meter_identifier)
 
-    # now that a list of shadow registers are initialized, accumulate energy
-    # into them for the specified date range
+    # accumulate energy into the shadow registers for the specified date range
     for register in registers:
         # service date range
         begin_date = register['prior_read_date'] # inclusive
@@ -216,6 +227,5 @@ def usage_data_to_virtual_register(reebill, energy_function):
         # update the reebill: put the total skyline energy in the shadow register
         reebill.set_shadow_register_quantity(register['identifier'],
                 register['quantity'])
-
 
 
