@@ -1216,7 +1216,6 @@ function renderWidgets()
     rollOperationConn.autoAbort = true;
     function rollOperation()
     {
-        //Ext.Msg.show({title: "Please Wait while OLTP data is fetched", closable: false});
         tabPanel.setDisabled(true);
 
         rollOperationConn.request({
@@ -3478,7 +3477,6 @@ function renderWidgets()
 
     var paymentStore = new Ext.data.JsonStore({
         proxy: paymentStoreProxy,
-        autoSave: false,
         reader: paymentReader,
         writer: paymentWriter,
         autoSave: true,
@@ -4065,13 +4063,18 @@ function renderWidgets()
 
     ///////////////////////////////////////
     // Create New Account 
+    var newAccountTemplateStoreProxyConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/listAccounts',
+    });
+    newAccountTemplateStoreProxyConn.autoAbort = true;
+    var newAccountTemplateStoreProxy = new Ext.data.HttpProxy(newAccountTemplateStoreProxyConn);
 
+    // TODO: 26169525 lazy load
     var newAccountTemplateStore = new Ext.data.JsonStore({
-        // store configs
+        storeId: 'newAccountTemplateStore',
         autoDestroy: true,
         autoLoad: true,
-        url: 'http://'+location.host+'/reebill/listAccounts',
-        storeId: 'newAccountTemplateStore',
+        proxy: newAccountTemplateStoreProxy,
         root: 'rows',
         idProperty: 'account',
         fields: ['account', 'name'],
@@ -4842,10 +4845,6 @@ function renderWidgets()
         // paging tool bar params must be passed in to keep store in sync with toolbar paging calls - autoload params lost after autoload
         //mailReeBillStore.reload({params:{start:0, limit:25}});
 
-        // update the journal form panel so entries get submitted to currently selected account
-        // need to set account into a hidden field here since there is no data store behind the form
-        journalFormPanel.getForm().findField("account").setValue(account)
-        // TODO: 1320091681504 if an account is selected w/o a sequence, a journal entry can't be made
 
         // add the account to the upload_account field
         upload_account.setValue(account)
@@ -4882,6 +4881,10 @@ function renderWidgets()
             disableCaching: true,
         });
 
+        // update the journal form panel so entries get submitted to currently selected account
+        // need to set account into a hidden field here since there is no data store behind the form
+        journalFormPanel.getForm().findField("account").setValue(account)
+        // TODO: 1320091681504 if an account is selected w/o a sequence, a journal entry can't be made
         // clear reebill data when a new account is selected
         // TODO: 1320091681504 if an account is selected w/o a sequence, a journal entry can't be made
         journalFormPanel.getForm().findField("sequence").setValue(null)
