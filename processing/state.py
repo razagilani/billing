@@ -78,6 +78,9 @@ def guess_utilbills_and_end_date(session, account, start_date):
         # otherwise, get length of last bill period
         last_reebill_utilbills = session.query(UtilBill) \
                 .filter(UtilBill.rebill_id==last_reebill.id)
+        if list(last_reebill_utilbills) == []:
+            raise Exception("Can't roll a reebill that has no attached"
+                    " utility bills")
         earliest_start = min(ub.period_start for ub in last_reebill_utilbills)
         latest_end = max(ub.period_end for ub in last_reebill_utilbills)
         length = (latest_end - earliest_start)
@@ -343,28 +346,68 @@ class StateDB:
         # SQLAlchemy does SQL 'limit' with Python list slicing
         return query[start:start + limit], query.count()
 
-    def record_utilbill_in_database(self, session, account, begin_date,
-            end_date, date_received, state=UtilBill.Complete):
+    def record_utilbill_in_database(self, session, account, service,
+            begin_date, end_date, date_received, state=UtilBill.Complete):
         '''Inserts a row into the utilbill table when a utility bill file has
         been uploaded. The bill is Complete by default but can can have other
         states (see comment in db_objects.UtilBill for explanation of utility
         bill states). The bill is initially marked as un-processed.'''
 
-        print >> sys.stderr, 'state of incoming bill is %s', state
+        print >> sys.stderr, 'incoming utility bill: state %s, service %s' % (state, service)
 
         # get customer id from account number
-        customer = session.query(Customer).filter(Customer.account==account).one()
+        customer = session.query(Customer).filter(Customer.account==account) \
+                .one()
 
-        # make a new UtilBill with the customer id and dates (UtilBill
-        # constructor defaults to processed=False)
-        utilbill = UtilBill(customer, state, period_start=begin_date,
-                period_end=end_date, date_received=date_received)
+        ## new utility bill that will be uploaded (if it's allowed)
+        #new_utilbill = UtilBill(customer, state, service,
+                #period_start=begin_date, period_end=end_date,
+                #date_received=date_received)
+        # NOTE: if new_utilbill is created here, but not added, much less
+        # committed, it appears as a result in the query below, triggering an
+        # error message. 26147819
 
-        # put the new UtilBill in the database
-        session.add(utilbill)
+        # get existing bills matching dates and service
+        existing_bills = session.query(UtilBill) \
+                .filter(UtilBill.customer_id==customer.id) \
+                .filter(UtilBill.service==service) \
+                .filter(UtilBill.period_start==begin_date) \
+                .filter(UtilBill.period_end==end_date)
+
+        if list(existing_bills) == []:
+            # nothing to replace; just upload the bill
+            new_utilbill = UtilBill(customer, state, service,
+                    period_start=begin_date, period_end=end_date,
+                    date_received=date_received)
+            session.add(new_utilbill)
+        elif len(list(existing_bills)) > 1:
+            raise Exception(("Can't upload a bill for dates %s, %s because"
+                    " there are already %s of them") % (begin_date, end_date,
+                    len(list(existing_bills))))
+        else:
+            # now there is one existing bill with the same dates. if state is
+            # "more final" than an existing non-final bill that matches this
+            # one, replace that bill
+            # (we can compare with '>' because states are ordered from "most
+            # final" to least (see db_objects.UtilBill)
+            bills_to_replace = existing_bills.filter(UtilBill.state > state)
+
+            if list(bills_to_replace) == []:
+                # TODO this error message is kind of obscure
+                raise Exception(("Can't upload a bill for dates %s, %s because"
+                    " one already exists with a more final state"))
+            bill_to_replace = bills_to_replace.one()
+                
+            # now there is exactly one bill with the same dates and its state is
+            # less final than the one being uploaded, so replace it.
+            session.delete(bill_to_replace)
+            new_utilbill = UtilBill(customer, state, service,
+                    period_start=begin_date, period_end=end_date,
+                    date_received=date_received)
+            session.add(new_utilbill)
     
-    def fill_in_hypothetical_utilbills(self, session, account, begin_date,
-            end_date):
+    def fill_in_hypothetical_utilbills(self, session, account, service,
+            begin_date, end_date):
         '''Creates hypothetical utility bills in MySQL covering the period
         [begin_date, end_date).'''
         # get customer id from account number
@@ -374,7 +417,7 @@ class StateDB:
         for (start, end) in guess_utilbill_periods(begin_date, end_date):
             # make a UtilBill
             utilbill = UtilBill(customer, state=UtilBill.Hypothetical,
-                    period_start=start, period_end=end)
+                    service=service, period_start=start, period_end=end)
             # put it in the database
             session.add(utilbill)
 
