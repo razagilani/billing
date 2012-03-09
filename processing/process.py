@@ -198,7 +198,7 @@ class Process(object):
 
         # set reebill begin date and probable end date
         reebill.period_begin = old_period_end
-        utilbills, new_period_end = state.guess_utilbills_and_end_date(session,
+        new_period_end, utilbills = state.guess_utilbills_and_end_date(session,
                 reebill.account, old_period_end)
         reebill.period_end = new_period_end
 
@@ -206,7 +206,7 @@ class Process(object):
         reebill.discount_rate = self.state_db.discount_rate(session,
                 reebill.account)
 
-        # create an initial rebill record to which the utilbills are later
+        # create an initial reebill record to which the utilbills are later
         # attached
         self.state_db.new_rebill(session, reebill.account, reebill.sequence)
 
