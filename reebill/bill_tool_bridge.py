@@ -2020,6 +2020,7 @@ class BillToolBridge:
             return self.handle_exception(e)
 
  
+    # TODO merge into utilbill_grid(); this is not called by the front-end anymore
     @cherrypy.expose
     @random_wait
     def listUtilBills(self, start, limit, account, **args):
@@ -2037,7 +2038,6 @@ class BillToolBridge:
                 db_objects.UtilBill.Hypothetical: 'Hypothetical'
             }
 
-
             if not start or not limit or not account:
                 raise ValueError("Bad Parameter Value")
 
@@ -2054,6 +2054,7 @@ class BillToolBridge:
                 ('id', ub.id),
                 ('account', ub.customer.account),
                 ('name', full_names[i]),
+                ('service', ub.service),
                 ('period_start', ub.period_start),
                 ('period_end', ub.period_end),
                 ('sequence', ub.reebill.sequence if ub.reebill else None),
