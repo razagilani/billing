@@ -8,6 +8,9 @@ from StringIO import StringIO
 import billing.processing.fetch_bill_data as fbd
 from datetime import date, datetime, timedelta
 from billing import dateutils, mongo
+from decimal import Decimal
+import pprint
+pp = pprint.PrettyPrinter().pprint
 
 def make_big_interval_meter_test_csv(start_date, end_date, csv_file):
     '''Writes a sample CSV to csv_file with file with random energy values
@@ -30,7 +33,14 @@ def make_big_interval_meter_test_csv(start_date, end_date, csv_file):
 
 class FetchTest(unittest.TestCase):
     def setUp(self):
-        pass
+        self.reebill_dao = mongo.ReebillDAO({
+            'billpath': '/db-dev/skyline/bills/',
+            'database': 'skyline',
+            'utilitybillpath': '/db-dev/skyline/utilitybills/',
+            'collection': 'reebills',
+            'host': 'localhost',
+            'port': '27017'
+        })
         
     def test_get_interval_meter_data_source(self):
         csv_file = StringIO('\n'.join([
@@ -82,15 +92,7 @@ class FetchTest(unittest.TestCase):
         # TODO would be great to have a way of getting a fake reebill for
         # testing. here i just count on this reebill existing and then modify
         # it but don't save it
-        reebill_dao = mongo.ReebillDAO({
-            'billpath': '/db-dev/skyline/bills/',
-            'database': 'skyline',
-            'utilitybillpath': '/db-dev/skyline/utilitybills/',
-            'collection': 'reebills',
-            'host': 'localhost',
-            'port': '27017'
-        })
-        reebill = reebill_dao.load_reebill('10002', 21)
+        reebill = self.reebill_dao.load_reebill('10002', 21)
         # these are the dates i expect that bill to have
         assert reebill.period_begin == date(2011,11,10)
         assert reebill.period_end == date(2011,12,12)
@@ -106,16 +108,56 @@ class FetchTest(unittest.TestCase):
         fbd.fetch_interval_meter_data(reebill, csv_file)
 
 
-        # test with a specific meter. here's a bill with 2 meters, both
-        # containing shadow registers:
-        reebill = reebill_dao.load_reebill('10004', 19)
-        assert reebill.period_begin == date(2011,10,4)
-        assert reebill.period_end == date(2011,11,2)
-        shadow_registers = fbd.get_shadow_register_data(reebill)
-        print shadow_registers
-        print len(shadow_registers)
-        assert len(shadow_registers) == 2
-        #assert 028702956
+    def test_fetch_interval_meter_data_with_meter(self):
+        # test with a specific meter. here's a bill with 2 meters, 1 of which
+        # contains shadow registers and the other of which does not. (currently
+        # all customers have exactly 1 shadowed meter). putting energy into the
+        # shadow registers of that specific meter is the same as putting it
+        # into all shadowed meters.
+        reebill = self.reebill_dao.load_reebill('10004', 18)
+        assert reebill.period_begin == date(2011,9,5)
+        assert reebill.period_end == date(2011,10,4)
+        meters = reduce(lambda x,y:x+y, [reebill.meters_for_service(s) for s in reebill.services], [])
+        pp(meters)
+        print len(meters)
+
+        # should have 2 meters with the identifiers shown
+        assert len(meters) == 2
+        assert len([m for m in meters if m['identifier'] == '028702956']) == 1
+        assert len([m for m in meters if m['identifier'] == '027870434']) == 1
+        meter1 = [m for m in meters if m['identifier'] == '028702956'][0]
+        meter2 = [m for m in meters if m['identifier'] == '027870434'][0]
+
+        # only the second contains shadow registers
+        shadow_registers = [r for r in meter1['registers'] +
+                meter2['registers'] if r['shadow'] is True]
+        pp(shadow_registers)
+        assert len(shadow_registers) == 1
+        assert [r for r in shadow_registers if r['identifier'] == '028702956'] == []
+        assert [r for r in shadow_registers if r['identifier'] == '027870434'] != []
+
+        # set value of all registers in both meters to an arbitrary value
+        # (also set unit to 'therms' instead of 'Ccf' because ccf isn't
+        # really an energy unit)
+        for r in meter1['registers'] + meter2['registers']:
+            r['quantity'] = Decimal(-1234567890)
+            r['quantity_units'] = 'therms'
+        pp(meter1['registers'] + meter2['registers'])
+        pp(shadow_registers)
+        # accumulate energy into shadow registers
+        csv_file = StringIO()
+        make_big_interval_meter_test_csv(reebill.period_begin,
+                reebill.period_end, csv_file)
+        csv_file.seek(0)
+
+        fbd.fetch_interval_meter_data(reebill, csv_file, '027870434')
+
+        # check that shadow register changed value and other registers didn't
+        for r in meter1['registers'] + meter2['registers']:
+            if r in shadow_registers:
+                self.assertNotEquals(Decimal(-1234567890), r['quantity'])
+            else:
+                self.assertEquals(Decimal(-1234567890), r['quantity'])
 
 if __name__ == '__main__':
     unittest.main()
