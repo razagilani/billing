@@ -2076,13 +2076,13 @@ function renderWidgets()
                     // TODO: 25593817
                     Ext.Ajax.request({
                         url: 'http://'+location.host+'/reebill/saveActualCharges',
-                        params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence, rows: jsonData},
+                        params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence, rows: jsonData},
                         success: function() { 
                             // TODO: check success status in json package
 
                             // reload the store to clear dirty flags
                             // this causes the load event to fire and re-enable the aChargesGrid
-                            aChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}})
+                            aChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}})
                         },
                         failure: function() { alert("ajax fail"); },
                     });
@@ -2454,13 +2454,13 @@ function renderWidgets()
                     // TODO: 25593817
                     Ext.Ajax.request({
                         url: 'http://'+location.host+'/reebill/saveHypotheticalCharges',
-                        params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence, rows: jsonData},
+                        params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence, rows: jsonData},
                         success: function() { 
                             // TODO: check success status in json package
 
                             // reload the store to clear dirty flags
                             // this causes the load event to fire and re-enable the hChargesGrid
-                            hChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}})
+                            hChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}})
                         },
                         failure: function() { alert("ajax fail"); },
                     });
