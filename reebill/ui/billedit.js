@@ -159,6 +159,15 @@ function renderWidgets()
             allowBlank: false,
             readOnly: true
     });
+    // service field
+    var upload_service = new Ext.form.ComboBox({
+        fieldLabel: 'Service',
+        name: 'service',
+        allowBlank: false,
+        store: ['Gas', 'Electric'],
+        value: 'Gas',
+        width: 50,
+    })
     // date fields
     var upload_begin_date = new Ext.form.DateField({
         fieldLabel: 'Begin Date',
@@ -187,7 +196,7 @@ function renderWidgets()
 
     var upload_form_panel = new Ext.form.FormPanel({
         fileUpload: true,
-        title: 'Upload Bill',
+        title: 'Upload Utility Bill',
         url: 'http://'+location.host+'/reebill/upload_utility_bill',
         frame:true,
         bodyStyle: 'padding: 10px 10px 0 10px;',
@@ -199,6 +208,7 @@ function renderWidgets()
 
         items: [
             upload_account,
+            upload_service,
             upload_begin_date,
             upload_end_date,
             //file_chooser - defined in FileUploadField.js
