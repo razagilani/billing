@@ -54,8 +54,7 @@ import random
 import time
 def random_wait(target):
     def random_wait_wrapper(*args, **kwargs):
-        #t = random.random()
-        t = 0
+        t = random.random() * 0.1
         time.sleep(t)
         return target(*args, **kwargs)
     return random_wait_wrapper
