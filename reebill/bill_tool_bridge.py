@@ -1922,11 +1922,10 @@ class BillToolBridge:
             if not account or not begin_date or not end_date or not file_to_upload:
                 raise ValueError("Bad Parameter Value")
 
-            # convert dates, which come in as strings, into actual date objects
+            # pre-process parameters
+            service = service.lower()
             begin_date_as_date = datetime.strptime(begin_date, '%Y-%m-%d').date()
             end_date_as_date = datetime.strptime(end_date, '%Y-%m-%d').date()
-
-            # validate dates
             self.validate_utilbill_period(begin_date_as_date, end_date_as_date)
 
             session = self.state_db.session()
