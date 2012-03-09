@@ -34,7 +34,8 @@ conn = MySQLdb.connect(host='localhost', db=statedb_config['database'],
         user=statedb_config['user'], passwd=statedb_config['password'])
 cursor = conn.cursor()
 
-# create utilbill
+# create service column in utilbill table
+# NOTE will fail if column is already present: script can only run once
 cursor.execute('alter table utilbill add service varchar(45)')
 
 state_db = state.StateDB(statedb_config)
@@ -46,6 +47,8 @@ session = state_db.session()
 #for service in reebill.services:
     #print service, reebill.utilbill_period_for_service(service)
 #exit()
+
+earliest_mongo_utilbill_dates = {}
 
 for account in state_db.listAccounts(session):
     customer = session.query(Customer).filter(Customer.account == account).one()
@@ -81,6 +84,40 @@ for account in state_db.listAccounts(session):
                 print '%s-%s %s - %s: %s' % (account, sequence, start, end, service)
                 utilbill.service = service
 
+        earliest_utilbill_start = min(mongo_reebill.\
+                utilbill_period_for_service(service) for service in
+                mongo_reebill.services)[0]
+        if account not in earliest_mongo_utilbill_dates:
+            earliest_mongo_utilbill_dates[account] = earliest_utilbill_start
+        elif earliest_utilbill_start < earliest_mongo_utilbill_dates[account]:
+            earliest_mongo_utilbill_dates[account] = earliest_utilbill_start
+
 # commit changes
 session.commit()
+session = state_db.session()
 
+#print '\n'.join(('%s: %s' % (acc, day) for acc, day in sorted(earliest_mongo_utilbill_dates.iteritems())))
+null_service_utilbills = session.query(UtilBill).filter(UtilBill.service == None).all()
+print '\n--------------------------------------'
+print 'Utility bills with NULL service:'
+for ub in null_service_utilbills:
+    if ub.customer is None:
+        print 'ERROR utilbill %s has null customer id!' % ub
+    elif ub.customer.account not in earliest_mongo_utilbill_dates:
+        if ub.customer.account == '10015':
+            print ub, "for account 10015 has no utilbills in Mongo yet, but we know it's Gas"
+            ub.service = 'Gas'
+        else:
+            print 'ERROR account %s has no utilbills in mongo!' % ub.customer.account
+    elif ub.period_end <= earliest_mongo_utilbill_dates[account]:
+        earliest_reebill_services = dao.load_reebill(ub.customer.account, 1).services
+        if len(earliest_reebill_services) == 0:
+            print ub.customer.account, ub.period_start, ub.period_end,\
+                    "is OK, but can't add service because earliest reebill has multiple services; it will remain NULL"
+        else:
+            print ub.customer.account, ub.period_start, ub.period_end,\
+                    "is OK: filled in service", earliest_reebill_services[0]
+            ub.service = earliest_reebill_services[0]
+    else:
+        print ub, 'ERROR: does not match anything in Mongo'
+session.commit()
