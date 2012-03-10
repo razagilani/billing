@@ -54,8 +54,8 @@ import random
 import time
 def random_wait(target):
     def random_wait_wrapper(*args, **kwargs):
-        t = random.random()
-        #t = 0
+        #t = random.random()
+        t = 0
         time.sleep(t)
         return target(*args, **kwargs)
     return random_wait_wrapper
@@ -467,22 +467,6 @@ class BillToolBridge:
             self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
             self.journal_dao.journal(account, sequence, "ReeBill rolled")
-            session.commit()
-            return self.dumps({'success': True})
-        except Exception as e:
-            self.rollback_session(session)
-            return self.handle_exception(e)
-
-
-    @cherrypy.expose
-    @random_wait
-    def delete_reebill(self, account, sequence, **args):
-        try:
-            session = None
-            self.check_authentication()
-            session = self.state_db.session()
-            self.process.delete_reebill(session, account, sequence)
-            self.journal_dao.journal(account, sequence, "Deleted")
             session.commit()
             return self.dumps({'success': True})
         except Exception as e:
@@ -1541,15 +1525,15 @@ class BillToolBridge:
             if not xaction or not start or not limit:
                 raise ValueError("Bad Parameter Value")
 
-            if xaction == "read":
+            session = self.state_db.session()
 
-                session = self.state_db.session()
+            if xaction == "read":
 
                 reebills, totalCount = self.state_db.listReebills(session, int(start), int(limit), account)
 
                 # convert the result into a list of dictionaries for returning as
                 # JSON to the browser
-                rows = [{'sequence': reebill.sequence} for reebill in reebills]
+                rows = [{'id': reebill.sequence, 'sequence': reebill.sequence} for reebill in reebills]
 
                 session.commit()
                 return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
@@ -1563,8 +1547,16 @@ class BillToolBridge:
                 return self.dumps({'success':False})
 
             elif xaction == "destroy":
+                sequences = json.loads(kwargs["rows"])
 
-                return self.dumps({'success':False})
+                # single edit comes in not in a list
+                if type(sequences) is int: sequences = [sequences]
+
+                for sequence in sequences:
+                    self.process.delete_reebill(session, account, sequence)
+                    self.journal_dao.journal(account, sequence, "Deleted")
+                session.commit()
+                return self.dumps({'success': True})
 
         except Exception as e:    
             self.rollback_session(session)
