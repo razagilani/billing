@@ -526,7 +526,8 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
-    def upload_interval_meter_csv(self, account, sequence, csv_file, **args):
+    def upload_interval_meter_csv(self, account, sequence, csv_file,
+            meter_identifier, **args):
         '''Takes an upload of an interval meter CSV file (cherrypy file upload
         object) and puts energy from it into the shadow registers of the
         reebill given by account, sequence.'''

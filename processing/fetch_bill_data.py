@@ -138,6 +138,8 @@ def get_interval_meter_data_source(csv_file):
 
 
 def get_shadow_register_data(reebill, meter_identifier=None):
+    # TODO duplicate of mongo.shadow_registers? move this to mongo.py to
+    # replace that function
     '''Returns a list of shadow registers in all meters of the given
     MongoReebill, or if meter_identifier is given, only meters with that
     identifier. The returned dictionaries are the same as register subdocuments
@@ -165,6 +167,10 @@ def usage_data_to_virtual_register(reebill, energy_function, meter_identifier=No
     the shadow registers of meters with that identifier.'''
     # get all shadow registers in reebill from mongo
     registers = get_shadow_register_data(reebill, meter_identifier)
+    
+    if registers == []:
+        raise Exception(('Meter "%s" doesn\'t exist or contains no shadow'
+            ' registers') % meter_identifier)
 
     # accumulate energy into the shadow registers for the specified date range
     for register in registers:
