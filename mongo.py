@@ -743,6 +743,7 @@ class MongoReebill(object):
                     return meter
     @property
     def meters(self):
+        # TODO rename to something like meters_dict
         '''Returns a dictionary mapping service names to lists of meters.'''
         return dict([(service, self.meters_for_service(service)) for service in self.services])
 
@@ -787,14 +788,14 @@ class MongoReebill(object):
         raise Exception('No actual register found with identifier "%s"' % identifier)
 
     def shadow_registers(self, service):
-
+        # TODO partially duplicates of
+        # fetch_bill_data.get_shadow_register_data? move that function into
+        # mongo.py to replace this one
         all_shadow = []
-
         for meter in self.meters_for_service(service):
             all_shadow.extend(filter(
                 lambda register: register if register['shadow'] is True else False, meter['registers']
             ))
-
         return all_shadow
 
     # TODO: probably should be qualified by service since register identifiers could collide
