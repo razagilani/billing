@@ -1097,11 +1097,12 @@ class ReebillDAO:
         'end_date' and ended on or after 'start_date' (i.e. all bills between
         those dates and all bills whose period includes either endpoint). If
         'start_date' and 'end_date' are not given or are None, the time period
-        extends to the begining or end of time, respectively.'''
+        extends to the begining or end of time, respectively. Sequence 0 is
+        never included.'''
         query = {
             '_id.account': str(account),
             '_id.branch': int(branch),
-            '_id.sequence': {'$ne': 0}
+            '_id.sequence': {'$gt': 0}
         }
         # add dates to query if present (converting dates into datetimes
         # because mongo only allows datetimes)
