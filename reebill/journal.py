@@ -29,22 +29,21 @@ class JournalDAO(object):
 
     def journal(self, account, sequence, message):
         '''Special method that logs and event of type Note.'''
-        log_event(account, sequence, Journal.Note, msg=message)
+        self.log_event(account, sequence, JournalDAO.Note, msg=message)
 
     def log_event(self, account, sequence, event_type, **kwargs):
         '''Logs an event associated with the reebill given by account and
         sequence. A timestamp is produced automatically and the contents of
         kwargs will be inserted directly into the document.'''
-        if event not in event_names:
+        if event_type not in event_names:
             raise ValueError('Unknown event type: %s' % event_type)
         journal_entry = {}
-        for kwarg, value in **kwargs.iteritems():
+        for kwarg, value in kwargs.iteritems():
             journal_entry[kwarg] = value
         journal_entry['account'] = account
         journal_entry['sequence'] = int(sequence)
         journal_entry['date'] = datetime.datetime.utcnow()
         journal_entry['event'] = event_type
-        journal_entry['msg'] = message
 
         journal_entry_data = bson_convert(journal_entry)
 
@@ -67,9 +66,9 @@ event_names = [
     'ReeBillUsagePeriodUpdated',
     'ReeBillBillingPeriodUpdated',
     'ReeBillRateStructureModified',
-    'ReeBillCommitted'
+    'ReeBillCommitted' # TODO change name
 ]
 # make each event in the 'event_names' dict a property of the class (with its
 # own name as its value)
 for event_name in event_names:
-    setattr(Journal, event_name, event_name)
+    setattr(JournalDAO, event_name, event_name)
