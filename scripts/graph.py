@@ -1,9 +1,11 @@
 #!/usr/bin/python
+import sys
 import argparse
 import pychartdir
 import matplotlib.pyplot as plt
 from billing.mongo import ReebillDAO
 from billing.processing.state import StateDB
+from StringIO import StringIO
 '''Creates a sample CSV file with random energy values every 15 minutes in the
 format used by fetch_interval_meter_data. Command-line arguments are file name,
 start date (ISO 8601, inclusive), end date (exclusive). E.g:
@@ -20,22 +22,20 @@ class Grapher:
         self.state_db = state_db
         self.reebill_dao = reebill_dao
 
-    def get_time_series(self, account, x_func, y_func):
+    def get_data_points(self, account, x_func, y_func):
         x_values = []
         y_values = []
         first_issue_date = self.reebill_dao.get_first_issue_date_for_account(account)
         #for reebill in self.reebill_dao.load_reebills_in_period(account):
         for sequence in self.state_db.listSequences(self.state_db.session(), account):
             reebill = self.reebill_dao.load_reebill(account, sequence)
-            #time_offsets.append((reebill.period_begin - first_reebill_start.date()).days)
-            #time_offsets.append((reebill.issue_date - first_issue_date.date()).days)
             x_values.append(x_func(reebill))
             y_values.append(y_func(reebill))
         return x_values, y_values
 
-    def plot_cumulative_actual_and_hypothetical_ce_charces(self, account):
-        days, actual_charges = self.get_time_series(account, lambda r: r.sequence, lambda r: float(r.actual_total))
-        _, hypothetical_charges = self.get_time_series(account, lambda r: r.sequence, lambda r: float(r.hypothetical_total))
+    def plot_cumulative_actual_and_hypothetical_ce_charces(self, account, output_path):
+        days, actual_charges = self.get_data_points(account, lambda r: r.sequence, lambda r: float(r.actual_total))
+        _, hypothetical_charges = self.get_data_points(account, lambda r: r.sequence, lambda r: float(r.hypothetical_total))
         integrate(actual_charges)
         integrate(hypothetical_charges)
 
@@ -43,48 +43,28 @@ class Grapher:
         #plt.plot(days, actual_charges, linewidth=2)
 
         c = pychartdir.XYChart(500, 300)
-        c.setPlotArea(40, 20, 450, 250, pychartdir.Transparent, pychartdir.Transparent, pychartdir.Transparent, -1, pychartdir.Transparent)
+        c.setPlotArea(40, 20, 450, 250, pychartdir.Transparent,
+                pychartdir.Transparent, pychartdir.Transparent, -1,
+                pychartdir.Transparent)
         layer = c.addLineLayer(actual_charges, '0x007437')
         layer.addDataSet(hypothetical_charges, '0x9bbb59')
         layer.setLineWidth(2)
         c.xAxis().setLabels(map(str, days))
         c.xAxis().setLabelStep(1)
-        c.makeChart("chart.png")
-
-        ## The data for the bar chart
-        #data = [85, 156, 179.5, 211, 123]
-        ## The labels for the bar chart
-        #labels = ["Mon", "Tue", "Wed", "Thu", "Fri"]
-        ## Create a XYChart object of size 250 x 250 pixels
-        #c = pychartdir.XYChart(300, 250)
-        ## Set the plotarea at (30, 20) and of size 200 x 200 pixels
-        #c.setPlotArea(30, 20, 200, 200)
-        ## Add a bar chart layer using the given data
-        #c.addLineLayer(actual_charges)
-        ## Set the labels on the x axis.
-        #c.xAxis().setLabels(map(str, days))
-        #c.xAxis().setLabelStep(3)
-        ## Output the chart
-        #c.makeChart("chart.png")
+        c.makeChart(output_path)
 
 def main():
     # command-line arguments
-    parser = argparse.ArgumentParser(description='Draw some graphs.')
-    parser.add_argument('account', metavar='ACCOUNT',
-           help='account of customer to graph')
-    parser.add_argument('--host',  default='localhost',
-            help='host for all databases (default: localhost)')
-    parser.add_argument('--billdb', default='skyline',
-            help='name of bill database (default: skyline)')
-    parser.add_argument('--statedb', default='skyline_dev',
-            help='name of state database (default: skyline_dev)')
-    parser.add_argument('--stateuser', default='dev',
-            help='username for state database (default: dev)')
-    parser.add_argument('--statepw', default='dev',
-            help='name of state database (default: dev)')
+    parser = argparse.ArgumentParser(description='Draw a graph of cumulative hypothetical and actual charges for an account.')
+    parser.add_argument('account', metavar='ACCOUNT', help='account of customer to graph')
+    parser.add_argument('--host',  default='localhost', help='host for all databases (default: localhost)')
+    parser.add_argument('--billdb', default='skyline', help='name of bill database (default: skyline)')
+    parser.add_argument('--statedb', default='skyline_dev', help='name of state database (default: skyline_dev)')
+    parser.add_argument('--stateuser', default='dev', help='username for state database (default: dev)')
+    parser.add_argument('--statepw', default='dev', help='name of state database (default: dev)')
     args = parser.parse_args()
 
-    # set up config dicionaries for data access objects used in generate_report
+    # set up config dicionaries for data access objects
     billdb_config = {
         'database': args.billdb,
         'collection': 'reebills',
@@ -99,8 +79,7 @@ def main():
     }
 
     g = Grapher(StateDB(statedb_config), ReebillDAO(billdb_config))
-    g.plot_cumulative_actual_and_hypothetical_ce_charces(args.account)
-    plt.show()
+    g.plot_cumulative_actual_and_hypothetical_ce_charces(args.account, 'chart.png')
 
 if __name__ == '__main__':
     main()
