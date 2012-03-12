@@ -36,7 +36,6 @@ class Grapher:
     def plot_savings(self, account):
         time_offsets, savings = self.get_savings(account)
         plt.plot(time_offsets, savings, linewidth=2, color='g')
-        plt.show()
 
     def plot_cumulative_savings(self, account):
         time_offsets, savings = self.get_savings(account)
@@ -45,7 +44,6 @@ class Grapher:
                 continue
             savings[i] += savings[i-1]
         plt.plot(time_offsets, savings, linewidth=2, color='g')
-        plt.show()
 
 def main():
     # command-line arguments
@@ -69,6 +67,7 @@ def main():
     print args
     g = Grapher(ReebillDAO(billdb_config))
     g.plot_cumulative_savings(args.account)
+    plt.show()
 
 if __name__ == '__main__':
     main()
