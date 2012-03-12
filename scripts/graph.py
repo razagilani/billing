@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import argparse
+from pychartdir import XYChart
 import matplotlib.pyplot as plt
 from billing.mongo import ReebillDAO
 '''Creates a sample CSV file with random energy values every 15 minutes in the
@@ -8,42 +9,45 @@ start date (ISO 8601, inclusive), end date (exclusive). E.g:
     make_sample_csv.py interval_meter_sample.csv 2012-11-10 2012-12-12
 '''
 
+def integrate(array):
+    '''Converts a list of per-unit-time values into a cumulative one.'''
+    for i in range(1, len(array)):
+        array[i] = array[i] + array[i-1]
+
 class Grapher:
     def __init__(self, reebill_dao):
         self.reebill_dao = reebill_dao
 
-    def get_savings(self, account):
-        time_offsets = [] # in days
-        savings = []
+    def get_time_series(self, account, func):
+        '''Returns a pair of lists respectively containing numbers of days from
+        the given account's first bill date and numercal values associated with
+        reebills starting on those dates. 'func' determines the values in the
+        second list; it should map a reebill to a number (e.g. lambda reebill:
+        reebill.actual_total).'''
+        time_offsets = []
+        y_values = []
         first_reebill_start = self.reebill_dao.get_first_bill_date_for_account(account)
         for reebill in self.reebill_dao.load_reebills_in_period(account):
             time_offsets.append((reebill.period_begin - first_reebill_start.date()).days)
-            savings.append(float(reebill.savings))
-        return time_offsets, savings
+            y_values.append(float(func(reebill)))
+        return time_offsets, y_values
 
-    #def get_conventional_energy_charges(self, account):
-        #time_offsets = [] # in days
-        #charges = []
-        #first_reebill_start = self.reebill_dao.get_first_bill_date_for_account(account)
-        #for reebill in self.reebill_dao.load_reebills_in_period(account):
-            #time_offsets.append((reebill.period_begin - first_reebill_start.date()).days)
-            #ce_total = 0
-            #for charge in reebill.actual_chargegroups_flattened:
-                #...
-            #savings.append(float(reebill.savings))
-        #return time_offsets, savings
+    def plot_cumulative_actual_and_hypothetical_ce_charces(self, account):
+        days, actual_charges = self.get_time_series(account, lambda r: r.actual_total)
+        _, hypothetical_charges = self.get_time_series(account, lambda r: r.hypothetical_total)
+        integrate(actual_charges)
+        integrate(hypothetical_charges)
 
-    def plot_savings(self, account):
-        time_offsets, savings = self.get_savings(account)
-        plt.plot(time_offsets, savings, linewidth=2, color='g')
+        #plt.plot(days, hypothetical_charges, linewidth=2)
+        #plt.plot(days, actual_charges, linewidth=2)
+        print actual_charges
+        chart = XYChart(0, 0, 400, 300)
+        chart.setPlotArea(30, 20, 200, 200)
+        chart.addLineLayer(actual_charges)
+        chart.xAxis().setLabels(map(str, days))
+        chart.xAxis().setLabelStep(3)
+        chart.makeChart('chart.png')
 
-    def plot_cumulative_savings(self, account):
-        time_offsets, savings = self.get_savings(account)
-        for i in range(len(savings)):
-            if i == 0:
-                continue
-            savings[i] += savings[i-1]
-        plt.plot(time_offsets, savings, linewidth=2, color='g')
 
 def main():
     # command-line arguments
@@ -64,9 +68,8 @@ def main():
         'port': '27017'
     }
 
-    print args
     g = Grapher(ReebillDAO(billdb_config))
-    g.plot_cumulative_savings(args.account)
+    g.plot_cumulative_actual_and_hypothetical_ce_charces(args.account)
     plt.show()
 
 if __name__ == '__main__':
