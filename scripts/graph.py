@@ -40,43 +40,32 @@ class Grapher:
 
         #plt.plot(days, hypothetical_charges, linewidth=2)
         #plt.plot(days, actual_charges, linewidth=2)
-        #print actual_charges
-        #chart = XYChart(0, 0, 400, 300)
-        #chart.setPlotArea(30, 20, 200, 200)
-        #chart.addLineLayer(actual_charges)
-        #chart.xAxis().setLabels(map(str, days))
-        #chart.xAxis().setLabelStep(3)
-        #chart.makeChart('chart.png')
 
-
-        # The data for the line chart
-        data = [30, 28, 40, 55, 75, 68, 54, 60, 50, 62, 75, 65, 75, 91, 60, 55, 53, 35, 50,
-            66, 56, 48, 52, 65, 62]
-
-        # The labels for the line chart
-        #labels = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13",
-            #"14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24"]
-        labels = map(str, days)
-
-        # Create a XYChart object of size 250 x 250 pixels
+        print hypothetical_charges
         c = pychartdir.XYChart(500, 300)
-
-        # Set the plotarea at (30, 20) and of size 200 x 200 pixels
-        c.setPlotArea(0, 0, 500, 300, pychartdir.Transparent, pychartdir.Transparent, pychartdir.Transparent, -1, pychartdir.Transparent)
-
-        # Add a line chart layer using the given data
-        layer = c.addLineLayer(actual_charges)
-        layer.addDataSet(hypothetical_charges)
+        c.setPlotArea(40, 20, 450, 250, pychartdir.Transparent, pychartdir.Transparent, pychartdir.Transparent, -1, pychartdir.Transparent)
+        layer = c.addLineLayer(actual_charges, '0x007437')
+        layer.addDataSet(hypothetical_charges, '0x9bbb59')
         layer.setLineWidth(2)
-
-        ## Set the labels on the x axis.
-        #c.xAxis().setLabels(labels)
-
-        ## Display 1 out of 3 labels on the x-axis.
-        #c.xAxis().setLabelStep(3)
-
-        # Output the chart
+        c.xAxis().setLabels(map(str, days))
+        c.xAxis().setLabelStep(2)
         c.makeChart("chart.png")
+
+        ## The data for the bar chart
+        #data = [85, 156, 179.5, 211, 123]
+        ## The labels for the bar chart
+        #labels = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+        ## Create a XYChart object of size 250 x 250 pixels
+        #c = pychartdir.XYChart(300, 250)
+        ## Set the plotarea at (30, 20) and of size 200 x 200 pixels
+        #c.setPlotArea(30, 20, 200, 200)
+        ## Add a bar chart layer using the given data
+        #c.addLineLayer(actual_charges)
+        ## Set the labels on the x axis.
+        #c.xAxis().setLabels(map(str, days))
+        #c.xAxis().setLabelStep(3)
+        ## Output the chart
+        #c.makeChart("chart.png")
 
 def main():
     # command-line arguments
