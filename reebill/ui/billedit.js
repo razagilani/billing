@@ -545,35 +545,16 @@ function renderWidgets()
         })
     });
 
-    // TODO: 25795091 datastore data is being deleted wrong
     var deleteButton = new Ext.Button({
         text: 'Delete selected reebill',
         //disabled: true, // TODO should be disabled when there's no reebill selected or the currently-selected bill is not deletable
         handler: function() {
-            // TODO: 25593817
-            var deleteBillRequest = Ext.Ajax.request({
-                url: 'http://' + location.host + '/reebill/delete_reebill',
-                params: {
-                    account: selected_account,
-                    sequence: selected_sequence
-                },
-                success: function(result, request) {
-                    var jsonData = null;
-                    try {
-                        jsonData = Ext.util.JSON.decode(result.responseText);
-                        var imageUrl = '';
-                        if (jsonData.success == true) {
-                            // TODO reload a lot of stuff?
-                        }
-                        // handle failure if needed
-                    } catch (err) {
-                        Ext.MessageBox.alert('delete reebill ERROR', err);
-                    }
-                },
-                // this is called when the server returns 500 as well as when there's no response
-                failure: function() { Ext.MessageBox.alert('Ajax failure', 'delete reebill'); },
-                disableCaching: true,
-            });
+            var s = reeBillGrid.getSelectionModel().getSelections();
+            for(var i = 0, r; r = s[i]; i++)
+            {
+                reeBillStore.remove(r);
+            }
+            reeBillStore.save();
         }
     })
 
@@ -584,9 +565,10 @@ function renderWidgets()
 
     var reeBillReader = new Ext.data.JsonReader({
         // metadata configuration options:
-        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
+        // find out why these properties have to be configured in the store
         //idProperty: 'id',
-        root: 'rows',
+        //root: 'rows',
+        //totalProperty: 'results',
 
         // the fields config option will internally create an Ext.data.Record
         // constructor that provides mapping for reading the record data objects
@@ -615,27 +597,29 @@ function renderWidgets()
     var reeBillStore = new Ext.data.JsonStore({
         proxy: reeBillStoreProxy,
         autoSave: false,
+        batch: false,
         reader: reeBillReader,
         writer: reeBillWriter,
-        autoSave: true,
         baseParams: { start:0, limit: 25},
-        data: initialReebill,
+        //data: initialReebill,
         root: 'rows',
         totalProperty: 'results',
-        //idProperty: 'sequence',
+        idProperty: 'id',
         fields: [
             {name: 'sequence'},
         ],
     });
 
-    reeBillStore.on('beforesave', function() {
+    reeBillStore.on('beforesave', function(store, data) {
+        console.log("reeBillStore beforesave");
+        reeBillGrid.setDisabled(true);
     });
 
     reeBillStore.on('update', function(){
     });
 
-    // this event is never fired because we manually save the aCharges
     reeBillStore.on('save', function () {
+        reeBillGrid.setDisabled(false);
     });
 
     reeBillStore.on('beforeload', function (store, options) {
@@ -2077,13 +2061,13 @@ function renderWidgets()
                     // TODO: 25593817
                     Ext.Ajax.request({
                         url: 'http://'+location.host+'/reebill/saveActualCharges',
-                        params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence, rows: jsonData},
+                        params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence, rows: jsonData},
                         success: function() { 
                             // TODO: check success status in json package
 
                             // reload the store to clear dirty flags
                             // this causes the load event to fire and re-enable the aChargesGrid
-                            aChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}})
+                            aChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}})
                         },
                         failure: function() { alert("ajax fail"); },
                     });
@@ -2455,13 +2439,13 @@ function renderWidgets()
                     // TODO: 25593817
                     Ext.Ajax.request({
                         url: 'http://'+location.host+'/reebill/saveHypotheticalCharges',
-                        params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence, rows: jsonData},
+                        params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence, rows: jsonData},
                         success: function() { 
                             // TODO: check success status in json package
 
                             // reload the store to clear dirty flags
                             // this causes the load event to fire and re-enable the hChargesGrid
-                            hChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: account, sequence: sequence}})
+                            hChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}})
                         },
                         failure: function() { alert("ajax fail"); },
                     });
@@ -2814,7 +2798,6 @@ function renderWidgets()
                     }
                     CPRSRSIStore.save(); 
                     CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
-                    console.log('disabling save 3333');
                 }
             },{
                 xtype:'tbseparator'
