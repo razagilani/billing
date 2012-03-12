@@ -44,6 +44,7 @@ class JournalDAO(object):
         journal_entry['sequence'] = int(sequence)
         journal_entry['date'] = datetime.datetime.utcnow()
         journal_entry['event'] = event_type
+        # TODO include user identifier of the user who caused the event?
 
         journal_entry_data = bson_convert(journal_entry)
 
@@ -67,6 +68,11 @@ event_names = [
     'ReeBillBillingPeriodUpdated',
     'ReeBillRateStructureModified',
     'ReeBillCommitted' # TODO change name
+    'ReeBillMailed',
+    'ReeBillDeleted',
+    # possible others
+    'PaymentEntered',
+    'AccountCreated', # no sequence associated with this one
 ]
 # make each event in the 'event_names' dict a property of the class (with its
 # own name as its value)
