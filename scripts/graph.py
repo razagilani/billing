@@ -23,31 +23,37 @@ class Grapher:
         self.reebill_dao = reebill_dao
 
     def get_data_points(self, account, x_func, y_func):
-        x_values = []
-        y_values = []
+        x_values, y_values = [], []
         first_issue_date = self.reebill_dao.get_first_issue_date_for_account(account)
-        #for reebill in self.reebill_dao.load_reebills_in_period(account):
         for sequence in self.state_db.listSequences(self.state_db.session(), account):
             reebill = self.reebill_dao.load_reebill(account, sequence)
             x_values.append(x_func(reebill))
             y_values.append(y_func(reebill))
         return x_values, y_values
 
-    def plot_cumulative_actual_and_hypothetical_ce_charces(self, account, output_path):
-        days, actual_charges = self.get_data_points(account, lambda r: r.sequence, lambda r: float(r.actual_total))
-        _, hypothetical_charges = self.get_data_points(account, lambda r: r.sequence, lambda r: float(r.hypothetical_total))
+    def plot_cumulative_actual_and_hypothetical_ce_charces(self, account,
+            output_path, actual_color='0x007437',
+            hypothetical_color='0x9bbb59', width=500, height=300):
+        '''Writes a line graph of cumulative actual and hypothetical charges
+        for the given account to 'output_path' (file extension determines the
+        format).'''
+        days, actual_charges = self.get_data_points(account, lambda r:
+                r.sequence, lambda r: float(r.actual_total))
+        _, hypothetical_charges = self.get_data_points(account, lambda r:
+                r.sequence, lambda r: float(r.hypothetical_total))
         integrate(actual_charges)
         integrate(hypothetical_charges)
 
         #plt.plot(days, hypothetical_charges, linewidth=2)
         #plt.plot(days, actual_charges, linewidth=2)
-
-        c = pychartdir.XYChart(500, 300)
-        c.setPlotArea(40, 20, 450, 250, pychartdir.Transparent,
+        c = pychartdir.XYChart(width, height)
+        # offset coordinates determined by trial & error; probably could be
+        # better but they look ok
+        c.setPlotArea(40, 20, width-50, height-50, pychartdir.Transparent,
                 pychartdir.Transparent, pychartdir.Transparent, -1,
                 pychartdir.Transparent)
-        layer = c.addLineLayer(actual_charges, '0x007437')
-        layer.addDataSet(hypothetical_charges, '0x9bbb59')
+        layer = c.addLineLayer(actual_charges, actual_color)
+        layer.addDataSet(hypothetical_charges, hypothetical_color)
         layer.setLineWidth(2)
         c.xAxis().setLabels(map(str, days))
         c.xAxis().setLabelStep(1)
