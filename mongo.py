@@ -1101,6 +1101,7 @@ class ReebillDAO:
         query = {
             '_id.account': str(account),
             '_id.branch': int(branch),
+            '_id.sequence': {'$ne': 0}
         }
         # add dates to query if present (converting dates into datetimes
         # because mongo only allows datetimes)
@@ -1149,6 +1150,17 @@ class ReebillDAO:
             return None
         return MongoReebill(result).period_begin
 
+    def get_first_issue_date_for_account(self, account):
+        '''Returns the issue date of the account's earliest reebill, or None if
+        no reebills exist for the customer.'''
+        query = {
+            '_id.account': account,
+            '_id.sequence': 1,
+        }
+        result = self.collection.find_one(query)
+        if result == None:
+            return None
+        return MongoReebill(result).issue_date
 
 class NoRateStructureError(Exception):
     pass
