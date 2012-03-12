@@ -26,11 +26,14 @@ state_db = state.StateDB(statedb_config)
 session = state_db.session()
 accounts = state_db.listAccounts(session)
 
+print sorted(accounts)
+exit()
 for account in accounts:
     sequences = state_db.listSequences(session, account)
     for sequence in sequences:
         try:
             reebill = reebill_dao.load_reebill(account, sequence)
+            print account, sequence, reebill.period_begin, reebill.period_end
             if reebill.period_begin is None:
                 reebill.period_begin = min(p[0] for p in
                         (reebill.utilbill_period_for_service(s) for s in
