@@ -17,7 +17,7 @@ def integrate(array):
     for i in range(1, len(array)):
         array[i] = array[i] + array[i-1]
 
-class Grapher:
+class Grapher(object):
     def __init__(self, state_db, reebill_dao):
         self.state_db = state_db
         self.reebill_dao = reebill_dao
