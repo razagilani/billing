@@ -25,7 +25,6 @@ from billing.processing import state
 from billing.processing import fetch_bill_data as fbd
 from billing.reebill import render
 from billing.reebill import journal
-from billing.reebill import eventlog
 from billing.processing.billupload import BillUpload
 from billing.processing import billupload
 from billing import nexus_util as nu
@@ -45,8 +44,6 @@ from skyliner.skymap.monguru import Monguru
 sys.stdout = sys.stderr
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
-
-
 
 
 # decorator for stressing ajax asynchronicity
@@ -227,9 +224,6 @@ class BillToolBridge:
         # create a JournalDAO
         journaldb_config_section = self.config.items("journaldb")
         self.journal_dao = journal.JournalDAO(dict(journaldb_config_section))
-
-        # create an event logger
-        self.eventlogger = eventlog.EventLogger(dict(self.config.items('eventlog')))
 
         # create one Process object to use for all related bill processing
         # TODO it's theoretically bad to hard-code these, but all skyliner
@@ -466,7 +460,8 @@ class BillToolBridge:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
-            self.journal_dao.journal(account, sequence, "ReeBill rolled")
+            self.journal_dao.log_event(account, sequence,
+                    JournalDAO.ReeBillRolled)
             session.commit()
             return self.dumps({'success': True})
         except Exception as e:
@@ -518,7 +513,8 @@ class BillToolBridge:
                     reebill
                 )
             self.reebill_dao.save_reebill(reebill)
-            self.journal_dao.journal(account, sequence, "RE&E Bound")
+            self.journal_dao.log_event(account, sequence,
+                    JournalDAO.ReeBillBoundtoREE)
             return self.dumps({'success': True})
         except Exception as e:
             return self.handle_exception(e)
@@ -538,7 +534,8 @@ class BillToolBridge:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             fbd.fetch_interval_meter_data(reebill, csv_file.file)
             self.reebill_dao.save_reebill(reebill)
-            self.journal_dao.journal(account, sequence, "RE&E Bound")
+            self.journal_dao.log_event(account, sequence,
+                    JournalDAO.ReeBillBoundtoREE)
             return self.dumps({'success': True})
         except Exception as e:
             return self.handle_exception(e)
@@ -630,6 +627,7 @@ class BillToolBridge:
             self.process.attach_utilbills(session, reebill.account,
                     reebill.sequence)
 
+            # TODO change to event log
             self.journal_dao.journal(reebill.account, reebill.sequence,
                     "User %s attached utilbills to reebill %s-%s" % (
                     cherrypy.session['user'].username, account, sequence))
@@ -700,9 +698,10 @@ class BillToolBridge:
                         account), bill_file_names);
 
             for reebill in all_bills:
-                self.journal_dao.journal(reebill.account, reebill.sequence,
-                        "Mailed to %s by %s" % (recipients,
-                        cherrypy.session['user'].username))
+                self.journal_dao.log_event(reebill.account, reebill.sequence,
+                        JournalDAO.ReeBillMailed,
+                        address=','.join(map(str, recipients))
+                        user=cherrypy.session['user'].username)
                 self.process.issue(session, reebill.account, reebill.sequence)
                 self.process.attach_utilbills(session, reebill.account,
                         reebill.sequence)
@@ -1555,7 +1554,7 @@ class BillToolBridge:
 
                 for sequence in sequences:
                     self.process.delete_reebill(session, account, sequence)
-                    self.journal_dao.journal(account, sequence, "Deleted")
+                    self.journal_dao.log_event(account, sequence, JournalDAO.ReeBillDeleted)
                 session.commit()
                 return self.dumps({'success': True})
 
