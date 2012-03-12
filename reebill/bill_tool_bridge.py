@@ -573,8 +573,6 @@ class BillToolBridge:
 
             session.commit()
 
-            self.journal_dao.log_event(account, sequence, journal.JournalDAO.Note, abc='xyz')
-            self.journal_dao.journal(account, sequence, 'this is a test')
             return self.dumps({'success': True})
         except Exception as e:
             self.rollback_session(session)
