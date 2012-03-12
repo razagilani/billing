@@ -1101,6 +1101,7 @@ class ReebillDAO:
         query = {
             '_id.account': str(account),
             '_id.branch': int(branch),
+            '_id.sequence': {'$ne': 0}
         }
         # add dates to query if present (converting dates into datetimes
         # because mongo only allows datetimes)
