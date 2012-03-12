@@ -18,37 +18,33 @@ class Grapher:
     def __init__(self, reebill_dao):
         self.reebill_dao = reebill_dao
 
-    def get_time_series(self, account, func):
-        '''Returns a pair of lists respectively containing numbers of days from
-        the given account's first bill date and numercal values associated with
-        reebills starting on those dates. 'func' determines the values in the
-        second list; it should map a reebill to a number (e.g. lambda reebill:
-        reebill.actual_total).'''
-        time_offsets = []
+    def get_time_series(self, account, x_func, y_func):
+        x_values = []
         y_values = []
-        first_reebill_start = self.reebill_dao.get_first_bill_date_for_account(account)
+        first_issue_date = self.reebill_dao.get_first_issue_date_for_account(account)
         for reebill in self.reebill_dao.load_reebills_in_period(account):
-            time_offsets.append((reebill.period_begin - first_reebill_start.date()).days)
-            y_values.append(float(func(reebill)))
-        return time_offsets, y_values
+            #time_offsets.append((reebill.period_begin - first_reebill_start.date()).days)
+            #time_offsets.append((reebill.issue_date - first_issue_date.date()).days)
+            x_values.append(x_func(reebill))
+            y_values.append(y_func(reebill))
+        return x_values, y_values
 
     def plot_cumulative_actual_and_hypothetical_ce_charces(self, account):
-        days, actual_charges = self.get_time_series(account, lambda r: r.actual_total)
-        _, hypothetical_charges = self.get_time_series(account, lambda r: r.hypothetical_total)
+        days, actual_charges = self.get_time_series(account, lambda r: r.sequence, lambda r: float(r.actual_total))
+        _, hypothetical_charges = self.get_time_series(account, lambda r: r.sequence, lambda r: float(r.hypothetical_total))
         integrate(actual_charges)
         integrate(hypothetical_charges)
 
         #plt.plot(days, hypothetical_charges, linewidth=2)
         #plt.plot(days, actual_charges, linewidth=2)
 
-        print hypothetical_charges
         c = pychartdir.XYChart(500, 300)
         c.setPlotArea(40, 20, 450, 250, pychartdir.Transparent, pychartdir.Transparent, pychartdir.Transparent, -1, pychartdir.Transparent)
         layer = c.addLineLayer(actual_charges, '0x007437')
         layer.addDataSet(hypothetical_charges, '0x9bbb59')
         layer.setLineWidth(2)
         c.xAxis().setLabels(map(str, days))
-        c.xAxis().setLabelStep(2)
+        c.xAxis().setLabelStep(1)
         c.makeChart("chart.png")
 
         ## The data for the bar chart
