@@ -11,7 +11,7 @@ tar xvzf $tarball
 #mysql --verbose -udev -pdev -htyrell -D skyline_dev < /tmp/${now}billing_mysql.dmp
 # apparently only root can restore the database?
 # "Access denied; you need the SUPER privilege for this operation"
-mysql -uroot -proot -D skyline < ${now}billing_mysql.dmp
+mysql -uroot -proot -D skyline_dev < ${now}billing_mysql.dmp
 
 # restore
 mongorestore --drop --db skyline --collection ratestructure ${now}ratestructure_mongo/skyline-prod/ratestructure.bson
