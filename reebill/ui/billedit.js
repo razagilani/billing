@@ -2646,6 +2646,7 @@ function renderWidgets()
     });
 
     CPRSRSIStore.on('save', function (store, batch, data) {
+        CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
     });
 
     CPRSRSIStore.on('beforeload', function (store, options) {
@@ -2815,7 +2816,7 @@ function renderWidgets()
                     //CPRSRSIStore.setBaseParam("sequence", selected_sequence);
 
                     CPRSRSIStore.save(); 
-                    CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
+
                 }
             }
         ]
@@ -2837,10 +2838,6 @@ function renderWidgets()
         },
         title: 'Customer Periodic',
         clicksToEdit: 2
-    });
-
-    CPRSRSIGrid.on('afteredit', function(edit) {
-        //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
     });
 
     CPRSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
@@ -2903,7 +2900,7 @@ function renderWidgets()
         reader: UPRSRSIReader,
         writer: UPRSRSIWriter,
         // or, autosave must be used to save each action
-        autoSave: true,
+        //autoSave: true,
         // won't be updated when combos change, so do this in event
         // perhaps also can be put in the options param for the ajax request
         baseParams: { account:selected_account, sequence: selected_sequence},
@@ -2924,6 +2921,7 @@ function renderWidgets()
     });
 
     UPRSRSIStore.on('save', function (store, batch, data) {
+        UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
     });
 
     UPRSRSIStore.on('beforeload', function () {
@@ -2948,9 +2946,6 @@ function renderWidgets()
     });
 
     UPRSRSIStore.on('beforesave', function() {
-        UPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        UPRSRSIStore.setBaseParam("account", selected_account);
-        UPRSRSIStore.setBaseParam("sequence", selected_sequence);
     });
 
     var UPRSRSIColModel = new Ext.grid.ColumnModel(
@@ -3114,11 +3109,7 @@ function renderWidgets()
         // if a selection is made, allow it to be removed
         // if the selection was deselected to nothing, allow no 
         // records to be removed.
-
         UPRSRSIGrid.getTopToolbar().findById('UPRSRSIRemoveBtn').setDisabled(sm.getCount() <1);
-
-        // if there was a selection, allow an insertion
-        //UPRSRSIGrid.getTopToolbar().findById('UPRSRSIInsertBtn').setDisabled(sm.getCount() <1);
     });
   
 
