@@ -25,6 +25,7 @@ from billing.processing import state
 from billing.processing import fetch_bill_data as fbd
 from billing.reebill import render
 from billing.reebill import journal
+from billing.reebill.journal import JournalDAO
 from billing.processing.billupload import BillUpload
 from billing.processing import billupload
 from billing import nexus_util as nu
@@ -698,9 +699,10 @@ class BillToolBridge:
                         account), bill_file_names);
 
             for reebill in all_bills:
+                print dir(JournalDAO)
                 self.journal_dao.log_event(reebill.account, reebill.sequence,
                         JournalDAO.ReeBillMailed,
-                        address=','.join(map(str, recipients))
+                        address=','.join(map(str, recipients)),
                         user=cherrypy.session['user'].username)
                 self.process.issue(session, reebill.account, reebill.sequence)
                 self.process.attach_utilbills(session, reebill.account,
