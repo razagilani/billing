@@ -2,7 +2,7 @@
 import sys
 import argparse
 import pychartdir
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 from billing.mongo import ReebillDAO
 from billing.processing.state import StateDB
 from StringIO import StringIO
