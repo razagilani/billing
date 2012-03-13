@@ -701,8 +701,7 @@ class BillToolBridge:
             for reebill in all_bills:
                 print dir(JournalDAO)
                 self.journal_dao.log_event(reebill.account, reebill.sequence,
-                        JournalDAO.ReeBillMailed,
-                        address=recipients),
+                        JournalDAO.ReeBillMailed, address=recipients,
                         user=cherrypy.session['user'].username)
                 self.process.issue(session, reebill.account, reebill.sequence)
                 self.process.attach_utilbills(session, reebill.account,
@@ -2041,6 +2040,7 @@ class BillToolBridge:
             utilbills, totalCount = self.state_db.list_utilbills(session, account, int(start), int(limit))
             # note that utilbill customers are eagerly loaded
             full_names = self.full_names_of_accounts([ub.customer.account for ub in utilbills])
+            print [u.service for u in utilbills]
             rows = [dict([
                 # TODO: sending real database ids to the client a security
                 # risk; these should be encrypted
@@ -2048,7 +2048,7 @@ class BillToolBridge:
                 ('account', ub.customer.account),
                 ('name', full_names[i]),
                 # capitalize service name
-                ('service', ub.service[0].upper() + ub.service[1:]),
+                ('service', 'Unknown' if ub.service is None else ub.service[0].upper() + ub.service[1:]),
                 ('period_start', ub.period_start),
                 ('period_end', ub.period_end),
                 ('sequence', ub.reebill.sequence if ub.reebill else None),
