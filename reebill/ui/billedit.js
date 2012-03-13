@@ -2927,6 +2927,7 @@ function renderWidgets()
     });
 
     UPRSRSIStore.on('beforeload', function () {
+        UPRSRSIGrid.setDisabled(true);
         UPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
         UPRSRSIStore.setBaseParam("account", selected_account);
         UPRSRSIStore.setBaseParam("sequence", selected_sequence);
@@ -3026,9 +3027,7 @@ function renderWidgets()
 
                     // make the new record
                     var UPRSRSIType = UPRSRSIGrid.getStore().recordType;
-                    var defaultData = 
-                    {
-                    };
+                    var defaultData = { };
                     var r = new UPRSRSIType(defaultData);
         
                     // select newly inserted record
