@@ -67,7 +67,7 @@ event_names = [
     'ReeBillUsagePeriodUpdated',
     'ReeBillBillingPeriodUpdated',
     'ReeBillRateStructureModified',
-    'ReeBillCommitted' # TODO change name
+    'ReeBillCommitted', # TODO change name
     'ReeBillMailed',
     'ReeBillDeleted',
     # possible others
