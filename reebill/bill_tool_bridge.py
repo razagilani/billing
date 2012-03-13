@@ -702,7 +702,7 @@ class BillToolBridge:
                 print dir(JournalDAO)
                 self.journal_dao.log_event(reebill.account, reebill.sequence,
                         JournalDAO.ReeBillMailed,
-                        address=','.join(map(str, recipients)),
+                        address=recipients),
                         user=cherrypy.session['user'].username)
                 self.process.issue(session, reebill.account, reebill.sequence)
                 self.process.attach_utilbills(session, reebill.account,
