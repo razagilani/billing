@@ -2645,12 +2645,6 @@ function renderWidgets()
         ],
     });
 
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    CPRSRSIStore.on('update', function(){
-        //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
-    });
-
     CPRSRSIStore.on('save', function (store, batch, data) {
     });
 
@@ -2679,7 +2673,6 @@ function renderWidgets()
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
     CPRSRSIStore.on('update', function(){
-        console.log('CPRSRSIStore update');
         CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
     });
 
@@ -2772,7 +2765,6 @@ function renderWidgets()
                     
                     // An inserted record must be saved 
                     CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
-                    console.log('enabling save 44444');
                 }
             },{
                 xtype: 'tbseparator'
@@ -2813,7 +2805,6 @@ function renderWidgets()
                     // disable the save button for the save attempt.
                     // is there a closer place for this to the actual button click due to the possibility of a double
                     // clicked button submitting two ajax requests?
-                    console.log('disabling save 2222');
                     CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
 
                     // stop grid editing so that widgets like comboboxes in rows don't stay focused
@@ -2824,6 +2815,7 @@ function renderWidgets()
                     //CPRSRSIStore.setBaseParam("sequence", selected_sequence);
 
                     CPRSRSIStore.save(); 
+                    CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
                 }
             }
         ]
@@ -2845,6 +2837,10 @@ function renderWidgets()
         },
         title: 'Customer Periodic',
         clicksToEdit: 2
+    });
+
+    CPRSRSIGrid.on('afteredit', function(edit) {
+        //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
     });
 
     CPRSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
@@ -2925,12 +2921,6 @@ function renderWidgets()
             {name: 'roundrule'},
             {name: 'total'},
         ],
-    });
-
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    UPRSRSIStore.on('update', function(){
-        //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(false);
     });
 
     UPRSRSIStore.on('save', function (store, batch, data) {
@@ -3199,12 +3189,6 @@ function renderWidgets()
             {name: 'roundrule'},
             {name: 'total'},
         ],
-    });
-
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    URSRSIStore.on('update', function(){
-        //URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
     });
 
     URSRSIStore.on('save', function (store, batch, data) {
