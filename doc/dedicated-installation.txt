@@ -127,7 +127,10 @@ MySQL
     create user 'reebill'@'%' identified by '[password]'
     # needs to be done to allow connections from localhost
     create user 'reebill'@'localhost' identified by '[password]';
-    grant all on skyline.* to 'reebill'@'%' identified by '[password]';
+    # for connecting from anywhere
+    #grant all on skyline.* to 'reebill'@'%' identified by '[password]';
+    # for connecting from localhost
+    grant all on skyline.* to 'reebill'@'localhost' identified by '[password]';
 
 
     Loading the database
