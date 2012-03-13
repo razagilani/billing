@@ -39,8 +39,6 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
 
 function renderWidgets()
 {
-    //registerAjaxEvents();
-    // global ajax timeout
 
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
@@ -49,6 +47,7 @@ function renderWidgets()
     var selected_sequence = null;
 
     // handle global success:false responses
+    // monitor session status and redirect user if they are not logged in.
     Ext.util.Observable.observeClass(Ext.data.Connection); 
     Ext.data.Connection.on('requestcomplete', function(dataconn, response) { 
         try {
@@ -2779,9 +2778,6 @@ function renderWidgets()
                 handler: function()
                 {
                     CPRSRSIGrid.stopEditing();
-                    //CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    //CPRSRSIStore.setBaseParam("account", selected_account);
-                    //CPRSRSIStore.setBaseParam("sequence", selected_sequence);
 
                     // TODO single row selection only, test allowing multirow selection
                     var s = CPRSRSIGrid.getSelectionModel().getSelections();
@@ -2810,10 +2806,6 @@ function renderWidgets()
 
                     // stop grid editing so that widgets like comboboxes in rows don't stay focused
                     CPRSRSIGrid.stopEditing();
-
-                    //CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    //CPRSRSIStore.setBaseParam("account", selected_account);
-                    //CPRSRSIStore.setBaseParam("sequence", selected_sequence);
 
                     CPRSRSIStore.save(); 
 
@@ -3381,6 +3373,7 @@ function renderWidgets()
             region: 'north',
             layout: 'fit',
             split: true,
+            height: 275,
             items: [CPRSRSIGrid]
         },{
             region: 'center',
@@ -3391,6 +3384,7 @@ function renderWidgets()
             region:'south',
             layout: 'fit',
             split: true,
+            height: 275,
             items: [URSRSIGrid]
         }]
     });
@@ -3401,13 +3395,10 @@ function renderWidgets()
 
         // because this tab is being displayed, demand the grids that it contain 
         // be populated
-        //CPRSRSIGrid.setDisabled(true);
         CPRSRSIStore.reload();
 
-        //URSRSIGrid.setDisabled(true);
         URSRSIStore.reload();
 
-        //UPRSRSIGrid.setDisabled(true);
         UPRSRSIStore.reload();
 
     });
@@ -3987,14 +3978,14 @@ function renderWidgets()
                 xtype: 'linkbutton',
                 href: "http://"+location.host+"/reebill/all_ree_charges_csv",
                 text: 'Export REE Value CSV',
-                disabled: true,
+                disabled: false,
             },{
                 id: 'exportButton',
                 iconCls: 'icon-application-go',
                 // TODO:25227403 - export on account at a time 
                 xtype: 'linkbutton',
                 href: "http://"+location.host+"/reebill/excel_export",
-                text: 'Export All Utility Bills to Excel',
+                text: 'Export All Utility Bills to XLS',
                 disabled: false,
             },{
                 id: 'exportAccountButton',
@@ -4002,7 +3993,7 @@ function renderWidgets()
                 xtype: 'linkbutton',
                 // account parameter for URL is set in loadReeBillUIForAccount()
                 href: "http://"+location.host+"/reebill/excel_export",
-                text: "Export Selected Account's Utility Bills to Excel",
+                text: "Export Selected Account's Utility Bills to XLS",
                 disabled: true, 
             }
         ]
@@ -4814,7 +4805,6 @@ function renderWidgets()
         //journalPanel.setDisabled(true);
 
         // TODO: 25226989 ajax cancelled???
-
         // unload previously loaded utility and reebill images
         // TODO 25226739: don't overwrite if they don't need to be updated.  Causes UI to flash.
         Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(null, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
