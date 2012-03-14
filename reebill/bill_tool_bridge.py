@@ -243,6 +243,7 @@ class BillToolBridge:
         else:
             self.process = process.Process(self.config, self.state_db,
                     self.reebill_dao, self.ratestructure_dao,
+                    None,
                     None)
 
 
