@@ -107,8 +107,6 @@ If this returns a tag, then this tag has to be set in the application version va
 
 """
 
-def upgrade_scripts_max_version():
-    return fabops.local("ls -1 ../upgrade_scripts/ | sort | tail -1", capture=True).split()[0]
 
 def mercurial_tag_version_full():
     return fabops.local("hg log -r tip --template '{latesttag}.{latesttagdistance}-{node|short}", capture=True).split()[0]
@@ -120,14 +118,17 @@ def mercurial_actual_tag():
         return actual_tag
     return fabops.local("hg log -r tip --template '{latesttag}'", capture=True)
 
+def upgrade_scripts_release():
+    return int(fabops.local("ls -1 ../upgrade_scripts/ | sort | tail -1", capture=True).split()[0])
+
 def mercurial_release():
-    return mercurial_actual_tag().split()[1]
+    return int(mercurial_actual_tag().split()[1])
 
 def prepare_deploy(project, environment):
 
 
     # create version information file
-    max_version = upgrade_scripts_max_version()
+    max_version = upgrade_scripts_release()
     fabops.local("sed -i 's/SKYLINE_VERSIONINFO=\".*\".*$/SKYLINE_VERSIONINFO=\"'\"`date` %s `hg id` `whoami`\"'\"/g' ui/billedit.js" % max_version)
     fabops.local("sed -i 's/SKYLINE_DEPLOYENV=\".*\".*$/SKYLINE_DEPLOYENV=\"%s\"/g' ui/billedit.js" % environment)
 
@@ -150,12 +151,17 @@ def prepare_deploy(project, environment):
 def deploy():
 
     mercurial = int(mercurial_release())
-    upgrade_scripts = int(upgrade_scripts_max_version())
+    upgrade_scripts = int(upgrade_scripts_release())
     print green("Mercurial Says Release is %s" % (mercurial))
     print green("Upgrade Scripts Says Release is %s" % (upgrade_scripts))
 
     if mercurial < upgrade_scripts:
-        print red("Deploying pre-release software")
+        print red("Deploying pre-release")
+    elif mercurial > upgrade_scripts:
+        print red("Deploying prior release")
+    else:
+        print green("Deploying current release")
+
 
     environment = fabops.prompt("Environment?", default="stage")
     if environment == "prod":
