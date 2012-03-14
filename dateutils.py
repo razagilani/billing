@@ -2,6 +2,7 @@
 import calendar
 from datetime import date, datetime, timedelta
 import unittest
+import math
 
 # convenient format strings
 ISO_8601_DATETIME = '%Y-%m-%dT%H:%M:%SZ'
