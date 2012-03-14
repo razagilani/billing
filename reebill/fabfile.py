@@ -117,8 +117,12 @@ def mercurial_actual_tag():
     actual_tag = fabops.local("hg parent --template '{tags}'", capture=True)
     if actual_tag != "" and actual_tag != "tip":
         return actual_tag
-    return fabops.local("hg log -r tip --template '{latesttag}'", capture=True)
-
+    actual_tag = fabops.local("hg log -r tip --template '{latesttag}'", capture=True)
+    if actual_tag == "null":
+        print red("Uncommited Branch Merge?")
+        sys.exit(1)
+    return actual_tag
+    
 def upgrade_scripts_release():
     return int(fabops.local("ls -1 ../upgrade_scripts/ | sort | tail -1", capture=True).split()[0])
 
