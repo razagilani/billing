@@ -125,8 +125,6 @@ def mercurial_release():
 
 def prepare_deploy(project, environment):
 
-    print green("Mercurial Says Release is %s" % (mercurial_release()))
-    print green("Upgrade Scripts Says Release is %s" % (upgrade_scripts_max_version()))
 
     # create version information file
     max_version = upgrade_scripts_max_version()
@@ -150,6 +148,14 @@ def prepare_deploy(project, environment):
     fabops.local("sed -i 's/SKYLINE_DEPLOYENV=\".*\".*$/SKYLINE_DEPLOYENV=\"UNSPECIFIED\"/g' ui/billedit.js")
 
 def deploy():
+
+    mercurial = int(mercurial_release())
+    upgrade_scripts = int(upgrade_scripts_max_version())
+    print green("Mercurial Says Release is %s" % (mercurial))
+    print green("Upgrade Scripts Says Release is %s" % (upgrade_scripts))
+
+    if mercurial < upgrade_scripts:
+        print red("Deploying pre-release software")
 
     environment = fabops.prompt("Environment?", default="stage")
     if environment == "prod":
