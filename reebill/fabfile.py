@@ -58,11 +58,49 @@ env_configurations = {
     }
 }
 
+"""
+Ok, tagging for release... this is complex, so read carefully.
+
+The idea here is that when ReeBill is ready to be 'released' a tag
+must be applied to the version.  That tag must follow this convention:
+
+"release X"  where X is an ordinal.
+
+The tag has to be named this way, so that hg update -r [tag] can be used.
+If the tag name is just "X" you are fucked.  Because that is a number and
+hg update -r [tag] runs as hg update -r [rev]  and hg update -r 2 blows 
+when you are somewhere around your thousandth change set.  So, please
+correct me, or stfu and use "release X". :-)
+
+"release X" is parsed in python to get the "X".
+
+A directory called upgrade_scripts exists.
+It contains subdirectories that are numbered.
+These numbers match "X" in the release name tag.
+The maximum number represents the latest release scripts.
+
+So here is how this works:
+
+A release was made. Say, "release 4".
+On that day, tip was tagged, 'hg tag "release 4"'
+"hg parent --template {tags}"
+ 
+Fab deploys upgrade_scripts/4
+Development continues.
+Someone makes a new dire
+
+
+
+"""
+
 def upgrade_scripts_max_version():
     return fabops.local("ls -1 ../upgrade_scripts/ | sort | tail -1", capture=True).split()[0]
 
-def mercurial_tag_version():
+def mercurial_tag_version_full():
     return fabops.local("hg log -r tip --template '{latesttag}.{latesttagdistance}-{node|short}'").split()[0]
+
+def mercurial_latesttag():
+    return fabops.local("hg log -r tip --template '{latesttag}'").split()[0]
 
 
 
