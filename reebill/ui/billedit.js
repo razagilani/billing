@@ -39,8 +39,6 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
 
 function renderWidgets()
 {
-    //registerAjaxEvents();
-    // global ajax timeout
 
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
@@ -49,6 +47,7 @@ function renderWidgets()
     var selected_sequence = null;
 
     // handle global success:false responses
+    // monitor session status and redirect user if they are not logged in.
     Ext.util.Observable.observeClass(Ext.data.Connection); 
     Ext.data.Connection.on('requestcomplete', function(dataconn, response) { 
         try {
@@ -2645,13 +2644,8 @@ function renderWidgets()
         ],
     });
 
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    CPRSRSIStore.on('update', function(){
-        //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
-    });
-
     CPRSRSIStore.on('save', function (store, batch, data) {
+        CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
     });
 
     CPRSRSIStore.on('beforeload', function (store, options) {
@@ -2679,7 +2673,6 @@ function renderWidgets()
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
     CPRSRSIStore.on('update', function(){
-        console.log('CPRSRSIStore update');
         CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
     });
 
@@ -2772,7 +2765,6 @@ function renderWidgets()
                     
                     // An inserted record must be saved 
                     CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
-                    console.log('enabling save 44444');
                 }
             },{
                 xtype: 'tbseparator'
@@ -2786,9 +2778,6 @@ function renderWidgets()
                 handler: function()
                 {
                     CPRSRSIGrid.stopEditing();
-                    //CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    //CPRSRSIStore.setBaseParam("account", selected_account);
-                    //CPRSRSIStore.setBaseParam("sequence", selected_sequence);
 
                     // TODO single row selection only, test allowing multirow selection
                     var s = CPRSRSIGrid.getSelectionModel().getSelections();
@@ -2813,17 +2802,13 @@ function renderWidgets()
                     // disable the save button for the save attempt.
                     // is there a closer place for this to the actual button click due to the possibility of a double
                     // clicked button submitting two ajax requests?
-                    console.log('disabling save 2222');
                     CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
 
                     // stop grid editing so that widgets like comboboxes in rows don't stay focused
                     CPRSRSIGrid.stopEditing();
 
-                    //CPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-                    //CPRSRSIStore.setBaseParam("account", selected_account);
-                    //CPRSRSIStore.setBaseParam("sequence", selected_sequence);
-
                     CPRSRSIStore.save(); 
+
                 }
             }
         ]
@@ -2907,7 +2892,7 @@ function renderWidgets()
         reader: UPRSRSIReader,
         writer: UPRSRSIWriter,
         // or, autosave must be used to save each action
-        autoSave: true,
+        //autoSave: true,
         // won't be updated when combos change, so do this in event
         // perhaps also can be put in the options param for the ajax request
         baseParams: { account:selected_account, sequence: selected_sequence},
@@ -2927,16 +2912,12 @@ function renderWidgets()
         ],
     });
 
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    UPRSRSIStore.on('update', function(){
-        //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(false);
-    });
-
     UPRSRSIStore.on('save', function (store, batch, data) {
+        UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
     });
 
     UPRSRSIStore.on('beforeload', function () {
+        UPRSRSIGrid.setDisabled(true);
         UPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
         UPRSRSIStore.setBaseParam("account", selected_account);
         UPRSRSIStore.setBaseParam("sequence", selected_sequence);
@@ -2957,9 +2938,6 @@ function renderWidgets()
     });
 
     UPRSRSIStore.on('beforesave', function() {
-        UPRSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
-        UPRSRSIStore.setBaseParam("account", selected_account);
-        UPRSRSIStore.setBaseParam("sequence", selected_sequence);
     });
 
     var UPRSRSIColModel = new Ext.grid.ColumnModel(
@@ -3036,9 +3014,7 @@ function renderWidgets()
 
                     // make the new record
                     var UPRSRSIType = UPRSRSIGrid.getStore().recordType;
-                    var defaultData = 
-                    {
-                    };
+                    var defaultData = { };
                     var r = new UPRSRSIType(defaultData);
         
                     // select newly inserted record
@@ -3125,11 +3101,7 @@ function renderWidgets()
         // if a selection is made, allow it to be removed
         // if the selection was deselected to nothing, allow no 
         // records to be removed.
-
         UPRSRSIGrid.getTopToolbar().findById('UPRSRSIRemoveBtn').setDisabled(sm.getCount() <1);
-
-        // if there was a selection, allow an insertion
-        //UPRSRSIGrid.getTopToolbar().findById('UPRSRSIInsertBtn').setDisabled(sm.getCount() <1);
     });
   
 
@@ -3199,12 +3171,6 @@ function renderWidgets()
             {name: 'roundrule'},
             {name: 'total'},
         ],
-    });
-
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    URSRSIStore.on('update', function(){
-        //URSRSIGrid.getTopToolbar().findById('URSRSISaveBtn').setDisabled(false);
     });
 
     URSRSIStore.on('save', function (store, batch, data) {
@@ -3407,6 +3373,7 @@ function renderWidgets()
             region: 'north',
             layout: 'fit',
             split: true,
+            height: 275,
             items: [CPRSRSIGrid]
         },{
             region: 'center',
@@ -3417,6 +3384,7 @@ function renderWidgets()
             region:'south',
             layout: 'fit',
             split: true,
+            height: 275,
             items: [URSRSIGrid]
         }]
     });
@@ -3427,13 +3395,10 @@ function renderWidgets()
 
         // because this tab is being displayed, demand the grids that it contain 
         // be populated
-        //CPRSRSIGrid.setDisabled(true);
         CPRSRSIStore.reload();
 
-        //URSRSIGrid.setDisabled(true);
         URSRSIStore.reload();
 
-        //UPRSRSIGrid.setDisabled(true);
         UPRSRSIStore.reload();
 
     });
@@ -4013,14 +3978,14 @@ function renderWidgets()
                 xtype: 'linkbutton',
                 href: "http://"+location.host+"/reebill/all_ree_charges_csv",
                 text: 'Export REE Value CSV',
-                disabled: true,
+                disabled: false,
             },{
                 id: 'exportButton',
                 iconCls: 'icon-application-go',
                 // TODO:25227403 - export on account at a time 
                 xtype: 'linkbutton',
                 href: "http://"+location.host+"/reebill/excel_export",
-                text: 'Export All Utility Bills to Excel',
+                text: 'Export All Utility Bills to XLS',
                 disabled: false,
             },{
                 id: 'exportAccountButton',
@@ -4028,7 +3993,7 @@ function renderWidgets()
                 xtype: 'linkbutton',
                 // account parameter for URL is set in loadReeBillUIForAccount()
                 href: "http://"+location.host+"/reebill/excel_export",
-                text: "Export Selected Account's Utility Bills to Excel",
+                text: "Export Selected Account's Utility Bills to XLS",
                 disabled: true, 
             }
         ]
@@ -4840,7 +4805,6 @@ function renderWidgets()
         //journalPanel.setDisabled(true);
 
         // TODO: 25226989 ajax cancelled???
-
         // unload previously loaded utility and reebill images
         // TODO 25226739: don't overwrite if they don't need to be updated.  Causes UI to flash.
         Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(null, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
