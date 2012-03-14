@@ -111,14 +111,14 @@ def upgrade_scripts_max_version():
     return fabops.local("ls -1 ../upgrade_scripts/ | sort | tail -1", capture=True).split()[0]
 
 def mercurial_tag_version_full():
-    return fabops.local("hg log -r tip --template '{latesttag}.{latesttagdistance}-{node|short}'").split()[0]
+    return fabops.local("hg log -r tip --template '{latesttag}.{latesttagdistance}-{node|short}").split()[0]
 
 def mercurial_actual_tag():
 
-    actual_tag = fabops.local("hg parent --template {tags}'").split()[0]
+    actual_tag = fabops.local("hg parent --template {tags}").split()[0]
     print actual_tag
     if not actual_tag:
-        actual_tag = fabops.local("hg log -r tip --template '{latesttag}'").split()[0]
+        actual_tag = fabops.local("hg log -r tip --template '{latesttag}").split()[0]
     print actual_tag
 
 
