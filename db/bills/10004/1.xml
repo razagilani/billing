@@ -1,0 +1,297 @@
+<!-- edited with XMLSpy v2010 (http://www.altova.com) by Rich Andrews (Skyline Innovations) -->
+<ub:bill xmlns:ub="bill" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" account="10004" xsi:schemaLocation="bill ../UtilityBill.xsd" id="1">
+    <ub:rebill>
+        <ub:car>
+            <ub:serviceaddress>
+                <ub:addressee/>
+                <ub:street>1103 WEST CHESTER PI, ST-12-A</ub:street>
+                <ub:city>WEST CHESTER</ub:city>
+                <ub:state/>
+                <ub:country/>
+                <ub:postalcode/>
+                <ub:telephonenumber>610-688-8985</ub:telephonenumber>
+                <ub:hours/>
+            </ub:serviceaddress>
+            <ub:billingaddress>
+                <ub:addressee> T C COMMONS C/O FAMILY LAUNDRY MAT</ub:addressee>
+                <ub:street>1107 W CHESTER PIKE</ub:street>
+                <ub:city>WEST CHESTER</ub:city>
+                <ub:state>PA</ub:state>
+                <ub:country/>
+                <ub:postalcode>19382-5004</ub:postalcode>
+                <ub:telephonenumber/>
+                <ub:hours/>
+            </ub:billingaddress>
+        </ub:car>
+        <ub:billperiodbegin>2010-04-06</ub:billperiodbegin>
+        <ub:billperiodend>2010-05-05</ub:billperiodend>
+        <ub:priorbalance>0.00</ub:priorbalance>
+        <ub:paymentreceived>0.00</ub:paymentreceived>
+        <ub:totaladjustment>0.00</ub:totaladjustment>
+        <ub:balanceforward>0.00</ub:balanceforward>
+        <ub:hypotheticalecharges>1660.23</ub:hypotheticalecharges>
+        <ub:actualecharges>1639.82</ub:actualecharges>
+        <ub:revalue>20.41</ub:revalue>
+        <ub:recharges>10.20</ub:recharges>
+        <ub:resavings>10.21</ub:resavings>
+        <ub:currentcharges/>
+        <ub:totaldue>10.20</ub:totaldue>
+        <ub:duedate>2010-07-01</ub:duedate>
+        <ub:issued>2010-06-17</ub:issued>
+        <ub:message>Welcome to Skyline Innovations!</ub:message>
+    </ub:rebill>
+    <ub:utilbill service="Gas">
+        <ub:car>
+            <ub:accountnumber>94443-01819</ub:accountnumber>
+            <ub:serviceaddress>
+                <ub:addressee/>
+                <ub:street>1103 WEST CHESTER PI, ST-12-A</ub:street>
+                <ub:city>WEST CHESTER</ub:city>
+                <ub:state/>
+                <ub:country/>
+                <ub:postalcode/>
+                <ub:telephonenumber>610-688-8985</ub:telephonenumber>
+                <ub:hours/>
+            </ub:serviceaddress>
+            <ub:billingaddress>
+                <ub:addressee> T C COMMONS C/O FAMILY LAUNDRY MAT</ub:addressee>
+                <ub:street>1107 W CHESTER PIKE</ub:street>
+                <ub:city>WEST CHESTER</ub:city>
+                <ub:state>PA</ub:state>
+                <ub:country/>
+                <ub:postalcode>19382-5004</ub:postalcode>
+                <ub:telephonenumber/>
+                <ub:hours/>
+            </ub:billingaddress>
+        </ub:car>
+        <ub:billperiodbegin>2010-04-06</ub:billperiodbegin>
+        <ub:billperiodend>2010-05-05</ub:billperiodend>
+        <ub:hypotheticalecharges>1660.23</ub:hypotheticalecharges>
+        <ub:actualecharges>1639.82</ub:actualecharges>
+        <ub:revalue>20.41</ub:revalue>
+        <ub:recharges>10.20</ub:recharges>
+        <ub:resavings>10.21</ub:resavings>
+    </ub:utilbill>
+    <ub:details service="Gas">
+        <ub:rateschedule>
+            <ub:name/>
+        </ub:rateschedule>
+        <ub:chargegroup type="All Charges">
+            <ub:charges type="actual">
+                <ub:charge>
+                    <ub:description>Customer Charge</ub:description>
+                    <ub:rate units="dollars">25.00</ub:rate>
+                    <ub:total>25.00</ub:total>
+                </ub:charge>
+                <ub:charge>
+                    <ub:description>Natural Gas Supply Charges</ub:description>
+                    <ub:quantity units="Ccf">1249</ub:quantity>
+                    <ub:rate units="dollars">0.76035</ub:rate>
+                    <ub:total>949.68</ub:total>
+                </ub:charge>
+                <ub:charge>
+                    <ub:description>Distribution Charges</ub:description>
+                    <ub:quantity units="Ccf">1249</ub:quantity>
+                    <ub:rate units="dollars">0.37785</ub:rate>
+                    <ub:total>471.93</ub:total>
+                </ub:charge>
+                <ub:charge>
+                    <ub:description>Balancing Service Charges</ub:description>
+                    <ub:quantity units="Ccf">1249</ub:quantity>
+                    <ub:rate units="dollars">0.03848</ub:rate>
+                    <ub:total>48.06</ub:total>
+                </ub:charge>
+                <ub:charge>
+                    <ub:description>Gas Cost Adjustment Charges</ub:description>
+                    <ub:quantity units="Ccf">1249</ub:quantity>
+                    <ub:rate units="dollars">0.03992</ub:rate>
+                    <ub:total>49.86</ub:total>
+                </ub:charge>
+                <ub:charge>
+                    <ub:description>State Tax Adjustment</ub:description>
+                    <ub:total>2.47</ub:total>
+                    <ub:processingnote>0.16% all charges</ub:processingnote>
+                </ub:charge>
+                <ub:charge>
+                    <ub:description>Sales Tax</ub:description>
+                    <ub:quantity units="dollars">1547.00</ub:quantity>
+                    <ub:rate units="percent">6</ub:rate>
+                    <ub:total>92.82</ub:total>
+                    <ub:processingnote>6% all charges includinig state tax adjustment</ub:processingnote>
+                </ub:charge>
+                <ub:total>1639.82</ub:total>
+            </ub:charges>
+            <ub:charges type="hypothetical">
+                <ub:charge>
+                    <ub:description>Customer Charge</ub:description>
+                    <ub:rate units="dollars">25.00</ub:rate>
+                    <ub:total>25.00</ub:total>
+                </ub:charge>
+                <ub:charge>
+                    <ub:description>Natural Gas Supply Charges</ub:description>
+                    <ub:quantity units="Ccf">1264.8</ub:quantity>
+                    <ub:rate units="dollars">0.76035</ub:rate>
+                    <ub:total>961.69</ub:total>
+                </ub:charge>
+                <ub:charge>
+                    <ub:description>Distribution Charges</ub:description>
+                    <ub:quantity units="Ccf">1264.8</ub:quantity>
+                    <ub:rate units="dollars">0.37785</ub:rate>
+                    <ub:total>477.90</ub:total>
+                </ub:charge>
+                <ub:charge>
+                    <ub:description>Balancing Service Charges</ub:description>
+                    <ub:quantity units="Ccf">1264.8</ub:quantity>
+                    <ub:rate units="dollars">0.03848</ub:rate>
+                    <ub:total>48.67</ub:total>
+                </ub:charge>
+                <ub:charge>
+                    <ub:description>Gas Cost Adjustment Charges</ub:description>
+                    <ub:quantity units="Ccf">1264.8</ub:quantity>
+                    <ub:rate units="dollars">0.03992</ub:rate>
+                    <ub:total>50.49</ub:total>
+                </ub:charge>
+                <ub:charge>
+                    <ub:description>State Tax Adjustment</ub:description>
+                    <ub:quantity units="dollars">1563.75</ub:quantity>
+                    <ub:rate units="percent">.16</ub:rate>
+                    <ub:total>2.50</ub:total>
+                </ub:charge>
+                <ub:charge>
+                    <ub:description>Sales Tax</ub:description>
+                    <ub:quantity units="dollars">1566.25</ub:quantity>
+                    <ub:rate units="percent">6</ub:rate>
+                    <ub:total>93.98</ub:total>
+                </ub:charge>
+                <ub:total>1660.23</ub:total>
+            </ub:charges>
+        </ub:chargegroup>
+        <ub:total type="actual">1639.82</ub:total>
+        <ub:total type="hypothetical">1660.23</ub:total>
+    </ub:details>
+    <ub:billableusage service="Gas">
+        <ub:rateschedule>
+            <ub:name/>
+        </ub:rateschedule>
+        <ub:usage>
+            <ub:description>Therms Used</ub:description>
+            <ub:quantity>0</ub:quantity>
+        </ub:usage>
+        <ub:total>0</ub:total>
+    </ub:billableusage>
+    <ub:measuredusage service="Gas">
+        <ub:meter>
+            <ub:estimated>false</ub:estimated>
+            <ub:priorreaddate>2010-04-06</ub:priorreaddate>
+            <ub:presentreaddate>2010-05-05</ub:presentreaddate>
+            <ub:identifier>027870434</ub:identifier>
+            <ub:register shadow="false">
+                <ub:identifier>027870434</ub:identifier>
+                <ub:description>Total Ccf</ub:description>
+                <ub:effective>
+                    <ub:inclusions>
+                        <ub:fromhour>00:00:00</ub:fromhour>
+                        <ub:tohour>23:00:00</ub:tohour>
+                        <ub:weekday>1</ub:weekday>
+                        <ub:weekday>2</ub:weekday>
+                        <ub:weekday>3</ub:weekday>
+                        <ub:weekday>4</ub:weekday>
+                        <ub:weekday>5</ub:weekday>
+                        <ub:weekday>6</ub:weekday>
+                        <ub:weekday>7</ub:weekday>
+                    </ub:inclusions>
+                </ub:effective>
+                <ub:units>Ccf</ub:units>
+                <ub:total>745.0</ub:total>
+            </ub:register>
+            <ub:register shadow="true">
+                <ub:identifier>027870434</ub:identifier>
+                <ub:description>Total Ccf</ub:description>
+                <ub:effective>
+                    <ub:inclusions>
+                        <ub:fromhour>00:00:00</ub:fromhour>
+                        <ub:tohour>23:00:00</ub:tohour>
+                        <ub:weekday>1</ub:weekday>
+                        <ub:weekday>2</ub:weekday>
+                        <ub:weekday>3</ub:weekday>
+                        <ub:weekday>4</ub:weekday>
+                        <ub:weekday>5</ub:weekday>
+                        <ub:weekday>6</ub:weekday>
+                        <ub:weekday>7</ub:weekday>
+                    </ub:inclusions>
+                </ub:effective>
+                <ub:units>Ccf</ub:units>
+                <ub:total>0.0</ub:total>
+            </ub:register>
+        </ub:meter>
+        <ub:meter>
+            <ub:estimated>false</ub:estimated>
+            <ub:priorreaddate>2010-04-06</ub:priorreaddate>
+            <ub:presentreaddate>2010-05-05</ub:presentreaddate>
+            <ub:identifier>028702956</ub:identifier>
+            <ub:register shadow="false">
+                <ub:identifier>028702956</ub:identifier>
+                <ub:description>Total Ccf</ub:description>
+                <ub:effective>
+                    <ub:inclusions>
+                        <ub:fromhour>00:00:00</ub:fromhour>
+                        <ub:tohour>23:00:00</ub:tohour>
+                        <ub:weekday>1</ub:weekday>
+                        <ub:weekday>2</ub:weekday>
+                        <ub:weekday>3</ub:weekday>
+                        <ub:weekday>4</ub:weekday>
+                        <ub:weekday>5</ub:weekday>
+                        <ub:weekday>6</ub:weekday>
+                        <ub:weekday>7</ub:weekday>
+                    </ub:inclusions>
+                </ub:effective>
+                <ub:units>Ccf</ub:units>
+                <ub:total>504</ub:total>
+            </ub:register>
+            <ub:register shadow="true">
+                <ub:identifier>028702956</ub:identifier>
+                <ub:description>Total Ccf</ub:description>
+                <ub:effective>
+                    <ub:inclusions>
+                        <ub:fromhour>00:00:00</ub:fromhour>
+                        <ub:tohour>23:00:00</ub:tohour>
+                        <ub:weekday>1</ub:weekday>
+                        <ub:weekday>2</ub:weekday>
+                        <ub:weekday>3</ub:weekday>
+                        <ub:weekday>4</ub:weekday>
+                        <ub:weekday>5</ub:weekday>
+                        <ub:weekday>6</ub:weekday>
+                        <ub:weekday>7</ub:weekday>
+                    </ub:inclusions>
+                </ub:effective>
+                <ub:units>Ccf</ub:units>
+                <ub:total>15.8</ub:total>
+            </ub:register>
+        </ub:meter>
+    </ub:measuredusage>
+    <ub:statistics>
+        <ub:conventionalconsumed>158329</ub:conventionalconsumed>
+        <ub:renewableconsumed>158329</ub:renewableconsumed>
+        <ub:renewableutilization>.03</ub:renewableutilization>
+        <ub:conventionalutilization>.97</ub:conventionalutilization>
+        <ub:co2offset>212.67</ub:co2offset>
+        <ub:totalsavings>10.21</ub:totalsavings>
+        <ub:totalrenewableconsumed>158329</ub:totalrenewableconsumed>
+        <ub:totaltrees>0.16</ub:totaltrees>
+        <ub:totalco2offset>212.67</ub:totalco2offset>
+        <ub:consumptiontrend>
+            <ub:period quantity="1.6" month="Apr"/>
+            <ub:period quantity="0" month="May"/>
+            <ub:period quantity="0" month="Jun"/>
+            <ub:period quantity="0" month="Jul"/>
+            <ub:period quantity="0" month="Aug"/>
+            <ub:period quantity="0" month="Sep"/>
+            <ub:period quantity="0" month="Oct"/>
+            <ub:period quantity="0" month="Nov"/>
+            <ub:period quantity="0" month="Dec"/>
+            <ub:period quantity="0" month="Jan"/>
+            <ub:period quantity="0" month="Feb"/>
+            <ub:period quantity="0" month="Mar"/>
+        </ub:consumptiontrend>
+    </ub:statistics>
+</ub:bill>
