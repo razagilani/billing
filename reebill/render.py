@@ -7,7 +7,6 @@ import math
 from decimal import *
 from itertools import groupby
 from datetime import datetime
-
 import reportlab  
 from reportlab.platypus import BaseDocTemplate, Paragraph, Table, TableStyle, Spacer, Image, PageTemplate, Frame, PageBreak, NextPageTemplate
 from reportlab.platypus.flowables import UseUpSpace
@@ -34,9 +33,8 @@ import pychartdir
 pychartdir.setLicenseCode('DEVP-2HYW-CAU5-4YTR-6EA6-57AC')
 
 from pychartdir import Center, Left, TopLeft, DataColor, XYChart, PieChart
-
-
 from billing import mongo
+from billing import graph
 
 # TODO render should not depend on BillUpload--move this function out to its
 # own file

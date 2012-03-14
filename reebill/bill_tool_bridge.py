@@ -25,7 +25,7 @@ from billing.processing import state
 from billing.processing import fetch_bill_data as fbd
 from billing.reebill import render
 from billing.reebill import journal
-from billing.reebill import eventlog
+from billing.reebill.journal import JournalDAO
 from billing.processing.billupload import BillUpload
 from billing.processing import billupload
 from billing import nexus_util as nu
@@ -47,14 +47,13 @@ import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
 
-
-
 # decorator for stressing ajax asynchronicity
 import random
 import time
 def random_wait(target):
     def random_wait_wrapper(*args, **kwargs):
-        t = random.random() * 0.1
+        #t = random.random()
+        t = 0
         time.sleep(t)
         return target(*args, **kwargs)
     return random_wait_wrapper
@@ -226,9 +225,6 @@ class BillToolBridge:
         # create a JournalDAO
         journaldb_config_section = self.config.items("journaldb")
         self.journal_dao = journal.JournalDAO(dict(journaldb_config_section))
-
-        # create an event logger
-        self.eventlogger = eventlog.EventLogger(dict(self.config.items('eventlog')))
 
         # create one Process object to use for all related bill processing
         # TODO it's theoretically bad to hard-code these, but all skyliner
@@ -465,23 +461,8 @@ class BillToolBridge:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
-            self.journal_dao.journal(account, sequence, "ReeBill rolled")
-            session.commit()
-            return self.dumps({'success': True})
-        except Exception as e:
-            self.rollback_session(session)
-            return self.handle_exception(e)
-
-
-    @cherrypy.expose
-    @random_wait
-    def delete_reebill(self, account, sequence, **args):
-        try:
-            session = None
-            self.check_authentication()
-            session = self.state_db.session()
-            self.process.delete_reebill(session, account, sequence)
-            self.journal_dao.journal(account, sequence, "Deleted")
+            self.journal_dao.log_event(account, sequence,
+                    JournalDAO.ReeBillRolled)
             session.commit()
             return self.dumps({'success': True})
         except Exception as e:
@@ -533,7 +514,8 @@ class BillToolBridge:
                     reebill
                 )
             self.reebill_dao.save_reebill(reebill)
-            self.journal_dao.journal(account, sequence, "RE&E Bound")
+            self.journal_dao.log_event(account, sequence,
+                    JournalDAO.ReeBillBoundtoREE)
             return self.dumps({'success': True})
         except Exception as e:
             return self.handle_exception(e)
@@ -553,7 +535,8 @@ class BillToolBridge:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             fbd.fetch_interval_meter_data(reebill, csv_file.file)
             self.reebill_dao.save_reebill(reebill)
-            self.journal_dao.journal(account, sequence, "RE&E Bound")
+            self.journal_dao.log_event(account, sequence,
+                    JournalDAO.ReeBillBoundtoREE)
             return self.dumps({'success': True})
         except Exception as e:
             return self.handle_exception(e)
@@ -645,6 +628,7 @@ class BillToolBridge:
             self.process.attach_utilbills(session, reebill.account,
                     reebill.sequence)
 
+            # TODO change to event log
             self.journal_dao.journal(reebill.account, reebill.sequence,
                     "User %s attached utilbills to reebill %s-%s" % (
                     cherrypy.session['user'].username, account, sequence))
@@ -715,9 +699,10 @@ class BillToolBridge:
                         account), bill_file_names);
 
             for reebill in all_bills:
-                self.journal_dao.journal(reebill.account, reebill.sequence,
-                        "Mailed to %s by %s" % (recipients,
-                        cherrypy.session['user'].username))
+                print dir(JournalDAO)
+                self.journal_dao.log_event(reebill.account, reebill.sequence,
+                        JournalDAO.ReeBillMailed, address=recipients,
+                        user=cherrypy.session['user'].username)
                 self.process.issue(session, reebill.account, reebill.sequence)
                 self.process.attach_utilbills(session, reebill.account,
                         reebill.sequence)
@@ -1541,15 +1526,15 @@ class BillToolBridge:
             if not xaction or not start or not limit:
                 raise ValueError("Bad Parameter Value")
 
-            if xaction == "read":
+            session = self.state_db.session()
 
-                session = self.state_db.session()
+            if xaction == "read":
 
                 reebills, totalCount = self.state_db.listReebills(session, int(start), int(limit), account)
 
                 # convert the result into a list of dictionaries for returning as
                 # JSON to the browser
-                rows = [{'sequence': reebill.sequence} for reebill in reebills]
+                rows = [{'id': reebill.sequence, 'sequence': reebill.sequence} for reebill in reebills]
 
                 session.commit()
                 return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
@@ -1563,8 +1548,16 @@ class BillToolBridge:
                 return self.dumps({'success':False})
 
             elif xaction == "destroy":
+                sequences = json.loads(kwargs["rows"])
 
-                return self.dumps({'success':False})
+                # single edit comes in not in a list
+                if type(sequences) is int: sequences = [sequences]
+
+                for sequence in sequences:
+                    self.process.delete_reebill(session, account, sequence)
+                    self.journal_dao.log_event(account, sequence, JournalDAO.ReeBillDeleted)
+                session.commit()
+                return self.dumps({'success': True})
 
         except Exception as e:    
             self.rollback_session(session)
@@ -2047,6 +2040,7 @@ class BillToolBridge:
             utilbills, totalCount = self.state_db.list_utilbills(session, account, int(start), int(limit))
             # note that utilbill customers are eagerly loaded
             full_names = self.full_names_of_accounts([ub.customer.account for ub in utilbills])
+            print [u.service for u in utilbills]
             rows = [dict([
                 # TODO: sending real database ids to the client a security
                 # risk; these should be encrypted
@@ -2054,7 +2048,7 @@ class BillToolBridge:
                 ('account', ub.customer.account),
                 ('name', full_names[i]),
                 # capitalize service name
-                ('service', ub.service[0].upper() + ub.service[1:]),
+                ('service', 'Unknown' if ub.service is None else ub.service[0].upper() + ub.service[1:]),
                 ('period_start', ub.period_start),
                 ('period_end', ub.period_end),
                 ('sequence', ub.reebill.sequence if ub.reebill else None),
