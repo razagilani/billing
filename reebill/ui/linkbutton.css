@@ -14,3 +14,8 @@ body.ext-chrome table.x-btn .x-btn-small td.x-btn-mc em a {
 body.ext-chrome table.x-btn .x-btn-small td.x-btn-mc em a {
     padding-bottom: 3px;
 }
+
+a.x-btn-text:link {color:#15428B;}      /* unvisited link */
+a.x-btn-text:visited {color:#15428B;}  /* visited link */
+a.x-btn-text:hover {color:#15428B;}  /* mouse over link */
+a.x-btn-text:active {color:#15428B;}  /* selected link */
