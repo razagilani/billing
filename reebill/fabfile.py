@@ -58,8 +58,11 @@ env_configurations = {
     }
 }
 
-def version():
+def upgrade_scripts_max_version():
     return fabops.local("ls -1 ../upgrade_scripts/ | sort | tail -1", capture=True).split()[0]
+
+def mercurial_tag_version():
+    return fabops.local("hg log -r tip --template '{latesttag}.{latesttagdistance}-{node|short}'").split()[0]
 
 
 
@@ -67,7 +70,8 @@ def prepare_deploy(project, environment):
 
 
     # create version information file
-    fabops.local("sed -i 's/SKYLINE_VERSIONINFO=\".*\".*$/SKYLINE_VERSIONINFO=\"'\"`date` `hg id` `whoami`\"'\"/g' ui/billedit.js")
+    max_version = upgrade_scripts_max_version()
+    fabops.local("sed -i 's/SKYLINE_VERSIONINFO=\".*\".*$/SKYLINE_VERSIONINFO=\"'\"`date` %s `hg id` `whoami`\"'\"/g' ui/billedit.js" % max_version)
     fabops.local("sed -i 's/SKYLINE_DEPLOYENV=\".*\".*$/SKYLINE_DEPLOYENV=\"%s\"/g' ui/billedit.js" % environment)
 
 
@@ -80,7 +84,7 @@ def prepare_deploy(project, environment):
     fabops.local('tar czvf /tmp/%s.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../reebill' % (project, exclude_from))
 
     # grab other billing code
-    fabops.local('tar czvf /tmp/bill_framework_code.tar.z ../*.py ../processing/*.py ../upgrade_scripts/%s ../scripts ../db/processing/billdb.sql' % version())
+    fabops.local('tar czvf /tmp/bill_framework_code.tar.z ../*.py ../processing/*.py ../upgrade_scripts/%s ../scripts ../db/processing/billdb.sql' % max_version)
 
     # try and put back sane values since the software was likely deployed from a development environment
     fabops.local("sed -i 's/SKYLINE_VERSIONINFO=\".*\".*$/SKYLINE_VERSIONINFO=\"UNSPECIFIED\"/g' ui/billedit.js")
