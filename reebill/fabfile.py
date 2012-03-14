@@ -81,15 +81,17 @@ The maximum number represents the latest release scripts.
 
 So here is how this works:
 
-A release was made. Say, "release 4".
-On that day, tip was tagged, 'hg tag "release 4"'
-"hg parent --template {tags}"
- 
-Fab deploys upgrade_scripts/4
-Development continues.
-Someone makes a new dire
-
-
+As development progresses towards a release, a subdirectory of upgrade_scripts is created.
+In this directory is placed scripts relevant to upgrading from the currently deployed release to the release under development.
+Fab can now look at upgrade_scripts/ and find the current release under development by finding the greatest ordinal.
+As fab is invoked to deploy into test and staging environments, the contents of this directory are deployed.
+At some point, everyone is happy that the release is ready. At this point, the release must be made.
+The release tag is applied to tip on default after development branches are merged onto default.
+Development continues and changesets accumulate as another release is developed.
+At any point in time, default can be updated with a prior release, and it can be deployed.
+Why is this important?  Because three releases may occur, and an environment may not have been upgraded.
+So, each release will have to be deployed to it.  This necessitates updating to the proper release tag and deploying.
+This is done until the target environment is brought up to date.
 
 """
 
