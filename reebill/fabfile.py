@@ -115,11 +115,10 @@ def mercurial_tag_version_full():
 
 def mercurial_actual_tag():
 
-    actual_tag = fabops.local("hg parent --template {tags}").split()[0]
-    print actual_tag
-    if not actual_tag:
-        actual_tag = fabops.local("hg log -r tip --template '{latesttag}").split()[0]
-    print actual_tag
+    actual_tag = fabops.local("hg parent --template {tags}")
+    if actual_tag and actual_tag is not "tip"
+        return actual_tag
+    return fabops.local("hg log -r tip --template '{latesttag}")
 
 
 
@@ -128,7 +127,7 @@ def mercurial_actual_tag():
 
 def prepare_deploy(project, environment):
 
-    mercurial_actual_tag()
+    print mercurial_actual_tag()
 
     # create version information file
     max_version = upgrade_scripts_max_version()
