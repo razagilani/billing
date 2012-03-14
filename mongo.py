@@ -1113,7 +1113,6 @@ class ReebillDAO:
                     end_date.day)
             query['period_begin'] = {'$lte': end_datetime}
         result = []
-        print query
         for mongo_doc in self.collection.find(query):
             mongo_doc = convert_datetimes(mongo_doc)
             mongo_doc = deep_map(float_to_decimal, mongo_doc)
