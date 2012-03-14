@@ -93,6 +93,18 @@ Why is this important?  Because three releases may occur, and an environment may
 So, each release will have to be deployed to it.  This necessitates updating to the proper release tag and deploying.
 This is done until the target environment is brought up to date.
 
+hg log -r tip --template {latesttag} will always return the most recent tag, regardless of what is checked out.
+hg parent --template {tags} will always return the tags that apply to the current version that is checked out.
+
+These can be used to identify facts:
+
+If 'hg parent --template {tags}' returns something like "release X" then someone has hg updated to that tag.
+Otherwise, it returns nothing (or perhaps tip).
+If this returns a tag, then this tag has to be set in the application version variable.
+
+'hg log -r tip --template {latesttag}' will always return the latest tag, in the form of "release X".
+ 
+
 """
 
 def upgrade_scripts_max_version():
@@ -101,13 +113,22 @@ def upgrade_scripts_max_version():
 def mercurial_tag_version_full():
     return fabops.local("hg log -r tip --template '{latesttag}.{latesttagdistance}-{node|short}'").split()[0]
 
-def mercurial_latesttag():
-    return fabops.local("hg log -r tip --template '{latesttag}'").split()[0]
+def mercurial_actual_tag():
+
+    actual_tag = fabops.local("hg parent --template {tags}'").split()[0]
+    print actual_tag
+    if not actual_tag:
+        actual_tag = fabops.local("hg log -r tip --template '{latesttag}'").split()[0]
+    print actual_tag
+
+
+
 
 
 
 def prepare_deploy(project, environment):
 
+    mercurial_actual_tag()
 
     # create version information file
     max_version = upgrade_scripts_max_version()
