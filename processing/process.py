@@ -54,6 +54,9 @@ class Process(object):
     def sum_bill(self, session, prior_reebill, present_reebill):
 
         # get discount rate
+        # TODO: 26500689 discount rate in the reebill structure must be relied on
+        # versus fetch the instantaneous one - what if a historical bill is being
+        # summed?  The discount rate in the reebill would have to be relied on.
         discount_rate = Decimal(str(self.state_db.discount_rate(session,
             present_reebill.account)))
 
@@ -202,7 +205,7 @@ class Process(object):
                 reebill.account, old_period_end)
         reebill.period_end = new_period_end
 
-        # set discount rate to the value in MySQL
+        # set discount rate to the instananeous value in MySQL
         reebill.discount_rate = self.state_db.discount_rate(session,
                 reebill.account)
 

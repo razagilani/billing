@@ -938,6 +938,88 @@ function renderWidgets()
 
     }
 
+    var addressFormItems = [
+        {
+            xtype: 'fieldset',
+            title: 'Billing Address',
+            collapsible: false,
+            defaults: {
+                anchor: '-20',
+            },
+            items: [
+                {
+                    xtype: 'textfield',
+                    id: 'ba_addressee',
+                    fieldLabel: 'Addressee',
+                    name: 'ba_addressee',
+                    //value: addresses['billing_address']['ba_addressee'],
+                },{
+                    xtype: 'textfield',
+                    id: 'ba_street1',
+                    fieldLabel: 'Street',
+                    name: 'ba_street1',
+                    //value: addresses['billing_address']['ba_street1'],
+                },{
+                    xtype: 'textfield',
+                    id: 'ba_city',
+                    fieldLabel: 'City',
+                    name: 'ba_city',
+                    //value: addresses['billing_address']['ba_city'],
+                },{
+                    xtype: 'textfield',
+                    id: 'ba_state',
+                    fieldLabel: 'State',
+                    name: 'ba_state',
+                    //value: addresses['billing_address']['ba_state'],
+                },{
+                    xtype: 'textfield',
+                    id: 'ba_postal_code',
+                    fieldLabel: 'Postal Code',
+                    name: 'ba_postal_code',
+                    //value: addresses['billing_address']['ba_postal_code'],
+                },
+            ]
+        },{
+            xtype: 'fieldset',
+            title: 'Service Address',
+            collapsible: false,
+            defaults: {
+                anchor: '-20',
+            },
+            items: [
+                {
+                    xtype: 'textfield',
+                    id: 'sa_addressee',
+                    fieldLabel: 'Addressee',
+                    name: 'sa_addressee',
+                    //value: addresses['service_address']['sa_addressee'],
+                },{
+                    xtype: 'textfield',
+                    id: 'sa_street1',
+                    fieldLabel: 'Street',
+                    name: 'sa_street1',
+                    //value: addresses['service_address']['sa_street1'],
+                },{
+                    xtype: 'textfield',
+                    id: 'sa_city',
+                    fieldLabel: 'City',
+                    name: 'sa_city',
+                    //value: addresses['service_address']['sa_city'],
+                },{
+                    xtype: 'textfield',
+                    id: 'sa_state',
+                    fieldLabel: 'State',
+                    name: 'sa_state',
+                    //value: addresses['service_address']['sa_state'],
+                },{
+                    xtype: 'textfield',
+                    id: 'sa_postal_code',
+                    fieldLabel: 'Postal Code',
+                    name: 'sa_postal_code',
+                    //value: addresses['service_address']['sa_postal_code'],
+                },
+            ]
+        }];
 
     var addressFormPanel = new Ext.FormPanel(
     {
@@ -953,7 +1035,7 @@ function renderWidgets()
             anchor: '-20',
             allowBlank: false,
         },
-        items:[], 
+        items:[addressFormItems], 
         buttons: 
         [
             // TODO: the save button is generic in function, refactor
@@ -972,89 +1054,23 @@ function renderWidgets()
 
     function configureAddressForm(account, sequence, addresses)
     {
-        var addressFormPanel = Ext.getCmp('billingAddressFormPanel');
-
-        addressFormPanel.removeAll(true);
 
         if (addresses) {
-            addressFormPanel.add(
-            {
-                xtype: 'fieldset',
-                title: 'Billing Address',
-                collapsible: false,
-                defaults: {
-                    anchor: '-20',
-                },
-                items: [
-                    {
-                        xtype: 'textfield',
-                        fieldLabel: 'Addressee',
-                        name: 'ba_addressee',
-                        value: addresses['billing_address']['ba_addressee'],
-                    },{
-                        xtype: 'textfield',
-                        fieldLabel: 'Street',
-                        name: 'ba_street1',
-                        value: addresses['billing_address']['ba_street1'],
-                    },{
-                        xtype: 'textfield',
-                        fieldLabel: 'City',
-                        name: 'ba_city',
-                        value: addresses['billing_address']['ba_city'],
-                    },{
-                        xtype: 'textfield',
-                        fieldLabel: 'State',
-                        name: 'ba_state',
-                        value: addresses['billing_address']['ba_state'],
-                    },{
-                        xtype: 'textfield',
-                        fieldLabel: 'Postal Code',
-                        name: 'ba_postal_code',
-                        value: addresses['billing_address']['ba_postal_code'],
-                    },
-                ]
-            },{
-                xtype: 'fieldset',
-                title: 'Service Address',
-                collapsible: false,
-                defaults: {
-                    anchor: '-20',
-                },
-                items: [
-                    {
-                        xtype: 'textfield',
-                        fieldLabel: 'Addressee',
-                        name: 'sa_addressee',
-                        value: addresses['service_address']['sa_addressee'],
-                    },{
-                        xtype: 'textfield',
-                        fieldLabel: 'Street',
-                        name: 'sa_street1',
-                        value: addresses['service_address']['sa_street1'],
-                    },{
-                        xtype: 'textfield',
-                        fieldLabel: 'City',
-                        name: 'sa_city',
-                        value: addresses['service_address']['sa_city'],
-                    },{
-                        xtype: 'textfield',
-                        fieldLabel: 'State',
-                        name: 'sa_state',
-                        value: addresses['service_address']['sa_state'],
-                    },{
-                        xtype: 'textfield',
-                        fieldLabel: 'Postal Code',
-                        name: 'sa_postal_code',
-                        value: addresses['service_address']['sa_postal_code'],
-                    },
-                ]
-            });
+            Ext.getCmp('ba_addressee').setValue(addresses['billing_address']['ba_addressee']);
+            Ext.getCmp('ba_street1').setValue(addresses['billing_address']['ba_street1']);
+            Ext.getCmp('ba_city').setValue(addresses['billing_address']['ba_city']);
+            Ext.getCmp('ba_state').setValue(addresses['billing_address']['ba_state']);
+            Ext.getCmp('ba_postal_code').setValue(addresses['billing_address']['ba_postal_code']);
+
+            Ext.getCmp('sa_addressee').setValue(addresses['service_address']['sa_addressee']);
+            Ext.getCmp('sa_street1').setValue(addresses['service_address']['sa_street1']);
+            Ext.getCmp('sa_city').setValue(addresses['service_address']['sa_city']);
+            Ext.getCmp('sa_state').setValue(addresses['service_address']['sa_state']);
+            Ext.getCmp('sa_postal_code').setValue(addresses['service_address']['sa_postal_code']);
 
             addressFormPanel.doLayout();
         }
 
-        // add base parms for form post
-        addressFormPanel.getForm().baseParams = {account: account, sequence: sequence}
     }
 
     // since this panel depends on data from the reeBillGrid, hook into
@@ -1064,6 +1080,11 @@ function renderWidgets()
         // be populated
         // disable it during load, the datastore re-enables when loaded.
         addressFormPanel.setDisabled(true);
+
+        //var addressFormPanel = Ext.getCmp('billingAddressFormPanel');
+        // add base parms for form post
+        // we should set these on the form when the form activates?
+        addressFormPanel.getForm().baseParams = {account: selected_account, sequence: selected_sequence}
 
         // get the address information for this reebill 
         // fire this request when the widget is displayed
@@ -1076,7 +1097,19 @@ function renderWidgets()
                     if (jsonData.success == false) {
                         Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                     } else {
-                        configureAddressForm(selected_account, selected_sequence, jsonData);
+                        Ext.getCmp('ba_addressee').setValue(jsonData['billing_address']['ba_addressee']);
+                        Ext.getCmp('ba_street1').setValue(jsonData['billing_address']['ba_street1']);
+                        Ext.getCmp('ba_city').setValue(jsonData['billing_address']['ba_city']);
+                        Ext.getCmp('ba_state').setValue(jsonData['billing_address']['ba_state']);
+                        Ext.getCmp('ba_postal_code').setValue(jsonData['billing_address']['ba_postal_code']);
+
+                        Ext.getCmp('sa_addressee').setValue(jsonData['service_address']['sa_addressee']);
+                        Ext.getCmp('sa_street1').setValue(jsonData['service_address']['sa_street1']);
+                        Ext.getCmp('sa_city').setValue(jsonData['service_address']['sa_city']);
+                        Ext.getCmp('sa_state').setValue(jsonData['service_address']['sa_state']);
+                        Ext.getCmp('sa_postal_code').setValue(jsonData['service_address']['sa_postal_code']);
+
+                        addressFormPanel.doLayout();
                     } 
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
@@ -4134,19 +4167,104 @@ function renderWidgets()
             xtype: 'textfield',
         },
         defaultType: 'textfield',
-        items: [newAccountField, newNameField, newDiscountRate, newAccountTemplateCombo, billStructureTree  ],
+        items: [
+            newAccountTemplateCombo, newAccountField, newNameField, newDiscountRate, 
+            {
+                xtype: 'fieldset',
+                title: 'Billing Address',
+                collapsible: false,
+                defaults: {
+                    anchor: '-20',
+                },
+                items: [
+                    {
+                        xtype: 'textfield',
+                        id: 'new_ba_addressee',
+                        fieldLabel: 'Addressee',
+                        name: 'new_ba_addressee',
+                    },{
+                        xtype: 'textfield',
+                        id: 'new_ba_street1',
+                        fieldLabel: 'Street',
+                        name: 'new_ba_street1',
+                    },{
+                        xtype: 'textfield',
+                        id: 'new_ba_city',
+                        fieldLabel: 'City',
+                        name: 'new_ba_city',
+                    },{
+                        xtype: 'textfield',
+                        id: 'new_ba_state',
+                        fieldLabel: 'State',
+                        name: 'new_ba_state',
+                    },{
+                        xtype: 'textfield',
+                        id: 'new_ba_postal_code',
+                        fieldLabel: 'Postal Code',
+                        name: 'new_ba_postal_code',
+                    },
+                ]
+            },{
+                xtype: 'fieldset',
+                title: 'Service Address',
+                collapsible: false,
+                defaults: {
+                    anchor: '-20',
+                },
+                items: [
+                    {
+                        xtype: 'textfield',
+                        id: 'new_sa_addressee',
+                        fieldLabel: 'Addressee',
+                        name: 'new_sa_addressee',
+                    },{
+                        xtype: 'textfield',
+                        id: 'new_sa_street1',
+                        fieldLabel: 'Street',
+                        name: 'new_sa_street1',
+                    },{
+                        xtype: 'textfield',
+                        id: 'new_sa_city',
+                        fieldLabel: 'City',
+                        name: 'new_sa_city',
+                    },{
+                        xtype: 'textfield',
+                        id: 'new_sa_state',
+                        fieldLabel: 'State',
+                        name: 'new_sa_state',
+                    },{
+                        xtype: 'textfield',
+                        id: 'new_sa_postal_code',
+                        fieldLabel: 'Postal Code',
+                        name: 'new_sa_postal_code',
+                    },
+                ]
+            },
+            billStructureTree, 
+        ],
         buttons: [
             new Ext.Button({
                 text: 'Save',
                 handler: function() {
                     // TODO 22645885 show progress during post
+                    // why do we need ajax to do form submission?
                     Ext.Ajax.request({
                         url: 'http://'+location.host+'/reebill/new_account',
                         params: { 
                           'name': newNameField.getValue(),
                           'account': newAccountField.getValue(),
                           'template_account': newAccountTemplateCombo.getValue(),
-                          'discount_rate': newDiscountRate.getValue()
+                          'discount_rate': newDiscountRate.getValue(),
+                          'new_ba_addressee': Ext.getCmp('new_ba_addressee').getValue(),
+                          'new_ba_street1': Ext.getCmp('new_ba_street1').getValue(),
+                          'new_ba_city': Ext.getCmp('new_ba_city').getValue(),
+                          'new_ba_state': Ext.getCmp('new_ba_state').getValue(),
+                          'new_ba_postal_code': Ext.getCmp('new_ba_postal_code').getValue(),
+                          'new_sa_addressee': Ext.getCmp('new_sa_addressee').getValue(),
+                          'new_sa_street1': Ext.getCmp('new_sa_street1').getValue(),
+                          'new_sa_city': Ext.getCmp('new_sa_city').getValue(),
+                          'new_sa_state': Ext.getCmp('new_sa_state').getValue(),
+                          'new_sa_postal_code': Ext.getCmp('new_sa_postal_code').getValue(),
                         },
                         disableCaching: true,
                         success: function(result, request) {
@@ -4154,7 +4272,9 @@ function renderWidgets()
                             try {
                                 jsonData = Ext.util.JSON.decode(result.responseText);
                                 if (jsonData.success == false) {
-                                    // handle failure here if necessary
+                                    Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                                } else {
+                                    Ext.Msg.alert('Success', "New account created");
                                 }
                             } catch (err) {
                                 Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
@@ -4861,7 +4981,6 @@ function renderWidgets()
         journalFormPanel.getForm().findField("sequence").setValue(null)
         configureUBPeriodsForms(null, null, null);
         configureUBMeasuredUsagesForms(null, null, null);
-        configureAddressForm(null, null, null);
         configureReeBillEditor(null, null);
         aChargesStore.loadData({rows: 0, success: true});
         hChargesStore.loadData({rows: 0, succes: true});
