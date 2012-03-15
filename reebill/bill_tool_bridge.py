@@ -422,11 +422,17 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
-    def new_account(self, name, account, discount_rate, template_account, **args):
+    def new_account(self, name, account, discount_rate, template_account, 
+        new_ba_addressee, new_ba_street1, new_ba_city, new_ba_state, new_ba_postal_code,
+        new_sa_addressee, new_sa_street1, new_sa_city, new_sa_state, new_sa_postal_code,
+        **args):
         try:
             session = None
             self.check_authentication()
             if not name or not account or not discount_rate or not template_account:
+                raise ValueError("Bad Parameter Value")
+            if not new_ba_addressee or not new_ba_street1 or not new_ba_city or not new_ba_state or not new_ba_postal_code \
+            or not new_sa_addressee or not new_sa_street1 or not new_sa_city or not new_sa_state or not new_sa_postal_code:
                 raise ValueError("Bad Parameter Value")
 
             session = self.state_db.session()
@@ -439,8 +445,25 @@ class BillToolBridge:
             self.journal_dao.journal(customer.account, 0, "Newly created")
 
             self.process.roll_bill(session, reebill)
+
+            # set addresses
+            ba = reebill.billing_address
+            sa = reebill.service_address
+            
+            reebill.billing_address['ba_addressee'] = new_ba_addressee
+            reebill.billing_address['ba_street1'] = new_ba_street1
+            reebill.billing_address['ba_city'] = new_ba_city
+            reebill.billing_address['ba_state'] = new_ba_state
+            reebill.billing_address['ba_postal_code'] = new_ba_postal_code
+
+            reebill.service_address['sa_addressee'] = new_sa_addressee
+            reebill.service_address['sa_street1'] = new_sa_street1
+            reebill.service_address['sa_city'] = new_sa_city
+            reebill.service_address['sa_state'] = new_sa_state
+            reebill.service_address['sa_postal_code'] = new_sa_postal_code
+
             self.reebill_dao.save_reebill(reebill)
-            self.journal_dao.journal(account, 0, "ReeBill rolled")
+            self.journal_dao.journal(account, 0, "Template ReeBill rolled")
 
             session.commit()
 
