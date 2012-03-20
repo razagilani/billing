@@ -61,8 +61,8 @@ def iso_week(d):
 
 def iso_year_start(iso_year):
     '''Returns the Gregorian calendar date of the first day of the given ISO
-    year. Note that the Gregorian year may be different! For example, ISO 2013
-    starts on Dec. 31 2012.'''
+    year. Note that the ISO year may start on a day that is in the previous
+    Gregorian year! For example, ISO 2013 starts on Dec. 31 2012.'''
     jan4 = date(iso_year, 1, 4)
     return jan4 - timedelta(days=jan4.isoweekday()-1)
 
