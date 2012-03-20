@@ -817,6 +817,8 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     def retrieve_account_status(self, start, limit, **args):
+        '''Handles AJAX request for data to display in Account Processing
+        Status grid.'''
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
@@ -827,10 +829,29 @@ class BillToolBridge:
             # result is a list of dictionaries of the form
             # {account: full name, dayssince: days}
             session = self.state_db.session()
-            statuses, totalCount = self.state_db.retrieve_status_days_since(session, int(start), int(limit))
-            full_names = self.full_names_of_accounts([s.account for s in statuses])
-            rows = [dict([('account', status.account), ('fullname', full_names[i]), ('dayssince', status.dayssince)])
-                    for i, status in enumerate(statuses)]
+            statuses, totalCount = self.state_db.retrieve_status_days_since(
+                    session, int(start), int(limit))
+            #full_names = self.full_names_of_accounts([s.account for s in statuses])
+            #rows = [dict([
+                #('account', status.account),
+                #('fullname', full_names[i]),
+                #('dayssince', status.dayssince)
+            #]) for i, status in enumerate(statuses)]
+
+            rows = []
+            print self.listAccounts()
+            name_dicts = NexusUtil().all_ids_for_accounts("billing",
+                    self.state_db.listAccounts(session))
+            print name_dicts
+            for i, status in enumerate(statuses):
+                d = { 'account': status.account, 'dayssince': status.dayssince }
+                if 'codename' in name_dicts[i]:
+                    d.update({'codename': name_dicts[i]['codename']})
+                if 'casualname' in name_dicts[i]:
+                    d.update({'casualname': name_dicts[i]['casualname']})
+                if 'primus' in name_dicts[i]:
+                    d.update({'primusname': name_dicts[i]['primus']})
+                rows.append(d)
 
             session.commit()
             return self.dumps({'success': True, 'rows':rows, 'results':totalCount})

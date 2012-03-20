@@ -3864,20 +3864,36 @@ function renderWidgets()
         reader: accountReader,
         fields: [
             {name: 'account'},
-            {name: 'fullname'},
+            {name: 'codename'},
+            {name: 'casualname'},
+            {name: 'primusname'},
             {name: 'dayssince'},
         ],
         url: 'http://' + location.host + '/reebill/retrieve_account_status',
     });
 
 
-    var accountColModel = new Ext.grid.ColumnModel(
-    {
+    var accountColModel = new Ext.grid.ColumnModel({
         columns: [
             {
                 header: 'Account',
                 sortable: true,
-                dataIndex: 'fullname',
+                dataIndex: 'account',
+                editable: false,
+            },{
+                header: 'Codename',
+                sortable: true,
+                dataIndex: 'codename',
+                editable: false,
+            },{
+                header: 'Casual Name',
+                sortable: true,
+                dataIndex: 'casualname',
+                editable: false,
+            },{
+                header: 'Primus Name',
+                sortable: true,
+                dataIndex: 'primusname',
                 editable: false,
             },{
                 header: 'Days since last bill',
