@@ -78,10 +78,9 @@ class NexusUtil(object):
         '''Returns a list of all customer names for all the customers specified
         in the list 'id_objects': an id_object can be just a customer id (as a
         string), or it can be any object from which the function 'key' can
-        extract a customer id. ('key' is the identity function by default.)
-        Intended to simplify and speed up bill_tool_bridge functions by not
-        requiring them to call NexusUtil.all() for each customer
-        individually.'''
+        extract a customer id. Intended to simplify and speed up
+        bill_tool_bridge functions by not requiring them to call
+        NexusUtil.all() for each customer individually.'''
         result = [self.fast_all(system, key(id_object)) for id_object in id_objects]
         return result
 
