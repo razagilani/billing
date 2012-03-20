@@ -55,7 +55,7 @@ def timedelta_in_hours(delta):
 # python datetime module defines isocalendar() and isoweekday() but not year or
 # week number
 def iso_year(d):
-    return d.isocalendar[0]
+    return d.isocalendar()[0]
 def iso_week(d):
     return d.isocalendar()[1]
 
