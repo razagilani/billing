@@ -72,6 +72,12 @@ def iso_to_date(iso_year, iso_week, iso_weekday=1):
     year_start = iso_year_start(iso_year)
     return year_start + timedelta(days=iso_weekday-1, weeks=iso_week-1)
 
+def iso_to_datetime(iso_year, iso_week, iso_weekday=1):
+    '''Returns the gregorian calendar date for the given ISO year, week, and
+    day as a datetime (at midnight). If day is not given, it is assumed to be
+    the ISO week start.'''
+    return date_to_datetime(iso_to_date(iso_year, iso_week, iso_weekday))
+
 def iso_week_generator(start, end):
     '''Yields ISO weeks as (year, weeknumber) tuples in [start, end), where
     start and end are (year, weeknumber) tuples.'''
