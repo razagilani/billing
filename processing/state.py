@@ -201,6 +201,9 @@ class StateDB:
                 .filter(UtilBill.customer==customer)\
                 .filter(UtilBill.period_start>=start)\
                 .filter(UtilBill.period_end<=end).all()
+        if utilbills == []:
+            raise Exception('No utility bills found between %s and %s' %
+                    (start, end))
         
         # update 'reebill_id' and 'processed' for each utilbill found
         for utilbill in utilbills:
