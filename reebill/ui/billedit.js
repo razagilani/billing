@@ -652,6 +652,19 @@ function renderWidgets()
         reeBillGrid.setDisabled(false);
     });
 
+    // handles all server errors for reeBillStore. see DataProxy.exception
+    // event for argument meanings
+    reeBillStore.on('exception', function(dataProxy, type, action, options, response,
+                arg) {
+        if (type == 'remote' && action == 'destroy') {
+            // server got an exception when trying to delete a reebill
+            successResponse(response.raw, options);
+        } else {
+            // catch-all for other errors
+            alert("reebillstore error: type "+type+", action "+action+", response "+response);
+        }
+    });
+
     var reeBillColModel = new Ext.grid.ColumnModel(
     {
         columns: [
@@ -1146,14 +1159,20 @@ function renderWidgets()
     });
 
     function successResponse(response, options) {
-        var o = {};
-        try {
-            o = Ext.decode(response.responseText);}
-        catch(e) {
-            alert("Could not decode JSON data");
+        var response_obj = {};
+        // decode response into object if it's a string
+        if (typeof(response_obj) == 'string') {
+            try {
+                response_obj = Ext.decode(response.responseText);
+            } catch (e) {
+                alert("Could not decode JSON data");
+            }
+        } else {
+            response_obj = response;
         }
-        if(true !== o.success) {
-            Ext.Msg.alert('Error', o.errors.reason + " " + o.errors.details);
+        if (true !== response_obj.success) {
+            Ext.Msg.alert('Error', response_obj.errors.reason + " " +
+                    response_obj.errors.details);
         } else {
             loadReeBillUIForSequence(selected_account, selected_sequence);
         }

@@ -1564,40 +1564,33 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     def reebill(self, xaction, start, limit, account, **kwargs):
+        '''Handles AJAX requests for reebill grid data.'''
         try:
             session = None
             self.check_authentication()
-
             if not xaction or not start or not limit:
                 raise ValueError("Bad Parameter Value")
-
             session = self.state_db.session()
 
             if xaction == "read":
-
-                reebills, totalCount = self.state_db.listReebills(session, int(start), int(limit), account)
-
+                reebills, totalCount = self.state_db.listReebills(session,
+                        int(start), int(limit), account)
                 # convert the result into a list of dictionaries for returning as
                 # JSON to the browser
                 rows = [{'id': reebill.sequence, 'sequence': reebill.sequence} for reebill in reebills]
-
                 session.commit()
                 return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
 
             elif xaction == "update":
-
                 return self.dumps({'success':False})
 
             elif xaction == "create":
-
                 return self.dumps({'success':False})
 
             elif xaction == "destroy":
                 sequences = json.loads(kwargs["rows"])
-
                 # single edit comes in not in a list
                 if type(sequences) is int: sequences = [sequences]
-
                 for sequence in sequences:
                     self.process.delete_reebill(session, account, sequence)
                     self.journal_dao.log_event(account, sequence, JournalDAO.ReeBillDeleted)
