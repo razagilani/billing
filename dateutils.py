@@ -50,31 +50,37 @@ def timedelta_in_hours(delta):
 
 
 #################################################################################
-## iso week calendar ############################################################
-## TODO test all these
-#
-#def iso_year_start(iso_year):
-#    # TODO test
-#    '''Returns the gregorian calendar date of the first day of the given ISO
-#    year.'''
-#    jan4 = date(iso_year, 1, 4)
-#    return jan4 - timedelta(jan4.isoweekday()-1)
-#
-#def iso_to_date(iso_year, iso_week, iso_day=1):
-#    '''Returns the gregorian calendar date for the given ISO year, week, and
-#    day. If day is not given, it is assumed to be the ISO week start.'''
-#    year_start = iso_year_start(iso_year)
-#    return year_start + datetime.timedelta(days=iso_day-1, weeks=iso_week-1)
-#
-#def iso_week_generator(start, end):
-#    '''Yields ISO weeks as (year, weeknumber) tuples in [start, end), where
-#    start and end are (year, week) tuples.'''
-#    d = iso_to_date(start)
-#    end_date = iso_to_date(end)
-#    while d < end_date:
-#        year, week = d.isocalendar()[:2]
-#        yield (year, week)
-#        d = min(d + timelta(days=7), iso_year_start(t.year + 1))
+## iso 8601 calendar ############################################################
+
+# python datetime module defines isocalendar() and isoweekday() but not year or
+# week number
+def iso_year(d):
+    return d.isocalendar[0]
+def iso_week(d):
+    return d.isocalendar()[1]
+
+def iso_year_start(iso_year):
+    '''Returns the Gregorian calendar date of the first day of the given ISO
+    year. Note that the Gregorian year may be different! For example, ISO 2013
+    starts on Dec. 31 2012.'''
+    jan4 = date(iso_year, 1, 4)
+    return jan4 - timedelta(days=jan4.isoweekday()-1)
+
+def iso_to_date(iso_year, iso_week, iso_weekday=1):
+    '''Returns the gregorian calendar date for the given ISO year, week, and
+    day. If day is not given, it is assumed to be the ISO week start.'''
+    year_start = iso_year_start(iso_year)
+    return year_start + timedelta(days=iso_weekday-1, weeks=iso_week-1)
+
+def iso_week_generator(start, end):
+    '''Yields ISO weeks as (year, weeknumber) tuples in [start, end), where
+    start and end are (year, weeknumber) tuples.'''
+    d = iso_to_date(*start)
+    end_date = iso_to_date(*end)
+    while d < end_date:
+        year, week = d.isocalendar()[:2]
+        yield (year, week)
+        d = min(d + timedelta(days=7), iso_year_start(d.year + 1))
 
 
 ################################################################################
@@ -218,6 +224,39 @@ def get_day_type(day):
 
 # TODO move out of this file
 class DateUtilsTest(unittest.TestCase):
+    def test_iso_year_start(self):
+        self.assertEquals(date(2008,12,29), iso_year_start(2009))
+        self.assertEquals(date(2010,1,4), iso_year_start(2010))
+        self.assertEquals(date(2011,1,3), iso_year_start(2011))
+        self.assertEquals(date(2012,1,2), iso_year_start(2012))
+        self.assertEquals(date(2012,12,31), iso_year_start(2013))
+
+    def test_iso_to_date(self):
+        self.assertEquals(date(2012,1,2), iso_to_date(2012,1))
+        self.assertEquals(date(2012,1,2), iso_to_date(2012,1, iso_weekday=1))
+        self.assertEquals(date(2012,1,3), iso_to_date(2012,1, iso_weekday=2))
+        self.assertEquals(date(2012,1,8), iso_to_date(2012,1, iso_weekday=7))
+
+        self.assertEquals(date(2012,3,19), iso_to_date(2012,12))
+        self.assertEquals(date(2012,3,19), iso_to_date(2012,12, iso_weekday=1))
+        self.assertEquals(date(2012,3,25), iso_to_date(2012,12, iso_weekday=7))
+
+        self.assertEquals(date(2012,12,24), iso_to_date(2012,52))
+        self.assertEquals(date(2012,12,24), iso_to_date(2012,52, iso_weekday=1))
+        self.assertEquals(date(2012,12,30), iso_to_date(2012,52, iso_weekday=7))
+
+    def test_iso_week_generator(self):
+        weeks = list(iso_week_generator((2012,1), (2013,1)))
+        self.assertEquals(52, len(weeks))
+        self.assertTrue(all(year == 2012 for (year, week) in weeks))
+        self.assertEquals((2012,1), weeks[0])
+        self.assertEquals((2012,2), weeks[1])
+        self.assertEquals((2012,3), weeks[2])
+        self.assertEquals((2012,50), weeks[49])
+        self.assertEquals((2012,51), weeks[50])
+        self.assertEquals((2012,52), weeks[51])
+
+
     def test_days_in_month(self):
         jul15 = date(2011,7,15)
         aug5 = date(2011,8,5)
@@ -424,6 +463,6 @@ class DateUtilsTest(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
 
-    import pprint
-    pprint.PrettyPrinter().pprint(sorted([(name, holiday(2011)) for holiday, name in FEDERAL_HOLIDAYS.iteritems()], key=lambda t:(t[1], t[0])))
+    #import pprint
+    #pprint.PrettyPrinter().pprint(sorted([(name, holiday(2011)) for holiday, name in FEDERAL_HOLIDAYS.iteritems()], key=lambda t:(t[1], t[0])))
     # TODO unit-test the holiday code
