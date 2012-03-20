@@ -1,0 +1,37 @@
+<VirtualHost *:80>
+                ServerAdmin webmaster@localhost
+                ServerName reebill-dev
+
+                DocumentRoot /home/[developer user]/skyline/billing/reebill/ui
+                <Directory />
+                        DirectoryIndex login.html
+                        Options FollowSymLinks
+                        AllowOverride None
+                </Directory>
+
+                # directory where utility bill images are saved
+                Alias /utilitybillimages /tmp/billimages
+                <Directory /tmp/billimages>
+                    #Order deny,allow
+                    #Allow from all
+                    Options Indexes FollowSymLinks MultiViews
+                    #AllowOverride None
+                </Directory>
+                <Directory /home/[developer user]/skyline/billing/presentation/webforms/billentry>
+                    Options Indexes FollowSymLinks MultiViews
+                    AllowOverride None
+                    Order allow,deny
+                    allow from all
+                </Directory>
+                ErrorLog ${APACHE_LOG_DIR}/billentry_error.log
+
+                # Possible values include: debug, info, notice, warn, error, crit,
+                # alert, emerg.
+                LogLevel warn
+
+                CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+WSGIScriptAlias /reebill /home/[developer user]/skyline/billing/reebill/bill_tool_bridge.py
+            WSGIDaemonProcess reebill user=[dev user] group=[dev group] processes=1 threads=10 python-path=/home/[dev user]/skyline:/usr/lib/python2.7/dist-packages/ChartDirector/lib
+            WSGIProcessGroup reebill
+        </VirtualHost>
