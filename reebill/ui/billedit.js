@@ -1142,14 +1142,10 @@ function renderWidgets()
     // this event is received when the tab panel tab is clicked on
     // and the panels it contains are displayed in accordion layout
     reeBillPanel.on('activate', function (panel) {
-
         reeBillStore.reload();
-
     });
 
-
-    function successResponse(response, options) 
-    {
+    function successResponse(response, options) {
         var o = {};
         try {
             o = Ext.decode(response.responseText);}
@@ -1163,8 +1159,7 @@ function renderWidgets()
         }
     }
 
-    function allOperations()
-    {
+    function allOperations() {
         Ext.Msg.alert('Notice', "One of the operations on this menu must be selected");
     }
 

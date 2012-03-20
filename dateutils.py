@@ -8,9 +8,31 @@ import math
 ISO_8601_DATETIME = '%Y-%m-%dT%H:%M:%SZ'
 ISO_8601_DATE = '%Y-%m-%d'
 
+
+def date_generator(from_date, to_date):
+    """Yields dates based on from_date up to but excluding to_date.  The reason
+    for the exclusion of to_date is that utility billing periods do not include
+    the whole day for the end date specified for the period.  That is, the
+    utility billing period range of 2/15 to 3/4, for example, is for the usage
+    at 0:00 2/15 to 0:00 3/4.  0:00 3/4 is before the 3/4 begins."""
+    if (from_date > to_date):
+        return
+    while from_date < to_date:
+        yield from_date
+        from_date = from_date + timedelta(days = 1)
+    return
+
+def date_to_datetime(d):
+    '''Returns a datetime whose date component is d and whose time component is
+    midnight.'''
+    return datetime(d.year, d.month, d.day, 0)
+
+################################################################################
+# timedeltas ###################################################################
+
 def timedelta_in_hours(delta):
     '''Returns the given timedelta converted into hours, rounded toward 0 to
-    the nearest integer. (Used by scripts/deck/deck_uploader.py)'''
+    the nearest integer.'''
     # a timedelta stores time in days and seconds. each of these can be
     # positive or negative. convert each part into hours and round it toward 0.
     # (this is ugly because python rounding goes toward negative infinity by
@@ -26,10 +48,37 @@ def timedelta_in_hours(delta):
         return int(math.floor(total_hours))
     return - int(math.floor(abs(total_hours)))
 
-def date_to_datetime(d):
-    '''Returns a datetime whose date component is d and whose time component is
-    midnight.'''
-    return datetime(d.year, d.month, d.day, 0)
+
+#################################################################################
+## iso week calendar ############################################################
+## TODO test all these
+#
+#def iso_year_start(iso_year):
+#    # TODO test
+#    '''Returns the gregorian calendar date of the first day of the given ISO
+#    year.'''
+#    jan4 = date(iso_year, 1, 4)
+#    return jan4 - timedelta(jan4.isoweekday()-1)
+#
+#def iso_to_date(iso_year, iso_week, iso_day=1):
+#    '''Returns the gregorian calendar date for the given ISO year, week, and
+#    day. If day is not given, it is assumed to be the ISO week start.'''
+#    year_start = iso_year_start(iso_year)
+#    return year_start + datetime.timedelta(days=iso_day-1, weeks=iso_week-1)
+#
+#def iso_week_generator(start, end):
+#    '''Yields ISO weeks as (year, weeknumber) tuples in [start, end), where
+#    start and end are (year, week) tuples.'''
+#    d = iso_to_date(start)
+#    end_date = iso_to_date(end)
+#    while d < end_date:
+#        year, week = d.isocalendar()[:2]
+#        yield (year, week)
+#        d = min(d + timelta(days=7), iso_year_start(t.year + 1))
+
+
+################################################################################
+# months #######################################################################
 
 def days_in_month(year, month, start_date, end_date):
     '''Returns the number of days in 'month' of 'year' between start_date
@@ -86,8 +135,8 @@ def estimate_month(start_date, end_date):
 
 def months_of_past_year(year, month):
     '''Returns a list of (year, month) tuples representing all months in the
-    year preceding 'dt', including ('year', 'month') itself (and not including
-    the same month in the previous year).'''
+    year preceding and including ('year', 'month') (and not including the same
+    month in the previous year).'''
     result = []
     a_year = year - 1 if month < 12 else year
     a_month = month % 12 + 1 # i.e. the month after 'month' in 1-based numbering
@@ -98,24 +147,14 @@ def months_of_past_year(year, month):
         a_month = a_month % 12 + 1
     return result
 
-def date_generator(from_date, to_date):
-    """Yields dates based on from_date up to but excluding to_date.  The reason
-    for the exclusion of to_date is that utility billing periods do not include
-    the whole day for the end date specified for the period.  That is, the
-    utility billing period range of 2/15 to 3/4, for example, is for the usage
-    at 0:00 2/15 to 0:00 3/4.  0:00 3/4 is before the 3/4 begins."""
-    if (from_date > to_date):
-        return
-    while from_date < to_date:
-        yield from_date
-        from_date = from_date + timedelta(days = 1)
-    return
+
+################################################################################
+# federal holidays (for time-of-use billing) ###################################
 
 def nth_weekday(n, weekday_number, month):
     '''Returns a function mapping years to the 'n'th weekday of 'month' in the
-    given year, so holidays like "3rd monday of February" can be defined
-    without dealing with the insanity of the Python calendar library. 'n' is
-    ether a 1-based index or the string "last"; weekday_number is 0-based
+    given year, so holidays like "3rd monday of February" can be defined. 'n'
+    is ether a 1-based index or the string "last"; 'weekday_number' is 0-based
     starting at Sunday.'''
     cal = calendar.Calendar()
     def result(year):
@@ -177,7 +216,7 @@ def get_day_type(day):
     return 'weekday'
     
 
-
+# TODO move out of this file
 class DateUtilsTest(unittest.TestCase):
     def test_days_in_month(self):
         jul15 = date(2011,7,15)
