@@ -119,6 +119,17 @@ def get_w_week_start(d):
         return date_by_w_week(d.year, w_week_number(d), 1)
     return date(d.year, 1, 1)
 
+def next_w_week_start(d):
+    '''Returns the date of the start of the next "%W" week following the date
+    or datetime d. (If d is itself the start of a "%W" week, the next week's
+    start is returned.)'''
+    if type(d) is datetime:
+        d = d.date()
+    d2 = d
+    while get_w_week_start(d2) == get_w_week_start(d):
+        d2 += timedelta(days=1)
+    return d2
+
 ################################################################################
 # months #######################################################################
 
@@ -342,6 +353,16 @@ class DateUtilsTest(unittest.TestCase):
         self.assertEquals(date(2012,1,1), get_w_week_start(date(2012,1,1)))
         self.assertEquals(date(2012,1,2), get_w_week_start(date(2012,1,2)))
         self.assertEquals(date(2012,1,2), get_w_week_start(date(2012,1,3)))
+
+    def test_next_w_week_start(self):
+        self.assertEquals(date(2012,1,1), next_w_week_start(date(2011,12,31)))
+        self.assertEquals(date(2012,1,2), next_w_week_start(date(2012,1,1)))
+        self.assertEquals(date(2012,1,9), next_w_week_start(date(2012,1,2)))
+        self.assertEquals(date(2012,1,9), next_w_week_start(date(2012,1,3)))
+        self.assertEquals(date(2012,1,9), next_w_week_start(date(2012,1,8)))
+        self.assertEquals(date(2012,12,31), next_w_week_start(date(2012,12,24)))
+        self.assertEquals(date(2012,12,31), next_w_week_start(date(2012,12,30)))
+        self.assertEquals(date(2013,1,1), next_w_week_start(date(2012,12,31)))
 
     def test_days_in_month(self):
         jul15 = date(2011,7,15)
