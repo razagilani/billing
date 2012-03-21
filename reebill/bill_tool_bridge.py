@@ -422,17 +422,11 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
-    def new_account(self, name, account, discount_rate, template_account, 
-        new_ba_addressee, new_ba_street1, new_ba_city, new_ba_state, new_ba_postal_code,
-        new_sa_addressee, new_sa_street1, new_sa_city, new_sa_state, new_sa_postal_code,
-        **args):
+    def new_account(self, name, account, discount_rate, template_account, **args):
         try:
             session = None
             self.check_authentication()
             if not name or not account or not discount_rate or not template_account:
-                raise ValueError("Bad Parameter Value")
-            if not new_ba_addressee or not new_ba_street1 or not new_ba_city or not new_ba_state or not new_ba_postal_code \
-            or not new_sa_addressee or not new_sa_street1 or not new_sa_city or not new_sa_state or not new_sa_postal_code:
                 raise ValueError("Bad Parameter Value")
 
             session = self.state_db.session()
@@ -445,25 +439,8 @@ class BillToolBridge:
             self.journal_dao.journal(customer.account, 0, "Newly created")
 
             self.process.roll_bill(session, reebill)
-
-            # set addresses
-            ba = reebill.billing_address
-            sa = reebill.service_address
-            
-            reebill.billing_address['ba_addressee'] = new_ba_addressee
-            reebill.billing_address['ba_street1'] = new_ba_street1
-            reebill.billing_address['ba_city'] = new_ba_city
-            reebill.billing_address['ba_state'] = new_ba_state
-            reebill.billing_address['ba_postal_code'] = new_ba_postal_code
-
-            reebill.service_address['sa_addressee'] = new_sa_addressee
-            reebill.service_address['sa_street1'] = new_sa_street1
-            reebill.service_address['sa_city'] = new_sa_city
-            reebill.service_address['sa_state'] = new_sa_state
-            reebill.service_address['sa_postal_code'] = new_sa_postal_code
-
             self.reebill_dao.save_reebill(reebill)
-            self.journal_dao.journal(account, 0, "Template ReeBill rolled")
+            self.journal_dao.journal(account, 0, "ReeBill rolled")
 
             session.commit()
 
@@ -695,7 +672,8 @@ class BillToolBridge:
                     sequence in sequences]
 
             # render all the bills
-            # TODO 25560415 this fails if reebill rendering is turned off--there should be a better error message
+            # TODO 25560415 this fails if reebill rendering is turned
+            # off--there should be a better error message
             for reebill in all_bills:
                 self.renderer.render(reebill, 
                     self.config.get("billdb", "billpath")+ "%s" % reebill.account, 
@@ -742,14 +720,17 @@ class BillToolBridge:
     def full_names_of_accounts(self, accounts):
         '''Given a list of account numbers (as strings), returns a list
         containing the "full name" of each account, each of which is of the
-        form "accountnumber - codename - casualname - primus". Names that do not
-        exist for a given account are skipped.'''
+        form "accountnumber - codename - casualname - primus" (sorted by
+        account). Names that do not exist for a given account are skipped.'''
         if self.config.getboolean('runtime', 'integrate_nexus') is False:
             return accounts
 
-        all_accounts_all_names = NexusUtil().all_ids_for_accounts("billing", accounts)
+        # get list of customer name dictionaries sorted by their billing account
+        all_accounts_all_names = NexusUtil().all_names_for_accounts(accounts)
+        name_dicts = sorted(all_accounts_all_names.iteritems())
+
         result = []
-        for account, all_names in zip(accounts, all_accounts_all_names):
+        for account, all_names in name_dicts:
             names = [account]
             try:
                 names.append(all_names['codename'])
@@ -817,8 +798,6 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     def retrieve_account_status(self, start, limit, **args):
-        '''Handles AJAX request for data to display in Account Processing
-        Status grid.'''
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
@@ -829,32 +808,20 @@ class BillToolBridge:
             # result is a list of dictionaries of the form
             # {account: full name, dayssince: days}
             session = self.state_db.session()
-            statuses, totalCount = self.state_db.retrieve_status_days_since(
+            statuses, count = self.state_db.retrieve_status_days_since(
                     session, int(start), int(limit))
-            #full_names = self.full_names_of_accounts([s.account for s in statuses])
-            #rows = [dict([
-                #('account', status.account),
-                #('fullname', full_names[i]),
-                #('dayssince', status.dayssince)
-            #]) for i, status in enumerate(statuses)]
+            # sort by account--TODO do the sorting in the database query itself
+            statuses.sort(key=lambda s: s.account)
 
-            rows = []
-            print self.listAccounts()
-            name_dicts = NexusUtil().all_ids_for_accounts("billing",
-                    self.state_db.listAccounts(session))
-            print name_dicts
-            for i, status in enumerate(statuses):
-                d = { 'account': status.account, 'dayssince': status.dayssince }
-                if 'codename' in name_dicts[i]:
-                    d.update({'codename': name_dicts[i]['codename']})
-                if 'casualname' in name_dicts[i]:
-                    d.update({'casualname': name_dicts[i]['casualname']})
-                if 'primus' in name_dicts[i]:
-                    d.update({'primusname': name_dicts[i]['primus']})
-                rows.append(d)
+            full_names = self.full_names_of_accounts([s.account for s in statuses])
+            rows = [dict([
+                ('account', status.account),
+                ('fullname', full_names[i]),
+                ('dayssince', status.dayssince)
+            ]) for i, status in enumerate(statuses)]
 
             session.commit()
-            return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
+            return self.dumps({'success': True, 'rows':rows, 'results':count})
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)

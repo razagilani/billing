@@ -50,12 +50,12 @@ def timedelta_in_hours(delta):
 
 
 #################################################################################
-## iso 8601 calendar ############################################################
+## iso 8601 and %W and week numbering #########################################
 
 # python datetime module defines isocalendar() and isoweekday() but not year or
 # week number
 def iso_year(d):
-    return d.isocalendar[0]
+    return d.isocalendar()[0]
 def iso_week(d):
     return d.isocalendar()[1]
 
@@ -72,6 +72,12 @@ def iso_to_date(iso_year, iso_week, iso_weekday=1):
     year_start = iso_year_start(iso_year)
     return year_start + timedelta(days=iso_weekday-1, weeks=iso_week-1)
 
+def iso_to_datetime(iso_year, iso_week, iso_weekday=1):
+    '''Returns the gregorian calendar date for the given ISO year, week, and
+    day as a datetime (at midnight). If day is not given, it is assumed to be
+    the ISO week start.'''
+    return date_to_datetime(iso_to_date(iso_year, iso_week, iso_weekday))
+
 def iso_week_generator(start, end):
     '''Yields ISO weeks as (year, weeknumber) tuples in [start, end), where
     start and end are (year, weeknumber) tuples.'''
@@ -82,6 +88,57 @@ def iso_week_generator(start, end):
         yield (year, week)
         d = min(d + timedelta(days=7), iso_year_start(d.year + 1))
 
+def w_week_number(d):
+    '''Returns the date's "%W" week number. "%W" weeks start on Monday, but
+    unlike in the ISO 8601 calendar, days before the first Monday of the year
+    are considered to be in the same year but in week 0.'''
+    return int(d.strftime('%W'))
+
+def date_by_w_week(year, w_week, weekday):
+    '''Returns the date specified by its year, "%W" week number, and 0-based
+    "%w" weekday number, starting on Sunday. (Note that "%W" weeks start on
+    Monday, so the weekday numbers of each "%W" week are 1,2,3,4,5,6,0. This
+    may suck but it's necessary for compatibility with Skyliner.)'''
+    if weekday not in range(7):
+        # strptime doesn't report this error clearly
+        raise ValueError('Invalid weekday: %s' % weekday)
+    date_string = '%.4d %.2d %d' % (year, w_week, weekday)
+    result = datetime.strptime(date_string, '%Y %W %w').date()
+    if result.year != year or w_week_number(result) != w_week:
+        raise ValueError('There is no weekday %s of week %s in %s' % (weekday,
+            w_week, year))
+    return result
+
+def get_w_week_start(d):
+    '''Returns the date of the first day of the "%W" week containing the date
+    'd'.'''
+    # "%W" weeks with numbers >= 1 start on Monday, but the "week 0" that
+    # covers the days before the first Monday of the year always starts on the
+    # first day of the year, no matter what weekday that is.
+    if w_week_number(d) > 0:
+        return date_by_w_week(d.year, w_week_number(d), 1)
+    return date(d.year, 1, 1)
+
+def next_w_week_start(d):
+    '''Returns the date of the start of the next "%W" week following the date
+    or datetime d. (If d is itself the start of a "%W" week, the next week's
+    start is returned.)'''
+    if type(d) is datetime:
+        d = d.date()
+    d2 = d
+    while get_w_week_start(d2) == get_w_week_start(d):
+        d2 += timedelta(days=1)
+    return d2
+
+#def length_of_w_week(year, w_week):
+    #'''Returns the number of days in the given "%W" week.'''
+    #if w_week == 0:
+        ## star of week 0 is always Jan. 1
+        #week_start == date(d.year, 1, 1)
+    #else:
+        ## every week other than 0 has a monday in it
+        #week_start = get_w_week_start(year, w_week, 1)
+    #(return next_w_week_start(week_start) - week_start).days
 
 ################################################################################
 # months #######################################################################
@@ -255,6 +312,78 @@ class DateUtilsTest(unittest.TestCase):
         self.assertEquals((2012,50), weeks[49])
         self.assertEquals((2012,51), weeks[50])
         self.assertEquals((2012,52), weeks[51])
+    
+    def test_w_week(self):
+        self.assertEquals(0, w_week_number(date(2012,1,1)))
+        self.assertEquals(1, w_week_number(date(2012,1,2)))
+        self.assertEquals(1, w_week_number(date(2012,1,3)))
+        self.assertEquals(1, w_week_number(date(2012,1,7)))
+        self.assertEquals(1, w_week_number(date(2012,1,8)))
+        self.assertEquals(2, w_week_number(date(2012,1,9)))
+        self.assertEquals(2, w_week_number(date(2012,1,15)))
+        self.assertEquals(51, w_week_number(date(2012,12,23)))
+        self.assertEquals(52, w_week_number(date(2012,12,24)))
+        self.assertEquals(52, w_week_number(date(2012,12,30)))
+        self.assertEquals(53, w_week_number(date(2012,12,31)))
+
+        # 2018 has no week 0 because it starts on a Monday
+        self.assertEquals(1, w_week_number(date(2018,1,1)))
+
+    def test_date_by_w_week(self):
+        # first day of 2012: Sunday in week 0
+        self.assertEquals(date(2012,1,1), date_by_w_week(2012, 0, 0))
+
+        # there is no Monday in week 0 of 2012
+        self.assertRaises(ValueError, date_by_w_week, 2012, 0, 1)
+
+        # first "real" week of 2012 is week 1: Monday Jan. 2 - Sunday Jan. 8
+        self.assertEquals(date(2012,1,2), date_by_w_week(2012, 1, 1))
+        self.assertEquals(date(2012,1,3), date_by_w_week(2012, 1, 2))
+        self.assertEquals(date(2012,1,7), date_by_w_week(2012, 1, 6))
+        self.assertEquals(date(2012,1,8), date_by_w_week(2012, 1, 0))
+
+        # another week in 2012
+        self.assertEquals(date(2012,3,19), date_by_w_week(2012, 12, 1))
+        self.assertEquals(date(2012,3,20), date_by_w_week(2012, 12, 2))
+        self.assertEquals(date(2012,3,24), date_by_w_week(2012, 12, 6))
+        self.assertEquals(date(2012,3,25), date_by_w_week(2012, 12, 0))
+
+        # end of 2012
+        self.assertEquals(date(2012,12,23), date_by_w_week(2012, 51, 0))
+        self.assertEquals(date(2012,12,24), date_by_w_week(2012, 52, 1))
+        self.assertEquals(date(2012,12,30), date_by_w_week(2012, 52, 0))
+        self.assertEquals(date(2012,12,31), date_by_w_week(2012, 53, 1))
+        self.assertRaises(ValueError, date_by_w_week, 2012, 53, 2)
+        self.assertRaises(ValueError, date_by_w_week, 2012, 53, 0)
+
+        # 2018 has no week 0 because it starts on a Monday
+        self.assertRaises(ValueError, date_by_w_week, 2018, 0, 1)
+        self.assertRaises(ValueError, date_by_w_week, 2018, 0, 2)
+        self.assertRaises(ValueError, date_by_w_week, 2018, 0, 6)
+        self.assertRaises(ValueError, date_by_w_week, 2018, 0, 0)
+
+    def test_get_w_week_start(self):
+        self.assertEquals(date(2011,1,1), get_w_week_start(date(2011,1,1)))
+        self.assertEquals(date(2011,1,1), get_w_week_start(date(2011,1,2)))
+        self.assertEquals(date(2011,1,3), get_w_week_start(date(2011,1,3)))
+        self.assertEquals(date(2011,1,3), get_w_week_start(date(2011,1,4)))
+        self.assertEquals(date(2011,1,3), get_w_week_start(date(2011,1,9)))
+        self.assertEquals(date(2011,1,10), get_w_week_start(date(2011,1,10)))
+        self.assertEquals(date(2012,1,1), get_w_week_start(date(2012,1,1)))
+        self.assertEquals(date(2012,1,2), get_w_week_start(date(2012,1,2)))
+        self.assertEquals(date(2012,1,2), get_w_week_start(date(2012,1,3)))
+        self.assertEquals(date(2018,1,1), get_w_week_start(date(2018,1,1)))
+
+    def test_next_w_week_start(self):
+        self.assertEquals(date(2012,1,1), next_w_week_start(date(2011,12,31)))
+        self.assertEquals(date(2012,1,2), next_w_week_start(date(2012,1,1)))
+        self.assertEquals(date(2012,1,9), next_w_week_start(date(2012,1,2)))
+        self.assertEquals(date(2012,1,9), next_w_week_start(date(2012,1,3)))
+        self.assertEquals(date(2012,1,9), next_w_week_start(date(2012,1,8)))
+        self.assertEquals(date(2012,12,31), next_w_week_start(date(2012,12,24)))
+        self.assertEquals(date(2012,12,31), next_w_week_start(date(2012,12,30)))
+        self.assertEquals(date(2013,1,1), next_w_week_start(date(2012,12,31)))
+        self.assertEquals(date(2018,1,8), get_w_week_start(date(2018,1,8)))
 
 
     def test_days_in_month(self):
