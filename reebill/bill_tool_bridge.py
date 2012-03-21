@@ -813,10 +813,15 @@ class BillToolBridge:
             # sort by account--TODO do the sorting in the database query itself
             statuses.sort(key=lambda s: s.account)
 
-            full_names = self.full_names_of_accounts([s.account for s in statuses])
+            name_dicts = NexusUtil().all_names_for_accounts([s.account for s in statuses])
             rows = [dict([
                 ('account', status.account),
-                ('fullname', full_names[i]),
+                ('codename', name_dicts[status.account]['codename'] if
+                    'codename' in name_dicts[status.account] else ''),
+                ('casualname', name_dicts[status.account]['casualname'] if
+                    'casualname' in name_dicts[status.account] else ''),
+                ('primusname', name_dicts[status.account]['primus'] if
+                    'primus' in name_dicts[status.account] else ''),
                 ('dayssince', status.dayssince)
             ]) for i, status in enumerate(statuses)]
 
