@@ -50,7 +50,7 @@ def timedelta_in_hours(delta):
 
 
 #################################################################################
-## iso 8601 calendar and week numbering #########################################
+## iso 8601 and %W and week numbering #########################################
 
 # python datetime module defines isocalendar() and isoweekday() but not year or
 # week number
@@ -96,18 +96,28 @@ def w_week_number(d):
 
 def date_by_w_week(year, w_week, weekday):
     '''Returns the date specified by its year, "%W" week number, and 0-based
-    "%w" weekday number (starting on Sunday--note that "%W" weeks start on
-    Monday).'''
+    "%w" weekday number, starting on Sunday. (Note that "%W" weeks start on
+    Monday, so the weekday numbers of each "%W" week are 1,2,3,4,5,6,0. This
+    may suck but it's necessary for compatibility with Skyliner.)'''
     if weekday not in range(7):
         # strptime doesn't report this error clearly
         raise ValueError('Invalid weekday: %s' % weekday)
     date_string = '%.4d %.2d %d' % (year, w_week, weekday)
     result = datetime.strptime(date_string, '%Y %W %w').date()
-    if result.year != year or w_week_number(result) != w_week: #or result.weekday() != weekday:
+    if result.year != year or w_week_number(result) != w_week:
         raise ValueError('There is no weekday %s of week %s in %s' % (weekday,
             w_week, year))
     return result
 
+def get_w_week_start(d):
+    '''Returns the date of the first day of the "%W" week containing the date
+    'd'.'''
+    # "%W" weeks with numbers >= 1 start on Monday, but the "week 0" that
+    # covers the days before the first Monday of the year always starts on the
+    # first day of the year, no matter what weekday that is.
+    if w_week_number(d) > 0:
+        return date_by_w_week(d.year, w_week_number(d), 1)
+    return date(d.year, 1, 1)
 
 ################################################################################
 # months #######################################################################
@@ -321,6 +331,17 @@ class DateUtilsTest(unittest.TestCase):
         self.assertEquals(date(2012,12,31), date_by_w_week(2012, 53, 1))
         self.assertRaises(ValueError, date_by_w_week, 2012, 53, 2)
         self.assertRaises(ValueError, date_by_w_week, 2012, 53, 0)
+
+    def test_get_w_week_start(self):
+        self.assertEquals(date(2011,1,1), get_w_week_start(date(2011,1,1)))
+        self.assertEquals(date(2011,1,1), get_w_week_start(date(2011,1,2)))
+        self.assertEquals(date(2011,1,3), get_w_week_start(date(2011,1,3)))
+        self.assertEquals(date(2011,1,3), get_w_week_start(date(2011,1,4)))
+        self.assertEquals(date(2011,1,3), get_w_week_start(date(2011,1,9)))
+        self.assertEquals(date(2011,1,10), get_w_week_start(date(2011,1,10)))
+        self.assertEquals(date(2012,1,1), get_w_week_start(date(2012,1,1)))
+        self.assertEquals(date(2012,1,2), get_w_week_start(date(2012,1,2)))
+        self.assertEquals(date(2012,1,2), get_w_week_start(date(2012,1,3)))
 
     def test_days_in_month(self):
         jul15 = date(2011,7,15)
