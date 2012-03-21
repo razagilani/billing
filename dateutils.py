@@ -49,7 +49,7 @@ def timedelta_in_hours(delta):
     return - int(math.floor(abs(total_hours)))
 
 
-#################################################################################
+################################################################################
 ## iso 8601 and %W and week numbering #########################################
 
 # python datetime module defines isocalendar() and isoweekday() but not year or
@@ -130,15 +130,17 @@ def next_w_week_start(d):
         d2 += timedelta(days=1)
     return d2
 
-#def length_of_w_week(year, w_week):
-    #'''Returns the number of days in the given "%W" week.'''
-    #if w_week == 0:
-        ## star of week 0 is always Jan. 1
-        #week_start == date(d.year, 1, 1)
-    #else:
-        ## every week other than 0 has a monday in it
-        #week_start = get_w_week_start(year, w_week, 1)
-    #(return next_w_week_start(week_start) - week_start).days
+def length_of_w_week(year, w_week):
+    '''Returns the number of days in the given "%W" week.'''
+    if w_week == 0:
+        # start of week 0 is always Jan. 1, but week 0 may not always exist
+        week_start = date(year, 1, 1)
+        if week_start.weekday() == 0:
+            raise ValueError('%s has no week 0' % year)
+    else:
+        # every week other than 0 has a monday in it
+        week_start = get_w_week_start(date_by_w_week(year, w_week, 1))
+    return (next_w_week_start(week_start) - week_start).days
 
 ################################################################################
 # months #######################################################################
@@ -385,6 +387,18 @@ class DateUtilsTest(unittest.TestCase):
         self.assertEquals(date(2013,1,1), next_w_week_start(date(2012,12,31)))
         self.assertEquals(date(2018,1,8), get_w_week_start(date(2018,1,8)))
 
+    def test_length_of_w_week(self):
+        self.assertEquals(6, length_of_w_week(2011,52))
+        self.assertEquals(1, length_of_w_week(2012,0))
+        self.assertEquals(7, length_of_w_week(2012,1))
+        self.assertEquals(7, length_of_w_week(2012,2))
+        self.assertEquals(7, length_of_w_week(2012,3))
+        self.assertEquals(7, length_of_w_week(2012,51))
+        self.assertEquals(7, length_of_w_week(2012,52))
+        self.assertEquals(1, length_of_w_week(2012,53))
+        self.assertEquals(6, length_of_w_week(2013,0))
+        self.assertEquals(7, length_of_w_week(2013,1))
+        self.assertRaises(ValueError, length_of_w_week, 2018, 0)
 
     def test_days_in_month(self):
         jul15 = date(2011,7,15)
