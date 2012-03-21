@@ -74,16 +74,35 @@ class NexusUtil(object):
         
         #return result[0]
 
-    def all_ids_for_accounts(self, system, id_objects, key=lambda x:x):
-        '''Returns a list of all customer names for all the customers specified
-        in the list 'id_objects': an id_object can be just a customer id (as a
-        string), or it can be any object from which the function 'key' can
-        extract a customer id. ('key' is the identity function by default.)
-        Intended to simplify and speed up bill_tool_bridge functions by not
-        requiring them to call NexusUtil.all() for each customer
+    def all_names_for_accounts(self, accounts, key=lambda x:x):
+        '''Given a list of customer accounts (ids in the billing system),
+        returns a dictionary mapping each billing account to a dictionary of
+        names for each customer in all systems. For example,
+        all_names_for_accounts(['1002', '10003']) returns:
+        {
+            '10002': {
+                'billing': '10002',
+                'olap': 'penvillage-1},
+                casualname: 'Penick Village',
+                ...
+            },
+            '10003': {
+                'billing': '10003',
+                'olap': 'agni-3501',
+                'casualname': 'Monroe Towers',
+                ...
+            }
+        }
+        Instead of specifying a list of billing account strings in 'accounts',
+        you can specify any object from which the function 'key' can extract a
+        billing account string. ('key' is the identity function by default.)
+        This is intended to simplify and speed up bill_tool_bridge functions by
+        not requiring them to call NexusUtil.all() for each customer
         individually.'''
-        result = [self.fast_all(system, key(id_object)) for id_object in id_objects]
-        return result
+        return dict([
+            (account, self.fast_all('billing', key(account)))
+                for account in accounts
+        ])
 
 if __name__ == "__main__":
     parser = OptionParser()

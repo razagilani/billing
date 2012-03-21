@@ -672,7 +672,8 @@ class BillToolBridge:
                     sequence in sequences]
 
             # render all the bills
-            # TODO 25560415 this fails if reebill rendering is turned off--there should be a better error message
+            # TODO 25560415 this fails if reebill rendering is turned
+            # off--there should be a better error message
             for reebill in all_bills:
                 self.renderer.render(reebill, 
                     self.config.get("billdb", "billpath")+ "%s" % reebill.account, 
@@ -719,14 +720,17 @@ class BillToolBridge:
     def full_names_of_accounts(self, accounts):
         '''Given a list of account numbers (as strings), returns a list
         containing the "full name" of each account, each of which is of the
-        form "accountnumber - codename - casualname - primus". Names that do not
-        exist for a given account are skipped.'''
+        form "accountnumber - codename - casualname - primus" (sorted by
+        account). Names that do not exist for a given account are skipped.'''
         if self.config.getboolean('runtime', 'integrate_nexus') is False:
             return accounts
 
-        all_accounts_all_names = NexusUtil().all_ids_for_accounts("billing", accounts)
+        # get list of customer name dictionaries sorted by their billing account
+        all_accounts_all_names = NexusUtil().all_names_for_accounts(accounts)
+        name_dicts = sorted(all_accounts_all_names.iteritems())
+
         result = []
-        for account, all_names in zip(accounts, all_accounts_all_names):
+        for account, all_names in name_dicts:
             names = [account]
             try:
                 names.append(all_names['codename'])
@@ -804,13 +808,20 @@ class BillToolBridge:
             # result is a list of dictionaries of the form
             # {account: full name, dayssince: days}
             session = self.state_db.session()
-            statuses, totalCount = self.state_db.retrieve_status_days_since(session, int(start), int(limit))
+            statuses, count = self.state_db.retrieve_status_days_since(
+                    session, int(start), int(limit))
+            # sort by account--TODO do the sorting in the database query itself
+            statuses.sort(key=lambda s: s.account)
+
             full_names = self.full_names_of_accounts([s.account for s in statuses])
-            rows = [dict([('account', status.account), ('fullname', full_names[i]), ('dayssince', status.dayssince)])
-                    for i, status in enumerate(statuses)]
+            rows = [dict([
+                ('account', status.account),
+                ('fullname', full_names[i]),
+                ('dayssince', status.dayssince)
+            ]) for i, status in enumerate(statuses)]
 
             session.commit()
-            return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
+            return self.dumps({'success': True, 'rows':rows, 'results':count})
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)
