@@ -50,7 +50,7 @@ def timedelta_in_hours(delta):
 
 
 #################################################################################
-## iso 8601 calendar ############################################################
+## iso 8601 calendar and week numbering #########################################
 
 # python datetime module defines isocalendar() and isoweekday() but not year or
 # week number
@@ -87,6 +87,26 @@ def iso_week_generator(start, end):
         year, week = d.isocalendar()[:2]
         yield (year, week)
         d = min(d + timedelta(days=7), iso_year_start(d.year + 1))
+
+def w_week_number(d):
+    '''Returns the date's "%W" week number. "%W" weeks start on Monday, but
+    unlike in the ISO 8601 calendar, days before the first Monday of the year
+    are considered to be in the same year but in week 0.'''
+    return int(d.strftime('%W'))
+
+def date_by_w_week(year, w_week, weekday):
+    '''Returns the date specified by its year, "%W" week number, and 0-based
+    "%w" weekday number (starting on Sunday--note that "%W" weeks start on
+    Monday).'''
+    if weekday not in range(7):
+        # strptime doesn't report this error clearly
+        raise ValueError('Invalid weekday: %s' % weekday)
+    date_string = '%.4d %.2d %d' % (year, w_week, weekday)
+    result = datetime.strptime(date_string, '%Y %W %w').date()
+    if result.year != year or w_week_number(result) != w_week: #or result.weekday() != weekday:
+        raise ValueError('There is no weekday %s of week %s in %s' % (weekday,
+            w_week, year))
+    return result
 
 
 ################################################################################
@@ -261,7 +281,46 @@ class DateUtilsTest(unittest.TestCase):
         self.assertEquals((2012,50), weeks[49])
         self.assertEquals((2012,51), weeks[50])
         self.assertEquals((2012,52), weeks[51])
+    
+    def test_w_week(self):
+        self.assertEquals(0, w_week_number(date(2012,1,1)))
+        self.assertEquals(1, w_week_number(date(2012,1,2)))
+        self.assertEquals(1, w_week_number(date(2012,1,3)))
+        self.assertEquals(1, w_week_number(date(2012,1,7)))
+        self.assertEquals(1, w_week_number(date(2012,1,8)))
+        self.assertEquals(2, w_week_number(date(2012,1,9)))
+        self.assertEquals(2, w_week_number(date(2012,1,15)))
+        self.assertEquals(51, w_week_number(date(2012,12,23)))
+        self.assertEquals(52, w_week_number(date(2012,12,24)))
+        self.assertEquals(52, w_week_number(date(2012,12,30)))
+        self.assertEquals(53, w_week_number(date(2012,12,31)))
 
+    def test_date_by_w_week(self):
+        # first day of 2012: Sunday in week 0
+        self.assertEquals(date(2012,1,1), date_by_w_week(2012, 0, 0))
+
+        # there is no Monday in week 0 of 2012
+        self.assertRaises(ValueError, date_by_w_week, 2012, 0, 1)
+
+        # first "real" week of 2012 is week 1: Monday Jan. 2 - Sunday Jan. 8
+        self.assertEquals(date(2012,1,2), date_by_w_week(2012, 1, 1))
+        self.assertEquals(date(2012,1,3), date_by_w_week(2012, 1, 2))
+        self.assertEquals(date(2012,1,7), date_by_w_week(2012, 1, 6))
+        self.assertEquals(date(2012,1,8), date_by_w_week(2012, 1, 0))
+
+        # another week in 2012
+        self.assertEquals(date(2012,3,19), date_by_w_week(2012, 12, 1))
+        self.assertEquals(date(2012,3,20), date_by_w_week(2012, 12, 2))
+        self.assertEquals(date(2012,3,24), date_by_w_week(2012, 12, 6))
+        self.assertEquals(date(2012,3,25), date_by_w_week(2012, 12, 0))
+
+        # end of 2012
+        self.assertEquals(date(2012,12,23), date_by_w_week(2012, 51, 0))
+        self.assertEquals(date(2012,12,24), date_by_w_week(2012, 52, 1))
+        self.assertEquals(date(2012,12,30), date_by_w_week(2012, 52, 0))
+        self.assertEquals(date(2012,12,31), date_by_w_week(2012, 53, 1))
+        self.assertRaises(ValueError, date_by_w_week, 2012, 53, 2)
+        self.assertRaises(ValueError, date_by_w_week, 2012, 53, 0)
 
     def test_days_in_month(self):
         jul15 = date(2011,7,15)
