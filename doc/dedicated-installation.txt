@@ -26,7 +26,8 @@ Create reebill hosting security group admitting SSH and HTTP/S
 
 SSH Keys are saved in IT/ec2keys
 
-Connecting to the newly configured host:   ssh -i /home/randrews/Dropbox/Skyline-IT/ec2keys/reebill-atsite.pem ec2-user@ec2-107-21-175-174.compute-1.amazonaws.com
+Connecting to the newly configured host:   
+ssh -i /home/randrews/Dropbox/Skyline-IT/ec2keys/reebill-atsite.pem ec2-user@ec2-50-16-73-74.compute-1.amazonaws.com
 
 
 Create user for running and deploying ReeBill
