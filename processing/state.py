@@ -59,6 +59,7 @@ def guess_utilbills_and_end_date(session, account, start_date):
 
     if start_date == None:
         print >> sys.stderr, 'guess_utilbills_and_end_date got start_date == None'
+        return ([],None) 
 
     # get length of last reebill (note that we don't store dates for reebills
     # in MySQL)
@@ -200,6 +201,9 @@ class StateDB:
                 .filter(UtilBill.customer==customer)\
                 .filter(UtilBill.period_start>=start)\
                 .filter(UtilBill.period_end<=end).all()
+        if utilbills == []:
+            raise Exception('No utility bills found between %s and %s' %
+                    (start, end))
         
         # update 'reebill_id' and 'processed' for each utilbill found
         for utilbill in utilbills:

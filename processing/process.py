@@ -54,6 +54,9 @@ class Process(object):
     def sum_bill(self, session, prior_reebill, present_reebill):
 
         # get discount rate
+        # TODO: 26500689 discount rate in the reebill structure must be relied on
+        # versus fetch the instantaneous one - what if a historical bill is being
+        # summed?  The discount rate in the reebill would have to be relied on.
         discount_rate = Decimal(str(self.state_db.discount_rate(session,
             present_reebill.account)))
 
@@ -202,7 +205,7 @@ class Process(object):
                 reebill.account, old_period_end)
         reebill.period_end = new_period_end
 
-        # set discount rate to the value in MySQL
+        # set discount rate to the instananeous value in MySQL
         reebill.discount_rate = self.state_db.discount_rate(session,
                 reebill.account)
 
@@ -473,22 +476,25 @@ class Process(object):
                     next_bill.period_end)
             next_stats['consumption_trend'] = []
 
+            # get month of first billing date
             first_bill_date = self.reebill_dao \
                     .get_first_bill_date_for_account(reebill.account)
             first_bill_year = first_bill_date.year
             first_bill_month = first_bill_date.month
 
-            first_month = install.install_commissioned.month
+            # get month of "install commissioned"
+            commissioned_year = install.install_commissioned.year
+            commissioned_month = install.install_commissioned.month
+
             for year, month in dateutils.months_of_past_year(bill_year, bill_month):
-                # months before first bill have 0 energy, even if data were
-                # collected during that time. however, the graph shows ALL the
-                # renewable energy sold during the month of the first bill,
-                # including energy sold before the install was "commissioned"
-                # (meaning its data have been declared valid for billing).
-                # TODO: change this to include only energy after the
-                # install_commissioned date within that month?
-                if year < first_bill_year or (year == first_bill_year and month
-                        < first_bill_month):
+                # the graph shows 0 energy for months before the first bill
+                # month or the install_commissioned month, whichever is later,
+                # even if data were collected during that time. however, the
+                # graph shows ALL the renewable energy sold during the first
+                # month, including energy sold before the start of the first
+                # billing period or the install_commissioned date.
+                if (year, month) < max((commissioned_year, commissioned_month),
+                        (first_bill_year, first_bill_month)):
                     renewable_energy_btus = 0
                 else:
                     # get billing data from OLAP (instead of
