@@ -130,6 +130,16 @@ def next_w_week_start(d):
         d2 += timedelta(days=1)
     return d2
 
+#def length_of_w_week(year, w_week):
+    #'''Returns the number of days in the given "%W" week.'''
+    #if w_week == 0:
+        ## star of week 0 is always Jan. 1
+        #week_start == date(d.year, 1, 1)
+    #else:
+        ## every week other than 0 has a monday in it
+        #week_start = get_w_week_start(year, w_week, 1)
+    #(return next_w_week_start(week_start) - week_start).days
+
 ################################################################################
 # months #######################################################################
 
@@ -316,6 +326,9 @@ class DateUtilsTest(unittest.TestCase):
         self.assertEquals(52, w_week_number(date(2012,12,30)))
         self.assertEquals(53, w_week_number(date(2012,12,31)))
 
+        # 2018 has no week 0 because it starts on a Monday
+        self.assertEquals(1, w_week_number(date(2018,1,1)))
+
     def test_date_by_w_week(self):
         # first day of 2012: Sunday in week 0
         self.assertEquals(date(2012,1,1), date_by_w_week(2012, 0, 0))
@@ -343,6 +356,12 @@ class DateUtilsTest(unittest.TestCase):
         self.assertRaises(ValueError, date_by_w_week, 2012, 53, 2)
         self.assertRaises(ValueError, date_by_w_week, 2012, 53, 0)
 
+        # 2018 has no week 0 because it starts on a Monday
+        self.assertRaises(ValueError, date_by_w_week, 2018, 0, 1)
+        self.assertRaises(ValueError, date_by_w_week, 2018, 0, 2)
+        self.assertRaises(ValueError, date_by_w_week, 2018, 0, 6)
+        self.assertRaises(ValueError, date_by_w_week, 2018, 0, 0)
+
     def test_get_w_week_start(self):
         self.assertEquals(date(2011,1,1), get_w_week_start(date(2011,1,1)))
         self.assertEquals(date(2011,1,1), get_w_week_start(date(2011,1,2)))
@@ -353,6 +372,7 @@ class DateUtilsTest(unittest.TestCase):
         self.assertEquals(date(2012,1,1), get_w_week_start(date(2012,1,1)))
         self.assertEquals(date(2012,1,2), get_w_week_start(date(2012,1,2)))
         self.assertEquals(date(2012,1,2), get_w_week_start(date(2012,1,3)))
+        self.assertEquals(date(2018,1,1), get_w_week_start(date(2018,1,1)))
 
     def test_next_w_week_start(self):
         self.assertEquals(date(2012,1,1), next_w_week_start(date(2011,12,31)))
@@ -363,6 +383,8 @@ class DateUtilsTest(unittest.TestCase):
         self.assertEquals(date(2012,12,31), next_w_week_start(date(2012,12,24)))
         self.assertEquals(date(2012,12,31), next_w_week_start(date(2012,12,30)))
         self.assertEquals(date(2013,1,1), next_w_week_start(date(2012,12,31)))
+        self.assertEquals(date(2018,1,8), get_w_week_start(date(2018,1,8)))
+
 
     def test_days_in_month(self):
         jul15 = date(2011,7,15)
