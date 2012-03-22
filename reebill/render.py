@@ -227,7 +227,8 @@ class ReebillRenderer:
         balanceF = Frame(78, 100, 265, 55, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balance', showBoundary=_showBoundaries)
 
         # current charges block
-        currentChargesF = Frame(360, 100, 220, 55, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='currentCharges', showBoundary=_showBoundaries)
+        # your savings and renewable charges
+        currentChargesF = Frame(360, 108, 220, 55, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='currentCharges', showBoundary=_showBoundaries)
 
         # balance forward block
         balanceForwardF = Frame(360, 75, 220, 21, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balance', showBoundary=_showBoundaries)
@@ -532,10 +533,22 @@ class ReebillRenderer:
         Elements.append(UseUpSpace())
 
         # populate current charges
-        currentCharges = [
-            [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(reebill.ree_savings.quantize(Decimal(".00"))), styles['BillFieldRight'])],
-            [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(reebill.ree_charges.quantize(Decimal(".00"))), styles['BillFieldRight'])]
-        ]
+        late_charges = reebill.late_charges
+        # depiction of conditional template logic based on ReeBill returning None
+        # we will want to distinguish between a late charge, a zero dollar late charge and no late charge
+        # to allow the template to do fancy formatting
+        if late_charges is not None:
+            currentCharges = [
+                [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(reebill.ree_savings.quantize(Decimal(".00"))), styles['BillFieldRight'])],
+                [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(reebill.ree_charges.quantize(Decimal(".00"))), styles['BillFieldRight'])],
+                [Paragraph("Late Charges", styles['BillLabelRight']), Paragraph(str(late_charges.quantize(Decimal(".00"))), styles['BillFieldRight'])]
+            ]
+        else:
+            currentCharges = [
+                [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(reebill.ree_savings.quantize(Decimal(".00"))), styles['BillFieldRight'])],
+                [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(reebill.ree_charges.quantize(Decimal(".00"))), styles['BillFieldRight'])],
+                [Paragraph("Late Charges", styles['BillLabelRight']), Paragraph(str("0.00"), styles['BillFieldRight'])]
+            ]
 
         t = Table(currentCharges, [135,85])
         t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,0),(-1,-1),colors.white)]))

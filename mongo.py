@@ -300,6 +300,15 @@ class MongoReebill(object):
         self.dictionary['balance_due'] = value
 
     @property
+    def late_charges(self):
+        if 'late_charges' in self.dictionary:
+            return self.dictionary['late_charges']
+
+    @late_charges.setter
+    def late_charges(self, value):
+        self.dictionary['late_charges'] = value
+
+    @property
     def billing_address(self):
         '''Returns a dict.'''
         return self.dictionary['billing_address']

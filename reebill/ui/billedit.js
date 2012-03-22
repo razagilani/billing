@@ -1308,7 +1308,7 @@ function renderWidgets()
             disableCaching: true,
             success: successResponse,
             failure: function () {
-                alert("Render response fail");
+                Ext.MessageBox.alert('Error', "Render response fail");
             }
         });
     }
@@ -1324,7 +1324,7 @@ function renderWidgets()
                 disableCaching: true,
                 success: successResponse,
                 failure: function() {
-                    alert("Attach Utility Bills failed");
+                    Ext.MessageBox.alert('Error', "Attach Utility Bills failed");
                 }
             },
         });
