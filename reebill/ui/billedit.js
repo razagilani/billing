@@ -657,11 +657,15 @@ function renderWidgets()
     reeBillStore.on('exception', function(dataProxy, type, action, options, response,
                 arg) {
         if (type == 'remote' && action == 'destroy') {
-            // server got an exception when trying to delete a reebill
-            successResponse(response.raw, options);
+            if (response.success !== true) {
+                Ext.Msg.alert('Error', response.raw.errors.reason + " " +
+                        response.raw.errors.details);
+            } else {
+                loadReeBillUIForSequence(selected_account, selected_sequence);
+            }
         } else {
             // catch-all for other errors
-            alert("reebillstore error: type "+type+", action "+action+", response "+response);
+            Ext.Msg.alert('Error', "reebillstore error: type "+type+", action "+action+", response "+response);
         }
     });
 
@@ -1160,17 +1164,12 @@ function renderWidgets()
 
     function successResponse(response, options) {
         var response_obj = {};
-        // decode response into object if it's a string
-        if (typeof(response_obj) == 'string') {
-            try {
-                response_obj = Ext.decode(response.responseText);
-            } catch (e) {
-                alert("Could not decode JSON data");
-            }
-        } else {
-            response_obj = response;
+        try {
+            response_obj = Ext.decode(response.responseText);
+        } catch (e) {
+            Ext.Msg.alert("Fatal: Could not decode JSON data");
         }
-        if (true !== response_obj.success) {
+        if (response_obj.success !== true) {
             Ext.Msg.alert('Error', response_obj.errors.reason + " " +
                     response_obj.errors.details);
         } else {
