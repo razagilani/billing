@@ -454,24 +454,22 @@ class BillToolBridge:
             session = None
             if not name or not account or not discount_rate or not template_account:
                 raise ValueError("Bad Parameter Value")
-
             session = self.state_db.session()
-
-            customer = self.process.create_new_account(session, account, name, discount_rate, template_account)
-
+            customer = self.process.create_new_account(session, account, name,
+                    discount_rate, template_account)
             reebill = self.reebill_dao.load_reebill(account, 0)
 
-            # record the successful completion
-            self.journal_dao.journal(customer.account, 0, "Newly created")
-
+            # record account creation
+            self.journal_dao.log_event(customer.account, 0,
+                    JournalDAO.AccountCreated)
             self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
-            self.journal_dao.journal(account, 0, "ReeBill rolled")
 
+            # record reebill roll separately ("so that performance can be
+            # measured": 25282041)
+            self.journal_dao.log_event(account, 0, JournalDAO.ReeBillRolled)
             session.commit()
-
             return self.dumps({'success': True})
-
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)
