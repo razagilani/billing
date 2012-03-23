@@ -213,9 +213,6 @@ def months_of_past_year(year, month):
     return result
 
 
-################################################################################
-# federal holidays (for time-of-use billing) ###################################
-
 def nth_weekday(n, weekday_number, month):
     '''Returns a function mapping years to the 'n'th weekday of 'month' in the
     given year, so holidays like "3rd monday of February" can be defined. 'n'
@@ -236,50 +233,6 @@ def nth_weekday(n, weekday_number, month):
         return date(year, month, days[-1 if n == 'last' else n-1])
     return result
 
-# for time-of-use billing, holidays are stored as functions mapping a year to a
-# date within the year: this allows potentially arbitarily rules (such as
-# holiday dates changing from one year to another) with the reasonable
-# assumption that a holiday occurs at most once per year (you could return None
-# if it does not occur at all).
-# for simplicity, we're assuming that utility billing holidays match defined
-# federal holiday dates, not the dates on which federal employees get a
-# vacation. this decision is not based on actual data, so we may have to
-# correct it later.
-# this appears to be the official source for holiday dates:
-# http://www.law.cornell.edu/uscode/5/6103.html
-
-# the names (values in the dictionary below) just serve as documentation.
-FEDERAL_HOLIDAYS = {
-    # fixed-date holidays: date is independent of year
-    lambda year: date(year, 1, 1) : "New Year's Day",
-    lambda year: date(year, 7, 4) : "Independence Day",
-    lambda year: date(year, 11, 11) : "Veterans' Day",
-    lambda year: date(year, 12, 25) : "Christmas Day",
-
-    # "nth weekday of month" holidays: nth_weekday(n, weekday, month)
-    nth_weekday(3, 1, 1): "Martin Luther King Day",
-    nth_weekday(3, 1, 2): "Presidents' Day",
-    nth_weekday('last', 1, 5): "Memorial Day",
-    nth_weekday(1, 1, 9): "Labor Day",
-    nth_weekday(2, 1, 10): "Columbus Day",
-    nth_weekday(4, 4, 11): "Thanksgiving Day"
-}
-
-def all_holidays(year):
-    '''Returns all the holidays in the given year as a set of dates.'''
-    return set([holiday(year) for holiday in FEDERAL_HOLIDAYS
-        if holiday(year) is not None])
-
-def get_day_type(day):
-    '''Returns "weekday", "weekend", or "holiday" to classify the given date.
-    Holidays override regular weekday/weekend classifications.'''
-    if day in all_holidays(day.year):
-        return 'holiday'
-    # python weeks start on monday
-    if day.weekday() in [5,6]:
-        return 'weekend'
-    return 'weekday'
-    
 
 # TODO move out of this file
 class DateUtilsTest(unittest.TestCase):
@@ -546,61 +499,6 @@ class DateUtilsTest(unittest.TestCase):
         self.assertEquals(mon_oct31, nth_weekday('last', 1, 10)(2011))
 
         self.assertEquals(date(2013,2,18), nth_weekday(3,1,2)(2013))
-
-    def test_all_holidays(self):
-        # source of holiday dates:
-        # http://www.opm.gov/oca/worksch/html/holiday.asp
-        # (note that some sources, such as
-        # http://www.opm.gov/Operating_Status_Schedules/fedhol/2011.asp
-        # report federal employee vacation days, which may differ from the
-        # holidays themselves. we assume that utility billing holidays are the
-        # actual holiday dates.)
-        
-        # 2013
-        newyear11 = date(2011, 1, 1)
-        mlk11 = date(2011, 1, 17)
-        washington11 = date(2011, 2, 21)
-        memorial11 = date(2011, 5, 30)
-        independence11 = date(2011, 7, 4)
-        labor11 = date(2011, 9, 5)
-        columbus11 = date(2011, 10, 10)
-        veterans11 = date(2011, 11, 11)
-        thanks11 = date(2011, 11, 24)
-        xmas11 = date(2011, 12, 25)
-        all_2011 = set([newyear11, mlk11, washington11, memorial11,
-            independence11, labor11, columbus11, veterans11, thanks11, xmas11])
-        self.assertEquals(all_2011, all_holidays(2011))
-        
-        # 2012
-        newyear12 = date(2012, 1, 1)
-        mlk12 = date(2012, 1, 16)
-        washington12 = date(2012, 2, 20)
-        memorial12 = date(2012, 5, 28)
-        independence12 = date(2012, 7, 4)
-        labor12 = date(2012, 9, 3)
-        columbus12 = date(2012, 10, 8)
-        veterans12 = date(2012, 11, 11)
-        thanks12 = date(2012, 11, 22)
-        xmas12 = date(2012, 12, 25)
-        all_2012 = set([newyear12, mlk12, washington12, memorial12,
-            independence12, labor12, columbus12, veterans12, thanks12, xmas12])
-        self.assertEquals(all_2012, all_holidays(2012))
-        
-        # 2013
-        # manually checked
-        newyear13 = date(2013, 1, 1)
-        mlk13 = date(2013, 1, 21)
-        washington13 = date(2013, 2, 18)
-        memorial13 = date(2013, 5, 27)
-        independence13 = date(2013, 7, 4)
-        labor13 = date(2013, 9, 2)
-        columbus13 = date(2013, 10, 14)
-        veterans13 = date(2013, 11, 11)
-        thanks13 = date(2013, 11, 28)
-        xmas13 = date(2013, 12, 25)
-        all_2013 = set([newyear13, mlk13, washington13, memorial13,
-            independence13, labor13, columbus13, veterans13, thanks13, xmas13])
-        self.assertEquals(all_2013, all_holidays(2013))
 
 
 if __name__ == '__main__':
