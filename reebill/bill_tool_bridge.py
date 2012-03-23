@@ -449,6 +449,26 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
+    def get_next_account_number(self, **kwargs):
+        '''Handles AJAX request for what the next account would be called if it
+        were created (highest existing account number + 1--we require accounts
+        to be numbers, even though we always store them as arbitrary
+        strings).'''
+        try:
+            session = self.state_db.session()
+
+            # this will fail if any account string is not an integer
+            last_account_number = max(map(int, self.state_db.listAccounts(session)))
+
+            return ju.dumps({'success': True,
+                'account': last_account_number + 1})
+        except Exception as e:
+            self.rollback_session(session)
+            return self.handle_exception(e)
+            
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
     def new_account(self, name, account, discount_rate, template_account, **args):
         try:
             session = None
