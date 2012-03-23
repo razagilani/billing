@@ -6,11 +6,6 @@ import pychartdir
 from billing.mongo import ReebillDAO
 from billing.processing.state import StateDB
 from StringIO import StringIO
-'''Creates a sample CSV file with random energy values every 15 minutes in the
-format used by fetch_interval_meter_data. Command-line arguments are file name,
-start date (ISO 8601, inclusive), end date (exclusive). E.g:
-    make_sample_csv.py interval_meter_sample.csv 2012-11-10 2012-12-12
-'''
 
 def integrate(array):
     '''Converts a list of per-unit-time values into a cumulative one.'''
@@ -59,6 +54,30 @@ class Grapher(object):
         c.xAxis().setLabelStep(1)
         c.makeChart(output_path)
 
+    # TODO avoid duplicated code with the method above
+    def plot_monthly_actual_and_hypothetical_ce_charces(self, account,
+            output_path, actual_color='0x007437',
+            hypothetical_color='0x9bbb59', width=500, height=300):
+        '''Writes a line graph of actual and hypothetical charges by month for
+        the given account to 'output_path' (file extension determines the
+        format).'''
+        days, actual_charges = self.get_data_points(account, lambda r:
+                r.sequence, lambda r: float(r.actual_total))
+        _, hypothetical_charges = self.get_data_points(account, lambda r:
+                r.sequence, lambda r: float(r.hypothetical_total))
+        c = pychartdir.XYChart(width, height)
+        # offset coordinates determined by trial & error; probably could be
+        # better but they look ok
+        c.setPlotArea(40, 20, width-50, height-50, pychartdir.Transparent,
+                pychartdir.Transparent, pychartdir.Transparent, -1,
+                pychartdir.Transparent)
+        layer = c.addLineLayer(actual_charges, actual_color)
+        layer.addDataSet(hypothetical_charges, hypothetical_color)
+        layer.setLineWidth(2)
+        c.xAxis().setLabels(map(str, days))
+        c.xAxis().setLabelStep(1)
+        c.makeChart(output_path)
+
 def main():
     # command-line arguments
     parser = argparse.ArgumentParser(description='Draw a graph of cumulative hypothetical and actual charges for an account.')
@@ -85,7 +104,7 @@ def main():
     }
 
     g = Grapher(StateDB(statedb_config), ReebillDAO(billdb_config))
-    g.plot_cumulative_actual_and_hypothetical_ce_charces(args.account, 'chart.png')
+    g.plot_monthly_actual_and_hypothetical_ce_charces(args.account, 'chart.png')
 
 if __name__ == '__main__':
     main()
