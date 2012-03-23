@@ -1074,7 +1074,8 @@ class ReebillDAO:
         mongo_doc = self.collection.find_one(query)
 
         if mongo_doc is None:
-            raise Exception("No ReeBill found for %s-%s-%s" % (account, branch, sequence))
+            raise Exception("No ReeBill found for %s-%s (branch %s)" % (
+                account, sequence, branch))
 
         mongo_doc = deep_map(float_to_decimal, mongo_doc)
         mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
