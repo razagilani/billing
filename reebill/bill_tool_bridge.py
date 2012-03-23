@@ -908,7 +908,7 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
-    def all_ree_charges_csv(self, **args):
+    def all_ree_charges_xls(self, **args):
         try:
             session = None
 

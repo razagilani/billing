@@ -4038,7 +4038,7 @@ function renderWidgets()
                 id: 'accountReeValueExportCSVBtn',
                 iconCls: 'icon-application-go',
                 xtype: 'linkbutton',
-                href: "http://"+location.host+"/reebill/all_ree_charges_csv",
+                href: "http://"+location.host+"/reebill/all_ree_charges_xls",
                 text: 'Export REE Value XLS',
                 disabled: false,
             },{
