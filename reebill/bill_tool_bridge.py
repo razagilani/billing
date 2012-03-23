@@ -314,9 +314,10 @@ class BillToolBridge:
             start, limit = int(start), int(limit)
             with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
                     'reconciliation_report.json')) as json_file:
-                # load all data from json file: a list of dictionaries
-                items = ju.loads(json_file.read())
-                print items
+                # load all data from json file: it's one JSON dictionary per
+                # line (for reasons explained in reconciliation.py) but should
+                # be interpreted as a JSON list
+                items = ju.loads('[' + ', '.join(json_file.readlines()) + ']')
                 return self.dumps({
                     'success': True,
                     'rows': items[start:start+limit],

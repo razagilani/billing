@@ -38,8 +38,12 @@ def close_enough(x,y):
     return abs(x - y) / y < .001
 
 def generate_report(logger, billdb_config, statedb_config, splinter_config,
-        monguru_config, skip_oltp=False):
-    '''Saves JSON data for reconciliation report in the file 'OUTPUT_FILE'.'''
+        monguru_config, output_file, skip_oltp=False):
+    '''Saves JSON data for reconciliation report in the file 'output_file'.
+    Each line of the file is a JSON dictionary. The entire file is meant to be
+    read as a JSON list, but it is not written with []s and ,s so that the file
+    will be valid if the program is interrupted while generating the report (at
+    least if the interruption does not occur while writing a single line).'''
     # objects for database access
     reebill_dao = mongo.ReebillDAO(billdb_config)
     state_db = state.StateDB(statedb_config)
@@ -47,23 +51,6 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
     splinter = Splinter(splinter_config['url'], splinter_config['host'],
             splinter_config['db'])
     monguru = Monguru(monguru_config['host'], monguru_config['db'])
-
-    # save output in billing/reebill
-    output_file_path = os.path.join(os.path.dirname(
-        os.path.realpath(__file__)), 'reebill', OUTPUT_FILE_NAME)
-    logger.info('Generating reconciliation report at %s' % output_file_path)
-
-    # it's a bad idea to build a huge string in memory, but i need to avoid putting
-    # a comma after the last object in the array, and i can't un-write the comma if
-    # i'm writing to a file (and i can't know what the last item of the array is
-    # going to be in advance because i'm only including items that have an error or
-    # a difference from olap)
-    # TODO 25207303: fix this if it becomes a problem when the number of bills gets
-    # really large. if the file is not being written all at once, it should be
-    # written in a separate location while it's incomplete and then moved to
-    # replace the existing file when it's done, so BillToolBridge never tries
-    # to load an incomplete file.
-    result = '['
 
     # get account numbers of all customers in sorted order
     # TODO: it would be faster to do this sorting in MySQL instead of Python when
@@ -171,15 +158,10 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
             else:
                 # put errors in report
                 result_dict.update({ 'errors': '. '.join(error_messages)+'.' })
-            result += json_util.dumps(result_dict) + ',\n'
 
-    result = result[:-2] # remove final ',\n'
-    result += ']'
-
-    # write the json string to a file
-    with open(os.path.join(os.path.dirname(os.path.realpath('billing')), 'reebill',
-            output_file_path), 'w') as output_file:
-        output_file.write(result)
+            # write the dictionary to the file
+            output_file.write(json_util.dumps(result_dict) + '\n')
+            output_file.flush()
 
 def main():
     # command-line arguments
@@ -222,7 +204,6 @@ def main():
         'host': args.host,
         'db': args.olapdb
     }
-    print 'billdb: %s  statedb: %s  splinter: %s  monguru: %s' % (billdb_config, statedb_config, splinter_config, monguru_config)
 
     # log file goes in billing/reebill (where reebill.log also goes)
     log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -242,8 +223,16 @@ def main():
     logger.setLevel(logging.DEBUG)
 
     try:
-        generate_report(logger, billdb_config, statedb_config, splinter_config,
-                monguru_config, skip_oltp=args.skip_oltp)
+        # write the json string to a file: it goes in billing/reebill
+        output_file_path = os.path.join(os.path.dirname(
+                os.path.realpath(__file__)), 'reebill', OUTPUT_FILE_NAME)
+        with open(os.path.join(os.path.dirname(os.path.realpath('billing')),
+                'reebill', output_file_path), 'w') as output_file:
+            logger.info('Generating reconciliation report at %s' %
+                    output_file_path)
+            generate_report(logger, billdb_config, statedb_config,
+                    splinter_config, monguru_config, output_file,
+                    skip_oltp=args.skip_oltp)
     except Exception as e:
         print >> sys.stderr, '%s\n%s' % (e, traceback.format_exc())
         logger.critical("Couldn't generate reconciliation report: %s\n%s"
