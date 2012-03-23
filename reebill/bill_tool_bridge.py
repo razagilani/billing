@@ -73,17 +73,19 @@ def authenticate_ajax(method):
     return wrapper
 
 def authenticate(method):
-    '''Like @authenticate_ajax decorator, but redirects non-logged-in users to
+    '''Like @authenticate_ajax, but redirects non-logged-in users to
     /login.html. This should be used for "regular" HTTP requests (like file
     downloads), in which a redirect can be returned directly to the browser.'''
     # note: if you want to add a redirect_url argument to the decorator (so
     # it's not always '/login.html'), you need 3 layers: outer function
     # (authenticate) takes redirect_url argument, intermediate wrapper takes
-    # method argument and returns inner wrapper.
+    # method argument and returns inner wrapper, which takes the method itself
+    # as its argument and returns the wrapped version.
+    @functools.wraps(method)
     def wrapper(btb_instance, *args, **kwargs):
         try:
             btb_instance.check_authentication()
-            return method(*args, **kwargs)
+            return method(btb_instance, *args, **kwargs)
         except Unauthenticated:
             cherrypy.response.status = 403
             raise cherrypy.HTTPRedirect('/login.html')
@@ -302,7 +304,7 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     @authenticate
-    def index(self):
+    def index(self, **kwargs):
         raise cherrypy.HTTPRedirect('/billentry.html')
 
     @cherrypy.expose
