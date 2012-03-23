@@ -2051,20 +2051,20 @@ class BillToolBridge:
             if not start or not limit or not account:
                 raise ValueError("Bad Parameter Value")
 
-
             # result is a list of dictionaries of the form {account: account
             # number, name: full name, period_start: date, period_end: date,
             # sequence: reebill sequence number (if present)}
             utilbills, totalCount = self.state_db.list_utilbills(session, account, int(start), int(limit))
-            # note that utilbill customers are eagerly loaded
-            full_names = self.full_names_of_accounts([ub.customer.account for ub in utilbills])
-            print [u.service for u in utilbills]
+
+            full_names = self.full_names_of_accounts([account])
+            full_name = full_names[0] if full_names else account
+
             rows = [dict([
                 # TODO: sending real database ids to the client a security
                 # risk; these should be encrypted
                 ('id', ub.id),
                 ('account', ub.customer.account),
-                ('name', full_names[i]),
+                ('name', full_name),
                 # capitalize service name
                 ('service', 'Unknown' if ub.service is None else ub.service[0].upper() + ub.service[1:]),
                 ('period_start', ub.period_start),
