@@ -892,13 +892,19 @@ class BillToolBridge:
 
             buf = StringIO()
 
-            writer = csv.writer(buf)
+            import xlwt
+            workbook = xlwt.Workbook(encoding='utf-8')
+            sheet = workbook.add_sheet('All REE Charges')
+            row_index = 0
 
-            writer.writerow(['Account','Sequence',
+            headings = ['Account','Sequence',
                 'Billing Addressee', 'Service Addressee',
                 'Issue Date', 'Period Begin', 'Period End', 'RE&E Value', 
                 'RE&E Charges', 'utility charges', 'hypothesized charges',
-                'RE&E Energy Therms', 'Marginal Rate per Therm'])
+                'RE&E Energy Therms', 'Marginal Rate per Therm']
+            for i, heading in enumerate(headings):
+                sheet.write(row_index, i, heading)
+            row_index += 1
 
             for row in rows:
                 ba = row['billing_address']
@@ -918,20 +924,24 @@ class BillToolBridge:
                     sa['sa_postal_code'] if 'sa_postal_code' in sa and sa['sa_postal_code'] is not None else "",
                 )
 
-                writer.writerow([row['account'], row['sequence'], 
-                    bill_addr_str, service_addr_str, 
-                    row['issue_date'], row['period_begin'], row['period_end'],
-                    row['ree_value'], row['ree_charges'], row['actual_charges'], row['hypothetical_charges'],
-                    row['total_energy'], row['marginal_rate_therm'] ])
+                actual_row = [row['account'], row['sequence'], bill_addr_str,
+                        service_addr_str, row['issue_date'],
+                        row['period_begin'], row['period_end'],
+                        row['ree_value'], row['ree_charges'],
+                        row['actual_charges'], row['hypothetical_charges'],
+                        row['total_energy'], row['marginal_rate_therm'] ]
+                for i, cell_text in enumerate(actual_row):
+                    sheet.write(row_index, i, cell_text)
+                row_index += 1
 
-                cherrypy.response.headers['Content-Type'] = 'text/csv'
-                cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s.csv' % datetime.now().strftime("%Y%m%d")
+                cherrypy.response.headers['Content-Type'] = 'application/excel'
+                cherrypy.response.headers['Content-Disposition'] = \
+                        'attachment; filename=%s.xls' % \
+                        datetime.now().strftime("%Y%m%d")
 
-
-            data = buf.getvalue()
+            workbook.save(buf)
             session.commit()
-            return data
-
+            return buf.getvalue()
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)
@@ -1018,11 +1028,9 @@ class BillToolBridge:
             buf = StringIO()
             exporter.export(session, buf, account)
 
-
             # set MIME type for file download
-            cherrypy.response.headers['Content-Type'] = 'appliation/excel'
+            cherrypy.response.headers['Content-Type'] = 'application/excel'
             cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
-
 
             session.commit()
             return buf.getvalue()

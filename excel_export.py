@@ -93,8 +93,10 @@ class Exporter(object):
                             sequence, key_error, pformat(charge))
                     error = True
                 except IndexError as index_error:
-                    print >> sys.stderr, '%s-%s ERROR %s: no hypothetical charge matching actual charge "%s"' % (account,
-                            sequence, index_error, charge['chargegroup'] + ': ' + charge['description'])
+                    print >> sys.stderr, ('%s-%s ERROR %s: no hypothetical '
+                            'charge matching actual charge "%s"') % (account,
+                            sequence, index_error, charge['chargegroup'] +
+                            ': ' + charge['description'])
                     error = True
                 else:
                     # if this charge's name already exists in
@@ -111,7 +113,8 @@ class Exporter(object):
                     try:
                         sheet.write(row, col, total)
                     except Exception as write_error:
-                        if write_error.message.startswith('Attempt to overwrite cell:'):
+                        if write_error.message.startswith(
+                                'Attempt to overwrite cell:'):
                             # if charge descriptions are not unique within
                             # their group, xlwt attempts to overwrite an
                             # existing cell, which is an error: show that
@@ -127,44 +130,10 @@ class Exporter(object):
             # account and sequence go in 1st 2 columns (show ERROR with
             # sequence if there was an error)
             sheet.write(row, 0, account)
-            sheet.write(row, 1, sequence if not error else '%s: ERROR' % sequence)
+            sheet.write(row, 1, sequence if not error else '%s: ERROR' %
+                    sequence)
             row += 1
 
-
-    #def write_sheet(self, session, workbook, account, sequence, output_file):
-        #if self.verbose:
-            #print '%s-%s' % (account, sequence)
-        #reebill = self.reebill_dao.load_reebill(account, sequence)
-
-        ## each reebill gets its own sheet
-        #sheet = workbook.add_sheet('%s-%s' % (account, sequence))
-
-        ## write headers of 1st 2 columns
-        ## (indices are row, column)
-        #sheet.write(0, 0, 'Account')
-        #sheet.write(0, 1,'Sequence')
-
-        ## write charges starting at row 1
-        #chargegroups = [reebill.chargegroups_flattened(service) for service in reebill.services]
-        #row = 1
-        #for chargegroup in chargegroups:
-            #for charge in chargegroup:
-                #try:
-                    #group, description, total = charge['chargegroup'], charge['description'], charge['total']
-                #except Exception as e:
-                    #print '%s-%s ERROR %s: %s' % (account, sequence, e, pformat(charge))
-                #else:
-                    #sheet.write(row, 0, group)
-                    #sheet.write(row, 1, description)
-                    #sheet.write(row, 2, total)
-                #row += 1
-
-    #def export_all(self, statedb_session, output_file):
-        #workbook = xlwt.Workbook(encoding="utf-8")
-        #for account in sorted(self.state_db.listAccounts(statedb_session)):
-            #for sequence in sorted(self.state_db.listSequences(statedb_session, account)):
-                #self.write_sheet(statedb_session, workbook, account, sequence, output_file)
-        #workbook.save(output_file)
 
 def main():
     '''Run this file with the command line to test. Use account as argument, or

@@ -563,9 +563,7 @@ class Process(object):
         self.state_db.issue(session, account, sequence)
 
     def all_ree_charges(self, session):
-
         accounts = self.state_db.listAccounts(session)
-
         rows = [] 
         totalCount = 0
         for account in accounts:
@@ -579,14 +577,22 @@ class Process(object):
                 row['issue_date'] = reebill.issue_date
                 row['period_begin'] = reebill.period_begin
                 row['period_end'] = reebill.period_end
-                row['ree_value'] = reebill.ree_value.quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                row['ree_charges'] = reebill.ree_charges.quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                row['actual_charges'] = reebill.actual_total.quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                row['hypothetical_charges'] = reebill.hypothetical_total.quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                total_energy_therms = self.total_ree_in_reebill(reebill).quantize(Decimal(".0"), rounding=ROUND_HALF_EVEN)
+                row['ree_value'] = reebill.ree_value.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['ree_charges'] = reebill.ree_charges.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['actual_charges'] = reebill.actual_total.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['hypothetical_charges'] = reebill.hypothetical_total.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                total_energy_therms = self.total_ree_in_reebill(reebill)\
+                        .quantize(Decimal(".0"), rounding=ROUND_HALF_EVEN)
                 row['total_energy'] = total_energy_therms
                 if total_energy_therms != Decimal(0):
-                    row['marginal_rate_therm'] = ((reebill.hypothetical_total - reebill.actual_total)/total_energy_therms).quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                    row['marginal_rate_therm'] = ((reebill.hypothetical_total -
+                            reebill.actual_total)/total_energy_therms)\
+                            .quantize(Decimal(".00"),
+                            rounding=ROUND_HALF_EVEN)
                 else:
                     row['marginal_rate_therm'] = 0
                 rows.append(row)
@@ -594,7 +600,6 @@ class Process(object):
         return rows, totalCount
 
     def summary_ree_charges(self, session, accounts, full_names):
-
         rows = [] 
         for i, account in enumerate(accounts):
             row = {}
