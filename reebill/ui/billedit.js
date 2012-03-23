@@ -4039,7 +4039,7 @@ function renderWidgets()
                 iconCls: 'icon-application-go',
                 xtype: 'linkbutton',
                 href: "http://"+location.host+"/reebill/all_ree_charges_csv",
-                text: 'Export REE Value CSV',
+                text: 'Export REE Value XLS',
                 disabled: false,
             },{
                 id: 'exportButton',
