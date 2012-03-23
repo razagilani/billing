@@ -4142,6 +4142,11 @@ function renderWidgets()
         name: 'discount_rate',
         allowBlank: false,
     });
+    var newLateChargeRate = new Ext.form.TextField({
+        fieldLabel: 'Late Charge Rate',
+        name: 'late_charge_rate',
+        allowBlank: false,
+    });
 
     var billStructureTreeLoader = new Ext.tree.TreeLoader({dataUrl:'http://'+location.host+'/reebill/reebill_structure'});
     var billStructureTree = new Ext.tree.TreePanel({
@@ -4188,7 +4193,7 @@ function renderWidgets()
 
     var newAccountFormPanel = new Ext.FormPanel({
         url: 'http://'+location.host+'/reebill/new_account',
-        labelWidth: 95, // label settings here cascade unless overridden
+        labelWidth: 120, // label settings here cascade unless overridden
         frame: true,
         title: 'Create New Account',
         defaults: {
@@ -4197,13 +4202,23 @@ function renderWidgets()
         },
         defaultType: 'textfield',
         items: [
-            newAccountTemplateCombo, newAccountField, newNameField, newDiscountRate, 
+            {
+                xtype: 'fieldset',
+                title: 'Account Information',
+                collapsible: false,
+                defaults: {
+                    anchor: '0',
+                },
+                items: [
+                    newAccountTemplateCombo, newAccountField, newNameField, newDiscountRate, newLateChargeRate,
+                ],
+            },
             {
                 xtype: 'fieldset',
                 title: 'Billing Address',
                 collapsible: false,
                 defaults: {
-                    anchor: '-20',
+                    anchor: '0',
                 },
                 items: [
                     {
@@ -4238,7 +4253,7 @@ function renderWidgets()
                 title: 'Service Address',
                 collapsible: false,
                 defaults: {
-                    anchor: '-20',
+                    anchor: '0',
                 },
                 items: [
                     {
