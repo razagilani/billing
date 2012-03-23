@@ -653,7 +653,7 @@ class BillToolBridge:
             self.process.attach_utilbills(session, reebill.account,
                     reebill.sequence)
 
-            # TODO change to event log
+            # TODO change to log_event
             self.journal_dao.journal(reebill.account, reebill.sequence,
                     "User %s attached utilbills to reebill %s-%s" % (
                     cherrypy.session['user'].username, account, sequence))
