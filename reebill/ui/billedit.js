@@ -955,13 +955,34 @@ function renderWidgets()
 
     }
 
-    var addressFormItems = [
+    var customerInfoFormItems = [
+        {
+            xtype: 'fieldset',
+            title: 'Account Information',
+            collapsible: false,
+            defaults: {
+                anchor: '0',
+            },
+            items: [
+                {
+                    xtype: 'textfield',
+                    id: 'discount_rate',
+                    fieldLabel: 'Discount Rate',
+                    name: 'discount_rate',
+                },{
+                    xtype: 'textfield',
+                    id: 'late_charge_rate',
+                    fieldLabel: 'Late Charge Rate',
+                    name: 'late_charge_rate',
+                },
+            ],
+        },
         {
             xtype: 'fieldset',
             title: 'Billing Address',
             collapsible: false,
             defaults: {
-                anchor: '-20',
+                anchor: '0',
             },
             items: [
                 {
@@ -1001,7 +1022,7 @@ function renderWidgets()
             title: 'Service Address',
             collapsible: false,
             defaults: {
-                anchor: '-20',
+                anchor: '0',
             },
             items: [
                 {
@@ -1038,10 +1059,10 @@ function renderWidgets()
             ]
         }];
 
-    var addressFormPanel = new Ext.FormPanel(
+    var customerInfoFormPanel = new Ext.FormPanel(
     {
-        id: 'billingAddressFormPanel',
-        title: 'Billing Address',
+        id: 'customerInfoFormPanel',
+        title: 'Customer Information',
         header: true,
         url: 'http://'+location.host+'/reebill/set_addresses',
         border: false,
@@ -1052,7 +1073,7 @@ function renderWidgets()
             anchor: '-20',
             allowBlank: false,
         },
-        items:[addressFormItems], 
+        items:[customerInfoFormItems], 
         buttons: 
         [
             // TODO: the save button is generic in function, refactor
@@ -1085,23 +1106,23 @@ function renderWidgets()
             Ext.getCmp('sa_state').setValue(addresses['service_address']['sa_state']);
             Ext.getCmp('sa_postal_code').setValue(addresses['service_address']['sa_postal_code']);
 
-            addressFormPanel.doLayout();
+            customerInfoFormPanel.doLayout();
         }
 
     }
 
     // since this panel depends on data from the reeBillGrid, hook into
     // its activate so that the user has the chance to pick a selected_sequence
-    addressFormPanel.on('activate', function (panel) {
+    customerInfoFormPanel.on('activate', function (panel) {
         // because this tab is being displayed, demand the form that it contain 
         // be populated
         // disable it during load, the datastore re-enables when loaded.
-        addressFormPanel.setDisabled(true);
+        customerInfoFormPanel.setDisabled(true);
 
-        //var addressFormPanel = Ext.getCmp('billingAddressFormPanel');
+        //var customerInfoFormPanel = Ext.getCmp('customerInfoFormPanel');
         // add base parms for form post
         // we should set these on the form when the form activates?
-        addressFormPanel.getForm().baseParams = {account: selected_account, sequence: selected_sequence}
+        customerInfoFormPanel.getForm().baseParams = {account: selected_account, sequence: selected_sequence}
 
         // get the address information for this reebill 
         // fire this request when the widget is displayed
@@ -1126,12 +1147,12 @@ function renderWidgets()
                         Ext.getCmp('sa_state').setValue(jsonData['service_address']['sa_state']);
                         Ext.getCmp('sa_postal_code').setValue(jsonData['service_address']['sa_postal_code']);
 
-                        addressFormPanel.doLayout();
+                        customerInfoFormPanel.doLayout();
                     } 
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
                 } finally {
-                    addressFormPanel.setDisabled(false);
+                    customerInfoFormPanel.setDisabled(false);
                 }
             },
             failure: function(result, request) {
@@ -1140,7 +1161,7 @@ function renderWidgets()
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
                 } finally {
-                    addressFormPanel.setDisabled(false);
+                    customerInfoFormPanel.setDisabled(false);
                 }
             },
         });
@@ -1153,7 +1174,7 @@ function renderWidgets()
         title: 'ReeBill',
         disabled: reeBillPanelDisabled,
         layout: 'accordion',
-        items: [reeBillGrid, addressFormPanel ],
+        items: [reeBillGrid, customerInfoFormPanel ],
     });
 
     // this event is received when the tab panel tab is clicked on
@@ -4142,6 +4163,11 @@ function renderWidgets()
         name: 'discount_rate',
         allowBlank: false,
     });
+    var newLateChargeRate = new Ext.form.TextField({
+        fieldLabel: 'Late Charge Rate',
+        name: 'late_charge_rate',
+        allowBlank: false,
+    });
 
     var billStructureTreeLoader = new Ext.tree.TreeLoader({dataUrl:'http://'+location.host+'/reebill/reebill_structure'});
     var billStructureTree = new Ext.tree.TreePanel({
@@ -4188,7 +4214,7 @@ function renderWidgets()
 
     var newAccountFormPanel = new Ext.FormPanel({
         url: 'http://'+location.host+'/reebill/new_account',
-        labelWidth: 95, // label settings here cascade unless overridden
+        labelWidth: 120, // label settings here cascade unless overridden
         frame: true,
         title: 'Create New Account',
         defaults: {
@@ -4197,13 +4223,23 @@ function renderWidgets()
         },
         defaultType: 'textfield',
         items: [
-            newAccountTemplateCombo, newAccountField, newNameField, newDiscountRate, 
+            {
+                xtype: 'fieldset',
+                title: 'Account Information',
+                collapsible: false,
+                defaults: {
+                    anchor: '0',
+                },
+                items: [
+                    newAccountTemplateCombo, newAccountField, newNameField, newDiscountRate, newLateChargeRate,
+                ],
+            },
             {
                 xtype: 'fieldset',
                 title: 'Billing Address',
                 collapsible: false,
                 defaults: {
-                    anchor: '-20',
+                    anchor: '0',
                 },
                 items: [
                     {
@@ -4238,7 +4274,7 @@ function renderWidgets()
                 title: 'Service Address',
                 collapsible: false,
                 defaults: {
-                    anchor: '-20',
+                    anchor: '0',
                 },
                 items: [
                     {
