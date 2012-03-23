@@ -18,39 +18,28 @@ import uuid as UUID # uuid collides with locals so both module and locals are re
 import inspect
 import logging
 import csv
+import random
+import time
+import functools
 from StringIO import StringIO
-
-from billing.processing import process
-from billing.processing import state
-from billing.processing import fetch_bill_data as fbd
-from billing.reebill import render
-from billing.reebill import journal
-from billing.reebill.journal import JournalDAO
-from billing.processing.billupload import BillUpload
-from billing.processing import billupload
-from billing import nexus_util as nu
-from billing.nexus_util import NexusUtil
-from billing import bill
-from billing import json_util as ju
-from billing.reebill import bill_mailer
-from billing import mongo
-import billing.processing.rate_structure as rs
-from billing.processing import db_objects
-from billing.users import UserDAO, User
-from billing import dateutils
-from billing import excel_export
-from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
-
-sys.stdout = sys.stderr
+from skyliner.splinter import Splinter
+from billing import bill, json_util as ju, mongo, dateutils, excel_export, nexus_util as nu
+from billing.nexus_util import NexusUtil
+from billing.processing import billupload
+from billing.processing import process, state, db_objects, fetch_bill_data as fbd, rate_structure as rs
+from billing.processing.billupload import BillUpload
+from billing.reebill import render, journal, bill_mailer
+from billing.reebill.journal import JournalDAO
+from billing.users import UserDAO, User
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
+sys.stdout = sys.stderr
 
 # decorator for stressing ajax asynchronicity
-import random
-import time
 def random_wait(target):
+    @functools.wraps(target)
     def random_wait_wrapper(*args, **kwargs):
         #t = random.random()
         t = 0
@@ -60,6 +49,45 @@ def random_wait(target):
 
 class Unauthenticated(Exception):
     pass
+
+def authenticate_ajax(method):
+    '''Wrapper for AJAX-request handling methods that require a user to be
+    logged in. This should go "inside" (i.e. after) the cherrypy.expose
+    decorator.'''
+    # wrapper function takes a BillToolBridge object as its first argument, and
+    # passes that as the "self" argument to the wrapped function. so this
+    # decorator, which runs before any instance of BillToolBridge exists,
+    # doesn't need to know about any BillToolBridge instance data. the wrapper
+    # is executed when an HTTP request is received, so it can use BTB instance
+    # data.
+    @functools.wraps(method)
+    def wrapper(btb_instance, *args, **kwargs):
+        try:
+            btb_instance.check_authentication()
+            return method(btb_instance, *args, **kwargs)
+        except Unauthenticated as e:
+            # ajax response handlers in front-end interpret this and show
+            # message box to redirect to login page
+            return ju.dumps({'success': False, 'errors':
+                {'reason': 'No Session'}})
+    return wrapper
+
+def authenticate(method):
+    '''Like @authenticate_ajax decorator, but redirects non-logged-in users to
+    /login.html. This should be used for "regular" HTTP requests (like file
+    downloads), in which a redirect can be returned directly to the browser.'''
+    # note: if you want to add a redirect_url argument to the decorator (so
+    # it's not always '/login.html'), you need 3 layers: outer function
+    # (authenticate) takes redirect_url argument, intermediate wrapper takes
+    # method argument and returns inner wrapper.
+    def wrapper(btb_instance, *args, **kwargs):
+        try:
+            btb_instance.check_authentication()
+            return method(*args, **kwargs)
+        except Unauthenticated:
+            cherrypy.response.status = 403
+            raise cherrypy.HTTPRedirect('/login.html')
+    return wrapper
 
 # TODO 11454025 rename to ProcessBridge or something
 class BillToolBridge:
@@ -264,8 +292,6 @@ class BillToolBridge:
         # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
 
-        
-
     def dumps(self, data):
         # don't turn this on unless you need the json results to return
         # the url that was called. This is a good client side debug feature
@@ -275,24 +301,23 @@ class BillToolBridge:
     
     @cherrypy.expose
     @random_wait
+    @authenticate
     def index(self):
-        try:
-            if self.check_authentication():
-                raise cherrypy.HTTPRedirect('/billentry.html')
-        except Unauthenticated:
-            raise cherrypy.HTTPRedirect('/login.html')
+        raise cherrypy.HTTPRedirect('/billentry.html')
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def get_reconciliation_data(self, start, limit, **kwargs):
         '''Handles AJAX request for data to fill reconciliation report grid.'''
         try:
-            self.check_authentication()
             start, limit = int(start), int(limit)
-            with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'reconciliation_report.json')) as json_file:
-                # load all data from json file: a list of dictionaries
-                items = ju.loads(json_file.read())
-                print items
+            with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                    'reconciliation_report.json')) as json_file:
+                # load all data from json file: it's one JSON dictionary per
+                # line (for reasons explained in reconciliation.py) but should
+                # be interpreted as a JSON list
+                items = ju.loads('[' + ', '.join(json_file.readlines()) + ']')
                 return self.dumps({
                     'success': True,
                     'rows': items[start:start+limit],
@@ -334,59 +359,60 @@ class BillToolBridge:
         raise cherrypy.HTTPRedirect("/billentry.html")
 
     def check_authentication(self):
-        '''Function to check authentication for HTTP request functions:
-        returns True if the user is logged in; if not, sets the HTTP status
-        code to 401 and returns False. Does not redirect to the login page,
-        because it gets called in AJAX requests, which must return actual data
-        instead of a redirect.'''
-        # if authentication is turned off, skip the check and make sure the
-        # session contains default data
+        '''Function to check authentication for HTTP request functions: if user
+        is not logged in, raises Unauthenticated exception. If authentication
+        is turned off, ensures that the default user's data are in the cherrypy
+        session. Does not redirect to the login page, because it gets called in
+        AJAX requests, which must return actual data instead of a redirect.
+        This is not meant to be called directly, but via the @authenticate_ajax or
+        @authenticate decorators.'''
         if not self.authentication_on:
             if 'user' not in cherrypy.session:
                 cherrypy.session['user'] = UserDAO.default_user
-            return True
         if 'user' not in cherrypy.session:
-            self.logger.info("Non-logged-in user was denied access to: %s" % \
-                    inspect.stack()[1][3])
-            # TODO: 19664107
-            # 401 = unauthorized--can't reply to an ajax call with a redirect
-            #cherrypy.response.status = 401
+            # TODO show the wrapped function name here instead of "wrapper"
+            # (probably inspect.stack is too smart to be fooled by
+            # functools.wraps)
+            self.logger.info(("Non-logged-in user was denied access"
+                    " to: %s") % inspect.stack()[1][3])
             raise Unauthenticated("No Session")
-        return True
 
     def rollback_session(self, session):
-
         try:
             if session is not None: session.rollback()
         except:
             try:
                 self.logger.error('Could not rollback session:\n%s' % traceback.format_exc())
             except:
-                print >> sys.stderr, 'Logger not functioning\nCould not rollback session:\n%s' % traceback.format_exc()
+                print >> sys.stderr, ('Logger not functioning\nCould not '
+                        'roll back session:\n%s') % traceback.format_exc()
 
     def handle_exception(self, e):
         if type(e) is cherrypy.HTTPRedirect:
             # don't treat cherrypy redirect as an error
             raise
         elif type(e) is Unauthenticated:
-            return self.dumps({'success': False, 'errors':{'reason': str(e),
-                    'details':'If you are reading this message a client request did not properly handle an invalid session response.'}})
+            return self.dumps({'success': false, 'errors':{ 'reason': str(e),
+                    'details': ('if you are reading this message a client'
+                    ' request did not properly handle an invalid session'
+                    ' response.')}})
         else:
             try:
                 self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             except:
-                print >> sys.stderr, "Logger not functioning\n%s:\n%s" % (e, traceback.format_exc())
+                print >> sys.stderr, "Logger not functioning\n%s:\n%s" % (
+                        e, traceback.format_exc())
             return self.dumps({'success': False, 'errors':{'reason': str(e),
                     'details':traceback.format_exc()}})
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def getUsername(self, **kwargs):
         '''This returns the username of the currently logged-in user--not to be
         confused with the identifier. The identifier is a unique id but the
         username is not.'''
         try:
-            self.check_authentication()
             return self.dumps({'success':True,
                     'username': cherrypy.session['user'].username})
         except Exception as e:
@@ -395,6 +421,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def logout(self):
         if 'user' in cherrypy.session:
             self.logger.info('user "%s" logged out' % (cherrypy.session['user'].username))
@@ -407,7 +434,6 @@ class BillToolBridge:
     # TODO: do this on a per service basis 18311877
     def copyactual(self, account, sequence, **args):
         try:
-            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
 
@@ -422,40 +448,38 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def new_account(self, name, account, discount_rate, template_account, **args):
         try:
             session = None
-            self.check_authentication()
             if not name or not account or not discount_rate or not template_account:
                 raise ValueError("Bad Parameter Value")
-
             session = self.state_db.session()
-
-            customer = self.process.create_new_account(session, account, name, discount_rate, template_account)
-
+            customer = self.process.create_new_account(session, account, name,
+                    discount_rate, template_account)
             reebill = self.reebill_dao.load_reebill(account, 0)
 
-            # record the successful completion
-            self.journal_dao.journal(customer.account, 0, "Newly created")
-
+            # record account creation
+            self.journal_dao.log_event(customer.account, 0,
+                    JournalDAO.AccountCreated)
             self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
-            self.journal_dao.journal(account, 0, "ReeBill rolled")
 
+            # record reebill roll separately ("so that performance can be
+            # measured": 25282041)
+            self.journal_dao.log_event(account, 0, JournalDAO.ReeBillRolled)
             session.commit()
-
             return self.dumps({'success': True})
-
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def roll(self, account, sequence, **args):
         try:
             session = None
-            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
             session = self.state_db.session()
@@ -472,10 +496,10 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def pay(self, account, sequence, **args):
         try:
             session = None
-            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
             session = self.state_db.session()
@@ -493,11 +517,11 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def bindree(self, account, sequence, **args):
         '''Puts energy from Skyline OLTP into shadow register so the reebill
         given by account, sequence.'''
         try:
-            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
             if self.config.getboolean('runtime', 'integrate_skyline_backend') is False:
@@ -524,13 +548,13 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def upload_interval_meter_csv(self, account, sequence, csv_file,
             meter_identifier, **args):
         '''Takes an upload of an interval meter CSV file (cherrypy file upload
         object) and puts energy from it into the shadow registers of the
         reebill given by account, sequence.'''
         try:
-            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -544,11 +568,11 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def bindrs(self, account, sequence, **args):
         '''Handler for the front end's "Compute Bill" operation.'''
         try:
             session = None
-            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
 
@@ -585,9 +609,9 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def render(self, account, sequence, **args):
         try:
-            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
             if not self.config.getboolean('billimages', 'show_reebill_images'):
@@ -609,6 +633,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def attach_utilbills(self, account, sequence, **args):
         '''Finalizes association between the reebill given by 'account',
         'sequence' and its utility bills by recording it in the state database
@@ -616,7 +641,6 @@ class BillToolBridge:
         issue the reebill or give it an issue date.'''
         try:
             session = None
-            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
             session = self.state_db.session()
@@ -629,7 +653,7 @@ class BillToolBridge:
             self.process.attach_utilbills(session, reebill.account,
                     reebill.sequence)
 
-            # TODO change to event log
+            # TODO change to log_event
             self.journal_dao.journal(reebill.account, reebill.sequence,
                     "User %s attached utilbills to reebill %s-%s" % (
                     cherrypy.session['user'].username, account, sequence))
@@ -642,10 +666,10 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def mail(self, account, sequences, recipients, **args):
         try:
             session = None
-            self.check_authentication()
             if not account or not sequences or not recipients:
                 raise ValueError("Bad Parameter Value")
 
@@ -749,10 +773,10 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def listAccounts(self, **kwargs):
         try:
             session = None
-            self.check_authentication()
             accounts = []
             # eventually, this data will have to support pagination
             session = self.state_db.session()
@@ -768,12 +792,12 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def listSequences(self, account, **kwargs):
         '''Handles AJAX request to get reebill sequences for each account and
         whether each reebill has been committed.'''
         try:
             session = None
-            self.check_authentication()
             sequences = []
             if not account:
                 raise ValueError("Bad Parameter Value")
@@ -797,12 +821,12 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def retrieve_account_status(self, start, limit, **args):
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
             session = None
-            self.check_authentication()
             if not start or not limit:
                 raise ValueError("Bad Parameter Value")
             # result is a list of dictionaries of the form
@@ -833,12 +857,12 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def summary_ree_charges(self, start, limit, **args):
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
             session = None
-            self.check_authentication()
 
             if not start or not limit:
                 raise ValueError("Bad Parameter Value")
@@ -861,12 +885,12 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def all_ree_charges(self, **args):
 
 
         try:
             session = None
-            self.check_authentication()
 
             session = self.state_db.session()
 
@@ -882,10 +906,10 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
-    def all_ree_charges_csv(self, **args):
+    @authenticate_ajax
+    def all_ree_charges_xls(self, **args):
         try:
             session = None
-            self.check_authentication()
 
             session = self.state_db.session()
             rows, total_count = self.process.all_ree_charges(session)
@@ -948,10 +972,10 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def all_ree_charges_csv_altitude(self, **args):
         try:
             session = None
-            self.check_authentication()
 
             session = self.state_db.session()
             rows, total_count = self.process.all_ree_charges(session)
@@ -999,21 +1023,23 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate
     def excel_export(self, account=None, **kwargs):
         '''Responds with an excel spreadsheet containing all actual charges for
         all utility bills for the given account, or every account (1 per sheet)
         if 'account' is not given.'''
+        print 'EXCEL_EXPORT SUCCEEDED'
         try:
             session = None
 
-            try:
-                self.check_authentication()
-            except Unauthenticated:
-                # http status code 401 is "unauthorized" but should be used
-                # with a special header and tells the browser try to repeat the
-                # request with http authentication, which is not what we want
-                cherrypy.response.status = 403
-                raise cherrypy.HTTPRedirect('/login.html')
+            #try:
+               #self.check_authentication()
+            #except Unauthenticated:
+               ## http status code 401 is "unauthorized" but should be used
+               ## with a special header and tells the browser try to repeat the
+               ## request with http authentication, which is not what we want
+               #cherrypy.response.status = 403
+               #raise cherrypy.HTTPRedirect('/login.html')
 
             session = self.state_db.session()
 
@@ -1041,10 +1067,10 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     # TODO see 15415625 about the problem passing in service to get at a set of RSIs
     def cprsrsi(self, xaction, account, sequence, service, **kwargs):
         try:
-            self.check_authentication()
             if not xaction or not sequence or not service:
                 raise ValueError("Bad Parameter Value")
 
@@ -1182,9 +1208,9 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def uprsrsi(self, xaction, account, sequence, service, **kwargs):
         try:
-            self.check_authentication()
             if not xaction or not account or not sequence or not service:
                 raise ValueError("Bad Parameter Value")
 
@@ -1318,9 +1344,9 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def ursrsi(self, xaction, account, sequence, service, **kwargs):
         try:
-            self.check_authentication()
             if not xaction or not account or not sequence or not service:
                 raise ValueError("Bad Parameter Value")
 
@@ -1451,10 +1477,10 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def payment(self, xaction, account, **kwargs):
         try:
             session = None
-            self.check_authentication()
             if not xaction or not account:
                 raise ValueError("Bad parameter value")
 
@@ -1543,11 +1569,11 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def reebill(self, xaction, start, limit, account, **kwargs):
         '''Handles AJAX requests for reebill grid data.'''
         try:
             session = None
-            self.check_authentication()
             if not xaction or not start or not limit:
                 raise ValueError("Bad Parameter Value")
             session = self.state_db.session()
@@ -1586,13 +1612,13 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def addresses(self, account, sequence, **args):
         """
         Return the billing and service address so that it may be edited.
         """
 
         try:
-            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
 
@@ -1633,6 +1659,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def set_addresses(self, account, sequence, 
         ba_addressee, ba_street1, ba_city, ba_state, ba_postal_code,
         sa_addressee, sa_street1, sa_city, sa_state, sa_postal_code,
@@ -1642,7 +1669,6 @@ class BillToolBridge:
         """
 
         try:
-            self.check_authentication()
             if not account or not sequence \
             or not ba_addressee or not ba_street1 or not ba_city or not ba_state or not ba_postal_code \
             or not sa_addressee or not sa_street1 or not sa_city or not sa_state or not sa_postal_code:
@@ -1680,11 +1706,11 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def ubPeriods(self, account, sequence, **args):
         """ Return all of the utilbill periods on a per service basis so that the forms may be
         dynamically created."""
         try:
-            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
 
@@ -1709,13 +1735,13 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def setUBPeriod(self, account, sequence, service, begin, end, **args):
         """ 
         Utilbill period forms are dynamically created in browser, and post back to here individual periods.
         """ 
 
         try:
-            self.check_authentication()
             if not account or not sequence or not service or not begin or not end:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -1736,9 +1762,9 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def actualCharges(self, service, account, sequence, **args):
         try:
-            self.check_authentication()
             if not account or not sequence or not service:
                 raise ValueError("Bad Parameter Value")
 
@@ -1760,9 +1786,9 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def hypotheticalCharges(self, service, account, sequence, **args):
         try:
-            self.check_authentication()
             if not account or not sequence or not service:
                 raise ValueError("Bad Parameter Value")
 
@@ -1784,9 +1810,9 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def saveActualCharges(self, service, account, sequence, rows, **args):
         try:
-            self.check_authentication()
             if not account or not sequence or not service or not rows:
                 raise ValueError("Bad Parameter Value")
 
@@ -1809,9 +1835,9 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def saveHypotheticalCharges(self, service, account, sequence, rows, **args):
         try:
-            self.check_authentication()
             if not account or not sequence or not service or not rows:
                 raise ValueError("Bad Parameter Value")
             flattened_charges = ju.loads(rows)
@@ -1831,6 +1857,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def ubMeasuredUsages(self, account, sequence, branch=0, **args):
         """
         Return all of the measuredusages on a per service basis so that the forms may be
@@ -1858,7 +1885,6 @@ class BillToolBridge:
         """
 
         try:
-            self.check_authentication()
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -1879,9 +1905,9 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def setMeter(self, account, sequence, service, meter_identifier, presentreaddate, priorreaddate):
         try:
-            self.check_authentication()
             if not account or not sequence or not service or not meter_identifier \
                 or not presentreaddate or not priorreaddate:
                 raise ValueError("Bad Parameter Value")
@@ -1901,9 +1927,9 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def setActualRegister(self, account, sequence, service, register_identifier, meter_identifier, quantity):
         try:
-            self.check_authentication()
             if not account or not sequence or not service or not register_identifier \
                 or not meter_identifier or not quantity:
                 raise ValueError("Bad Parameter Value")
@@ -1925,11 +1951,11 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def upload_utility_bill(self, account, service, begin_date, end_date,
             file_to_upload, **args):
         try:
             session = None
-            self.check_authentication()
             if not account or not begin_date or not end_date or not file_to_upload:
                 raise ValueError("Bad Parameter Value")
 
@@ -1984,9 +2010,9 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def journal(self, xaction, account, **kwargs):
         try:
-            self.check_authentication()
             if not xaction or not account:
                 raise ValueError("Bad Parameter Value")
 
@@ -2015,9 +2041,9 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def save_journal_entry(self, account, sequence, entry, **kwargs):
         try:
-            self.check_authentication()
             # TODO: 1320091681504  allow a journal entry to be made without a sequence
             if not account or not sequence or not entry:
                 raise ValueError("Bad Parameter Value")
@@ -2033,11 +2059,11 @@ class BillToolBridge:
     # TODO merge into utilbill_grid(); this is not called by the front-end anymore
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def listUtilBills(self, start, limit, account, **args):
         '''Handles AJAX call to populate Ext grid of utility bills.'''
         try:
             session = None
-            self.check_authentication()
             session = self.state_db.session()
 
             # names for utilbill states in the UI
@@ -2085,11 +2111,11 @@ class BillToolBridge:
     
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def last_utilbill_end_date(self, account, **kwargs):
         '''Returns date of last utilbill.'''
         try:
             session = None
-            self.check_authentication()
             session = self.state_db.session()
 
             the_date = self.state_db.last_utilbill_end_date(session, account)
@@ -2119,6 +2145,7 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     # TODO: 25650643 explicit params - security risk and other 
     def utilbill_grid(self, xaction, **kwargs):
         '''Handles AJAX requests to read and write data for the grid of utility
@@ -2126,7 +2153,6 @@ class BillToolBridge:
         wants to read data and "update" when a cell in the grid was edited.'''
         try:
             session = None
-            self.check_authentication()
             if xaction == 'read':
                 # for just reading, forward the request to the old function that
                 # was doing this
@@ -2186,9 +2212,9 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def getUtilBillImage(self, account, begin_date, end_date, resolution, **args):
         try:
-            self.check_authentication()
             if not account or not begin_date or not end_date or not resolution:
                 raise ValueError("Bad Parameter Value")
             # TODO: put url here, instead of in billentry.js?
@@ -2200,9 +2226,9 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def getReeBillImage(self, account, sequence, resolution, **args):
         try:
-            self.check_authentication()
             if not account or not sequence or not resolution:
                 raise ValueError("Bad Parameter Value")
             if not self.config.getboolean('billimages', 'show_reebill_images'):
@@ -2216,9 +2242,9 @@ class BillToolBridge:
     
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def getBillImageResolution(self, **kwargs):
         try:
-            self.check_authentication()
             resolution = cherrypy.session['user'].preferences['bill_image_resolution']
             return self.dumps({'success':True, 'resolution': resolution})
         except Exception as e:
@@ -2226,9 +2252,9 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def setBillImageResolution(self, resolution, **kwargs):
         try:
-            self.check_authentication()
             cherrypy.session['user'].preferences['bill_image_resolution'] = int(resolution)
             self.user_dao.save_user(cherrypy.session['user'])
             return self.dumps({'success':True})
@@ -2237,10 +2263,10 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def reebill_structure(self, account, sequence=None, **args):
         try:
             session = None
-            self.check_authentication()
             if not account:
                 raise ValueError("Bad Parameter Value: account")
 
@@ -2341,12 +2367,12 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def insert_reebill_sibling_node(self, service, account, sequence, node_type, node_key, **args):
         """
         """
         try:
             session = None
-            self.check_authentication()
             if not service or not account or not sequence or not node_type or not node_key:
                 raise ValueError("Bad Parameter Value")
 
@@ -2417,12 +2443,12 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def delete_reebill_node(self, service, account, sequence, node_type, node_key, text, **args):
         """
         """
         try:
             session = None
-            self.check_authentication()
             if not service or not account or not sequence or not node_type or not node_key or not text:
                 raise ValueError("Bad Parameter Value")
 
@@ -2451,10 +2477,10 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
     def update_reebill_node(self, service, account, sequence, node_type, node_key, text, **args):
         """
         """
-        self.check_authentication()
         try:
             session = None
             if not service or not account or not sequence or not node_type or not node_key or not text:

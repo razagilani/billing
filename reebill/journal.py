@@ -29,6 +29,7 @@ class JournalDAO(object):
 
     def journal(self, account, sequence, message):
         '''Special method that logs and event of type Note.'''
+        # TODO this should go away
         self.log_event(account, sequence, JournalDAO.Note, msg=message)
 
     def log_event(self, account, sequence, event_type, **kwargs):
