@@ -57,6 +57,9 @@ def guess_utilbills_and_end_date(session, account, start_date):
     # for customers with one utility service, but the more utility bills the
     # customer has, the less accurate it will be.
 
+    # Rich added this because of bug 26512637, which is really a data problem
+    # (reebill period dates are missing)
+    # TODO remove this because it's a temporary workaround
     if start_date == None:
         print >> sys.stderr, 'guess_utilbills_and_end_date got start_date == None'
         return ([],None) 
@@ -287,25 +290,19 @@ class StateDB:
 
         return True
 
-    # TODO: 22260579 can we remove this function?
     def listAccounts(self, session):
-        
+        '''List of all customer accounts.'''    
         # SQLAlchemy returns a list of tuples, so convert it into a plain list
-
         result = map((lambda x: x[0]), session.query(Customer.account).all())
-
         return result
 
     def list_accounts(self, session, start, limit):
-        
+        '''List of customer accounts with start and limit (for paging).'''
         # SQLAlchemy returns a list of tuples, so convert it into a plain list
-
         query = session.query(Customer.account)
         slice = query[start:start + limit]
         count = query.count()
-
         result = map((lambda x: x[0]), slice)
-
         return result, count
 
     def listSequences(self, session, account):
