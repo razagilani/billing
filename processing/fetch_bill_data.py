@@ -18,7 +18,7 @@ from skyliner import sky_objects
 from skyliner.sky_errors import DataHandlerError
 from billing import mongo
 from billing.dictutils import dict_merge
-from billing import dateutils
+from billing import dateutils, holidays
 
 def fetch_oltp_data(splinter, olap_id, reebill):
     '''Update quantities of shadow registers in reebill with Skyline-generated
@@ -204,7 +204,7 @@ def usage_data_to_virtual_register(reebill, energy_function, meter_identifier=No
                 assert 'active_periods_weekend' in register
                 assert 'active_periods_holiday' in register
                 hour_ranges = map(tuple,
-                        register['active_periods_' + dateutils.get_day_type(day)]) 
+                        register['active_periods_' + holidays.get_day_type(day)]) 
             else:
                 hour_ranges = [(0,23)]
 
