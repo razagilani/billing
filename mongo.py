@@ -104,9 +104,6 @@ class MongoReebill(object):
         - localize
         - hide the underlying mongo document organization
         - return cross cutting sets of data (e.g. all registers when registers are grouped by meter)
-
-
-
     '''
 
     def __init__(self, reebill_data):
@@ -299,6 +296,7 @@ class MongoReebill(object):
     def balance_due(self, value):
         self.dictionary['balance_due'] = value
 
+    # TODO rename to late_charge
     @property
     def late_charge_rate(self):
         '''Late charges rate is a Decimal.'''

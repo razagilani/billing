@@ -4,26 +4,18 @@ File: process.py
 Description: Various utility procedures to process bills
 """
 import sys
-sys.stdout = sys.stderr
 import os  
-from optparse import OptionParser
 import copy
 import datetime
 import calendar
 import pprint
+import yaml
+from optparse import OptionParser
+from decimal import *
 #
 # uuid collides with locals so both the locals and package are renamed
 import uuid as UUID
-
-import yaml
-
-# used for processing fixed point monetary decimal numbers
-from decimal import *
-from billing import bill
-
 import skyliner
-import rate_structure
-from billing import bill
 from billing.processing import state
 from billing.mongo import MongoReebill
 from billing.processing.rate_structure import RateStructureDAO
@@ -32,6 +24,7 @@ from billing.mongo import ReebillDAO
 from billing import nexus_util
 from billing import dateutils
 
+sys.stdout = sys.stderr
 class Process(object):
     """ Class with a variety of utility procedures for processing bills.
         The idea here is that this class is instantiated with the data
@@ -117,6 +110,15 @@ class Process(object):
         present_reebill.balance_forward = present_reebill.prior_balance - present_reebill.payment_received
         present_reebill.balance_due = present_reebill.balance_forward + present_reebill.ree_charges
 
+        # compute late charge: (old late fee + prior balance - all payments
+        # since issue date of previous bill) * late charge rate
+        payment_total = sum(session.query(Payment)\
+                .filter(Customer.account==account)\
+                .filter(Payment.date >= prior_reebill.issue_date))
+        present_reebill.late_charges = customer.late_charge_rate * \
+                (prior_reebill.late_charges + prior_reebill.balance_due -
+                payment_total)
+
         # TODO total_adjustment
 
 
@@ -153,9 +155,8 @@ class Process(object):
         originally attached to the reebill).'''
 
         # obtain the last Reebill sequence from the state database
-        # TODO: database connection needs to be passed through here
-        # such that transactions encompassing the http request can be done
-        if reebill.sequence < self.state_db.last_sequence(session, reebill.account):
+        if reebill.sequence < self.state_db.last_sequence(session,
+                reebill.account):
             raise Exception("Not the last sequence")
 
         # duplicate the CPRS for each service
@@ -209,8 +210,7 @@ class Process(object):
         reebill.discount_rate = self.state_db.discount_rate(session,
                 reebill.account)
 
-        # create an initial reebill record to which the utilbills are later
-        # attached
+        # create reebill row in state database
         self.state_db.new_rebill(session, reebill.account, reebill.sequence)
 
     def delete_reebill(self, session, account, sequence):
@@ -652,22 +652,12 @@ class Process(object):
         return total_energy
 
     def total_ree_in_reebills(self, reebills):
-
         total_energy = Decimal(0)
-
         for reebill in reebills:
             total_energy += self.total_ree_in_reebill(reebill)
-
         return total_energy
-
         
-
 if __name__ == '__main__':
-
-
-    import pdb
-    pdb.set_trace()
-
     from billing.processing.rate_structure import Register
 
     reg_data = {u'descriptor': u'REG_THERMS', u'description': u'Total therm register', u'quantityunits': u'therm', u'quantity': u'0'}

@@ -118,8 +118,7 @@ class StateDB:
     config = None
 
     def __init__(self, config):
-
-        self.config = config
+        config = config
 
         '''This returns a database session object for querying the database. Don't call
         it from outside this file, because the session should only be created
