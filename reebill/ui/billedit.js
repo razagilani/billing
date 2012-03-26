@@ -4076,7 +4076,15 @@ function renderWidgets()
                 // account parameter for URL is set in loadReeBillUIForAccount()
                 href: "http://"+location.host+"/reebill/excel_export",
                 text: "Export Selected Account's Utility Bills to XLS",
-                disabled: true, 
+                disabled: true, // disabled until account is selected
+            },{
+                id: 'dailyAverageEnergyExportButton',
+                iconCls: 'icon-application-go',
+                xtype: 'linkbutton',
+                // account parameter for URL is set in loadReeBillUIForAccount()
+                href: "http://"+location.host+"/reebill/daily_average_energy_xls",
+                text: 'Export Daily Average Energy XLS',
+                disabled: true, // disabled until account is selected
             }
         ]
     });
@@ -5077,6 +5085,8 @@ function renderWidgets()
         // enable export buttons 
         Ext.getCmp('exportAccountButton').setDisabled(false);
         Ext.getCmp('exportAccountButton').setParams({'account': account});
+        Ext.getCmp('dailyAverageEnergyExportButton').setDisabled(false);
+        Ext.getCmp('dailyAverageEnergyExportButton').setParams({'account': account});
         //Ext.getCmp('exportButton').setDisabled(false);
         Ext.getCmp('accountReeValueExportCSVBtn').setDisabled(false);
 
