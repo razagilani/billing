@@ -300,6 +300,15 @@ class MongoReebill(object):
         self.dictionary['balance_due'] = value
 
     @property
+    def late_charge_rate(self):
+        '''Late charges rate is a Decimal.'''
+        if 'late_charge_rate' in self.dictionary:
+            return self.dictionary['late_charge_rate']
+    @late_charge_rate.setter
+    def late_charge_rate(self, value):
+        self.dictionary['late_charge_rate'] = value
+
+    @property
     def late_charges(self):
         if 'late_charges' in self.dictionary:
             return self.dictionary['late_charges']
