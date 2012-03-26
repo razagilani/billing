@@ -4016,8 +4016,7 @@ function renderWidgets()
     });
 
 
-    var accountReeValueColModel = new Ext.grid.ColumnModel(
-    {
+    var accountReeValueColModel = new Ext.grid.ColumnModel({
         columns: [
             {
                 header: 'Account',
@@ -4151,6 +4150,22 @@ function renderWidgets()
         fieldLabel: 'Account',
         name: 'account',
         allowBlank: false,
+    });
+    newAccountField.on('afterrender', function() {
+        var nextAccount = '';
+        Ext.Ajax.request({
+            url: 'http://' + location.host + '/reebill/get_next_account_number',
+            success: function(result, request) {
+                // check success status
+                var jsonData = Ext.util.JSON.decode(result.responseText);
+                newAccountField.setValue(jsonData['account']);
+            },
+            failure: function() {
+                 Ext.MessageBox.alert('Ajax failure', 'http://' + location.host
+                     + '/reebill/get_next_account_number');
+            },
+            disableCaching: true,
+        });
     });
 
     var newNameField = new Ext.form.TextField({
@@ -4336,10 +4351,13 @@ function renderWidgets()
                             var jsonData = null;
                             try {
                                 jsonData = Ext.util.JSON.decode(result.responseText);
+                                var nextAccount = jsonData['nextAccount'];
                                 if (jsonData.success == false) {
                                     Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                                 } else {
                                     Ext.Msg.alert('Success', "New account created");
+                                    // update next account number shown in field
+                                    newAccountField.setValue(nextAccount);
                                 }
                             } catch (err) {
                                 Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);

@@ -8,6 +8,8 @@ from calendar import Calendar
 from decimal import Decimal
 from billing import mongo
 from billing import dateutils
+import xlwt
+import sys
 
 calendar = Calendar()
 
@@ -31,9 +33,9 @@ def daily_average_energy(reebill_dao, account, day, service='Gas',
     # and make sure there's at least one
     meters = reebill.meters_for_service(service)
     total_registers = [r for r in sum((meter['registers'] for meter in meters),
-            []) if not r['shadow'] and r['register_binding'] == 'REG_TOTAL']
+            []) if not r['shadow'] and r.get('register_binding', None) == 'REG_TOTAL']
     if total_registers == []:
-        raise Exception('No REG_TOTAL registers in any meter for %s-%s' % (account, sequence))
+        raise Exception('No REG_TOTAL registers in any meter for %s' % account)
 
     total_therms = 0
     for register in total_registers:
@@ -79,6 +81,30 @@ def monthly_average_energy(reebill_dao, account, year, month, service='Gas',
         unit='therms'):
     return sum(daily_average_energy(reebill_dao, account, day, service=service,
         unit=unit) for day in calendar.itermonthdates(year, month))
+
+def write_daily_average_energy_xls(reebill_dao, account, output_file,
+        service='Gas', unit='therms'):
+    '''Writes an Excel spreadsheet to output_file showing average energy per
+    day over all time. Time runs from top to bottom.'''
+    reebills = reebill_dao.load_reebills_in_period(account)
+    start = min(reebills, key=lambda x: x.period_begin).period_begin
+    end = max(reebills, key=lambda x: x.period_end).period_end
+
+    # spreadsheet setup
+    workbook = xlwt.Workbook(encoding='utf-8')
+    sheet = workbook.add_sheet(account)
+    sheet.write(0, 0, 'Date')
+    sheet.write(0, 1, 'Daily Average Energy (%s)' % unit)
+    row = 1
+
+    # one row per day: date, energy
+    for day in dateutils.date_generator(start, end):
+        sheet.write(row, 0, day.isoformat())
+        sheet.write(row, 1, daily_average_energy(reebill_dao, account, day,
+            service, unit))
+        row += 1
+    workbook.save(output_file)
+
 
 def main():
     # command-line arguments

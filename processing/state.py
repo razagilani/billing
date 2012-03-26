@@ -180,13 +180,17 @@ class StateDB:
         self.session = scoped_session(sessionmaker(bind=engine, autoflush=True))
 
     def new_account(self, session, name, account, discount_rate):
-
         new_customer = Customer(name, account, discount_rate)
-
         session.add(new_customer)
-
         return new_customer
 
+    def get_next_account_number(self, session):
+        '''Returns what would become the next account number if a new account
+        were created were created (highest existing account number + 1--we're
+        assuming accounts will be integers, even though we always store them as
+        strings).'''
+        last_account = max(map(int, self.listAccounts(session)))
+        return last_account + 1
 
     def attach_utilbills(self, session, account, sequence, start, end):
         '''Records in MySQL the association between the reebill given by
@@ -291,7 +295,7 @@ class StateDB:
         return True
 
     def listAccounts(self, session):
-        '''List of all customer accounts.'''    
+        '''List of all customer accounts (ordered).'''    
         # SQLAlchemy returns a list of tuples, so convert it into a plain list
         result = map((lambda x: x[0]), session.query(Customer.account).all())
         return result

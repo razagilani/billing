@@ -32,6 +32,7 @@ from billing.processing.billupload import BillUpload
 from billing.reebill import render, journal, bill_mailer
 from billing.reebill.journal import JournalDAO
 from billing.users import UserDAO, User
+from billing import calendar_reports
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -458,12 +459,9 @@ class BillToolBridge:
         strings).'''
         try:
             session = self.state_db.session()
-
-            # this will fail if any account string is not an integer
-            last_account_number = max(map(int, self.state_db.listAccounts(session)))
-
-            return ju.dumps({'success': True,
-                'account': last_account_number + 1})
+            next_account = self.state_db.get_next_account_number(session)
+            session.commit()
+            return ju.dumps({'success': True, 'account': next_account})
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)
@@ -490,8 +488,12 @@ class BillToolBridge:
             # record reebill roll separately ("so that performance can be
             # measured": 25282041)
             self.journal_dao.log_event(account, 0, JournalDAO.ReeBillRolled)
+
+            # get next next account number to send it back to the client so it
+            # can be shown in the account-creation form
+            next_account = self.state_db.get_next_account_number(session)
             session.commit()
-            return self.dumps({'success': True})
+            return self.dumps({'success': True, 'nextAccount': next_account})
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)
@@ -1050,19 +1052,7 @@ class BillToolBridge:
         '''Responds with an excel spreadsheet containing all actual charges for
         all utility bills for the given account, or every account (1 per sheet)
         if 'account' is not given.'''
-        print 'EXCEL_EXPORT SUCCEEDED'
         try:
-            session = None
-
-            #try:
-               #self.check_authentication()
-            #except Unauthenticated:
-               ## http status code 401 is "unauthorized" but should be used
-               ## with a special header and tells the browser try to repeat the
-               ## request with http authentication, which is not what we want
-               #cherrypy.response.status = 403
-               #raise cherrypy.HTTPRedirect('/login.html')
-
             session = self.state_db.session()
 
             if account is not None:
@@ -1082,11 +1072,32 @@ class BillToolBridge:
 
             session.commit()
             return buf.getvalue()
-
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)
 
+    @cherrypy.expose
+    @random_wait
+    @authenticate
+    def daily_average_energy_xls(self, account, **kwargs):
+        '''Responds with an excel spreadsheet containing daily average energy
+        over all time for the given account.'''
+        try:
+            session = self.state_db.session()
+
+            buf = StringIO() 
+            # TODO: include all services
+            calendar_reports.write_daily_average_energy_xls(self.reebill_dao, account, buf, service='Gas')
+
+            # set MIME type for file download
+            cherrypy.response.headers['Content-Type'] = 'application/excel'
+            cherrypy.response.headers['Content-Disposition'] = ('attachment;'
+                    ' filename=%s_daily_average_energy.xls') % (account)
+            session.commit()
+            return buf.getvalue()
+        except Exception as e:
+            self.rollback_session(session)
+            return self.handle_exception(e)
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
