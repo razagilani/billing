@@ -1646,9 +1646,9 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
-    def addresses(self, account, sequence, **args):
+    def account_info(self, account, sequence, **args):
         """
-        Return the billing and service address so that it may be edited.
+        Return information about the account
         """
 
         try:
@@ -1666,9 +1666,9 @@ class BillToolBridge:
             ba = reebill.billing_address
             sa = reebill.service_address
             
-            addresses = {}
+            account_info = {}
 
-            addresses['billing_address'] = {
+            account_info['billing_address'] = {
                 'ba_addressee': ba['ba_addressee'] if 'ba_addressee' in ba else '',
                 'ba_street1': ba['ba_street1'] if 'ba_street1' in ba else '',
                 'ba_city': ba['ba_city'] if 'ba_city' in ba else '',
@@ -1676,7 +1676,7 @@ class BillToolBridge:
                 'ba_postal_code': ba['ba_postal_code'] if 'ba_postal_code' in ba else '',
             }
 
-            addresses['service_address'] = {
+            account_info['service_address'] = {
                 'sa_addressee': sa['sa_addressee'] if 'sa_addressee' in sa else '',
                 'sa_street1': sa['sa_street1'] if 'sa_street1' in sa else '',
                 'sa_city': sa['sa_city'] if 'sa_city' in sa else '',
@@ -1684,7 +1684,10 @@ class BillToolBridge:
                 'sa_postal_code': sa['sa_postal_code'] if 'sa_postal_code' in sa else '',
             }
 
-            return self.dumps(addresses)
+            account_info['late_charge_rate'] = reebill.late_charge_rate
+            account_info['discount_rate'] = reebill.discount_rate
+
+            return self.dumps(account_info)
 
         except Exception as e:
             return self.handle_exception(e)
@@ -1693,21 +1696,27 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
-    def set_addresses(self, account, sequence, 
+    def set_account_info(self, account, sequence,
+        discount_rate, late_charge_rate,
         ba_addressee, ba_street1, ba_city, ba_state, ba_postal_code,
         sa_addressee, sa_street1, sa_city, sa_state, sa_postal_code,
          **args):
         """
-        Update both the billing and service address.
+        Update account information
         """
 
         try:
             if not account or not sequence \
+            or not discount_rate or not late_charge_rate \
             or not ba_addressee or not ba_street1 or not ba_city or not ba_state or not ba_postal_code \
             or not sa_addressee or not sa_street1 or not sa_city or not sa_state or not sa_postal_code:
                 raise ValueError("Bad Parameter Value")
 
             reebill = self.reebill_dao.load_reebill(account, sequence)
+
+            # TODO: 27042211 numerical types
+            reebill.discount_rate = discount_rate
+            reebill.late_charge_rate = late_charge_rate
 
             ba = reebill.billing_address
             sa = reebill.service_address

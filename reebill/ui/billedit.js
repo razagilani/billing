@@ -955,7 +955,15 @@ function renderWidgets()
 
     }
 
-    var customerInfoFormItems = [
+
+
+    var accountInfoDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/account_info',
+        disableCaching: true,
+    });
+    accountInfoDataConn.autoAbort = true;
+
+    var accountInfoFormItems = [
         {
             xtype: 'fieldset',
             title: 'Account Information',
@@ -1059,12 +1067,12 @@ function renderWidgets()
             ]
         }];
 
-    var customerInfoFormPanel = new Ext.FormPanel(
+    var accountInfoFormPanel = new Ext.FormPanel(
     {
-        id: 'customerInfoFormPanel',
-        title: 'Customer Information',
+        id: 'accountInfoFormPanel',
+        title: 'Account Information',
         header: true,
-        url: 'http://'+location.host+'/reebill/set_addresses',
+        url: 'http://'+location.host+'/reebill/set_account_info',
         border: false,
         frame: true,
         flex: 1,
@@ -1073,7 +1081,7 @@ function renderWidgets()
             anchor: '-20',
             allowBlank: false,
         },
-        items:[customerInfoFormItems], 
+        items:[accountInfoFormItems], 
         buttons: 
         [
             // TODO: the save button is generic in function, refactor
@@ -1090,43 +1098,22 @@ function renderWidgets()
         ]
     })
 
-    function configureAddressForm(account, sequence, addresses)
-    {
-
-        if (addresses) {
-            Ext.getCmp('ba_addressee').setValue(addresses['billing_address']['ba_addressee']);
-            Ext.getCmp('ba_street1').setValue(addresses['billing_address']['ba_street1']);
-            Ext.getCmp('ba_city').setValue(addresses['billing_address']['ba_city']);
-            Ext.getCmp('ba_state').setValue(addresses['billing_address']['ba_state']);
-            Ext.getCmp('ba_postal_code').setValue(addresses['billing_address']['ba_postal_code']);
-
-            Ext.getCmp('sa_addressee').setValue(addresses['service_address']['sa_addressee']);
-            Ext.getCmp('sa_street1').setValue(addresses['service_address']['sa_street1']);
-            Ext.getCmp('sa_city').setValue(addresses['service_address']['sa_city']);
-            Ext.getCmp('sa_state').setValue(addresses['service_address']['sa_state']);
-            Ext.getCmp('sa_postal_code').setValue(addresses['service_address']['sa_postal_code']);
-
-            customerInfoFormPanel.doLayout();
-        }
-
-    }
-
     // since this panel depends on data from the reeBillGrid, hook into
     // its activate so that the user has the chance to pick a selected_sequence
-    customerInfoFormPanel.on('activate', function (panel) {
+    accountInfoFormPanel.on('activate', function (panel) {
         // because this tab is being displayed, demand the form that it contain 
         // be populated
         // disable it during load, the datastore re-enables when loaded.
-        customerInfoFormPanel.setDisabled(true);
+        accountInfoFormPanel.setDisabled(true);
 
-        //var customerInfoFormPanel = Ext.getCmp('customerInfoFormPanel');
+        //var accountInfoFormPanel = Ext.getCmp('accountInfoFormPanel');
         // add base parms for form post
         // we should set these on the form when the form activates?
-        customerInfoFormPanel.getForm().baseParams = {account: selected_account, sequence: selected_sequence}
+        accountInfoFormPanel.getForm().baseParams = {account: selected_account, sequence: selected_sequence}
 
         // get the address information for this reebill 
         // fire this request when the widget is displayed
-        addressesDataConn.request({
+        accountInfoDataConn.request({
             params: {account: selected_account, sequence: selected_sequence},
             success: function(result, request) {
                 var jsonData = null;
@@ -1135,6 +1122,9 @@ function renderWidgets()
                     if (jsonData.success == false) {
                         Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                     } else {
+                        Ext.getCmp('discount_rate').setValue(jsonData['discount_rate']);
+                        Ext.getCmp('late_charge_rate').setValue(jsonData['late_charge_rate']);
+
                         Ext.getCmp('ba_addressee').setValue(jsonData['billing_address']['ba_addressee']);
                         Ext.getCmp('ba_street1').setValue(jsonData['billing_address']['ba_street1']);
                         Ext.getCmp('ba_city').setValue(jsonData['billing_address']['ba_city']);
@@ -1147,12 +1137,12 @@ function renderWidgets()
                         Ext.getCmp('sa_state').setValue(jsonData['service_address']['sa_state']);
                         Ext.getCmp('sa_postal_code').setValue(jsonData['service_address']['sa_postal_code']);
 
-                        customerInfoFormPanel.doLayout();
+                        accountInfoFormPanel.doLayout();
                     } 
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
                 } finally {
-                    customerInfoFormPanel.setDisabled(false);
+                    accountInfoFormPanel.setDisabled(false);
                 }
             },
             failure: function(result, request) {
@@ -1161,7 +1151,7 @@ function renderWidgets()
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
                 } finally {
-                    customerInfoFormPanel.setDisabled(false);
+                    accountInfoFormPanel.setDisabled(false);
                 }
             },
         });
@@ -1174,7 +1164,7 @@ function renderWidgets()
         title: 'ReeBill',
         disabled: reeBillPanelDisabled,
         layout: 'accordion',
-        items: [reeBillGrid, customerInfoFormPanel ],
+        items: [reeBillGrid, accountInfoFormPanel ],
     });
 
     // this event is received when the tab panel tab is clicked on
@@ -5116,11 +5106,6 @@ function renderWidgets()
     });
     ubMeasuredUsagesDataConn.autoAbort = true;
 
-    var addressesDataConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/addresses',
-        disableCaching: true,
-    });
-    addressesDataConn.autoAbort = true;
 
 
     var reeBillImageDataConn = new Ext.data.Connection({
