@@ -408,7 +408,6 @@ class RateStructure(object):
 
         This class may be constructed from a URS, UPRS, CPRS or probable rate structure
         """
-
         self.registers = [Register(reg_data, None, None) for reg_data in rs_data["registers"]]
         for reg in self.registers:
             if reg.register_binding is None:
