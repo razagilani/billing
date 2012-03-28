@@ -13,6 +13,7 @@ from billing.processing.process import Process
 from billing.processing.state import StateDB
 from decimal import Decimal
 import copy
+import MySQLdb
 
 class ProcessTest(unittest.TestCase):
     def setUp(self):
@@ -20,12 +21,6 @@ class ProcessTest(unittest.TestCase):
         config_file = StringIO('''[runtime]\nintegrate_skyline_backend = true''')
         self.config = ConfigParser.RawConfigParser()
         self.config.readfp(config_file)
-        self.state_db = StateDB({
-            'host': 'localhost',
-            'database': 'skyline_dev',
-            'user': 'dev',
-            'password': 'dev'
-        })
         self.reebill_dao = mongo.ReebillDAO({
             'billpath': '/db-dev/skyline/bills/',
             'database': 'test',
@@ -503,10 +498,40 @@ class ProcessTest(unittest.TestCase):
             ]
         }
 
-    def tearDown(self):
-        connection = pymongo.Connection('localhost', 27017)
-        connection.drop_database('test')
+        # customer database ("test" database has already been created with
+        # empty customer table)
+        statedb_config = {
+            'host': 'localhost',
+            'database': 'test',
+            'user': 'dev',
+            'password': 'dev'
+        }
+        self.mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test') # host, username, password, db
+        c = self.mysql_connection.cursor()
+        c.execute("delete from customer")
+        c.execute('insert into customer (id, name, account, discountrate) values (1, "Test Customer", "99999", .123)')
+        c.execute("delete from payment")
+        c.execute("delete from rebill")
+        #c.execute("delete from status_days_since") # view
+        #c.execute("delete from status_unbilled") # view
+        c.execute("delete from utilbill")
+        self.mysql_connection.commit()
+        self.state_db = StateDB(statedb_config)
 
+    def tearDown(self):
+        # clear out mongo test database
+        mongo_connection = pymongo.Connection('localhost', 27017)
+        mongo_connection.drop_database('test')
+        # clear out tables in mysql test database
+        c = self.mysql_connection.cursor()
+        #c.execute("delete from customer")
+        #c.execute("delete from payment")
+        #c.execute("delete from rebill")
+        ##c.execute("delete from status_days_since") # view
+        ##c.execute("delete from status_unbilled") # view
+        #c.execute("delete from utilbill")
+        #self.mysql_connection.commit()
+        
     def test_roll_late_fee(self):
         '''Tests the behavior of Process.roll_bill with respect to calculating
         a late fee.'''
@@ -519,7 +544,7 @@ class ProcessTest(unittest.TestCase):
         first_bill = mongo.MongoReebill(copy.deepcopy(self.example_bill))
         first_bill.balance_forward = 100.
         first_bill.late_charges = 0.
-        first_bill.account = '9999'
+        first_bill.account = '99999'
         first_bill.sequence = 1 # needs to be last sequence
         # (TODO: make fake database in which this bill really is the last)
 
@@ -527,24 +552,24 @@ class ProcessTest(unittest.TestCase):
         # combined in load_probable_rs()
         urs = copy.deepcopy(self.example_cprs)
         urs["_id"] = {
-            "utility_name" : "fake",
-            "rate_structure_name" : "COMMERCIAL_HEAT-COOL",
+            "utility_name" : "washgas",
+            "rate_structure_name" : "DC Non Residential Non Heat",
             "type" : "URS"
         },
         cprs = copy.deepcopy(self.example_cprs)
         cprs["_id"] = {
-            "account" : '9999',
+            "account" : '99999',
             "sequence" : 1,
-            "utility_name" : "fake",
-            "rate_structure_name" : "COMMERCIAL_HEAT-COOL",
+            "utility_name" : "washgas",
+            "rate_structure_name" : "DC Non Residential Non Heat",
             "branch" : 0,
             "type" : "CPRS"
         },
-        self.rate_structure_dao.save_urs('washgas', 'COMMERCIAL_HEAT-COOL',
+        self.rate_structure_dao.save_urs('washgas', "DC Non Residential Non Heat",
                 None, None, self.example_urs)
         self.rate_structure_dao.save_cprs(first_bill.account,
                 first_bill.sequence, first_bill.branch, 'washgas',
-                'COMMERCIAL_HEAT-COOL', self.example_cprs)
+                'DC Non Residential Non Heat', self.example_cprs)
 
         # roll the bill
         session = self.state_db.session()
