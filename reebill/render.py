@@ -534,6 +534,7 @@ class ReebillRenderer:
 
         # populate current charges
         late_charges = reebill.late_charges
+        print '%%%%', late_charges, type(late_charges)
         # depiction of conditional template logic based on ReeBill returning None
         # we will want to distinguish between a late charge, a zero dollar late charge and no late charge
         # to allow the template to do fancy formatting
