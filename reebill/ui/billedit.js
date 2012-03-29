@@ -969,10 +969,10 @@ function renderWidgets()
     var accountInfoFormItems = [
         {
             xtype: 'fieldset',
-            title: 'Account Information',
+            title: 'Rates',
             collapsible: false,
             defaults: {
-                anchor: '-20',
+                anchor: '0',
             },
             items: [
                 {
@@ -1074,7 +1074,7 @@ function renderWidgets()
     var accountInfoFormPanel = new Ext.FormPanel(
     {
         id: 'accountInfoFormPanel',
-        title: 'Account Information',
+        title: 'Sequential Account Information',
         header: true,
         url: 'http://'+location.host+'/reebill/set_account_info',
         border: false,
