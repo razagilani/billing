@@ -53,8 +53,13 @@ class Process(object):
         # TODO: 26500689 discount rate in the reebill structure must be relied on
         # versus fetch the instantaneous one - what if a historical bill is being
         # summed?  The discount rate in the reebill would have to be relied on.
-        discount_rate = Decimal(str(self.state_db.discount_rate(session,
-            present_reebill.account)))
+        #discount_rate = Decimal(str(self.state_db.discount_rate(session,
+        #    present_reebill.account)))
+
+        discount_rate = present_reebill.discount_rate
+        if not discount_rate:
+            raise Exception("%s-%s-%s has no discount rate" % (present_reebill.account, 
+                present_reebill.sequence, present_reebill.branch))
 
         # reset ree_charges, ree_value, ree_savings so we can accumulate across
         # all services
