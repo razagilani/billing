@@ -3,6 +3,7 @@ import os
 import sys
 from billing import mongo
 from billing.processing import state
+from billing import dateutils
 import xlwt
 import pprint
 pformat = pprint.PrettyPrinter().pformat
@@ -42,6 +43,9 @@ class Exporter(object):
         sheet = workbook.add_sheet(account)
         sheet.write(0, 0, 'Account')
         sheet.write(0, 1, 'Sequence')
+        sheet.write(0, 2, 'Period Start')
+        sheet.write(0, 3, 'Period End')
+        sheet.write(0, 4, 'Billing Month')
 
         # a "charge name" is a string consisting of a charge group and a
         # description. the spreadsheet has one column per charge name (so
@@ -56,7 +60,7 @@ class Exporter(object):
         # spreadsheet. last_column keeps the highest column index of any
         # charge name so far
         charge_names_columns = {}
-        last_column = 1
+        last_column = 4
 
         row = 1
         for sequence in sorted(self.state_db.listSequences(statedb_session, account)):
@@ -127,11 +131,17 @@ class Exporter(object):
                         else:
                             raise
 
-            # account and sequence go in 1st 2 columns (show ERROR with
-            # sequence if there was an error)
+            # account, sequence, start, end, month go in 1st 2 columns (show
+            # ERROR with sequence if there was an error)
             sheet.write(row, 0, account)
             sheet.write(row, 1, sequence if not error else '%s: ERROR' %
                     sequence)
+            sheet.write(row, 2, reebill.period_begin.strftime(dateutils.ISO_8601_DATE))
+            sheet.write(row, 3, reebill.period_end.strftime(dateutils.ISO_8601_DATE))
+            month_string = '-'.join(map(str,
+                dateutils.estimate_month(reebill.period_begin,
+                reebill.period_end)))
+            sheet.write(row, 4, month_string)
             row += 1
 
 
