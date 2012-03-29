@@ -20,6 +20,7 @@ from billing.processing import state
 from billing.mongo import MongoReebill
 from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state
+from billing.processing.db_objects import Payment, Customer
 from billing.mongo import ReebillDAO
 from billing import nexus_util
 from billing import dateutils
@@ -110,15 +111,6 @@ class Process(object):
         present_reebill.balance_forward = present_reebill.prior_balance - present_reebill.payment_received
         present_reebill.balance_due = present_reebill.balance_forward + present_reebill.ree_charges
 
-        # compute late charge: (old late fee + prior balance - all payments
-        # since issue date of previous bill) * late charge rate
-        payment_total = sum(session.query(Payment)\
-                .filter(Customer.account==account)\
-                .filter(Payment.date >= prior_reebill.issue_date))
-        present_reebill.late_charges = customer.late_charge_rate * \
-                (prior_reebill.late_charges + prior_reebill.balance_due -
-                payment_total)
-
         # TODO total_adjustment
 
 
@@ -159,6 +151,12 @@ class Process(object):
                 reebill.account):
             raise Exception("Not the last sequence")
 
+        # we can't roll a non-issued bill because we need an issue date to
+        # determine the late charge of the next bill
+        if not self.state_db.is_issued(session, reebill.account,
+                reebill.sequence):
+            raise Exception("Can't roll a reebill that has not been issued.")
+
         # duplicate the CPRS for each service
         # TODO: 22597151 refactor
         for service in reebill.services:
@@ -188,6 +186,9 @@ class Process(object):
         # the new begin date and is needed to guess the new end date
         old_period_end = reebill.period_end
 
+        # save original issue date: needed below for calculating late charges
+        old_issue_date = reebill.issue_date
+
         # clear out much but not all data in the bill, including dates
         reebill.reset()
         # TODO: unclear that call to reset() belongs here. it should go as
@@ -212,6 +213,20 @@ class Process(object):
 
         # create reebill row in state database
         self.state_db.new_rebill(session, reebill.account, reebill.sequence)
+
+
+        # compute late charge: (old late fee + prior balance - all payments
+        # since issue date of previous bill) * late charge rate
+        payments = session.query(Payment)\
+                .filter(Customer.account==reebill.account)\
+                .filter(Payment.date >= old_issue_date).all()
+        payment_total = sum(payments)
+        customer = session.query(Customer)\
+                .filter(Customer.account==reebill.account).one()
+        reebill.late_charges = customer.latechargerate * \
+                (reebill.late_charges + reebill.balance_due -
+                payment_total)
+
 
     def delete_reebill(self, session, account, sequence):
         '''Deletes the reebill given by 'account' and 'sequence': removes state
