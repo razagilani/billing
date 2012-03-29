@@ -525,7 +525,7 @@ class ProcessTest(unittest.TestCase):
         # insert one customer
         self.state_db = StateDB(statedb_config)
         session = self.state_db.session()
-        customer = Customer('Test Customer', '99999', .456, .123)
+        customer = Customer('Test Customer', '99999', .12, .34)
         session.add(customer)
         session.commit()
 
@@ -572,7 +572,6 @@ class ProcessTest(unittest.TestCase):
                     period_start=date(2012,1,1), period_end=date(2012,2,1),
                     processed=1, reebill=r, date_received=datetime(2012,2,15))
             session.add(u)
-            session.commit()
 
             # put fake URS & CPRS into db (UPRS not needed), so they can be
             # combined in load_probable_rs()
@@ -602,13 +601,14 @@ class ProcessTest(unittest.TestCase):
 
             # bill should be created with incremented sequence
             self.assertEqual(bill.sequence, 2)
-            self.assertEqual(bill.late_charges, 123)
+            self.assertEqual(bill.late_charges, 134)
 
             ## now add a late charge to the bill and roll it again: late charge
             ## should be multiplied by late charge rate
             #bill.late_charges = 100
             #process.roll_bill(session, bill)
             #self.assertEqual(bill.late_charges, 123)
+            session.commit()
         except:
             session.rollback()
             raise
