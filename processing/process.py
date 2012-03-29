@@ -7,6 +7,7 @@ import sys
 import os  
 import copy
 import datetime
+from datetime import date
 import calendar
 import pprint
 import yaml
@@ -44,9 +45,10 @@ class Process(object):
         self.splinter = splinter
         self.monguru = monguru
 
-    # compute the value, charges and savings of renewable energy
     def sum_bill(self, session, prior_reebill, present_reebill):
-
+        '''Compute everything about the bill that can be continuously
+        recomputed. This should be called immediately after roll_bill()
+        whenever roll_bill() is called.'''
         # get discount rate
         # TODO: 26500689 discount rate in the reebill structure must be relied on
         # versus fetch the instantaneous one - what if a historical bill is being
@@ -113,15 +115,18 @@ class Process(object):
 
         # TODO total_adjustment
 
+        # set late charge, if any (this will be None if the previous bill has
+        # not been issued, 0 before the previous bill's due date, and non-0
+        # after that)
+        present_reebill.late_charges = self.get_late_charge(session, present_reebill)
+
 
     def copy_actual_charges(self, reebill):
-
         for service in reebill.services:
             actual_chargegroups = reebill.actual_chargegroups_for_service(service)
             reebill.set_hypothetical_chargegroups_for_service(service, actual_chargegroups)
 
     def pay_bill(self, session, reebill):
-
         # depend on first ub period to be the date range for which a payment is seeked.
         # this is a wrong design because there may be more than one ub period
         # in the case of multiple services with staggered periods.
@@ -144,18 +149,14 @@ class Process(object):
         the next period. 'reebill' must be its customer's last bill before
         roll_bill is called. This method does not save the reebill in Mongo,
         but it DOES create new CPRS documents in Mongo (by copying the ones
-        originally attached to the reebill).'''
+        originally attached to the reebill). sum_bill() should always be called
+        immediately after this one so the bill is updated to its current
+        state.'''
 
         # obtain the last Reebill sequence from the state database
         if reebill.sequence < self.state_db.last_sequence(session,
                 reebill.account):
             raise Exception("Not the last sequence")
-
-        # we can't roll a non-issued bill because we need an issue date to
-        # determine the late charge of the next bill
-        if not self.state_db.is_issued(session, reebill.account,
-                reebill.sequence):
-            raise Exception("Can't roll a reebill that has not been issued.")
 
         # duplicate the CPRS for each service
         # TODO: 22597151 refactor
@@ -186,9 +187,6 @@ class Process(object):
         # the new begin date and is needed to guess the new end date
         old_period_end = reebill.period_end
 
-        # save original issue date: needed below for calculating late charges
-        old_issue_date = reebill.issue_date
-
         # clear out much but not all data in the bill, including dates
         reebill.reset()
         # TODO: unclear that call to reset() belongs here. it should go as
@@ -215,20 +213,44 @@ class Process(object):
         self.state_db.new_rebill(session, reebill.account, reebill.sequence)
 
 
-        # compute late charge: (old late fee + prior balance - all payments
-        # since issue date of previous bill) * late charge rate
-        # (latechargerate is stored in db as a value < 1 so 1, must be added to
-        # it)
-        payments = session.query(Payment)\
-                .filter(Customer.account==reebill.account)\
-                .filter(Payment.date >= old_issue_date).all()
-        payment_total = sum(payments)
+    def get_late_charge(self, session, reebill, day=date.today()):
+        '''Returns the late charge for the given reebill on 'day', which is the
+        present by default. ('day' will only affect the result for a bill that
+        hasn't been issued yet: there is a late fee applied to the balance of
+        the previous bill when only when that previous bill's due date has
+        passed.) Late fees only apply to bills whose predecessor has been
+        issued; None is returned if the predecessor has not been issued. (The
+        first bill and the sequence 0 template bill always have a late charge
+        of 0.)'''
+        if reebill.sequence <= 1:
+            return 0
+        if not self.state_db.is_issued(session, reebill.account,
+                reebill.sequence - 1):
+            return None
+
+        # late fee is 0 if previous bill is not overdue
+        predecessor = self.reebill_dao.load_reebill(reebill.account,
+                reebill.sequence - 1)
+        if day <= predecessor.due_date:
+            return 0
+
+        # get sum of all payments since the last bill was issued
         customer = session.query(Customer)\
                 .filter(Customer.account==reebill.account).one()
-        reebill.late_charges = (Decimal('1.00') + customer.latechargerate) * \
-                (reebill.late_charges + reebill.balance_due -
-                payment_total)
+        payments = session.query(Payment).filter(Payment.customer==customer)\
+                .filter(Payment.date >= predecessor.issue_date)
+        payment_total = sum(payments.all())
 
+        # late charge is: late charge rate * (old late fee + prior balance
+        # - all payments since issue date of previous bill)
+        # latechargerate is stored in db as a value < 1 so 1, must be added to
+        # it. also note that we rely on predecessor's balance_due instead of
+        # this rebill's prior_balance because the latter is computed only when
+        # sum_bill() is called.
+        late_charge = (Decimal('1.00') + customer.latechargerate) * \
+                (predecessor.late_charges + predecessor.balance_due
+                - payment_total)
+        return late_charge
 
     def delete_reebill(self, session, account, sequence):
         '''Deletes the reebill given by 'account' and 'sequence': removes state
@@ -560,20 +582,25 @@ class Process(object):
         reebill.period_begin = rebill_periodbegindate
         reebill.period_end = rebill_periodenddate
 
-    def issue(self, session, account, sequence, issuedate=None):
+    def issue(self, session, account, sequence,
+            issue_date=datetime.date.today()):
         '''Sets the issue date of the reebill given by account, sequence to
-        'issuedate' (or today by default) and the due date to 30 days from the
-        issue date. The reebill is marked as issued in the state database.'''
+        'issue_date' (or today by default) and the due date to 30 days from the
+        issue date. The reebill's late charge is set to its permanent value in
+        mongo, and the reebill is marked as issued in the state database.'''
         # set issue date and due date in mongo
         reebill = self.reebill_dao.load_reebill(account, sequence)
-        if issuedate is None:
-            issuedate = datetime.date.today()
-        else:
-            issuedate = datetime.datetime.strptime(issuedate, "%Y-%m-%d")
+        reebill.issue_date = issue_date
         # TODO: parameterize for dependence on customer 
-        duedate = issuedate + datetime.timedelta(days=30)
-        reebill.issue_date = issuedate
-        reebill.due_date = duedate
+        reebill.due_date = issue_date + datetime.timedelta(days=30)
+
+        # set late charge to its final value (payments after this have no
+        # effect on late fee)
+        # TODO: should this be replaced with a call to sum_bill() to just make
+        # sure everything is up-to-date before issuing?
+        reebill.late_charges = self.get_late_charge(session, reebill)
+
+        # save in mongo
         self.reebill_dao.save_reebill(reebill)
 
         # mark as issued in mysql
