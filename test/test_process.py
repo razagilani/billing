@@ -510,103 +510,108 @@ class ProcessTest(unittest.TestCase):
             'user': 'dev',
             'password': 'dev'
         }
-        # TODO use sqlalchemy for inserting
-        self.mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test') # host, username, password, db
-        c = self.mysql_connection.cursor()
+
+        # clear out tables in mysql test database (not relying on StateDB)
+        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test') # host, username, password, db
+        c = mysql_connection.cursor()
         c.execute("delete from payment")
         c.execute("delete from utilbill")
         c.execute("delete from rebill")
         c.execute("delete from customer")
-        # (note that status_days_since, status_unbilled are views and you neither can nor need to delete from them)
+        # (note that status_days_since, status_unbilled are views and you
+        # neither can nor need to delete from them)
+        mysql_connection.commit()
 
-        c.execute('insert into customer (id, name, account, discountrate, latechargerate) values (1, "Test Customer", "99999", .456, .123)')
-
-        self.mysql_connection.commit()
-
+        # insert one customer
         self.state_db = StateDB(statedb_config)
+        session = self.state_db.session()
+        customer = Customer('Test Customer', '99999', .456, .123)
+        session.add(customer)
+        session.commit()
 
-        # TODO: if testing is interrupted, tearDown() never runs, and you may
-        # get foreign key errors when trying to delete the old data when
-        # running tests again. i think the right way to do this is to drop &
-        # re-create the tables instead of just clearing them out. (that might
-        # still cause foreign key errors--find out.)
-        
     def tearDown(self):
+        '''This gets run even if a test fails.'''
         # clear out mongo test database
         mongo_connection = pymongo.Connection('localhost', 27017)
         mongo_connection.drop_database('test')
-        # clear out tables in mysql test database
-        c = self.mysql_connection.cursor()
+
+        # clear out tables in mysql test database (not relying on StateDB)
+        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test') # host, username, password, db
+        c = mysql_connection.cursor()
+        c.execute("delete from payment")
         c.execute("delete from utilbill")
         c.execute("delete from rebill")
-        c.execute("delete from payment")
         c.execute("delete from customer")
-        self.mysql_connection.commit()
+        mysql_connection.commit()
 
     def test_roll_late_fee(self):
         '''Tests the behavior of Process.roll_bill with respect to calculating
         a late fee.'''
-        process = Process(self.config, self.state_db, self.reebill_dao,
-                self.rate_structure_dao, self.splinter, self.monguru)
+        try:
+            session = self.state_db.session()
 
-        # TODO state db
+            process = Process(self.config, self.state_db, self.reebill_dao,
+                    self.rate_structure_dao, self.splinter, self.monguru)
 
-        # set up a bill with a balance forward and no late fee
-        bill = mongo.MongoReebill(python_convert(copy.deepcopy(self.example_bill)))
-        bill.balance_forward = 100.
-        bill.late_charges = Decimal('100.00')
-        bill.account = '99999'
-        bill.sequence = 1 # needs to be last sequence
-        bill.issue_date = date(2012,3,15)
+            # TODO state db
 
-        # need to create relationships in mysql too
-        session = self.state_db.session()
-        customer = session.query(Customer).filter(Customer.account==bill.account).one()
-        r = ReeBill(customer, bill.sequence)
-        r.issued = 1
-        session.add(r)
-        u = UtilBill(customer, UtilBill.Complete, 'gas',
-                period_start=date(2012,1,1), period_end=date(2012,2,1),
-                processed=1, reebill=r, date_received=datetime(2012,2,15))
-        session.add(u)
-        session.commit()
+            # set up a bill with a balance forward and no late fee
+            bill = mongo.MongoReebill(python_convert(copy.deepcopy(self.example_bill)))
+            bill.balance_forward = 100.
+            bill.late_charges = Decimal('100.00')
+            bill.account = '99999'
+            bill.sequence = 1 # needs to be last sequence
+            bill.issue_date = date(2012,3,15)
 
-        # put fake URS & CPRS into db (UPRS not needed), so they can be
-        # combined in load_probable_rs()
-        urs = python_convert(copy.deepcopy(self.example_cprs))
-        urs["_id"] = {
-            "utility_name" : "washgas",
-            "rate_structure_name" : "DC Non Residential Non Heat",
-            "type" : "URS"
-        },
-        cprs = python_convert(copy.deepcopy(self.example_cprs))
-        cprs["_id"] = {
-            "account" : '99999',
-            "sequence" : 1,
-            "utility_name" : "washgas",
-            "rate_structure_name" : "DC Non Residential Non Heat",
-            "branch" : 0,
-            "type" : "CPRS"
-        },
-        self.rate_structure_dao.save_urs('washgas', "DC Non Residential Non Heat",
-                None, None, self.example_urs)
-        self.rate_structure_dao.save_cprs(bill.account,
-                bill.sequence, bill.branch, 'washgas',
-                'DC Non Residential Non Heat', self.example_cprs)
+            # need to create relationships in mysql too
+            customer = session.query(Customer).filter(Customer.account==bill.account).one()
+            r = ReeBill(customer, bill.sequence)
+            r.issued = 1
+            session.add(r)
+            u = UtilBill(customer, UtilBill.Complete, 'gas',
+                    period_start=date(2012,1,1), period_end=date(2012,2,1),
+                    processed=1, reebill=r, date_received=datetime(2012,2,15))
+            session.add(u)
+            session.commit()
 
-        # roll the bill
-        session = self.state_db.session()
-        process.roll_bill(session, bill)
+            # put fake URS & CPRS into db (UPRS not needed), so they can be
+            # combined in load_probable_rs()
+            urs = python_convert(copy.deepcopy(self.example_cprs))
+            urs["_id"] = {
+                "utility_name" : "washgas",
+                "rate_structure_name" : "DC Non Residential Non Heat",
+                "type" : "URS"
+            },
+            cprs = python_convert(copy.deepcopy(self.example_cprs))
+            cprs["_id"] = {
+                "account" : '99999',
+                "sequence" : 1,
+                "utility_name" : "washgas",
+                "rate_structure_name" : "DC Non Residential Non Heat",
+                "branch" : 0,
+                "type" : "CPRS"
+            },
+            self.rate_structure_dao.save_urs('washgas', "DC Non Residential Non Heat",
+                    None, None, self.example_urs)
+            self.rate_structure_dao.save_cprs(bill.account,
+                    bill.sequence, bill.branch, 'washgas',
+                    'DC Non Residential Non Heat', self.example_cprs)
 
-        # bill should be created with incremented sequence
-        self.assertEqual(bill.sequence, 2)
-        self.assertEqual(bill.late_charges, 123)
+            # roll the bill
+            process.roll_bill(session, bill)
 
-        ## now add a late charge to the bill and roll it again: late charge
-        ## should be multiplied by late charge rate
-        #bill.late_charges = 100
-        #process.roll_bill(session, bill)
-        #self.assertEqual(bill.late_charges, 123)
+            # bill should be created with incremented sequence
+            self.assertEqual(bill.sequence, 2)
+            self.assertEqual(bill.late_charges, 123)
+
+            ## now add a late charge to the bill and roll it again: late charge
+            ## should be multiplied by late charge rate
+            #bill.late_charges = 100
+            #process.roll_bill(session, bill)
+            #self.assertEqual(bill.late_charges, 123)
+        except:
+            session.rollback()
+            raise
 
 if __name__ == '__main__':
     unittest.main(failfast=True)
