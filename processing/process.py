@@ -113,6 +113,14 @@ class Process(object):
         present_reebill.ree_charges = Decimal(present_reebill.ree_charges + ree_charges).quantize(Decimal('.00'), rounding=ROUND_DOWN)
         present_reebill.ree_savings = Decimal(present_reebill.ree_savings + ree_savings).quantize(Decimal('.00'), rounding=ROUND_UP)
 
+        # set late charge, if any (this will be None if the previous bill has
+        # not been issued, 0 before the previous bill's due date, and non-0
+        # after that)
+        print '^^^^ late charge was reset'
+        lc = self.get_late_charge(session, present_reebill)
+        print lc, type(lc)
+        present_reebill.late_charges = lc
+
         # now grab the prior bill and pull values forward
         present_reebill.prior_balance = prior_reebill.balance_due
         present_reebill.balance_forward = present_reebill.prior_balance - present_reebill.payment_received
@@ -120,11 +128,6 @@ class Process(object):
                 present_reebill.ree_charges + present_reebill.late_charges
 
         # TODO total_adjustment
-
-        # set late charge, if any (this will be None if the previous bill has
-        # not been issued, 0 before the previous bill's due date, and non-0
-        # after that)
-        present_reebill.late_charges = self.get_late_charge(session, present_reebill)
 
 
     def copy_actual_charges(self, reebill):
@@ -233,7 +236,7 @@ class Process(object):
         first bill and the sequence 0 template bill always have a late charge
         of 0.)'''
         if reebill.sequence <= 1:
-            return 0
+            return Decimal(0)
         if not self.state_db.is_issued(session, reebill.account,
                 reebill.sequence - 1):
             return None
@@ -242,7 +245,7 @@ class Process(object):
         predecessor = self.reebill_dao.load_reebill(reebill.account,
                 reebill.sequence - 1)
         if day <= predecessor.due_date:
-            return 0
+            return Decimal(0)
 
         # get sum of all payments since the last bill was issued
         customer = session.query(Customer)\
@@ -258,7 +261,7 @@ class Process(object):
         # sum_bill() is called.
         late_charge = reebill.late_charge_rate * (predecessor.balance_due -
                 payment_total)
-        return late_charge
+        return Decimal(late_charge)
 
     def delete_reebill(self, session, account, sequence):
         '''Deletes the reebill given by 'account' and 'sequence': removes state
