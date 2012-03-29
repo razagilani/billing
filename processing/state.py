@@ -272,6 +272,8 @@ class StateDB:
         session.add(new_reebill)
 
     def issue(self, session, account, sequence):
+        '''Marks the given reebill as issued. Does not set the issue date or
+        due date.'''
         customer = session.query(Customer).filter(Customer.account==account).one()
         reeBill = session.query(ReeBill) \
                 .filter(ReeBill.customer_id==customer.id) \
