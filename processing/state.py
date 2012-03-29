@@ -235,12 +235,15 @@ class StateDB:
         session.delete(reebill)
 
     def discount_rate(self, session, account):
-
         # one() raises an exception if more than one row was found
         result = session.query(Customer).filter_by(account=account).one().discountrate
-
         return result
         
+    def late_charge_rate(self, session, account):
+        # one() raises an exception if more than one row was found
+        result = session.query(Customer).filter_by(account=account).one().latechargerate
+        return result
+
     # TODO: 22598787 branches
     def last_sequence(self, session, account):
 
