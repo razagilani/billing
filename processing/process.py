@@ -217,13 +217,15 @@ class Process(object):
 
         # compute late charge: (old late fee + prior balance - all payments
         # since issue date of previous bill) * late charge rate
+        # (latechargerate is stored in db as a value < 1 so 1, must be added to
+        # it)
         payments = session.query(Payment)\
                 .filter(Customer.account==reebill.account)\
                 .filter(Payment.date >= old_issue_date).all()
         payment_total = sum(payments)
         customer = session.query(Customer)\
                 .filter(Customer.account==reebill.account).one()
-        reebill.late_charges = customer.latechargerate * \
+        reebill.late_charges = (Decimal('1.00') + customer.latechargerate) * \
                 (reebill.late_charges + reebill.balance_due -
                 payment_total)
 

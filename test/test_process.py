@@ -42,6 +42,8 @@ class ProcessTest(unittest.TestCase):
         self.monguru = Monguru('tyrell', 'dev')
         
         # temporary hack to get a bill that's always the same
+        # this bill came straight out of mongo (except for .date() applied to
+        # datetimes)
         ISODate = lambda s: datetime.strptime(s, dateutils.ISO_8601_DATETIME)
         true, false = True, False
         self.example_bill = {
@@ -552,7 +554,7 @@ class ProcessTest(unittest.TestCase):
         # set up a bill with a balance forward and no late fee
         bill = mongo.MongoReebill(python_convert(copy.deepcopy(self.example_bill)))
         bill.balance_forward = 100.
-        bill.late_charges = 100.
+        bill.late_charges = Decimal('100.00')
         bill.account = '99999'
         bill.sequence = 1 # needs to be last sequence
         bill.issue_date = date(2012,3,15)
