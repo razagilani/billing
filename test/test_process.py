@@ -589,7 +589,7 @@ class ProcessTest(unittest.TestCase):
 
             # but sum_bill() destroys bill1's balance_due, so reset it to
             # the right value, and save it in mongo
-            bill1.balance_due = Decimal('100')
+            bill1.balance_due = Decimal('100.')
             self.reebill_dao.save_reebill(bill1)
 
             # create second bill (not by rolling, because process.roll_bill()
@@ -604,13 +604,27 @@ class ProcessTest(unittest.TestCase):
 
             # bill2's late charge should be 0 before bill1's due date and non-0
             # after
-            import pdb; pdb.set_trace()
             self.assertEqual(0, process.get_late_charge(session, bill2, date(2011,12,31)))
             self.assertEqual(0, process.get_late_charge(session, bill2, date(2012,1,2)))
             self.assertEqual(0, process.get_late_charge(session, bill2, date(2012,1,31)))
             self.assertEqual(134, process.get_late_charge(session, bill2, date(2012,2,1)))
             self.assertEqual(134, process.get_late_charge(session, bill2, date(2012,2,2)))
             self.assertEqual(134, process.get_late_charge(session, bill2, date(2013,1,1)))
+
+            # in order to get late charge of a 3rd bill, bill2 must be put into
+            # mysql and "summed"
+            self.state_db.new_rebill(session, bill2.account, bill2.sequence)
+            process.sum_bill(session, bill1, bill2)
+
+            # create a 3rd bill without issuing bill2. bill3 should have None
+            # as its late charge for all dates
+            bill3 = mongo.MongoReebill(deep_map(mongo.float_to_decimal,
+                    python_convert(copy.deepcopy(self.example_bill))))
+            bill3.account = '99999'
+            bill3.sequence = 3
+            bill3.balance_due = Decimal('300.')
+            self.assertEqual(None, process.get_late_charge(session, bill3, date(2011,12,31)))
+            self.assertEqual(None, process.get_late_charge(session, bill3, date(2013,1,1)))
 
             session.commit()
         except:
