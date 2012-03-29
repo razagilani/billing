@@ -116,7 +116,8 @@ class Process(object):
         # now grab the prior bill and pull values forward
         present_reebill.prior_balance = prior_reebill.balance_due
         present_reebill.balance_forward = present_reebill.prior_balance - present_reebill.payment_received
-        present_reebill.balance_due = present_reebill.balance_forward + present_reebill.ree_charges
+        present_reebill.balance_due = present_reebill.balance_forward + \
+                present_reebill.ree_charges + present_reebill.late_charges
 
         # TODO total_adjustment
 
@@ -214,6 +215,10 @@ class Process(object):
         reebill.discount_rate = self.state_db.discount_rate(session,
                 reebill.account)
 
+        # set late charge rate to the instananeous value in MySQL
+        reebill.late_charge_rate = self.state_db.discount_rate(session,
+                reebill.account)
+
         # create reebill row in state database
         self.state_db.new_rebill(session, reebill.account, reebill.sequence)
 
@@ -248,13 +253,11 @@ class Process(object):
 
         # late charge is: late charge rate * (old late fee + prior balance
         # - all payments since issue date of previous bill)
-        # latechargerate is stored in db as a value < 1 so 1, must be added to
-        # it. also note that we rely on predecessor's balance_due instead of
+        # also note that we rely on predecessor's balance_due instead of
         # this rebill's prior_balance because the latter is computed only when
         # sum_bill() is called.
-        late_charge = (Decimal('1.00') + customer.latechargerate) * \
-                (predecessor.late_charges + predecessor.balance_due
-                - payment_total)
+        late_charge = reebill.late_charge_rate * (predecessor.balance_due -
+                payment_total)
         return late_charge
 
     def delete_reebill(self, session, account, sequence):
