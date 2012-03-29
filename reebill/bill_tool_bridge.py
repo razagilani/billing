@@ -8,7 +8,7 @@ import traceback
 import json
 import cherrypy
 import jinja2, os
-import string
+import string, re
 import ConfigParser
 from datetime import datetime
 from datetime import date
@@ -1707,7 +1707,7 @@ class BillToolBridge:
 
         try:
             if not account or not sequence \
-            or not discount_rate or not late_charge_rate \
+            or not discount_rate \
             or not ba_addressee or not ba_street1 or not ba_city or not ba_state or not ba_postal_code \
             or not sa_addressee or not sa_street1 or not sa_city or not sa_state or not sa_postal_code:
                 raise ValueError("Bad Parameter Value")
@@ -1716,8 +1716,16 @@ class BillToolBridge:
 
             # TODO: 27042211 numerical types
             reebill.discount_rate = discount_rate
-            reebill.late_charge_rate = late_charge_rate
 
+            # process late_charge_rate
+            # strip out anything unrelated to a decimal number
+            late_charge_rate = re.sub('[^0-9\.-]+', '', late_charge_rate)
+            if late_charge_rate:
+                late_charge_rate = Decimal(late_charge_rate)
+                if late_charge_rate < 0 or late_charge_rate >1:
+                    return self.dumps({'success': False, 'errors': {'reason':'Late Charge Rate', 'details':'must be between 0 and 1', 'late_charge_rate':'Invalid late charge rate'}})
+                reebill.late_charge_rate = Decimal(late_charge_rate)
+            
             ba = reebill.billing_address
             sa = reebill.service_address
             
@@ -1732,6 +1740,8 @@ class BillToolBridge:
             reebill.service_address['sa_city'] = sa_city
             reebill.service_address['sa_state'] = sa_state
             reebill.service_address['sa_postal_code'] = sa_postal_code
+
+
 
             self.reebill_dao.save_reebill(reebill)
 

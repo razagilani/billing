@@ -1,3 +1,6 @@
+// necessary for form validation messages to appear when a field's msgTarget qtip config is used
+//Ext.QuickTips.init();
+
 var DEFAULT_RESOLUTION = 100; 
 
 /*
@@ -969,7 +972,7 @@ function renderWidgets()
             title: 'Account Information',
             collapsible: false,
             defaults: {
-                anchor: '0',
+                anchor: '-20',
             },
             items: [
                 {
@@ -982,6 +985,7 @@ function renderWidgets()
                     id: 'late_charge_rate',
                     fieldLabel: 'Late Charge Rate',
                     name: 'late_charge_rate',
+                    msgTarget: 'under',
                 },
             ],
         },
@@ -1087,7 +1091,7 @@ function renderWidgets()
             // TODO: the save button is generic in function, refactor
             {
                 text   : 'Save',
-                handler: saveForm
+                handler: saveForm,
             },{
                 text   : 'Reset',
                 handler: function() {
@@ -1403,9 +1407,10 @@ function renderWidgets()
                             Ext.Msg.alert('Failure', 'Ajax communication failed');
                             break;
                         case Ext.form.Action.SERVER_INVALID:
-                            Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                            Ext.Msg.alert('Failure', action.result.errors.reason + ' ' + action.result.errors.details);
+                            break;
                         default:
-                            Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                            Ext.Msg.alert('Failure1', action.result.errors.reason + ' ' + action.result.errors.details);
                     }
                 },
                 success: function(form, action) {

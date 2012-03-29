@@ -296,7 +296,6 @@ class MongoReebill(object):
     def balance_due(self, value):
         self.dictionary['balance_due'] = value
 
-    # TODO rename to late_charge
     @property
     def late_charge_rate(self):
         '''Late charges rate is a Decimal.'''
