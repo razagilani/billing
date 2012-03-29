@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/pytho.date(),
 import sys
 import unittest
 from StringIO import StringIO
@@ -11,9 +11,11 @@ from billing import dateutils, mongo
 from billing.processing import rate_structure
 from billing.processing.process import Process
 from billing.processing.state import StateDB
+from billing.processing.db_objects import ReeBill, Customer, UtilBill
 from decimal import Decimal
 import copy
 import MySQLdb
+from billing.mongo_utils import python_convert
 
 class ProcessTest(unittest.TestCase):
     def setUp(self):
@@ -52,7 +54,7 @@ class ProcessTest(unittest.TestCase):
             "sequence" : 1,
             "ree_value" : 65.207194857,
             "discount_rate" : 0.5,
-            "issue_date" : ISODate("2010-02-15T00:00:00Z"),
+            "issue_date" : ISODate("2010-02-15T00:00:00Z").date(),
             "utilbills" : [
                 {
                     "actual_chargegroups" : {
@@ -224,7 +226,7 @@ class ProcessTest(unittest.TestCase):
                     "ree_value" : 65.207194857,
                     "meters" : [
                         {
-                            "present_read_date" : ISODate("2010-08-13T00:00:00Z"),
+                            "present_read_date" : ISODate("2010-08-13T00:00:00Z").date(),
                             "registers" : [
                                 {
                                     "register_binding" : "REG_TOTAL",
@@ -246,13 +248,13 @@ class ProcessTest(unittest.TestCase):
                                 }
                             ],
                             "estimated" : false,
-                            "prior_read_date" : ISODate("2010-07-15T00:00:00Z"),
+                            "prior_read_date" : ISODate("2010-07-15T00:00:00Z").date(),
                             "identifier" : "M60324"
                         }
                     ],
                     "actual_total" : 564.037715809,
-                    "period_end" : ISODate("2010-08-13T00:00:00Z"),
-                    "period_begin" : ISODate("2010-07-15T00:00:00Z"),
+                    "period_end" : ISODate("2010-08-13T00:00:00Z").date(),
+                    "period_begin" : ISODate("2010-07-15T00:00:00Z").date(),
                     "hypothetical_total" : 629.244910666,
                     "rate_structure_binding" : "DC Non Residential Non Heat",
                     "billingaddress" : {
@@ -273,9 +275,9 @@ class ProcessTest(unittest.TestCase):
             ],
             "payment_received" : 0,
             "branch" : 0,
-            "period_end" : ISODate("2010-08-13T00:00:00Z"),
+            "period_end" : ISODate("2010-08-13T00:00:00Z").date(),
             "balance_forward" : 0,
-            "due_date" : ISODate("2010-03-17T00:00:00Z"),
+            "due_date" : ISODate("2010-03-17T00:00:00Z").date(),
             "service_address" : {
                 "sa_city" : "Washington",
                 "sa_state" : "DC",
@@ -351,7 +353,7 @@ class ProcessTest(unittest.TestCase):
             "prior_balance" : 0,
             "hypothetical_total" : 629.244910666,
             "actual_total" : 564.037715809,
-            "period_begin" : ISODate("2010-07-15T00:00:00Z"),
+            "period_begin" : ISODate("2010-07-15T00:00:00Z").date(),
             "billing_address" : {
                 "ba_addressee" : "Managing Member Monroe Towers",
                 "ba_state" : "MD",
@@ -506,32 +508,39 @@ class ProcessTest(unittest.TestCase):
             'user': 'dev',
             'password': 'dev'
         }
+        # TODO use sqlalchemy for inserting
         self.mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test') # host, username, password, db
         c = self.mysql_connection.cursor()
-        c.execute("delete from customer")
-        c.execute('insert into customer (id, name, account, discountrate) values (1, "Test Customer", "99999", .123)')
         c.execute("delete from payment")
-        c.execute("delete from rebill")
-        #c.execute("delete from status_days_since") # view
-        #c.execute("delete from status_unbilled") # view
         c.execute("delete from utilbill")
+        c.execute("delete from rebill")
+        c.execute("delete from customer")
+        # (note that status_days_since, status_unbilled are views and you neither can nor need to delete from them)
+
+        c.execute('insert into customer (id, name, account, discountrate, latechargerate) values (1, "Test Customer", "99999", .456, .123)')
+
         self.mysql_connection.commit()
+
         self.state_db = StateDB(statedb_config)
 
+        # TODO: if testing is interrupted, tearDown() never runs, and you may
+        # get foreign key errors when trying to delete the old data when
+        # running tests again. i think the right way to do this is to drop &
+        # re-create the tables instead of just clearing them out. (that might
+        # still cause foreign key errors--find out.)
+        
     def tearDown(self):
         # clear out mongo test database
         mongo_connection = pymongo.Connection('localhost', 27017)
         mongo_connection.drop_database('test')
         # clear out tables in mysql test database
         c = self.mysql_connection.cursor()
-        #c.execute("delete from customer")
-        #c.execute("delete from payment")
-        #c.execute("delete from rebill")
-        ##c.execute("delete from status_days_since") # view
-        ##c.execute("delete from status_unbilled") # view
-        #c.execute("delete from utilbill")
-        #self.mysql_connection.commit()
-        
+        c.execute("delete from utilbill")
+        c.execute("delete from rebill")
+        c.execute("delete from payment")
+        c.execute("delete from customer")
+        self.mysql_connection.commit()
+
     def test_roll_late_fee(self):
         '''Tests the behavior of Process.roll_bill with respect to calculating
         a late fee.'''
@@ -541,22 +550,34 @@ class ProcessTest(unittest.TestCase):
         # TODO state db
 
         # set up a bill with a balance forward and no late fee
-        first_bill = mongo.MongoReebill(copy.deepcopy(self.example_bill))
-        first_bill.balance_forward = 100.
-        first_bill.late_charges = 0.
-        first_bill.account = '99999'
-        first_bill.sequence = 1 # needs to be last sequence
-        # (TODO: make fake database in which this bill really is the last)
+        bill = mongo.MongoReebill(python_convert(copy.deepcopy(self.example_bill)))
+        bill.balance_forward = 100.
+        bill.late_charges = 100.
+        bill.account = '99999'
+        bill.sequence = 1 # needs to be last sequence
+        bill.issue_date = date(2012,3,15)
+
+        # need to create relationships in mysql too
+        session = self.state_db.session()
+        customer = session.query(Customer).filter(Customer.account==bill.account).one()
+        r = ReeBill(customer, bill.sequence)
+        r.issued = 1
+        session.add(r)
+        u = UtilBill(customer, UtilBill.Complete, 'gas',
+                period_start=date(2012,1,1), period_end=date(2012,2,1),
+                processed=1, reebill=r, date_received=datetime(2012,2,15))
+        session.add(u)
+        session.commit()
 
         # put fake URS & CPRS into db (UPRS not needed), so they can be
         # combined in load_probable_rs()
-        urs = copy.deepcopy(self.example_cprs)
+        urs = python_convert(copy.deepcopy(self.example_cprs))
         urs["_id"] = {
             "utility_name" : "washgas",
             "rate_structure_name" : "DC Non Residential Non Heat",
             "type" : "URS"
         },
-        cprs = copy.deepcopy(self.example_cprs)
+        cprs = python_convert(copy.deepcopy(self.example_cprs))
         cprs["_id"] = {
             "account" : '99999',
             "sequence" : 1,
@@ -567,13 +588,23 @@ class ProcessTest(unittest.TestCase):
         },
         self.rate_structure_dao.save_urs('washgas', "DC Non Residential Non Heat",
                 None, None, self.example_urs)
-        self.rate_structure_dao.save_cprs(first_bill.account,
-                first_bill.sequence, first_bill.branch, 'washgas',
+        self.rate_structure_dao.save_cprs(bill.account,
+                bill.sequence, bill.branch, 'washgas',
                 'DC Non Residential Non Heat', self.example_cprs)
 
         # roll the bill
         session = self.state_db.session()
-        process.roll_bill(session, first_bill)
+        process.roll_bill(session, bill)
+
+        # bill should be created with incremented sequence
+        self.assertEqual(bill.sequence, 2)
+        self.assertEqual(bill.late_charges, 123)
+
+        ## now add a late charge to the bill and roll it again: late charge
+        ## should be multiplied by late charge rate
+        #bill.late_charges = 100
+        #process.roll_bill(session, bill)
+        #self.assertEqual(bill.late_charges, 123)
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(failfast=True)
