@@ -280,7 +280,7 @@ class Process(object):
         # delete reebill state data from MySQL and dissociate utilbills from it
         self.state_db.delete_reebill(session, account, sequence)
 
-    def create_new_account(self, session, account, name, discount_rate, template_account):
+    def create_new_account(self, session, account, name, discount_rate, late_charge_rate, template_account):
 
         result = self.state_db.account_exists(session, account)
 
@@ -324,7 +324,7 @@ class Process(object):
                 reebill.branch, utility_name, rate_structure_name, cprs)
 
         # create new account in mysql
-        customer = self.state_db.new_account(session, name, account, discount_rate)
+        customer = self.state_db.new_account(session, name, account, discount_rate, late_charge_rate)
 
         return customer
 

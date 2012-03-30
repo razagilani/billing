@@ -469,14 +469,14 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
-    def new_account(self, name, account, discount_rate, template_account, **args):
+    def new_account(self, name, account, discount_rate, late_charge_rate, template_account, **args):
         try:
             session = None
             if not name or not account or not discount_rate or not template_account:
                 raise ValueError("Bad Parameter Value")
             session = self.state_db.session()
             customer = self.process.create_new_account(session, account, name,
-                    discount_rate, template_account)
+                    discount_rate, late_charge_rate, template_account)
             reebill = self.reebill_dao.load_reebill(account, 0)
 
             # record account creation

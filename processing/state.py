@@ -178,8 +178,8 @@ class StateDB:
         # wrapped by scoped_session for thread contextualization
         self.session = scoped_session(sessionmaker(bind=engine, autoflush=True))
 
-    def new_account(self, session, name, account, discount_rate):
-        new_customer = Customer(name, account, discount_rate)
+    def new_account(self, session, name, account, discount_rate, late_charge_rate):
+        new_customer = Customer(name, account, discount_rate, late_charge_rate)
         session.add(new_customer)
         return new_customer
 
