@@ -76,6 +76,7 @@ function renderWidgets()
     });
 
     // pass configuration information to containing webpage
+    // 'UNSPECIFIED' is expanded to a version string by deployment script
     var SKYLINE_VERSIONINFO="UNSPECIFIED"
     var SKYLINE_DEPLOYENV="UNSPECIFIED"
     versionInfo = Ext.get('SKYLINE_VERSIONINFO');
@@ -85,9 +86,14 @@ function renderWidgets()
 
     // show username & logout link in the footer
     var logoutLink = '<a href="http://' + location.host + '/reebill/logout">log out</a>';
-    //TODO: 25593817
-    Ext.Ajax.request({
+
+    var usernameDataConn = new Ext.data.Connection({
         url: 'http://' + location.host + '/reebill/getUsername',
+    });
+    usernameDataConn.autoAbort = true;
+    usernameDataConn.disableCaching = true;
+
+    usernameDataConn.request({
         success: function(result, request) {
             // check success status
             var jsonData = Ext.util.JSON.decode(result.responseText);
@@ -99,7 +105,6 @@ function renderWidgets()
         failure: function() {
              Ext.MessageBox.alert('Ajax failure', 'http://' + location.host + '/getUsername');
         },
-        disableCaching: true,
     });
 
     title = Ext.get('pagetitle');
@@ -262,12 +267,10 @@ function renderWidgets()
     });
 
     var utilbillStoreDataConn = new Ext.data.Connection({
-        //method: 'GET',
-        prettyUrls: false,
         url: 'http://'+location.host+'/reebill/utilbill_grid',
-        disableCaching: true,
     });
     utilbillStoreDataConn.autoAbort = true;
+    utilbillStoreDataConn.disableCaching = true;
 
     var utilbillStoreProxy = new Ext.data.HttpProxy(utilbillStoreDataConn);
 
@@ -389,9 +392,9 @@ function renderWidgets()
     // put this by the other dataconnection instantiations
     var utilbillImageDataConn = new Ext.data.Connection({
         url: 'http://' + location.host + '/reebill/getUtilBillImage',
-        disableCaching: true,
     });
     utilbillImageDataConn.autoAbort = true;
+    utilbillImageDataConn.disableCaching = true;
 
     // in the mail tab
     var utilbillGrid = new Ext.grid.EditorGridPanel({
@@ -588,9 +591,9 @@ function renderWidgets()
 
     var reeBillStoreDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/reebill',
-        disableCaching: true,
     });
     reeBillStoreDataConn.autoAbort = true;
+    reeBillStoreDataConn.disableCaching = true;
     reeBillStoreDataConn.on('beforerequest', function(conn, options) {
     });
 
@@ -763,6 +766,11 @@ function renderWidgets()
     /////////////////////////////////////////////////////
     // Functions for ReeBill Structure Editor event
 
+    var editReeBillStructureDataConn = new Ext.data.Connection({
+    });
+    editReeBillStructureDataConn.autoAbort = true;
+    editReeBillStructureDataConn.disableCaching = true;
+
     // uses ajax to edit reebill structure
     // three operations use this: insert a new node, delete a node and edit a node
     // for the edit a node operation, the newly edited value is also passed in
@@ -790,8 +798,7 @@ function renderWidgets()
         // TODO: 22792659 disabled widgets have to be reenabled if there is an exception 
         cmp.disable();
 
-        // TODO:25593817 this has to be converted to a data.connection
-        Ext.Ajax.request({
+        editReeBillStructureDataConn.request({
             url: 'http://'+location.host+'/reebill/' + action,
             params: { 
                 // note, we dont pass in selNode.id. This is because the unique id's
@@ -804,7 +811,6 @@ function renderWidgets()
                 // if a new value was passed in, update to this new value
                 'text': new_text == null ? selNode.attributes.text : new_text,
             },
-            disableCaching: true,
             success: function(result, request) {
                 var jsonData = null;
                 try {
@@ -962,9 +968,9 @@ function renderWidgets()
 
     var accountInfoDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/account_info',
-        disableCaching: true,
     });
     accountInfoDataConn.autoAbort = true;
+    accountInfoDataConn.disableCaching = true;
 
     var accountInfoFormItems = [
         {
@@ -1311,16 +1317,18 @@ function renderWidgets()
         });
     }
 
+    var renderDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/render',
+    });
+    renderDataConn.autoAbort = true;
+    renderDataConn.disableCaching = true;
     function renderOperation()
     {
-        // TODO: 25593817
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/render',
+        renderDataConn.request({
             params: { 
                 account: selected_account,
                 sequence: selected_sequence
             },
-            disableCaching: true,
             success: successResponse,
             failure: function () {
                 Ext.MessageBox.alert('Error', "Render response fail");
@@ -1328,37 +1336,41 @@ function renderWidgets()
         });
     }
 
+    var attachDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/attach_utilbills',
+    });
+    attachDataConn.autoAbort = true;
+    attachDataConn.disableCaching = true;
     function attachOperation() {
         /* Finalize association of utilbills with reebill. */
-        // TODO: 25593817
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/attach_utilbills',
+        attachDataConn.request({
             params: {
                 account: selected_account,
                 sequence: selected_sequence,
-                disableCaching: true,
-                success: successResponse,
-                failure: function() {
-                    Ext.MessageBox.alert('Error', "Attach Utility Bills failed");
-                }
             },
+            success: successResponse,
+            failure: function() {
+                Ext.MessageBox.alert('Error', "Attach Utility Bills failed");
+            }
         });
     }
 
+    var mailDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/mail',
+    });
+    mailDataConn.autoAbort = true;
+    mailDataConn.disableCaching = true;
     function mailReebillOperation(sequences)
     {
         Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', function(btn, recipients){
             if (btn == 'ok')
             {
-                // TODO: 25593817
-                Ext.Ajax.request({
-                    url: 'http://'+location.host+'/reebill/mail',
+                mailDataConn.request({
                     params: {
                         account: selected_account,
                         recipients: recipients,
                         sequences: sequences,
                     },
-                    disableCaching: true,
                     success: function(response, options) {
                         var o = {};
                         try {
@@ -1373,7 +1385,7 @@ function renderWidgets()
                         }
                     },
                     failure: function () {
-                        alert("mail response fail");
+                        Ext.Msg.alert('Failure', "mail response fail");
                     }
                 });
             }
@@ -2016,6 +2028,11 @@ function renderWidgets()
         ]
     });
 
+    var saveAChargesDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/saveActualCharges',
+    });
+    saveAChargesDataConn.autoAbort = true;
+    saveAChargesDataConn.disableCaching = true;
     var aChargesToolbar = new Ext.Toolbar({
         items: [
             {
@@ -2119,12 +2136,11 @@ function renderWidgets()
 
                     var jsonData = Ext.encode(Ext.pluck(aChargesStore.data.items, 'data'));
 
-                    // TODO: 25593817
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/reebill/saveActualCharges',
+                    saveAChargesDataConn.request({
                         params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence, rows: jsonData},
+                        // TODO: 27305035
                         success: function() { 
-                            // TODO: check success status in json package
+                            // check success status in json package
 
                             // reload the store to clear dirty flags
                             // this causes the load event to fire and re-enable the aChargesGrid
@@ -2398,6 +2414,11 @@ function renderWidgets()
         ]
     });
 
+    var saveHChargesDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/saveHypotheticalCharges',
+    });
+    saveHChargesDataConn.autoAbort = true;
+    saveHChargesDataConn.disableCaching = true;
     var hChargesToolbar = new Ext.Toolbar({
         items: [
             {
@@ -2488,6 +2509,7 @@ function renderWidgets()
                     // event
                     hChargesGrid.setDisabled(true);
 
+                    // TODO: 27305453 
                     // OK, a little nastiness follows: We cannot rely on the underlying Store to
                     // send records back to the server because it does so intelligently: Only
                     // dirty records go back.  Unfortunately, since there is no entity id for
@@ -2497,12 +2519,11 @@ function renderWidgets()
 
                     var jsonData = Ext.encode(Ext.pluck(hChargesStore.data.items, 'data'));
 
-                    // TODO: 25593817
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/reebill/saveHypotheticalCharges',
+                    saveHChargesDataConn.request({
                         params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence, rows: jsonData},
+                        // TODO: 27305035
                         success: function() { 
-                            // TODO: check success status in json package
+                            // check success status in json package
 
                             // reload the store to clear dirty flags
                             // this causes the load event to fire and re-enable the hChargesGrid
@@ -3889,7 +3910,14 @@ function renderWidgets()
         ]
     });
 
+    var accountStoreProxyConn = new Ext.data.Connection({
+        url: 'http://' + location.host + '/reebill/retrieve_account_status',
+    });
+    accountStoreProxyConn.autoAbort = true;
+    var accountStoreProxy = new Ext.data.HttpProxy(accountStoreProxyConn);
+
     var accountStore = new Ext.data.JsonStore({
+        proxy: accountStoreProxy,
         root: 'rows',
         totalProperty: 'results',
         pageSize: 25,
@@ -3903,7 +3931,6 @@ function renderWidgets()
             {name: 'primusname'},
             {name: 'dayssince'},
         ],
-        url: 'http://' + location.host + '/reebill/retrieve_account_status',
     });
 
 
@@ -3991,7 +4018,14 @@ function renderWidgets()
         ]
     });
 
+    var accountReeValueProxyConn = new Ext.data.Connection({
+        url: 'http://' + location.host + '/reebill/summary_ree_charges',
+    });
+    accountReeValueProxyConn.autoAbort = true;
+    var accountReeValueProxy = new Ext.data.HttpProxy(accountReeValueProxyConn);
+
     var accountReeValueStore = new Ext.data.JsonStore({
+        proxy: accountReeValueProxy,
         root: 'rows',
         totalProperty: 'results',
         pageSize: 25,
@@ -4007,7 +4041,6 @@ function renderWidgets()
             {name: 'total_energy'},
             {name: 'marginal_rate_therm'},
         ],
-        url: 'http://' + location.host + '/reebill/summary_ree_charges',
     });
 
 
@@ -4149,6 +4182,11 @@ function renderWidgets()
         readOnly: false,
     });
 
+    var newAccountFieldDataConn = new Ext.data.Connection({
+        url: 'http://' + location.host + '/reebill/get_next_account_number',
+    });
+    newAccountFieldDataConn.autoAbort = true;
+    newAccountFieldDataConn.disableCaching = true;
     var newAccountField = new Ext.form.TextField({
         fieldLabel: 'Account',
         name: 'account',
@@ -4156,8 +4194,7 @@ function renderWidgets()
     });
     newAccountField.on('afterrender', function() {
         var nextAccount = '';
-        Ext.Ajax.request({
-            url: 'http://' + location.host + '/reebill/get_next_account_number',
+        newAccountFieldDataConn.request({
             success: function(result, request) {
                 // check success status
                 var jsonData = Ext.util.JSON.decode(result.responseText);
@@ -4167,7 +4204,6 @@ function renderWidgets()
                  Ext.MessageBox.alert('Ajax failure', 'http://' + location.host
                      + '/reebill/get_next_account_number');
             },
-            disableCaching: true,
         });
     });
 
@@ -4230,6 +4266,11 @@ function renderWidgets()
     billStructureTreeLoader.on("beforeload", function(treeLoader, node) {
     });
 
+    var newAccountDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/new_account',
+    });
+    newAccountDataConn.autoAbort = true;
+    newAccountDataConn.disableCaching = true;
     var newAccountFormPanel = new Ext.FormPanel({
         url: 'http://'+location.host+'/reebill/new_account',
         labelWidth: 120, // label settings here cascade unless overridden
@@ -4331,13 +4372,13 @@ function renderWidgets()
                 handler: function() {
                     // TODO 22645885 show progress during post
                     // why do we need ajax to do form submission?
-                    Ext.Ajax.request({
-                        url: 'http://'+location.host+'/reebill/new_account',
+                    newAccountDataConn.request({
                         params: { 
                           'name': newNameField.getValue(),
                           'account': newAccountField.getValue(),
                           'template_account': newAccountTemplateCombo.getValue(),
                           'discount_rate': newDiscountRate.getValue(),
+                          'late_charge_rate': newLateChargeRate.getValue(),
                           'new_ba_addressee': Ext.getCmp('new_ba_addressee').getValue(),
                           'new_ba_street1': Ext.getCmp('new_ba_street1').getValue(),
                           'new_ba_city': Ext.getCmp('new_ba_city').getValue(),
@@ -4349,7 +4390,6 @@ function renderWidgets()
                           'new_sa_state': Ext.getCmp('new_sa_state').getValue(),
                           'new_sa_postal_code': Ext.getCmp('new_sa_postal_code').getValue(),
                         },
-                        disableCaching: true,
                         success: function(result, request) {
                             var jsonData = null;
                             try {
@@ -4407,6 +4447,11 @@ function renderWidgets()
       accelerate: true
     });
 
+    var setPreferencesDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/setBillImageResolution',
+    });
+    setPreferencesDataConn.autoAbort = true;
+    setPreferencesDataConn.disableCaching = true;
     var preferencesFormPanel = new Ext.FormPanel({
       labelWidth: 240, // label settings here cascade unless overridden
       frame: true,
@@ -4423,11 +4468,8 @@ function renderWidgets()
         new Ext.Button({
             text: 'Save',
             handler: function() {
-                // TODO: 25593817
-                Ext.Ajax.request({
-                    url: 'http://'+location.host+'/reebill/setBillImageResolution',
+                setPreferencesDataConn.request({
                     params: { 'resolution': billImageResolutionField.getValue() },
-                    disableCaching: true,
                     success: function(result, request) {
                         var jsonData = null;
                         try {
@@ -4450,13 +4492,15 @@ function renderWidgets()
     });
 
     // get initial value of this field from the server
+    var getPreferencesDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/getBillImageResolution',
+    });
+    getPreferencesDataConn.autoAbort = true;
+    getPreferencesDataConn.disableCaching = true;
     // TODO: 22360193 populating a form from Ajax creates a race condition.  
     // What if the network doesn't return and user enters a value nefore the callback is fired?
     var resolution = null;
-    //TODO 25593817
-    Ext.Ajax.request({
-        url: 'http://'+location.host+'/reebill/getBillImageResolution',
-        disableCaching: true,
+    getPreferencesDataConn.request({
         success: function(result, request) {
             var jsonData = null;
             try {
@@ -4787,7 +4831,14 @@ function renderWidgets()
     // Reconciliation Tab
     //
 
+    var reconciliationProxyConn = new Ext.data.Connection({
+        url: 'http://' + location.host + '/reebill/get_reconciliation_data',
+    });
+    reconciliationProxyConn.autoAbort = true;
+    var reconciliationProxy = new Ext.data.HttpProxy(reconciliationProxyConn);
+
     var reconciliationGridStore = new Ext.data.JsonStore({
+        proxy: reconciliationProxy,
         root: 'rows',
         totalProperty: 'results',
         pageSize: 30,
@@ -4806,7 +4857,6 @@ function renderWidgets()
             {name: 'oltp_therms'},
             {name: 'errors'}
         ],
-        url: 'http://' + location.host + '/reebill/get_reconciliation_data',
     });
 
     var reconciliationGrid = new Ext.grid.GridPanel({
@@ -4997,6 +5047,12 @@ function renderWidgets()
     // whenever an account is selected from the Account tab,
     // update all other dependent widgets
 
+    var lastUtilBillEndDateDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/last_utilbill_end_date',
+    });
+    lastUtilBillEndDateDataConn.autoAbort = true;
+    lastUtilBillEndDateDataConn.disableCaching = true;
+
     // load things global to the account
     function loadReeBillUIForAccount(account) {
 
@@ -5029,8 +5085,7 @@ function renderWidgets()
         // set begin date for next utilbill in upload form panel to end date of
         // last utilbill, if there is one
         // TODO 25226989:tId not tracked! 
-        Ext.Ajax.request({
-            url: 'http://'+location.host+'/reebill/last_utilbill_end_date',
+        lastUtilBillEndDateDataConn.request({
             params: {account: account},
             success: function(result, request) {
                 var jsonData = null;
@@ -5055,7 +5110,6 @@ function renderWidgets()
                 }
             },
             failure: function() {alert("ajax failure")},
-            disableCaching: true,
         });
 
         // update the journal form panel so entries get submitted to currently selected account
@@ -5101,23 +5155,23 @@ function renderWidgets()
     //
     var ubPeriodsDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/ubPeriods',
-        disableCaching: true,
     });
     ubPeriodsDataConn.autoAbort = true;
+    ubPeriodsDataConn.disableCaching = true;
 
     var ubMeasuredUsagesDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/ubMeasuredUsages',
-        disableCaching: true,
     });
     ubMeasuredUsagesDataConn.autoAbort = true;
+    ubMeasuredUsagesDataConn.disableCaching = true;
 
 
 
     var reeBillImageDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/getReeBillImage',
-        disableCaching: true,
     });
     reeBillImageDataConn.autoAbort = true;
+    reeBillImageDataConn.disableCaching = true;
 
     function loadReeBillUIForSequence(account, sequence) {
 

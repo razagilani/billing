@@ -849,7 +849,7 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
-    def retrieve_account_status(self, start, limit, **args):
+    def retrieve_account_status(self, start, limit, **kwargs):
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
