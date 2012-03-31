@@ -943,9 +943,9 @@ class MongoReebill(object):
                     new_chargegroups[cg] = []
                     for charge in charges:
                         del charge['chargegroup']
-                        charge['quantity'] = charge['quantity']
-                        charge['rate'] = charge['rate']
-                        charge['total'] = charge['total']
+                        #charge['quantity'] = charge['quantity']
+                        #charge['rate'] = charge['rate']
+                        #charge['total'] = charge['total']
                         new_chargegroups[cg].append(charge)
 
                 ub[chargegroups] = new_chargegroups
