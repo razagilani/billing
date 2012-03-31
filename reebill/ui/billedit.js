@@ -1850,7 +1850,7 @@ function renderWidgets()
     var aChargesReader = new Ext.data.JsonReader({
         // metadata configuration options:
         // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        //idProperty: 'id',
+        idProperty: 'uuid',
         root: 'rows',
 
         // the fields config option will internally create an Ext.data.Record
@@ -1858,6 +1858,7 @@ function renderWidgets()
         fields: [
             // map Record's field to json object's key of same name
             {name: 'chargegroup', mapping: 'chargegroup'},
+            {name: 'uuid', mapping: 'uuid'},
             {name: 'rsi_binding', mapping: 'rsi_binding'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
@@ -1892,24 +1893,29 @@ function renderWidgets()
         proxy: aChargesStoreProxy,
         autoSave: false,
         reader: aChargesReader,
+        //root: 'rows',
+        //idProperty: 'uuid',
         writer: aChargesWriter,
         data: initialActualCharges,
         sortInfo:{field: 'chargegroup', direction: 'ASC'},
         groupField:'chargegroup'
     });
 
+
+    aChargesStore.on('save', function () {
+        aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(true);
+    });
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
     aChargesStore.on('update', function(){
         aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
     });
 
-    // this event is never fired because we manually save the aCharges
-    aChargesStore.on('save', function () {
-    });
-
     aChargesStore.on('beforeload', function () {
-        //console.log('aChargesStore beforeload');
+        aChargesGrid.setDisabled(true);
+        aChargesStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+        aChargesStore.setBaseParam("account", selected_account);
+        aChargesStore.setBaseParam("sequence", selected_sequence);
     });
 
     // fired when the datastore has completed loading
@@ -1920,7 +1926,6 @@ function renderWidgets()
         // the datastore enables when it is done loading
         aChargesGrid.setDisabled(false);
     });
-
 
     var aChargesSummary = new Ext.ux.grid.GroupSummary();
 
@@ -1933,30 +1938,32 @@ function renderWidgets()
                 width: 160,
                 sortable: true,
                 dataIndex: 'chargegroup',
-                hidden: true 
-            }, 
-            {
+                hidden: false,
+            },{
+                header: 'UUID',
+                width: 75,
+                sortable: true,
+                dataIndex: 'uuid',
+                editable: false,
+            },{
                 header: 'RSI Binding',
                 width: 75,
                 sortable: true,
                 dataIndex: 'rsi_binding',
                 editor: new Ext.form.TextField({allowBlank: true})
-            },
-            {
+            },{
                 header: 'Description',
                 width: 75,
                 sortable: true,
                 dataIndex: 'description',
                 editor: new Ext.form.TextField({allowBlank: false})
-            },
-            {
+            },{
                 header: 'Quantity',
                 width: 75,
                 sortable: true,
                 dataIndex: 'quantity',
                 editor: new Ext.form.NumberField({decimalPrecision: 5, allowBlank: true})
-            },
-            {
+            },{
                 header: 'Units',
                 width: 75,
                 sortable: true,
@@ -1980,15 +1987,13 @@ function renderWidgets()
                     displayField: 'displayText'
                 })
                 
-            },
-            {
+            },{
                 header: 'Rate',
                 width: 75,
                 sortable: true,
                 dataIndex: 'rate',
                 editor: new Ext.form.NumberField({decimalPrecision: 10, allowBlank: true})
-            },
-            {
+            },{
                 header: 'Units',
                 width: 75,
                 sortable: true,
@@ -2011,8 +2016,7 @@ function renderWidgets()
                     valueField: 'displayText',
                     displayField: 'displayText'
                 })
-            },
-            {
+            },{
                 header: 'Total', 
                 width: 75, 
                 sortable: true, 
@@ -2047,6 +2051,7 @@ function renderWidgets()
                 disabled: true,
                 handler: function()
                 {
+
                     aChargesGrid.stopEditing();
 
                     // grab the current selection - only one row may be selected per singlselect configuration
@@ -2121,33 +2126,8 @@ function renderWidgets()
                     // stop grid editing so that widgets like comboboxes in rows don't stay focused
                     aChargesGrid.stopEditing();
 
-                    // disable the aChargesGrid so that the user cannot interact during the save
-                    // the  associated data store's 'load' event re-enables it.
-                    // we must do this manually, since our datastore will not give us a beforesave
-                    // event
-                    aChargesGrid.setDisabled(true);
+                    aChargesStore.save(); 
 
-                    // OK, a little nastiness follows: We cannot rely on the underlying Store to
-                    // send records back to the server because it does so intelligently: Only
-                    // dirty records go back.  Unfortunately, since there is no entity id for
-                    // a record (yet), all records must be returned so that ultimately an
-                    // XML grove can be produced with proper document order.
-                    //aChargesStore.save(); is what we want to do
-
-                    var jsonData = Ext.encode(Ext.pluck(aChargesStore.data.items, 'data'));
-
-                    saveAChargesDataConn.request({
-                        params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence, rows: jsonData},
-                        // TODO: 27305035
-                        success: function() { 
-                            // check success status in json package
-
-                            // reload the store to clear dirty flags
-                            // this causes the load event to fire and re-enable the aChargesGrid
-                            aChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}})
-                        },
-                        failure: function() { alert("ajax fail"); },
-                    });
                 }
             },{
                 xtype:'tbseparator'
@@ -2257,6 +2237,7 @@ function renderWidgets()
             // map Record's field to json object's key of same name
             {name: 'chargegroup', mapping: 'chargegroup'},
             {name: 'rsi_binding', mapping: 'rsi_binding'},
+            {name: 'uuid', mapping: 'uuid'},
             {name: 'description', mapping: 'description'},
             {name: 'quantity', mapping: 'quantity'},
             {name: 'quantity_units', mapping: 'quantity_units'},
@@ -2327,6 +2308,12 @@ function renderWidgets()
                 sortable: true,
                 dataIndex: 'chargegroup',
                 hidden: true 
+            },{
+                header: 'UUID',
+                width: 75,
+                sortable: true,
+                dataIndex: 'uuid',
+                editable: false,
             },{
                 header: 'RSI Binding',
                 width: 75,
@@ -2509,7 +2496,7 @@ function renderWidgets()
                     // event
                     hChargesGrid.setDisabled(true);
 
-                    // TODO: 27305453 
+                    // TODO: 27312463
                     // OK, a little nastiness follows: We cannot rely on the underlying Store to
                     // send records back to the server because it does so intelligently: Only
                     // dirty records go back.  Unfortunately, since there is no entity id for
@@ -2669,8 +2656,8 @@ function renderWidgets()
     var CPRSRSIReader = new Ext.data.JsonReader({
         // metadata configuration options:
         // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        //idProperty: 'id',
-        root: 'rows',
+        //idProperty: 'uuid',
+        //root: 'rows',
 
         // the fields config option will internally create an Ext.data.Record
         // constructor that provides mapping for reading the record data objects
@@ -2937,7 +2924,7 @@ function renderWidgets()
         // metadata configuration options:
         // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
         //idProperty: 'id',
-        root: 'rows',
+        //root: 'rows',
 
         // the fields config option will internally create an Ext.data.Record
         // constructor that provides mapping for reading the record data objects
@@ -3199,7 +3186,7 @@ function renderWidgets()
         // metadata configuration options:
         // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
         //idProperty: 'id',
-        root: 'rows',
+        //root: 'rows',
 
         // the fields config option will internally create an Ext.data.Record
         // constructor that provides mapping for reading the record data objects
