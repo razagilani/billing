@@ -4793,6 +4793,7 @@ function renderWidgets()
         pageSize: 30,
         //baseParams: {},
         paramNames: {start: 'start', limit: 'limit'},
+        // TODO enable autoload
         //autoLoad: {params:{start: 0, limit: 25}},
 
         // default sort
@@ -4807,6 +4808,26 @@ function renderWidgets()
             {name: 'errors'}
         ],
         url: 'http://' + location.host + '/reebill/get_reconciliation_data',
+    });
+
+    reconciliationGridStore.on('exception', function(type, action, options, response, arg) {
+        //if (type == 'remote' && action == 'read' && response.success != true) {
+            //// reconciliation report file is missing
+            //Ext.Msg.alert('Error', response.raw.errors.reason + " " +
+                    //response.raw.errors.details);
+        //} else {
+            //alert('reconciliationGridStore error');
+            //// some other error
+            //console.log(type)
+            //console.log(action)
+            //console.log(options)
+            //console.log(response)
+            //console.log(arg)
+        //}
+        // the above does not work because Ext sets 'type' to 'response'
+        // instead of 'remote' even though the server returns 200 with
+        // {success: false}
+        Ext.Msg.alert('Error', 'Reconciliation report is not available (report file may not have been generated on the server).')
     });
 
     var reconciliationGrid = new Ext.grid.GridPanel({
