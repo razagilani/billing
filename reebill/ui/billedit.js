@@ -1679,12 +1679,14 @@ function renderWidgets()
                         ubMeasuredUsagesFormPanels.push(registerFormPanel);
                     }
 
-                });
 
-                // one "Upload Interval Meter CSV" panel for each meter
+
+                // one "Upload Interval Meter CSV" panel for each meter and register
                 var intervalMeterFormPanel = new Ext.form.FormPanel({
+                    id: service +'-'+meter.identifier+'-'+register.identifier+'-interval-meter-csv-field',
+                    title: 'Upload Interval Meter CSV for ' + meter.identifier + ' Register ' + register.identifier,
+                    //title: 'Meter ' + meter.identifier + ' Register ' + register.identifier,
                     fileUpload: true,
-                    title: 'Upload Interval Meter CSV for ' + meter.identifier,
                     url: 'http://'+location.host+'/reebill/upload_interval_meter_csv',
                     frame:true,
                     //bodyStyle: 'padding: 10px 10px 0 10px;',
@@ -1698,7 +1700,6 @@ function renderWidgets()
                         //file_chooser - defined in FileUploadField.js
                         {
                             xtype: 'fileuploadfield',
-                            id: 'interval-meter-csv-field',
                             emptyText: 'Select a file to upload',
                             name: 'csv_file',
                             fieldLabel: 'CVS File',
@@ -1715,13 +1716,11 @@ function renderWidgets()
                             items: [
                                 {
                                     xtype: 'textfield',
-                                    id: 'timestamp_column',
                                     name: 'timestamp_column',
                                     fieldLabel: "Timestamp Column",
                                     value: "A",
                                 },{
                                     xtype: 'textfield',
-                                    id: 'energy_column',
                                     name: 'energy_column',
                                     fieldLabel: "Metered Energy Column",
                                     value: "B",
@@ -1778,6 +1777,9 @@ function renderWidgets()
                     ],
                 });
                 ubMeasuredUsagesFormPanels.push(intervalMeterFormPanel);
+
+                });
+
             })
         }
 
@@ -1793,7 +1795,8 @@ function renderWidgets()
         id: 'ubMeasuredUsagesTab',
         title: 'Measured Usage',
         disabled: usagePeriodsPanelDisabled,
-        layout: 'vbox',
+        //layout: 'vbox',
+        layout: 'accordion',
         // all children inherit flex
         flex: 1,
         layoutConfig : {
