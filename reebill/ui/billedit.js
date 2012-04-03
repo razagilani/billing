@@ -1679,13 +1679,11 @@ function renderWidgets()
                         ubMeasuredUsagesFormPanels.push(registerFormPanel);
                     }
 
+                });
 
-
-                // one "Upload Interval Meter CSV" panel for each meter and register
                 var intervalMeterFormPanel = new Ext.form.FormPanel({
-                    id: service +'-'+meter.identifier+'-'+register.identifier+'-interval-meter-csv-field',
-                    title: 'Upload Interval Meter CSV for ' + meter.identifier + ' Register ' + register.identifier,
-                    //title: 'Meter ' + meter.identifier + ' Register ' + register.identifier,
+                    id: service +'-'+meter.identifier+'-interval-meter-csv-field',
+                    title: 'Upload Interval Meter CSV for ' + meter.identifier,
                     fileUpload: true,
                     url: 'http://'+location.host+'/reebill/upload_interval_meter_csv',
                     frame:true,
@@ -1778,8 +1776,6 @@ function renderWidgets()
                 });
                 ubMeasuredUsagesFormPanels.push(intervalMeterFormPanel);
 
-                });
-
             })
         }
 
@@ -1795,8 +1791,7 @@ function renderWidgets()
         id: 'ubMeasuredUsagesTab',
         title: 'Measured Usage',
         disabled: usagePeriodsPanelDisabled,
-        //layout: 'vbox',
-        layout: 'accordion',
+        layout: 'vbox',
         // all children inherit flex
         flex: 1,
         layoutConfig : {
