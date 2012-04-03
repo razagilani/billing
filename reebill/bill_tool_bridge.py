@@ -575,7 +575,7 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     def upload_interval_meter_csv(self, account, sequence, csv_file,
-            meter_identifier, **args):
+            timestamp_column, energy_column, meter_identifier, **args):
         '''Takes an upload of an interval meter CSV file (cherrypy file upload
         object) and puts energy from it into the shadow registers of the
         reebill given by account, sequence.'''
@@ -584,11 +584,20 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
-            # assuming the format of AtSite's example files
+            # convert column letters into 0-based indices
+            if not all(x.isalpha() and len(x) == 1 for x in (timestamp_column,
+                energy_column)):
+                raise ValueError('timestamp_column and energy_column must be letters')
+            timestamp_column = ord(timestamp_column.lower()) - ord('a')
+            energy_column = ord(energy_column.lower()) - ord('a')
+
+            # extract data from the file (assuming the format of AtSite's
+            # example files)
             fbd.fetch_interval_meter_data(reebill, csv_file.file,
-                    meter_identifier=meter_identifier, timestamp_column=0,
-                    energy_column=24, timestamp_format='%Y-%m-%d %H:%M:%S',
-                    energy_unit='kWh')
+                    meter_identifier=meter_identifier,
+                    timestamp_column=timestamp_column,
+                    energy_column=energy_column,
+                    timestamp_format='%Y-%m-%d %H:%M:%S', energy_unit='kWh')
 
             self.reebill_dao.save_reebill(reebill)
             self.journal_dao.log_event(account, sequence,
