@@ -1,0 +1,37 @@
+#formChargegroup-template
+{
+	display: none;
+}
+
+#formCharge-template
+{
+	display: none;
+}
+
+table.gridTable
+{
+	border-collapse: collapse;
+	border: 1px solid #666666;
+}
+table.gridTable td
+{
+	padding: 0px 0px 0px 0px;
+	border: 1px solid #666666;
+}
+
+
+input, select
+{
+	border-style: none;
+	margin: 0px 0px 0px 0px;
+}
+
+td.money , td.money > input
+{
+	text-align: right;
+}
+
+.runningTotal
+{
+	font-style: italic;
+}
