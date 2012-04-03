@@ -28,21 +28,28 @@ def fetch_oltp_data(splinter, olap_id, reebill):
             hourrange, places=5)
     usage_data_to_virtual_register(reebill, energy_function)
 
-def fetch_interval_meter_data(reebill, csv_file, meter_identifier=None):
+def fetch_interval_meter_data(reebill, csv_file, meter_identifier=None,
+        timestamp_column=0, energy_column=1, energy_unit='therms',
+        timestamp_format=dateutils.ISO_8601_DATETIME):
     '''Update quantities of shadow registers in reebill with interval-meter
     energy values from csv_file. If meter_identifier is given, energy will only
     go in shadow registers of meters with that identifier'''
-    energy_function = get_interval_meter_data_source(csv_file)
+    energy_function = get_interval_meter_data_source(csv_file,
+            timestamp_column=timestamp_column, energy_column=energy_column,
+            timestamp_format=timestamp_format, energy_unit=energy_unit)
     usage_data_to_virtual_register(reebill, energy_function,
             meter_identifier=meter_identifier)
 
-def get_interval_meter_data_source(csv_file):
+def get_interval_meter_data_source(csv_file, timestamp_column=0,
+        energy_column=1, timestamp_format=dateutils.ISO_8601_DATETIME,
+        energy_unit='therms'):
     '''Returns a function mapping hours (as datetimes) to hourly energy
-    measurements from an interval meter. These measurements should come as a
-    CSV file with ISO 8601 timestamps in the first column, energy in the second
-    column, and energy units in the third, e.g.:
+    measurements (in therms) from an interval meter. These measurements should
+    come as a CSV file with timestamps in timestamp_format in
+    'timestamp_column' and energy measured in 'energy_unit' in 'energy_column'
+    (0-indexed). E.g:
 
-            2012-01-01T03:45:00Z, 1.234, therms
+            2012-01-01T03:45:00Z, 1.234
 
     Timestamps must be at :00, :15, :30, :45, and the energy value associated
     with each timestamp is assumed to cover the quarter hour preceding that
@@ -74,17 +81,35 @@ def get_interval_meter_data_source(csv_file):
 
     reader = csv.reader(csv_file, dialect=csv_dialect)
     for row in reader:
+        # make sure data are present in the relevant columns
         try:
-            timestamp_str, value, unit = row
+            timestamp_str, value = row[timestamp_column], row[energy_column]
         except ValueError:
-            raise Exception('CSV file is malformed: row does not contain 3 columns')
-        timestamp = datetime.strptime(timestamp_str, dateutils.ISO_8601_DATETIME)
-        if unit == 'therms':
-            value = value
+            raise Exception('CSV file is malformed: row does not contain 2 columns')
+
+        # check timestamp: skip initial rows with invalid timestamps in the
+        # timestamp column (they're probably header rows), but all timestamps
+        # after the first valid timestamp must also be valid.
+        try:
+            timestamp = datetime.strptime(timestamp_str, timestamp_format)
+        except ValueError:
+            if timestamps == []:
+                continue
+            raise
+
+        # convert energy_unit if necessary. (input is in energy_unit but output
+        # must be in therms)
+        # TODO add more units...
+        if energy_unit.lower() == 'therms':
+            value = float(value)
+        elif energy_unit.lower() == 'kwh':
+            value = float(value) / 341214163.
         else:
             raise Exception('unknown unit: ' + unit)
+
         timestamps.append(timestamp)
-        values.append(float(value))
+        values.append(value)
+
     if len(timestamps) < 4:
         raise Exception('CSV file has only %s rows, but needs at least 4' \
                 % len(timestamps))
@@ -158,13 +183,15 @@ def get_shadow_register_data(reebill, meter_identifier=None):
     return result
 
 
-def usage_data_to_virtual_register(reebill, energy_function, meter_identifier=None):
+def usage_data_to_virtual_register(reebill, energy_function,
+        meter_identifier=None):
     '''Gets energy quantities from 'energy_function' and puts them in the total
     fields of the appropriate shadow registers in the MongoReebill object
     reebill. 'energy_function' should be a function mapping a date and an hour
     range (2-tuple of integers in [0,23]) to a Decimal representing energy used
-    during that time. If meter_identifier is given, accumulate energy only into
-    the shadow registers of meters with that identifier.'''
+    during that time. (Energy is measured in therms, even if it's gas.) If
+    meter_identifier is given, accumulate energy only into the shadow registers
+    of meters with that identifier.'''
     # get all shadow registers in reebill from mongo
     registers = get_shadow_register_data(reebill, meter_identifier)
     
@@ -223,7 +250,8 @@ def usage_data_to_virtual_register(reebill, energy_function, meter_identifier=No
                 elif register['quantity_units'].lower() == 'therms':
                     energy_today /= 100000
                 else:
-                    raise Exception('unknown energy unit %s' % register['quantity_units'])
+                    raise Exception('unknown energy unit %s' %
+                            register['quantity_units'])
 
                 print 'register %s accumulating energy %s %s' % (
                         register['identifier'], energy_today,
