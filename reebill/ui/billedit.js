@@ -1589,12 +1589,10 @@ function renderWidgets()
                     url: 'http://'+location.host+'/reebill/setMeter',
                     border: true,
                     frame: true,
-                    labelWidth: 125,
-                    bodyStyle:'padding:10px 10px 0px 10px',
+                    labelWidth: 175,
                     items:[], // added by configureUBMeasuredUsagesForm()
                     baseParams: null, // added by configureUBMeasuredUsagesForm()
                     autoDestroy: true,
-                    layout: 'form',
                     buttons: 
                     [
                         // TODO: the save button is generic in function, refactor
@@ -1646,12 +1644,10 @@ function renderWidgets()
                             url: 'http://'+location.host+'/reebill/setActualRegister',
                             border: true,
                             frame: true,
-                            labelWidth: 125,
-                            //bodyStyle:'padding:10px 10px 0px 10px',
+                            labelWidth: 175,
                             items:[], // added by configureUBMeasuredUsagesForm()
                             baseParams: null, // added by configureUBMeasuredUsagesForm()
                             autoDestroy: true,
-                            //layout: 'form',
                             buttons: 
                             [
                                 // TODO: the save button is generic in function, refactor
@@ -1691,14 +1687,13 @@ function renderWidgets()
                     title: 'Upload Interval Meter CSV for ' + meter.identifier,
                     url: 'http://'+location.host+'/reebill/upload_interval_meter_csv',
                     frame:true,
-                    bodyStyle: 'padding: 10px 10px 0 10px;',
+                    //bodyStyle: 'padding: 10px 10px 0 10px;',
+                    labelWidth: 175,
                     defaults: {
                         anchor: '95%',
                         //allowBlank: false,
                         msgTarget: 'side'
                     },
-                    layout: 'fit',
-
                     items: [
                         //file_chooser - defined in FileUploadField.js
                         {
@@ -1706,16 +1701,33 @@ function renderWidgets()
                             id: 'interval-meter-csv-field',
                             emptyText: 'Select a file to upload',
                             name: 'csv_file',
+                            fieldLabel: 'CVS File',
                             buttonText: 'Choose file...',
                             buttonCfg: { width:80 },
                             allowBlank: true
-                            //disabled: true
+                        },{
+                            xtype: 'fieldset',
+                            title: 'Mapping',
+                            collapsible: false,
+                            defaults: {
+                                anchor: '0',
+                            },
+                            items: [
+                                {
+                                    xtype: 'textfield',
+                                    id: 'timestamp_column',
+                                    name: 'timestamp_column',
+                                    fieldLabel: "Timestamp Column",
+                                    value: "A",
+                                },{
+                                    xtype: 'textfield',
+                                    id: 'energy_column',
+                                    name: 'energy_column',
+                                    fieldLabel: "Metered Energy Column",
+                                    value: "B",
+                                }
+                            ],
                         },
-                        //{
-                            //xtype: 'textfield',
-                            //id: 'account',
-                            //value: selected_account
-                        //}
                     ],
 
                     buttons: [
@@ -1782,9 +1794,11 @@ function renderWidgets()
         title: 'Measured Usage',
         disabled: usagePeriodsPanelDisabled,
         layout: 'vbox',
+        // all children inherit flex
+        flex: 1,
         layoutConfig : {
-            pack : 'start',
-            align : 'stretch',
+            //pack : 'start',
+            //align : 'stretch',
         },
         items: null // configureUBMeasuredUsagesForm sets this
     });
