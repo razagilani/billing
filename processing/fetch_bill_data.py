@@ -29,7 +29,7 @@ def fetch_oltp_data(splinter, olap_id, reebill):
     usage_data_to_virtual_register(reebill, energy_function)
 
 def fetch_interval_meter_data(reebill, csv_file, meter_identifier=None,
-        timestamp_column=0, energy_column=1, energy_unit='therms',
+        timestamp_column=0, energy_column=1, energy_unit='btu',
         timestamp_format=dateutils.ISO_8601_DATETIME):
     '''Update quantities of shadow registers in reebill with interval-meter
     energy values from csv_file. If meter_identifier is given, energy will only
@@ -42,9 +42,9 @@ def fetch_interval_meter_data(reebill, csv_file, meter_identifier=None,
 
 def get_interval_meter_data_source(csv_file, timestamp_column=0,
         energy_column=1, timestamp_format=dateutils.ISO_8601_DATETIME,
-        energy_unit='therms'):
+        energy_unit='btu'):
     '''Returns a function mapping hours (as datetimes) to hourly energy
-    measurements (in therms) from an interval meter. These measurements should
+    measurements (in BTU) from an interval meter. These measurements should
     come as a CSV file with timestamps in timestamp_format in
     'timestamp_column' and energy measured in 'energy_unit' in 'energy_column'
     (0-indexed). E.g:
@@ -102,12 +102,14 @@ def get_interval_meter_data_source(csv_file, timestamp_column=0,
         # convert energy_unit if necessary. (input is in energy_unit but output
         # must be in therms)
         # TODO add more units...
-        if energy_unit.lower() == 'therms':
+        if energy_unit.lower() == 'btu':
             value = float(value)
+        elif energy_unit.lower() == 'therms':
+            value = float(value) / 100000.
         elif energy_unit.lower() == 'kwh':
-            value = float(value) / 341214163.
+            value = float(value) / 3412.14163
         else:
-            raise Exception('unknown unit: ' + unit)
+            raise ValueError('Unknown energy unit: ' + energy_unit)
 
         timestamps.append(timestamp)
         values.append(value)
