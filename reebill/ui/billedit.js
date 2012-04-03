@@ -3907,7 +3907,7 @@ function renderWidgets()
     });
 
     paymentStore.on('load', function (store, records, options) {
-        console.log('paymentStore load');
+        //console.log('paymentStore load');
         // the grid is disabled by the panel that contains it  
         // prior to loading, and must be enabled when loading is complete
         paymentGrid.setDisabled(false);
