@@ -132,17 +132,17 @@ class FetchTest(unittest.TestCase):
         self.assertRaises(IndexError, get_energy_for_hour, date(2012,3,28), [17,18])
         self.assertRaises(IndexError, get_energy_for_hour, date(2012,3,28), [21,21])
 
-        # total energy during hours 19 and 20 in therms
+        # total energy during hours 19 and 20 converted from kWh to BTU
         total_kwh_19 = 2217792.913 + 2217844.078 + 2217892.813 + 2217939.658
         total_kwh_20 = 2217986.773 + 2218036.048 + 2218082.218 + 2218128.388
-        total_therms_19 = total_kwh_19 / 341214163.
-        total_therms_20 = total_kwh_20 / 341214163.
+        total_btu_19 = total_kwh_19 / 3412.14163
+        total_btu_20 = total_kwh_20 / 3412.14163
 
         # these are not quite the same due to floating-point errors
         # (assertAlmostEqual checks 7 decimal places by default)
-        self.assertAlmostEqual(total_therms_19, get_energy_for_hour(date(2012,3,28),
-            [19,19]))
-        self.assertAlmostEqual(total_therms_19 + total_therms_20,
+        self.assertAlmostEqual(total_btu_19,
+                get_energy_for_hour(date(2012,3,28), [19,19]))
+        self.assertAlmostEqual(total_btu_19 + total_btu_20,
                 get_energy_for_hour(date(2012,3,28), [19,20]))
 
 
