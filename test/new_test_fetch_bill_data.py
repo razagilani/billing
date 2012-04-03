@@ -30,22 +30,22 @@ def make_big_interval_meter_test_csv(start_date, end_date, csv_file):
 def make_atsite_test_csv(start_date, end_date, csv_file):
     '''Writes a sample CSV like the above, but imitating the format of AtSite's
     example file.'''
-    writer = csv.writer(csv_file)
+    csv.register_dialect('atsite', delimiter=',', quotechar='"',
+            quoting=csv.QUOTE_ALL)
+    writer = csv.writer(csv_file, 'atsite')
+        
+    header_row = [cell.strip('"') for cell in '''"time(UTC)","error","lowalarm","highalarm","Natural Gas Meter (CF)","Natural Gas Meter Ave Rate (CFm)","Natural Gas Meter Instantaneous (CFm)","Natural Gas Meter Min (CFm)","Natural Gas Meter Max (CFm)","Water Meter - Main (CUFT)","Water Meter - Main Ave Rate (CUFT per hour)","Water Meter - Main Instantaneous (CUFT per hour)","Water Meter - Main Min (CUFT per hour)","Water Meter - Main Max (CUFT per hour)","Small Water meter A (Cubic Feet)","Small Water meter A Ave Rate (CFm)","Small Water meter A Instantaneous (CFm)","Small Water meter A Min (CFm)","Small Water meter A Max (CFm)","Small Water meter B (Cubic Feet)","Small Water meter B Ave Rate (CFm)","Small Water meter B Instantaneous (CFm)","Small Water meter B Min (CFm)","Small Water meter B Max (CFm)","PEPCO Meter (kwh)","PEPCO Meter Demand (kW)","PEPCO Meter Instantaneous (kW)","PEPCO Meter Min (kW)","PEPCO Meter Max (kW)","Input 6","-","-","-","-","Input 7","-","-","-","-","Input 8","-","-","-","-","Output 01","Output 02"'''.split(',')]
+    writer.writerow(header_row)
+
     for day in dateutils.date_generator(start_date, end_date):
         dt = datetime(day.year, day.month, day.day, 0)
-        writer.writerow() # header
         while dt.day == day.day:
             dt += timedelta(hours=0.25)
-            row = [
-                datetime.strftime(dt, '%Y-%m-%d %H:%M:%S')
+            # each row after header is timestamp, 23 blanks, and a number
+            row = [datetime.strftime(dt, '%Y-%m-%d %H:%M:%S')] + [''] * 23 \
+                    + [random.random() * 1000000]
+            writer.writerow(row)
 
-                random.random(),
-                ]
-            writer.writerow([
-                datetime.strftime(dt, '%Y-%m-%d %H:%M:%S')
-
-                random.random(),
-            ])
 
 class FetchTest(unittest.TestCase):
     def setUp(self):

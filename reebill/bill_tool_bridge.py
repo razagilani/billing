@@ -587,7 +587,8 @@ class BillToolBridge:
             # assuming the format of AtSite's example files
             fbd.fetch_interval_meter_data(reebill, csv_file.file,
                     meter_identifier=meter_identifier, timestamp_column=0,
-                    energy_column=24, energy_unit='kWh')
+                    energy_column=24, timestamp_format='%Y-%m-%d %H:%M:%S',
+                    energy_unit='kWh')
 
             self.reebill_dao.save_reebill(reebill)
             self.journal_dao.log_event(account, sequence,

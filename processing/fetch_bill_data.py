@@ -80,6 +80,7 @@ def get_interval_meter_data_source(csv_file, timestamp_column=0,
     csv_file.seek(0)
 
     reader = csv.reader(csv_file, dialect=csv_dialect)
+    header_row_count = 0
     for row in reader:
         # make sure data are present in the relevant columns
         try:
@@ -93,7 +94,8 @@ def get_interval_meter_data_source(csv_file, timestamp_column=0,
         try:
             timestamp = datetime.strptime(timestamp_str, timestamp_format)
         except ValueError:
-            if timestamps == []:
+            if timestamps == [] and header_row_count < 1:
+                header_row_count += 1
                 continue
             raise
 
@@ -111,8 +113,8 @@ def get_interval_meter_data_source(csv_file, timestamp_column=0,
         values.append(value)
 
     if len(timestamps) < 4:
-        raise Exception('CSV file has only %s rows, but needs at least 4' \
-                % len(timestamps))
+        raise Exception(('CSV file has only %s rows, but needs at least 4 '
+                % (len(timestamps))))
 
     # function that will return energy for an hour range ((start, end) pair,
     # inclusive)
