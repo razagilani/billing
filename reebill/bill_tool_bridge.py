@@ -583,7 +583,12 @@ class BillToolBridge:
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
-            fbd.fetch_interval_meter_data(reebill, csv_file.file)
+
+            # assuming the format of AtSite's example files
+            fbd.fetch_interval_meter_data(reebill, csv_file.file,
+                    meter_identifier=meter_identifier, timestamp_column=0,
+                    energy_column=24, energy_unit='kWh')
+
             self.reebill_dao.save_reebill(reebill)
             self.journal_dao.log_event(account, sequence,
                     JournalDAO.ReeBillBoundtoREE)
