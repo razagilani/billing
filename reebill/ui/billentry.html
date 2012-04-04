@@ -7,7 +7,7 @@
     <head profile="http://www.w3.org/2005/10/profile">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
 
-    <script type="text/javascript" src="jquery-1.4.2.js"></script>
+    <!--script type="text/javascript" src="jquery-1.4.2.js"></script-->
 
 
     <!-- overrides to base library -->
@@ -46,11 +46,12 @@
 
     <!-- ** Javascript ** -->
     <!-- ExtJS library: base/adapter -->
-    <script type="text/javascript" src="ext-3.3.1/adapter/ext/ext-base.js"></script>
+    <!--script type="text/javascript" src="ext-3.3.1/adapter/ext/ext-base.js"></script-->
+    <script type="text/javascript" src="ext-3.3.1/adapter/ext/ext-base-debug.js"></script>
 
     <!-- ExtJS library: all widgets -->
-    <script type="text/javascript" src="ext-3.3.1/ext-all-debug.js"></script>
-    <!--script type="text/javascript" src="ext-3.3.1/ext-all.js"></script-->
+    <!--script type="text/javascript" src="ext-3.3.1/ext-all-debug.js"></script-->
+    <script type="text/javascript" src="ext-3.3.1/ext-all.js"></script>
 
     <!-- extensions -->
 
@@ -72,29 +73,121 @@
 
     <!-- overrides to base library -->
 
-    <!-- ReeBill UI Configuration  -->
-    <!--script type="text/javascript" src="reebill_conf.js"></script-->
-
     <!-- page specific -->
     <script type="text/javascript" src="billedit.js"></script>
 
     <!-- start the execution of javascript code -->
     <script type="text/javascript">
-        $(document).ready(function() {
-            renderWidgets();
-          });
-    </script>
 
+        /* Global variables for UI configuration */
+        var jsonData;
+        var mailPanelDisabled;
+        var preferencesPanelDisabled;
+        var reportPanelDisabled;
+        var journalPanelDisabled;
+        var aboutPanelDisabled;
+        var chargeItemsPanelDisabled;
+        var rateStructurePanelDisabled;
+        var billPeriodsPanelDisabled;
+        var usagePeriodsPanelDisabled;
+        var reeBillPanelDisabled;
+        var utilityBillPanelDisabled;
+        var accountsPanelDisabled;
+        var paymentPanelDisabled;
+
+        Ext.onReady(function() {
+
+/*new Ext.Viewport({
+    layout: 'border',
+    items: [{
+        region: 'north',
+        html: '<h1 class="x-panel-header">Page Title</h1>',
+        autoHeight: true,
+        border: false,
+        margins: '0 0 5 0'
+    }, {
+        region: 'west',
+        collapsible: true,
+        title: 'Navigation',
+        width: 200
+        // the west region might typically utilize a TreePanel or a Panel with Accordion layout
+    }, {
+        region: 'south',
+        title: 'Title for Panel',
+        collapsible: true,
+        html: 'Information goes here',
+        split: true,
+        height: 100,
+        minHeight: 100
+    }, {
+        region: 'east',
+        title: 'Title for the Grid Panel',
+        collapsible: true,
+        split: true,
+        width: 200,
+    }, {
+        region: 'center',
+        xtype: 'tabpanel', // TabPanel itself has no title
+        items: {
+            title: 'Default Tab',
+            html: 'The first tab\'s content. Others may be added dynamically'
+        }
+    }]
+});*/
+
+          /* load ui configuration from server (which tabs to show/hide) */
+          Ext.Ajax.request({
+            url: 'http://' + location.host + '/reebill/ui_configuration',
+            success: function(response) {
+              try {
+                var jsonData = Ext.util.JSON.decode(response.responseText);
+                mailPanelDisabled = jsonData.mail_panel_disabled;
+                preferencesPanelDisabled = jsonData.preferences_panel_disabled;
+                reportPanelDisabled = jsonData.report_panel_disabled;
+                journalPanelDisabled = jsonData.preferences_panel_disabled;
+                aboutPanelDisabled = jsonData.about_panel_disabled;
+                chargeItemsPanelDisabled = jsonData.charge_items_panel_disabled;
+                rateStructurePanelDisabled = jsonData.rate_structure_panel_disabled;
+                billPeriodsPanelDisabled = jsonData.bill_periods_panel_disabled;
+                usagePeriodsPanelDisabled = jsonData.usage_periods_panel_disabled;
+                reeBillPanelDisabled = jsonData.reebill_panel_disabled;
+                utilityBillPanelDisabled = jsonData.utility_bill_panel_disabled;
+                accountsPanelDisabled = jsonData.accounts_panel_disabled;
+                paymentPanelDisabled = jsonData.payment_panel_disabled;
+
+                reeBillReady();
+                Ext.get('loading').fadeOut();
+                Ext.get('header').fadeIn();
+                Ext.get('footer').fadeIn();
+
+              } catch (e) {
+                Ext.Msg.alert('Error',
+                  'Could not load UI configuration from the server: ' + e);
+              }
+            },
+            failure: function() {
+              Ext.Msg.alert('Error', 'Failed to load UI configuration from the server');
+            },
+          });
+        });
+
+    </script>
 </head>
 <body>
-    <div id="header" style="height:100%; background-image:url('green_stripe.jpg'); background-repeat: repeat;">
-        <table style="border-collapse: collapse;"><tr><td><img src="skyline_logo.png"/></td><td><img src="reebill_logo.png"/></td><td style="width: 85%; text-align: right;"><img src="money_chaser.png"/></td></tr></table>
-    </div>
-    <div id="footer" style="height:100%; background-image:url('green_stripe.jpg'); background-repeat: repeat; padding-top:6px;">
-        <div style="display: inline; float: left;">&#169;2009-2012 <a href="http://www.skylineinnovations.com">Skyline Innovations Inc.</a></div>
-        <div id="LOGIN_INFO" style="display: inline; padding:0px 15px 0px 15px;">LOGIN INFO</div>
-        <div id="SKYLINE_VERSIONINFO" style="display: inline; float: right; padding:0px 15px 0px 15px;">VERSION INFO</div>
-        <div id="SKYLINE_DEPLOYENV" style="display: inline; float: right;">DEPLOYMENT ENV</div>
-    </div>
+  <div id="header" style="visibility:hidden; height:100%; background-image:url('green_stripe.jpg'); background-repeat: repeat;">
+    <table style="border-collapse: collapse;"><tr><td><img src="skyline_logo.png"/></td><td><img src="reebill_logo.png"/></td><td style="width: 85%; text-align: right;"><img src="money_chaser.png"/></td></tr></table>
+  </div>
+  <div id="loading" style="position:absolute; top:30%;">
+    <table style="width: 100%;">
+      <tr><td style="text-align: right;"><img style="height:350px;" src="rotologo_white.gif"/></td><td style="text-align: left"><img src="skylineinnovations_text.jpg"/></td></tr>
+      <tr><td colspan="2" style="text-align: center;">Initializing...</td></td>
+    </table>
+  </div>
+  <div id="footer" style="visibility: hidden; height:100%; background-image:url('green_stripe.jpg'); background-repeat: repeat; padding-top:6px;">
+    <div style="display: inline; float: left;">&#169;2009-2012 <a href="http://www.skylineinnovations.com">Skyline Innovations Inc.</a></div>
+    <div id="LOGIN_INFO" style="display: inline; padding:0px 15px 0px 15px;">LOGIN INFO</div>
+    <div id="SKYLINE_VERSIONINFO" style="display: inline; float: right; padding:0px 15px 0px 15px;">VERSION INFO</div>
+    <div id="SKYLINE_DEPLOYENV" style="display: inline; float: right;">DEPLOYMENT ENV</div>
+  </div>
 </body>
 </html>
