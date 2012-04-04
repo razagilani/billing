@@ -46,7 +46,7 @@ def random_wait(target):
     @functools.wraps(target)
     def random_wait_wrapper(*args, **kwargs):
         #t = random.random()
-        t = 0
+        t = 1
         time.sleep(t)
         return target(*args, **kwargs)
     return random_wait_wrapper
