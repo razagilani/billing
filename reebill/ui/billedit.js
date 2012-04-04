@@ -40,8 +40,52 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
     }, this);
 */
 
-function renderWidgets()
-{
+/* Global variables for UI configuration */
+var jsonData;
+var mailPanelDisabled;
+var preferencesPanelDisabled;
+var reconciliationPanelDisabled;
+var journalPanelDisabled;
+var aboutPanelDisabled;
+var chargeItemsPanelDisabled;
+var rateStructurePanelDisabled;
+var billPeriodsPanelDisabled;
+var usagePeriodsPanelDisabled;
+var reeBillPanelDisabled;
+var utilityBillPanelDisabled;
+var accountsPanelDisabled;
+var paymentPanelDisabled;
+
+function renderWidgets() {
+    /* load ui configuration from server (which tabs to show/hide) */
+    Ext.Ajax.request({
+        url: 'http://' + location.host + '/reebill/ui_configuration',
+        success: function(response) {
+            try {
+                var jsonData = Ext.util.JSON.decode(response.responseText);
+                mailPanelDisabled = jsonData.mail_panel_disabled;
+                preferencesPanelDisabled = jsonData.preferences_panel_disabled;
+                reconciliationPanelDisabled = jsonData.reconciliation_panel_disabled;
+                journalPanelDisabled = jsonData.preferences_panel_disabled;
+                aboutPanelDisabled = jsonData.about_panel_disabled;
+                chargeItemsPanelDisabled = jsonData.charge_items_panel_disabled;
+                rateStructurePanelDisabled = jsonData.rate_structure_panel_disabled;
+                billPeriodsPanelDisabled = jsonData.bill_periods_panel_disabled;
+                usagePeriodsPanelDisabled = jsonData.usage_periods_panel_disabled;
+                reeBillPanelDisabled = jsonData.reebill_panel_disabled;
+                utilityBillPanelDisabled = jsonData.utility_bill_panel_disabled;
+                accountsPanelDisabled = jsonData.accounts_panel_disabled;
+                paymentPanelDisabled = jsonData.payment_panel_disabled;
+            } catch (e) {
+                Ext.Msg.alert('Error',
+                    'Error when loading UI configuration from the server: ' + e);
+            }
+        },
+    failure: function() {
+        Ext.Msg.alert('Error', 'Failed to load UI configuration from the server');
+    },
+    });
+
 
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
