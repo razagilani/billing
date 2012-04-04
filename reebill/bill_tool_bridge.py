@@ -22,6 +22,7 @@ import random
 import time
 import copy
 import functools
+import re
 from StringIO import StringIO
 from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
@@ -585,9 +586,10 @@ class BillToolBridge:
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
             # convert column letters into 0-based indices
-            if not all(x.isalpha() and len(x) == 1 for x in (timestamp_column,
-                energy_column)):
-                raise ValueError('timestamp_column and energy_column must be letters')
+            if not re.match('[A-Za-z]', timestamp_column):
+                raise ValueError('Timestamp column must be a letter')
+            if not re.match('[A-Za-z]', energy_column):
+                raise ValueError('Energy column must be a letter')
             timestamp_column = ord(timestamp_column.lower()) - ord('a')
             energy_column = ord(energy_column.lower()) - ord('a')
 
