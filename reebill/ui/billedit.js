@@ -1700,7 +1700,7 @@ function renderWidgets()
                             xtype: 'fileuploadfield',
                             emptyText: 'Select a file to upload',
                             name: 'csv_file',
-                            fieldLabel: 'CVS File',
+                            fieldLabel: 'CSV File',
                             buttonText: 'Choose file...',
                             buttonCfg: { width:80 },
                             allowBlank: true
