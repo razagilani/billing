@@ -40,51 +40,8 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
     }, this);
 */
 
-/* Global variables for UI configuration */
-var jsonData;
-var mailPanelDisabled;
-var preferencesPanelDisabled;
-var reconciliationPanelDisabled;
-var journalPanelDisabled;
-var aboutPanelDisabled;
-var chargeItemsPanelDisabled;
-var rateStructurePanelDisabled;
-var billPeriodsPanelDisabled;
-var usagePeriodsPanelDisabled;
-var reeBillPanelDisabled;
-var utilityBillPanelDisabled;
-var accountsPanelDisabled;
-var paymentPanelDisabled;
 
-function renderWidgets() {
-    /* load ui configuration from server (which tabs to show/hide) */
-    Ext.Ajax.request({
-        url: 'http://' + location.host + '/reebill/ui_configuration',
-        success: function(response) {
-            try {
-                var jsonData = Ext.util.JSON.decode(response.responseText);
-                mailPanelDisabled = jsonData.mail_panel_disabled;
-                preferencesPanelDisabled = jsonData.preferences_panel_disabled;
-                reconciliationPanelDisabled = jsonData.reconciliation_panel_disabled;
-                journalPanelDisabled = jsonData.preferences_panel_disabled;
-                aboutPanelDisabled = jsonData.about_panel_disabled;
-                chargeItemsPanelDisabled = jsonData.charge_items_panel_disabled;
-                rateStructurePanelDisabled = jsonData.rate_structure_panel_disabled;
-                billPeriodsPanelDisabled = jsonData.bill_periods_panel_disabled;
-                usagePeriodsPanelDisabled = jsonData.usage_periods_panel_disabled;
-                reeBillPanelDisabled = jsonData.reebill_panel_disabled;
-                utilityBillPanelDisabled = jsonData.utility_bill_panel_disabled;
-                accountsPanelDisabled = jsonData.accounts_panel_disabled;
-                paymentPanelDisabled = jsonData.payment_panel_disabled;
-            } catch (e) {
-                Ext.Msg.alert('Error',
-                    'Error when loading UI configuration from the server: ' + e);
-            }
-        },
-    failure: function() {
-        Ext.Msg.alert('Error', 'Failed to load UI configuration from the server');
-    },
-    });
+function reeBillReady() {
 
 
     // global declaration of account and sequence variable
@@ -171,8 +128,6 @@ function renderWidgets() {
         UniversalSortableDateTime: "Y-m-d H:i:sO",
         YearMonth: "F, Y"
     };
-
-
 
     ////////////////////////////////////////////////////////////////////////////
     // Utility Bill Tab
@@ -5238,8 +5193,11 @@ function renderWidgets() {
 
 
     ///////////////////////////////////////////
-    // Reconciliation Tab
+    // Report Tab
     //
+
+
+    // reconciliation report
 
     var reconciliationProxyConn = new Ext.data.Connection({
         url: 'http://' + location.host + '/reebill/get_reconciliation_data',
@@ -5349,12 +5307,12 @@ function renderWidgets() {
     //
     // Instantiate the Reconciliation panel
     //
-    var reconciliationPanel = new Ext.Panel({
-        id: 'reconciliationTab',
-        title: 'Reconciliation Report',
-        disabled: reconciliationPanelDisabled,
+    var reportPanel = new Ext.Panel({
+        id: 'reportTab',
+        title: 'Reports',
+        disabled: reportPanelDisabled,
         xtype: 'panel',
-        layout: 'fit',
+        layout: 'accordion',
         items: [reconciliationGrid, ],
     });
 
@@ -5407,7 +5365,7 @@ function renderWidgets() {
             chargeItemsPanel,
             journalPanel,
             mailPanel,
-            reconciliationPanel,
+            reportPanel,
             preferencesPanel,
             aboutPanel,
         ]
@@ -5418,6 +5376,34 @@ function renderWidgets() {
 
     ////////////////////////////////////////////////////////////////////////////
     // assemble all of the widgets in a tabpanel with a header section
+    /*viewport.add([
+          {
+            region: 'north',
+            xtype: 'panel',
+            layout: 'fit',
+            height: 80,
+            // default overrides
+            split: false,
+            border: false,
+            //autoLoad: {url:'green_stripe.jpg', scripts:true},
+            contentEl: 'header',
+          },
+          utilBillImageBox,
+          tabPanel,
+          reeBillImageBox,
+          {
+            region: 'south',
+            xtype: 'panel',
+            layout: 'fit',
+            height: 30,
+            // default overrides
+            split: false,
+            border: false,
+            //autoLoad: {url:'green_stripe.jpg', scripts:true},
+            contentEl: 'footer',
+          },
+    ]);*/
+    //viewport.doLayout();
     var viewport = new Ext.Viewport
     (
       {
