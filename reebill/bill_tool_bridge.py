@@ -433,6 +433,20 @@ class BillToolBridge:
             del cherrypy.session['user']
         raise cherrypy.HTTPRedirect('/login.html')
 
+    @cherrypy.expose
+    @random_wait
+    @authenticate
+    def ui_javascript(self):
+        '''Returns the UI javascript file.'''
+        path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ui',
+                'billedit.js')
+        with open(path) as billedit_js:
+            # set MIME type for file download
+            cherrypy.response.headers['Content-Type'] = 'text/javascript'
+            #cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
+
+            return billedit_js.read()
+
     ###########################################################################
     # bill processing
 
