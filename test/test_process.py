@@ -729,5 +729,24 @@ class ProcessTest(unittest.TestCase):
 #            session.rollback()
 #            raise
 
+    def test_get_sequence_by_approximate_month(self):
+        session = self.state_db.session()
+        for account in self.state_db.listAccounts(session):
+            for sequence in self.state_db.listSequences(session, account):
+                reebill = self.reebill_dao.load_reebill(account, sequence)
+
+                # get real approximate month for this bill
+                year, month = dateutils.estimate_month(reebill.period_begin, reebill.period_end)
+
+                # make sure it matches get_sequence_by_approximate_month
+                try:
+                    self.assertEquals(sequence, state.get_sequence_by_approximate_month(account, year, month))
+                except AssertionError:
+                    import pdb; pdb.set_trace()
+
+        session.commit()
+        # TODO test months after last sequence
+        # TODO test months before last sequence
+
 if __name__ == '__main__':
     unittest.main(failfast=True)

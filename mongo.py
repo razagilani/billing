@@ -1090,6 +1090,7 @@ class ReebillDAO:
         return mongo_reebill
 
     def load_reebills_for(self, account, branch=0):
+        # TODO remove--redundant with load_reebills_in_period when no dates are given, except for exclusion of sequence 0
 
         if not account: return None
 
