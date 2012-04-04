@@ -4424,7 +4424,7 @@ function renderWidgets() {
             {name: 'actual_charges', mapping: 'actual_charges'},
             {name: 'hypothetical_charges', mapping: 'hypothetical_charges'},
             {name: 'total_energy', mapping: 'total_energy'},
-            {name: 'marginal_rate_therm', mapping: 'marginal_rate_therm'},
+            {name: 'average_ree_rate', mapping: 'average_ree_rate'},
         ]
     });
 
@@ -4449,7 +4449,7 @@ function renderWidgets() {
             {name: 'actual_charges'},
             {name: 'hypothetical_charges'},
             {name: 'total_energy'},
-            {name: 'marginal_rate_therm'},
+            {name: 'average_ree_rate'},
         ],
     });
 
@@ -4482,9 +4482,9 @@ function renderWidgets() {
                 dataIndex: 'total_energy',
                 editable: false,
             },{
-                header: 'Marginal Rate per Therm',
+                header: 'Average Value per Therm of RE',
                 sortable: true,
-                dataIndex: 'marginal_rate_therm',
+                dataIndex: 'average_ree_rate',
                 editable: false,
             },
         ]

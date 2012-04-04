@@ -663,11 +663,11 @@ class Process(object):
             actual_total = Decimal(sum([reebill.actual_total for reebill in reebills]))
             hypothetical_total = Decimal(sum([reebill.hypothetical_total for reebill in reebills]))
             total_energy = Decimal(0)
-            marginal_rate_therm = Decimal(0)
+            average_ree_rate = Decimal(0)
             total_energy = self.total_ree_in_reebills(reebills)
 
             if total_energy != Decimal(0):
-                marginal_rate_therm = (hypothetical_total - actual_total)/total_energy
+                average_ree_rate = (hypothetical_total - actual_total)/total_energy
 
             row['account'] = account
             row['fullname'] = full_names[i]
@@ -676,7 +676,7 @@ class Process(object):
             row['hypothetical_charges'] = hypothetical_total.quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)
             row['total_energy'] = total_energy.quantize(Decimal("0"))
             # per therm
-            row['marginal_rate_therm'] = (marginal_rate_therm).quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)
+            row['average_ree_rate'] = (average_ree_rate).quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)
             rows.append(row)
 
         return rows
