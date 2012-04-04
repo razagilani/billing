@@ -28,6 +28,7 @@ from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
 from billing import bill, json_util as ju, mongo, dateutils, excel_export, nexus_util as nu
 from billing.nexus_util import NexusUtil
+from billing.dictutils import deep_map
 from billing.processing import billupload
 from billing.processing import process, state, db_objects, fetch_bill_data as fbd, rate_structure as rs
 from billing.processing.billupload import BillUpload
@@ -433,19 +434,33 @@ class BillToolBridge:
             del cherrypy.session['user']
         raise cherrypy.HTTPRedirect('/login.html')
 
+    ###########################################################################
+    # UI configuration
+
     @cherrypy.expose
     @random_wait
-    @authenticate
-    def ui_javascript(self):
+    @authenticate_ajax
+    def ui_configuration(self, **kwargs):
         '''Returns the UI javascript file.'''
-        path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ui',
-                'billedit.js')
-        with open(path) as billedit_js:
-            # set MIME type for file download
-            cherrypy.response.headers['Content-Type'] = 'text/javascript'
-            #cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
+        try:
+            ui_config_file_path = os.path.join(os.path.dirname(
+                os.path.realpath(__file__)), 'ui', 'ui.cfg')
+            ui_config = ConfigParser.RawConfigParser()
+            # NB: read() takes a list of file paths, not a file.
+            # also note that ConfigParser converts all keys to lowercase
+            ui_config.read([ui_config_file_path])
 
-            return billedit_js.read()
+            # currently we have only one section
+            config_dict = dict(ui_config.items('tabs'))
+
+            # convert "true"/"false" strings to booleans
+            config_dict = deep_map(
+                    lambda x: {'true':True, 'false':False}.get(x,x),
+                    config_dict)
+
+            return json.dumps(config_dict)
+        except Exception as e:
+            return self.handle_exception(e)
 
     ###########################################################################
     # bill processing
