@@ -212,6 +212,13 @@ def months_of_past_year(year, month):
         a_month = a_month % 12 + 1
     return result
 
+def month_offset(year, month, number_of_months):
+    '''Returns the month that occurs 'number_of_months' after 'month' of 'year'
+    as a (year, month) tuple. E.g. to find the month that occurs 10 months
+    after (2012,4), you call month_offset(2012,4,10), and the result is
+    (2013,2).'''
+    year_offset, result_month_index = divmod(month + number_of_months - 1, 12)
+    return year + year_offset, result_month_index + 1
 
 def nth_weekday(n, weekday_number, month):
     '''Returns a function mapping years to the 'n'th weekday of 'month' in the

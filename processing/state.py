@@ -16,6 +16,9 @@ from sqlalchemy.sql.expression import desc
 from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, StatusUnbilled
 sys.stdout = sys.stderr
 
+# TODO move the 2 functions below to Process? seems like state.py is only about
+# the state database
+
 def guess_utilbill_periods(start_date, end_date):
     '''Returns a list of (start, end) tuples representing a the number and
     periods of "hypothetical" utility bills covering the date range
@@ -178,11 +181,6 @@ class StateDB:
         # wrapped by scoped_session for thread contextualization
         self.session = scoped_session(sessionmaker(bind=engine, autoflush=True))
 
-    def new_account(self, session, name, account, discount_rate, late_charge_rate):
-        new_customer = Customer(name, account, discount_rate, late_charge_rate)
-        session.add(new_customer)
-        return new_customer
-
     def get_next_account_number(self, session):
         '''Returns what would become the next account number if a new account
         were created were created (highest existing account number + 1--we're
@@ -236,12 +234,14 @@ class StateDB:
 
     def discount_rate(self, session, account):
         # one() raises an exception if more than one row was found
-        result = session.query(Customer).filter_by(account=account).one().discountrate
+        result = session.query(Customer).filter_by(account=account).one().\
+                discountrate
         return result
         
     def late_charge_rate(self, session, account):
         # one() raises an exception if more than one row was found
-        result = session.query(Customer).filter_by(account=account).one().latechargerate
+        result = session.query(Customer).filter_by(account=account).one()\
+                .latechargerate
         return result
 
     # TODO: 22598787 branches

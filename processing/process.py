@@ -712,6 +712,29 @@ class Process(object):
             total_energy += self.total_ree_in_reebill(reebill)
         return total_energy
         
+    def get_sequence_by_approximate_month(account, year, month):
+        '''Returns the sequence of the reebill whose approximate month (as
+        determined by dateutils.estimate_month()) is 'month' of 'year' or None if
+        the month precedes the approximate month of the first reebill. When
+        'sequence' exceeds the last sequence for the account, bills are assumed to
+        correspond exactly to calendar months.'''
+        # get all reebills whose periods contain any days in this month (there
+        # should be at most 3)
+        next_month = dateutils.month_offset(year, month)
+        reebills = self.reebill_dao.load_reebills_in_period(date(year, month, 1), date(*next_month, 1))
+
+        if reebills == []:
+            return None
+
+        # choose the reebill with the most days in this month
+        reebill = max(reebills, key=lambda bill: dateutils.days_in_month(year,
+                month, bill.period_begin, bill.period_end))
+
+        def new_account(self, session, name, account, discount_rate, late_charge_rate):
+            new_customer = Customer(name, account, discount_rate, late_charge_rate)
+            session.add(new_customer)
+            return new_customer
+
 if __name__ == '__main__':
     from billing.processing.rate_structure import Register
 

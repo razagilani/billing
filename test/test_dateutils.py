@@ -227,6 +227,20 @@ class DateUtilsTest(unittest.TestCase):
             (2012,7), (2012,8), (2012,9), (2012,10), (2012,11), (2012,12)],
             months_of_past_year(2012,12))
 
+    def test_month_offset(self):
+        self.assertEquals((2012,1), month_offset(2012,1, 0))
+        self.assertEquals((2012,2), month_offset(2012,1, 1))
+        self.assertEquals((2012,3), month_offset(2012,1, 2))
+        self.assertEquals((2012,12), month_offset(2012,1, 11))
+        self.assertEquals((2013,1), month_offset(2012,1, 12))
+        self.assertEquals((2013,2), month_offset(2012,1, 13))
+        self.assertEquals((2011,11), month_offset(2012,6, -7))
+        self.assertEquals((2012,4), month_offset(2012,6, -2))
+        self.assertEquals((2012,6), month_offset(2012,6, 0))
+        self.assertEquals((2012,8), month_offset(2012,6, 2))
+        self.assertEquals((2013,2), month_offset(2012,6, 8))
+        self.assertEquals((2015,1), month_offset(2012,12, 25))
+
 
     def test_date_generator(self):
         oct1 = date(2011,10,1)
