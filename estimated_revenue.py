@@ -1,3 +1,4 @@
+import sys
 from datetime import date, datetime
 from collections import defaultdict
 from skyliner.splinter import Splinter
@@ -5,15 +6,21 @@ from skyliner.skymap.monguru import Monguru
 from billing.processing.process import Process
 from billing.dateutils import estimate_month, month_offset, months_of_past_year, date_generator
 from billing.nexus_util import NexusUtil
+from billing.processing.rate_structure import RateStructureDAO
+from billing.processing import state
+from billing.processing.state import StateDB
+from billing.mongo import ReebillDAO
 
 class EstimatedRevenue(object):
 
-    def __init__(self, state_db, rebill_dao, process, splinter, monguru):
+    def __init__(self, state_db, rebill_dao, ratestructure_dao, process,
+            splinter, monguru):
         self.state_db = state_db
         self.reebill_dao = reebill_dao
         self.process = process
         self.splinter = splinter
         self.monguru = monguru
+        self.ratestructure_dao = ratestructure_dao
 
     def report(self, session):
         # dictionary account -> ((year, month) -> $) whose default value is an
@@ -84,21 +91,27 @@ class EstimatedRevenue(object):
                 daily_energy_sold = 0
             energy_sold += daily_energy_sold
 
-        # pretend energy costs $1/therm
-        return energy_sold * 1/100000.
+        # now we figure out how much that energy costs. if the utility bill(s)
+        # that this reebill would have are present, we could get them with
+        # state.guess_utilbills_and_end_date(), and then use their rate
+        # structure(s) to calculate the cost. but currently there are never any
+        # utility bills until a reebill has been created. so there will never
+        # be rate structure to use. TODO
 
-        # TODO
-        # figure out how much that energy costs:
-        ## if this reebill has utility bills, use the real utility rate to
-        ## compute the price of the energy
-        #state_db.guess_utilbills_and_end_date(account, max(start_date,
-        ## TOD0
-        #return 0
+        for service in last_reebill.services:
+            try:
+                rs = self.ratestructure_dao.load_probable_rs(last_reebill, service)
+            except:
+                # TODO raise exception because this is not OK
+                print >> sys.stderr, 'rate structure missing: %s-%s' % (
+                        account, last_sequence)
+
+        # use the rate structure to get a price for energy_sold
+
+        return 0
 
 
 if __name__ == '__main__':
-    from billing.processing.state import StateDB
-    from billing.mongo import ReebillDAO
     state_db = StateDB({
         'host': 'localhost',
         'database': 'skyline_dev',
@@ -106,21 +119,30 @@ if __name__ == '__main__':
         'password': 'dev',
     })
     reebill_dao = ReebillDAO({
+        'host': 'localhost',
+        'port': 27017,
         'database': 'skyline',
         'collection': 'reebills',
+    })
+    ratestructure_dao = RateStructureDAO({
         'host': 'localhost',
-        'port': '27017'
+        'port': 27017,
+        'database': 'skyline',
+        'collection': 'ratestructure',
     })
     splinter = Splinter('http://duino-drop.appspot.com/', 'tyrell', 'dev')
     monguru = Monguru('tyrell', 'dev')
     process = Process(None, state_db, reebill_dao, None, splinter, monguru)
     session = state_db.session()
-    er = EstimatedRevenue(state_db, reebill_dao, process, splinter, monguru)
+    er = EstimatedRevenue(state_db, reebill_dao, ratestructure_dao, process,
+            splinter, monguru)
     data = er.report(session)
-    all_months = sorted(set(reduce(lambda x,y: x+y, [data[account].keys() for account in data], [])))
+    all_months = sorted(set(reduce(lambda x,y: x+y, [data[account].keys() for
+        account in data], [])))
     now = date.today()
     data_months = months_of_past_year(now.year, now.month)
     print '      '+('%10s '*12) % tuple(map(str, data_months))
     for account in sorted(data.keys()):
-        print account + '%10.1f '*12 % tuple([data[account].get((year, month), 0) for (year, month) in data_months])
+        print account + '%10.1f '*12 % tuple([data[account].get((year, month),
+                0) for (year, month) in data_months])
     session.commit()

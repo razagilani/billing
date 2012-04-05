@@ -250,6 +250,7 @@ def usage_data_to_virtual_register(reebill, energy_function,
                 if register['quantity_units'].lower() == 'kwh':
                     #energy_today /= 3412.14
                     # energy comes out in kwh
+                    # TODO: see https://www.pivotaltracker.com/story/show/27623095
                     pass
                 elif register['quantity_units'].lower() == 'therms':
                     energy_today /= 100000
