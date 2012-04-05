@@ -742,8 +742,11 @@ class Process(object):
         if sequences_for_month != []:
             return sequences_for_month
 
-        # get approximate month of last month
+        # get approximate month of last reebill (return [] if there were never
+        # any reebills)
         last_sequence = self.state_db.last_sequence(session, account)
+        if last_sequence == 0:
+            return []
         last_reebill = self.reebill_dao.load_reebill(account, last_sequence)
         last_reebill_year, last_reebill_month = estimate_month(
                 last_reebill.period_begin, last_reebill.period_end)
