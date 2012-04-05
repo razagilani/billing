@@ -541,7 +541,6 @@ function reeBillReady() {
                 // these items will render as dropdown menu items when the arrow is clicked:
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
-                {text: 'Bind Interval Meter Data', handler: bindREEOperation},
                 {text: 'Compute Bill', handler: bindRSOperation},
                 {text: 'Attach Utility Bills to Reebill', handler: attachOperation},
                 {text: 'Render', handler: renderOperation},
