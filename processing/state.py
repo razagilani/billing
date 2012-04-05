@@ -246,17 +246,16 @@ class StateDB:
 
     # TODO: 22598787 branches
     def last_sequence(self, session, account):
-
+        '''Returns the sequence of the last reebill for 'account', or 0 if
+        there are no reebills.'''
         customer = session.query(Customer).filter(Customer.account==account).one()
-
         max_sequence = session.query(sqlalchemy.func.max(ReeBill.sequence)) \
                 .filter(ReeBill.customer_id==customer.id).one()[0]
-
-        # TODO: because of the way 0.xml templates are made (they are not in the database) rebill needs to be 
-        # primed otherwise the last sequence for a new bill is None. Design a solution to this issue.
+        # TODO: because of the way 0.xml templates are made (they are not in
+        # the database) rebill needs to be primed otherwise the last sequence
+        # for a new bill is None. Design a solution to this issue.
         if max_sequence is None:
             max_sequence =  0
-
         return max_sequence
         
     def last_utilbill_end_date(self, session, account):

@@ -761,27 +761,6 @@ class Process(object):
         return [last_sequence + sequence_offset]
 
 
-        ## if no reebills have any of their period in this month, there is no
-        ## bill corresponding to the month
-        ## TODO future months
-        #if reebills == []:
-            #return None
-
-        ## now there are bills with some of their period in this month. if the
-        ## one with the most days in the month has most of its days in the
-        ## month, return its sequence.
-        #bill = max(reebills, key=lambda bill: dateutils.days_in_month(year,
-                #month, bill.period_begin, bill.period_end))
-        #days_in_month = dateutils.days_in_month(year, month, bill.period_begin,
-                #bill.period_end)
-        #period_length = (bill.period_end - bill.period_begin).days
-        #if days_in_month > period_length / 2:
-            #return bill.sequence
-
-        ## otherwise, there is no reebill that really corresponds to the month
-        #return None
-
-
 if __name__ == '__main__':
     from billing.processing.rate_structure import Register
 

@@ -756,10 +756,10 @@ class ProcessTest(unittest.TestCase):
                 # get real approximate month for this bill
                 year, month = estimate_month(reebill.period_begin, reebill.period_end)
 
-                print '%s-%s: period is %s - %s, approx month is %s-%s' % (
-                        account, sequence, reebill.period_begin,
-                        reebill.period_end, year, month)
-                print 'sequence for %s-%s should be %s' % (year, month, sequence)
+                #print '%s-%s: period is %s - %s, approx month is %s-%s' % (
+                        #account, sequence, reebill.period_begin,
+                        #reebill.period_end, year, month)
+                #print 'sequence for %s-%s should be %s' % (year, month, sequence)
 
                 # make sure it's contained in the result of
                 # sequences_for_approximate_month(), and make sure that result
@@ -780,14 +780,24 @@ class ProcessTest(unittest.TestCase):
         self.assertEquals([], process.sequences_for_approximate_month(session, '10001', 2009, 10))
         self.assertEquals([], process.sequences_for_approximate_month(session, '10002', 2010, 1))
 
-        # test months after last sequence
-        last_seq = state_db.last_sequence(session, '10003')
-        last = reebill_dao.load_reebill('10003', last_seq)
-        last_year, last_month = estimate_month(last.period_begin, last.period_end)
-        next_year, next_month = month_offset(last_year, last_month, 1)
-        import pdb; pdb.set_trace()
-        self.assertEquals([last_seq + 1],
-                process.sequences_for_approximate_month(session, '10003', next_year, next_month))
+        # test 3 months after last sequence for each account
+        for account in state_db.listAccounts(session):
+            last_seq = state_db.last_sequence(session, account)
+            if last_seq == 0: continue
+            last = reebill_dao.load_reebill(account, last_seq)
+            last_year, last_month = estimate_month(last.period_begin, last.period_end)
+            next_year, next_month = month_offset(last_year, last_month, 1)
+            next2_year, next2_month = month_offset(last_year, last_month, 2)
+            next3_year, next3_month = month_offset(last_year, last_month, 3)
+            self.assertEquals([last_seq + 1],
+                    process.sequences_for_approximate_month(session, account,
+                    next_year, next_month))
+            self.assertEquals([last_seq + 2],
+                    process.sequences_for_approximate_month(session, account,
+                    next2_year, next2_month))
+            self.assertEquals([last_seq + 3],
+                    process.sequences_for_approximate_month(session, account,
+                    next3_year, next3_month))
 
         session.commit()
 
