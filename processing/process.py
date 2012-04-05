@@ -25,6 +25,7 @@ from billing.processing.db_objects import Payment, Customer
 from billing.mongo import ReebillDAO
 from billing import nexus_util
 from billing import dateutils
+from billing.dateutils import estimate_month, month_offset, month_difference
 
 sys.stdout = sys.stderr
 class Process(object):
@@ -715,39 +716,70 @@ class Process(object):
             total_energy += self.total_ree_in_reebill(reebill)
         return total_energy
         
-    def get_sequence_by_approximate_month(self, session, account, year, month):
-        '''Returns the sequence of the reebill whose approximate month (as
-        determined by dateutils.estimate_month()) is 'month' of 'year', or None
-        if the month precedes the approximate month of the first reebill. When
-        'sequence' exceeds the last sequence for the account, bills are assumed
-        to correspond exactly to calendar months.'''
+    def sequences_for_approximate_month(self, session, account, year, month):
+        '''Returns a list of sequences of all reebills whose approximate month
+        (as determined by dateutils.estimate_month()) is 'month' of 'year', or
+        None if the month precedes the approximate month of the first reebill.
+        When 'sequence' exceeds the last sequence for the account, bill periods
+        are assumed to correspond exactly to calendar months.
+        
+        This should be the inverse of the mapping from bill periods to months
+        provided by estimate_month() when its domain is restricted to months
+        that actually have bills.'''
         # get all reebills whose periods contain any days in this month (there
         # should be at most 3)
-        next_month_year, next_month = dateutils.month_offset(year, month, 1)
-        print year, month, next_month_year, next_month
+        next_month_year, next_month = month_offset(year, month, 1)
         reebills = self.reebill_dao.load_reebills_in_period(account,
                 start_date=date(year, month, 1),
                 end_date=date(next_month_year, next_month, 1))
 
-        print reebills
-        # if no reebills have any of their period in this month, there is no
-        # bill corresponding to the month
-        if reebills == []:
-            return None
+        # sequences for this month are those of the bills whose approximate
+        # month is this month
+        sequences_for_month = [r.sequence for r in reebills if
+                estimate_month(r.period_begin, r.period_end) == (year, month)]
+        
+        # if there's at least one sequence, return the list of sequences
+        if sequences_for_month != []:
+            return sequences_for_month
 
-        # now there are bills with some of their period in this month. if the
-        # one with the most days in the month has most of its days in the
-        # month, return its sequence.
-        bill = max(reebills, key=lambda bill: dateutils.days_in_month(year,
-                month, bill.period_begin, bill.period_end))
-        days_in_month = dateutils.days_in_month(year, month, bill.period_begin,
-                bill.period_end)
-        period_length = (bill.period_begin - bill.period_end).days
-        if days_in_month > period_length / 2:
-            return bill.sequence
+        # get approximate month of last month
+        last_sequence = self.state_db.last_sequence(session, account)
+        last_reebill = self.reebill_dao.load_reebill(account, last_sequence)
+        last_reebill_year, last_reebill_month = estimate_month(
+                last_reebill.period_begin, last_reebill.period_end)
 
-        # otherwise, there is no reebill that really corresponds to the month
-        return None
+        # if this month isn't after the last bill month, there are no bill
+        # sequences
+        if (year, month) <= (last_reebill_year, last_reebill_month):
+            return []
+
+        # if (year, month) is after the last bill month, return the sequence
+        # determined by counting real months after the approximate month of the
+        # last bill (there is only one sequence in this case)
+        sequence_offset = month_difference(last_reebill_year,
+                last_reebill_month, year, month)
+        return [last_sequence + sequence_offset]
+
+
+        ## if no reebills have any of their period in this month, there is no
+        ## bill corresponding to the month
+        ## TODO future months
+        #if reebills == []:
+            #return None
+
+        ## now there are bills with some of their period in this month. if the
+        ## one with the most days in the month has most of its days in the
+        ## month, return its sequence.
+        #bill = max(reebills, key=lambda bill: dateutils.days_in_month(year,
+                #month, bill.period_begin, bill.period_end))
+        #days_in_month = dateutils.days_in_month(year, month, bill.period_begin,
+                #bill.period_end)
+        #period_length = (bill.period_end - bill.period_begin).days
+        #if days_in_month > period_length / 2:
+            #return bill.sequence
+
+        ## otherwise, there is no reebill that really corresponds to the month
+        #return None
 
 
 if __name__ == '__main__':

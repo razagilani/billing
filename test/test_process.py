@@ -8,6 +8,7 @@ from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
 from datetime import date, datetime, timedelta
 from billing import dateutils, mongo
+from billing.dateutils import estimate_month, month_offset
 from billing.processing import rate_structure
 from billing.processing.process import Process
 from billing.processing.state import StateDB
@@ -729,7 +730,7 @@ class ProcessTest(unittest.TestCase):
 #            session.rollback()
 #            raise
 
-    def test_get_sequence_by_approximate_month(self):
+    def test_sequences_for_approximate_month(self):
         # use real databases instead of the fake ones
         state_db = StateDB({
             'host': 'localhost',
@@ -737,7 +738,7 @@ class ProcessTest(unittest.TestCase):
             'user': 'dev',
             'password': 'dev'
         })
-        self.reebill_dao = mongo.ReebillDAO({
+        reebill_dao = mongo.ReebillDAO({
             'billpath': '/db-dev/skyline/bills/',
             'database': 'skyline',
             'utilitybillpath': '/db-dev/skyline/utilitybills/',
@@ -745,28 +746,48 @@ class ProcessTest(unittest.TestCase):
             'host': 'localhost',
             'port': 27017
         })
-        process = Process(self.config, state_db, self.reebill_dao,
+        process = Process(self.config, state_db, reebill_dao,
                 self.rate_structure_dao, self.splinter, self.monguru)
         session = state_db.session()
         for account in state_db.listAccounts(session):
-            print account
             for sequence in state_db.listSequences(session, account):
-                reebill = self.reebill_dao.load_reebill(account, sequence)
+                reebill = reebill_dao.load_reebill(account, sequence)
 
                 # get real approximate month for this bill
-                year, month = dateutils.estimate_month(reebill.period_begin, reebill.period_end)
+                year, month = estimate_month(reebill.period_begin, reebill.period_end)
 
-                # make sure it matches get_sequence_by_approximate_month
-                self.assertEquals(sequence, process.get_sequence_by_approximate_month(session, account, year, month))
+                print '%s-%s: period is %s - %s, approx month is %s-%s' % (
+                        account, sequence, reebill.period_begin,
+                        reebill.period_end, year, month)
+                print 'sequence for %s-%s should be %s' % (year, month, sequence)
+
+                # make sure it's contained in the result of
+                # sequences_for_approximate_month(), and make sure that result
+                # never contains any sequence whose bill's approximate month is
+                # not this month
+                sequences_this_month = process\
+                        .sequences_for_approximate_month(session, account,
+                        year, month)
+                self.assertIn(sequence, sequences_this_month)
+                reebills = [reebill_dao.load_reebill(account, seq) for seq in
+                        sequences_this_month]
+                months = [estimate_month(r.period_begin,
+                    r.period_end) for r in reebills]
+                self.assertTrue(all([m == (year, month) for m in months]))
 
         # test months before last sequence
-        self.assertEquals(None, process.get_sequence_by_approximate_month(session, '10001', 2009, 10))
-        self.assertEquals(None, process.get_sequence_by_approximate_month(session, '10001', 2009, 10))
-        self.assertEquals(None, process.get_sequence_by_approximate_month(session, '10002', 2010, 1))
-        # TODO problem: this should fail but doesn't!
-        self.assertEquals(None, process.get_sequence_by_approximate_month(session, '10002', 2010, 4))
+        self.assertEquals([], process.sequences_for_approximate_month(session, '10001', 2009, 10))
+        self.assertEquals([], process.sequences_for_approximate_month(session, '10001', 2009, 10))
+        self.assertEquals([], process.sequences_for_approximate_month(session, '10002', 2010, 1))
 
-        # TODO test months after last sequence
+        # test months after last sequence
+        last_seq = state_db.last_sequence(session, '10003')
+        last = reebill_dao.load_reebill('10003', last_seq)
+        last_year, last_month = estimate_month(last.period_begin, last.period_end)
+        next_year, next_month = month_offset(last_year, last_month, 1)
+        import pdb; pdb.set_trace()
+        self.assertEquals([last_seq + 1],
+                process.sequences_for_approximate_month(session, '10003', next_year, next_month))
 
         session.commit()
 
