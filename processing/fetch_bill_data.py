@@ -111,6 +111,8 @@ def get_interval_meter_data_source(csv_file, timestamp_column=0,
         else:
             raise ValueError('Unknown energy unit: ' + energy_unit)
 
+        print value
+
         timestamps.append(timestamp)
         values.append(value)
 
@@ -241,6 +243,7 @@ def usage_data_to_virtual_register(reebill, energy_function,
 
             energy_today = None
             for hourrange in hour_ranges:
+                print >> sys.stderr, day, hourrange
                 # 5 digits after the decimal points is an arbitrary decision
                 # TODO decide what our precision actually is: see
                 # https://www.pivotaltracker.com/story/show/24088787
