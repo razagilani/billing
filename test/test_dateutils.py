@@ -241,6 +241,13 @@ class DateUtilsTest(unittest.TestCase):
         self.assertEquals((2013,2), month_offset(2012,6, 8))
         self.assertEquals((2015,1), month_offset(2012,12, 25))
 
+    def test_month_difference(self):
+        self.assertEquals(0, month_difference(2012, 1, 2012, 1))
+        self.assertEquals(1, month_difference(2012, 1, 2012, 2))
+        self.assertEquals(-1, month_difference(2012, 1, 2011, 12))
+        self.assertEquals(6, month_difference(2012, 1, 2012, 7))
+        self.assertEquals(12, month_difference(2012, 3, 2013, 3))
+        self.assertEquals(-25, month_difference(2012, 12, 2010, 11))
 
     def test_date_generator(self):
         oct1 = date(2011,10,1)
