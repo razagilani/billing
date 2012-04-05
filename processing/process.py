@@ -45,6 +45,11 @@ class Process(object):
         self.splinter = splinter
         self.monguru = monguru
 
+    def new_account(self, session, name, account, discount_rate, late_charge_rate):
+        new_customer = Customer(name, account, discount_rate, late_charge_rate)
+        session.add(new_customer)
+        return new_customer
+
     def sum_bill(self, session, prior_reebill, present_reebill):
         '''Compute everything about the bill that can be continuously
         recomputed. This should be called immediately after roll_bill()
@@ -116,9 +121,7 @@ class Process(object):
         # set late charge, if any (this will be None if the previous bill has
         # not been issued, 0 before the previous bill's due date, and non-0
         # after that)
-        print '^^^^ late charge was reset'
         lc = self.get_late_charge(session, present_reebill)
-        print lc, type(lc)
         present_reebill.late_charges = lc
 
         # now grab the prior bill and pull values forward
@@ -712,28 +715,40 @@ class Process(object):
             total_energy += self.total_ree_in_reebill(reebill)
         return total_energy
         
-    def get_sequence_by_approximate_month(account, year, month):
+    def get_sequence_by_approximate_month(self, session, account, year, month):
         '''Returns the sequence of the reebill whose approximate month (as
-        determined by dateutils.estimate_month()) is 'month' of 'year' or None if
-        the month precedes the approximate month of the first reebill. When
-        'sequence' exceeds the last sequence for the account, bills are assumed to
-        correspond exactly to calendar months.'''
+        determined by dateutils.estimate_month()) is 'month' of 'year', or None
+        if the month precedes the approximate month of the first reebill. When
+        'sequence' exceeds the last sequence for the account, bills are assumed
+        to correspond exactly to calendar months.'''
         # get all reebills whose periods contain any days in this month (there
         # should be at most 3)
-        next_month = dateutils.month_offset(year, month)
-        reebills = self.reebill_dao.load_reebills_in_period(date(year, month, 1), date(*next_month, 1))
+        next_month_year, next_month = dateutils.month_offset(year, month, 1)
+        print year, month, next_month_year, next_month
+        reebills = self.reebill_dao.load_reebills_in_period(account,
+                start_date=date(year, month, 1),
+                end_date=date(next_month_year, next_month, 1))
 
+        print reebills
+        # if no reebills have any of their period in this month, there is no
+        # bill corresponding to the month
         if reebills == []:
             return None
 
-        # choose the reebill with the most days in this month
-        reebill = max(reebills, key=lambda bill: dateutils.days_in_month(year,
+        # now there are bills with some of their period in this month. if the
+        # one with the most days in the month has most of its days in the
+        # month, return its sequence.
+        bill = max(reebills, key=lambda bill: dateutils.days_in_month(year,
                 month, bill.period_begin, bill.period_end))
+        days_in_month = dateutils.days_in_month(year, month, bill.period_begin,
+                bill.period_end)
+        period_length = (bill.period_begin - bill.period_end).days
+        if days_in_month > period_length / 2:
+            return bill.sequence
 
-        def new_account(self, session, name, account, discount_rate, late_charge_rate):
-            new_customer = Customer(name, account, discount_rate, late_charge_rate)
-            session.add(new_customer)
-            return new_customer
+        # otherwise, there is no reebill that really corresponds to the month
+        return None
+
 
 if __name__ == '__main__':
     from billing.processing.rate_structure import Register
