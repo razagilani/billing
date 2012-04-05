@@ -524,11 +524,11 @@ class ProcessTest(unittest.TestCase):
         mysql_connection.commit()
 
         # insert one customer
-        self.state_db = StateDB(statedb_config)
-        session = self.state_db.session()
-        customer = Customer('Test Customer', '99999', .12, .34)
-        session.add(customer)
-        session.commit()
+        #self.state_db = StateDB(statedb_config)
+        #session = self.state_db.session()
+        #customer = Customer('Test Customer', '99999', .12, .34)
+        #session.add(customer)
+        #session.commit()
 
     def tearDown(self):
         '''This gets run even if a test fails.'''
@@ -730,23 +730,46 @@ class ProcessTest(unittest.TestCase):
 #            raise
 
     def test_get_sequence_by_approximate_month(self):
-        session = self.state_db.session()
-        for account in self.state_db.listAccounts(session):
-            for sequence in self.state_db.listSequences(session, account):
+        # use real databases instead of the fake ones
+        state_db = StateDB({
+            'host': 'localhost',
+            'database': 'skyline_dev',
+            'user': 'dev',
+            'password': 'dev'
+        })
+        self.reebill_dao = mongo.ReebillDAO({
+            'billpath': '/db-dev/skyline/bills/',
+            'database': 'skyline',
+            'utilitybillpath': '/db-dev/skyline/utilitybills/',
+            'collection': 'reebills',
+            'host': 'localhost',
+            'port': 27017
+        })
+        process = Process(self.config, state_db, self.reebill_dao,
+                self.rate_structure_dao, self.splinter, self.monguru)
+        session = state_db.session()
+        for account in state_db.listAccounts(session):
+            print account
+            for sequence in state_db.listSequences(session, account):
                 reebill = self.reebill_dao.load_reebill(account, sequence)
 
                 # get real approximate month for this bill
                 year, month = dateutils.estimate_month(reebill.period_begin, reebill.period_end)
 
                 # make sure it matches get_sequence_by_approximate_month
-                try:
-                    self.assertEquals(sequence, state.get_sequence_by_approximate_month(account, year, month))
-                except AssertionError:
-                    import pdb; pdb.set_trace()
+                self.assertEquals(sequence, process.get_sequence_by_approximate_month(session, account, year, month))
+
+        # test months before last sequence
+        self.assertEquals(None, process.get_sequence_by_approximate_month(session, '10001', 2009, 10))
+        self.assertEquals(None, process.get_sequence_by_approximate_month(session, '10001', 2009, 10))
+        self.assertEquals(None, process.get_sequence_by_approximate_month(session, '10002', 2010, 1))
+        # TODO problem: this should fail but doesn't!
+        self.assertEquals(None, process.get_sequence_by_approximate_month(session, '10002', 2010, 4))
+
+        # TODO test months after last sequence
 
         session.commit()
-        # TODO test months after last sequence
-        # TODO test months before last sequence
 
 if __name__ == '__main__':
-    unittest.main(failfast=True)
+    #unittest.main(failfast=True)
+    unittest.main()
