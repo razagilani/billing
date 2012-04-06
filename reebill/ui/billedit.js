@@ -419,7 +419,7 @@ function reeBillReady() {
             forceFit: true,
         },
         title: 'Utility Bills',
-        clicksToEdit: 1,
+        clicksToEdit: 2,
         selModel: new Ext.grid.RowSelectionModel({
             singleSelect: true,
             listeners: {
@@ -541,7 +541,6 @@ function reeBillReady() {
                 // these items will render as dropdown menu items when the arrow is clicked:
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
-                {text: 'Bind Interval Meter Data', handler: bindREEOperation},
                 {text: 'Compute Bill', handler: bindRSOperation},
                 {text: 'Attach Utility Bills to Reebill', handler: attachOperation},
                 {text: 'Render', handler: renderOperation},
@@ -1717,15 +1716,53 @@ function reeBillReady() {
                                     fieldLabel: "Timestamp Column",
                                     value: "A",
                                 },{
+                                    xtype: 'combo',
+                                    mode: 'local',
+                                    value: "%Y-%m-%d %H:%M:%S",
+                                    //forceSelection: true,
+                                    editable: true,
+                                    triggerAction: 'all',
+                                    fieldLabel: "Timestamp Format",
+                                    name: 'timestamp_format',
+                                    hiddenName: 'timestamp_format',
+                                    displayField: 'name',
+                                    valueField: 'value',
+                                    store: new Ext.data.JsonStore({
+                                        fields: ['name', 'value'],
+                                        data: [
+                                            {name: '%Y-%m-%d %H:%M:%S',value: '%Y-%m-%d %H:%M:%S'},
+                                            {name: '%Y/%m/%d %H:%M:%S',value: '%Y/%m/%d %H:%M:%S'},
+                                            {name: '%m/%d/%Y %H:%M:%S',value: '%m/%d/%Y %H:%M:%S'},
+                                        ]
+                                    })
+                                },{
                                     xtype: 'textfield',
                                     name: 'energy_column',
                                     fieldLabel: "Metered Energy Column",
                                     value: "B",
+                                },{
+                                    xtype: 'combo',
+                                    mode: 'local',
+                                    value: 'kwh',
+                                    triggerAction: 'all',
+                                    forceSelection: true,
+                                    editable: false,
+                                    fieldLabel: 'Metered Energy Units',
+                                    name: 'energy_unit',
+                                    hiddenName: 'energy_unit',
+                                    displayField: 'name',
+                                    valueField: 'value',
+                                    store: new Ext.data.JsonStore({
+                                        fields : ['name', 'value'],
+                                        data : [
+                                            {name : 'kWh', value: 'kwh'},
+                                            {name : 'BTU', value: 'btu'},
+                                        ]
+                                    })
                                 }
                             ],
                         },
                     ],
-
                     buttons: [
                         new Ext.Button({
                             text: 'Reset',
