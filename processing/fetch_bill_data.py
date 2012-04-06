@@ -111,8 +111,6 @@ def get_interval_meter_data_source(csv_file, timestamp_column=0,
         else:
             raise ValueError('Unknown energy unit: ' + energy_unit)
 
-        print value
-
         timestamps.append(timestamp)
         values.append(value)
 
@@ -251,9 +249,7 @@ def usage_data_to_virtual_register(reebill, energy_function,
                 
                 # convert units from BTU to kWh (for electric) or therms (for gas)
                 if register['quantity_units'].lower() == 'kwh':
-                    #energy_today /= 3412.14
-                    # energy comes out in kwh
-                    pass
+                    energy_today /= 3412.14
                 elif register['quantity_units'].lower() == 'therms':
                     energy_today /= 100000
                 else:
