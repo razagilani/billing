@@ -351,10 +351,10 @@ class BillToolBridge:
             cur_month = datetime.utcnow().month
             rows = []
             for account, account_dict in data.items():
-                row = {'account': account}
+                row = {'account': 'Total' if account == 'total' else account}
                 for year, month in account_dict.keys():
-                    months_ago = dateutils.month_difference(cur_year,
-                            cur_month, year, month)
+                    months_ago = dateutils.month_difference(year, month, cur_year,
+                            cur_month)
                     row.update({
                         ('%s_months_ago' % months_ago) : account_dict[year, month],
                     })
