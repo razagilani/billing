@@ -77,57 +77,41 @@ class EstimatedRevenue(object):
         # TODO optimize by not repeatedly creating these objects
         olap_id = NexusUtil().olap_id(account)
         install = self.splinter.get_install_obj_for(olap_id)
-        energy_sold = 0
-        print 'geting energy_sold for %s from %s to %s' % (olap_id, start, end)
+        energy_sold_btu = 0
         for day in date_generator(start, end):
             try:
-                daily_energy_sold = self.monguru.get_data_for_day(install,
+                daily_sold_btu = self.monguru.get_data_for_day(install,
                         day).energy_sold
-                if daily_energy_sold == None:
+                if daily_sold_btu == None:
                     # measure does not exist in the olap doc
-                    daily_energy_sold = 0
+                    daily_sold_btu = 0
             except ValueError:
                 # olap doc is missing
-                daily_energy_sold = 0
-            energy_sold += daily_energy_sold
+                daily_sold_btu = 0
+            energy_sold_btu += daily_sold_btu
+        energy_sold_therms = energy_sold_btu / 100000.
 
         # now we figure out how much that energy costs. if the utility bill(s)
-        # that this reebill would have are present, we could get them with
+        # for this reebill are present, we could get them with
         # state.guess_utilbills_and_end_date(), and then use their rate
         # structure(s) to calculate the cost. but currently there are never any
         # utility bills until a reebill has been created. so there will never
-        # be rate structure to use. TODO
+        # be rate structure to use unless there is actually a reebill.
 
-        for service in last_reebill.services:
-            try:
-                rs = self.ratestructure_dao.load_probable_rs(last_reebill, service)
-            except:
-                # TODO raise exception because this is not OK
-                print >> sys.stderr, 'rate structure missing: %s-%s' % (
-                        account, last_sequence)
-
-        #import pprint
-        #pp = pprint.PrettyPrinter(indent=4).pprint
-        ##pp(rs)
-        #try:
-            #first_block_rsi = [rsi for rsi in rs['rates'] if rsi['rsi_binding'] == 'ENERGY_FIRST_BLOCK'][0]
-            ##second_block_rsi = [rsi for rsi in rs['rates'] if rsi['rsi_binding'] == 'ENERGY_SECOND_BLOCK'][0]
-            ##third_block_rsi = [rsi for rsi in rs['rates'] if rsi['rsi_binding'] == 'ENERGY_REMAINDER_BLOCK'][0]
-        #except IndexError as ie:
-            #print account, last_reebill.sequence, 'missing rate:', ie
-            ##pp(rs)
-        #else:
-            #pass
-            ##print first_block_rsi
-            ##print second_block_rsi
-            ##print third_block_rsi
-
-        # use the rate structure to get a price for energy_sold
-
-        # multiply by customer's discount rate to find out the price the
-        # customer pays for it
-
-        return 0
+        # to approximate the price per therm of renewable energy in the last
+        # bill, we can just divide its renewable energy value by the quantity
+        # of renewable energy
+        try:
+            unit_price = float(last_reebill.ree_value) \
+                    / float(last_reebill.total_renewable_energy)
+            energy_price = unit_price * energy_sold_therms
+            print '%s %s to %s: $%.2f/therm * %.3f therms = $%.2f' % (olap_id,
+                    start, end, unit_price, energy_sold_therms, energy_price)
+        except Exception as e:
+            energy_price = 0
+            print >> sys.stderr, '%s %s to %s ERROR: %s' % (olap_id, start, end, e)
+        
+        return energy_price
 
 
 if __name__ == '__main__':
@@ -155,6 +139,8 @@ if __name__ == '__main__':
     session = state_db.session()
     er = EstimatedRevenue(state_db, reebill_dao, ratestructure_dao, process,
             splinter, monguru)
+
+    # print a table
     data = er.report(session)
     all_months = sorted(set(reduce(lambda x,y: x+y, [data[account].keys() for
         account in data], [])))
@@ -164,4 +150,6 @@ if __name__ == '__main__':
     for account in sorted(data.keys()):
         print account + '%10.1f '*12 % tuple([data[account].get((year, month),
                 0) for (year, month) in data_months])
+    print 'total' + '%10.1f '*12 % tuple([sum(float(data[account].get((year, month),
+            0)) for account in data) for (year, month) in data_months])
     session.commit()
