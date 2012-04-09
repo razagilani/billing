@@ -76,14 +76,6 @@ function reeBillReady() {
         }
     });
 
-    // pass configuration information to containing webpage
-    // 'UNSPECIFIED' is expanded to a version string by deployment script
-    var SKYLINE_VERSIONINFO="UNSPECIFIED"
-    var SKYLINE_DEPLOYENV="UNSPECIFIED"
-    versionInfo = Ext.get('SKYLINE_VERSIONINFO');
-    versionInfo.update(SKYLINE_VERSIONINFO);
-    deployEnv = Ext.get('SKYLINE_DEPLOYENV');
-    deployEnv.update(SKYLINE_DEPLOYENV);
 
     // show username & logout link in the footer
     var logoutLink = '<a href="http://' + location.host + '/reebill/logout">log out</a>';
@@ -108,8 +100,6 @@ function reeBillReady() {
         },
     });
 
-    title = Ext.get('pagetitle');
-    title.update("Skyline ReeBill - " + SKYLINE_DEPLOYENV)
 
     // ToDo: 5204832 state support for grid
     //Ext.state.Manager.setProvider(new Ext.state.CookieProvider());
@@ -419,7 +409,7 @@ function reeBillReady() {
             forceFit: true,
         },
         title: 'Utility Bills',
-        clicksToEdit: 1,
+        clicksToEdit: 2,
         selModel: new Ext.grid.RowSelectionModel({
             singleSelect: true,
             listeners: {
@@ -541,7 +531,6 @@ function reeBillReady() {
                 // these items will render as dropdown menu items when the arrow is clicked:
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
-                {text: 'Bind Interval Meter Data', handler: bindREEOperation},
                 {text: 'Compute Bill', handler: bindRSOperation},
                 {text: 'Attach Utility Bills to Reebill', handler: attachOperation},
                 {text: 'Render', handler: renderOperation},
@@ -1717,15 +1706,53 @@ function reeBillReady() {
                                     fieldLabel: "Timestamp Column",
                                     value: "A",
                                 },{
+                                    xtype: 'combo',
+                                    mode: 'local',
+                                    value: "%Y-%m-%d %H:%M:%S",
+                                    //forceSelection: true,
+                                    editable: true,
+                                    triggerAction: 'all',
+                                    fieldLabel: "Timestamp Format",
+                                    name: 'timestamp_format',
+                                    hiddenName: 'timestamp_format',
+                                    displayField: 'name',
+                                    valueField: 'value',
+                                    store: new Ext.data.JsonStore({
+                                        fields: ['name', 'value'],
+                                        data: [
+                                            {name: '%Y-%m-%d %H:%M:%S',value: '%Y-%m-%d %H:%M:%S'},
+                                            {name: '%Y/%m/%d %H:%M:%S',value: '%Y/%m/%d %H:%M:%S'},
+                                            {name: '%m/%d/%Y %H:%M:%S',value: '%m/%d/%Y %H:%M:%S'},
+                                        ]
+                                    })
+                                },{
                                     xtype: 'textfield',
                                     name: 'energy_column',
                                     fieldLabel: "Metered Energy Column",
                                     value: "B",
+                                },{
+                                    xtype: 'combo',
+                                    mode: 'local',
+                                    value: 'kwh',
+                                    triggerAction: 'all',
+                                    forceSelection: true,
+                                    editable: false,
+                                    fieldLabel: 'Metered Energy Units',
+                                    name: 'energy_unit',
+                                    hiddenName: 'energy_unit',
+                                    displayField: 'name',
+                                    valueField: 'value',
+                                    store: new Ext.data.JsonStore({
+                                        fields : ['name', 'value'],
+                                        data : [
+                                            {name : 'kWh', value: 'kwh'},
+                                            {name : 'BTU', value: 'btu'},
+                                        ]
+                                    })
                                 }
                             ],
                         },
                     ],
-
                     buttons: [
                         new Ext.Button({
                             text: 'Reset',
@@ -5324,7 +5351,7 @@ function reeBillReady() {
         id: 'aboutTab',
         title: 'About',
         disabled: aboutPanelDisabled,
-        html: '<table style="width: 100%; border: 0; margin-top:20px;"><tr><td align="center">' + SKYLINE_VERSIONINFO + '</td></tr><tr><td align="center"><img width="50%" src="MrJonas.png"/></td></tr><tr><td align="center"><font style="font-family: impact; font-size:68pt;">Masterbiller</font></td></tr></table>',
+        html: '<table style="width: 100%; border: 0; margin-top:20px;"><tr><td align="center">&nbsp;</td></tr><tr><td align="center"><img width="50%" src="MrJonas.png"/></td></tr><tr><td align="center"><font style="font-family: impact; font-size:68pt;">Masterbiller</font></td></tr></table>',
     });
 
     // end of tab widgets
@@ -5376,34 +5403,7 @@ function reeBillReady() {
 
     ////////////////////////////////////////////////////////////////////////////
     // assemble all of the widgets in a tabpanel with a header section
-    /*viewport.add([
-          {
-            region: 'north',
-            xtype: 'panel',
-            layout: 'fit',
-            height: 80,
-            // default overrides
-            split: false,
-            border: false,
-            //autoLoad: {url:'green_stripe.jpg', scripts:true},
-            contentEl: 'header',
-          },
-          utilBillImageBox,
-          tabPanel,
-          reeBillImageBox,
-          {
-            region: 'south',
-            xtype: 'panel',
-            layout: 'fit',
-            height: 30,
-            // default overrides
-            split: false,
-            border: false,
-            //autoLoad: {url:'green_stripe.jpg', scripts:true},
-            contentEl: 'footer',
-          },
-    ]);*/
-    //viewport.doLayout();
+
     var viewport = new Ext.Viewport
     (
       {
@@ -5422,8 +5422,8 @@ function reeBillReady() {
             // default overrides
             split: false,
             border: false,
-            //autoLoad: {url:'green_stripe.jpg', scripts:true},
-            contentEl: 'header',
+            bodyStyle: 'background-image:url("green_stripe.jpg");',
+            html: '<div id="header"><table style="border-collapse: collapse;"><tr><td><img src="skyline_logo.png"/></td><td><img src="reebill_logo.png"/></td><td style="width: 85%; text-align: right;"><img src="money_chaser.png"/></td></tr></table></div>',
           },
           utilBillImageBox,
           tabPanel,
@@ -5436,8 +5436,8 @@ function reeBillReady() {
             // default overrides
             split: false,
             border: false,
-            //autoLoad: {url:'green_stripe.jpg', scripts:true},
-            contentEl: 'footer',
+            bodyStyle: 'background-image:url("green_stripe.jpg");',
+            html: '<div id="footer" style="padding-top:7px;"><div style="display: inline; float: left;">&#169;2009-2012 <a href="http://www.skylineinnovations.com">Skyline Innovations Inc.</a></div><div id="LOGIN_INFO" style="display: inline; padding:0px 15px 0px 15px;">LOGIN INFO</div><div id="SKYLINE_VERSIONINFO" style="display: inline; float: right; padding:0px 15px 0px 15px;">VERSION INFO</div><div id="SKYLINE_DEPLOYENV" style="display: inline; float: right;">DEPLOYMENT ENV</div></div>',
           },
         ]
       }
@@ -5772,11 +5772,11 @@ function hideSpinnerRequestAborted(conn, response, options)
 */
 
 
-var NO_UTILBILL_SELECTED_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill.png"/></td></tr></table></div>';
-var NO_UTILBILL_FOUND_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill_notfound.png"/></td></tr></table></div>';
-var NO_REEBILL_SELECTED_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_reebill.png"/></td></tr></table></div>';
-var NO_REEBILL_FOUND_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="select_reebill_notfound.png"/></td></tr></table></div>';
-var LOADING_MESSAGE = '<div style="position:absolute; top:30%;"><table style="width: 100%;"><tr><td style="text-align: center;"><img src="rotologo_white.gif"/></td></tr></table></div>';
+var NO_UTILBILL_SELECTED_MESSAGE = '<div style="display: block; margin-left: auto; margin-right: auto;"><table style="height: 100%; width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill.png"/></td></tr></table></div>';
+var NO_UTILBILL_FOUND_MESSAGE = '<div style="display: block; margin-left: auto; margin-right: auto;"><table style="height: 100%; width: 100%;"><tr><td style="text-align: center;"><img src="select_utilbill_notfound.png"/></td></tr></table></div>';
+var NO_REEBILL_SELECTED_MESSAGE = '<div style="display: block; margin-left: auto; margin-right: auto;"><table style="height: 100%; width: 100%;"><tr><td style="text-align: center;"><img src="select_reebill.png"/></td></tr></table></div>';
+var NO_REEBILL_FOUND_MESSAGE = '<div style="display: block; margin-left: auto; margin-right: auto;"><table style="height:100%; width: 100%;"><tr><td style="text-align: center;"><img src="select_reebill_notfound.png"/></td></tr></table></div>';
+var LOADING_MESSAGE = '<div style="display: block; margin-left: auto, margin-right: auto;"><table style="height: 100%; width: 100%;"><tr><td style="text-align: center;"><img src="rotologo_white.gif"/></td></tr></table></div>';
 
 // TODO: 17613609  Need to show bill image, error not found image, error does not exist image
 function getImageBoxHTML(url, label, idPrefix, errorHTML) {
@@ -5787,4 +5787,19 @@ function getImageBoxHTML(url, label, idPrefix, errorHTML) {
         return {tag: 'div', id: idPrefix + 'imagebox', children: [{tag: 'div', html: errorHTML,
             id: 'utilbillimage'}] };
     }
+}
+
+function updateVersionInfo()
+{
+    // pass configuration information to containing webpage
+    // 'UNSPECIFIED' is expanded to a version string by deployment script
+    var SKYLINE_VERSIONINFO="UNSPECIFIED"
+    var SKYLINE_DEPLOYENV="UNSPECIFIED"
+    versionInfo = Ext.get('SKYLINE_VERSIONINFO');
+    versionInfo.update(SKYLINE_VERSIONINFO);
+    deployEnv = Ext.get('SKYLINE_DEPLOYENV');
+    deployEnv.update(SKYLINE_DEPLOYENV);
+
+    title = Ext.get('pagetitle');
+    title.update("Skyline ReeBill - " + SKYLINE_DEPLOYENV)
 }
