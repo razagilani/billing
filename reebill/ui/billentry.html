@@ -101,7 +101,7 @@
           Ext.Ajax.request({
             url: 'http://' + location.host + '/reebill/ui_configuration',
             success: function(response) {
-              try {
+              //try {
                 var jsonData = Ext.util.JSON.decode(response.responseText);
                 mailPanelDisabled = jsonData.mail_panel_disabled;
                 preferencesPanelDisabled = jsonData.preferences_panel_disabled;
@@ -122,11 +122,12 @@
                 Ext.get('header').fadeIn();
                 Ext.get('footer').fadeIn();
                 updateVersionInfo();
-
-              } catch (e) {
-                Ext.Msg.alert('Error',
-                  'Could not load UI configuration from the server: ' + e);
-              }
+//
+//              } catch (e) {
+//                Ext.Msg.alert('Error',
+//                  'Could not load UI configuration from the server: ' + e);
+//                throw e;
+//              }
             },
             failure: function() {
               Ext.Msg.alert('Error', 'Failed to load UI configuration from the server');
