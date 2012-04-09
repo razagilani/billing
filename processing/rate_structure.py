@@ -253,12 +253,10 @@ class RateStructureDAO(object):
                 self.save_cprs(account, sequence, branch, utility_name, rate_structure_name, convert_rs)
 
     def load_rate_structure(self, reebill, service):
-        '''
-        Return a RateStructure that acts on URS/UPRS/CPRS combined rate structure
-        '''
-
+        # TODO: redundant with load_probable_rs. remove one of them?
+        '''Return a RateStructure that acts on URS/UPRS/CPRS combined rate
+        structure.'''
         rs_data = self.load_probable_rs(reebill, service)
-
         return RateStructure(rs_data)
 
     # TODO: consider just accepting a reebill
@@ -433,9 +431,7 @@ class RateStructure(object):
 
 
     def register_needs(self):
-        """ 
-        Return a list of registers that must be populated with energy.
-        """
+        """ Return a list of registers that must be populated with energy."""
         needs = []
         for register in self.registers:
             needs.append(register)
@@ -459,29 +455,23 @@ class RateStructure(object):
                 print "%s not bound to rate structure" % register_reading
 
     def bind_charges(self, charges):
-
-        # for each list of charges passed in, get the charge rsi_binding
-        # and apply its values to the rate structure, or override its
-        # values.
-
+        '''For each charge in a list of charges, get the charge rsi_binding and
+        apply its values to the rate structure, or override its values.'''
         for charge in charges:
+            # get rate structure item binding for this charge
             rsi = self.__dict__[charge['rsi_binding']]
 
+            # copy some fields from the RSI to the charge
             if rsi.description is not None:
                 charge['description'] = rsi.description
-
             if rsi.quantity is not None:
                 charge['quantity'] = rsi.quantity
-
             if rsi.quantity_units is not None:
                 charge['quantity_units'] = rsi.quantity_units
-
             if rsi.rate is not None:
                 charge['rate'] = rsi.rate
-
             if rsi.rate_units is not None:
                 charge['rate_units'] = rsi.rate_units
-
             charge['total'] = rsi.total
 
             rsi.bound = True
@@ -492,7 +482,6 @@ class RateStructure(object):
                 pass
 
     def __str__(self):
-
         s = '' 
         for reg in self.registers:
             s += str(reg)
@@ -502,8 +491,8 @@ class RateStructure(object):
         return s
 
 class Register(object):
-    def __init__(self, reg_data, prior_read_date, present_read_date):
 
+    def __init__(self, reg_data, prior_read_date, present_read_date):
         if 'quantity' not in reg_data:
             raise Exception("Register must have a reading")
         if not reg_data['quantity']:
@@ -698,7 +687,7 @@ class RateStructureItem(object):
         """
         assert type(rsi_value) is str
 
-        caller = inspect.stack()[1][3]
+        #caller = inspect.stack()[1][3]
         #print "RSI Evaluate: %s, %s Value: %s" % (self._rsi_binding, caller, rsi_value)
 
         try:

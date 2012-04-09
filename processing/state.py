@@ -86,8 +86,8 @@ def guess_utilbills_and_end_date(session, account, start_date):
         last_reebill_utilbills = session.query(UtilBill) \
                 .filter(UtilBill.rebill_id==last_reebill.id)
         if list(last_reebill_utilbills) == []:
-            raise Exception("Can't roll a reebill that has no attached"
-                    " utility bills")
+            raise Exception("Can't determine new reebill period without "
+                    + "utility bills attached to the last reebill")
         earliest_start = min(ub.period_start for ub in last_reebill_utilbills)
         latest_end = max(ub.period_end for ub in last_reebill_utilbills)
         length = (latest_end - earliest_start)
