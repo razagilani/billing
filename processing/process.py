@@ -265,7 +265,8 @@ class Process(object):
         # also note that we rely on predecessor's balance_due instead of
         # this rebill's prior_balance because the latter is computed only when
         # sum_bill() is called.
-        late_charge = reebill.late_charge_rate * (predecessor.balance_due -
+        late_charge_rate = 0 if reebill.late_charge_rate is None else reebill.late_charge_rate 
+        late_charge = late_charge_rate * (predecessor.balance_due -
                 payment_total)
         return Decimal(late_charge)
 
@@ -399,7 +400,8 @@ class Process(object):
             # find out what registers are needed to process this rate structure
             #register_needs = rate_structure.register_needs()
 
-            actual_register_readings = reebill.actual_registers(service)
+            #actual_register_readings = reebill.actual_registers(service)
+            actual_register_readings = []
             shadow_register_readings = reebill.shadow_registers(service)
 
             # add the shadow register totals to the actual register, and re-process

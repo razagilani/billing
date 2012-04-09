@@ -605,7 +605,7 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     def upload_interval_meter_csv(self, account, sequence, csv_file,
-            timestamp_column, energy_column, meter_identifier, **args):
+            timestamp_column, timestamp_format, energy_column, energy_unit, meter_identifier, **args):
         '''Takes an upload of an interval meter CSV file (cherrypy file upload
         object) and puts energy from it into the shadow registers of the
         reebill given by account, sequence.'''
@@ -628,7 +628,7 @@ class BillToolBridge:
                     meter_identifier=meter_identifier,
                     timestamp_column=timestamp_column,
                     energy_column=energy_column,
-                    timestamp_format='%Y-%m-%d %H:%M:%S', energy_unit='kWh')
+                    timestamp_format=timestamp_format, energy_unit=energy_unit)
 
             self.reebill_dao.save_reebill(reebill)
             self.journal_dao.log_event(account, sequence,
