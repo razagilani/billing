@@ -12,7 +12,7 @@ from sqlalchemy.orm import mapper, sessionmaker, scoped_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
-from sqlalchemy.sql.expression import desc
+from sqlalchemy.sql.expression import desc, asc
 from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, StatusUnbilled
 sys.stdout = sys.stderr
 
@@ -475,14 +475,23 @@ class StateDB:
         payments = session.query(Payment).join(Customer).filter(Customer.account==account).all()
         return payments
 
-    def retrieve_status_days_since(self, session, start, limit):
+    def retrieve_status_days_since(self, session, start, limit, sort_col, sort_order):
         # SQLAlchemy query to get account & dates for all utilbills
-        query = session.query(StatusDaysSince).with_lockmode("read")
+        entityQuery = session.query(StatusDaysSince)
+
+        if sort_order == 'ASC':
+            sortedQuery = entityQuery.order_by(asc(StatusDaysSince.dayssince))
+        else:
+            sortedQuery = entityQuery.order_by(desc(StatusDaysSince.dayssince))
+
+        lockmodeQuery = sortedQuery.with_lockmode("read")
+
+        print lockmodeQuery
 
         # SQLAlchemy does SQL 'limit' with Python list slicing
-        slice = query[start:start + limit]
+        slice = lockmodeQuery[start:start + limit]
 
-        count = query.count()
+        count = lockmodeQuery.count()
 
         return slice, count
 
