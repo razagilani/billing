@@ -17,15 +17,24 @@ pp = pprint.PrettyPrinter(indent=4).pprint
 
 class EstimatedRevenue(object):
 
-    def __init__(self, state_db, rebill_dao, ratestructure_dao, process,
-            splinter, monguru):
+    def __init__(self, state_db, rebill_dao, ratestructure_dao, splinter):
         self.state_db = state_db
         self.reebill_dao = reebill_dao
-        self.process = process
         self.splinter = splinter
-        self.monguru = monguru
+        self.monguru = splinter.get_monguru()
         self.ratestructure_dao = ratestructure_dao
-        self.nexus_util = NexusUtil()
+        self.process = Process(None, self.state_db, self.reebill_dao, None,
+                self.splinter, self.monguru)
+
+        # pre-load all the olap ids of accounts for speed (each one requires an
+        # HTTP request)
+        nexus_util = NexusUtil()
+        session = self.state_db.session()
+        self.olap_ids = dict([
+            (account, nexus_util.olap_id(account)) for account in
+            self.state_db.listAccounts(session)
+        ])
+        session.commit()
 
     def report(self, session):
         '''Returns a dictionary containing data about real and renewable energy
@@ -95,13 +104,11 @@ class EstimatedRevenue(object):
         end = min(date.today(), date(month_end_year, month_end_month, 1))
         
         # get energy sold during that period
-        # TODO optimize by not repeatedly creating these objects
-        olap_id = self.nexus_util.olap_id(account)
-        install = self.splinter.get_install_obj_for(olap_id)
+        olap_id = self.olap_ids[account]
         energy_sold_btu = 0
         for day in date_generator(start, end):
             try:
-                daily_sold_btu = self.monguru.get_data_for_day(install,
+                daily_sold_btu = self.monguru.get_data_for_day(olap_id,
                         day).energy_sold
                 if daily_sold_btu == None:
                     # measure does not exist in the olap doc
@@ -155,11 +162,9 @@ if __name__ == '__main__':
         'collection': 'ratestructure',
     })
     splinter = Splinter('http://duino-drop.appspot.com/', 'tyrell', 'dev')
-    monguru = Monguru('tyrell', 'dev')
-    process = Process(None, state_db, reebill_dao, None, splinter, monguru)
     session = state_db.session()
-    er = EstimatedRevenue(state_db, reebill_dao, ratestructure_dao, process,
-            splinter, monguru)
+    er = EstimatedRevenue(state_db, reebill_dao, ratestructure_dao,
+            splinter)
 
     data = er.report(session)
 
