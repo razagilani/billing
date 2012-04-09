@@ -288,7 +288,7 @@ class BillToolBridge:
         # TODO: pass in specific configs?
         bill_mailer.config = self.config
 
-        # create on RateStructureDAO to user for all ratestructure queries
+        # create one RateStructureDAO to user for all ratestructure queries
         rsdb_config_section = self.config.items("rsdb")
         self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
 
@@ -574,7 +574,7 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     def bindree(self, account, sequence, **args):
-        '''Puts energy from Skyline OLTP into shadow register so the reebill
+        '''Puts energy from Skyline OLTP into shadow registers of the reebill
         given by account, sequence.'''
         try:
             if not account or not sequence:
@@ -656,6 +656,7 @@ class BillToolBridge:
 
             self.process.bind_rate_structure(reebill)
 
+            # recalculate the bill's 'payment_received'
             self.process.pay_bill(session, reebill)
 
             # TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
