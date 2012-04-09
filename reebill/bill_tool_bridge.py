@@ -46,7 +46,7 @@ def random_wait(target):
     @functools.wraps(target)
     def random_wait_wrapper(*args, **kwargs):
         #t = random.random()
-        t = 1
+        t = 0
         time.sleep(t)
         return target(*args, **kwargs)
     return random_wait_wrapper
@@ -908,9 +908,9 @@ class BillToolBridge:
             # {account: full name, dayssince: days}
             session = self.state_db.session()
             statuses, count = self.state_db.retrieve_status_days_since(
-                    session, int(start), int(limit))
+                    session, int(start), int(limit), kwargs.get('sort', None), kwargs.get('dir', None))
             # sort by account--TODO do the sorting in the database query itself
-            statuses.sort(key=lambda s: s.account)
+            #statuses.sort(key=lambda s: s.account)
 
             name_dicts = NexusUtil().all_names_for_accounts([s.account for s in statuses])
             rows = [dict([

@@ -4284,7 +4284,9 @@ function reeBillReady() {
 
     ///////////////////////////////////////
     // account status
-
+    function sortType(value){ 
+        return parseInt(value.match(/\d+$/),10);
+    }
     var accountReader = new Ext.data.JsonReader({
         // metadata configuration options:
         // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
@@ -4297,7 +4299,7 @@ function reeBillReady() {
             // map Record's field to json object's key of same name
             {name: 'account', mapping: 'account'},
             {name: 'fullname', mapping: 'fullname'},
-            {name: 'dayssince', mapping: 'dayssince'}
+            {name: 'dayssince', mapping: 'dayssince', type:sortType}
         ]
     });
 
@@ -4311,6 +4313,7 @@ function reeBillReady() {
         proxy: accountStoreProxy,
         root: 'rows',
         totalProperty: 'results',
+        remoteSort: true,
         pageSize: 25,
         paramNames: {start: 'start', limit: 'limit'},
         autoLoad: {params:{start: 0, limit: 25}},
