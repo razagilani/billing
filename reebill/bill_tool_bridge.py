@@ -350,14 +350,17 @@ class BillToolBridge:
             cur_year = datetime.utcnow().year
             cur_month = datetime.utcnow().month
             rows = []
-            for account, account_dict in data.items():
-                row = {'account': account}
+            for account, account_dict in sorted(data.items(),
+                    # TODO find less hideous way to put 'total' at the top
+                    cmp=lambda x,y: -1 if x == 'total' else 1 if y == 'total' else cmp(x,y)):
+                row = {'account': 'Total' if account == 'total' else account}
                 for year, month in account_dict.keys():
-                    months_ago = dateutils.month_difference(cur_year,
-                            cur_month, year, month)
-                    row.update({
-                        ('%s_months_ago' % months_ago) : account_dict[year, month],
-                    })
+                    months_ago = dateutils.month_difference(year, month,
+                            cur_year, cur_month)
+                    label = ('%s_months_ago' % months_ago)
+                    value =  account_dict[year, month]
+                    value = 'ERROR' if isinstance(value, Exception) else '%.2f' % value
+                    row.update({ label: value })
                 rows.append(row)
 
             session.commit()

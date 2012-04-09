@@ -50,10 +50,10 @@ class EstimatedRevenue(object):
         # empty dict whose default value is 0
         data = defaultdict(lambda: defaultdict(float))
 
-        accounts = ['10001', '10002']#self.state_db.listAccounts(session)
+        #accounts = self.state_db.listAccounts(session)
+        accounts = ['10004', '10005'] # TODO enable all accounts when this is faster
         now = datetime.utcnow()
         for account in accounts:
-            print 'account:', account
             last_seq = self.state_db.last_sequence(session, account)
             for year, month in months_of_past_year(now.year, now.month):
                 try:
