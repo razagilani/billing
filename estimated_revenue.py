@@ -17,7 +17,7 @@ pp = pprint.PrettyPrinter(indent=4).pprint
 
 class EstimatedRevenue(object):
 
-    def __init__(self, state_db, rebill_dao, ratestructure_dao, splinter):
+    def __init__(self, state_db, reebill_dao, ratestructure_dao, splinter):
         self.state_db = state_db
         self.reebill_dao = reebill_dao
         self.splinter = splinter
