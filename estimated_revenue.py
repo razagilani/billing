@@ -10,6 +10,10 @@ from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state
 from billing.processing.state import StateDB
 from billing.mongo import ReebillDAO
+from billing.dictutils import deep_map
+
+import pprint
+pp = pprint.PrettyPrinter(indent=4).pprint
 
 class EstimatedRevenue(object):
 
@@ -21,31 +25,48 @@ class EstimatedRevenue(object):
         self.splinter = splinter
         self.monguru = monguru
         self.ratestructure_dao = ratestructure_dao
+        self.nexus_util = NexusUtil()
 
     def report(self, session):
-        # dictionary account -> ((year, month) -> $) whose default value is an
+        '''Returns a dictionary containing data about real and renewable energy
+        charges in reebills for all accounts in the past year. Keys are (year,
+        month) tuples. Each value is a dictionary whose key is an account or
+        'total' and whose value is real or estimated renewable energy charge in
+        all reebills whose approximate calendar month was or probably will be that
+        month.
+        If there was an error, an Exception is put in place of the charge, and
+        the monthly total only includes accounts for which there wasn't an
+        error.'''
+        # dictionary (year, month) -> (account -> $) whose default value is an
         # empty dict whose default value is 0
         data = defaultdict(lambda: defaultdict(int))
 
+        accounts = self.state_db.listAccounts(session)
         now = datetime.utcnow()
-        for account in self.state_db.listAccounts(session):
-            last_seq = self.state_db.last_sequence(session, account)
-            for year, month in months_of_past_year(now.year, now.month):
+        for year, month in months_of_past_year(now.year, now.month):
+            for account in accounts:
+                try:
+                    last_seq = self.state_db.last_sequence(session, account)
 
-                # get sequences of bills this month
-                sequences = self.process.sequences_for_approximate_month(
-                        session, account, year, month)
+                    # get sequences of bills this month
+                    sequences = self.process.sequences_for_approximate_month(
+                            session, account, year, month)
 
-                # for each sequence, add that bill's real or estimated balance
-                # due to the total for this month
-                for seq in sequences:
-                    if seq <= last_seq:
-                        data[account][year, month] += self.reebill_dao\
-                            .load_reebill(account, seq).balance_due
-                    else:
-                        data[account][year, month] += self._estimate_balance_due(
-                                session, account, year, month)
+                    # for each sequence, add that bill's real or estimated balance
+                    # due to the total for this month
+                    for seq in sequences:
+                        if seq <= last_seq:
+                            data[year, month][account] += float(self.reebill_dao
+                                    .load_reebill(account, seq).balance_due)
+                        else:
+                            data[year, month][account] += self._estimate_balance_due(
+                                    session, account, year, month)
+                except Exception as e:
+                    data[year, month][account] = e
+            data[year, month]['total'] = sum(data[year, month][acc] for acc in accounts if not isinstance(data[year, month][acc], Exception))
+
         return data
+
 
     def _estimate_balance_due(self, session, account, year, month):
         '''Returns the best estimate of balance_due for a bill that would be
@@ -75,7 +96,7 @@ class EstimatedRevenue(object):
         
         # get energy sold during that period
         # TODO optimize by not repeatedly creating these objects
-        olap_id = NexusUtil().olap_id(account)
+        olap_id = self.nexus_util.olap_id(account)
         install = self.splinter.get_install_obj_for(olap_id)
         energy_sold_btu = 0
         for day in date_generator(start, end):
@@ -108,8 +129,8 @@ class EstimatedRevenue(object):
             print '%s %s to %s: $%.2f/therm * %.3f therms = $%.2f' % (olap_id,
                     start, end, unit_price, energy_sold_therms, energy_price)
         except Exception as e:
-            energy_price = 0
             print >> sys.stderr, '%s %s to %s ERROR: %s' % (olap_id, start, end, e)
+            raise
         
         return energy_price
 
@@ -140,16 +161,22 @@ if __name__ == '__main__':
     er = EstimatedRevenue(state_db, reebill_dao, ratestructure_dao, process,
             splinter, monguru)
 
-    # print a table
     data = er.report(session)
-    all_months = sorted(set(reduce(lambda x,y: x+y, [data[account].keys() for
-        account in data], [])))
-    now = date.today()
-    data_months = months_of_past_year(now.year, now.month)
-    print '      '+('%10s '*12) % tuple(map(str, data_months))
-    for account in sorted(data.keys()):
-        print account + '%10.1f '*12 % tuple([data[account].get((year, month),
-                0) for (year, month) in data_months])
-    print 'total' + '%10.1f '*12 % tuple([sum(float(data[account].get((year, month),
-            0)) for account in data) for (year, month) in data_months])
+
+    ## print a table
+    #all_months = sorted(set(reduce(lambda x,y: x+y, [data[account].keys() for
+        #account in data], [])))
+    #now = date.today()
+    #data_months = months_of_past_year(now.year, now.month)
+    #print '      '+('%10s '*12) % tuple(map(str, data_months))
+    #for account in sorted(data.keys()):
+        #print account + '%10.1f '*12 % tuple([data[account].get((year, month),
+                #0) for (year, month) in data_months])
+    #print 'total' + '%10.1f '*12 % tuple([sum(float(data[account].get((year, month),
+            #0)) for account in data) for (year, month) in data_months])
+
+    data = deep_map(lambda x: dict(x) if type(x) == defaultdict else x, data)
+    data = deep_map(lambda x: dict(x) if type(x) == defaultdict else x, data)
+    pp(data)
+
     session.commit()
