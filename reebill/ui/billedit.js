@@ -5331,8 +5331,76 @@ function reeBillReady() {
         }),
     });
 
+    // "Estimated Revenue" grid
+
+    var estimatedRevenueProxyConn = new Ext.data.Connection({
+        url: 'http://' + location.host + '/reebill/estimated_revenue_report',
+    });
+    estimatedRevenueProxyConn.autoAbort = true;
+    var estimatedRevenueProxy = new Ext.data.HttpProxy(estimatedRevenueProxyConn);
+
+    var estimatedRevenueGridStore = new Ext.data.JsonStore({
+        proxy: estimatedRevenueProxy,
+        root: 'rows',
+        totalProperty: 'results',
+        //pageSize: 30,
+        //paramNames: {start: 'start', limit: 'limit'},
+        //autoLoad: {params:{start: 0, limit: 25}},
+        // default sort
+        sortInfo: {field: 'account', direction: 'ASC'}, // descending is DESC
+        remoteSort: true,
+        fields: [
+            {name: 'account'},
+            {name: '11_months_ago'},
+            {name: '10_months_ago'},
+            {name: '9_months_ago'},
+            {name: '8_months_ago'},
+            {name: '7_months_ago'},
+            {name: '6_months_ago'},
+            {name: '5_months_ago'},
+            {name: '4_months_ago'},
+            {name: '3_months_ago'},
+            {name: '2_months_ago'},
+            {name: '1_months_ago'},
+            {name: '0_months_ago'},
+        ],
+    });
+
+    var estimatedRevenueGrid = new Ext.grid.GridPanel({
+        title:'12-month Estimated Revenue',
+        store: estimatedRevenueGrid,
+        trackMouseOver:false,
+        layout: 'fit',
+        sortable: true,
+        autoExpandColumn: 'errors',
+
+        // grid columns
+        columns:[{ id: 'account', header: 'Account', dataIndex: 'account', width: 80 },
+            {id: '11_months_ago', header: 'Sequence', dataIndex: '11_months_ago', width: 80},
+            {id: '10_months_ago', header: 'Sequence', dataIndex: '10_months_ago', width: 80},
+            {id: '9_months_ago', header: 'Sequence', dataIndex: '9_months_ago', width: 80},
+            {id: '8_months_ago', header: 'Sequence', dataIndex: '8_months_ago', width: 80},
+            {id: '7_months_ago', header: 'Sequence', dataIndex: '7_months_ago', width: 80},
+            {id: '6_months_ago', header: 'Sequence', dataIndex: '6_months_ago', width: 80},
+            {id: '5_months_ago', header: 'Sequence', dataIndex: '5_months_ago', width: 80},
+            {id: '4_months_ago', header: 'Sequence', dataIndex: '4_months_ago', width: 80},
+            {id: '3_months_ago', header: 'Sequence', dataIndex: '3_months_ago', width: 80},
+            {id: '2_months_ago', header: 'Sequence', dataIndex: '2_months_ago', width: 80},
+            {id: '1_months_ago', header: 'Sequence', dataIndex: '1_months_ago', width: 80},
+            {id: '0_months_ago', header: 'Sequence', dataIndex: '0_months_ago', width: 80},
+        ],
+
+        // paging bar on the bottom
+        //bbar: new Ext.PagingToolbar({
+            //pageSize: 30,
+            //store: estimatedRevenueGridStore,
+            //displayInfo: true,
+            //displayMsg: 'Displaying {0} - {1} of {2}',
+            //emptyMsg: "Click the refresh button to show some data.",
+        //}),
+    });
     //
-    // Instantiate the Reconciliation panel
+    // Instantiate the Report panel
     //
     var reportPanel = new Ext.Panel({
         id: 'reportTab',
@@ -5340,7 +5408,7 @@ function reeBillReady() {
         disabled: reportPanelDisabled,
         xtype: 'panel',
         layout: 'accordion',
-        items: [reconciliationGrid, ],
+        items: [reconciliationGrid, estimatedRevenueGrid],
     });
 
 
