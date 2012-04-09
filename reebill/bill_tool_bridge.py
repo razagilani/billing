@@ -345,12 +345,25 @@ class BillToolBridge:
             er = EstimatedRevenue(self.state_db, self.reebill_dao,
                     self.ratestructure_dao, self.splinter)
             data = er.report(session)
-            data = zip(*data.items())
-            print data
+
+            # build list of rows from report data
+            cur_year = datetime.utcnow().year
+            cur_month = datetime.utcnow().month
+            rows = []
+            for account, account_dict in data.items():
+                row = {'account': account}
+                for year, month in account_dict.keys():
+                    months_ago = dateutils.month_difference(cur_year,
+                            cur_month, year, month)
+                    row.update({
+                        ('%s_months_ago' % months_ago) : account_dict[year, month],
+                    })
+                rows.append(row)
+
             session.commit()
             return self.dumps({
                 'success': True,
-                'rows': sorted(data)
+                'rows': rows
             })
         except Exception as e:
             return self.handle_exception(e)
