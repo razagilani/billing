@@ -106,7 +106,22 @@ class EstimatedRevenue(object):
                 print >> sys.stderr, 'rate structure missing: %s-%s' % (
                         account, last_sequence)
 
-        print rs
+        #import pprint
+        #pp = pprint.PrettyPrinter(indent=4).pprint
+        ##pp(rs)
+        #try:
+            #first_block_rsi = [rsi for rsi in rs['rates'] if rsi['rsi_binding'] == 'ENERGY_FIRST_BLOCK'][0]
+            ##second_block_rsi = [rsi for rsi in rs['rates'] if rsi['rsi_binding'] == 'ENERGY_SECOND_BLOCK'][0]
+            ##third_block_rsi = [rsi for rsi in rs['rates'] if rsi['rsi_binding'] == 'ENERGY_REMAINDER_BLOCK'][0]
+        #except IndexError as ie:
+            #print account, last_reebill.sequence, 'missing rate:', ie
+            ##pp(rs)
+        #else:
+            #pass
+            ##print first_block_rsi
+            ##print second_block_rsi
+            ##print third_block_rsi
+
         # use the rate structure to get a price for energy_sold
 
         # multiply by customer's discount rate to find out the price the
