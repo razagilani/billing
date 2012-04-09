@@ -106,7 +106,11 @@ class EstimatedRevenue(object):
                 print >> sys.stderr, 'rate structure missing: %s-%s' % (
                         account, last_sequence)
 
+        print rs
         # use the rate structure to get a price for energy_sold
+
+        # multiply by customer's discount rate to find out the price the
+        # customer pays for it
 
         return 0
 

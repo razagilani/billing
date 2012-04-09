@@ -140,6 +140,8 @@ class Process(object):
             reebill.set_hypothetical_chargegroups_for_service(service, actual_chargegroups)
 
     def pay_bill(self, session, reebill):
+        '''Sets the 'payment_received' in 'reebill' to the sum of all payments
+        that occurred within the first utility bill's period.'''
         # depend on first ub period to be the date range for which a payment is seeked.
         # this is a wrong design because there may be more than one ub period
         # in the case of multiple services with staggered periods.
@@ -349,13 +351,12 @@ class Process(object):
             self.bindrs(reebill, self.rate_structure_dao)
 
     def bindrs(self, reebill, ratestructure_db):
-        """ This function binds a rate structure against the actual and hypothetical charges found """
-        """ in a bill. If and RSI specifies information no in the bill, it is added to the bill.   """
-        """ If the bill specifies information in a charge that is not in the RSI, the charge is """
-        """ left untouched."""
-
-        account = reebill.account
-        sequence = reebill.sequence
+        """This function binds a rate structure against the actual and
+        hypothetical charges found in a bill. If and RSI specifies information
+        no in the bill, it is added to the bill. If the bill specifies
+        information in a charge that is not in the RSI, the charge is left
+        untouched."""
+        account, sequence = reebill.account, reebill.sequence
 
         # process rate structures for all services
         for service in reebill.services:
@@ -374,7 +375,7 @@ class Process(object):
             # find out what registers are needed to process this rate structure
             #register_needs = rate_structure.register_needs()
 
-            # get metered energy from all meter registers in the reebill
+            # get non-shadow registers in the reebill
             actual_register_readings = reebill.actual_registers(service)
 
             # apply the registers from the reebill to the probable rate structure
@@ -384,13 +385,15 @@ class Process(object):
             actual_chargegroups = reebill.actual_chargegroups_for_service(service)
 
             # iterate over the charge groups, binding the reebill charges to its associated RSI
-            for chargegroup, charges in actual_chargegroups.items():
+            for charges in actual_chargegroups.values():
                 rate_structure.bind_charges(charges)
+
             reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
 
             # hypothetical charges
 
             # process hypothetical charges with non-shadow + shadow meter register totals
+            # re-load rate structure (TODO: has it been modified above?)
             rate_structure = self.rate_structure_dao.load_rate_structure(reebill, service)
 
             # find out what registers are needed to process this rate structure
@@ -419,7 +422,6 @@ class Process(object):
             # apply the combined registers from the reebill to the probable rate structure
             rate_structure.bind_register_readings(registers_to_bind)
 
-
             # process actual charges with non-shadow meter register totals
             hypothetical_chargegroups = reebill.hypothetical_chargegroups_for_service(service)
 
@@ -427,6 +429,7 @@ class Process(object):
             for chargegroup, charges in hypothetical_chargegroups.items():
                 rate_structure.bind_charges(charges)
             reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
+
 
     def calculate_statistics(self, prior_reebill, reebill):
         """ Period Statistics for the input bill period are determined here from the total energy usage """

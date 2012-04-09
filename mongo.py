@@ -764,29 +764,33 @@ class MongoReebill(object):
 
 
     def actual_register(self, service, identifier):
-
-        actual_register = [register for register in self.actual_registers(service) if register['identifier'] == identifier]
-
+        actual_register = [register for register in
+                self.actual_registers(service)
+                if register['identifier'] == identifier]
         if len(actual_register) == 0:
             return None
         elif len(actual_register) ==1:
             return actual_register[0]
         else:
-            raise Exception("More than one actual register named %s" % identifier)
+            raise Exception("More than one actual register named %s"
+                    % identifier)
 
     def actual_registers(self, service):
-        ''' For all meters of a given service, return all the actual registers.
+        '''Returns a list of all nonempty non-shadow register dictionaries of
+        all meters for the given service. (The "actual" in the name has nothing
+        to do with "actual charges".)
         Registers have rate structure bindings that are used to make the actual
-        registers available to rate structure items.
-        '''
-
+        registers available to rate structure items.'''
         all_actual = []
-
         for meter in self.meters_for_service(service):
             all_actual.extend(filter(
-                lambda register: register if register['shadow'] is False else False, meter['registers']
+                # this filter predicate works because any nonempty dictionary
+                # happens to evaluate to True--but if a register dictionary
+                # happens to be empty, it will disappear from the result.
+                # (why would you write it like this?)
+                lambda register: register if register['shadow'] is False else False,
+                meter['registers']
             ))
-
         return all_actual
 
 
