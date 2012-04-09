@@ -36,6 +36,7 @@ from billing.reebill import render, journal, bill_mailer
 from billing.reebill.journal import JournalDAO
 from billing.users import UserDAO, User
 from billing import calendar_reports
+from billing.estimated_revenue import EstimatedRevenue
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -260,6 +261,11 @@ class BillToolBridge:
         journaldb_config_section = self.config.items("journaldb")
         self.journal_dao = journal.JournalDAO(dict(journaldb_config_section))
 
+        # create a Splinter
+        self.splinter = Splinter(self.config.get('skyline_backend',
+            'oltp_url'), self.config.get('skyline_backend', 'olap_host'),
+            self.config.get('skyline_backend', 'olap_database'))
+
         # create one Process object to use for all related bill processing
         # TODO it's theoretically bad to hard-code these, but all skyliner
         # configuration is hard-coded right now anyway
@@ -268,11 +274,7 @@ class BillToolBridge:
             self.process = process.Process(
                 self.config, self.state_db, self.reebill_dao,
                 self.ratestructure_dao,
-                Splinter(self.config.get('skyline_backend', 'oltp_url'),
-                    self.config.get('skyline_backend', 'olap_host'),
-                    self.config.get('skyline_backend', 'olap_database')),
-                Monguru(self.config.get('skyline_backend', 'olap_host'),
-                    self.config.get('skyline_backend', 'olap_database'))
+                self.splinter, self.splinter.get_monguru()
             )
         else:
             self.process = process.Process(self.config, self.state_db,
@@ -329,6 +331,27 @@ class BillToolBridge:
                     'rows': items[start:start+limit],
                     'results': len(items) # total number of items
                 })
+        except Exception as e:
+            return self.handle_exception(e)
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    def estimated_revenue_report(self, **kwargs):
+        '''Handles AJAX request for data to fill estimated revenue report
+        grid.''' 
+        try:
+            session = self.state_db.session()
+            er = EstimatedRevenue(self.state_db, self.reebill_dao,
+                    self.ratestructure_dao, self.splinter)
+            data = er.report(session)
+            data = zip(*data.items())
+            print data
+            session.commit()
+            return self.dumps({
+                'success': True,
+                'rows': sorted(data)
+            })
         except Exception as e:
             return self.handle_exception(e)
 
