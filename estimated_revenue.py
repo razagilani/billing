@@ -17,7 +17,7 @@ pp = pprint.PrettyPrinter(indent=4).pprint
 
 class EstimatedRevenue(object):
 
-    def __init__(self, state_db, rebill_dao, ratestructure_dao, splinter):
+    def __init__(self, state_db, reebill_dao, ratestructure_dao, splinter):
         self.state_db = state_db
         self.reebill_dao = reebill_dao
         self.splinter = splinter
@@ -48,15 +48,15 @@ class EstimatedRevenue(object):
         error.'''
         # dictionary (year, month) -> (account -> $) whose default value is an
         # empty dict whose default value is 0
-        data = defaultdict(lambda: defaultdict(int))
+        data = defaultdict(lambda: defaultdict(float))
 
-        accounts = self.state_db.listAccounts(session)
+        accounts = ['10001', '10002']#self.state_db.listAccounts(session)
         now = datetime.utcnow()
-        for year, month in months_of_past_year(now.year, now.month):
-            for account in accounts:
+        for account in accounts:
+            print 'account:', account
+            last_seq = self.state_db.last_sequence(session, account)
+            for year, month in months_of_past_year(now.year, now.month):
                 try:
-                    last_seq = self.state_db.last_sequence(session, account)
-
                     # get sequences of bills this month
                     sequences = self.process.sequences_for_approximate_month(
                             session, account, year, month)
@@ -65,14 +65,16 @@ class EstimatedRevenue(object):
                     # due to the total for this month
                     for seq in sequences:
                         if seq <= last_seq:
-                            data[year, month][account] += float(self.reebill_dao
+                            data[account][year, month] += float(self.reebill_dao
                                     .load_reebill(account, seq).balance_due)
                         else:
-                            data[year, month][account] += self._estimate_balance_due(
+                            data[account][year, month] += self._estimate_balance_due(
                                     session, account, year, month)
                 except Exception as e:
-                    data[year, month][account] = e
-            data[year, month]['total'] = sum(data[year, month][acc] for acc in accounts if not isinstance(data[year, month][acc], Exception))
+                    data[account][year, month] = e
+
+        for year, month in months_of_past_year(now.year, now.month):
+            data['total'][year, month] = sum(data[acc][year, month] for acc in accounts if not isinstance(data[acc][year, month], Exception))
 
         return data
 
