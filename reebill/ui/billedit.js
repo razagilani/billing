@@ -1953,13 +1953,14 @@ function reeBillReady() {
                 width: 160,
                 sortable: true,
                 dataIndex: 'chargegroup',
-                hidden: false,
+                hidden: true,
             },{
                 header: 'UUID',
                 width: 75,
                 sortable: true,
                 dataIndex: 'uuid',
-                editable: false,
+                editable: true,
+                hidden: true,
             },{
                 header: 'RSI Binding',
                 width: 75,
@@ -2327,13 +2328,14 @@ function reeBillReady() {
                 width: 160,
                 sortable: true,
                 dataIndex: 'chargegroup',
-                hidden: false,
+                hidden: true,
             },{
                 header: 'UUID',
                 width: 75,
                 sortable: true,
                 dataIndex: 'uuid',
                 editable: false,
+                hidden: true,
             },{
                 header: 'RSI Binding',
                 width: 75,
@@ -2423,7 +2425,7 @@ function reeBillReady() {
 
     var hChargesToolbar = new Ext.Toolbar({
         items: [
-            {
+            /*{
                 xtype: 'tbseparator'
             },{
                 xtype: 'button',
@@ -2493,7 +2495,7 @@ function reeBillReady() {
                 }
             },{
                 xtype:'tbseparator'
-            },/*{
+            },{
                 xtype: 'button',
                 // places reference to this button in grid.  
                 id: 'hChargesSaveBtn',
@@ -2513,9 +2515,9 @@ function reeBillReady() {
                     hChargesStore.save(); 
 
                 }
-            },*/{
+            },{
                 xtype:'tbseparator'
-            }
+            }*/
         ]
     });
 
@@ -2744,13 +2746,14 @@ function reeBillReady() {
     var CPRSRSIColModel = new Ext.grid.ColumnModel(
     {
         columns: [
-            /*{
+            {
                 header: 'UUID',
                 sortable: true,
                 dataIndex: 'uuid',
                 editable: false,
-                editor: new Ext.form.TextField({allowBlank: false})
-            },*/{
+                editor: new Ext.form.TextField({allowBlank: false}),
+                hidden: true,
+            },{
                 header: 'RSI Binding',
                 sortable: true,
                 dataIndex: 'rsi_binding',
@@ -3001,13 +3004,14 @@ function reeBillReady() {
     var UPRSRSIColModel = new Ext.grid.ColumnModel(
     {
         columns: [
-            /*{
+            {
                 header: 'UUID',
                 sortable: true,
                 dataIndex: 'uuid',
                 editable: false,
-                editor: new Ext.form.TextField({allowBlank: false})
-            },*/{
+                editor: new Ext.form.TextField({allowBlank: false}),
+                hidden: true,
+            },{
                 header: 'RSI Binding',
                 sortable: true,
                 dataIndex: 'rsi_binding',
@@ -3270,7 +3274,8 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'uuid',
                 editable: false,
-                editor: new Ext.form.TextField({allowBlank: false})
+                editor: new Ext.form.TextField({allowBlank: false}),
+                hiddent: true,
             },{
                 header: 'RSI Binding',
                 sortable: true,
