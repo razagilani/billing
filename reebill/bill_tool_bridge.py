@@ -2367,13 +2367,12 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
-    def save_journal_entry(self, account, sequence, entry, **kwargs):
+    def save_journal_entry(self, account, entry, **kwargs):
         try:
-            # TODO: 1320091681504  allow a journal entry to be made without a sequence
-            if not account or not sequence or not entry:
+            if not account or not entry:
                 raise ValueError("Bad Parameter Value")
 
-            self.journal_dao.journal(account, sequence, entry)
+            self.journal_dao.journal(account, None, entry)
 
             return self.dumps({'success':True})
 
