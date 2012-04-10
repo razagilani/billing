@@ -5338,6 +5338,7 @@ function reeBillReady() {
 
     var revenueProxyConn = new Ext.data.Connection({
         url: 'http://' + location.host + '/reebill/estimated_revenue_report',
+        timeout: 60000,
     });
     revenueProxyConn.autoAbort = true;
     var revenueProxy = new Ext.data.HttpProxy(revenueProxyConn);
@@ -5373,11 +5374,11 @@ function reeBillReady() {
     });
 
     revenueGridStore.on('exception', function(type, action, options, response, arg) {
-        Ext.Msg.alert('Error', 'Estimated revenue report is not available');
+        Ext.Msg.alert('Error', 'An error occurred while generating the report');
     });
 
     var revenueGrid = new Ext.grid.GridPanel({
-        title:'12-month Estimated Revenue',
+        title:'12-Month Estimated Revenue',
         store: revenueGridStore,
         trackMouseOver:false,
         layout: 'fit',
@@ -5406,6 +5407,7 @@ function reeBillReady() {
             { id: '1_months_ago', header: '1', dataIndex: '1_months_ago', width: 80},
             { id: '0_months_ago', header: '0', dataIndex: '0_months_ago', width: 80},
         ],
+
         // paging bar on the bottom
         bbar: new Ext.PagingToolbar({
             pageSize: 30,
