@@ -11,9 +11,10 @@ from billing.processing import state
 from billing.processing.state import StateDB
 from billing.mongo import ReebillDAO
 from billing.dictutils import deep_map
+#import pprint
+#pp = pprint.PrettyPrinter(indent=4).pprint
 
-import pprint
-pp = pprint.PrettyPrinter(indent=4).pprint
+sys.stdout = sys.stderr
 
 class EstimatedRevenue(object):
 
@@ -46,6 +47,8 @@ class EstimatedRevenue(object):
         If there was an error, an Exception is put in place of the charge, and
         the monthly total only includes accounts for which there wasn't an
         error.'''
+        print 'Generating estimated revenue report'
+
         # dictionary (year, month) -> (account -> $) whose default value is an
         # empty dict whose default value is 0
         data = defaultdict(lambda: defaultdict(float))
@@ -72,6 +75,7 @@ class EstimatedRevenue(object):
                                     session, account, year, month)
                 except Exception as e:
                     data[account][year, month] = e
+                    print '%s %s-%s ERROR: %s' % (account, year, month, e)
 
         for year, month in months_of_past_year(now.year, now.month):
             data['total'][year, month] = sum(data[acc][year, month] for acc in accounts if not isinstance(data[acc][year, month], Exception))
@@ -138,7 +142,7 @@ class EstimatedRevenue(object):
             print '%s %s to %s: $%.2f/therm * %.3f therms = $%.2f' % (olap_id,
                     start, end, unit_price, energy_sold_therms, energy_price)
         except Exception as e:
-            print >> sys.stderr, '%s %s to %s ERROR: %s' % (olap_id, start, end, e)
+            #print >> sys.stderr, '%s %s to %s ERROR: %s' % (olap_id, start, end, e)
             raise
         
         return energy_price
