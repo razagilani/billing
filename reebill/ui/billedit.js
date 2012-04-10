@@ -4869,7 +4869,7 @@ function reeBillReady() {
     });
 
     var reconciliationGrid = new Ext.grid.GridPanel({
-        title:'Reebills with >0.1% difference from OLTP or errors',
+        title:'Reconcilation Report: reebills with >0.1% difference from OLTP or errors',
         store: reconciliationGridStore,
         trackMouseOver:false,
         layout: 'fit',
@@ -4924,8 +4924,92 @@ function reeBillReady() {
         }),
     });
 
+    // "Estimated Revenue" grid
+
+    var revenueProxyConn = new Ext.data.Connection({
+        url: 'http://' + location.host + '/reebill/estimated_revenue_report',
+        timeout: 60000,
+    });
+    revenueProxyConn.autoAbort = true;
+    var revenueProxy = new Ext.data.HttpProxy(revenueProxyConn);
+
+    var revenueGridStore = new Ext.data.JsonStore({
+        proxy: revenueProxy,
+        root: 'rows',
+        totalProperty: 'results',
+        pageSize: 30,
+        //baseParams: {},
+        paramNames: {start: 'start', limit: 'limit'},
+        // TODO enable autoload
+        //autoLoad: {params:{start: 0, limit: 25}},
+
+        // default sort
+        sortInfo: {field: 'sequence', direction: 'ASC'}, // descending is DESC
+        remoteSort: true,
+        fields: [
+            {name: 'account'},
+            {name: '11_months_ago'},
+            {name: '10_months_ago'},
+            {name: '9_months_ago'},
+            {name: '8_months_ago'},
+            {name: '7_months_ago'},
+            {name: '6_months_ago'},
+            {name: '5_months_ago'},
+            {name: '4_months_ago'},
+            {name: '3_months_ago'},
+            {name: '2_months_ago'},
+            {name: '1_months_ago'},
+            {name: '0_months_ago'},
+        ],
+    });
+
+    revenueGridStore.on('exception', function(type, action, options, response, arg) {
+        Ext.Msg.alert('Error', 'An error occurred while generating the report');
+    });
+
+    var revenueGrid = new Ext.grid.GridPanel({
+        title:'12-Month Estimated Revenue',
+        store: revenueGridStore,
+        trackMouseOver:false,
+        layout: 'fit',
+        sortable: true,
+        autoExpandColumn: 'account',
+
+        // grid columns
+        columns:[
+            {
+                id: 'account', // if this id does not match autoExpandColumn above, we get "Could not load UI configuration from the server: TypeError: Cannot read property 'width' of undefined" and splash does not go away
+                header: 'Account',
+                dataIndex: 'account',
+                forceFit:true,
+            },
+            // TODO generate column names with abbreviations for the past 12 months (which column gets depends on the current month)
+            { id: '11_months_ago', header: '11', dataIndex: '11_months_ago', width: 80},
+            { id: '10_months_ago', header: '10', dataIndex: '10_months_ago', width: 80},
+            { id: '9_months_ago', header: '9', dataIndex: '9_months_ago', width: 80},
+            { id: '8_months_ago', header: '8', dataIndex: '8_months_ago', width: 80},
+            { id: '7_months_ago', header: '7', dataIndex: '7_months_ago', width: 80},
+            { id: '6_months_ago', header: '6', dataIndex: '6_months_ago', width: 80},
+            { id: '5_months_ago', header: '5', dataIndex: '5_months_ago', width: 80},
+            { id: '4_months_ago', header: '4', dataIndex: '4_months_ago', width: 80},
+            { id: '3_months_ago', header: '3', dataIndex: '3_months_ago', width: 80},
+            { id: '2_months_ago', header: '2', dataIndex: '2_months_ago', width: 80},
+            { id: '1_months_ago', header: '1', dataIndex: '1_months_ago', width: 80},
+            { id: '0_months_ago', header: '0', dataIndex: '0_months_ago', width: 80},
+        ],
+
+        // paging bar on the bottom
+        bbar: new Ext.PagingToolbar({
+            pageSize: 30,
+            store: revenueGridStore,
+            displayInfo: true,
+            displayMsg: 'Displaying {0} - {1} of {2}',
+            emptyMsg: "Click the refresh button to show some data.",
+        }),
+    });
+
     //
-    // Instantiate the Reconciliation panel
+    // Instantiate the Report panel
     //
     var reportPanel = new Ext.Panel({
         id: 'reportTab',
@@ -4933,9 +5017,8 @@ function reeBillReady() {
         disabled: reportPanelDisabled,
         xtype: 'panel',
         layout: 'accordion',
-        items: [reconciliationGrid, ],
+        items: [reconciliationGrid, revenueGrid],
     });
-
 
     ///////////////////////////////////////////
     // About Tab
