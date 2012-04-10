@@ -27,20 +27,21 @@ class JournalDAO(object):
         # TODO: 17928569 clean up mongo resources here?
         pass
 
-    def journal(self, account, sequence, message):
-        '''Special method that logs and event of type Note.'''
-        # TODO this should go away
-        self.log_event(account, sequence, JournalDAO.Note, msg=message)
+    ## TODO this should go away
+    #def journal(self, account, sequence, message):
+        #'''Special method that logs and event of type Note.'''
+        #self.log_event(account, sequence, JournalDAO.Note, msg=message)
 
-    def log_event(self, account, sequence, event_type, **kwargs):
-        '''Logs an event associated with the reebill given by account and
-        sequence. A timestamp is produced automatically and the contents of
-        kwargs will be inserted directly into the document.'''
+    def log_event(self, user, account, sequence, event_type, **kwargs):
+        '''Logs an event associated with the given user and the reebill given
+        by account and sequence. A timestamp is produced automatically and the
+        contents of kwargs will be inserted directly into the document.'''
         if event_type not in event_names:
             raise ValueError('Unknown event type: %s' % event_type)
         journal_entry = {}
         for kwarg, value in kwargs.iteritems():
             journal_entry[kwarg] = value
+        journal_entry['user'] = user.identifier
         journal_entry['account'] = account
         journal_entry['sequence'] = int(sequence)
         journal_entry['date'] = datetime.datetime.utcnow()
@@ -71,6 +72,7 @@ event_names = [
     'ReeBillCommitted', # TODO change name
     'ReeBillMailed',
     'ReeBillDeleted',
+    'ReeBillAttached',
     # possible others
     'PaymentEntered',
     'AccountCreated', # no sequence associated with this one
