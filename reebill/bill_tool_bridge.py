@@ -1274,7 +1274,7 @@ class BillToolBridge:
                 new_rate = {"uuid": str(UUID.uuid1())}
                 # should find an unbound charge item, and use its binding since an RSI
                 # might be made after a charge item is created
-                new_rate['rsi_binding'] = "Temporary RSI Binding"
+                #new_rate['rsi_binding'] = orphaned binding
                 rates.append(new_rate)
 
                 self.ratestructure_dao.save_cprs(
@@ -1414,7 +1414,8 @@ class BillToolBridge:
                 # TODO: 27315653 allow more than one RSI to be created
 
                 new_rate = {"uuid": str(UUID.uuid1())}
-                new_rate['rsi_binding'] = "Temporary RSI Binding"
+                # find an oprhan binding and set it here
+                #new_rate['rsi_binding'] = "Temporary RSI Binding"
                 rates.append(new_rate)
 
                 self.ratestructure_dao.save_uprs(
@@ -1549,7 +1550,8 @@ class BillToolBridge:
                 # TODO: 27315653 allow more than one RSI to be created
 
                 new_rate = {"uuid": str(UUID.uuid1())}
-                new_rate['rsi_binding'] = "Temporary RSI Binding"
+                # find an orphan rsi and set its binding here
+                #new_rate['rsi_binding'] = "Temporary RSI Binding"
                 rates.append(new_rate)
 
                 self.ratestructure_dao.save_urs(
