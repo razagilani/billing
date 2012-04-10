@@ -4574,6 +4574,7 @@ function reeBillReady() {
             },
             {name: 'account'},
             {name: 'sequence'},
+            {name: 'event'},
             {name: 'msg'},
         ],
     });
@@ -4617,8 +4618,7 @@ function reeBillReady() {
         journalGrid.setDisabled(false);
     });
 
-    var journalColModel = new Ext.grid.ColumnModel(
-    {
+    var journalColModel = new Ext.grid.ColumnModel({
         columns: [
             {
                 header: 'ObjectId',
@@ -4637,17 +4637,18 @@ function reeBillReady() {
                 header: 'Account',
                 sortable: true,
                 dataIndex: 'account',
-                //editor: new Ext.form.TextField({allowBlank: true})
             },{
                 header: 'Sequence',
                 sortable: true,
                 dataIndex: 'sequence',
-                //editor: new Ext.form.TextField({allowBlank: true})
+            },{
+                header: 'Event Type',
+                sortable: true,
+                dataIndex: 'event',
             },{
                 header: 'Message',
                 sortable: true,
                 dataIndex: 'msg',
-                //editor: new Ext.form.TextField({allowBlank: true})
             },
         ]
     });
