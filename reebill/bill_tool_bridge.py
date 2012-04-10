@@ -42,6 +42,24 @@ pp = pprint.PrettyPrinter(indent=4)
 
 sys.stdout = sys.stderr
 
+# from http://code.google.com/p/modwsgi/wiki/DebuggingTechniques#Python_Interactive_Debugger
+class Debugger:
+    def __init__(self, object):
+        self.__object = object
+
+    def __call__(self, *args, **kwargs):
+        import pdb, sys
+        debugger = pdb.Pdb()
+        debugger.use_rawinput = 0
+        debugger.reset()
+        sys.settrace(debugger.trace_dispatch)
+
+        try:
+            return self.__object(*args, **kwargs)
+        finally:
+            debugger.quitting = 1
+            sys.settrace(None)
+
 # decorator for stressing ajax asynchronicity
 def random_wait(target):
     @functools.wraps(target)
@@ -341,6 +359,7 @@ class BillToolBridge:
         '''Handles AJAX request for data to fill estimated revenue report
         grid.''' 
         try:
+            import pdb; pdb.set_trace()
             start = datetime.utcnow()
             session = self.state_db.session()
             er = EstimatedRevenue(self.state_db, self.reebill_dao,
