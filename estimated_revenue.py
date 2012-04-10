@@ -50,8 +50,8 @@ class EstimatedRevenue(object):
         # empty dict whose default value is 0
         data = defaultdict(lambda: defaultdict(float))
 
-        #accounts = self.state_db.listAccounts(session)
-        accounts = ['10004', '10005'] # TODO enable all accounts when this is faster
+        accounts = self.state_db.listAccounts(session)
+        #accounts = ['10004', '10005'] # TODO enable all accounts when this is faster
         now = datetime.utcnow()
         for account in accounts:
             last_seq = self.state_db.last_sequence(session, account)
