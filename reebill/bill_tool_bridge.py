@@ -359,7 +359,6 @@ class BillToolBridge:
         '''Handles AJAX request for data to fill estimated revenue report
         grid.''' 
         try:
-            import pdb; pdb.set_trace()
             start = datetime.utcnow()
             session = self.state_db.session()
             er = EstimatedRevenue(self.state_db, self.reebill_dao,
