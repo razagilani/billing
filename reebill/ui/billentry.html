@@ -101,7 +101,17 @@
           Ext.Ajax.request({
             url: 'http://' + location.host + '/reebill/ui_configuration',
             success: function(response) {
-              //try {
+              try {
+
+                // preload graphics
+                var img1 = new Image();
+                img1.src = "http://reebill-dev/green_stripe.jpg";
+                var img2 = new Image();
+                img2.src = "http://reebill-dev/skyline_logo.png";
+                var img3 = new Image();
+                img3.src = "http://reebill-dev/money_chaser.png";
+                var img4 = new Image();
+                img4.src = "http://reebill-dev/reebill_logo.png";
                 var jsonData = Ext.util.JSON.decode(response.responseText);
                 mailPanelDisabled = jsonData.mail_panel_disabled;
                 preferencesPanelDisabled = jsonData.preferences_panel_disabled;
@@ -118,16 +128,17 @@
                 paymentPanelDisabled = jsonData.payment_panel_disabled;
 
                 reeBillReady();
+
                 Ext.get('loading').fadeOut();
                 Ext.get('header').fadeIn();
                 Ext.get('footer').fadeIn();
-                updateVersionInfo();
-//
-//              } catch (e) {
-//                Ext.Msg.alert('Error',
-//                  'Could not load UI configuration from the server: ' + e);
-//                throw e;
-//              }
+
+                loadDashboard();
+
+              } catch (e) {
+                Ext.Msg.alert('Error',
+                  'Could not initialize ReeBill: ' + e);
+              }
             },
             failure: function() {
               Ext.Msg.alert('Error', 'Failed to load UI configuration from the server');

@@ -77,28 +77,6 @@ function reeBillReady() {
     });
 
 
-    // show username & logout link in the footer
-    var logoutLink = '<a href="http://' + location.host + '/reebill/logout">log out</a>';
-
-    var usernameDataConn = new Ext.data.Connection({
-        url: 'http://' + location.host + '/reebill/getUsername',
-    });
-    usernameDataConn.autoAbort = true;
-    usernameDataConn.disableCaching = true;
-
-    usernameDataConn.request({
-        success: function(result, request) {
-            // check success status
-            var jsonData = Ext.util.JSON.decode(result.responseText);
-            var username = jsonData['username'];
-            Ext.DomHelper.overwrite('LOGIN_INFO',
-                "You're logged in as <b>" + username + "</b>; " + logoutLink)
-            // handle failure if needed
-        },
-        failure: function() {
-             Ext.MessageBox.alert('Ajax failure', 'http://' + location.host + '/getUsername');
-        },
-    });
 
 
     // ToDo: 5204832 state support for grid
@@ -1928,7 +1906,7 @@ function reeBillReady() {
 
     var aChargesStore = new Ext.data.GroupingStore({
         proxy: aChargesStoreProxy,
-        autoSave: false,
+        autoSave: true,
         reader: aChargesReader,
         //root: 'rows',
         //idProperty: 'uuid',
@@ -1940,12 +1918,12 @@ function reeBillReady() {
 
 
     aChargesStore.on('save', function () {
-        aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(true);
+        //aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(true);
     });
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
     aChargesStore.on('update', function(){
-        aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
+        //aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
     });
 
     aChargesStore.on('beforeload', function () {
@@ -1975,13 +1953,14 @@ function reeBillReady() {
                 width: 160,
                 sortable: true,
                 dataIndex: 'chargegroup',
-                hidden: false,
+                hidden: true,
             },{
                 header: 'UUID',
                 width: 75,
                 sortable: true,
                 dataIndex: 'uuid',
-                editable: false,
+                editable: true,
+                hidden: true,
             },{
                 header: 'RSI Binding',
                 width: 75,
@@ -2118,7 +2097,7 @@ function reeBillReady() {
                     aChargesGrid.startEditing(insertionPoint +1,1);
                     
                     // An inserted record must be saved 
-                    aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
+                    //aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
                 }
             },{
                 xtype: 'tbseparator'
@@ -2137,11 +2116,11 @@ function reeBillReady() {
                     {
                         aChargesStore.remove(r);
                     }
-                    aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
+                    //aChargesGrid.getTopToolbar().findById('aChargesSaveBtn').setDisabled(false);
                 }
             },{
                 xtype:'tbseparator'
-            },{
+            },/*{
                 xtype: 'button',
                 // places reference to this button in grid.  
                 id: 'aChargesSaveBtn',
@@ -2161,7 +2140,7 @@ function reeBillReady() {
                     aChargesStore.save(); 
 
                 }
-            },{
+            },*/{
                 xtype:'tbseparator'
             }
         ]
@@ -2302,7 +2281,7 @@ function reeBillReady() {
 
     var hChargesStore = new Ext.data.GroupingStore({
         proxy: hChargesStoreProxy,
-        autoSave: false,
+        autoSave: true,
         reader: hChargesReader,
         //root: 'rows',
         //idProperty: 'uuid',
@@ -2314,12 +2293,12 @@ function reeBillReady() {
 
 
     hChargesStore.on('save', function () {
-        hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(true);
+        //hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(true);
     });
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
     hChargesStore.on('update', function(){
-        hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
+        //hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
     });
 
     hChargesStore.on('beforeload', function () {
@@ -2349,13 +2328,14 @@ function reeBillReady() {
                 width: 160,
                 sortable: true,
                 dataIndex: 'chargegroup',
-                hidden: false,
+                hidden: true,
             },{
                 header: 'UUID',
                 width: 75,
                 sortable: true,
                 dataIndex: 'uuid',
                 editable: false,
+                hidden: true,
             },{
                 header: 'RSI Binding',
                 width: 75,
@@ -2445,7 +2425,7 @@ function reeBillReady() {
 
     var hChargesToolbar = new Ext.Toolbar({
         items: [
-            {
+            /*{
                 xtype: 'tbseparator'
             },{
                 xtype: 'button',
@@ -2492,7 +2472,7 @@ function reeBillReady() {
                     hChargesGrid.startEditing(insertionPoint +1,1);
                     
                     // An inserted record must be saved 
-                    hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
+                    //hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
                 }
             },{
                 xtype: 'tbseparator'
@@ -2511,7 +2491,7 @@ function reeBillReady() {
                     {
                         hChargesStore.remove(r);
                     }
-                    hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
+                    //hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
                 }
             },{
                 xtype:'tbseparator'
@@ -2537,7 +2517,7 @@ function reeBillReady() {
                 }
             },{
                 xtype:'tbseparator'
-            }
+            }*/
         ]
     });
 
@@ -2618,390 +2598,6 @@ function reeBillReady() {
         //console.log("hChargesGrid disable ");
         //console.log(panel);
     });
-
-    /*
-    // initial data loaded into the grid before a bill is loaded
-    // populate with data if initial pre-loaded data is desired
-    var initialHypotheticalCharges = {
-        rows: [
-        ]
-    };
-
-    var hChargesReader = new Ext.data.JsonReader({
-        // metadata configuration options:
-        // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
-        //idProperty: 'id',
-        root: 'rows',
-
-        // the fields config option will internally create an Ext.data.Record
-        // constructor that provides mapping for reading the record data objects
-        fields: [
-            // map Record's field to json object's key of same name
-            {name: 'chargegroup', mapping: 'chargegroup'},
-            {name: 'rsi_binding', mapping: 'rsi_binding'},
-            {name: 'uuid', mapping: 'uuid'},
-            {name: 'description', mapping: 'description'},
-            {name: 'quantity', mapping: 'quantity'},
-            {name: 'quantity_units', mapping: 'quantity_units'},
-            {name: 'rate', mapping: 'rate'},
-            {name: 'rate_units', mapping: 'rate_units'},
-            {name: 'total', mapping: 'total', type: 'float'},
-            {name: 'processingnote', mapping:'processingnote'},
-        ]
-    });
-    var hChargesWriter = new Ext.data.JsonWriter({
-        encode: true,
-        // write all fields, not just those that changed
-        writeAllFields: true 
-    });
-
-    // This proxy is only used for reading charge item records, not writing.
-    // This is due to the necessity to batch upload all records. See Grid Editor save handler.
-    // We leave the proxy here for loading data as well as if and when records have entity 
-    // id's and row level CRUD can occur.
-    var hChargesStoreProxyConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/hypotheticalCharges',
-        disableCaching: true,
-    })
-    hChargesStoreProxyConn.autoAbort = true;
-    var hChargesStoreProxy = new Ext.data.HttpProxy(hChargesStoreProxyConn);
-
-    var hChargesStore = new Ext.data.GroupingStore({
-        proxy: hChargesStoreProxy,
-        autoSave: false,
-        reader: hChargesReader,
-        writer: hChargesWriter,
-        data: initialHypotheticalCharges,
-        sortInfo:{field: 'chargegroup', direction: 'ASC'},
-        groupField:'chargegroup'
-    });
-
-    // grid's data store callback for when data is edited
-    // when the store backing the grid is edited, enable the save button
-    hChargesStore.on('update', function(){
-        hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
-    });
-
-    // this event is never fired because we manually save the aCharges
-    hChargesStore.on('save', function () {
-    });
-
-    hChargesStore.on('beforeload', function () {
-        //console.log('hChargesStore beforeload');
-    });
-
-    // fired when the datastore has completed loading
-    hChargesStore.on('load', function (store, records, options) {
-        //console.log('hChargesStore load');
-        // the grid is disabled by the panel that contains it  
-        // prior to loading, and must be enabled when loading is complete
-        hChargesGrid.setDisabled(false);
-    });
-
-    var hChargesSummary = new Ext.ux.grid.GroupSummary();
-
-    var hChargesColModel = new Ext.grid.ColumnModel(
-    {
-        columns: [
-            {
-                id:'chargegroup',
-                header: 'Charge Group',
-                width: 160,
-                sortable: true,
-                dataIndex: 'chargegroup',
-                hidden: true 
-            },{
-                header: 'UUID',
-                width: 75,
-                sortable: true,
-                dataIndex: 'uuid',
-                editable: false,
-            },{
-                header: 'RSI Binding',
-                width: 75,
-                sortable: true,
-                dataIndex: 'rsi_binding',
-                editor: new Ext.form.TextField({allowBlank: true})
-            },{
-                header: 'Description',
-                width: 75,
-                sortable: true,
-                dataIndex: 'description',
-                editor: new Ext.form.TextField({allowBlank: false})
-            },{
-                header: 'Quantity',
-                width: 75,
-                sortable: true,
-                dataIndex: 'quantity',
-                editor: new Ext.form.NumberField({decimalPrecision: 5, allowBlank: true})
-            },{
-                header: 'Units',
-                width: 75,
-                sortable: true,
-                dataIndex: 'quantity_units',
-                editor: new Ext.form.ComboBox({
-                    typeAhead: true,
-                    triggerAction: 'all',
-                    // transform the data already specified in html
-                    //transform: 'light',
-                    lazyRender: true,
-                    listClass: 'x-combo-list-small',
-                    mode: 'local',
-                    store: new Ext.data.ArrayStore({
-                        fields: [
-                            'displayText'
-                        ],
-                        // TODO: externalize these units
-                        data: [['dollars'], ['kWh'], ['ccf'], ['Therms'], ['kWD'], ['KQH'], ['rkVA']]
-                    }),
-                    valueField: 'displayText',
-                    displayField: 'displayText'
-                })
-                
-            },{
-                header: 'Rate',
-                width: 75,
-                sortable: true,
-                dataIndex: 'rate',
-                editor: new Ext.form.NumberField({decimalPrecision: 10, allowBlank: true})
-            },{
-                header: 'Units',
-                width: 75,
-                sortable: true,
-                dataIndex: 'rate_units',
-                editor: new Ext.form.ComboBox({
-                    typeAhead: true,
-                    triggerAction: 'all',
-                    // transform the data already specified in html
-                    //transform: 'light',
-                    lazyRender: true,
-                    listClass: 'x-combo-list-small',
-                    mode: 'local',
-                    store: new Ext.data.ArrayStore({
-                        fields: [
-                            'displayText'
-                        ],
-                        // TODO: externalize these units
-                        data: [['dollars'], ['cents']]
-                    }),
-                    valueField: 'displayText',
-                    displayField: 'displayText'
-                })
-            },{
-                header: 'Total', 
-                width: 75, 
-                sortable: true, 
-                dataIndex: 'total', 
-                summaryType: 'sum',
-                align: 'right',
-                editor: new Ext.form.NumberField({allowBlank: false}),
-                renderer: function(v, params, record)
-                {
-                    return Ext.util.Format.usMoney(record.data.total);
-                }
-            },
-        ]
-    });
-
-    var saveHChargesDataConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/saveHypotheticalCharges',
-    });
-    saveHChargesDataConn.autoAbort = true;
-    saveHChargesDataConn.disableCaching = true;
-    var hChargesToolbar = new Ext.Toolbar({
-        items: [
-            {
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as hChargesGrid.insertBtn...
-                id: 'hChargesInsertBtn',
-                iconCls: 'icon-add',
-                text: 'Insert',
-                disabled: true,
-                handler: function()
-                {
-                    hChargesGrid.stopEditing();
-
-                    // grab the current selection - only one row may be selected per singlselect configuration
-                    var selection = hChargesGrid.getSelectionModel().getSelected();
-
-                    // make the new record
-                    var ChargeItemType = hChargesGrid.getStore().recordType;
-                    var defaultData = 
-                    {
-                        // ok, this is tricky:  the newly created record is assigned the chargegroup
-                        // of the selection during the insert.  This way, the new record is added
-                        // to the proper group.  Otherwise, if the record does not have the same
-                        // chargegroup name of the adjacent record, a new group is shown in the grid
-                        // and the UI goes out of sync.  Try this by change the chargegroup below
-                        // to some other string.
-                        chargegroup: selection.data.chargegroup,
-                        description: 'enter description',
-                        quantity: 0,
-                        quantity_units: 'kWh',
-                        rate: 0,
-                        rate_units: 'dollars',
-                        total: 0,
-                        //autototal: 0
-                    };
-                    var c = new ChargeItemType(defaultData);
-
-                    // select newly inserted record
-                    var insertionPoint = hChargesStore.indexOf(selection);
-                    hChargesStore.insert(insertionPoint + 1, c);
-                    hChargesGrid.getView().refresh();
-                    hChargesGrid.getSelectionModel().selectRow(insertionPoint);
-                    hChargesGrid.startEditing(insertionPoint +1,1);
-                    
-                    // An inserted record must be saved 
-                    hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
-                }
-            },{
-                xtype: 'tbseparator'
-            },{
-                xtype: 'button',
-                // ref places a name for this component into the grid so it may be referenced as hChargesGrid.removeBtn...
-                id: 'hChargesRemoveBtn',
-                iconCls: 'icon-delete',
-                text: 'Remove',
-                disabled: true,
-                handler: function()
-                {
-                    hChargesGrid.stopEditing();
-                    var s = hChargesGrid.getSelectionModel().getSelections();
-                    for(var i = 0, r; r = s[i]; i++)
-                    {
-                        hChargesStore.remove(r);
-                    }
-                    hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(false);
-                }
-            },{
-                xtype: 'tbseparator'
-            },{
-                xtype: 'button',
-                // places reference to this button in grid.  
-                id: 'hChargesSaveBtn',
-                text: 'Save',
-                disabled: true,
-                handler: function()
-                {
-                    // disable the save button for the save attempt.
-                    // is there a closer place for this to the actual button click due to the possibility of a double
-                    // clicked button submitting two ajax requests?
-                    hChargesGrid.getTopToolbar().findById('hChargesSaveBtn').setDisabled(true);
-
-                    // stop grid editing so that widgets like comboboxes in rows don't stay focused
-                    hChargesGrid.stopEditing();
-
-                    // disable the aChargesGrid so that the user cannot interact during the save
-                    // the  associated data store's 'load' event re-enables it.
-                    // we must do this manually, since our datastore will not give us a beforesave
-                    // event
-                    hChargesGrid.setDisabled(true);
-
-                    // TODO: 27312463
-                    // OK, a little nastiness follows: We cannot rely on the underlying Store to
-                    // send records back to the server because it does so intelligently: Only
-                    // dirty records go back.  Unfortunately, since there is no entity id for
-                    // a record (yet), all records must be returned so that ultimately an
-                    // XML grove can be produced with proper document order.
-                    //hChargesStore.save(); is what we want to do
-
-                    var jsonData = Ext.encode(Ext.pluck(hChargesStore.data.items, 'data'));
-
-                    saveHChargesDataConn.request({
-                        params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence, rows: jsonData},
-                        // TODO: 27305035
-                        success: function() { 
-                            // check success status in json package
-
-                            // reload the store to clear dirty flags
-                            // this causes the load event to fire and re-enable the hChargesGrid
-                            hChargesStore.load({params: {service: Ext.getCmp('service_for_charges').getValue(), account: selected_account, sequence: selected_sequence}})
-                        },
-                        failure: function() { alert("ajax fail"); },
-                    });
-                }
-            }]
-        });
-
-    var hChargesGrid = new Ext.grid.EditorGridPanel({
-        tbar: hChargesToolbar,
-        colModel: hChargesColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
-        store: hChargesStore,
-        enableColumnMove: false,
-        view: new Ext.grid.GroupingView({
-            forceFit:true,
-            groupTextTpl: '{text} ({[values.rs.length]} {[values.rs.length > 1 ? "Items" : "Item"]})'
-        }),
-        plugins: hChargesSummary,
-        frame: true,
-        collapsible: true,
-        animCollapse: false,
-        stripeRows: true,
-        autoExpandColumn: 'chargegroup',
-        height: 900,
-        width: 1000,
-        title: 'Hypothetical Charges',
-        clicksToEdit: 2
-        // config options for stateful behavior
-        //stateful: true,
-        //stateId: 'grid' 
-    });
-
-    hChargesGrid.getSelectionModel().on('selectionchange', function(sm){
-        // if a selection is made, allow it to be removed
-        // if the selection was deselected to nothing, allow no 
-        // records to be removed.
-        hChargesGrid.getTopToolbar().findById('hChargesRemoveBtn').setDisabled(sm.getCount() < 1);
-
-        // if there was a selection, allow an insertion
-        hChargesGrid.getTopToolbar().findById('hChargesInsertBtn').setDisabled(sm.getCount()<1);
-
-    });
-  
-
-    hChargesGrid.on('activate', function(panel) {
-        //console.log("hChargesGrid Activated");
-        //console.log(panel);
-    });
-    hChargesGrid.on('beforeshow', function(panel) {
-        //console.log("hChargesGrid beforeshow");
-        //console.log(panel);
-    });
-    hChargesGrid.on('show', function(panel) {
-        //console.log("hChargesGrid show");
-        //console.log(panel);
-    });
-    hChargesGrid.on('viewready', function(panel) {
-        //console.log("hChargesGrid view ready");
-    });
-    hChargesGrid.on('beforeexpand', function (panel, animate) {
-        //console.log("hChargesGrid beforeexpand ");
-        //console.log(panel);
-    });
-    hChargesGrid.on('expand', function (panel) {
-        //console.log("hChargesGrid expand ");
-        //console.log(panel);
-    });
-    hChargesGrid.on('collapse', function (panel) {
-        //console.log("hChargesGrid collapse ");
-        //console.log(panel);
-    });
-    hChargesGrid.on('afterrender', function (panel) {
-        //console.log("hChargesGrid afterrender ");
-        //console.log(panel);
-    });
-    hChargesGrid.on('enable', function (panel) {
-        //console.log("hChargesGrid enable ");
-        //console.log(panel);
-    });
-    hChargesGrid.on('disable', function (panel) {
-        //console.log("hChargesGrid disable ");
-        //console.log(panel);
-    });
-    */
-
 
     //
     // Instantiate the Charge Items panel
@@ -3093,14 +2689,9 @@ function reeBillReady() {
 
     var CPRSRSIStore = new Ext.data.JsonStore({
         proxy: CPRSRSIStoreProxy,
-        autoSave: false,
+        autoSave: true,
         reader: CPRSRSIReader,
         writer: CPRSRSIWriter,
-        // or, autosave must be used to save each action
-        //autoSave: true,
-        // won't be updated when combos change, so do this in event
-        // perhaps also can be put in the options param for the ajax request
-        //baseParams: { account:selected_account, sequence: selected_sequence},
         data: initialCPRSRSI,
         root: 'rows',
         idProperty: 'uuid',
@@ -3118,7 +2709,7 @@ function reeBillReady() {
     });
 
     CPRSRSIStore.on('save', function (store, batch, data) {
-        CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
+        //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
     });
 
     CPRSRSIStore.on('beforeload', function (store, options) {
@@ -3146,7 +2737,7 @@ function reeBillReady() {
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
     CPRSRSIStore.on('update', function(){
-        CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
+        //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
     });
 
     CPRSRSIStore.on('beforesave', function(store, data) {
@@ -3155,13 +2746,14 @@ function reeBillReady() {
     var CPRSRSIColModel = new Ext.grid.ColumnModel(
     {
         columns: [
-            /*{
+            {
                 header: 'UUID',
                 sortable: true,
                 dataIndex: 'uuid',
                 editable: false,
-                editor: new Ext.form.TextField({allowBlank: false})
-            },*/{
+                editor: new Ext.form.TextField({allowBlank: false}),
+                hidden: true,
+            },{
                 header: 'RSI Binding',
                 sortable: true,
                 dataIndex: 'rsi_binding',
@@ -3237,7 +2829,7 @@ function reeBillReady() {
                     CPRSRSIGrid.startEditing(insertionPoint +1,1);
                     
                     // An inserted record must be saved 
-                    CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
+                    //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(false);
                 }
             },{
                 xtype: 'tbseparator'
@@ -3259,11 +2851,11 @@ function reeBillReady() {
                         CPRSRSIStore.remove(r);
                     }
                     CPRSRSIStore.save(); 
-                    CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
+                    //CPRSRSIGrid.getTopToolbar().findById('CPRSRSISaveBtn').setDisabled(true);
                 }
             },{
                 xtype:'tbseparator'
-            },{
+            },/*{
                 xtype: 'button',
                 // places reference to this button in grid.  
                 id: 'CPRSRSISaveBtn',
@@ -3283,7 +2875,7 @@ function reeBillReady() {
                     CPRSRSIStore.save(); 
 
                 }
-            }
+            }*/
         ]
     });
 
@@ -3361,14 +2953,10 @@ function reeBillReady() {
 
     var UPRSRSIStore = new Ext.data.JsonStore({
         proxy: UPRSRSIStoreProxy,
-        autoSave: false,
+        autoSave: true,
         reader: UPRSRSIReader,
         writer: UPRSRSIWriter,
-        // or, autosave must be used to save each action
-        //autoSave: true,
-        // won't be updated when combos change, so do this in event
-        // perhaps also can be put in the options param for the ajax request
-        baseParams: { account:selected_account, sequence: selected_sequence},
+        //baseParams: { account:selected_account, sequence: selected_sequence},
         data: initialUPRSRSI,
         root: 'rows',
         idProperty: 'uuid',
@@ -3386,7 +2974,7 @@ function reeBillReady() {
     });
 
     UPRSRSIStore.on('save', function (store, batch, data) {
-        UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
+        //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
     });
 
     UPRSRSIStore.on('beforeload', function () {
@@ -3407,7 +2995,7 @@ function reeBillReady() {
     // grid's data store callback for when data is edited
     // when the store backing the grid is edited, enable the save button
     UPRSRSIStore.on('update', function(){
-        UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(false);
+        //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(false);
     });
 
     UPRSRSIStore.on('beforesave', function() {
@@ -3416,13 +3004,14 @@ function reeBillReady() {
     var UPRSRSIColModel = new Ext.grid.ColumnModel(
     {
         columns: [
-            /*{
+            {
                 header: 'UUID',
                 sortable: true,
                 dataIndex: 'uuid',
                 editable: false,
-                editor: new Ext.form.TextField({allowBlank: false})
-            },*/{
+                editor: new Ext.form.TextField({allowBlank: false}),
+                hidden: true,
+            },{
                 header: 'RSI Binding',
                 sortable: true,
                 dataIndex: 'rsi_binding',
@@ -3496,7 +3085,7 @@ function reeBillReady() {
                     UPRSRSIGrid.startEditing(insertionPoint +1,1);
                     
                     // An inserted record must be saved 
-                    UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(false);
+                    //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(false);
                 }
             },{
                 xtype: 'tbseparator'
@@ -3521,11 +3110,11 @@ function reeBillReady() {
                         UPRSRSIStore.remove(r);
                     }
                     UPRSRSIStore.save(); 
-                    UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
+                    //UPRSRSIGrid.getTopToolbar().findById('UPRSRSISaveBtn').setDisabled(true);
                 }
             },{
                 xtype:'tbseparator'
-            },{
+            },/*{
                 xtype: 'button',
                 // places reference to this button in grid.  
                 id: 'UPRSRSISaveBtn',
@@ -3548,7 +3137,7 @@ function reeBillReady() {
 
                     UPRSRSIStore.save(); 
                 }
-            }
+            }*/
         ]
     });
 
@@ -3680,13 +3269,14 @@ function reeBillReady() {
     var URSRSIColModel = new Ext.grid.ColumnModel(
     {
         columns: [
-            /*{
+            {
                 header: 'UUID',
                 sortable: true,
                 dataIndex: 'uuid',
                 editable: false,
-                editor: new Ext.form.TextField({allowBlank: false})
-            },*/{
+                editor: new Ext.form.TextField({allowBlank: false}),
+                hiddent: true,
+            },{
                 header: 'RSI Binding',
                 sortable: true,
                 dataIndex: 'rsi_binding',
@@ -3781,7 +3371,7 @@ function reeBillReady() {
                 }
             },{
                 xtype:'tbseparator'
-            },{
+            },/*{
                 xtype: 'button',
                 // places reference to this button in grid.  
                 id: 'URSRSISaveBtn',
@@ -3800,7 +3390,7 @@ function reeBillReady() {
 
                     URSRSIStore.save(); 
                 }
-            }
+            }*/
         ]
     });
 
@@ -5875,7 +5465,7 @@ function getImageBoxHTML(url, label, idPrefix, errorHTML) {
     }
 }
 
-function updateVersionInfo()
+function loadDashboard()
 {
     // pass configuration information to containing webpage
     // 'UNSPECIFIED' is expanded to a version string by deployment script
@@ -5888,4 +5478,27 @@ function updateVersionInfo()
 
     title = Ext.get('pagetitle');
     title.update("Skyline ReeBill - " + SKYLINE_DEPLOYENV)
+
+    // show username & logout link in the footer
+    var logoutLink = '<a href="http://' + location.host + '/reebill/logout">log out</a>';
+
+    var usernameDataConn = new Ext.data.Connection({
+        url: 'http://' + location.host + '/reebill/getUsername',
+    });
+    usernameDataConn.autoAbort = true;
+    usernameDataConn.disableCaching = true;
+
+    usernameDataConn.request({
+        success: function(result, request) {
+            // check success status
+            var jsonData = Ext.util.JSON.decode(result.responseText);
+            // handle failure if needed
+            var username = jsonData['username'];
+            Ext.DomHelper.overwrite('LOGIN_INFO',
+                "You're logged in as <b>" + username + "</b>; " + logoutLink)
+        },
+        failure: function() {
+             Ext.MessageBox.alert('Ajax failure', 'http://' + location.host + '/getUsername');
+        },
+    });
 }
