@@ -70,11 +70,18 @@ def random_wait(target):
         return target(*args, **kwargs)
     return random_wait_wrapper
 
+#class DBSession(object):
+    #def __enter__(self, state_db):
+        #self.session = state_db.session()
+        #return self.session
+    #def __exit__(self):
+        #self.session.rollback()
+
 class Unauthenticated(Exception):
     pass
 
 def authenticate_ajax(method):
-    '''Wrapper for AJAX-request handling methods that require a user to be
+    '''Wrapper for AJAX-request-handling methods that require a user to be
     logged in. This should go "inside" (i.e. after) the cherrypy.expose
     decorator.'''
     # wrapper function takes a BillToolBridge object as its first argument, and
@@ -115,6 +122,7 @@ def authenticate(method):
     return wrapper
 
 # TODO 11454025 rename to ProcessBridge or something
+# TODO (object)?
 class BillToolBridge:
     """ A monolithic class encapsulating the behavior to:  handle an incoming http request """
     """ and invoke bill processing code.  No business logic should reside here."""
@@ -957,6 +965,8 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     def retrieve_account_status(self, start, limit, **kwargs):
+        '''Handles AJAX request for "Account Processing Status" grid in
+        "Accounts" tab.'''
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
