@@ -341,6 +341,7 @@ class BillToolBridge:
         '''Handles AJAX request for data to fill estimated revenue report
         grid.''' 
         try:
+            start = datetime.utcnow()
             session = self.state_db.session()
             er = EstimatedRevenue(self.state_db, self.reebill_dao,
                     self.ratestructure_dao, self.splinter)
@@ -350,17 +351,21 @@ class BillToolBridge:
             cur_year = datetime.utcnow().year
             cur_month = datetime.utcnow().month
             rows = []
-            for account, account_dict in data.items():
-                row = {'account': account}
-                for year, month in account_dict.keys():
-                    months_ago = dateutils.month_difference(cur_year,
-                            cur_month, year, month)
-                    row.update({
-                        ('%s_months_ago' % months_ago) : account_dict[year, month],
-                    })
+            for account in sorted(data.keys(),
+                    # 'total' first
+                    cmp=lambda x,y: -1 if x == 'total' else 1 if y == 'total' else cmp(x,y)):
+                row = {'account': 'Total' if account == 'total' else account}
+                for year, month in data[account].keys():
+                    months_ago = dateutils.month_difference(year, month,
+                            cur_year, cur_month)
+                    label = '%s_months_ago' % months_ago
+                    value =  data[account][year, month]
+                    value = 'ERROR' if isinstance(value, Exception) else '%.2f' % value
+                    row.update({ label: value })
                 rows.append(row)
 
             session.commit()
+            print 'time:', datetime.utcnow() - start
             return self.dumps({
                 'success': True,
                 'rows': rows
