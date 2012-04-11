@@ -70,6 +70,7 @@ function reeBillReady() {
 
         } catch (e) {
             console.log("Unexpected failure while processing requestcomplete");
+            console.log(e);
             console.log(response);
             // TODO: evaluate response to see if the object is well formed
             Ext.MessageBox.alert("Unexpected failure while processing requestcomplete: " + response.responseText);
@@ -1148,21 +1149,6 @@ function reeBillReady() {
         reeBillStore.reload();
     });
 
-    function successResponse(response, options) {
-        var response_obj = {};
-        try {
-            response_obj = Ext.decode(response.responseText);
-        } catch (e) {
-            Ext.Msg.alert("Fatal: Could not decode JSON data");
-        }
-        if (response_obj.success !== true) {
-            Ext.Msg.alert('Error', response_obj.errors.reason + " " +
-                    response_obj.errors.details);
-        } else {
-            loadReeBillUIForSequence(selected_account, selected_sequence);
-        }
-    }
-
     function allOperations() {
         Ext.Msg.alert('Notice', "One of the operations on this menu must be selected");
     }
@@ -1289,14 +1275,34 @@ function reeBillReady() {
     renderDataConn.disableCaching = true;
     function renderOperation()
     {
+        // while waiting for the next ajax request to finish, show a loading message
+        // in the utilbill image box
+        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div', html:LOADING_MESSAGE, id: 'reebillimage'}, true);
         renderDataConn.request({
             params: { 
                 account: selected_account,
                 sequence: selected_sequence
             },
-            success: successResponse,
+            success: function(response, options) {
+                var response_obj = {};
+                try {
+                    response_obj = Ext.decode(response.responseText);
+                } catch (e) {
+                    Ext.Msg.alert("Fatal: Could not decode JSON data");
+                }
+                if (response_obj.success !== true) {
+                    Ext.Msg.alert('Error', response_obj.errors.reason + " " +
+                            response_obj.errors.details);
+                    // handle failure if needed
+                    Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML('', 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
+                } else {
+                    loadReeBillUIForSequence(selected_account, selected_sequence);
+                }
+            },
             failure: function () {
                 Ext.MessageBox.alert('Error', "Render response fail");
+                // handle failure if needed
+                Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML('', 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
             }
         });
     }
@@ -1313,7 +1319,20 @@ function reeBillReady() {
                 account: selected_account,
                 sequence: selected_sequence,
             },
-            success: successResponse,
+            success: function(response, options) {
+                var response_obj = {};
+                try {
+                    response_obj = Ext.decode(response.responseText);
+                } catch (e) {
+                    Ext.Msg.alert("Fatal: Could not decode JSON data");
+                }
+                if (response_obj.success !== true) {
+                    Ext.Msg.alert('Error', response_obj.errors.reason + " " +
+                            response_obj.errors.details);
+                } else {
+                    loadReeBillUIForSequence(selected_account, selected_sequence);
+                }
+            },
             failure: function() {
                 Ext.MessageBox.alert('Error', "Attach Utility Bills failed");
             }
@@ -5314,6 +5333,11 @@ function reeBillReady() {
         } else {
             resolution = DEFAULT_RESOLUTION;
         }
+
+
+        // while waiting for the next ajax request to finish, show a loading message
+        // in the utilbill image box
+        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div', html:LOADING_MESSAGE, id: 'reebillimage'}, true);
        
         // ajax call to generate image, get the name of it, and display it in a
         // new window
@@ -5346,9 +5370,6 @@ function reeBillReady() {
             },
         });
 
-        // while waiting for the ajax request to finish, show a loading message
-        // in the utilbill image box
-        Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div', html:LOADING_MESSAGE, id: 'reebillimage'}, true);
 
         // Now that a ReeBill has been loaded, enable the tabs that act on a ReeBill
         // These enabled tabs will then display widgets that will pull data based on
