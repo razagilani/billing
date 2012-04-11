@@ -43,7 +43,7 @@ class JournalDAO(object):
             journal_entry[kwarg] = value
         journal_entry['user'] = user.identifier
         journal_entry['account'] = account
-        journal_entry['sequence'] = int(sequence)
+        journal_entry['sequence'] = sequence
         journal_entry['date'] = datetime.datetime.utcnow()
         journal_entry['event'] = event_type
         # TODO include user identifier of the user who caused the event?
