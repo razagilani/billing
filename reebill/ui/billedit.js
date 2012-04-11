@@ -4572,10 +4572,12 @@ function reeBillReady() {
                 type: 'date',
                 //dateFormat: 'Y-m-d'
             },
+            {name: 'user'},
             {name: 'account'},
             {name: 'sequence'},
             {name: 'event'},
             {name: 'msg'},
+            {name: 'extra'},
         ],
     });
 
@@ -4621,10 +4623,6 @@ function reeBillReady() {
     var journalColModel = new Ext.grid.ColumnModel({
         columns: [
             {
-                header: 'ObjectId',
-                sortable: true,
-                dataIndex: '_id',
-            },{
                 header: 'Date',
                 sortable: true,
                 dataIndex: 'date',
@@ -4633,6 +4631,10 @@ function reeBillReady() {
                     allowBlank: false,
                     format: Date.patterns['ISO8601Long'],
                }),
+            },{
+                header: 'User',
+                sortable: true,
+                dataIndex: 'user',
             },{
                 header: 'Account',
                 sortable: true,
@@ -4649,6 +4651,10 @@ function reeBillReady() {
                 header: 'Message',
                 sortable: true,
                 dataIndex: 'msg',
+            },{
+                header: 'Data', // misc key-value pairs
+                sortable: true,
+                dataIndex: 'extra',
             },
         ]
     });
