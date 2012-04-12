@@ -55,7 +55,7 @@ for account in state_db.listAccounts(session):
                     else:
                         print "no uuid %s" % charge
                         charge['uuid'] = str(UUID.uuid1())
-            mongo_reebill.set_hypothetical_chargegroups_for_service(service, actual_chargegroups)
+            mongo_reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
 
         dao.save_reebill(mongo_reebill)
 
