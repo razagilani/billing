@@ -1,0 +1,98 @@
+import sys
+import pymongo
+
+class User:
+    '''A class representing a user account. This is a thin wrapper around a
+    Mongo document.'''
+
+    def __init__(self, dictionary):
+        self.dictionary = dictionary
+
+    @property
+    def identifier(self):
+        # OpenID URL/Mongo document id: this should be read-only once the
+        # account is created
+        return self.dictionary['_id']
+
+    @property
+    def username(self):
+        # we get this from the OpenID identity provider
+        return self.dictionary['username']
+
+    @property
+    def preferences(self):
+        return self.dictionary['preferences']
+
+#    def get_preference(self, key):
+#        '''Get a user preference using its name (e.g.
+#        "bill_image_resolution").'''
+#        return self.dictionary['preferences'][key]
+#
+#    def set_preference(self, key, value):
+#        '''Set (or create) a user preference using its name.'''
+#        self.dictionary['preferences'][key] = value
+
+    
+class UserDAO:
+    '''Data Access Object for reading and writing user data.'''
+
+    # default user account: the one you get when authentication is turned off,
+    # and the template for newly-created accounts. this is a class variable
+    # because all instances of UserDAO (if there's more than one) should have
+    # the same _default_user (otherwise save-prevention would not work)
+    default_user = User({
+        '_id':'default',
+        'username':'Default User',
+        'preferences': {
+            'bill_image_resolution': 80
+        }
+    })
+
+    def __init__(self, config):
+        self.config = config
+        connection = None
+
+        try:
+            connection = pymongo.Connection(self.config['host'], int(self.config['port'])) 
+        except Exception as e: 
+            print >> sys.stderr, "Exception when connecting to Mongo:" + str(e)
+            raise
+            
+        self.collection = connection[self.config['database']][self.config['collection']]
+    
+    def load_user(self, username, password):
+        '''Returns a User object representing the user given by 'username' and
+        'password'. Returns None if the username/password combination was
+        wrong.'''
+        user_dict = self.collection.find_one({'_id': username,
+            'password': password})
+        if user_dict is None:
+            return None
+        return User(user_dict)
+
+    def load_openid_user(self, identifier):
+        '''Returns a User object representing the user given by 'identifier'
+        (username or an OpenID URL), or None if the user is not found.'''
+        user_dict = self.collection.find_one({'_id': identifier})
+        if user_dict is None:
+            return None
+
+        if password != None:
+            if 'password' in user_dict:
+                if password != user_dict['password']:
+                    return None
+            else:
+                # if password is provided but not needed, ignore it
+                pass
+
+        return User(user_dict)
+
+    def save_user(self, user):
+        '''Saves the User object 'user' into the database. This overwrites any
+        existing user with the same identifier.'''
+        # for the default user, do nothing
+        if user is UserDAO.default_user:
+            return
+
+        self.collection.save(user.dictionary)
+
