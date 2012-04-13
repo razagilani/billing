@@ -578,14 +578,15 @@ class BillToolBridge:
             reebill = self.reebill_dao.load_reebill(account, 0)
 
             # record account creation
-            self.journal_dao.log_event(customer.account, 0,
-                    JournalDAO.AccountCreated)
+            self.journal_dao.log_event(cherrypy.session['user'],
+                    customer.account, 0, JournalDAO.AccountCreated)
             self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
 
             # record reebill roll separately ("so that performance can be
             # measured": 25282041)
-            self.journal_dao.log_event(account, 0, JournalDAO.ReeBillRolled)
+            self.journal_dao.log_event(cherrypy.session['user'], account, 0,
+                    JournalDAO.ReeBillRolled)
 
             # get next next account number to send it back to the client so it
             # can be shown in the account-creation form
@@ -608,8 +609,8 @@ class BillToolBridge:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
-            self.journal_dao.log_event(account, sequence,
-                    JournalDAO.ReeBillRolled)
+            self.journal_dao.log_event(cherrypy.session['user'], account,
+                    sequence, JournalDAO.ReeBillRolled)
             session.commit()
             return self.dumps({'success': True})
         except Exception as e:
@@ -661,8 +662,8 @@ class BillToolBridge:
                     reebill
                 )
             self.reebill_dao.save_reebill(reebill)
-            self.journal_dao.log_event(account, sequence,
-                    JournalDAO.ReeBillBoundtoREE)
+            self.journal_dao.log_event(cherrypy.session['user'], account,
+                    sequence, JournalDAO.ReeBillBoundtoREE)
             return self.dumps({'success': True})
         except Exception as e:
             return self.handle_exception(e)
@@ -698,8 +699,8 @@ class BillToolBridge:
                     timestamp_format=timestamp_format, energy_unit=energy_unit)
 
             self.reebill_dao.save_reebill(reebill)
-            self.journal_dao.log_event(account, sequence,
-                    JournalDAO.ReeBillBoundtoREE)
+            self.journal_dao.log_event(cherrypy.session['user'], account,
+                    sequence, JournalDAO.ReeBillBoundtoREE)
             return self.dumps({'success': True})
         except Exception as e:
             return self.handle_exception(e)
@@ -795,10 +796,9 @@ class BillToolBridge:
             self.process.attach_utilbills(session, reebill.account,
                     reebill.sequence)
 
-            # TODO change to log_event
-            self.journal_dao.journal(reebill.account, reebill.sequence,
-                    "User %s attached utilbills to reebill %s-%s" % (
-                    cherrypy.session['user'].username, account, sequence))
+            self.journal_dao.log_event(cherrypy.session['user'],
+                    reebill.account, reebill.sequence,
+                    JournalDAO.ReeBillAttached)
             session.commit()
             return self.dumps({'success': True})
         except Exception as e:
@@ -868,9 +868,8 @@ class BillToolBridge:
 
             for reebill in all_bills:
                 print dir(JournalDAO)
-                self.journal_dao.log_event(reebill.account, reebill.sequence,
-                        JournalDAO.ReeBillMailed, address=recipients,
-                        user=cherrypy.session['user'].username)
+                self.journal_dao.log_event(cherrypy.session['user'], reebill.account, reebill.sequence,
+                        JournalDAO.ReeBillMailed, address=recipients)
                 self.process.issue(session, reebill.account, reebill.sequence)
                 self.process.attach_utilbills(session, reebill.account,
                         reebill.sequence)
@@ -1760,7 +1759,8 @@ class BillToolBridge:
                 if type(sequences) is int: sequences = [sequences]
                 for sequence in sequences:
                     self.process.delete_reebill(session, account, sequence)
-                    self.journal_dao.log_event(account, sequence, JournalDAO.ReeBillDeleted)
+                    self.journal_dao.log_event(cherrypy.session['user'],
+                            account, sequence, JournalDAO.ReeBillDeleted)
                 session.commit()
                 return self.dumps({'success': True})
 
@@ -2371,6 +2371,26 @@ class BillToolBridge:
 
             journal_entries = self.journal_dao.load_entries(account)
 
+            # TODO make journal entries a class and use MongoKit--clean up this ugliness
+            for entry in journal_entries:
+                # TODO replace user identifier with user name
+                # (UserDAO.load_user() currently requires a password to load a
+                # user, but we just want to translate an indentifier into a
+                # name)
+
+                # put a string containing all non-standard journal entry data
+                # in an 'extra' field for display in the browser
+                extra_data = copy.deepcopy(entry)
+                del extra_data['_id']
+                del extra_data['account']
+                del extra_data['sequence']
+                del extra_data['date']
+                if 'event' in extra_data:
+                    del extra_data['event']
+                if 'user' in extra_data:
+                    del extra_data['user']
+                entry['extra'] = ', '.join(['%s: %s' % (k,v) for (k,v) in extra_data.iteritems()])
+
             if xaction == "read":
                 return self.dumps({'success': True, 'rows':journal_entries})
 
@@ -2395,12 +2415,14 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
-    def save_journal_entry(self, account, entry, **kwargs):
+    def save_journal_entry(self, account, sequence, entry, **kwargs):
         try:
-            if not account or not entry:
+            # TODO: 1320091681504  allow a journal entry to be made without a sequence
+            if not account or not sequence or not entry:
                 raise ValueError("Bad Parameter Value")
 
-            self.journal_dao.journal(account, None, entry)
+            self.journal_dao.log_event(cherrypy.session['user'], account,
+                    sequence, JournalDAO.Note, message=entry)
 
             return self.dumps({'success':True})
 
@@ -2423,7 +2445,7 @@ class BillToolBridge:
                 db_objects.UtilBill.Complete: 'Final',
                 db_objects.UtilBill.UtilityEstimated: 'Utility Estimated',
                 db_objects.UtilBill.SkylineEstimated: 'Skyline Estimated',
-                db_objects.UtilBill.Hypothetical: 'Hypothetical'
+                db_objects.UtilBill.Hypothetical: 'Missing'
             }
 
             if not start or not limit or not account:
