@@ -94,7 +94,7 @@ def write_daily_average_energy_xls(reebill_dao, account, output_file,
     workbook = xlwt.Workbook(encoding='utf-8')
     sheet = workbook.add_sheet(account)
     sheet.write(0, 0, 'Date')
-    sheet.write(0, 1, 'Daily Average Energy (%s)' % unit)
+    sheet.write(0, 1, 'Daily Average Energy from Utility Bills (%s)' % unit)
     row = 1
 
     # one row per day: date, energy
