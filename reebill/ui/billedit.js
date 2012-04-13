@@ -4096,7 +4096,7 @@ function reeBillReady() {
                 xtype: 'linkbutton',
                 // account parameter for URL is set in loadReeBillUIForAccount()
                 href: "http://"+location.host+"/reebill/daily_average_energy_xls",
-                text: 'Export Daily Average Energy XLS',
+                text: 'Export Daily Average Utility Energy XLS',
                 disabled: true, // disabled until account is selected
             }
         ]
