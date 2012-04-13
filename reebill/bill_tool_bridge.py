@@ -2445,7 +2445,7 @@ class BillToolBridge:
                 db_objects.UtilBill.Complete: 'Final',
                 db_objects.UtilBill.UtilityEstimated: 'Utility Estimated',
                 db_objects.UtilBill.SkylineEstimated: 'Skyline Estimated',
-                db_objects.UtilBill.Hypothetical: 'Hypothetical'
+                db_objects.UtilBill.Hypothetical: 'Missing'
             }
 
             if not start or not limit or not account:
