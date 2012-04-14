@@ -123,6 +123,10 @@ class Process(object):
         # not been issued, 0 before the previous bill's due date, and non-0
         # after that)
         lc = self.get_late_charge(session, present_reebill)
+
+        # there is no late charge to be applied (see get_late_charge)
+        lc = 0 if lc is None else lc
+
         present_reebill.late_charges = lc
 
         # now grab the prior bill and pull values forward
