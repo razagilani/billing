@@ -231,7 +231,7 @@ class Process(object):
                 reebill.account)
 
         # set late charge rate to the instananeous value in MySQL
-        reebill.late_charge_rate = self.state_db.discount_rate(session,
+        reebill.late_charge_rate = self.state_db.late_charge_rate(session,
                 reebill.account)
 
         # create reebill row in state database
@@ -259,28 +259,9 @@ class Process(object):
         if day <= predecessor.due_date:
             return Decimal(0)
 
-#        # get sum of all payments since the last bill was issued
-#        customer = session.query(Customer)\
-#                .filter(Customer.account==reebill.account).one()
-#        payments = session.query(Payment).filter(Payment.customer==customer)\
-#                .filter(Payment.date >= predecessor.issue_date)
-#        payment_total = sum(payments.all())
-#
-#        # late charge is: late charge rate * (old late fee + prior balance
-#        # - all payments since issue date of previous bill)
-#        # also note that we rely on predecessor's balance_due instead of
-#        # this rebill's prior_balance because the latter is computed only when
-#        # sum_bill() is called.
-#        late_charge_rate = 0 if reebill.late_charge_rate is None else reebill.late_charge_rate 
-#        late_charge = late_charge_rate * (predecessor.balance_due -
-#                payment_total)
-#        return Decimal(late_charge)
-
-        rate = 0 if reebill.late_charge_rate is None \
-                else reebill.late_charge_rate 
-        outstanding_balance = self.get_outstanding_balance(session, reebill.account,
-                reebill.sequence - 1)
-        return Decimal(rate * outstanding_balance)
+        outstanding_balance = self.get_outstanding_balance(session,
+                reebill.account, reebill.sequence - 1)
+        return (1 + reebill.late_charge_rate) * outstanding_balance
 
     def get_outstanding_balance(self, session, account, sequence=None):
         '''Returns the balance due of the reebill given by account and sequence
@@ -302,7 +283,6 @@ class Process(object):
         payments = session.query(Payment).filter(Payment.customer==customer)\
                 .filter(Payment.date >= reebill.issue_date)
         payment_total = sum(payment.credit for payment in payments.all())
-        print 'payment_total', payment_total, 'balance_due', reebill.balance_due
 
         # result cannot be negative
         return max(Decimal(0), reebill.balance_due - payment_total)

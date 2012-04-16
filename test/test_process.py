@@ -528,6 +528,7 @@ class ProcessTest(unittest.TestCase):
         # insert one customer
         self.state_db = StateDB(statedb_config)
         session = self.state_db.session()
+        # name, account, discount rate, late charge rate
         customer = Customer('Test Customer', '99999', .12, .34)
         session.add(customer)
         session.commit()
@@ -568,14 +569,13 @@ class ProcessTest(unittest.TestCase):
             self.assertEqual(0, process.get_late_charge(session, bill1, date(2012,2,2)))
  
             # issue bill 1, so a later bill can have a late charge based on the
-            # customer's failure to pay it by the due date. (it must be saved
-            # in both mongo and mysql to be issued.) due date is automatically
-            # set to 30 days after issue date.
+            # customer's failure to pay bill1 by its due date. i.e. 30 days
+            # after issue date. (it must be saved in both mongo and mysql to be
+            # issued.)
             self.reebill_dao.save_reebill(bill1)
             self.state_db.new_rebill(session, bill1.account, bill1.sequence)
             process.issue(session, bill1.account, bill1.sequence,
                     issue_date=date(2012,1,1))
-            import pdb; pdb.set_trace()
             # since process.issue() only modifies databases, bill1 must be
             # re-loaded from mongo to reflect its new issue date
             bill1 = self.reebill_dao.load_reebill(bill1.account, bill1.sequence)
@@ -605,14 +605,16 @@ class ProcessTest(unittest.TestCase):
             bill2.account = '99999'
             bill2.sequence = 2
             bill2.balance_due = Decimal('200.')
- 
+            # bill2's late_charge_rate is copied from MySQL during rolling, but
+            # since bill2 is not created by rolling, it must be set explicitly.
+            bill2.late_charge_rate = Decimal('0.34')
+
             # bill2's late charge should be 0 before bill1's due date, and
             # after the due date, it's balance * (1 + late charge rate), i.e.
             # 100 * (1 + .34)
             self.assertEqual(0, process.get_late_charge(session, bill2, date(2011,12,31)))
             self.assertEqual(0, process.get_late_charge(session, bill2, date(2012,1,2)))
             self.assertEqual(0, process.get_late_charge(session, bill2, date(2012,1,31)))
-            pdb.set_trace()
             self.assertEqual(134, process.get_late_charge(session, bill2, date(2012,2,1)))
             self.assertEqual(134, process.get_late_charge(session, bill2, date(2012,2,2)))
             self.assertEqual(134, process.get_late_charge(session, bill2, date(2013,1,1)))
