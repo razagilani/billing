@@ -2,6 +2,7 @@
 import urllib, urllib2
 import json
 from optparse import OptionParser
+import dictutils
 #from scripts.nexus import nexus
 
 class NexusUtil(object):
@@ -104,6 +105,26 @@ class NexusUtil(object):
                 for account in accounts
         ])
 
+    
+    def get_non_billing_customers(self):
+        '''Returns a dictionary of 'codename', 'casualname', 'olap' and
+        'primus' names for customers that have no billing name or whose billing
+        name is an empty string. (If any of those names is missing, it is
+        replaced by an empty string.)'''
+        url = 'http://%s/nexus_query/all' % self.host
+        f = urllib2.urlopen(url)
+        response_text = f.read()
+        response_data = json.loads(response_text)
+        non_billing_rows = [row for row in response_data['rows'] if 'billing'
+                not in row or row['billing'] == '']
+        result = []
+        for row in non_billing_rows:
+            result.append(dict([
+                (key, row.get(key, ''))
+                for key in ['codename', 'casualname', 'olap', 'primus']
+            ]))
+        return result
+
 if __name__ == "__main__":
     parser = OptionParser()
 
@@ -122,7 +143,3 @@ if __name__ == "__main__":
     if (options.system and options.systemid):
         print NexusUtil(options.host).all(options.system, options.systemid)
         exit()
-        
-
-
-

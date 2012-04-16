@@ -3988,8 +3988,15 @@ function reeBillReady() {
         viewConfig: {
             // doesn't seem to work
             forceFit: true,
+
+            getRowClass: function(rec, idx, rowPrms, ds) {
+                return 'ph-bold-row';
+                //return rec.data.provisioned === false ? 'ph-bold-row' : '';
+            }
         },
+
         title: 'Account Processing Status',
+
         // paging bar on the bottom
         bbar: new Ext.PagingToolbar({
             pageSize: 25,
