@@ -1,4 +1,4 @@
-#!/usr/bin/pytho.date(),
+#!/usr/bin/python
 import sys
 import unittest
 from StringIO import StringIO
@@ -21,6 +21,7 @@ from billing.mongo_utils import python_convert
 
 class ProcessTest(unittest.TestCase):
     def setUp(self):
+        print 'setUp'
         # everything needed to create a Process object
         config_file = StringIO('''[runtime]\nintegrate_skyline_backend = true''')
         self.config = ConfigParser.RawConfigParser()
@@ -513,23 +514,24 @@ class ProcessTest(unittest.TestCase):
             'password': 'dev'
         }
 
-        # clear out tables in mysql test database (not relying on StateDB)
-        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test') # host, username, password, db
-        c = mysql_connection.cursor()
-        c.execute("delete from payment")
-        c.execute("delete from utilbill")
-        c.execute("delete from rebill")
-        c.execute("delete from customer")
-        # (note that status_days_since, status_unbilled are views and you
-        # neither can nor need to delete from them)
-        mysql_connection.commit()
+        ## clear out tables in mysql test database (not relying on StateDB)
+        #mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test') # host, username, password, db
+        #c = mysql_connection.cursor()
+        #c.execute("delete from payment")
+        #c.execute("delete from utilbill")
+        #c.execute("delete from rebill")
+        #c.execute("delete from customer")
+        ## (note that status_days_since, status_unbilled are views and you
+        ## neither can nor need to delete from them)
+        #mysql_connection.commit()
 
         # insert one customer
-        #self.state_db = StateDB(statedb_config)
-        #session = self.state_db.session()
-        #customer = Customer('Test Customer', '99999', .12, .34)
-        #session.add(customer)
-        #session.commit()
+        self.state_db = StateDB(statedb_config)
+        session = self.state_db.session()
+        customer = Customer('Test Customer', '99999', .12, .34)
+        session.add(customer)
+        session.commit()
+        print 'end of setUp'
 
     def tearDown(self):
         '''This gets run even if a test fails.'''
@@ -552,7 +554,7 @@ class ProcessTest(unittest.TestCase):
             session = self.state_db.session()
             process = Process(self.config, self.state_db, self.reebill_dao,
                     self.rate_structure_dao, self.splinter, self.monguru)
-
+ 
             # first bill ever has late fee of 0
             bill1 = mongo.MongoReebill(deep_map(mongo.float_to_decimal,
                     python_convert(copy.deepcopy(self.example_bill))))
@@ -564,7 +566,7 @@ class ProcessTest(unittest.TestCase):
             self.assertEqual(0, process.get_late_charge(session, bill1, date(2012,1,2)))
             self.assertEqual(0, process.get_late_charge(session, bill1, date(2012,2,1)))
             self.assertEqual(0, process.get_late_charge(session, bill1, date(2012,2,2)))
-
+ 
             # issue bill 1, so a later bill can have a late charge based on the
             # customer's failure to pay it by the due date. (it must be saved
             # in both mongo and mysql to be issued.) due date is automatically
@@ -573,11 +575,12 @@ class ProcessTest(unittest.TestCase):
             self.state_db.new_rebill(session, bill1.account, bill1.sequence)
             process.issue(session, bill1.account, bill1.sequence,
                     issue_date=date(2012,1,1))
+            import pdb; pdb.set_trace()
             # since process.issue() only modifies databases, bill1 must be
             # re-loaded from mongo to reflect its new issue date
             bill1 = self.reebill_dao.load_reebill(bill1.account, bill1.sequence)
             assert bill1.due_date == date(2012,1,31)
-
+ 
             # after bill1 is created, it must be "summed" to get it into a
             # usable state (in particular, it needs a late charge). that
             # requires a sequence 0 template bill. put one into mongo and then
@@ -587,36 +590,38 @@ class ProcessTest(unittest.TestCase):
             bill0.account = '99999'
             bill0.sequence = 0
             process.sum_bill(session, bill0, bill1)
-
+ 
             # but sum_bill() destroys bill1's balance_due, so reset it to
             # the right value, and save it in mongo
             bill1.balance_due = Decimal('100.')
             self.reebill_dao.save_reebill(bill1)
-
+ 
             # create second bill (not by rolling, because process.roll_bill()
             # is currently a huge untested mess, and get_late_charge() should
-            # be tested in isolation.) note that bill1's late charge is set in
+            # be tested in isolation). note that bill1's late charge is set in
             # mongo by process.issue().
             bill2 = mongo.MongoReebill(deep_map(mongo.float_to_decimal,
                     python_convert(copy.deepcopy(self.example_bill))))
             bill2.account = '99999'
             bill2.sequence = 2
             bill2.balance_due = Decimal('200.')
-
-            # bill2's late charge should be 0 before bill1's due date and non-0
-            # after
+ 
+            # bill2's late charge should be 0 before bill1's due date, and
+            # after the due date, it's balance * (1 + late charge rate), i.e.
+            # 100 * (1 + .34)
             self.assertEqual(0, process.get_late_charge(session, bill2, date(2011,12,31)))
             self.assertEqual(0, process.get_late_charge(session, bill2, date(2012,1,2)))
             self.assertEqual(0, process.get_late_charge(session, bill2, date(2012,1,31)))
+            pdb.set_trace()
             self.assertEqual(134, process.get_late_charge(session, bill2, date(2012,2,1)))
             self.assertEqual(134, process.get_late_charge(session, bill2, date(2012,2,2)))
             self.assertEqual(134, process.get_late_charge(session, bill2, date(2013,1,1)))
-
+ 
             # in order to get late charge of a 3rd bill, bill2 must be put into
             # mysql and "summed"
             self.state_db.new_rebill(session, bill2.account, bill2.sequence)
             process.sum_bill(session, bill1, bill2)
-
+ 
             # create a 3rd bill without issuing bill2. bill3 should have None
             # as its late charge for all dates
             bill3 = mongo.MongoReebill(deep_map(mongo.float_to_decimal,
@@ -626,111 +631,116 @@ class ProcessTest(unittest.TestCase):
             bill3.balance_due = Decimal('300.')
             self.assertEqual(None, process.get_late_charge(session, bill3, date(2011,12,31)))
             self.assertEqual(None, process.get_late_charge(session, bill3, date(2013,1,1)))
-
+ 
             session.commit()
         except:
-            session.rollback()
+            if 'session' in locals():
+                session.rollback()
             raise
 
-#    def test_roll_late_fee(self):
-#        '''Tests the behavior of Process.roll_bill with respect to calculating
-#        a late fee.'''
-#        try:
-#            session = self.state_db.session()
-#
-#            process = Process(self.config, self.state_db, self.reebill_dao,
-#                    self.rate_structure_dao, self.splinter, self.monguru)
-#
-#            # TODO state db
-#
-#            # set up a bill with a balance forward and no late fee
-#            bill = mongo.MongoReebill(python_convert(copy.deepcopy(self.example_bill)))
-#            bill.balance_forward = 100.
-#            bill.late_charges = Decimal('0.00')
-#            bill.account = '99999'
-#            bill.sequence = 1 # needs to be last sequence
-#            bill.issue_date = date(2012,3,15)
-#
-#            # create reebill for sequence 0 in mysql (and it must be issued,
-#            # because we need its issue date to compute late charge)
-#            customer = session.query(Customer).filter(Customer.account==bill.account).one()
-#            #r = ReeBill(customer, bill.sequence)
-#            #r.issued = 1
-#            #session.add(r)
-#            # need to create relationships in mysql too
-#            #
-#            u = UtilBill(customer, UtilBill.Complete, 'gas',
-#                    period_start=date(2012,1,1), period_end=date(2012,2,1),
-#                    processed=1, date_received=datetime(2012,2,15))
-#            session.add(u)
-#
-#            # put fake URS & CPRS into db (UPRS not needed), so they can be
-#            # combined in load_probable_rs()
-#            urs = python_convert(copy.deepcopy(self.example_cprs))
-#            urs["_id"] = {
-#                "utility_name" : "washgas",
-#                "rate_structure_name" : "DC Non Residential Non Heat",
-#                "type" : "URS"
-#            },
-#            cprs = python_convert(copy.deepcopy(self.example_cprs))
-#            cprs["_id"] = {
-#                "account" : '99999',
-#                "sequence" : 1,
-#                "utility_name" : "washgas",
-#                "rate_structure_name" : "DC Non Residential Non Heat",
-#                "branch" : 0,
-#                "type" : "CPRS"
-#            },
-#            self.rate_structure_dao.save_urs('washgas', "DC Non Residential Non Heat",
-#                    None, None, self.example_urs)
-#            self.rate_structure_dao.save_cprs(bill.account,
-#                    bill.sequence, bill.branch, 'washgas',
-#                    'DC Non Residential Non Heat', self.example_cprs)
-#
-#            # roll the bill
-#            process.roll_bill(session, bill)
-#
-#            # sequence should be incremented, and late charges should be late
-#            # charge rate * previous late charges
-#            self.assertEqual(bill.sequence, 2)
-#            self.assertEqual(bill.late_charges, 0)
-#
-#
-#
-#            # to roll the reebill again, the old bill must be issued, we need
-#            # another reebill and utilbill in MySQL, and we need a CPRS in
-#            # Mongo
-#            x = session.query(ReeBill).all()
-#            r2 = ReeBill(customer, bill.sequence)
-#            r2.issued = 1
-#            import pdb; pdb.set_trace();
-#            session.add(r2)
-#            session.add(UtilBill(customer, UtilBill.Complete, 'gas',
-#                    period_start=date(2012,2,1), period_end=date(2012,3,1),
-#                    processed=1, reebill=r2, date_received=datetime(2012,3,15)))
-#            #cprs["_id"] = {
-#                #"account" : '99999',
-#                #"sequence" : 2,
-#                #"utility_name" : "washgas",
-#                #"rate_structure_name" : "DC Non Residential Non Heat",
-#                #"branch" : 0,
-#                #"type" : "CPRS"
-#            #},
-#            #self.rate_structure_dao.save_cprs(bill.account,
-#                    #bill.sequence, bill.branch, 'washgas',
-#                    #'DC Non Residential Non Heat', self.example_cprs)
-#
-#            ## now add a late charge to the bill and roll it again: late charge
-#            ## should be multiplied by late charge rate
-#            ##bill.late_charges = 100
-#            #process.roll_bill(session, bill)
-#
-#            session.commit()
-#        except:
-#            session.rollback()
-#            raise
+    #def test_roll_late_fee(self):
+        #'''Tests the behavior of Process.roll_bill with respect to calculating
+        #a late fee.'''
+        #try:
+            #session = self.state_db.session()
 
+            #process = Process(self.config, self.state_db, self.reebill_dao,
+                    #self.rate_structure_dao, self.splinter, self.monguru)
+
+            ## TODO state db
+
+            ## set up a bill with a balance forward and no late fee
+            #bill = mongo.MongoReebill(python_convert(copy.deepcopy(self.example_bill)))
+            #bill.balance_forward = 100.
+            #bill.late_charges = Decimal('0.00')
+            #bill.account = '99999'
+            #bill.sequence = 1 # needs to be last sequence
+            #bill.issue_date = date(2012,3,15)
+
+            ## create reebill for sequence 0 in mysql (and it must be issued,
+            ## because we need its issue date to compute late charge)
+            #customer = session.query(Customer).filter(Customer.account==bill.account).one()
+            ##r = ReeBill(customer, bill.sequence)
+            ##r.issued = 1
+            ##session.add(r)
+            ## need to create relationships in mysql too
+            ##
+            #u = UtilBill(customer, UtilBill.Complete, 'gas',
+                    #period_start=date(2012,1,1), period_end=date(2012,2,1),
+                    #processed=1, date_received=datetime(2012,2,15))
+            #session.add(u)
+
+            ## put fake URS & CPRS into db (UPRS not needed), so they can be
+            ## combined in load_probable_rs()
+            #urs = python_convert(copy.deepcopy(self.example_cprs))
+            #urs["_id"] = {
+                #"utility_name" : "washgas",
+                #"rate_structure_name" : "DC Non Residential Non Heat",
+                #"type" : "URS"
+            #},
+            #cprs = python_convert(copy.deepcopy(self.example_cprs))
+            #cprs["_id"] = {
+                #"account" : '99999',
+                #"sequence" : 1,
+                #"utility_name" : "washgas",
+                #"rate_structure_name" : "DC Non Residential Non Heat",
+                #"branch" : 0,
+                #"type" : "CPRS"
+            #},
+            #self.rate_structure_dao.save_urs('washgas', "DC Non Residential Non Heat",
+                    #None, None, self.example_urs)
+            #self.rate_structure_dao.save_cprs(bill.account,
+                    #bill.sequence, bill.branch, 'washgas',
+                    #'DC Non Residential Non Heat', self.example_cprs)
+
+            ## roll the bill
+            #process.roll_bill(session, bill)
+
+            ## sequence should be incremented, and late charges should be late
+            ## charge rate * previous late charges
+            #self.assertEqual(bill.sequence, 2)
+            #self.assertEqual(bill.late_charges, 0)
+
+
+
+            ## to roll the reebill again, the old bill must be issued, we need
+            ## another reebill and utilbill in MySQL, and we need a CPRS in
+            ## Mongo
+            #x = session.query(ReeBill).all()
+            #r2 = ReeBill(customer, bill.sequence)
+            #r2.issued = 1
+            #import pdb; pdb.set_trace();
+            #session.add(r2)
+            #session.add(UtilBill(customer, UtilBill.Complete, 'gas',
+                    #period_start=date(2012,2,1), period_end=date(2012,3,1),
+                    #processed=1, reebill=r2, date_received=datetime(2012,3,15)))
+            ##cprs["_id"] = {
+                ##"account" : '99999',
+                ##"sequence" : 2,
+                ##"utility_name" : "washgas",
+                ##"rate_structure_name" : "DC Non Residential Non Heat",
+                ##"branch" : 0,
+                ##"type" : "CPRS"
+            ##},
+            ##self.rate_structure_dao.save_cprs(bill.account,
+                    ##bill.sequence, bill.branch, 'washgas',
+                    ##'DC Non Residential Non Heat', self.example_cprs)
+
+            ### now add a late charge to the bill and roll it again: late charge
+            ### should be multiplied by late charge rate
+            ###bill.late_charges = 100
+            ##process.roll_bill(session, bill)
+
+            #session.commit()
+        #except:
+            #session.rollback()
+            #raise
+
+    @unittest.skip('''Creating a second StateDB object, even if it's for
+            another database, fails with a SQLAlchemy error about multiple
+            mappers. SQLAlchemy does provide a way to get around this.''')
     def test_sequences_for_approximate_month(self):
+        print 'test_sequences_for_approximate_month'
         # use real databases instead of the fake ones
         state_db = StateDB({
             'host': 'localhost',
@@ -746,11 +756,11 @@ class ProcessTest(unittest.TestCase):
             'host': 'localhost',
             'port': 27017
         })
-        process = Process(self.config, state_db, reebill_dao,
+        process = Process(self.config, self.state_db, reebill_dao,
                 self.rate_structure_dao, self.splinter, self.monguru)
-        session = state_db.session()
-        for account in state_db.listAccounts(session):
-            for sequence in state_db.listSequences(session, account):
+        session = self.state_db.session()
+        for account in self.state_db.listAccounts(session):
+            for sequence in self.state_db.listSequences(session, account):
                 reebill = reebill_dao.load_reebill(account, sequence)
 
                 # get real approximate month for this bill
@@ -781,8 +791,8 @@ class ProcessTest(unittest.TestCase):
         self.assertEquals([], process.sequences_for_approximate_month(session, '10002', 2010, 1))
 
         # test 3 months after last sequence for each account
-        for account in state_db.listAccounts(session):
-            last_seq = state_db.last_sequence(session, account)
+        for account in self.state_db.listAccounts(session):
+            last_seq = self.state_db.last_sequence(session, account)
             if last_seq == 0: continue
             last = reebill_dao.load_reebill(account, last_seq)
             last_year, last_month = estimate_month(last.period_begin, last.period_end)
