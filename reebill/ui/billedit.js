@@ -3908,7 +3908,8 @@ function reeBillReady() {
             // map Record's field to json object's key of same name
             {name: 'account', mapping: 'account'},
             {name: 'fullname', mapping: 'fullname'},
-            {name: 'dayssince', mapping: 'dayssince', type:sortType}
+            {name: 'dayssince', mapping: 'dayssince', type:sortType},
+            {name: 'provisionable', mapping: 'provisionable'},
         ]
     });
 
@@ -3933,9 +3934,29 @@ function reeBillReady() {
             {name: 'casualname'},
             {name: 'primusname'},
             {name: 'dayssince'},
+            {name: 'provisionable'},
         ],
     });
 
+    /* This function controls the style of cells in the account grid. */
+    var accountGridColumnRenderer = function(value, metaData, record, rowIndex, colIndex, store) {
+        // probably the right way to do this is to set metaData.css to a CSS class name, but setting metaData.attr works for me.
+        // see documentation for "renderer" config option of Ext.grid.Column
+
+        // show text for accounts that don't yet exist in billing in gray;
+        // actual billing accounts are black
+        //if (record.data.provisionable) {
+            //metaData.attr = 'style="color:gray"';
+        //} else {
+            //metaData.attr = 'style="color:black"';
+        //}
+        if (record.data.provisionable) {
+            metaData.css = 'account-grid-gray';
+        } else {
+            metaData.css = 'account-grid-black';
+        }
+        return value;
+    }
 
     var accountColModel = new Ext.grid.ColumnModel({
         columns: [
@@ -3944,31 +3965,31 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'account',
                 //editable: false,
-                renderer: function(value, metaData, record, rowIndex, colIndex, store) {
-                    //metaData.css = 'name-of-css-class-you-will-define';
-                    metaData.attr = 'style="color:red"';
-                    return value;
-              }
+                renderer: accountGridColumnRenderer,
             },{
                 header: 'Codename',
                 sortable: true,
                 dataIndex: 'codename',
                 //editable: false,
+                renderer: accountGridColumnRenderer,
             },{
                 header: 'Casual Name',
                 sortable: true,
                 dataIndex: 'casualname',
                 //editable: false,
+                renderer: accountGridColumnRenderer,
             },{
                 header: 'Primus Name',
                 sortable: true,
                 dataIndex: 'primusname',
                 //editable: false,
+                renderer: accountGridColumnRenderer,
             },{
                 header: 'Days since last bill',
                 sortable: true,
                 dataIndex: 'dayssince',
                 //editable: false,
+                renderer: accountGridColumnRenderer,
             },
         ]
     });
@@ -3981,6 +4002,7 @@ function reeBillReady() {
             listeners: {
                 rowselect: function (selModel, index, record) {
                     loadReeBillUIForAccount(record.data.account);
+                    return false;
                 }
             }
         }),
@@ -3990,6 +4012,11 @@ function reeBillReady() {
         collapsible: true,
         animCollapse: false,
         stripeRows: true,
+        viewConfig: {
+            // doesn't seem to work
+            forceFit: true,
+        },
+
         title: 'Account Processing Status',
 
         // paging bar on the bottom
@@ -4001,6 +4028,10 @@ function reeBillReady() {
             emptyMsg: "No statuses to display",
         }),
         clicksToEdit: 1,
+    });
+
+    accountGrid.getSelectionModel().on('beforerowselect', function(selModel, rowIndex, keepExisting, record) {
+        return ! record.data.provisionable;
     });
 
 

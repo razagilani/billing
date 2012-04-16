@@ -110,3 +110,11 @@ pre.code{
     background:url(../../resources/images/default/sizer/s-handle-dark.gif);
     background-position: top;
 }
+
+/* styles for coloring account grid rows */
+.account-grid-gray {
+    color: gray;
+}
+.account-grid-black {
+    color: black;
+}
