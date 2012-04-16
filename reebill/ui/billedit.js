@@ -3944,6 +3944,11 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'account',
                 //editable: false,
+                renderer: function(value, metaData, record, rowIndex, colIndex, store) {
+                    //metaData.css = 'name-of-css-class-you-will-define';
+                    metaData.attr = 'style="color:red"';
+                    return value;
+              }
             },{
                 header: 'Codename',
                 sortable: true,
@@ -3985,16 +3990,6 @@ function reeBillReady() {
         collapsible: true,
         animCollapse: false,
         stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-
-            getRowClass: function(rec, idx, rowPrms, ds) {
-                return 'ph-bold-row';
-                //return rec.data.provisioned === false ? 'ph-bold-row' : '';
-            }
-        },
-
         title: 'Account Processing Status',
 
         // paging bar on the bottom
