@@ -265,6 +265,9 @@ class BillToolBridge:
         # the level has to be changed.
         self.logger.setLevel(logging.DEBUG)
 
+        # create a NexusUtil
+        self.nexus_util = NexusUtil()
+
         # load users database
         self.user_dao = UserDAO(dict(self.config.items('usersdb')))
 
@@ -658,7 +661,7 @@ class BillToolBridge:
                     Splinter(self.config.get('skyline_backend', 'oltp_url'),
                         self.config.get('skyline_backend', 'olap_host'),
                         self.config.get('skyline_backend', 'olap_database')),
-                    nu.NexusUtil().olap_id(account),
+                    self.nexus_util.olap_id(account),
                     reebill
                 )
             self.reebill_dao.save_reebill(reebill)
@@ -891,7 +894,7 @@ class BillToolBridge:
             return accounts
 
         # get list of customer name dictionaries sorted by their billing account
-        all_accounts_all_names = NexusUtil().all_names_for_accounts(accounts)
+        all_accounts_all_names = self.nexus_util.all_names_for_accounts(accounts)
         name_dicts = sorted(all_accounts_all_names.iteritems())
 
         result = []
@@ -980,7 +983,7 @@ class BillToolBridge:
             # sort by account--TODO do the sorting in the database query itself
             #statuses.sort(key=lambda s: s.account)
 
-            name_dicts = NexusUtil().all_names_for_accounts([s.account for s in statuses])
+            name_dicts = self.nexus_util.all_names_for_accounts([s.account for s in statuses])
             rows = [dict([
                 ('account', status.account),
                 ('codename', name_dicts[status.account]['codename'] if
@@ -990,7 +993,19 @@ class BillToolBridge:
                 ('primusname', name_dicts[status.account]['primus'] if
                     'primus' in name_dicts[status.account] else ''),
                 ('dayssince', status.dayssince),
+                ('provisionable', False)
             ]) for i, status in enumerate(statuses)]
+
+            # also get customers from Nexus who don't exist in billing yet
+            non_billing_customers = self.nexus_util.get_non_billing_customers()
+            for customer in non_billing_customers:
+                rows.append(dict([
+                    # we have the olap_id too but we don't show it
+                    ('codename', customer['codename']),
+                    ('casualname', customer['casualname']),
+                    ('primusname', customer['primus']),
+                    ('provisionable', True)
+                ]))
 
             session.commit()
             return self.dumps({'success': True, 'rows':rows, 'results':count})
