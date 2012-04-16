@@ -994,11 +994,14 @@ class BillToolBridge:
                 ('primusname', name_dicts[status.account]['primus'] if
                     'primus' in name_dicts[status.account] else ''),
                 ('dayssince', status.dayssince),
-                ('provisionable', False)
+                ('lastevent', self.journal_dao.last_event_description(status.account)),
+                ('provisionable', False),
             ]) for i, status in enumerate(statuses)]
 
             # also get customers from Nexus who don't exist in billing yet
             # (do not sort these; just append them to the end)
+            # TODO: we DO want to sort these, but we just want to them to come
+            # after all the billing billing customers
             non_billing_customers = self.nexus_util.get_non_billing_customers()
             for customer in non_billing_customers:
                 rows.append(dict([

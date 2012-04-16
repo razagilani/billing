@@ -3909,6 +3909,7 @@ function reeBillReady() {
             {name: 'account', mapping: 'account'},
             {name: 'fullname', mapping: 'fullname'},
             {name: 'dayssince', mapping: 'dayssince', type:sortType},
+            {name: 'lastevent'},
             {name: 'provisionable', mapping: 'provisionable'},
         ]
     });
@@ -3934,6 +3935,7 @@ function reeBillReady() {
             {name: 'casualname'},
             {name: 'primusname'},
             {name: 'dayssince'},
+            {name: 'lastevent'},
             {name: 'provisionable'},
         ],
     });
@@ -3964,31 +3966,31 @@ function reeBillReady() {
                 header: 'Account',
                 sortable: true,
                 dataIndex: 'account',
-                //editable: false,
                 renderer: accountGridColumnRenderer,
             },{
                 header: 'Codename',
                 sortable: true,
                 dataIndex: 'codename',
-                //editable: false,
                 renderer: accountGridColumnRenderer,
             },{
                 header: 'Casual Name',
                 sortable: true,
                 dataIndex: 'casualname',
-                //editable: false,
                 renderer: accountGridColumnRenderer,
             },{
                 header: 'Primus Name',
                 sortable: true,
                 dataIndex: 'primusname',
-                //editable: false,
                 renderer: accountGridColumnRenderer,
             },{
                 header: 'Days since last bill',
                 sortable: true,
                 dataIndex: 'dayssince',
-                //editable: false,
+                renderer: accountGridColumnRenderer,
+            },{
+                header: 'Last Event',
+                sortable: true,
+                dataIndex: 'lastevent',
                 renderer: accountGridColumnRenderer,
             },
         ]
