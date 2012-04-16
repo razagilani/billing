@@ -234,13 +234,13 @@ class StateDB:
         session.delete(reebill)
 
     def discount_rate(self, session, account):
-        # one() raises an exception if more than one row was found
+        '''Returns the discount rate for the customer given by account.'''
         result = session.query(Customer).filter_by(account=account).one().\
                 discountrate
         return result
         
     def late_charge_rate(self, session, account):
-        # one() raises an exception if more than one row was found
+        '''Returns the late charge rate for the customer given by account.'''
         result = session.query(Customer).filter_by(account=account).one()\
                 .latechargerate
         return result
