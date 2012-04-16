@@ -4019,6 +4019,7 @@ function reeBillReady() {
             {name: 'hypothetical_charges', mapping: 'hypothetical_charges'},
             {name: 'total_energy', mapping: 'total_energy'},
             {name: 'average_ree_rate', mapping: 'average_ree_rate'},
+            {name: 'outstandingbalance', mapping: 'outstandingbalance'},
         ]
     });
 
@@ -4044,6 +4045,7 @@ function reeBillReady() {
             {name: 'hypothetical_charges'},
             {name: 'total_energy'},
             {name: 'average_ree_rate'},
+            {name: 'outstandingbalance'},
         ],
     });
 
@@ -4080,6 +4082,11 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'average_ree_rate',
                 editable: false,
+            },{
+                header: 'Outstanding Balance',
+                sortable: true,
+                dataIndex: 'outstandingbalance',
+                //editable: false,
             },
         ]
     });

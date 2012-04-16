@@ -179,6 +179,7 @@ class StateDB:
         # global variable for the database session: SQLAlchemy will give an error if
         # this is created more than once, so don't call _getSession() anywhere else
         # wrapped by scoped_session for thread contextualization
+        # http://docs.sqlalchemy.org/en/latest/orm/session.html#unitofwork-contextual
         self.session = scoped_session(sessionmaker(bind=engine, autoflush=True))
 
     def get_next_account_number(self, session):
