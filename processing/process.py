@@ -132,6 +132,8 @@ class Process(object):
         # now grab the prior bill and pull values forward
         present_reebill.prior_balance = prior_reebill.balance_due
         present_reebill.balance_forward = present_reebill.prior_balance - present_reebill.payment_received
+        if present_reebill.late_charges == None:
+            present_reebill.late_charges = 0
         present_reebill.balance_due = present_reebill.balance_forward + \
                 present_reebill.ree_charges + present_reebill.late_charges
 
@@ -257,22 +259,53 @@ class Process(object):
         if day <= predecessor.due_date:
             return Decimal(0)
 
-        # get sum of all payments since the last bill was issued
-        customer = session.query(Customer)\
-                .filter(Customer.account==reebill.account).one()
-        payments = session.query(Payment).filter(Payment.customer==customer)\
-                .filter(Payment.date >= predecessor.issue_date)
-        payment_total = sum(payments.all())
+#        # get sum of all payments since the last bill was issued
+#        customer = session.query(Customer)\
+#                .filter(Customer.account==reebill.account).one()
+#        payments = session.query(Payment).filter(Payment.customer==customer)\
+#                .filter(Payment.date >= predecessor.issue_date)
+#        payment_total = sum(payments.all())
+#
+#        # late charge is: late charge rate * (old late fee + prior balance
+#        # - all payments since issue date of previous bill)
+#        # also note that we rely on predecessor's balance_due instead of
+#        # this rebill's prior_balance because the latter is computed only when
+#        # sum_bill() is called.
+#        late_charge_rate = 0 if reebill.late_charge_rate is None else reebill.late_charge_rate 
+#        late_charge = late_charge_rate * (predecessor.balance_due -
+#                payment_total)
+#        return Decimal(late_charge)
 
-        # late charge is: late charge rate * (old late fee + prior balance
-        # - all payments since issue date of previous bill)
-        # also note that we rely on predecessor's balance_due instead of
-        # this rebill's prior_balance because the latter is computed only when
-        # sum_bill() is called.
-        late_charge_rate = 0 if reebill.late_charge_rate is None else reebill.late_charge_rate 
-        late_charge = late_charge_rate * (predecessor.balance_due -
-                payment_total)
-        return Decimal(late_charge)
+        rate = 0 if reebill.late_charge_rate is None \
+                else reebill.late_charge_rate 
+        outstanding_balance = self.get_outstanding_balance(session, reebill.account,
+                reebill.sequence - 1)
+        return Decimal(rate * outstanding_balance)
+
+    def get_outstanding_balance(self, session, account, sequence=None):
+        '''Returns the balance due of the reebill given by account and sequence
+        (or the account's last issued reebill when 'sequence' is not given)
+        minus the sum of all payments that have been made since that bill was
+        issued. Returns 0 if total payments since the issue date exceed the
+        balance due, or if no reebill has ever been issued for the customer.'''
+        # get balance due of last reebill
+        if sequence == None:
+            sequence = self.state_db.last_sequence(session, account)
+        if sequence == 0:
+            return Decimal(0)
+        reebill = self.reebill_dao.load_reebill(account, sequence)
+        if reebill.issue_date == None:
+            return Decimal(0)
+
+        # get sum of all payments since the last bill was issued
+        customer = session.query(Customer).filter(Customer.account==account).one()
+        payments = session.query(Payment).filter(Payment.customer==customer)\
+                .filter(Payment.date >= reebill.issue_date)
+        payment_total = sum(payment.credit for payment in payments.all())
+        print 'payment_total', payment_total, 'balance_due', reebill.balance_due
+
+        # result cannot be negative
+        return max(Decimal(0), reebill.balance_due - payment_total)
 
     def delete_reebill(self, session, account, sequence):
         '''Deletes the reebill given by 'account' and 'sequence': removes state
