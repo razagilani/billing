@@ -16,7 +16,7 @@ billdb_config = {
 
 class StateTest(unittest.TestCase):
     def setUp(self):
-        self.state_db = state.StateDB(statedb_config)
+        self.state_db = state.StateDB(**statedb_config)
         self.reebill_dao = mongo.ReebillDAO(billdb_config)
 
     def test_guess_next_reebill_end_date(self):

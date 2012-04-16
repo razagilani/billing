@@ -46,7 +46,7 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
     least if the interruption does not occur while writing a single line).'''
     # objects for database access
     reebill_dao = mongo.ReebillDAO(billdb_config)
-    state_db = state.StateDB(statedb_config)
+    state_db = state.StateDB(**statedb_config)
     session = state_db.session()
     splinter = Splinter(splinter_config['url'], splinter_config['host'],
             splinter_config['db'])

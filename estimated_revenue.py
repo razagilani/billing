@@ -149,12 +149,12 @@ class EstimatedRevenue(object):
 
 
 if __name__ == '__main__':
-    state_db = StateDB({
-        'host': 'localhost',
-        'database': 'skyline_dev',
-        'user': 'dev',
-        'password': 'dev',
-    })
+    state_db = StateDB(
+        host='localhost',
+        database='skyline_dev',
+        user='dev',
+        password='dev'
+    )
     reebill_dao = ReebillDAO({
         'host': 'localhost',
         'port': 27017,
