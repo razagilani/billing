@@ -989,7 +989,7 @@ class BillToolBridge:
                     'casualname' in name_dicts[status.account] else ''),
                 ('primusname', name_dicts[status.account]['primus'] if
                     'primus' in name_dicts[status.account] else ''),
-                ('dayssince', status.dayssince)
+                ('dayssince', status.dayssince),
             ]) for i, status in enumerate(statuses)]
 
             session.commit()
@@ -1002,8 +1002,8 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     def summary_ree_charges(self, start, limit, **args):
-        # call getrows to actually query the database; return the result in
-        # JSON format if it succeded or an error if it didn't
+        '''Handles AJAX request for "Summary and Export" grid in "Accounts"
+        tab.'''
         try:
             session = None
 
@@ -1017,6 +1017,10 @@ class BillToolBridge:
             full_names = self.full_names_of_accounts([account for account in accounts])
 
             rows = self.process.summary_ree_charges(session, accounts, full_names)
+
+            for row in rows:
+                row.update({'outstandingbalance': '$%.2f' % self.process\
+                        .get_outstanding_balance(session,row['account'])})
 
             session.commit()
 
