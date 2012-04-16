@@ -4,6 +4,8 @@ import datetime
 import uuid
 from billing.mongo_utils import bson_convert
 from billing.mongo_utils import python_convert
+import sys
+sys.stdout = sys.stderr
 
 class JournalDAO(object):
 
@@ -54,10 +56,24 @@ class JournalDAO(object):
 
     def load_entries(self, account):
         query = { "account": account }
-        journal_entries = self.collection.find(query)
+        journal_entries = self.collection.find(query).sort('date')
         # TODO pagination
         return [python_convert(journal_entry) for journal_entry in journal_entries]
 
+    def last_event_description(self, account):
+        entries = self.load_entries(account)
+        if entries == []:
+            return ''
+        last_entry = entries[-1]
+        try:
+            event_name = last_entry['event']
+        except KeyError:
+            # TODO fix the data
+            print >> sys.stderr, 'account %s has a journal entry with no "event" key: fix it!' % account
+            event_name = '???'
+        description = '%s at %s' % (event_name, last_entry['date'])
+        return description
+            
 
 # enumeration of events:
 # from https://www.pivotaltracker.com/story/show/23830853
