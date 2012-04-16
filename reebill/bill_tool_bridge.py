@@ -400,6 +400,7 @@ class BillToolBridge:
                 'rows': rows
             })
         except Exception as e:
+            self.rollback_session()
             return self.handle_exception(e)
 
     ###########################################################################
@@ -997,6 +998,7 @@ class BillToolBridge:
             ]) for i, status in enumerate(statuses)]
 
             # also get customers from Nexus who don't exist in billing yet
+            # (do not sort these; just append them to the end)
             non_billing_customers = self.nexus_util.get_non_billing_customers()
             for customer in non_billing_customers:
                 rows.append(dict([
