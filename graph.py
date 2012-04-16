@@ -103,7 +103,7 @@ def main():
         'user': args.stateuser
     }
 
-    g = Grapher(StateDB(statedb_config), ReebillDAO(billdb_config))
+    g = Grapher(StateDB(**statedb_config), ReebillDAO(billdb_config))
     g.plot_monthly_actual_and_hypothetical_ce_charces(args.account, 'chart.png')
 
 if __name__ == '__main__':

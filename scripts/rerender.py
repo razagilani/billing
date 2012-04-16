@@ -25,7 +25,7 @@ renderer_config = {
 }
 
 reebill_dao = mongo.ReebillDAO(billdb_config)
-state_db = state.StateDB(statedb_config)
+state_db = state.StateDB(**statedb_config)
 renderer = render.ReebillRenderer(renderer_config, None)
 
 session = state_db.session()

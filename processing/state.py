@@ -120,21 +120,11 @@ class StateDB:
 
     config = None
 
-    def __init__(self, config):
-        config = config
-
-        '''This returns a database session object for querying the database. Don't call
-        it from outside this file, because the session should only be created
-        once. Instead, use the global variable 'session' above.'''
-        host = config['host']
-        db = config['database']
-        user = config['user']
-        password = config['password']
-
+    def __init__(self, host, database, user, password, db_connections=5):
         # put "echo=True" in the call to create_engine to print the SQL
         # statements that are executed
         engine = create_engine('mysql://%s:%s@%s:3306/%s' % (user, password,
-                host, db), pool_recycle=3600)
+                host, database), pool_recycle=3600, pool_size=db_connections)
         metadata = MetaData(engine)
 
         # table objects loaded automatically from database

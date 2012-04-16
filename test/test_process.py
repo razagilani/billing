@@ -525,7 +525,7 @@ class ProcessTest(unittest.TestCase):
         mysql_connection.commit()
 
         # insert one customer
-        self.state_db = StateDB(statedb_config)
+        self.state_db = StateDB(**statedb_config)
         session = self.state_db.session()
         # name, account, discount rate, late charge rate
         customer = Customer('Test Customer', '99999', .12, .34)
@@ -754,12 +754,12 @@ class ProcessTest(unittest.TestCase):
             mappers. SQLAlchemy does provide a way to get around this.''')
     def test_sequences_for_approximate_month(self):
         # use real databases instead of the fake ones
-        state_db = StateDB({
-            'host': 'localhost',
-            'database': 'skyline_dev',
-            'user': 'dev',
-            'password': 'dev'
-        })
+        state_db = StateDB(
+            host='localhost',
+            database='skyline_dev',
+            user='dev',
+            password='dev'
+        )
         reebill_dao = mongo.ReebillDAO({
             'billpath': '/db-dev/skyline/bills/',
             'database': 'skyline',

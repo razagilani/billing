@@ -3,12 +3,12 @@
 components of utility bill start and end dates, using utility bills in the
 MySQL database below.'''
 from billing.processing.state import StateDB
-state_db = StateDB({
-    'host':'tyrell',
-    'database':'skyline_stage',
-    'user':'stage',
-    'password':'stage'
-})
+state_db = StateDB(
+    host='tyrell',
+    database='skyline_stage',
+    user='stage',
+    password='stage'
+)
 
 print 'Period lenth distribution (days):'
 length_histogram = {}

@@ -162,8 +162,7 @@ def main():
         'database': 'skyline_dev',
         'user': 'dev'
     }
-
-    state_db = state.StateDB(statedb_config)
+    state_db = state.StateDB(**statedb_config)
 
     exporter = Exporter(
         state_db,
