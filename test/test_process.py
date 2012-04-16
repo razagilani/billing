@@ -21,7 +21,6 @@ from billing.mongo_utils import python_convert
 
 class ProcessTest(unittest.TestCase):
     def setUp(self):
-        print 'setUp'
         # everything needed to create a Process object
         config_file = StringIO('''[runtime]\nintegrate_skyline_backend = true''')
         self.config = ConfigParser.RawConfigParser()
@@ -515,15 +514,15 @@ class ProcessTest(unittest.TestCase):
         }
 
         ## clear out tables in mysql test database (not relying on StateDB)
-        #mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test') # host, username, password, db
-        #c = mysql_connection.cursor()
-        #c.execute("delete from payment")
-        #c.execute("delete from utilbill")
-        #c.execute("delete from rebill")
-        #c.execute("delete from customer")
-        ## (note that status_days_since, status_unbilled are views and you
-        ## neither can nor need to delete from them)
-        #mysql_connection.commit()
+        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
+        c = mysql_connection.cursor()
+        c.execute("delete from payment")
+        c.execute("delete from utilbill")
+        c.execute("delete from rebill")
+        c.execute("delete from customer")
+        # (note that status_days_since, status_unbilled are views and you
+        # neither can nor need to delete from them)
+        mysql_connection.commit()
 
         # insert one customer
         self.state_db = StateDB(statedb_config)
@@ -532,7 +531,6 @@ class ProcessTest(unittest.TestCase):
         customer = Customer('Test Customer', '99999', .12, .34)
         session.add(customer)
         session.commit()
-        print 'end of setUp'
 
     def tearDown(self):
         '''This gets run even if a test fails.'''
@@ -541,7 +539,7 @@ class ProcessTest(unittest.TestCase):
         mongo_connection.drop_database('test')
 
         # clear out tables in mysql test database (not relying on StateDB)
-        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test') # host, username, password, db
+        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
         c = mysql_connection.cursor()
         c.execute("delete from payment")
         c.execute("delete from utilbill")
@@ -562,11 +560,16 @@ class ProcessTest(unittest.TestCase):
             bill1.account = '99999'
             bill1.sequence = 1
             bill1.balance_forward = Decimal('100.')
-            self.assertEqual(0, process.get_late_charge(session, bill1, date(2011,12,31)))
-            self.assertEqual(0, process.get_late_charge(session, bill1, date(2012,1,1)))
-            self.assertEqual(0, process.get_late_charge(session, bill1, date(2012,1,2)))
-            self.assertEqual(0, process.get_late_charge(session, bill1, date(2012,2,1)))
-            self.assertEqual(0, process.get_late_charge(session, bill1, date(2012,2,2)))
+            self.assertEqual(0, process.get_late_charge(session, bill1,
+                date(2011,12,31)))
+            self.assertEqual(0, process.get_late_charge(session, bill1,
+                date(2012,1,1)))
+            self.assertEqual(0, process.get_late_charge(session, bill1,
+                date(2012,1,2)))
+            self.assertEqual(0, process.get_late_charge(session, bill1,
+                date(2012,2,1)))
+            self.assertEqual(0, process.get_late_charge(session, bill1,
+                date(2012,2,2)))
  
             # issue bill 1, so a later bill can have a late charge based on the
             # customer's failure to pay bill1 by its due date. i.e. 30 days
@@ -612,12 +615,18 @@ class ProcessTest(unittest.TestCase):
             # bill2's late charge should be 0 before bill1's due date, and
             # after the due date, it's balance * (1 + late charge rate), i.e.
             # 100 * (1 + .34)
-            self.assertEqual(0, process.get_late_charge(session, bill2, date(2011,12,31)))
-            self.assertEqual(0, process.get_late_charge(session, bill2, date(2012,1,2)))
-            self.assertEqual(0, process.get_late_charge(session, bill2, date(2012,1,31)))
-            self.assertEqual(134, process.get_late_charge(session, bill2, date(2012,2,1)))
-            self.assertEqual(134, process.get_late_charge(session, bill2, date(2012,2,2)))
-            self.assertEqual(134, process.get_late_charge(session, bill2, date(2013,1,1)))
+            self.assertEqual(0, process.get_late_charge(session, bill2,
+                date(2011,12,31)))
+            self.assertEqual(0, process.get_late_charge(session, bill2,
+                date(2012,1,2)))
+            self.assertEqual(0, process.get_late_charge(session, bill2,
+                date(2012,1,31)))
+            self.assertEqual(134, process.get_late_charge(session, bill2,
+                date(2012,2,1)))
+            self.assertEqual(134, process.get_late_charge(session, bill2,
+                date(2012,2,2)))
+            self.assertEqual(134, process.get_late_charge(session, bill2,
+                date(2013,1,1)))
  
             # in order to get late charge of a 3rd bill, bill2 must be put into
             # mysql and "summed"
@@ -631,8 +640,10 @@ class ProcessTest(unittest.TestCase):
             bill3.account = '99999'
             bill3.sequence = 3
             bill3.balance_due = Decimal('300.')
-            self.assertEqual(None, process.get_late_charge(session, bill3, date(2011,12,31)))
-            self.assertEqual(None, process.get_late_charge(session, bill3, date(2013,1,1)))
+            self.assertEqual(None, process.get_late_charge(session, bill3,
+                date(2011,12,31)))
+            self.assertEqual(None, process.get_late_charge(session, bill3,
+                date(2013,1,1)))
  
             session.commit()
         except:
@@ -742,7 +753,6 @@ class ProcessTest(unittest.TestCase):
             another database, fails with a SQLAlchemy error about multiple
             mappers. SQLAlchemy does provide a way to get around this.''')
     def test_sequences_for_approximate_month(self):
-        print 'test_sequences_for_approximate_month'
         # use real databases instead of the fake ones
         state_db = StateDB({
             'host': 'localhost',
@@ -766,12 +776,8 @@ class ProcessTest(unittest.TestCase):
                 reebill = reebill_dao.load_reebill(account, sequence)
 
                 # get real approximate month for this bill
-                year, month = estimate_month(reebill.period_begin, reebill.period_end)
-
-                #print '%s-%s: period is %s - %s, approx month is %s-%s' % (
-                        #account, sequence, reebill.period_begin,
-                        #reebill.period_end, year, month)
-                #print 'sequence for %s-%s should be %s' % (year, month, sequence)
+                year, month = estimate_month(reebill.period_begin,
+                        reebill.period_end)
 
                 # make sure it's contained in the result of
                 # sequences_for_approximate_month(), and make sure that result
@@ -788,16 +794,20 @@ class ProcessTest(unittest.TestCase):
                 self.assertTrue(all([m == (year, month) for m in months]))
 
         # test months before last sequence
-        self.assertEquals([], process.sequences_for_approximate_month(session, '10001', 2009, 10))
-        self.assertEquals([], process.sequences_for_approximate_month(session, '10001', 2009, 10))
-        self.assertEquals([], process.sequences_for_approximate_month(session, '10002', 2010, 1))
+        self.assertEquals([], process.sequences_for_approximate_month(session,
+            '10001', 2009, 10))
+        self.assertEquals([], process.sequences_for_approximate_month(session,
+            '10001', 2009, 10))
+        self.assertEquals([], process.sequences_for_approximate_month(session,
+            '10002', 2010, 1))
 
         # test 3 months after last sequence for each account
         for account in self.state_db.listAccounts(session):
             last_seq = self.state_db.last_sequence(session, account)
             if last_seq == 0: continue
             last = reebill_dao.load_reebill(account, last_seq)
-            last_year, last_month = estimate_month(last.period_begin, last.period_end)
+            last_year, last_month = estimate_month(last.period_begin,
+                    last.period_end)
             next_year, next_month = month_offset(last_year, last_month, 1)
             next2_year, next2_month = month_offset(last_year, last_month, 2)
             next3_year, next3_month = month_offset(last_year, last_month, 3)
@@ -814,5 +824,4 @@ class ProcessTest(unittest.TestCase):
         session.commit()
 
 if __name__ == '__main__':
-    #unittest.main(failfast=True)
-    unittest.main()
+    unittest.main(failfast=True)
