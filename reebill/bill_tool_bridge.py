@@ -1765,9 +1765,15 @@ class BillToolBridge:
             if xaction == "read":
                 reebills, totalCount = self.state_db.listReebills(session,
                         int(start), int(limit), account)
-                # convert the result into a list of dictionaries for returning as
-                # JSON to the browser
-                rows = [{'id': reebill.sequence, 'sequence': reebill.sequence} for reebill in reebills]
+                rows = []
+                for reebill in reebills:
+                    # we have to load each bill from Mongo to get its period dates
+                    mongo_reebill = self.reebill_dao.load_reebill(account, reebill.sequence)
+                    rows.append({
+                        'id': reebill.sequence, 'sequence': reebill.sequence,
+                        'period_start': mongo_reebill.period_begin,
+                        'period_end': mongo_reebill.period_end
+                    })
                 session.commit()
                 return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
 
