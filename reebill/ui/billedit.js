@@ -579,6 +579,8 @@ function reeBillReady() {
         idProperty: 'id',
         fields: [
             {name: 'sequence'},
+            {name: 'period_start'},
+            {name: 'period_end'},
         ],
     });
 
@@ -650,6 +652,14 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'sequence',
                 editor: new Ext.form.TextField({allowBlank: true})
+            }, {
+                header: 'Start Date',
+                sortable: true,
+                dataIndex: 'period_start',
+            }, {
+                header: 'End Date',
+                sortable: true,
+                dataIndex: 'period_end',
             },
         ]
     });
@@ -3793,8 +3803,7 @@ function reeBillReady() {
 
     var mailReebillColModel = new Ext.grid.ColumnModel(
     {
-        columns: [
-            {
+        columns: [{
                 header: 'Sequence',
                 sortable: true,
                 dataIndex: 'sequence',
