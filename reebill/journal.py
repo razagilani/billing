@@ -1,30 +1,92 @@
 #!/usr/bin/python
-import pymongo
+import sys
 import datetime
 import uuid
+import pymongo
+import mongokit
+from mongokit import OR, IS
 from billing.mongo_utils import bson_convert
 from billing.mongo_utils import python_convert
 from billing import dateutils
-import sys
+
 sys.stdout = sys.stderr
+
+# list of events (keys) and their human-readable descriptions
+# Outside this class, always refer to these as Journal.ReeBillRolled, etc.
+event_names = {
+    'Note': 'Note', # log event as a note
+    'ReeBillRolled': 'Reebill rolled',
+    'ReeBillBoundtoREE': 'RE&E offset bound',
+    'ReeBillUsagePeriodUpdated': 'Usage period updated',
+    'ReeBillBillingPeriodUpdated': 'Billing period updated',
+    'ReeBillRateStructureModified': 'Rate structure modified',
+    'ReeBillCommitted': 'Reebill committed', # TODO delete? has this ever been used?
+    'ReeBillMailed': 'Utility bills attached to reebill',
+    'ReeBillDeleted': 'Reebill deleted',
+    'ReeBillAttached': 'Reebill attached to utility bills',
+    'PaymentEntered': 'Payment entered',
+    'AccountCreated': 'Account created', # no sequence associated with this one
+
+    # TODO add utility bill uploaded? that has an account but no sequence
+}
+
+class JournalEntry(mongokit.Document):
+    '''MongoKit schema definition for journal entry document.'''
+    # In normal MongoKit usage one defines __database__ and __collection__
+    # properties here. But we want to configure the databse and collection
+    # dynamically, so we "register" this class with the database collection
+    # object in the JournalDAO constructor, which makes this class a property
+    # of JournalDAO's 'collection'; we use collection.JournalEntry instead of
+    # just JournalEntry to create journal entries that belong to that
+    # collection.
+
+    # all possible fields and their types
+    structure = {
+        # the required fields
+        'date': datetime.datetime,
+        'user': OR(unicode, str), # user identifier (not username)
+        'event': IS(*event_names), # one of the event names defined above
+        'account': OR(unicode, str),
+        'sequence': int,
+
+        # only for Note events
+        'msg': OR(unicode, str),
+
+        # only for ReeBillMailed events
+        'address': OR(unicode, str),
+        #...
+    }
+
+    # subset of the above fields that are required in every document
+    # TODO sequence should not be required for AccountCreated event
+    required_fields = ['date', 'user', 'event', 'account', 'sequence']
+
+    # allow non-unicode 'str' type (mongokit forbids it by default)
+    authorized_types = mongokit.Document.authorized_types + [str,] 
+
+    # prevent MongoKit from inserting None for all non-required fields when
+    # they're not given?
+    #use_schemaless = True
+    # (does not work)
+
 
 class JournalDAO(object):
 
-    def __init__(self, config):
-
-        self.config = config
-        self.connection = None
-        self.database = None
-        self.collection = None
-
+    def __init__(self, database, collection, host='localhost', port=27017):
         try:
-            self.connection = pymongo.Connection(self.config['host'], int(self.config['port']))
+            # mongokit Connection is subclass of pymongo Connection
+            self.connection = mongokit.Connection(host, int(port))
         except Exception as e: 
             print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
             raise e
+
+        # mongokit requires some kind of association between the JournalEntry
+        # class and the database Connection. this makes the JournalEntry class
+        # a property of the Connection object.
+        self.connection.register(JournalEntry)
         
-        self.database = self.connection[self.config['database']]
-        self.collection = self.database[self.config['collection']]
+        self.database = self.connection[database]
+        self.collection = self.database[collection]
 
     def __del__(self):
         # TODO: 17928569 clean up mongo resources here?
@@ -36,19 +98,25 @@ class JournalDAO(object):
         contents of kwargs will be inserted directly into the document.'''
         if event_type not in event_names:
             raise ValueError('Unknown event type: %s' % event_type)
-        journal_entry = {}
+
+        # create empty JournalEntry object: you must use
+        # collection.JournalEntry and not just JournalEntry, because the latter
+        # doesn't know what class it's supposed to be associated with
+        journal_entry = self.collection.JournalEntry()
+
         for kwarg, value in kwargs.iteritems():
             journal_entry[kwarg] = value
+
+        # required fields
         journal_entry['user'] = user.identifier
-        journal_entry['account'] = account
-        journal_entry['sequence'] = sequence
         journal_entry['date'] = datetime.datetime.utcnow()
         journal_entry['event'] = event_type
-        # TODO include user identifier of the user who caused the event?
+        journal_entry['account'] = account
+        journal_entry['sequence'] = sequence
 
-        journal_entry_data = bson_convert(journal_entry)
-
-        self.collection.save(journal_entry_data)
+        #journal_entry_data = bson_convert(journal_entry)
+        #self.collection.save(journal_entry_data)
+        journal_entry.save()
 
     def load_entries(self, account):
         query = { "account": account }
@@ -81,23 +149,8 @@ class JournalDAO(object):
         return description
 
 
-# list of events (keys) and their human-readable descriptions
-# Outside this class, always refer to these as Journal.ReeBillRolled, etc.
-event_names = {
-    'Note': 'Note', # log event as a note
-    'ReeBillRolled': 'Reebill rolled',
-    'ReeBillBoundtoREE': 'RE&E offset bound',
-    'ReeBillUsagePeriodUpdated': 'Usage period updated',
-    'ReeBillBillingPeriodUpdated': 'Billing period updated',
-    'ReeBillRateStructureModified': 'Rate structure modified',
-    'ReeBillCommitted': 'Reebill committed', # TODO delete? has this ever been used?
-    'ReeBillMailed': 'Utility bills attached to reebill',
-    'ReeBillDeleted': 'Reebill deleted',
-    'ReeBillAttached': 'Reebill attached to utility bills',
-    'PaymentEntered': 'Payment entered',
-    'AccountCreated': 'Account created', # no sequence associated with this one
-}
 # make each key in the 'event_names' dict a property of the class (with its own
 # name as its value)
 for event_name in event_names.keys():
     setattr(JournalDAO, event_name, event_name)
+

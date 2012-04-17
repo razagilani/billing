@@ -288,7 +288,7 @@ class BillToolBridge:
 
         # create a JournalDAO
         journaldb_config_section = self.config.items("journaldb")
-        self.journal_dao = journal.JournalDAO(dict(journaldb_config_section))
+        self.journal_dao = journal.JournalDAO(**dict(journaldb_config_section))
 
         # create a Splinter
         self.splinter = Splinter(self.config.get('skyline_backend',
@@ -2450,9 +2450,10 @@ class BillToolBridge:
             # TODO: 1320091681504  allow a journal entry to be made without a sequence
             if not account or not sequence or not entry:
                 raise ValueError("Bad Parameter Value")
+            sequence = int(sequence)
 
             self.journal_dao.log_event(cherrypy.session['user'], account,
-                    sequence, JournalDAO.Note, message=entry)
+                    sequence, JournalDAO.Note, msg=entry)
 
             return self.dumps({'success':True})
 
