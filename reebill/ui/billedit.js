@@ -4032,7 +4032,7 @@ function reeBillReady() {
 
         // paging bar on the bottom
         bbar: new Ext.PagingToolbar({
-            pageSize: 25,
+            pageSize: 30,
             store: accountStore,
             displayInfo: true,
             displayMsg: 'Displaying {0} - {1} of {2}',

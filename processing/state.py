@@ -466,7 +466,7 @@ class StateDB:
         payments = session.query(Payment).join(Customer).filter(Customer.account==account).all()
         return payments
 
-    def retrieve_status_days_since(self, session, start, limit, sort_col, sort_order):
+    def retrieve_status_days_since(self, session, sort_col, sort_order):
         # SQLAlchemy query to get account & dates for all utilbills
         entityQuery = session.query(StatusDaysSince)
 
@@ -479,12 +479,7 @@ class StateDB:
 
         print lockmodeQuery
 
-        # SQLAlchemy does SQL 'limit' with Python list slicing
-        slice = lockmodeQuery[start:start + limit]
-
-        count = lockmodeQuery.count()
-
-        return slice, count
+        return lockmodeQuery.all()
 
     def retrieve_status_unbilled(self, session, start, limit):
         # SQLAlchemy query to get account & dates for all utilbills
