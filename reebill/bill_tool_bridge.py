@@ -976,11 +976,13 @@ class BillToolBridge:
             session = None
             if not start or not limit:
                 raise ValueError("Bad Parameter Value")
+            start, limit = int(start), int(limit)
+
             # result is a list of dictionaries of the form
             # {account: full name, dayssince: days}
             session = self.state_db.session()
-            statuses, count = self.state_db.retrieve_status_days_since(
-                    session, int(start), int(limit), kwargs.get('sort', None), kwargs.get('dir', None))
+            statuses = self.state_db.retrieve_status_days_since(session,
+                    kwargs.get('sort', None), kwargs.get('dir', None))
             # sort by account--TODO do the sorting in the database query itself
             #statuses.sort(key=lambda s: s.account)
 
@@ -1011,6 +1013,13 @@ class BillToolBridge:
                     ('primusname', customer['primus']),
                     ('provisionable', True)
                 ]))
+
+            # count includes both billing and non-billing customers (front end
+            # needs this for pagination)
+            count = len(rows)
+
+            # take slice for one page of the grid's data
+            rows = rows[start:start+limit]
 
             session.commit()
             return self.dumps({'success': True, 'rows':rows, 'results':count})
