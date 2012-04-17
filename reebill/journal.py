@@ -30,11 +30,6 @@ class JournalDAO(object):
         # TODO: 17928569 clean up mongo resources here?
         pass
 
-    ## TODO this should go away
-    #def journal(self, account, sequence, message):
-        #'''Special method that logs and event of type Note.'''
-        #self.log_event(account, sequence, JournalDAO.Note, msg=message)
-
     def log_event(self, user, account, sequence, event_type, **kwargs):
         '''Logs an event associated with the given user and the reebill given
         by account and sequence. A timestamp is produced automatically and the

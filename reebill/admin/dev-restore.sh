@@ -2,12 +2,12 @@
 # Script to restore development MySQL, Mongo collections, and filesystem from
 # backups on tyrell. Based on billing/reebill/admin/destage.bash.
 now=`date +"%Y%m%d"`
-tarball=${now}reebill-prod.tar.z
+#tarball=${now}reebill-prod.tar.z
 
 cd /tmp
 
-scp `whoami`@tyrell:/tmp/$tarball .
-tar xvzf $tarball
+#scp `whoami`@tyrell:/tmp/$tarball .
+#tar xvzf $tarball
 #mysql --verbose -udev -pdev -htyrell -D skyline_dev < /tmp/${now}billing_mysql.dmp
 # apparently only root can restore the database?
 # "Access denied; you need the SUPER privilege for this operation"
