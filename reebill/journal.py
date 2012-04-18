@@ -2,6 +2,7 @@
 import sys
 import datetime
 import uuid
+import copy
 import pymongo
 import mongokit
 from mongokit import OR, IS
@@ -44,16 +45,16 @@ class JournalEntry(mongokit.Document):
     structure = {
         # the required fields
         'date': datetime.datetime,
-        'user': OR(unicode, str), # user identifier (not username)
+        'user': basestring, # user identifier (not username)
         'event': IS(*event_names), # one of the event names defined above
-        'account': OR(unicode, str),
+        'account': basestring,
         'sequence': int,
 
         # only for Note events
-        'msg': OR(unicode, str),
+        'msg': basestring,
 
         # only for ReeBillMailed events
-        'address': OR(unicode, str),
+        'address': basestring,
         #...
     }
 
@@ -61,12 +62,14 @@ class JournalEntry(mongokit.Document):
     # TODO sequence should not be required for AccountCreated event
     required_fields = ['date', 'user', 'event', 'account', 'sequence']
 
-    # allow non-unicode 'str' type (mongokit forbids it by default)
-    authorized_types = mongokit.Document.authorized_types + [str,] 
+    # allow non-unicode string types that mongokit forbids by default (for some
+    # reason 'str' must be included to allow str values in basestring
+    # variables, even though all strs are basestrings)
+    authorized_types = mongokit.Document.authorized_types + [str, basestring] 
 
     # prevent MongoKit from inserting None for all non-required fields when
     # they're not given?
-    #use_schemaless = True
+    use_schemaless = True
     # (does not work)
 
 
@@ -119,10 +122,14 @@ class JournalDAO(object):
         journal_entry.save()
 
     def load_entries(self, account):
+        # TODO pagination
         query = { "account": account }
         journal_entries = self.collection.find(query).sort('date')
-        # TODO pagination
-        return [python_convert(journal_entry) for journal_entry in journal_entries]
+        # copy each entry to prevent outside code from modifying the real
+        # database document
+        # TODO remove python_convert?
+        return [copy.deepcopy(python_convert(journal_entry)) for journal_entry
+                in journal_entries]
 
     def last_event_description(self, account):
         '''Returns a human-readable description of the last event for the given
@@ -154,3 +161,13 @@ class JournalDAO(object):
 for event_name in event_names.keys():
     setattr(JournalDAO, event_name, event_name)
 
+if __name__ == '__main__':
+    dao = JournalDAO(database='skyline', collection='journal')
+    entries = dao.load_entries('10003')
+
+    class FakeUser(object): pass
+    fakeuser = FakeUser()
+    setattr(fakeuser, 'identifier', 'fake')
+
+    import pdb; pdb.set_trace()
+    dao.log_event(fakeuser, '99999', 1, 'Note', msg='hello')
