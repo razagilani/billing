@@ -221,6 +221,7 @@ def usage_data_to_virtual_register(reebill, energy_function,
         assert service_of_this_register is not None
         
         # reset register in case energy was previously accumulated
+        # TODO 28245047: use set_shadow_register_quantity function in reebill
         register['quantity'] = 0.0
 
         for day in dateutils.date_generator(begin_date, end_date):
@@ -248,10 +249,15 @@ def usage_data_to_virtual_register(reebill, energy_function,
                 energy_today = energy_function(day, hourrange)
                 
                 # convert units from BTU to kWh (for electric) or therms (for gas)
+                # TODO 28245047: use set_shadow_register_quantity function in reebill
+
                 if register['quantity_units'].lower() == 'kwh':
-                    energy_today /= 3412.14
+                    energy_today /= Decimal('3412.14')
                 elif register['quantity_units'].lower() == 'therms':
-                    energy_today /= 100000.0
+                    energy_today /= Decimal('100000.0')
+                elif register['quantity_units'].lower() == 'ccf':
+                    # TODO 28247371: this is an unfair conversion
+                    energy_today /= Decimal('1.0')
                 else:
                     raise Exception('unknown energy unit %s' %
                             register['quantity_units'])
