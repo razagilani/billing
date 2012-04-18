@@ -221,7 +221,7 @@ def usage_data_to_virtual_register(reebill, energy_function,
         assert service_of_this_register is not None
         
         # reset register in case energy was previously accumulated
-        register['quantity'] = 0
+        register['quantity'] = 0.0
 
         for day in dateutils.date_generator(begin_date, end_date):
             # the hour ranges during which we want to accumulate energy in this
