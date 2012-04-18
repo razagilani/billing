@@ -426,8 +426,7 @@ class Process(object):
             # find out what registers are needed to process this rate structure
             #register_needs = rate_structure.register_needs()
 
-            #actual_register_readings = reebill.actual_registers(service)
-            actual_register_readings = []
+            actual_register_readings = reebill.actual_registers(service)
             shadow_register_readings = reebill.shadow_registers(service)
 
             # add the shadow register totals to the actual register, and re-process
@@ -450,7 +449,7 @@ class Process(object):
             # apply the combined registers from the reebill to the probable rate structure
             rate_structure.bind_register_readings(registers_to_bind)
 
-            # process actual charges with non-shadow meter register totals
+            # process hypothetical charges with shadow and non-shadow meter register totals
             hypothetical_chargegroups = reebill.hypothetical_chargegroups_for_service(service)
 
             # iterate over the charge groups, binding the reebill charges to its associated RSI
