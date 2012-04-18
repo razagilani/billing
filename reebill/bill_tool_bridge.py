@@ -98,6 +98,7 @@ def authenticate_ajax(method):
         except Unauthenticated as e:
             # ajax response handlers in front-end interpret this and show
             # message box to redirect to login page
+            # TODO: 28251379
             return ju.dumps({'success': False, 'errors':
                 {'reason': 'No Session'}})
     return wrapper
