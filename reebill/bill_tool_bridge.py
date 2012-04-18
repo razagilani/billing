@@ -744,7 +744,7 @@ class BillToolBridge:
             self.process.calculate_statistics(prior_reebill, reebill)
 
             # set late charge to its updated value
-            reebill.late_charges = self.process.get_late_charge(session, reebill)
+            #reebill.late_charges = self.process.get_late_charge(session, reebill)
 
             self.reebill_dao.save_reebill(reebill)
 
