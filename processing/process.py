@@ -122,20 +122,20 @@ class Process(object):
         # set late charge, if any (this will be None if the previous bill has
         # not been issued, 0 before the previous bill's due date, and non-0
         # after that)
-        lc = self.get_late_charge(session, present_reebill)
 
-        # there is no late charge to be applied (see get_late_charge)
-        lc = 0 if lc is None else lc
-
-        present_reebill.late_charges = lc
 
         # now grab the prior bill and pull values forward
         present_reebill.prior_balance = prior_reebill.balance_due
         present_reebill.balance_forward = present_reebill.prior_balance - present_reebill.payment_received
-        if present_reebill.late_charges == None:
-            present_reebill.late_charges = 0
-        present_reebill.balance_due = present_reebill.balance_forward + \
-                present_reebill.ree_charges + present_reebill.late_charges
+
+        lc = self.get_late_charge(session, present_reebill)
+        if lc is not None:
+            present_reebill.late_charges = lc
+            present_reebill.balance_due = present_reebill.balance_forward + \
+                    present_reebill.ree_charges + present_reebill.late_charges
+        else:
+            present_reebill.balance_due = present_reebill.balance_forward + \
+                    present_reebill.ree_charges
 
         # TODO total_adjustment
 
@@ -249,6 +249,14 @@ class Process(object):
         of 0.)'''
         if reebill.sequence <= 1:
             return Decimal(0)
+
+        # ensure that a large charge rate exists in the reebill
+        # if not, do not process a late_charge_rate (treat as zero)
+        try: 
+            reebill.late_charge_rate
+        except KeyError:
+            return None
+
         if not self.state_db.is_issued(session, reebill.account,
                 reebill.sequence - 1):
             return None
@@ -275,6 +283,7 @@ class Process(object):
         if sequence == 0:
             return Decimal(0)
         reebill = self.reebill_dao.load_reebill(account, sequence)
+
         if reebill.issue_date == None:
             return Decimal(0)
 
@@ -635,7 +644,9 @@ class Process(object):
         # effect on late fee)
         # TODO: should this be replaced with a call to sum_bill() to just make
         # sure everything is up-to-date before issuing?
-        reebill.late_charges = self.get_late_charge(session, reebill)
+        lc = self.get_late_charge(session, reebill)
+        if lc is not None:
+            reebill.late_charges = lc
 
         # save in mongo
         self.reebill_dao.save_reebill(reebill)

@@ -532,9 +532,13 @@ class ReebillRenderer:
         Elements.append(t)
         Elements.append(UseUpSpace())
 
-        # populate current charges
-        late_charges = reebill.late_charges
-        print '%%%%', late_charges, type(late_charges)
+
+        try:
+            # populate current charges
+            late_charges = reebill.late_charges
+        except KeyError:
+            late_charges = None
+
         # depiction of conditional template logic based on ReeBill returning None
         # we will want to distinguish between a late charge, a zero dollar late charge and no late charge
         # to allow the template to do fancy formatting
@@ -548,7 +552,7 @@ class ReebillRenderer:
             currentCharges = [
                 [Paragraph("Your Savings", styles['BillLabelRight']), Paragraph(str(reebill.ree_savings.quantize(Decimal(".00"))), styles['BillFieldRight'])],
                 [Paragraph("Renewable Charges", styles['BillLabelRight']), Paragraph(str(reebill.ree_charges.quantize(Decimal(".00"))), styles['BillFieldRight'])],
-                [Paragraph("Late Charges", styles['BillLabelRight']), Paragraph(str("0.00"), styles['BillFieldRight'])]
+                [Paragraph("Late Charges", styles['BillLabelRight']), Paragraph(str("n/a"), styles['BillFieldRight'])]
             ]
 
         t = Table(currentCharges, [135,85])
