@@ -251,7 +251,7 @@ def usage_data_to_virtual_register(reebill, energy_function,
                 if register['quantity_units'].lower() == 'kwh':
                     energy_today /= 3412.14
                 elif register['quantity_units'].lower() == 'therms':
-                    energy_today /= 100000
+                    energy_today /= 100000.0
                 else:
                     raise Exception('unknown energy unit %s' %
                             register['quantity_units'])
