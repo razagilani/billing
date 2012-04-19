@@ -593,8 +593,11 @@ class Process(object):
                     # (but, inexplicably, that's not true: we bill webster
                     # house (10019) starting in october 2011 but its first
                     # monthly olap doc is in november.)
-                    renewable_energy_btus = self.monguru.get_data_for_month(
-                            install, year, month).energy_sold
+                    try:
+                        renewable_energy_btus = self.monguru.get_data_for_month(
+                                install, year, month).energy_sold
+                    except Exception as e:
+                        print "warning monguru error: %s:" % e
 
                 therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
                 next_stats['consumption_trend'].append({
