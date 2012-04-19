@@ -19,6 +19,7 @@ from skyliner.sky_errors import DataHandlerError
 from billing import mongo
 from billing.dictutils import dict_merge
 from billing import dateutils, holidays
+from decimal import Decimal
 
 def fetch_oltp_data(splinter, olap_id, reebill):
     '''Update quantities of shadow registers in reebill with Skyline-generated
@@ -257,7 +258,7 @@ def usage_data_to_virtual_register(reebill, energy_function,
                     energy_today /= Decimal('100000.0')
                 elif register['quantity_units'].lower() == 'ccf':
                     # TODO 28247371: this is an unfair conversion
-                    energy_today /= Decimal('1.0')
+                    energy_today /= Decimal('100000.0')
                 else:
                     raise Exception('unknown energy unit %s' %
                             register['quantity_units'])
@@ -265,7 +266,8 @@ def usage_data_to_virtual_register(reebill, energy_function,
                 print 'register %s accumulating energy %s %s' % (
                         register['identifier'], energy_today,
                         register['quantity_units'])
-                register['quantity'] += energy_today
+                # TODO 28304031 : register wants a float
+                register['quantity'] += float(energy_today)
 
         # update the reebill: put the total skyline energy in the shadow register
         reebill.set_shadow_register_quantity(register['identifier'],
