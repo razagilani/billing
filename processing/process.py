@@ -415,6 +415,7 @@ class Process(object):
             for charges in actual_chargegroups.values():
                 rate_structure.bind_charges(charges)
 
+            # don't have to set this because we modified the actual_chargegroups
             reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
 
             # hypothetical charges
@@ -439,6 +440,7 @@ class Process(object):
             # computation.
 
             # TODO: probably a better way to do this
+
             registers_to_bind = copy.deepcopy(shadow_register_readings)
             for shadow_reading in registers_to_bind:
                 for actual_reading in actual_register_readings:
@@ -455,7 +457,9 @@ class Process(object):
             # iterate over the charge groups, binding the reebill charges to its associated RSI
             for chargegroup, charges in hypothetical_chargegroups.items():
                 rate_structure.bind_charges(charges)
-            reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
+
+            # don't have to set this because we modified the hypothetical_chargegroups
+            #reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
 
 
     def calculate_statistics(self, prior_reebill, reebill):
