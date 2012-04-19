@@ -597,6 +597,7 @@ class Process(object):
                         renewable_energy_btus = self.monguru.get_data_for_month(
                                 install, year, month).energy_sold
                     except Exception as e:
+                        # TODO 28319257 use a logger for this
                         print "warning monguru error: %s:" % e
 
                 therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
