@@ -250,11 +250,15 @@ class MongoReebill(object):
     
     @property
     def issue_date(self):
-        # TODO 23305127 17928227 20846595 
-        # If key is missing, return None seems to be best pattern.
-        # this pattern needs to be propogated throughout this class
+        """ This is a mandatory property of a ReeBill. Consequently, there is
+        no information to be had by throwing a key exception on a missing
+        issue_date.  """
+
         if 'issue_date' in self.dictionary:
             return python_convert(self.dictionary['issue_date'])
+
+        return None
+
     @issue_date.setter
     def issue_date(self, value):
         self.dictionary['issue_date'] = value
@@ -299,19 +303,25 @@ class MongoReebill(object):
     @property
     def late_charge_rate(self):
         '''Late charges rate is a Decimal.'''
-        if 'late_charge_rate' in self.dictionary:
-            return self.dictionary['late_charge_rate']
+        # currently, there is a population of reebills that do not have a late_charge_rate
+        # because late_charge_rate was not yet implemented.
+        # and since we may want to know this, let the key exception be raised.
+        return self.dictionary['late_charge_rate']
     @late_charge_rate.setter
     def late_charge_rate(self, value):
         self.dictionary['late_charge_rate'] = value
 
     @property
     def late_charges(self):
-        if 'late_charges' in self.dictionary:
-            return self.dictionary['late_charges']
+        """ This is an optional property of a ReeBill.  There was a day where
+        ReeBills were not part of a late charge program.  Consequently, we
+        would want to present bills from the past without a late charge box in
+        the UI.  So, an exception if they don't exist.  """
+        return self.dictionary['late_charges']
 
     @late_charges.setter
     def late_charges(self, value):
+        if type(value) is not Decimal: raise ValueError("Requires Decimal")
         self.dictionary['late_charges'] = value
 
     @property
