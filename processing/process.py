@@ -234,6 +234,8 @@ class Process(object):
         reebill.late_charge_rate = self.state_db.late_charge_rate(session,
                 reebill.account)
 
+        # NOTE suspended_services list is carried over automatically
+
         # create reebill row in state database
         self.state_db.new_rebill(session, reebill.account, reebill.sequence)
 
@@ -366,12 +368,12 @@ class Process(object):
     def attach_utilbills(self, session, account, sequence):
         '''Creates association between the reebill given by 'account',
         'sequence' and all utilbills belonging to that customer whose entire
-        periods are within the date interval [start, end]. The utility bills
-        are marked as processed.'''
+        periods are within the date interval [start, end] and whose services
+        are not suspended. The utility bills are marked as processed.'''
         reebill = self.reebill_dao.load_reebill(account, sequence)
-        begin = reebill.period_begin
-        end = reebill.period_end
-        self.state_db.attach_utilbills(session, account, sequence, begin, end)
+        self.state_db.attach_utilbills(session, account, sequence,
+                reebill.period_begin, reebill.period_end,
+                suspended_services=reebill.suspended_services)
 
     def bind_rate_structure(self, reebill):
             # process the actual charges across all services

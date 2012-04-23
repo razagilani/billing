@@ -1868,7 +1868,7 @@ class BillToolBridge:
         discount_rate, late_charge_rate,
         ba_addressee, ba_street1, ba_city, ba_state, ba_postal_code,
         sa_addressee, sa_street1, sa_city, sa_state, sa_postal_code,
-         **args):
+        **kwargs):
         """
         Update account information
         """
@@ -1909,7 +1909,13 @@ class BillToolBridge:
             reebill.service_address['sa_state'] = sa_state
             reebill.service_address['sa_postal_code'] = sa_postal_code
 
-
+            # set disabled services (services not mentioned in the request are
+            # automatically resumed)
+            for service in reebill.services:
+                if kwargs.get('%s_suspended' % service, '') == 'on':
+                    reebill.suspend_service(service)
+                else:
+                    reebill.resume_service(service)
 
             self.reebill_dao.save_reebill(reebill)
 
