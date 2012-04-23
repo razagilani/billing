@@ -2981,10 +2981,12 @@ if __name__ == '__main__':
     local_conf = {
         '/' : {
             'tools.staticdir.root' :os.path.dirname(os.path.abspath(__file__)), 
-            #'tools.staticdir.dir' : '',
-            #'tools.staticdir.on' : True,
+            'tools.staticdir.dir' : 'ui',
+            'tools.staticdir.on' : True,
             'tools.expires.secs': 0,
             'tools.response_headers.on': True,
+            'tools.sessions.on': True,
+            'tools.sessions.timeout': 240
         },
     }
     cherrypy.config.update({ 'server.socket_host': bridge.config.get("http", "socket_host"),
