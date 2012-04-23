@@ -1082,13 +1082,13 @@ class ReebillDAO:
     
 
     def load_reebill(self, account, sequence, branch=0):
-
         if account is None: return None
         if sequence is None: return None
 
         query = {
             "_id.account": str(account),
             "_id.branch": int(branch),
+            # TODO stop passing in sequnce as a string from BillToolBridge
             "_id.sequence": int(sequence)
         }
         mongo_doc = self.collection.find_one(query)
