@@ -1051,7 +1051,8 @@ function reeBillReady() {
                     //value: addresses['service_address']['sa_postal_code'],
                 },
             ]
-        }];
+        },
+    ]
 
     var accountInfoFormPanel = new Ext.FormPanel(
     {
@@ -5431,6 +5432,39 @@ function reeBillReady() {
         chargeItemsPanel.setDisabled(false);
         journalPanel.setDisabled(false);
         mailPanel.setDisabled(false);
+
+        // create checkboxes in Sequential Account Information form for
+        // suspending services of the selected reebill
+        //var utilbills = utilbillGridStore.query('sequence', selected_sequence);
+        var utilbills = utilbillGridStore.queryBy(function(record, id) {
+            return record.data.sequence == selected_sequence;
+        });
+        console.log(selected_account + "-" + selected_sequence + ": " + utilbills.getCount() + " utilbills found");
+        var services = [];
+        for (var i = 0; i < utilbills.getCount(); i++) {
+            if (services.indexOf('service') == -1) {
+                services.push(utilbills.get(i).data.service);
+            }
+        }
+        console.log(selected_account + "-" + selected_sequence + " services: " + services);
+        // can't add/remove items in suspendedServiceCheckboxGroup (it's not an
+        // array), so delete it and re-create it on the fly
+        accountInfoFormPanel.remove('suspended-services');
+        var checkboxes = [];
+        for (i = 0; i < services.length; i++) {
+            checkboxes.push({ 'boxLabel': services[i], 'name': services[i] + '_suspended' });
+        }
+        if (checkboxes == []) {
+            checkboxes = [{boxLabel: 'One checkbox is required', name: 'or Ext will explode'}];
+        }
+        var suspendedServiceCheckboxGroup = new Ext.form.CheckboxGroup({
+            id: 'suspended-services',
+            itemCls: 'x-check-group-alt',
+            fieldLabel: 'Suspended Services',
+            columns: 1,
+            items: checkboxes,// items are set based on the selected reebill's services in loadReeBillUIForSequence()
+        });
+        accountInfoFormPanel.insert(accountInfoFormPanel.items.getCount(), suspendedServiceCheckboxGroup);
 
         // finally, update the status bar with current selection
         updateStatusbar(selected_account, selected_sequence, 0);

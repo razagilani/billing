@@ -180,11 +180,14 @@ class StateDB:
         last_account = max(map(int, self.listAccounts(session)))
         return last_account + 1
 
-    def attach_utilbills(self, session, account, sequence, start, end):
+    # TODO move to process.py?
+    def attach_utilbills(self, session, account, sequence, start, end,
+            suspended_services=[]):
         '''Records in MySQL the association between the reebill given by
         'account', 'sequence' and all utilbills belonging to that customer
-        whose entire periods are within the date interval [start, end]. The
-        utility bills are marked as processed.'''
+        whose entire periods are within the date interval [start, end] and
+        whose services are not in 'suspended_services'. The utility bills are
+        marked as processed.'''
         # get customer id from account and the reebill from account and sequence
         customer = session.query(Customer).filter(Customer.account==account).one()
         reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
@@ -200,10 +203,11 @@ class StateDB:
             raise Exception('No utility bills found between %s and %s' %
                     (start, end))
         
-        # update 'reebill_id' and 'processed' for each utilbill found
+        # update 'reebill_id' and 'processed' for each non-suspended utilbill
         for utilbill in utilbills:
-            utilbill.reebill = reebill
-            utilbill.processed = True
+            if utilbill.service not in suspended_services:
+                utilbill.reebill = reebill
+                utilbill.processed = True
 
     def delete_reebill(self, session, account, sequence):
         # TODO add branch, which MySQL doesn't have yet:

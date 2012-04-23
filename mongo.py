@@ -579,6 +579,43 @@ class MongoReebill(object):
         '''Returns a list of all services for which there are utilbills.'''
         return list(set([u['service'] for u in self.dictionary['utilbills']]))
 
+    @property
+    def suspended_services(self):
+        '''Returns list of services for which billing is suspended (e.g.
+        because the customer has switched to a different fuel for part of the
+        year). Utility bills for this service should be ignored in the attach
+        operation.'''
+        return self.dictionary.get('suspended_services', [])
+
+    def suspend_service(self, service):
+        '''Adds 'service' to the list of suspended services. Returns True iff
+        it was added, False if it already present.'''
+        if service not in self.services:
+            raise ValueError('Unknown service %s' % service)
+
+        if 'suspended_services' not in self.dictionary:
+            self.dictionary['suspended_services'] = []
+        if service not in self.dictionary['suspended_services']:
+            self.dictionary['suspended_services'].append(service)
+            print '%s-%s suspended_services set to %s' % (self.account, self.sequence, self.dictionary['suspended_services'])
+            return True
+        return False
+
+    def resume_service(self, service):
+        '''Removes 'service' from the list of suspended services. Returns True
+        iff it was removed, False if it was not present.'''
+        if service not in self.services:
+            raise ValueError('Unknown service %s' % service)
+
+        if service in self.dictionary['suspended_services']:
+            self.dictionary['suspended_services'].remove(service)
+            # might as well take out the key if the list is empty
+            if self.dictionary['suspended_services'] == []:
+                del self.dictionary['suspended_services']
+            print '%s-%s suspended_services set to %s' % (self.account, self.sequence, self.dictionary['suspended_services'])
+            return True
+        return False
+
     def utilbill_period_for_service(self, service_name):
         '''Returns start & end dates of the first utilbill found whose service
         is 'service_name'. There's not supposed to be more than one utilbill
