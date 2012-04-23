@@ -4,8 +4,8 @@ import datetime
 import uuid
 import copy
 import pymongo
-#import mongokit
-#from mongokit import OR, IS
+import mongokit
+from mongokit import OR, IS
 from billing.mongo_utils import bson_convert
 from billing.mongo_utils import python_convert
 from billing import dateutils
@@ -31,8 +31,7 @@ event_names = {
     # TODO add utility bill uploaded? that has an account but no sequence
 }
 
-#class JournalEntry(mongokit.Document):
-class JournalEntry(object):
+class JournalEntry(mongokit.Document):
     '''MongoKit schema definition for journal entry document.'''
     # In normal MongoKit usage one defines __database__ and __collection__
     # properties here. But we want to configure the databse and collection
@@ -43,33 +42,34 @@ class JournalEntry(object):
     # collection.
 
     # all possible fields and their types
-    #structure = {
-    #    # the required fields
-    #    'date': datetime.datetime,
-    #    'user': basestring, # user identifier (not username)
-    #    'event': IS(*event_names), # one of the event names defined above
-    #    'account': basestring,
-    #    'sequence': int,
-    #    # only for Note events
-    #    'msg': basestring,
+    structure = {
+        # the required fields
+        'date': datetime.datetime,
+        'user': basestring, # user identifier (not username)
+        'event': IS(*event_names), # one of the event names defined above
+        'account': basestring,
+        'sequence': int,
 
-    #    # only for ReeBillMailed events
-    #    'address': basestring,
-    #    #...
-    #}
+        # only for Note events
+        'msg': basestring,
+
+        # only for ReeBillMailed events
+        'address': basestring,
+        #...
+    }
 
     # subset of the above fields that are required in every document
     # TODO sequence should not be required for AccountCreated event
-    #required_fields = ['date', 'user', 'event', 'account', 'sequence']
+    required_fields = ['date', 'user', 'event', 'account', 'sequence']
 
     # allow non-unicode string types that mongokit forbids by default (for some
     # reason 'str' must be included to allow str values in basestring
     # variables, even though all strs are basestrings)
-    #authorized_types = mongokit.Document.authorized_types + [str, basestring] 
+    authorized_types = mongokit.Document.authorized_types + [str, basestring] 
 
     # prevent MongoKit from inserting None for all non-required fields when
     # they're not given?
-    #use_schemaless = True
+    use_schemaless = True
     # (does not work)
 
 
@@ -78,8 +78,7 @@ class JournalDAO(object):
     def __init__(self, database, collection, host='localhost', port=27017):
         try:
             # mongokit Connection is subclass of pymongo Connection
-            #self.connection = mongokit.Connection(host, int(port))
-            self.connection = pymongo.Connection(host, int(port))
+            self.connection = mongokit.Connection(host, int(port))
         except Exception as e: 
             print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
             raise e
@@ -87,7 +86,7 @@ class JournalDAO(object):
         # mongokit requires some kind of association between the JournalEntry
         # class and the database Connection. this makes the JournalEntry class
         # a property of the Connection object.
-        #self.connection.register(JournalEntry)
+        self.connection.register(JournalEntry)
         
         self.database = self.connection[database]
         self.collection = self.database[collection]
@@ -106,8 +105,7 @@ class JournalDAO(object):
         # create empty JournalEntry object: you must use
         # collection.JournalEntry and not just JournalEntry, because the latter
         # doesn't know what class it's supposed to be associated with
-        #journal_entry = self.collection.JournalEntry()
-        journal_entry = {} 
+        journal_entry = self.collection.JournalEntry()
 
         for kwarg, value in kwargs.iteritems():
             journal_entry[kwarg] = value
@@ -119,9 +117,9 @@ class JournalDAO(object):
         journal_entry['account'] = account
         journal_entry['sequence'] = sequence
 
-        journal_entry_data = bson_convert(journal_entry)
-        self.collection.save(journal_entry_data)
-        #journal_entry.save()
+        #journal_entry_data = bson_convert(journal_entry)
+        #self.collection.save(journal_entry_data)
+        journal_entry.save()
 
     def load_entries(self, account):
         # TODO pagination
