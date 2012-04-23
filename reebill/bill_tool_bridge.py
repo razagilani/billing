@@ -499,7 +499,6 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
-    @authenticate_ajax
     def logout(self):
         if 'user' in cherrypy.session:
             self.logger.info('user "%s" logged out' % (cherrypy.session['user'].username))
