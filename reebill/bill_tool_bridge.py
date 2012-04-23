@@ -656,6 +656,7 @@ class BillToolBridge:
                 raise Exception("OLTP is not integrated")
             if self.config.getboolean('runtime', 'integrate_nexus') is False:
                 raise Exception("Nexus is not integrated")
+            sequence = int(sequence)
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
             if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
