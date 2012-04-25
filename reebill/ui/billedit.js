@@ -5455,7 +5455,7 @@ function reeBillReady() {
                         'checked': suspended_services.indexOf(services[i]) != -1,
                     });
                 }
-                console.log('checkboxes: '+checkboxes);
+                console.log(selected_account + ', ' + selected_sequence + ' checkboxes: '+checkboxes);
 
                 // replace the existing checkbox group in accountInfoFormPanel (if present) with a new one
                 accountInfoFormPanel.remove('suspended-services');
@@ -5467,6 +5467,13 @@ function reeBillReady() {
                     items: checkboxes,
                 });
                 accountInfoFormPanel.insert(accountInfoFormPanel.items.getCount(), suspendedServiceCheckboxGroup);
+                // FIXME: accountInfoFormPanel sometimes does not show the
+                // checkbox group even though it and its checkboxes have been
+                // correctly generated. clicking the accordion bar again to
+                // re-show the panel makes it appear.
+                // the following did not help:
+                //accountInfoFormPanel.render();
+                //accountInfoFormPanel.update();
             },
             failure: function() {
                  Ext.MessageBox.alert('Ajax failure', 'get_reebill_services request failed');
