@@ -4,6 +4,7 @@ import unittest
 from StringIO import StringIO
 import ConfigParser
 import pymongo
+import sqlalchemy
 from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
 from datetime import date, datetime, timedelta
@@ -23,10 +24,16 @@ import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
 
 class ProcessTest(unittest.TestCase):
-    def __init__(self, methodName='runTest', param=None):
-        print '__init__'
-        # the args above and this super call are required to override __init__
-        super(ProcessTest, self).__init__(methodName)
+    # apparenty this is what you need to do if you override the __init__ method
+    # of a TestCase
+    #def __init__(self, methodName='runTest', param=None):
+        #print '__init__'
+        #super(ProcessTest, self).__init__(methodName)
+
+    def setUp(self):
+        # this method runs before every test.
+        # clear SQLAlchemy mappers so StateDB can be instantiated again
+        sqlalchemy.orm.clear_mappers()
 
         # everything needed to create a Process object
         config_file = StringIO('''[runtime]\nintegrate_skyline_backend = true''')
@@ -50,7 +57,6 @@ class ProcessTest(unittest.TestCase):
                 'dev')
         self.monguru = Monguru('tyrell', 'dev')
 
-    def setUp(self):
         # temporary hack to get a bill that's always the same
         # this bill came straight out of mongo (except for .date() applied to
         # datetimes)
@@ -556,7 +562,6 @@ class ProcessTest(unittest.TestCase):
         c.execute("delete from customer")
         mysql_connection.commit()
 
-    @unittest.skip("can only run one at a time due to sqlalchemy error")
     def test_get_late_charge(self):
         print 'test_get_late_charge'
         '''Tests computation of late charges (without rolling bills).'''
