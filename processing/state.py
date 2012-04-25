@@ -195,19 +195,23 @@ class StateDB:
 
         # get all utilbills for this customer whose dates are between 'start'
         # and 'end' (inclusive)
-        utilbills = session.query(UtilBill) \
+        all_utilbills = session.query(UtilBill) \
                 .filter(UtilBill.customer==customer)\
                 .filter(UtilBill.period_start>=start)\
                 .filter(UtilBill.period_end<=end).all()
-        if utilbills == []:
+        if all_utilbills == []:
             raise Exception('No utility bills found between %s and %s' %
                     (start, end))
-        
+        non_suspended_utilbills = [u for u in all_utilbills if u.service.lower() not in
+                suspended_services]
+        if non_suspended_utilbills == []:
+            raise Exception('No utility bills to attach because the services %s'
+                    ' are suspended' % ', '.join(suspended_services))
+
         # update 'reebill_id' and 'processed' for each non-suspended utilbill
-        for utilbill in utilbills:
-            if utilbill.service not in suspended_services:
-                utilbill.reebill = reebill
-                utilbill.processed = True
+        for utilbill in non_suspended_utilbills:
+            utilbill.reebill = reebill
+            utilbill.processed = True
 
     def delete_reebill(self, session, account, sequence):
         # TODO add branch, which MySQL doesn't have yet:
