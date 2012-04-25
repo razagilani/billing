@@ -578,7 +578,7 @@ class MongoReebill(object):
     @property
     def services(self):
         '''Returns a list of all services for which there are utilbills.'''
-        return list(set([u['service'] for u in self.dictionary['utilbills']]))
+        return [u['service'] for u in self.dictionary['utilbills']]
 
     @property
     def suspended_services(self):
@@ -591,6 +591,7 @@ class MongoReebill(object):
     def suspend_service(self, service):
         '''Adds 'service' to the list of suspended services. Returns True iff
         it was added, False if it already present.'''
+        print self.services
         service = service.lower()
         if service not in [s.lower() for s in self.services]:
             raise ValueError('Unknown service %s: services are %s' % (service, self.services))
