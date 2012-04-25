@@ -19,6 +19,7 @@ from billing.dictutils import deep_map
 import pdb
 import pprint
 pp = pprint.PrettyPrinter(indent=1)
+sys.stdout = sys.stderr
 
 
 # type-conversion functions
@@ -590,31 +591,29 @@ class MongoReebill(object):
     def suspend_service(self, service):
         '''Adds 'service' to the list of suspended services. Returns True iff
         it was added, False if it already present.'''
-        if service not in self.services:
-            raise ValueError('Unknown service %s' % service)
+        service = service.lower()
+        if service not in [s.lower() for s in self.services]:
+            raise ValueError('Unknown service %s: services are %s' % (service, self.services))
 
         if 'suspended_services' not in self.dictionary:
             self.dictionary['suspended_services'] = []
         if service not in self.dictionary['suspended_services']:
             self.dictionary['suspended_services'].append(service)
-            print '%s-%s suspended_services set to %s' % (self.account, self.sequence, self.dictionary['suspended_services'])
-            return True
-        return False
+        print '%s-%s suspended_services set to %s' % (self.account, self.sequence, self.dictionary['suspended_services'])
 
     def resume_service(self, service):
         '''Removes 'service' from the list of suspended services. Returns True
         iff it was removed, False if it was not present.'''
-        if service not in self.services:
-            raise ValueError('Unknown service %s' % service)
+        service = service.lower()
+        if service not in [s.lower() for s in self.services]:
+            raise ValueError('Unknown service %s: services are %s' % (service, self.services))
 
         if service in self.dictionary['suspended_services']:
             self.dictionary['suspended_services'].remove(service)
             # might as well take out the key if the list is empty
             if self.dictionary['suspended_services'] == []:
                 del self.dictionary['suspended_services']
-            print '%s-%s suspended_services set to %s' % (self.account, self.sequence, self.dictionary['suspended_services'])
-            return True
-        return False
+        print '%s-%s suspended_services set to %s' % (self.account, self.sequence, self.dictionary['suspended_services'])
 
     def utilbill_period_for_service(self, service_name):
         '''Returns start & end dates of the first utilbill found whose service

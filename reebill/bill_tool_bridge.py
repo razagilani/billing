@@ -785,8 +785,9 @@ class BillToolBridge:
     def attach_utilbills(self, account, sequence, **args):
         '''Finalizes association between the reebill given by 'account',
         'sequence' and its utility bills by recording it in the state database
-        and marking the utility bills as processed. Note that this does not
-        issue the reebill or give it an issue date.'''
+        and marking the utility bills as processed. Utility bills for suspended
+        services are skipped. Note that this does not issue the reebill or give
+        it an issue date.'''
         try:
             session = None
             if not account or not sequence:
@@ -1912,10 +1913,13 @@ class BillToolBridge:
             # set disabled services (services not mentioned in the request are
             # automatically resumed)
             for service in reebill.services:
-                if kwargs.get('%s_suspended' % service, '') == 'on':
-                    reebill.suspend_service(service)
+                if kwargs.get('%s_suspended' % service, '') == 'on' or kwargs \
+                        .get('%s_suspended' % service.lower(), '') == 'on':
+                    reebill.suspend_service(service.lower())
+                    print service, 'suspended'
                 else:
-                    reebill.resume_service(service)
+                    print service, 'resumed'
+                    reebill.resume_service(service.lower())
 
             self.reebill_dao.save_reebill(reebill)
 
