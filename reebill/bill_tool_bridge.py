@@ -1924,6 +1924,31 @@ class BillToolBridge:
         except Exception as e:
             return self.handle_exception(e)
 
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    def get_reebill_services(self, account, sequence, **args):
+        '''Returns the utililty services associated with the reebill given by
+        account and sequence, and a list of which services are suspended
+        (usually empty). Used to show service suspension checkboxes in
+        "Sequential Account Information".'''
+        try:
+            if not account or not sequence:
+                raise ValueError("Bad Parameter Value")
+            sequence = int(sequence)
+
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            if reebill is None:
+                raise Exception('No reebill found for %s-%s' % (account, sequence))
+            
+            return self.dumps({
+                'services': reebill.services,
+                'suspended_services': reebill.suspended_services
+            })
+        except Exception as e:
+            return self.handle_exception(e)
+
     #
     ################
 
