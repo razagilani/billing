@@ -5435,36 +5435,43 @@ function reeBillReady() {
 
         // create checkboxes in Sequential Account Information form for
         // suspending services of the selected reebill
-        //var utilbills = utilbillGridStore.query('sequence', selected_sequence);
-        var utilbills = utilbillGridStore.queryBy(function(record, id) {
-            return record.data.sequence == selected_sequence;
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/reebill/get_reebill_services?',
+            params: { account: selected_account, sequence: selected_sequence },
+            success: function(result, request) {
+                var jsonData = Ext.util.JSON.decode(result.responseText);
+                var services = jsonData.services;
+                var suspended_services = jsonData.suspended_services;
+
+                // create a checkbox for each service, checked iff that service
+                // is in the bill's suspended_services (there's no handler
+                // because checkbox values are automatically submitted with
+                // "Sequential Account Information" form data)
+                var checkboxes = [];
+                for (i = 0; i < services.length; i++) {
+                    checkboxes.push({
+                        'boxLabel': services[i],
+                        'name': services[i] + '_suspended',
+                        'checked': suspended_services.indexOf(services[i]) != -1,
+                    });
+                }
+                console.log('checkboxes: '+checkboxes);
+
+                // replace the existing checkbox group in accountInfoFormPanel (if present) with a new one
+                accountInfoFormPanel.remove('suspended-services');
+                var suspendedServiceCheckboxGroup = new Ext.form.CheckboxGroup({
+                    id: 'suspended-services',
+                    itemCls: 'x-check-group-alt',
+                    fieldLabel: 'Suspended Services',
+                    columns: 1,
+                    items: checkboxes,
+                });
+                accountInfoFormPanel.insert(accountInfoFormPanel.items.getCount(), suspendedServiceCheckboxGroup);
+            },
+            failure: function() {
+                 Ext.MessageBox.alert('Ajax failure', 'get_reebill_services request failed');
+            },
         });
-        console.log(selected_account + "-" + selected_sequence + ": " + utilbills.getCount() + " utilbills found");
-        var services = [];
-        for (var i = 0; i < utilbills.getCount(); i++) {
-            if (services.indexOf('service') == -1) {
-                services.push(utilbills.get(i).data.service);
-            }
-        }
-        console.log(selected_account + "-" + selected_sequence + " services: " + services);
-        // can't add/remove items in suspendedServiceCheckboxGroup (it's not an
-        // array), so delete it and re-create it on the fly
-        accountInfoFormPanel.remove('suspended-services');
-        var checkboxes = [];
-        for (i = 0; i < services.length; i++) {
-            checkboxes.push({ 'boxLabel': services[i], 'name': services[i] + '_suspended' });
-        }
-        if (checkboxes == []) {
-            checkboxes = [{boxLabel: 'One checkbox is required', name: 'or Ext will explode'}];
-        }
-        var suspendedServiceCheckboxGroup = new Ext.form.CheckboxGroup({
-            id: 'suspended-services',
-            itemCls: 'x-check-group-alt',
-            fieldLabel: 'Suspended Services',
-            columns: 1,
-            items: checkboxes,// items are set based on the selected reebill's services in loadReeBillUIForSequence()
-        });
-        accountInfoFormPanel.insert(accountInfoFormPanel.items.getCount(), suspendedServiceCheckboxGroup);
 
         // finally, update the status bar with current selection
         updateStatusbar(selected_account, selected_sequence, 0);
