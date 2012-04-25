@@ -268,6 +268,7 @@ class StateDB:
         return None
 
     def new_rebill(self, session, account, sequence):
+        '''Creates a new ReeBill row in the database, returns its id.'''
         customer = session.query(Customer).filter(Customer.account==account).one()
         new_reebill = ReeBill(customer, sequence)
         session.add(new_reebill)
