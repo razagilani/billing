@@ -122,6 +122,20 @@ def authenticate(method):
             raise cherrypy.HTTPRedirect('/login.html')
     return wrapper
 
+
+class DBSession(object):
+    '''Context manager for using "with" for database session.'''
+    def __init__(self, state_db):
+        self.state_db = state_db
+
+    def __enter__(self):
+        self.session = self.state_db.session()
+        return self.session
+
+    def __exit__(self, type, value, traceback):
+        print 'exit: %type={type}, value=%{value}, traceback=%{traceback}'.format(**vars())
+        self.session.rollback()
+
 # TODO 11454025 rename to ProcessBridge or something
 # TODO (object)?
 class BillToolBridge:
@@ -371,35 +385,32 @@ class BillToolBridge:
         '''Handles AJAX request for data to fill estimated revenue report
         grid.''' 
         try:
-            start = datetime.utcnow()
-            session = self.state_db.session()
-            er = EstimatedRevenue(self.state_db, self.reebill_dao,
-                    self.ratestructure_dao, self.splinter)
-            data = er.report(session)
+            with DBSession(self.state_db) as session:
+                er = EstimatedRevenue(self.state_db, self.reebill_dao,
+                        self.ratestructure_dao, self.splinter)
+                data = er.report(session)
 
-            # build list of rows from report data
-            cur_year = datetime.utcnow().year
-            cur_month = datetime.utcnow().month
-            rows = []
-            for account in sorted(data.keys(),
-                    # 'total' first
-                    cmp=lambda x,y: -1 if x == 'total' else 1 if y == 'total' else cmp(x,y)):
-                row = {'account': 'Total' if account == 'total' else account}
-                for year, month in data[account].keys():
-                    months_ago = dateutils.month_difference(year, month,
-                            cur_year, cur_month)
-                    label = '%s_months_ago' % months_ago
-                    value =  data[account][year, month]
-                    value = 'ERROR' if isinstance(value, Exception) else '%.2f' % value
-                    row.update({ label: value })
-                rows.append(row)
-
-            session.commit()
-            print 'time:', datetime.utcnow() - start
-            return self.dumps({
-                'success': True,
-                'rows': rows
-            })
+                # build list of rows from report data
+                cur_year = datetime.utcnow().year
+                cur_month = datetime.utcnow().month
+                rows = []
+                for account in sorted(data.keys(),
+                        # 'total' first
+                        cmp=lambda x,y: -1 if x == 'total' else 1 if y == 'total' else cmp(x,y)):
+                    row = {'account': 'Total' if account == 'total' else account}
+                    for year, month in data[account].keys():
+                        months_ago = dateutils.month_difference(year, month,
+                                cur_year, cur_month)
+                        label = '%s_months_ago' % months_ago
+                        value =  data[account][year, month]
+                        value = 'ERROR' if isinstance(value, Exception) else '%.2f' % value
+                        row.update({ label: value })
+                    rows.append(row)
+                session.commit()
+                return self.dumps({
+                    'success': True,
+                    'rows': rows
+                })
         except Exception as e:
             self.rollback_session()
             return self.handle_exception(e)
@@ -475,6 +486,7 @@ class BillToolBridge:
                     ' request did not properly handle an invalid session'
                     ' response.')}})
         else:
+            # normal exception
             try:
                 self.logger.error('%s:\n%s' % (e, traceback.format_exc()))
             except:
@@ -491,8 +503,9 @@ class BillToolBridge:
         confused with the identifier. The identifier is a unique id but the
         username is not.'''
         try:
-            return self.dumps({'success':True,
-                    'username': cherrypy.session['user'].username})
+            with DBSession(self.state_db) as session:
+                return self.dumps({'success':True,
+                        'username': cherrypy.session['user'].username})
         except Exception as e:
             return self.handle_exception(e)
             
@@ -560,12 +573,11 @@ class BillToolBridge:
         to be numbers, even though we always store them as arbitrary
         strings).'''
         try:
-            session = self.state_db.session()
-            next_account = self.state_db.get_next_account_number(session)
-            session.commit()
-            return ju.dumps({'success': True, 'account': next_account})
+            with DBSession(self.state_db) as session:
+                next_account = self.state_db.get_next_account_number(session)
+                session.commit()
+                return ju.dumps({'success': True, 'account': next_account})
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
             
     @cherrypy.expose
@@ -573,32 +585,31 @@ class BillToolBridge:
     @authenticate_ajax
     def new_account(self, name, account, discount_rate, late_charge_rate, template_account, **args):
         try:
-            session = None
-            if not name or not account or not discount_rate or not template_account:
-                raise ValueError("Bad Parameter Value")
-            session = self.state_db.session()
-            customer = self.process.create_new_account(session, account, name,
-                    discount_rate, late_charge_rate, template_account)
-            reebill = self.reebill_dao.load_reebill(account, 0)
+            with DBSession(self.state_db) as session:
+                if not name or not account or not discount_rate or not template_account:
+                    raise ValueError("Bad Parameter Value")
+                session = self.state_db.session()
+                customer = self.process.create_new_account(session, account, name,
+                        discount_rate, late_charge_rate, template_account)
+                reebill = self.reebill_dao.load_reebill(account, 0)
 
-            # record account creation
-            self.journal_dao.log_event(cherrypy.session['user'],
-                    customer.account, 0, JournalDAO.AccountCreated)
-            self.process.roll_bill(session, reebill)
-            self.reebill_dao.save_reebill(reebill)
+                # record account creation
+                self.journal_dao.log_event(cherrypy.session['user'],
+                        customer.account, 0, JournalDAO.AccountCreated)
+                self.process.roll_bill(session, reebill)
+                self.reebill_dao.save_reebill(reebill)
 
-            # record reebill roll separately ("so that performance can be
-            # measured": 25282041)
-            self.journal_dao.log_event(cherrypy.session['user'], account, 0,
-                    JournalDAO.ReeBillRolled)
+                # record reebill roll separately ("so that performance can be
+                # measured": 25282041)
+                self.journal_dao.log_event(cherrypy.session['user'], account, 0,
+                        JournalDAO.ReeBillRolled)
 
-            # get next next account number to send it back to the client so it
-            # can be shown in the account-creation form
-            next_account = self.state_db.get_next_account_number(session)
-            session.commit()
-            return self.dumps({'success': True, 'nextAccount': next_account})
+                # get next next account number to send it back to the client so it
+                # can be shown in the account-creation form
+                next_account = self.state_db.get_next_account_number(session)
+                session.commit()
+                return self.dumps({'success': True, 'nextAccount': next_account})
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
 
     @cherrypy.expose
@@ -606,19 +617,19 @@ class BillToolBridge:
     @authenticate_ajax
     def roll(self, account, sequence, **args):
         try:
-            session = None
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
-            session = self.state_db.session()
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-            self.process.roll_bill(session, reebill)
-            self.reebill_dao.save_reebill(reebill)
-            self.journal_dao.log_event(cherrypy.session['user'], account,
-                    sequence, JournalDAO.ReeBillRolled)
-            session.commit()
-            return self.dumps({'success': True})
+            with DBSession(self.state_db) as session:
+                session = None
+                if not account or not sequence:
+                    raise ValueError("Bad Parameter Value")
+                session = self.state_db.session()
+                reebill = self.reebill_dao.load_reebill(account, sequence)
+                self.process.roll_bill(session, reebill)
+                self.reebill_dao.save_reebill(reebill)
+                self.journal_dao.log_event(cherrypy.session['user'], account,
+                        sequence, JournalDAO.ReeBillRolled)
+                session.commit()
+                return self.dumps({'success': True})
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
 
     @cherrypy.expose
@@ -626,19 +637,18 @@ class BillToolBridge:
     @authenticate_ajax
     def pay(self, account, sequence, **args):
         try:
-            session = None
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
-            session = self.state_db.session()
-            reebill = self.reebill_dao.load_reebill(account, sequence)
+            with DBSession(self.state_db) as session:
+                session = None
+                if not account or not sequence:
+                    raise ValueError("Bad Parameter Value")
+                session = self.state_db.session()
+                reebill = self.reebill_dao.load_reebill(account, sequence)
 
-            self.process.pay_bill(session, reebill)
-            self.reebill_dao.save_reebill(reebill)
-            session.commit()
-            return self.dumps({'success': True})
-
+                self.process.pay_bill(session, reebill)
+                self.reebill_dao.save_reebill(reebill)
+                session.commit()
+                return self.dumps({'success': True})
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
 
 
@@ -716,43 +726,33 @@ class BillToolBridge:
     def bindrs(self, account, sequence, **args):
         '''Handler for the front end's "Compute Bill" operation.'''
         try:
-            session = None
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
+            with DBSession(self.state_db) as session:
+                if not account or not sequence:
+                    raise ValueError("Bad Parameter Value")
 
-            session = self.state_db.session()
+                reebill = self.reebill_dao.load_reebill(account, sequence)
+                prior_reebill = self.reebill_dao.load_reebill(account, int(sequence)-1)
+                self.process.calculate_reperiod(reebill)
+                self.process.bind_rate_structure(reebill)
 
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-            prior_reebill = self.reebill_dao.load_reebill(account, int(sequence)-1)
+                # recalculate the bill's 'payment_received'
+                self.process.pay_bill(session, reebill)
 
-            self.process.calculate_reperiod(reebill)
+                # TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
+                self.reebill_dao.save_reebill(reebill)
+                reebill = self.reebill_dao.load_reebill(account, sequence)
 
-            self.process.bind_rate_structure(reebill)
+                self.process.sum_bill(session, prior_reebill, reebill)
 
-            # recalculate the bill's 'payment_received'
-            self.process.pay_bill(session, reebill)
+                # TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
+                self.reebill_dao.save_reebill(reebill)
+                reebill = self.reebill_dao.load_reebill(account, sequence)
+                self.process.calculate_statistics(prior_reebill, reebill)
 
-            # TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
-            self.reebill_dao.save_reebill(reebill)
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-
-            self.process.sum_bill(session, prior_reebill, reebill)
-
-            # TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
-            self.reebill_dao.save_reebill(reebill)
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-            self.process.calculate_statistics(prior_reebill, reebill)
-
-            # set late charge to its updated value
-            #reebill.late_charges = self.process.get_late_charge(session, reebill)
-
-            self.reebill_dao.save_reebill(reebill)
-
-            session.commit()
-
-            return self.dumps({'success': True})
+                self.reebill_dao.save_reebill(reebill)
+                session.commit()
+                return self.dumps({'success': True})
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
 
     @cherrypy.expose
@@ -789,26 +789,24 @@ class BillToolBridge:
         services are skipped. Note that this does not issue the reebill or give
         it an issue date.'''
         try:
-            session = None
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
-            session = self.state_db.session()
 
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-            if reebill is None:
-                raise Exception('No reebill for account %s, sequence %s')
+            with DBSession(self.state_db) as session:
+                reebill = self.reebill_dao.load_reebill(account, sequence)
+                if reebill is None:
+                    raise Exception('No reebill for account %s, sequence %s')
 
-            # finalize utility bill association
-            self.process.attach_utilbills(session, reebill.account,
-                    reebill.sequence)
+                # finalize utility bill association
+                self.process.attach_utilbills(session, reebill.account,
+                        reebill.sequence)
 
-            self.journal_dao.log_event(cherrypy.session['user'],
-                    reebill.account, reebill.sequence,
-                    JournalDAO.ReeBillAttached)
-            session.commit()
-            return self.dumps({'success': True})
+                self.journal_dao.log_event(cherrypy.session['user'],
+                        reebill.account, reebill.sequence,
+                        JournalDAO.ReeBillAttached)
+                session.commit()
+                return self.dumps({'success': True})
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
 
 
@@ -817,74 +815,66 @@ class BillToolBridge:
     @authenticate_ajax
     def mail(self, account, sequences, recipients, **args):
         try:
-            session = None
             if not account or not sequences or not recipients:
                 raise ValueError("Bad Parameter Value")
 
-            session = self.state_db.session()
+            with DBSession(self.state_db) as session:
+                # sequences will come in as a string if there is one element in post data. 
+                # If there are more, it will come in as a list of strings
+                if type(sequences) is not list:
+                    sequences = [sequences]
+                # acquire the most recent reebill from the sequence list and use
+                # its values for the merge
+                sequences = [sequence for sequence in sequences]
+                # sequences is [u'17']
+                all_bills = [self.reebill_dao.load_reebill(account, sequence) for
+                        sequence in sequences]
 
-            # sequences will come in as a string if there is one element in post data. 
-            # If there are more, it will come in as a list of strings
-            if type(sequences) is not list:
-                sequences = [sequences]
-            # acquire the most recent reebill from the sequence list and use
-            # its values for the merge
-            sequences = [sequence for sequence in sequences]
-            # sequences is [u'17']
-            all_bills = [self.reebill_dao.load_reebill(account, sequence) for
-                    sequence in sequences]
+                # set issue date 
+                for reebill in all_bills:
+                    self.process.issue(session, reebill.account, reebill.sequence)
 
-            # set issue date 
-            for reebill in all_bills:
-                self.process.issue(session, reebill.account, reebill.sequence)
+                #  TODO: 21305875  Do this until reebill is being passed around
+                #  problem is all_bills is not reloaded after .issue
+                all_bills = [self.reebill_dao.load_reebill(account, sequence) for
+                        sequence in sequences]
 
-            #  TODO: 21305875  Do this until reebill is being passed around
-            #  problem is all_bills is not reloaded after .issue
-            all_bills = [self.reebill_dao.load_reebill(account, sequence) for
-                    sequence in sequences]
+                # render all the bills
+                # TODO 25560415 this fails if reebill rendering is turned
+                # off--there should be a better error message
+                for reebill in all_bills:
+                    self.renderer.render(reebill, 
+                        self.config.get("billdb", "billpath")+ "%s" % reebill.account, 
+                        "%.4d.pdf" % int(reebill.sequence),
+                        # TODO 22598787 - branch awareness
+                        "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
+                        True
+                    )
+                    
+                # the last element
+                most_recent_bill = all_bills[-1]
+                bill_file_names = ["%.4d.pdf" % int(sequence) for sequence in sequences]
+                bill_dates = ["%s" % (b.period_end) for b in all_bills]
+                bill_dates = ", ".join(bill_dates)
+                merge_fields = {}
+                merge_fields["sa_street1"] = most_recent_bill.service_address["sa_street1"]
+                merge_fields["balance_due"] = most_recent_bill.balance_due.quantize(Decimal("0.00"))
+                merge_fields["bill_dates"] = bill_dates
+                merge_fields["last_bill"] = bill_file_names[-1]
+                bill_mailer.mail(recipients, merge_fields,
+                        os.path.join(self.config.get("billdb", "billpath"),
+                            account), bill_file_names);
 
-            # render all the bills
-            # TODO 25560415 this fails if reebill rendering is turned
-            # off--there should be a better error message
-            for reebill in all_bills:
-                self.renderer.render(reebill, 
-                    self.config.get("billdb", "billpath")+ "%s" % reebill.account, 
-                    "%.4d.pdf" % int(reebill.sequence),
-                    # TODO 22598787 - branch awareness
-                    "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
-                    True
-                )
-                
-            # the last element
-            most_recent_bill = all_bills[-1]
+                for reebill in all_bills:
+                    self.journal_dao.log_event(cherrypy.session['user'], reebill.account, reebill.sequence,
+                            JournalDAO.ReeBillMailed, address=recipients)
+                    self.process.issue(session, reebill.account, reebill.sequence)
+                    self.process.attach_utilbills(session, reebill.account,
+                            reebill.sequence)
 
-            bill_file_names = ["%.4d.pdf" % int(sequence) for sequence in sequences]
-            bill_dates = ["%s" % (b.period_end) for b in all_bills]
-            bill_dates = ", ".join(bill_dates)
-
-            merge_fields = {}
-            merge_fields["sa_street1"] = most_recent_bill.service_address["sa_street1"]
-            merge_fields["balance_due"] = most_recent_bill.balance_due.quantize(Decimal("0.00"))
-            merge_fields["bill_dates"] = bill_dates
-            merge_fields["last_bill"] = bill_file_names[-1]
-
-            bill_mailer.mail(recipients, merge_fields,
-                    os.path.join(self.config.get("billdb", "billpath"),
-                        account), bill_file_names);
-
-            for reebill in all_bills:
-                print dir(JournalDAO)
-                self.journal_dao.log_event(cherrypy.session['user'], reebill.account, reebill.sequence,
-                        JournalDAO.ReeBillMailed, address=recipients)
-                self.process.issue(session, reebill.account, reebill.sequence)
-                self.process.attach_utilbills(session, reebill.account,
-                        reebill.sequence)
-
-            session.commit()
-            return self.dumps({'success': True})
-
+                session.commit()
+                return self.dumps({'success': True})
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
 
 
@@ -923,17 +913,15 @@ class BillToolBridge:
     @authenticate_ajax
     def listAccounts(self, **kwargs):
         try:
-            session = None
-            accounts = []
-            # eventually, this data will have to support pagination
-            session = self.state_db.session()
-            accounts = self.state_db.listAccounts(session)
-            rows = [{'account': account, 'name': full_name} for account,
-                    full_name in zip(accounts, self.full_names_of_accounts(accounts))]
-            session.commit()
-            return self.dumps({'success': True, 'rows':rows})
+            with DBSession(self.state_db) as session:
+                accounts = []
+                # eventually, this data will have to support pagination
+                accounts = self.state_db.listAccounts(session)
+                rows = [{'account': account, 'name': full_name} for account,
+                        full_name in zip(accounts, self.full_names_of_accounts(accounts))]
+                session.commit()
+                return self.dumps({'success': True, 'rows':rows})
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
 
 
@@ -944,25 +932,23 @@ class BillToolBridge:
         '''Handles AJAX request to get reebill sequences for each account and
         whether each reebill has been committed.'''
         try:
-            session = None
-            sequences = []
             if not account:
                 raise ValueError("Bad Parameter Value")
-            # eventually, this data will have to support pagination
-            session = self.state_db.session()
-            sequences = self.state_db.listSequences(session, account)
-            # TODO "issued" is used for the value of "committed" here because
-            # committed is ill-defined: currently StateDB.is_committed()
-            # returns true iff the reebill has attached utilbills, which
-            # doesn't make sense.
-            # https://www.pivotaltracker.com/story/show/24382885
-            rows = [{'sequence': sequence,
-                'committed': self.state_db.is_issued(session, account, sequence)}
-                for sequence in sequences]
-            session.commit()
-            return self.dumps({'success': True, 'rows':rows})
+            with DBSession(self.state_db) as session:
+                sequences = []
+                # eventually, this data will have to support pagination
+                sequences = self.state_db.listSequences(session, account)
+                # TODO "issued" is used for the value of "committed" here because
+                # committed is ill-defined: currently StateDB.is_committed()
+                # returns true iff the reebill has attached utilbills, which
+                # doesn't make sense.
+                # https://www.pivotaltracker.com/story/show/24382885
+                rows = [{'sequence': sequence,
+                    'committed': self.state_db.is_issued(session, account, sequence)}
+                    for sequence in sequences]
+                session.commit()
+                return self.dumps({'success': True, 'rows':rows})
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
 
 
@@ -975,58 +961,58 @@ class BillToolBridge:
         # call getrows to actually query the database; return the result in
         # JSON format if it succeded or an error if it didn't
         try:
-            session = None
             if not start or not limit:
                 raise ValueError("Bad Parameter Value")
-            start, limit = int(start), int(limit)
 
-            # result is a list of dictionaries of the form
-            # {account: full name, dayssince: days}
-            session = self.state_db.session()
-            statuses = self.state_db.retrieve_status_days_since(session,
-                    kwargs.get('sort', None), kwargs.get('dir', None))
-            # sort by account--TODO do the sorting in the database query itself
-            #statuses.sort(key=lambda s: s.account)
+            with DBSession(self.state_db) as session:
+                start, limit = int(start), int(limit)
 
-            name_dicts = self.nexus_util.all_names_for_accounts([s.account for s in statuses])
-            rows = [dict([
-                ('account', status.account),
-                ('codename', name_dicts[status.account]['codename'] if
-                    'codename' in name_dicts[status.account] else ''),
-                ('casualname', name_dicts[status.account]['casualname'] if
-                    'casualname' in name_dicts[status.account] else ''),
-                ('primusname', name_dicts[status.account]['primus'] if
-                    'primus' in name_dicts[status.account] else ''),
-                ('dayssince', status.dayssince),
-                ('lastevent', self.journal_dao.last_event_description(status.account)),
-                ('provisionable', False),
-            ]) for i, status in enumerate(statuses)]
+                # result is a list of dictionaries of the form
+                # {account: full name, dayssince: days}
+                session = self.state_db.session()
+                statuses = self.state_db.retrieve_status_days_since(session,
+                        kwargs.get('sort', None), kwargs.get('dir', None))
+                # sort by account--TODO do the sorting in the database query itself
+                #statuses.sort(key=lambda s: s.account)
 
-            # also get customers from Nexus who don't exist in billing yet
-            # (do not sort these; just append them to the end)
-            # TODO: we DO want to sort these, but we just want to them to come
-            # after all the billing billing customers
-            non_billing_customers = self.nexus_util.get_non_billing_customers()
-            for customer in non_billing_customers:
-                rows.append(dict([
-                    # we have the olap_id too but we don't show it
-                    ('codename', customer['codename']),
-                    ('casualname', customer['casualname']),
-                    ('primusname', customer['primus']),
-                    ('provisionable', True)
-                ]))
+                name_dicts = self.nexus_util.all_names_for_accounts([s.account for s in statuses])
+                rows = [dict([
+                    ('account', status.account),
+                    ('codename', name_dicts[status.account]['codename'] if
+                        'codename' in name_dicts[status.account] else ''),
+                    ('casualname', name_dicts[status.account]['casualname'] if
+                        'casualname' in name_dicts[status.account] else ''),
+                    ('primusname', name_dicts[status.account]['primus'] if
+                        'primus' in name_dicts[status.account] else ''),
+                    ('dayssince', status.dayssince),
+                    ('lastevent', self.journal_dao.last_event_description(status.account)),
+                    ('provisionable', False),
+                ]) for i, status in enumerate(statuses)]
 
-            # count includes both billing and non-billing customers (front end
-            # needs this for pagination)
-            count = len(rows)
+                # also get customers from Nexus who don't exist in billing yet
+                # (do not sort these; just append them to the end)
+                # TODO: we DO want to sort these, but we just want to them to come
+                # after all the billing billing customers
+                non_billing_customers = self.nexus_util.get_non_billing_customers()
+                for customer in non_billing_customers:
+                    rows.append(dict([
+                        # we have the olap_id too but we don't show it
+                        ('codename', customer['codename']),
+                        ('casualname', customer['casualname']),
+                        ('primusname', customer['primus']),
+                        ('provisionable', True)
+                    ]))
 
-            # take slice for one page of the grid's data
-            rows = rows[start:start+limit]
+                # count includes both billing and non-billing customers (front end
+                # needs this for pagination)
+                count = len(rows)
 
-            session.commit()
-            return self.dumps({'success': True, 'rows':rows, 'results':count})
+                # take slice for one page of the grid's data
+                rows = rows[start:start+limit]
+
+                session.commit()
+                return self.dumps({'success': True, 'rows':rows, 'results':count})
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
 
     @cherrypy.expose
@@ -1036,50 +1022,30 @@ class BillToolBridge:
         '''Handles AJAX request for "Summary and Export" grid in "Accounts"
         tab.'''
         try:
-            session = None
-
             if not start or not limit:
                 raise ValueError("Bad Parameter Value")
-
-            session = self.state_db.session()
-
-            accounts, totalCount = self.state_db.list_accounts(session, int(start), int(limit))
-
-            full_names = self.full_names_of_accounts([account for account in accounts])
-
-            rows = self.process.summary_ree_charges(session, accounts, full_names)
-
-            for row in rows:
-                row.update({'outstandingbalance': '$%.2f' % self.process\
-                        .get_outstanding_balance(session,row['account'])})
-
-            session.commit()
-
-            return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
-
+            with DBSession(self.state_db) as session:
+                accounts, totalCount = self.state_db.list_accounts(session, int(start), int(limit))
+                full_names = self.full_names_of_accounts([account for account in accounts])
+                rows = self.process.summary_ree_charges(session, accounts, full_names)
+                for row in rows:
+                    row.update({'outstandingbalance': '$%.2f' % self.process\
+                            .get_outstanding_balance(session,row['account'])})
+                session.commit()
+                return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
 
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
     def all_ree_charges(self, **args):
-
-
         try:
-            session = None
-
-            session = self.state_db.session()
-
-            rows, total_count = self.process.all_ree_charges(session)
-
-            session.commit()
-
-            return self.dumps({'success': True, 'rows':rows, 'results':total_count})
-
+            with DBSession(self.state_db) as session:
+                rows, total_count = self.process.all_ree_charges(session)
+                session.commit()
+                return self.dumps({'success': True, 'rows':rows, 'results':total_count})
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
 
     @cherrypy.expose
@@ -1087,65 +1053,62 @@ class BillToolBridge:
     @authenticate_ajax
     def all_ree_charges_xls(self, **args):
         try:
-            session = None
+            with DBSession(self.state_db) as session:
+                rows, total_count = self.process.all_ree_charges(session)
 
-            session = self.state_db.session()
-            rows, total_count = self.process.all_ree_charges(session)
+                buf = StringIO()
 
-            buf = StringIO()
+                import xlwt
+                workbook = xlwt.Workbook(encoding='utf-8')
+                sheet = workbook.add_sheet('All REE Charges')
+                row_index = 0
 
-            import xlwt
-            workbook = xlwt.Workbook(encoding='utf-8')
-            sheet = workbook.add_sheet('All REE Charges')
-            row_index = 0
-
-            headings = ['Account','Sequence',
-                'Billing Addressee', 'Service Addressee',
-                'Issue Date', 'Period Begin', 'Period End', 'RE&E Value', 
-                'RE&E Charges', 'utility charges', 'hypothesized charges',
-                'RE&E Energy Therms', 'Marginal Rate per Therm']
-            for i, heading in enumerate(headings):
-                sheet.write(row_index, i, heading)
-            row_index += 1
-
-            for row in rows:
-                ba = row['billing_address']
-                bill_addr_str = "%s %s %s %s %s" % (
-                    ba['ba_addressee'] if 'ba_addressee' in ba and ba['ba_addressee'] is not None else "",
-                    ba['ba_street1'] if 'ba_street1' in ba and ba['ba_street1'] is not None else "",
-                    ba['ba_city'] if 'ba_city' in ba and ba['ba_city'] is not None else "",
-                    ba['ba_state'] if 'ba_state' in ba and ba['ba_state'] is not None else "",
-                    ba['ba_postal_code'] if 'ba_postal_code' in ba and ba['ba_postal_code'] is not None else "",
-                )
-                sa = row['service_address']
-                service_addr_str = "%s %s %s %s %s" % (
-                    sa['sa_addressee'] if 'sa_addressee' in sa and sa['sa_addressee'] is not None else "",
-                    sa['sa_street1'] if 'sa_street1' in sa and sa['sa_street1'] is not None else "",
-                    sa['sa_city'] if 'sa_city' in sa and sa['sa_city'] is not None else "",
-                    sa['sa_state'] if 'sa_state' in sa and sa['sa_state'] is not None else "",
-                    sa['sa_postal_code'] if 'sa_postal_code' in sa and sa['sa_postal_code'] is not None else "",
-                )
-
-                actual_row = [row['account'], row['sequence'], bill_addr_str,
-                        service_addr_str, row['issue_date'],
-                        row['period_begin'], row['period_end'],
-                        row['ree_value'], row['ree_charges'],
-                        row['actual_charges'], row['hypothetical_charges'],
-                        row['total_energy'], row['marginal_rate_therm'] ]
-                for i, cell_text in enumerate(actual_row):
-                    sheet.write(row_index, i, cell_text)
+                headings = ['Account','Sequence',
+                    'Billing Addressee', 'Service Addressee',
+                    'Issue Date', 'Period Begin', 'Period End', 'RE&E Value', 
+                    'RE&E Charges', 'utility charges', 'hypothesized charges',
+                    'RE&E Energy Therms', 'Marginal Rate per Therm']
+                for i, heading in enumerate(headings):
+                    sheet.write(row_index, i, heading)
                 row_index += 1
 
-                cherrypy.response.headers['Content-Type'] = 'application/excel'
-                cherrypy.response.headers['Content-Disposition'] = \
-                        'attachment; filename=%s.xls' % \
-                        datetime.now().strftime("%Y%m%d")
+                for row in rows:
+                    ba = row['billing_address']
+                    bill_addr_str = "%s %s %s %s %s" % (
+                        ba['ba_addressee'] if 'ba_addressee' in ba and ba['ba_addressee'] is not None else "",
+                        ba['ba_street1'] if 'ba_street1' in ba and ba['ba_street1'] is not None else "",
+                        ba['ba_city'] if 'ba_city' in ba and ba['ba_city'] is not None else "",
+                        ba['ba_state'] if 'ba_state' in ba and ba['ba_state'] is not None else "",
+                        ba['ba_postal_code'] if 'ba_postal_code' in ba and ba['ba_postal_code'] is not None else "",
+                    )
+                    sa = row['service_address']
+                    service_addr_str = "%s %s %s %s %s" % (
+                        sa['sa_addressee'] if 'sa_addressee' in sa and sa['sa_addressee'] is not None else "",
+                        sa['sa_street1'] if 'sa_street1' in sa and sa['sa_street1'] is not None else "",
+                        sa['sa_city'] if 'sa_city' in sa and sa['sa_city'] is not None else "",
+                        sa['sa_state'] if 'sa_state' in sa and sa['sa_state'] is not None else "",
+                        sa['sa_postal_code'] if 'sa_postal_code' in sa and sa['sa_postal_code'] is not None else "",
+                    )
 
-            workbook.save(buf)
-            session.commit()
-            return buf.getvalue()
+                    actual_row = [row['account'], row['sequence'], bill_addr_str,
+                            service_addr_str, row['issue_date'],
+                            row['period_begin'], row['period_end'],
+                            row['ree_value'], row['ree_charges'],
+                            row['actual_charges'], row['hypothetical_charges'],
+                            row['total_energy'], row['marginal_rate_therm'] ]
+                    for i, cell_text in enumerate(actual_row):
+                        sheet.write(row_index, i, cell_text)
+                    row_index += 1
+
+                    cherrypy.response.headers['Content-Type'] = 'application/excel'
+                    cherrypy.response.headers['Content-Disposition'] = \
+                            'attachment; filename=%s.xls' % \
+                            datetime.now().strftime("%Y%m%d")
+
+                workbook.save(buf)
+                session.commit()
+                return buf.getvalue()
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
 
     @cherrypy.expose
@@ -1153,50 +1116,46 @@ class BillToolBridge:
     @authenticate_ajax
     def all_ree_charges_csv_altitude(self, **args):
         try:
-            session = None
+            with DBSession(self.state_db) as session:
+                rows, total_count = self.process.all_ree_charges(session)
 
-            session = self.state_db.session()
-            rows, total_count = self.process.all_ree_charges(session)
+                import csv
+                import StringIO
 
-            import csv
-            import StringIO
+                buf = StringIO.StringIO()
 
-            buf = StringIO.StringIO()
+                writer = csv.writer(buf)
 
-            writer = csv.writer(buf)
+                writer.writerow(['Account-Sequence', 'Period End', 'RE&E Charges'])
 
-            writer.writerow(['Account-Sequence', 'Period End', 'RE&E Charges'])
+                for row in rows:
+                    ba = row['billing_address']
+                    bill_addr_str = "%s %s %s %s %s" % (
+                        ba['ba_addressee'] if 'ba_addressee' in ba and ba['ba_addressee'] is not None else "",
+                        ba['ba_street1'] if 'ba_street1' in ba and ba['ba_street1'] is not None else "",
+                        ba['ba_city'] if 'ba_city' in ba and ba['ba_city'] is not None else "",
+                        ba['ba_state'] if 'ba_state' in ba and ba['ba_state'] is not None else "",
+                        ba['ba_postal_code'] if 'ba_postal_code' in ba and ba['ba_postal_code'] is not None else "",
+                    )
+                    sa = row['service_address']
+                    service_addr_str = "%s %s %s %s %s" % (
+                        sa['sa_addressee'] if 'sa_addressee' in sa and sa['sa_addressee'] is not None else "",
+                        sa['sa_street1'] if 'sa_street1' in sa and sa['sa_street1'] is not None else "",
+                        sa['sa_city'] if 'sa_city' in sa and sa['sa_city'] is not None else "",
+                        sa['sa_state'] if 'sa_state' in sa and sa['sa_state'] is not None else "",
+                        sa['sa_postal_code'] if 'sa_postal_code' in sa and sa['sa_postal_code'] is not None else "",
+                    )
 
-            for row in rows:
-                ba = row['billing_address']
-                bill_addr_str = "%s %s %s %s %s" % (
-                    ba['ba_addressee'] if 'ba_addressee' in ba and ba['ba_addressee'] is not None else "",
-                    ba['ba_street1'] if 'ba_street1' in ba and ba['ba_street1'] is not None else "",
-                    ba['ba_city'] if 'ba_city' in ba and ba['ba_city'] is not None else "",
-                    ba['ba_state'] if 'ba_state' in ba and ba['ba_state'] is not None else "",
-                    ba['ba_postal_code'] if 'ba_postal_code' in ba and ba['ba_postal_code'] is not None else "",
-                )
-                sa = row['service_address']
-                service_addr_str = "%s %s %s %s %s" % (
-                    sa['sa_addressee'] if 'sa_addressee' in sa and sa['sa_addressee'] is not None else "",
-                    sa['sa_street1'] if 'sa_street1' in sa and sa['sa_street1'] is not None else "",
-                    sa['sa_city'] if 'sa_city' in sa and sa['sa_city'] is not None else "",
-                    sa['sa_state'] if 'sa_state' in sa and sa['sa_state'] is not None else "",
-                    sa['sa_postal_code'] if 'sa_postal_code' in sa and sa['sa_postal_code'] is not None else "",
-                )
+                    writer.writerow(["%s-%s" % (row['account'], row['sequence']), row['period_end'], row['ree_charges']])
 
-                writer.writerow(["%s-%s" % (row['account'], row['sequence']), row['period_end'], row['ree_charges']])
-
-                cherrypy.response.headers['Content-Type'] = 'text/csv'
-                cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s.csv' % datetime.now().strftime("%Y%m%d")
+                    cherrypy.response.headers['Content-Type'] = 'text/csv'
+                    cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s.csv' % datetime.now().strftime("%Y%m%d")
 
 
-            data = buf.getvalue()
-            session.commit()
-            return data
-
+                data = buf.getvalue()
+                session.commit()
+                return data
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
 
     @cherrypy.expose
@@ -1207,27 +1166,25 @@ class BillToolBridge:
         all utility bills for the given account, or every account (1 per sheet)
         if 'account' is not given.'''
         try:
-            session = self.state_db.session()
+            with DBSession(self.state_db) as session:
+                if account is not None:
+                    spreadsheet_name = account + '.xls'
+                else:
+                    spreadsheet_name = 'all_accounts.xls'
 
-            if account is not None:
-                spreadsheet_name = account + '.xls'
-            else:
-                spreadsheet_name = 'all_accounts.xls'
+                exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
 
-            exporter = excel_export.Exporter(self.state_db, self.reebill_dao)
+                # write excel spreadsheet into a StringIO buffer (file-like)
+                buf = StringIO()
+                exporter.export(session, buf, account)
 
-            # write excel spreadsheet into a StringIO buffer (file-like)
-            buf = StringIO()
-            exporter.export(session, buf, account)
+                # set MIME type for file download
+                cherrypy.response.headers['Content-Type'] = 'application/excel'
+                cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
 
-            # set MIME type for file download
-            cherrypy.response.headers['Content-Type'] = 'application/excel'
-            cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
-
-            session.commit()
-            return buf.getvalue()
+                session.commit()
+                return buf.getvalue()
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
 
     @cherrypy.expose
@@ -1237,21 +1194,20 @@ class BillToolBridge:
         '''Responds with an excel spreadsheet containing daily average energy
         over all time for the given account.'''
         try:
-            session = self.state_db.session()
+            with DBSession(self.state_db) as session:
+                buf = StringIO() 
+                # TODO: include all services
+                calendar_reports.write_daily_average_energy_xls(self.reebill_dao, account, buf, service='Gas')
 
-            buf = StringIO() 
-            # TODO: include all services
-            calendar_reports.write_daily_average_energy_xls(self.reebill_dao, account, buf, service='Gas')
-
-            # set MIME type for file download
-            cherrypy.response.headers['Content-Type'] = 'application/excel'
-            cherrypy.response.headers['Content-Disposition'] = ('attachment;'
-                    ' filename=%s_daily_average_energy.xls') % (account)
-            session.commit()
-            return buf.getvalue()
+                # set MIME type for file download
+                cherrypy.response.headers['Content-Type'] = 'application/excel'
+                cherrypy.response.headers['Content-Disposition'] = ('attachment;'
+                        ' filename=%s_daily_average_energy.xls') % (account)
+                session.commit()
+                return buf.getvalue()
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
+
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
@@ -1675,91 +1631,90 @@ class BillToolBridge:
     @authenticate_ajax
     def payment(self, xaction, account, **kwargs):
         try:
-            session = None
-            if not xaction or not account:
-                raise ValueError("Bad parameter value")
+            with DBSession(self.state_db) as session:
+                if not xaction or not account:
+                    raise ValueError("Bad parameter value")
 
 
-            if xaction == "read":
+                if xaction == "read":
 
-                session = self.state_db.session()
-                payments = self.state_db.payments(session, account)
+                    session = self.state_db.session()
+                    payments = self.state_db.payments(session, account)
 
-                payments = [{
-                    'id': payment.id, 
-                    'date': str(payment.date),
-                    'description': payment.description, 
-                    'credit': str(payment.credit),
-                } for payment in payments]
+                    payments = [{
+                        'id': payment.id, 
+                        'date': str(payment.date),
+                        'description': payment.description, 
+                        'credit': str(payment.credit),
+                    } for payment in payments]
 
-                
-                session.commit()
-                return self.dumps({'success': True, 'rows':payments})
+                    
+                    session.commit()
+                    return self.dumps({'success': True, 'rows':payments})
 
-            elif xaction == "update":
+                elif xaction == "update":
 
-                session = self.state_db.session()
+                    session = self.state_db.session()
 
-                rows = json.loads(kwargs["rows"])
+                    rows = json.loads(kwargs["rows"])
 
-                # single edit comes in not in a list
-                if type(rows) is dict: rows = [rows]
+                    # single edit comes in not in a list
+                    if type(rows) is dict: rows = [rows]
 
-                # process list of edits
-                for row in rows:
-                    self.state_db.update_payment(
-                        session,
-                        row['id'],
-                        row['date'],
-                        row['description'],
-                        row['credit'],
-                    )
-                
-                session.commit()
+                    # process list of edits
+                    for row in rows:
+                        self.state_db.update_payment(
+                            session,
+                            row['id'],
+                            row['date'],
+                            row['description'],
+                            row['credit'],
+                        )
+                    
+                    session.commit()
 
-                return self.dumps({'success':True})
+                    return self.dumps({'success':True})
 
-            elif xaction == "create":
+                elif xaction == "create":
 
-                session = self.state_db.session()
+                    session = self.state_db.session()
 
-                from datetime import date
+                    from datetime import date
 
-                new_payment = self.state_db.create_payment(session, account, date.today(), "New Entry", "0.00")
+                    new_payment = self.state_db.create_payment(session, account, date.today(), "New Entry", "0.00")
 
-                # This session must be committed here, because the ORM
-                # will not populate the id without a commit.
-                # TODO: 25643535 - this commit is dangerously early 
-                session.commit()
+                    # This session must be committed here, because the ORM
+                    # will not populate the id without a commit.
+                    # TODO: 25643535 - this commit is dangerously early 
+                    session.commit()
 
-                # TODO: is there a better way to populate a dictionary from an ORM object dict?
-                row = [{
-                    'id': new_payment.id, 
-                    'date': str(new_payment.date),
-                    'description': new_payment.description,
-                    'credit': str(new_payment.credit),
-                    }]
+                    # TODO: is there a better way to populate a dictionary from an ORM object dict?
+                    row = [{
+                        'id': new_payment.id, 
+                        'date': str(new_payment.date),
+                        'description': new_payment.description,
+                        'credit': str(new_payment.credit),
+                        }]
 
-                return self.dumps({'success':True, 'rows':row})
+                    return self.dumps({'success':True, 'rows':row})
 
-            elif xaction == "destroy":
+                elif xaction == "destroy":
 
-                session = self.state_db.session()
+                    session = self.state_db.session()
 
-                rows = json.loads(kwargs["rows"])
+                    rows = json.loads(kwargs["rows"])
 
-                # single delete comes in not in a list
-                if type(rows) is int: rows = [rows]
+                    # single delete comes in not in a list
+                    if type(rows) is int: rows = [rows]
 
-                for oid in rows:
-                    self.state_db.delete_payment(session, oid)
+                    for oid in rows:
+                        self.state_db.delete_payment(session, oid)
 
-                session.commit()
-                         
-                return self.dumps({'success':True})
+                    session.commit()
+                             
+                    return self.dumps({'success':True})
 
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
 
     @cherrypy.expose
@@ -1768,45 +1723,41 @@ class BillToolBridge:
     def reebill(self, xaction, start, limit, account, **kwargs):
         '''Handles AJAX requests for reebill grid data.'''
         try:
-            session = None
             if not xaction or not start or not limit:
                 raise ValueError("Bad Parameter Value")
-            session = self.state_db.session()
+            with DBSession(self.state_db) as session:
+                if xaction == "read":
+                    reebills, totalCount = self.state_db.listReebills(session,
+                            int(start), int(limit), account)
+                    rows = []
+                    for reebill in reebills:
+                        # we have to load each bill from Mongo to get its period dates
+                        mongo_reebill = self.reebill_dao.load_reebill(account, reebill.sequence)
+                        rows.append({
+                            'id': reebill.sequence, 'sequence': reebill.sequence,
+                            'period_start': mongo_reebill.period_begin,
+                            'period_end': mongo_reebill.period_end
+                        })
+                    session.commit()
+                    return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
 
-            if xaction == "read":
-                reebills, totalCount = self.state_db.listReebills(session,
-                        int(start), int(limit), account)
-                rows = []
-                for reebill in reebills:
-                    # we have to load each bill from Mongo to get its period dates
-                    mongo_reebill = self.reebill_dao.load_reebill(account, reebill.sequence)
-                    rows.append({
-                        'id': reebill.sequence, 'sequence': reebill.sequence,
-                        'period_start': mongo_reebill.period_begin,
-                        'period_end': mongo_reebill.period_end
-                    })
-                session.commit()
-                return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
+                elif xaction == "update":
+                    return self.dumps({'success':False})
 
-            elif xaction == "update":
-                return self.dumps({'success':False})
+                elif xaction == "create":
+                    return self.dumps({'success':False})
 
-            elif xaction == "create":
-                return self.dumps({'success':False})
-
-            elif xaction == "destroy":
-                sequences = json.loads(kwargs["rows"])
-                # single edit comes in not in a list
-                if type(sequences) is int: sequences = [sequences]
-                for sequence in sequences:
-                    self.process.delete_reebill(session, account, sequence)
-                    self.journal_dao.log_event(cherrypy.session['user'],
-                            account, sequence, JournalDAO.ReeBillDeleted)
-                session.commit()
-                return self.dumps({'success': True})
-
+                elif xaction == "destroy":
+                    sequences = json.loads(kwargs["rows"])
+                    # single edit comes in not in a list
+                    if type(sequences) is int: sequences = [sequences]
+                    for sequence in sequences:
+                        self.process.delete_reebill(session, account, sequence)
+                        self.journal_dao.log_event(cherrypy.session['user'],
+                                account, sequence, JournalDAO.ReeBillDeleted)
+                    session.commit()
+                    return self.dumps({'success': True})
         except Exception as e:    
-            self.rollback_session(session)
             return self.handle_exception(e)
 
     ################
@@ -1816,10 +1767,7 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     def account_info(self, account, sequence, **args):
-        """
-        Return information about the account
-        """
-
+        """ Return information about the account """
         try:
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
@@ -2383,54 +2331,52 @@ class BillToolBridge:
     def upload_utility_bill(self, account, service, begin_date, end_date,
             file_to_upload, **args):
         try:
-            session = None
-            if not account or not begin_date or not end_date or not file_to_upload:
-                raise ValueError("Bad Parameter Value")
+            with DBSession(self.state_db) as session:
+                if not account or not begin_date or not end_date or not file_to_upload:
+                    raise ValueError("Bad Parameter Value")
 
-            # pre-process parameters
-            service = service.lower()
-            begin_date_as_date = datetime.strptime(begin_date, '%Y-%m-%d').date()
-            end_date_as_date = datetime.strptime(end_date, '%Y-%m-%d').date()
-            self.validate_utilbill_period(begin_date_as_date, end_date_as_date)
+                # pre-process parameters
+                service = service.lower()
+                begin_date_as_date = datetime.strptime(begin_date, '%Y-%m-%d').date()
+                end_date_as_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+                self.validate_utilbill_period(begin_date_as_date, end_date_as_date)
 
-            session = self.state_db.session()
+                session = self.state_db.session()
 
-            # if begin_date does not match end date of latest existing bill,
-            # create hypothetical bills to cover the gap
-            latest_end_date = self.state_db.last_utilbill_end_date(session, account)
-            if latest_end_date is not None and begin_date_as_date > latest_end_date:
-                self.state_db.fill_in_hypothetical_utilbills(session, account,
-                        service, latest_end_date, begin_date_as_date)
+                # if begin_date does not match end date of latest existing bill,
+                # create hypothetical bills to cover the gap
+                latest_end_date = self.state_db.last_utilbill_end_date(session, account)
+                if latest_end_date is not None and begin_date_as_date > latest_end_date:
+                    self.state_db.fill_in_hypothetical_utilbills(session, account,
+                            service, latest_end_date, begin_date_as_date)
 
-            if file_to_upload.file is None:
-                # if there's no file, this is a "skyline estimated bill":
-                # record it in the database with that state, but don't upload
-                # anything
-                self.state_db.record_utilbill_in_database(session, account,
-                        service, begin_date, end_date, datetime.utcnow(),
-                        state=db_objects.UtilBill.SkylineEstimated)
-                session.commit()
-                return self.dumps({'success':True})
-            else:
-                # if there is a file, get the Python file object and name
-                # string from CherryPy, and pass those to BillUpload to upload
-                # the file (so BillUpload can stay independent of CherryPy)
-                upload_result = self.billUpload.upload(account, begin_date,
-                        end_date, file_to_upload.file, file_to_upload.filename)
-                if upload_result is True:
+                if file_to_upload.file is None:
+                    # if there's no file, this is a "skyline estimated bill":
+                    # record it in the database with that state, but don't upload
+                    # anything
                     self.state_db.record_utilbill_in_database(session, account,
-                            service, begin_date, end_date, datetime.utcnow())
+                            service, begin_date, end_date, datetime.utcnow(),
+                            state=db_objects.UtilBill.SkylineEstimated)
                     session.commit()
                     return self.dumps({'success':True})
                 else:
-                    self.logger.error('file upload failed:', begin_date, end_date,
-                            file_to_upload.filename)
-                    session.commit()
-                    return self.dumps({'success':False, 'errors': {
-                        'reason':'file upload failed', 'details':'Returned False'}})
-            
+                    # if there is a file, get the Python file object and name
+                    # string from CherryPy, and pass those to BillUpload to upload
+                    # the file (so BillUpload can stay independent of CherryPy)
+                    upload_result = self.billUpload.upload(account, begin_date,
+                            end_date, file_to_upload.file, file_to_upload.filename)
+                    if upload_result is True:
+                        self.state_db.record_utilbill_in_database(session, account,
+                                service, begin_date, end_date, datetime.utcnow())
+                        session.commit()
+                        return self.dumps({'success':True})
+                    else:
+                        self.logger.error('file upload failed:', begin_date, end_date,
+                                file_to_upload.filename)
+                        session.commit()
+                        return self.dumps({'success':False, 'errors': {
+                            'reason':'file upload failed', 'details':'Returned False'}})
         except Exception as e: 
-            self.rollback_session(session)
             return self.handle_exception(e)
 
     #
@@ -2513,50 +2459,46 @@ class BillToolBridge:
     def listUtilBills(self, start, limit, account, **args):
         '''Handles AJAX call to populate Ext grid of utility bills.'''
         try:
-            session = None
-            session = self.state_db.session()
+            with DBSession(self.state_db) as session:
+                # names for utilbill states in the UI
+                state_descriptions = {
+                    db_objects.UtilBill.Complete: 'Final',
+                    db_objects.UtilBill.UtilityEstimated: 'Utility Estimated',
+                    db_objects.UtilBill.SkylineEstimated: 'Skyline Estimated',
+                    db_objects.UtilBill.Hypothetical: 'Missing'
+                }
 
-            # names for utilbill states in the UI
-            state_descriptions = {
-                db_objects.UtilBill.Complete: 'Final',
-                db_objects.UtilBill.UtilityEstimated: 'Utility Estimated',
-                db_objects.UtilBill.SkylineEstimated: 'Skyline Estimated',
-                db_objects.UtilBill.Hypothetical: 'Missing'
-            }
+                if not start or not limit or not account:
+                    raise ValueError("Bad Parameter Value")
 
-            if not start or not limit or not account:
-                raise ValueError("Bad Parameter Value")
+                # result is a list of dictionaries of the form {account: account
+                # number, name: full name, period_start: date, period_end: date,
+                # sequence: reebill sequence number (if present)}
+                utilbills, totalCount = self.state_db.list_utilbills(session, account, int(start), int(limit))
 
-            # result is a list of dictionaries of the form {account: account
-            # number, name: full name, period_start: date, period_end: date,
-            # sequence: reebill sequence number (if present)}
-            utilbills, totalCount = self.state_db.list_utilbills(session, account, int(start), int(limit))
+                full_names = self.full_names_of_accounts([account])
+                full_name = full_names[0] if full_names else account
 
-            full_names = self.full_names_of_accounts([account])
-            full_name = full_names[0] if full_names else account
+                rows = [dict([
+                    # TODO: sending real database ids to the client a security
+                    # risk; these should be encrypted
+                    ('id', ub.id),
+                    ('account', ub.customer.account),
+                    ('name', full_name),
+                    # capitalize service name
+                    ('service', 'Unknown' if ub.service is None else ub.service[0].upper() + ub.service[1:]),
+                    ('period_start', ub.period_start),
+                    ('period_end', ub.period_end),
+                    ('sequence', ub.reebill.sequence if ub.reebill else None),
+                    ('state', state_descriptions[ub.state]),
+                    # utility bill rows are only editable if they don't have a
+                    # reebill attached to them
+                    ('editable', not ub.has_reebill)
+                ]) for i, ub in enumerate(utilbills)]
 
-            rows = [dict([
-                # TODO: sending real database ids to the client a security
-                # risk; these should be encrypted
-                ('id', ub.id),
-                ('account', ub.customer.account),
-                ('name', full_name),
-                # capitalize service name
-                ('service', 'Unknown' if ub.service is None else ub.service[0].upper() + ub.service[1:]),
-                ('period_start', ub.period_start),
-                ('period_end', ub.period_end),
-                ('sequence', ub.reebill.sequence if ub.reebill else None),
-                ('state', state_descriptions[ub.state]),
-                # utility bill rows are only editable if they don't have a
-                # reebill attached to them
-                ('editable', not ub.has_reebill)
-            ]) for i, ub in enumerate(utilbills)]
-
-            session.commit()
-
-            return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
+                session.commit()
+                return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
     
     @cherrypy.expose
@@ -2565,23 +2507,20 @@ class BillToolBridge:
     def last_utilbill_end_date(self, account, **kwargs):
         '''Returns date of last utilbill.'''
         try:
-            session = None
-            session = self.state_db.session()
-
-            the_date = self.state_db.last_utilbill_end_date(session, account)
-            # the_date will be None (converted to JSON as null) if there are no
-            # utilbills for this account
-            the_datetime = None
-            if the_date is not None:
-                # TODO: a pure date gets converted to JSON as a datetime with
-                # midnight as its time, causing problems in the browser
-                # (https://www.pivotaltracker.com/story/show/23569087). temporary
-                # fix is to make it a datetime with a later time.
-                the_datetime = datetime(the_date.year, the_date.month, the_date.day, 23)
-            session.commit()
-            return self.dumps({'success':True, 'date': the_datetime})
+            with DBSession(self.state_db) as session:
+                the_date = self.state_db.last_utilbill_end_date(session, account)
+                # the_date will be None (converted to JSON as null) if there are no
+                # utilbills for this account
+                the_datetime = None
+                if the_date is not None:
+                    # TODO: a pure date gets converted to JSON as a datetime with
+                    # midnight as its time, causing problems in the browser
+                    # (https://www.pivotaltracker.com/story/show/23569087). temporary
+                    # fix is to make it a datetime with a later time.
+                    the_datetime = datetime(the_date.year, the_date.month, the_date.day, 23)
+                session.commit()
+                return self.dumps({'success':True, 'date': the_datetime})
         except Exception as e: 
-            self.rollback_session(session)
             return self.handle_exception(e)
 
     def validate_utilbill_period(self, start, end):
@@ -2602,60 +2541,60 @@ class BillToolBridge:
         bills. Ext-JS provides the 'xaction' parameter, which is "read" when it
         wants to read data and "update" when a cell in the grid was edited.'''
         try:
-            session = None
-            if xaction == 'read':
-                # for just reading, forward the request to the old function that
-                # was doing this
-                return self.listUtilBills(**kwargs)
-            elif xaction == 'update':
-                # only the start and end dates can be updated.
-                # parse data from the client: for some reason it returns single
-                # utility bill row in a JSON string called "rows"
-                rows = ju.loads(kwargs['rows'])
-                utilbill_id = rows['id']
-                new_period_start = datetime.strptime(rows['period_start'], '%Y-%m-%dT%H:%M:%S').date() # ISO 8601
-                new_period_end = datetime.strptime(rows['period_end'], '%Y-%m-%dT%H:%M:%S').date()
+            with DBSession(self.state_db) as session:
+                if xaction == 'read':
+                    # for just reading, forward the request to the old function that
+                    # was doing this
+                    return self.listUtilBills(**kwargs)
+                elif xaction == 'update':
+                    # only the start and end dates can be updated.
+                    # parse data from the client: for some reason it returns single
+                    # utility bill row in a json string called "rows"
+                    rows = ju.loads(kwargs['rows'])
+                    utilbill_id = rows['id']
+                    new_period_start = datetime.strptime(rows['period_start'], '%y-%m-%dt%h:%m:%s').date() # iso 8601
+                    new_period_end = datetime.strptime(rows['period_end'], '%y-%m-%dt%h:%m:%s').date()
 
-                # check that new dates are reasonable
-                self.validate_utilbill_period(new_period_start, new_period_end)
+                    # check that new dates are reasonable
+                    self.validate_utilbill_period(new_period_start, new_period_end)
 
-                # find utilbill in MySQL
-                session = self.state_db.session()
-                utilbill = session.query(db_objects.UtilBill).filter(
-                        db_objects.UtilBill.id==utilbill_id).one()
-                customer = session.query(db_objects.Customer).filter(
-                        db_objects.Customer.id==utilbill.customer_id).one()
+                    # find utilbill in mysql
+                    session = self.state_db.session()
+                    utilbill = session.query(db_objects.utilbill).filter(
+                            db_objects.UtilBill.id==utilbill_id).one()
+                    customer = session.query(db_objects.Customer).filter(
+                            db_objects.Customer.id==utilbill.customer_id).one()
 
-                # utility bills that have reebills shouldn't be editable
-                if utilbill.has_reebill:
-                    raise Exception("Can't edit utility bills that have already been attached to a reebill.")
+                    # utility bills that have reebills shouldn't be editable
+                    if utilbill.has_reebill:
+                        raise Exception("Can't edit utility bills that have already been attached to a reebill.")
 
-                # move the file
-                self.billUpload.move_utilbill_file(customer.account,
-                        # don't trust the client to say what the original dates were
-                        # TODO don't pass dates into BillUpload as strings
-                        # https://www.pivotaltracker.com/story/show/24869817
-                        utilbill.period_start,
-                        utilbill.period_end,
-                        #datetime.strftime(utilbill.period_start, billupload.INPUT_DATE_FORMAT),
-                        #datetime.strftime(utilbill.period_end, billupload.INPUT_DATE_FORMAT),
-                        new_period_start, new_period_end)
+                    # move the file
+                    self.billUpload.move_utilbill_file(customer.account,
+                            # don't trust the client to say what the original dates were
+                            # TODO don't pass dates into BillUpload as strings
+                            # https://www.pivotaltracker.com/story/show/24869817
+                            utilbill.period_start,
+                            utilbill.period_end,
+                            #datetime.strftime(utilbill.period_start, billupload.INPUT_DATE_FORMAT),
+                            #datetime.strftime(utilbill.period_end, billupload.INPUT_DATE_FORMAT),
+                            new_period_start, new_period_end)
 
-                # change dates in MySQL
-                session = self.state_db.session()
-                utilbill = session.query(db_objects.UtilBill).filter(db_objects.UtilBill.id==utilbill_id).one()
-                if utilbill.has_reebill:
-                    raise Exception("Can't edit utility bills that have already been attached to a reebill.")
-                utilbill.period_start = new_period_start
-                utilbill.period_end = new_period_end
-                session.commit()
+                    # change dates in MySQL
+                    session = self.state_db.session()
+                    utilbill = session.query(db_objects.UtilBill).filter(db_objects.UtilBill.id==utilbill_id).one()
+                    if utilbill.has_reebill:
+                        raise Exception("Can't edit utility bills that have already been attached to a reebill.")
+                    utilbill.period_start = new_period_start
+                    utilbill.period_end = new_period_end
+                    session.commit()
 
-                return self.dumps({'success': True})
-            elif xaction == 'create':
-                # creation happens via upload_utility_bill
-                raise Exception('utilbill_grid() does not accept xaction "create"')
-            elif xaction == 'destroy':
-                raise Exception('utilbill_grid() does not accept xaction "destroy"')
+                    return self.dumps({'success': True})
+                elif xaction == 'create':
+                    # creation happens via upload_utility_bill
+                    raise Exception('utilbill_grid() does not accept xaction "create"')
+                elif xaction == 'destroy':
+                    raise Exception('utilbill_grid() does not accept xaction "destroy"')
         except Exception as e:
             self.rollback_session(session)
             return self.handle_exception(e)
@@ -2716,43 +2655,204 @@ class BillToolBridge:
     @authenticate_ajax
     def reebill_structure(self, account, sequence=None, **args):
         try:
-            session = None
             if not account:
                 raise ValueError("Bad Parameter Value: account")
+            with DBSession(self.state_db) as session:
+                if sequence is None:
+                    sequence = self.state_db.last_sequence(session, account)
+                reebill = self.reebill_dao.load_reebill(account, sequence)
 
-            session = self.state_db.session()
+                if reebill:
 
-            if sequence is None:
-                sequence = self.state_db.last_sequence(session, account)
-            reebill = self.reebill_dao.load_reebill(account, sequence)
+                    services = reebill.services
 
-            if reebill:
+                    # construct utilbill parts
+                    tree = []
+                    node_index = 0
+                    for service in reebill.services:
+                        utility = reebill.utility_name_for_service(service)
+                        rate_structure = reebill.rate_structure_name_for_service(service)
+                        chargegroups_model = reebill.chargegroups_model_for_service(service)
+                        meters = reebill.meters_for_service(service)
 
-                services = reebill.services
+                        utility_node = {
+                            'id': str(UUID.uuid1()), 
+                            'leaf': True,
+                            'text': utility,
+                        }
 
-                # construct utilbill parts
-                tree = []
-                node_index = 0
-                for service in reebill.services:
-                    utility = reebill.utility_name_for_service(service)
-                    rate_structure = reebill.rate_structure_name_for_service(service)
-                    chargegroups_model = reebill.chargegroups_model_for_service(service)
-                    meters = reebill.meters_for_service(service)
+                        ratestructure_node = {
+                            'id': str(UUID.uuid1()), 
+                            'leaf': True,
+                            'text': rate_structure,
+                        }
 
-                    utility_node = {
-                        'id': str(UUID.uuid1()), 
+                        meter_nodes = []
+                        for meter in meters:
+                            register_nodes = []
+                            for register in meter['registers']:
+                                if register['shadow'] is True:
+                                    continue
+                                register_nodes.append({
+                                    'id': str(UUID.uuid1()),
+                                    'leaf': True,
+                                    'text': register['identifier'],
+                                    'service': service,
+                                    'account': account, 
+                                    'sequence': sequence, 
+                                    'node_type': 'register',
+                                    'node_key': register['identifier']
+                                })
+                            meter_nodes.append({
+                                'id': str(UUID.uuid1()),
+                                'text': meter['identifier'],
+                                'children': register_nodes,
+                                'service': service,
+                                'account': account, 
+                                'sequence': sequence, 
+                                'node_type': 'meter',
+                                'node_key': meter['identifier']
+                            })
+
+                        meters_node = {
+                            'id': str(UUID.uuid1()),
+                            'text': 'Meters',
+                            'children': meter_nodes
+                        }
+
+                        chargegroup_names_nodes = []
+                        for group in chargegroups_model:
+                            chargegroup_names_nodes.append({
+                                'id': str(UUID.uuid1()),
+                                'text':group,
+                                'leaf': True
+                            })
+
+                        chargegroups_node = {
+                            'id': str(UUID.uuid1()),
+                            'text': 'Charge Groups',
+                            'children': chargegroup_names_nodes
+                        }
+
+                        utilbill_node = {
+                            'id': str(UUID.uuid1()),
+                            'text': service,
+                            'children': [utility_node, ratestructure_node, chargegroups_node, meters_node]
+                        }
+                        tree.append(utilbill_node)
+
+                    # we want to return success to ajax call and then load the tree in page
+                    #return self.dumps({'success':True, 'reebill_structure':tree});
+                    # but the TreeLoader doesn't abide by the above ajax packet
+                    session.commit()
+                    return self.dumps(tree);
+        except Exception as e:
+            return self.handle_exception(e)
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    def insert_reebill_sibling_node(self, service, account, sequence, node_type, node_key, **args):
+        try:
+            if not service or not account or not sequence or not node_type or not node_key:
+                raise ValueError("Bad Parameter Value")
+            with DBSession(self.state_db) as session:
+                reebill = self.reebill_dao.load_reebill(account, sequence)
+
+                # node insertions are done by selecting a sibling node and creating
+                # a new node based on the context of that selection.
+
+                new_node = None
+                if node_type == 'meter':
+                    # in the case of inserting a meter, we simply need to know
+                    # for which service the meter will be created since meters
+
+                    new_meter = reebill.new_meter(service)
+                    # both an actual and shadow register get created (actual, shadow)
+                    new_registers = reebill.new_register(service, new_meter['identifier'])
+
+                    register_nodes = [{
+                        'id': str(UUID.uuid4()),
                         'leaf': True,
-                        'text': utility,
+                        'text': new_registers[0]['identifier'],
+                        'service': service,
+                        'account': account, 
+                        'sequence': sequence, 
+                        'node_type': 'register',
+                        'node_key': new_registers[0]['identifier'],
+                    }]
+                    new_node = {
+                        'id': str(UUID.uuid4()),
+                        'text': new_meter['identifier'],
+                        'children': register_nodes,
+                        'service': service,
+                        'account': account, 
+                        'sequence': sequence, 
+                        'node_type': 'meter',
+                        'node_key': new_meter['identifier'], 
                     }
-
-                    ratestructure_node = {
-                        'id': str(UUID.uuid1()), 
+                elif node_type == 'register':
+                    # in the case of inserting a register, we need to find
+                    # the parent of the currently selected register node
+                    meter = reebill.meter_for_register(service, node_key)
+                    new_registers = reebill.new_register(service, meter['identifier'])
+                    new_node = {
+                        'id': str(UUID.uuid4()),
                         'leaf': True,
-                        'text': rate_structure,
+                        'text': new_registers[0]['identifier'],
+                        'service': service,
+                        'account': account, 
+                        'sequence': sequence, 
+                        'node_type': 'register',
+                        'node_key': new_registers[0]['identifier'],
                     }
+                self.reebill_dao.save_reebill(reebill)
+                session.commit()
+                return self.dumps({'success': True, 'node':new_node })
+        except Exception as e:
+            return self.handle_exception(e)
 
-                    meter_nodes = []
-                    for meter in meters:
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    def delete_reebill_node(self, service, account, sequence, node_type, node_key, text, **args):
+        try:
+            if not service or not account or not sequence or not node_type or not node_key or not text:
+                raise ValueError("Bad Parameter Value")
+            with DBSession(self.state_db) as session:
+                reebill = self.reebill_dao.load_reebill(account, sequence)
+                if reebill:
+                    if node_type == 'meter':
+                        # retrieve this meter based on node_key
+                        reebill.delete_meter(service, node_key)
+                    elif node_type == 'register':
+                        raise Exception("finish me")
+                self.reebill_dao.save_reebill(reebill)
+                session.commit()
+                return self.dumps({'success': True })
+        except Exception as e:
+            return self.handle_exception(e)
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    def update_reebill_node(self, service, account, sequence, node_type, node_key, text, **args):
+        try:
+            if not service or not account or not sequence or not node_type or not node_key or not text:
+                raise ValueError("Bad Parameter Value")
+            with DBSession(self.state_db) as session:
+                reebill = self.reebill_dao.load_reebill(account, sequence)
+                updated_node = None
+                if reebill:
+                    if node_type == 'meter':
+
+                        # retrieve this meter based on node_key
+                        reebill.set_meter_identifier(service, node_key, text)
+
+                        # now that it has been changed, retrieve it with the new name
+                        meter = reebill.meter(service, text)
+
+                        # get the children of this meter
                         register_nodes = []
                         for register in meter['registers']:
                             if register['shadow'] is True:
@@ -2767,7 +2867,7 @@ class BillToolBridge:
                                 'node_type': 'register',
                                 'node_key': register['identifier']
                             })
-                        meter_nodes.append({
+                        updated_node = {
                             'id': str(UUID.uuid1()),
                             'text': meter['identifier'],
                             'children': register_nodes,
@@ -2775,187 +2875,17 @@ class BillToolBridge:
                             'account': account, 
                             'sequence': sequence, 
                             'node_type': 'meter',
-                            'node_key': meter['identifier']
-                        })
+                            'node_key': meter['identifier'], 
+                        }
+                        # update the meter fields
+                    elif node_type == 'register':
+                        # retrieve this meter based on node_key
+                        reebill.set_register_identifier(service, node_key, text)
 
-                    meters_node = {
-                        'id': str(UUID.uuid1()),
-                        'text': 'Meters',
-                        'children': meter_nodes
-                    }
+                        # now that it has been changed, retrieve it with the new name
+                        register = reebill.actual_register(service, text)
 
-                    chargegroup_names_nodes = []
-                    for group in chargegroups_model:
-                        chargegroup_names_nodes.append({
-                            'id': str(UUID.uuid1()),
-                            'text':group,
-                            'leaf': True
-                        })
-
-                    chargegroups_node = {
-                        'id': str(UUID.uuid1()),
-                        'text': 'Charge Groups',
-                        'children': chargegroup_names_nodes
-                    }
-
-                    utilbill_node = {
-                        'id': str(UUID.uuid1()),
-                        'text': service,
-                        'children': [utility_node, ratestructure_node, chargegroups_node, meters_node]
-                    }
-                    tree.append(utilbill_node)
-
-                # we want to return success to ajax call and then load the tree in page
-                #return self.dumps({'success':True, 'reebill_structure':tree});
-                # but the TreeLoader doesn't abide by the above ajax packet
-                session.commit()
-                return self.dumps(tree);
-
-        except Exception as e:
-            self.rollback_session(session)
-            return self.handle_exception(e)
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    def insert_reebill_sibling_node(self, service, account, sequence, node_type, node_key, **args):
-        """
-        """
-        try:
-            session = None
-            if not service or not account or not sequence or not node_type or not node_key:
-                raise ValueError("Bad Parameter Value")
-
-            session = self.state_db.session()
-
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-
-            # node insertions are done by selecting a sibling node and creating
-            # a new node based on the context of that selection.
-
-            new_node = None
-            if node_type == 'meter':
-                # in the case of inserting a meter, we simply need to know
-                # for which service the meter will be created since meters
-
-                new_meter = reebill.new_meter(service)
-                # both an actual and shadow register get created (actual, shadow)
-                new_registers = reebill.new_register(service, new_meter['identifier'])
-
-                register_nodes = [{
-                    'id': str(UUID.uuid4()),
-                    'leaf': True,
-                    'text': new_registers[0]['identifier'],
-                    'service': service,
-                    'account': account, 
-                    'sequence': sequence, 
-                    'node_type': 'register',
-                    'node_key': new_registers[0]['identifier'],
-                }]
-                new_node = {
-                    'id': str(UUID.uuid4()),
-                    'text': new_meter['identifier'],
-                    'children': register_nodes,
-                    'service': service,
-                    'account': account, 
-                    'sequence': sequence, 
-                    'node_type': 'meter',
-                    'node_key': new_meter['identifier'], 
-                }
-            elif node_type == 'register':
-                # in the case of inserting a register, we need to find
-                # the parent of the currently selected register node
-                meter = reebill.meter_for_register(service, node_key)
-                new_registers = reebill.new_register(service, meter['identifier'])
-                new_node = {
-                    'id': str(UUID.uuid4()),
-                    'leaf': True,
-                    'text': new_registers[0]['identifier'],
-                    'service': service,
-                    'account': account, 
-                    'sequence': sequence, 
-                    'node_type': 'register',
-                    'node_key': new_registers[0]['identifier'],
-                }
-
-
-
-
-            self.reebill_dao.save_reebill(reebill)
-
-            session.commit()
-
-            return self.dumps({'success': True, 'node':new_node })
-
-        except Exception as e:
-            self.rollback_session(session)
-            return self.handle_exception(e)
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    def delete_reebill_node(self, service, account, sequence, node_type, node_key, text, **args):
-        """
-        """
-        try:
-            session = None
-            if not service or not account or not sequence or not node_type or not node_key or not text:
-                raise ValueError("Bad Parameter Value")
-
-            session = self.state_db.session()
-
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-
-            if reebill:
-                if node_type == 'meter':
-
-                    # retrieve this meter based on node_key
-                    reebill.delete_meter(service, node_key)
-
-                elif node_type == 'register':
-                    raise Exception("finish me")
-
-            self.reebill_dao.save_reebill(reebill)
-
-            session.commit()
-
-            return self.dumps({'success': True })
-
-        except Exception as e:
-            self.rollback_session(session)
-            return self.handle_exception(e)
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    def update_reebill_node(self, service, account, sequence, node_type, node_key, text, **args):
-        """
-        """
-        try:
-            session = None
-            if not service or not account or not sequence or not node_type or not node_key or not text:
-                raise ValueError("Bad Parameter Value")
-
-            session = self.state_db.session()
-
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-
-            updated_node = None
-            if reebill:
-                if node_type == 'meter':
-
-                    # retrieve this meter based on node_key
-                    reebill.set_meter_identifier(service, node_key, text)
-
-                    # now that it has been changed, retrieve it with the new name
-                    meter = reebill.meter(service, text)
-
-                    # get the children of this meter
-                    register_nodes = []
-                    for register in meter['registers']:
-                        if register['shadow'] is True:
-                            continue
-                        register_nodes.append({
+                        updated_node = {
                             'id': str(UUID.uuid1()),
                             'leaf': True,
                             'text': register['identifier'],
@@ -2963,47 +2893,13 @@ class BillToolBridge:
                             'account': account, 
                             'sequence': sequence, 
                             'node_type': 'register',
-                            'node_key': register['identifier']
-                        })
+                            'node_key': register['identifier'], 
+                        }
 
-                    updated_node = {
-                        'id': str(UUID.uuid1()),
-                        'text': meter['identifier'],
-                        'children': register_nodes,
-                        'service': service,
-                        'account': account, 
-                        'sequence': sequence, 
-                        'node_type': 'meter',
-                        'node_key': meter['identifier'], 
-                    }
-                        
-                    # update the meter fields
-                elif node_type == 'register':
-                    # retrieve this meter based on node_key
-                    reebill.set_register_identifier(service, node_key, text)
-
-                    # now that it has been changed, retrieve it with the new name
-                    register = reebill.actual_register(service, text)
-
-                    updated_node = {
-                        'id': str(UUID.uuid1()),
-                        'leaf': True,
-                        'text': register['identifier'],
-                        'service': service,
-                        'account': account, 
-                        'sequence': sequence, 
-                        'node_type': 'register',
-                        'node_key': register['identifier'], 
-                    }
-
-            self.reebill_dao.save_reebill(reebill)
-
-            session.commit()
-
-            return self.dumps({'success': True, 'node':updated_node})
-
+                self.reebill_dao.save_reebill(reebill)
+                session.commit()
+                return self.dumps({'success': True, 'node':updated_node})
         except Exception as e:
-            self.rollback_session(session)
             return self.handle_exception(e)
 
         
