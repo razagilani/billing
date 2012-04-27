@@ -76,8 +76,8 @@ class EstimatedRevenue(object):
         # by default, value is 0 and it's not estimated
         data = defaultdict(lambda: defaultdict(lambda: {'value':0., 'estimated': False}))
 
-        #accounts = self.state_db.listAccounts(session)
-        accounts = ['10004', '10005'] # TODO enable all accounts when this is faster
+        accounts = self.state_db.listAccounts(session)
+        #accounts = ['10004', '10005'] # TODO enable all accounts when this is faster
         now = datetime.utcnow()
         for account in accounts:
             last_seq = self.state_db.last_sequence(session, account)
@@ -174,6 +174,7 @@ class EstimatedRevenue(object):
         # bill, we can just divide its renewable energy value by the quantity
         # of renewable energy
         try:
+            # TODO: if there was no renewable energy in the last reebill, figure out what to do
             unit_price = float(last_reebill.ree_value) \
                     / float(last_reebill.total_renewable_energy)
             energy_price = unit_price * energy_sold_therms

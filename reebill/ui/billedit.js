@@ -5026,24 +5026,39 @@ function reeBillReady() {
         remoteSort: true,
         fields: [
             {name: 'account', mapping: 'account'},
-            {name: 'revenue_11_months_ago', mapping: 'revenue_11_months_ago.value'},
-            {name: 'revenue_10_months_ago', mapping: 'revenue_10_months_ago.value'},
-            {name: 'revenue_9_months_ago', mapping: 'revenue_9_months_ago.value'},
-            {name: 'revenue_8_months_ago', mapping: 'revenue_8_months_ago.value'},
-            {name: 'revenue_7_months_ago', mapping: 'revenue_7_months_ago.value'},
-            {name: 'revenue_6_months_ago', mapping: 'revenue_6_months_ago.value'},
-            {name: 'revenue_5_months_ago', mapping: 'revenue_5_months_ago.value'},
-            {name: 'revenue_4_months_ago', mapping: 'revenue_4_months_ago.value'},
-            {name: 'revenue_3_months_ago', mapping: 'revenue_3_months_ago.value'},
-            {name: 'revenue_2_months_ago', mapping: 'revenue_2_months_ago.value'},
-            {name: 'revenue_1_months_ago', mapping: 'revenue_1_months_ago.value'},
-            {name: 'revenue_0_months_ago', mapping: 'revenue_0_months_ago.value'},
+            {name: 'revenue_11_months_ago'},
+            {name: 'revenue_10_months_ago'},
+            {name: 'revenue_9_months_ago'},
+            {name: 'revenue_8_months_ago'},
+            {name: 'revenue_7_months_ago'},
+            {name: 'revenue_6_months_ago'},
+            {name: 'revenue_5_months_ago'},
+            {name: 'revenue_4_months_ago'},
+            {name: 'revenue_3_months_ago'},
+            {name: 'revenue_2_months_ago'},
+            {name: 'revenue_1_months_ago'},
+            {name: 'revenue_0_months_ago'},
         ],
     });
 
     revenueGridStore.on('exception', function(type, action, options, response, arg) {
         Ext.Msg.alert('Error', 'An error occurred while generating the report');
     });
+
+    var revenueColumnRenderer = function(value, metaData, record, rowIndex, colIndex, store) {
+        // revenueGridStore records are objects containing keys "value",
+        // "error" and/or "estimated". set the style according to that data,
+        // then set the actual text to display to the value of the "value" key
+        // in the record
+        if (value.value.indexOf("ERROR") == 0) {
+            metaData.css = 'revenue-grid-error';
+        } else if (value.estimated) {
+            metaData.css = 'revenue-grid-estimated';
+        } else {
+            metaData.css = 'revenue-grid-normal';
+        }
+        return value.value;
+    }
 
     var revenueGrid = new Ext.grid.GridPanel({
         title:'12-Month Estimated Revenue',
@@ -5062,18 +5077,18 @@ function reeBillReady() {
                 forceFit:true,
             },
             // TODO generate column names with abbreviations for the past 12 months (which column gets depends on the current month)
-            { id: '11_months_ago', header: '11', dataIndex: 'revenue_11_months_ago', width: 80},
-            { id: '10_months_ago', header: '10', dataIndex: 'revenue_10_months_ago', width: 80},
-            { id: '9_months_ago', header: '9', dataIndex: 'revenue_9_months_ago', width: 80},
-            { id: '8_months_ago', header: '8', dataIndex: 'revenue_8_months_ago', width: 80},
-            { id: '7_months_ago', header: '7', dataIndex: 'revenue_7_months_ago', width: 80},
-            { id: '6_months_ago', header: '6', dataIndex: 'revenue_6_months_ago', width: 80},
-            { id: '5_months_ago', header: '5', dataIndex: 'revenue_5_months_ago', width: 80},
-            { id: '4_months_ago', header: '4', dataIndex: 'revenue_4_months_ago', width: 80},
-            { id: '3_months_ago', header: '3', dataIndex: 'revenue_3_months_ago', width: 80},
-            { id: '2_months_ago', header: '2', dataIndex: 'revenue_2_months_ago', width: 80},
-            { id: '1_months_ago', header: '1', dataIndex: 'revenue_1_months_ago', width: 80},
-            { id: '0_months_ago', header: '0', dataIndex: 'revenue_0_months_ago', width: 80},
+            { id: '11_months_ago', header: '11', dataIndex: 'revenue_11_months_ago', width: 80, renderer: revenueColumnRenderer},
+            { id: '10_months_ago', header: '10', dataIndex: 'revenue_10_months_ago', width: 80, renderer: revenueColumnRenderer},
+            { id: '9_months_ago', header: '9', dataIndex: 'revenue_9_months_ago', width: 80, renderer: revenueColumnRenderer},
+            { id: '8_months_ago', header: '8', dataIndex: 'revenue_8_months_ago', width: 80, renderer: revenueColumnRenderer},
+            { id: '7_months_ago', header: '7', dataIndex: 'revenue_7_months_ago', width: 80, renderer: revenueColumnRenderer},
+            { id: '6_months_ago', header: '6', dataIndex: 'revenue_6_months_ago', width: 80, renderer: revenueColumnRenderer},
+            { id: '5_months_ago', header: '5', dataIndex: 'revenue_5_months_ago', width: 80, renderer: revenueColumnRenderer},
+            { id: '4_months_ago', header: '4', dataIndex: 'revenue_4_months_ago', width: 80, renderer: revenueColumnRenderer},
+            { id: '3_months_ago', header: '3', dataIndex: 'revenue_3_months_ago', width: 80, renderer: revenueColumnRenderer},
+            { id: '2_months_ago', header: '2', dataIndex: 'revenue_2_months_ago', width: 80, renderer: revenueColumnRenderer},
+            { id: '1_months_ago', header: '1', dataIndex: 'revenue_1_months_ago', width: 80, renderer: revenueColumnRenderer},
+            { id: '0_months_ago', header: '0', dataIndex: 'revenue_0_months_ago', width: 80, renderer: revenueColumnRenderer},
         ],
 
         // paging bar on the bottom
