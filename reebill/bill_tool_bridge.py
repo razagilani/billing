@@ -401,10 +401,19 @@ class BillToolBridge:
                     for year, month in data[account].keys():
                         months_ago = dateutils.month_difference(year, month,
                                 cur_year, cur_month)
-                        label = '%s_months_ago' % months_ago
-                        value =  data[account][year, month]
-                        value = 'ERROR' if isinstance(value, Exception) else '%.2f' % value
-                        row.update({ label: value })
+
+                        # show error message instead of value if there was one
+                        if 'error' in data[account][year, month]:
+                            value = 'ERROR: %s' % data[account][year, month]['error']
+                        elif 'value' in data[account][year, month]:
+                            value = '%.2f' % data[account][year, month]['value']
+
+                        row.update({
+                            'revenue_%s_months_ago' % months_ago: {
+                                'value': value,
+                                'estimated': data[account][year, month].get('estimated', False)
+                            }
+                        })
                     rows.append(row)
                 session.commit()
                 return self.dumps({
@@ -412,7 +421,6 @@ class BillToolBridge:
                     'rows': rows
                 })
         except Exception as e:
-            self.rollback_session()
             return self.handle_exception(e)
 
     ###########################################################################

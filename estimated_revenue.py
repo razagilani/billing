@@ -11,9 +11,9 @@ from billing.processing import state
 from billing.processing.state import StateDB
 from billing.mongo import ReebillDAO
 from billing.dictutils import deep_map
-#import pprint
-#pp = pprint.PrettyPrinter(indent=4).pprint
 
+import pprint
+pp = pprint.PrettyPrinter(indent=4).pprint
 sys.stdout = sys.stderr
 
 class EstimatedRevenue(object):
@@ -40,21 +40,44 @@ class EstimatedRevenue(object):
     def report(self, session):
         '''Returns a dictionary containing data about real and renewable energy
         charges in reebills for all accounts in the past year. Keys are (year,
-        month) tuples. Each value is a dictionary whose key is an account or
-        'total' and whose value is real or estimated renewable energy charge in
-        all reebills whose approximate calendar month was or probably will be that
-        month.
-        If there was an error, an Exception is put in place of the charge, and
-        the monthly total only includes accounts for which there wasn't an
-        error.'''
+        month) tuples. Each value is a dictionary whose key is an account (or
+        'total') and whose value is a dictionary containing real or estimated
+        renewable energy charge in all reebills whose approximate calendar
+        month was or probably will be that month, and a boolean representing
+        whether that value was estimated.
+
+        If there was an error, an Exception is put in the dictionary with the
+        key "error", and "value" and "estimated" keys are omitted.
+        The monthly total only includes accounts for which there wasn't an
+        error.
+
+        Dictionary structure is like this:
+        {
+            10001 : {
+                (2012,1): {
+                    "value": $,
+                    "estimated": False
+                },
+                (2012,2): {
+                    "value": $,
+                    "estimated": True
+                },
+                (2012,3): {
+                    "error": "Error Message"
+                },
+                ...
+            }
+            ...
+        }
+        '''
         print 'Generating estimated revenue report'
 
-        # dictionary (year, month) -> (account -> $) whose default value is an
-        # empty dict whose default value is 0
-        data = defaultdict(lambda: defaultdict(float))
+        # dictionary account -> ((year, month) -> { monthtly data })
+        # by default, value is 0 and it's not estimated
+        data = defaultdict(lambda: defaultdict(lambda: {'value':0., 'estimated': False}))
 
-        accounts = self.state_db.listAccounts(session)
-        #accounts = ['10004', '10005'] # TODO enable all accounts when this is faster
+        #accounts = self.state_db.listAccounts(session)
+        accounts = ['10004', '10005'] # TODO enable all accounts when this is faster
         now = datetime.utcnow()
         for account in accounts:
             last_seq = self.state_db.last_sequence(session, account)
@@ -68,17 +91,32 @@ class EstimatedRevenue(object):
                     # due to the total for this month
                     for seq in sequences:
                         if seq <= last_seq:
-                            data[account][year, month] += float(self.reebill_dao
-                                    .load_reebill(account, seq).balance_due)
+                            data[account][year, month]['value'] += float(
+                                    self.reebill_dao .load_reebill(account,
+                                    seq).balance_due)
                         else:
-                            data[account][year, month] += self._estimate_balance_due(
-                                    session, account, year, month)
+                            data[account][year, month]['value'] += self.\
+                                    _estimate_balance_due(session, account,
+                                    year, month)
+                            # a single estimated bill makes the whole month
+                            # estimated
+                            data[account][year, month]['estimated'] = True
                 except Exception as e:
-                    data[account][year, month] = e
+                    data[account][year, month] = {'error': e}
                     print '%s %s-%s ERROR: %s' % (account, year, month, e)
 
         for year, month in months_of_past_year(now.year, now.month):
-            data['total'][year, month] = sum(data[acc][year, month] for acc in accounts if not isinstance(data[acc][year, month], Exception))
+            # add up revenue for all accounts in this month
+            data['total'][year, month]['value'] = sum(data[acc][year, month].get('value', 0)
+                    for acc in accounts if not isinstance(data[acc]
+                    [year, month], Exception))
+
+            # total value is estimated iff any estimated bills contributed to
+            # it (errors are treated as non-estimated zeroes). this will almost
+            # certainly be true because utility bills for the present month
+            # have not even been received.
+            data['total'][year, month]['estimated'] = any(data[acc][year,
+                month].get('estimated',False) == True for acc in accounts)
 
         return data
 
