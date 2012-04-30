@@ -921,7 +921,8 @@ class MongoReebill(object):
 
     def total_renewable_energy(self, ccf_conversion_factor=None):
         '''Returns all renewable energy distributed among shadow registers of
-        this reebill, in BTU.'''
+        this reebill, in therms.'''
+        # TODO switch to BTU
         if type(ccf_conversion_factor) not in (type(None), Decimal):
             raise ValueError("ccf conversion factor must be a Decimal")
         # TODO: CCF is not an energy unit, and registers actually hold CCF
@@ -943,7 +944,7 @@ class MongoReebill(object):
                             total_therms += quantity / Decimal(".0341214163")
                         elif unit == 'ccf':
                             if ccf_conversion_factor is not None:
-                                total_therms += (quantity / Decimal("100000.0")) * ccf_conversion_factor
+                                total_therms += quantity * ccf_conversion_factor
                             else:
                                 # TODO: 28825375 - need the conversion factor for this
                                 raise Exception(("Register contains gas measured "
