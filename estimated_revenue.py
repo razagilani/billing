@@ -77,8 +77,8 @@ class EstimatedRevenue(object):
         # by default, value is 0 and it's not estimated
         data = defaultdict(lambda: defaultdict(lambda: {'value':0., 'estimated': False}))
 
-        #accounts = self.state_db.listAccounts(session)
-        accounts = ['10004'] # TODO enable all accounts when this is faster
+        accounts = self.state_db.listAccounts(session)
+        #accounts = ['10004'] # TODO enable all accounts when this is faster
         now = datetime.utcnow()
         for account in accounts:
             last_seq = self.state_db.last_sequence(session, account)
@@ -105,7 +105,6 @@ class EstimatedRevenue(object):
                 except Exception as e:
                     data[account][year, month] = {'error': e}
                     print '%s %s-%s ERROR: %s' % (account, year, month, e)
-                    raise
 
         for year, month in months_of_past_year(now.year, now.month):
             # add up revenue for all accounts in this month
