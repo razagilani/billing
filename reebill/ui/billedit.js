@@ -5042,6 +5042,7 @@ function reeBillReady() {
     });
 
     revenueGridStore.on('exception', function(type, action, options, response, arg) {
+        # TODO  28823361 better error message when server hangs up on us
         Ext.Msg.alert('Error', 'An error occurred while generating the report');
     });
 
