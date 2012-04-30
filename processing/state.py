@@ -257,6 +257,17 @@ class StateDB:
             max_sequence =  0
         return max_sequence
         
+    def last_issued_sequence(self, session, account):
+        '''Returns the sequence of the last issued reebill for 'account', or 0
+        if there are no issued reebills.'''
+        customer = session.query(Customer).filter(Customer.account==account).one()
+        max_sequence = session.query(sqlalchemy.func.max(ReeBill.sequence)) \
+                .filter(ReeBill.customer_id==customer.id) \
+                .filter(ReeBill.issued==1).one()[0]
+        if max_sequence is None:
+            max_sequence = 0
+        return max_sequence
+
     def last_utilbill_end_date(self, session, account):
         '''Returns the end date of the latest utilbill for the customer given
         by 'account', or None if there are no utilbills.'''

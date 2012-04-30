@@ -78,7 +78,7 @@ class EstimatedRevenue(object):
         data = defaultdict(lambda: defaultdict(lambda: {'value':0., 'estimated': False}))
 
         accounts = self.state_db.listAccounts(session)
-        #accounts = ['10004'] # TODO enable all accounts when this is faster
+        # accounts = ['10024'] # TODO enable all accounts when this is faster
         now = datetime.utcnow()
         for account in accounts:
             last_seq = self.state_db.last_sequence(session, account)
@@ -128,7 +128,7 @@ class EstimatedRevenue(object):
         would be issed for the given account in the given month. The month must
         exceed the approximate month of the account's last real bill.'''
         # make sure (year, month) is not the approximate month of a real bill
-        last_sequence = self.state_db.last_sequence(session, account)
+        last_sequence = self.state_db.last_issued_sequence(session, account)
         last_reebill = self.reebill_dao.load_reebill(account, last_sequence)
         last_approx_month = estimate_month(last_reebill.period_begin,
                 last_reebill.period_end)
@@ -136,7 +136,7 @@ class EstimatedRevenue(object):
             raise ValueError(('%s does not exceed last approximate billing '
                 'month for account %s, which is %s') % ((year, month), account,
                 last_approximate_month))
-
+        
         # the period over which to get energy sold is the entire calendar month
         # up to the present, unless this is the month following that of the
         # last real bill, in which case the period starts at the end of the
@@ -172,6 +172,16 @@ class EstimatedRevenue(object):
         # utility bills until a reebill has been created. so there will never
         # be rate structure to use unless there is actually a reebill.
 
+        # if last_reebill has zero renewable energy, replace it with the newest
+        # bill that has non-zero renewable energy, if there is one
+        while last_reebill.total_renewable_energy(
+                ccf_conversion_factor=Decimal("1.0")) == 0:
+            if last_reebill.sequence == 0:
+                raise Exception(('No reebills with non-zero renewable '
+                        'energy.') % account)
+            last_reebill = self.reebill_dao.load_reebill(account,
+                    last_reebill.sequence - 1)
+
         # to approximate the price per therm of renewable energy in the last
         # bill, we can just divide its renewable energy charge (the price at
         # which its energy was sold to the customer, including the discount) by
@@ -181,15 +191,11 @@ class EstimatedRevenue(object):
             ree_charges = float(last_reebill.ree_charges)
             total_renewable_energy = float(last_reebill.total_renewable_energy(
                     ccf_conversion_factor=Decimal("1.0")))
-            if total_renewable_energy == 0:
-                # TODO: if there was no renewable energy in the last reebill,
-                # use older bill or global average
-                raise ZeroDivisionError('Zero renewable energy in last issued reebill')
             unit_price = ree_charges / total_renewable_energy
             energy_price = unit_price * energy_sold_therms
-            print '%s/%s %s to %s: $%.2f/therm * %.3f therms = $%.2f' % (
+            print '%s/%s %s to %s: $%.2f/therm (from #%s) * %.3f therms = $%.2f' % (
                     account, olap_id, start, end, unit_price,
-                    energy_sold_therms, energy_price)
+                    last_reebill.sequence, energy_sold_therms, energy_price)
         except Exception as e:
             raise
         
