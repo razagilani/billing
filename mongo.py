@@ -919,10 +919,11 @@ class MongoReebill(object):
         hypothetical utility bill.'''
         return self.dictionary['ree_value']
 
-    @property
-    def total_renewable_energy(self):
+    def total_renewable_energy(self, ccf_conversion_factor=None):
         '''Returns all renewable energy distributed among shadow registers of
         this reebill, in BTU.'''
+        if type(ccf_conversion_factor) not in (type(None), Decimal):
+            raise ValueError("ccf conversion factor must be a Decimal")
         # TODO: CCF is not an energy unit, and registers actually hold CCF
         # instead of therms. we need to start keeping track of CCF-to-therms
         # conversion factors.
@@ -937,13 +938,17 @@ class MongoReebill(object):
                         if unit == 'therms':
                             total_therms += quantity
                         elif unit == 'btu':
-                            total_therms += quantity / Decimal(100000.0)
+                            total_therms += quantity / Decimal("100000.0")
                         elif unit == 'kwh':
-                            total_therms += quantity / Decimal(.0341214163)
+                            total_therms += quantity / Decimal(".0341214163")
                         elif unit == 'ccf':
-                            raise Exception(("Register contains gas measured "
-                                "in ccf: can't convert that into energy "
-                                "without the multiplier."))
+                            if ccf_conversion_factor is not None:
+                                total_therms += (quantity / Decimal("100000.0")) * ccf_conversion_factor
+                            else:
+                                # TODO: 28825375 - need the conversion factor for this
+                                raise Exception(("Register contains gas measured "
+                                    "in ccf: can't convert that into energy "
+                                    "without the multiplier."))
                         else:
                             raise Exception('Unknown energy unit: "%s"' % \
                                     register['quantity_units'])

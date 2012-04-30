@@ -11,6 +11,7 @@ from billing.processing import state
 from billing.processing.state import StateDB
 from billing.mongo import ReebillDAO
 from billing.dictutils import deep_map
+from decimal import Decimal
 
 import pprint
 pp = pprint.PrettyPrinter(indent=4).pprint
@@ -76,8 +77,8 @@ class EstimatedRevenue(object):
         # by default, value is 0 and it's not estimated
         data = defaultdict(lambda: defaultdict(lambda: {'value':0., 'estimated': False}))
 
-        accounts = self.state_db.listAccounts(session)
-        #accounts = ['10004', '10005'] # TODO enable all accounts when this is faster
+        #accounts = self.state_db.listAccounts(session)
+        accounts = ['10004'] # TODO enable all accounts when this is faster
         now = datetime.utcnow()
         for account in accounts:
             last_seq = self.state_db.last_sequence(session, account)
@@ -92,8 +93,8 @@ class EstimatedRevenue(object):
                     for seq in sequences:
                         if seq <= last_seq:
                             data[account][year, month]['value'] += float(
-                                    self.reebill_dao .load_reebill(account,
-                                    seq).balance_due)
+                                    self.reebill_dao.load_reebill(account,
+                                    seq).ree_charges)
                         else:
                             data[account][year, month]['value'] += self.\
                                     _estimate_balance_due(session, account,
@@ -104,6 +105,7 @@ class EstimatedRevenue(object):
                 except Exception as e:
                     data[account][year, month] = {'error': e}
                     print '%s %s-%s ERROR: %s' % (account, year, month, e)
+                    raise
 
         for year, month in months_of_past_year(now.year, now.month):
             # add up revenue for all accounts in this month
@@ -175,8 +177,13 @@ class EstimatedRevenue(object):
         # of renewable energy
         try:
             # TODO: if there was no renewable energy in the last reebill, figure out what to do
-            unit_price = float(last_reebill.ree_value) \
-                    / float(last_reebill.total_renewable_energy)
+            # TODO: 28825375 - ccf conversion factor is as of yet unavailable so 1 is assumed.
+            ree_value = float(last_reebill.ree_value)
+            print "**** reevalue %s" % ree_value
+            total_renewable_energy = float(last_reebill.total_renewable_energy(ccf_conversion_factor=Decimal("1.0")))
+            print "**** total renewable energy %s" % total_renewable_energy
+            unit_price = ree_value / total_renewable_energy
+            print "**** unit_price %s" % unit_price
             energy_price = unit_price * energy_sold_therms
             print '%s %s to %s: $%.2f/therm * %.3f therms = $%.2f' % (olap_id,
                     start, end, unit_price, energy_sold_therms, energy_price)
