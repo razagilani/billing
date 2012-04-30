@@ -5064,6 +5064,44 @@ function reeBillReady() {
         return "$" + value.value;
     }
 
+    /* dynamically generate estimated revenue grid columns */
+    var revenueGridColumns = [{
+        id: 'account',
+        header: 'Account',
+        dataIndex: 'account',
+        forceFit:true,
+    }];
+    var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
+        'Sep', 'Oct', 'Nov', 'Dec'];
+    var now = new Date();
+    var curYear = now.getUTCFullYear();
+    var curMonth = now.getUTCMonth();
+    var year; var month; var ago = 11;
+    if (month == 11) {
+        year = curYear;
+        month = 1;
+    } else {
+        year = curYear - 1;
+        month = curMonth + 1;
+    }
+    while (year < curYear || (year == curYear && month <= curMonth)) {
+        month_str = monthNames[month] + " " + year;
+        revenueGridColumns.push({
+            id: ago.toString() + '_months_ago',
+            header: month_str,
+            dataIndex: 'revenue_' + ago + '_months_ago',
+            width: 95, 
+            renderer: revenueColumnRenderer,
+        });
+        if (month == 11) {
+            year++;
+            month = 0;            
+        } else {
+            month++;
+        }
+        ago--;
+    }
+
     var revenueGrid = new Ext.grid.GridPanel({
         title:'12-Month Estimated Revenue',
         store: revenueGridStore,
@@ -5073,27 +5111,27 @@ function reeBillReady() {
         autoExpandColumn: 'account',
 
         // grid columns
-        columns:[
-            {
-                id: 'account', // if this id does not match autoExpandColumn above, we get "Could not load UI configuration from the server: TypeError: Cannot read property 'width' of undefined" and splash does not go away
-                header: 'Account',
-                dataIndex: 'account',
-                forceFit:true,
-            },
-            // TODO generate column names with abbreviations for the past 12 months (which column gets depends on the current month)
-            { id: '11_months_ago', header: '11', dataIndex: 'revenue_11_months_ago', width: 80, renderer: revenueColumnRenderer},
-            { id: '10_months_ago', header: '10', dataIndex: 'revenue_10_months_ago', width: 80, renderer: revenueColumnRenderer},
-            { id: '9_months_ago', header: '9', dataIndex: 'revenue_9_months_ago', width: 80, renderer: revenueColumnRenderer},
-            { id: '8_months_ago', header: '8', dataIndex: 'revenue_8_months_ago', width: 80, renderer: revenueColumnRenderer},
-            { id: '7_months_ago', header: '7', dataIndex: 'revenue_7_months_ago', width: 80, renderer: revenueColumnRenderer},
-            { id: '6_months_ago', header: '6', dataIndex: 'revenue_6_months_ago', width: 80, renderer: revenueColumnRenderer},
-            { id: '5_months_ago', header: '5', dataIndex: 'revenue_5_months_ago', width: 80, renderer: revenueColumnRenderer},
-            { id: '4_months_ago', header: '4', dataIndex: 'revenue_4_months_ago', width: 80, renderer: revenueColumnRenderer},
-            { id: '3_months_ago', header: '3', dataIndex: 'revenue_3_months_ago', width: 80, renderer: revenueColumnRenderer},
-            { id: '2_months_ago', header: '2', dataIndex: 'revenue_2_months_ago', width: 80, renderer: revenueColumnRenderer},
-            { id: '1_months_ago', header: '1', dataIndex: 'revenue_1_months_ago', width: 80, renderer: revenueColumnRenderer},
-            { id: '0_months_ago', header: '0', dataIndex: 'revenue_0_months_ago', width: 80, renderer: revenueColumnRenderer},
-        ],
+        columns: revenueGridColumns,
+       /* [*/
+            //{
+                //id: 'account', // if this id does not match autoExpandColumn above, we get "Could not load UI configuration from the server: TypeError: Cannot read property 'width' of undefined" and splash does not go away
+                //header: 'Account',
+                //dataIndex: 'account',
+                //forceFit:true,
+            //},
+            //{ id: '11_months_ago', header: '11', dataIndex: 'revenue_11_months_ago', width: 80, renderer: revenueColumnRenderer},
+            //{ id: '10_months_ago', header: '10', dataIndex: 'revenue_10_months_ago', width: 80, renderer: revenueColumnRenderer},
+            //{ id: '9_months_ago', header: '9', dataIndex: 'revenue_9_months_ago', width: 80, renderer: revenueColumnRenderer},
+            //{ id: '8_months_ago', header: '8', dataIndex: 'revenue_8_months_ago', width: 80, renderer: revenueColumnRenderer},
+            //{ id: '7_months_ago', header: '7', dataIndex: 'revenue_7_months_ago', width: 80, renderer: revenueColumnRenderer},
+            //{ id: '6_months_ago', header: '6', dataIndex: 'revenue_6_months_ago', width: 80, renderer: revenueColumnRenderer},
+            //{ id: '5_months_ago', header: '5', dataIndex: 'revenue_5_months_ago', width: 80, renderer: revenueColumnRenderer},
+            //{ id: '4_months_ago', header: '4', dataIndex: 'revenue_4_months_ago', width: 80, renderer: revenueColumnRenderer},
+            //{ id: '3_months_ago', header: '3', dataIndex: 'revenue_3_months_ago', width: 80, renderer: revenueColumnRenderer},
+            //{ id: '2_months_ago', header: '2', dataIndex: 'revenue_2_months_ago', width: 80, renderer: revenueColumnRenderer},
+            //{ id: '1_months_ago', header: '1', dataIndex: 'revenue_1_months_ago', width: 80, renderer: revenueColumnRenderer},
+            //{ id: '0_months_ago', header: '0', dataIndex: 'revenue_0_months_ago', width: 80, renderer: revenueColumnRenderer},
+       /* ]*/
 
         // paging bar on the bottom
         bbar: new Ext.PagingToolbar({
