@@ -88,8 +88,8 @@ class EstimatedRevenue(object):
                     sequences = self.process.sequences_for_approximate_month(
                             session, account, year, month)
 
-                    # for each sequence, add that bill's real or estimated balance
-                    # due to the total for this month
+                    # for each sequence, add that bill's real or estimated
+                    # renewable energy charge to the total for this month
                     for seq in sequences:
                         if seq <= last_seq:
                             data[account][year, month]['value'] += float(
@@ -97,7 +97,7 @@ class EstimatedRevenue(object):
                                     seq).ree_charges)
                         else:
                             data[account][year, month]['value'] += self.\
-                                    _estimate_balance_due(session, account,
+                                    _estimate_ree_charge(session, account,
                                     year, month)
                             # a single estimated bill makes the whole month
                             # estimated
@@ -106,6 +106,7 @@ class EstimatedRevenue(object):
                     data[account][year, month] = {'error': e}
                     print '%s %s-%s ERROR: %s' % (account, year, month, e)
 
+        # compute total
         for year, month in months_of_past_year(now.year, now.month):
             # add up revenue for all accounts in this month
             data['total'][year, month]['value'] = sum(data[acc][year, month].get('value', 0)
@@ -122,10 +123,10 @@ class EstimatedRevenue(object):
         return data
 
 
-    def _estimate_balance_due(self, session, account, year, month):
-        '''Returns the best estimate of balance_due for a bill that would be
-        issed for the given account in the given month. The month must exceed
-        the approximate month of the account's last real bill.'''
+    def _estimate_ree_charge(self, session, account, year, month):
+        '''Returns an estimate of renewable energy charges for a bill that
+        would be issed for the given account in the given month. The month must
+        exceed the approximate month of the account's last real bill.'''
         # make sure (year, month) is not the approximate month of a real bill
         last_sequence = self.state_db.last_sequence(session, account)
         last_reebill = self.reebill_dao.load_reebill(account, last_sequence)
@@ -172,22 +173,24 @@ class EstimatedRevenue(object):
         # be rate structure to use unless there is actually a reebill.
 
         # to approximate the price per therm of renewable energy in the last
-        # bill, we can just divide its renewable energy value by the quantity
-        # of renewable energy
+        # bill, we can just divide its renewable energy charge (the price at
+        # which its energy was sold to the customer, including the discount) by
+        # the quantity of renewable energy
         try:
-            # TODO: if there was no renewable energy in the last reebill, figure out what to do
             # TODO: 28825375 - ccf conversion factor is as of yet unavailable so 1 is assumed.
-            ree_value = float(last_reebill.ree_value)
-            print "**** reevalue %s" % ree_value
-            total_renewable_energy = float(last_reebill.total_renewable_energy(ccf_conversion_factor=Decimal("1.0")))
-            print "**** total renewable energy %s" % total_renewable_energy
-            unit_price = ree_value / total_renewable_energy
-            print "**** unit_price %s" % unit_price
+            ree_charges = float(last_reebill.ree_charges)
+            total_renewable_energy = float(last_reebill.total_renewable_energy(
+                    ccf_conversion_factor=Decimal("1.0")))
+            if total_renewable_energy == 0:
+                # TODO: if there was no renewable energy in the last reebill,
+                # use older bill or global average
+                raise ZeroDivisionError('Zero renewable energy in last issued reebill')
+            unit_price = ree_charges / total_renewable_energy
             energy_price = unit_price * energy_sold_therms
-            print '%s %s to %s: $%.2f/therm * %.3f therms = $%.2f' % (olap_id,
-                    start, end, unit_price, energy_sold_therms, energy_price)
+            print '%s/%s %s to %s: $%.2f/therm * %.3f therms = $%.2f' % (
+                    account, olap_id, start, end, unit_price,
+                    energy_sold_therms, energy_price)
         except Exception as e:
-            #print >> sys.stderr, '%s %s to %s ERROR: %s' % (olap_id, start, end, e)
             raise
         
         return energy_price

@@ -5053,12 +5053,15 @@ function reeBillReady() {
         // in the record
         if (value.value.indexOf("ERROR") == 0) {
             metaData.css = 'revenue-grid-error';
-        } else if (value.estimated) {
+            return value.value;
+        }
+
+        if (value.estimated) {
             metaData.css = 'revenue-grid-estimated';
         } else {
             metaData.css = 'revenue-grid-normal';
         }
-        return value.value;
+        return "$" + value.value;
     }
 
     var revenueGrid = new Ext.grid.GridPanel({
