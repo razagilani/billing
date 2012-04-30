@@ -125,7 +125,8 @@ pre.code{
 }
 .revenue-grid-estimated {
     color: gray;
-    font-style: oblique;
+    /*font-style: oblique;*/ /*neither of these work*/
+    /*font-style: italic; */
 }
 .revenue-grid-normal {
     color: black;
