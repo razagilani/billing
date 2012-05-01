@@ -824,8 +824,6 @@ class Process(object):
         # get sequence of last reebill and the month in which its period ends,
         # which will be useful below
         last_sequence = self.state_db.last_sequence(session, account)
-        last_reebill = self.reebill_dao.load_reebill(account, last_sequence)
-        last_reebill_end_month = Month(last_reebill.period_end)
 
         # if there's at least one sequence, return the list of sequences. but
         # if query_month is the month in which the account's last reebill ends,
@@ -833,8 +831,10 @@ class Process(object):
         # also include the sequence of an additional hypothetical reebill whose
         # period would cover the end of the month.
         if sequences_for_month != []:
-            if last_reebill_end_month == query_month and \
-                    last_reebill.period_end < (last_reebill_end_month + 1).first:
+            last_end = self.reebill_dao.load_reebill(account,
+                    last_sequence).period_end
+            if Month(last_end) == query_month and last_end \
+                    < (Month(last_end) + 1).first:
                 sequences_for_month.append(last_sequence + 1)
             return sequences_for_month
 
@@ -849,7 +849,9 @@ class Process(object):
         # reebill ends. return the sequence determined by counting real months
         # after the approximate month of the last bill (there is only one
         # sequence in this case)
-        return [last_sequence + (query_month - last_reebill_end_month)]
+        last_reebill_end = self.reebill_dao.load_reebill(account,
+                last_sequence).period_end
+        return [last_sequence + (query_month - Month(last_reebill_end))]
 
 
 if __name__ == '__main__':
