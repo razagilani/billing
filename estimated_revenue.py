@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from calendar import Calendar
 from collections import defaultdict
+import tablib
 from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
 from billing.processing.process import Process
@@ -175,6 +176,29 @@ class EstimatedRevenue(object):
         return data
 
 
+    def report_table(self, session, failfast=False):
+        '''Returns a Tablib table of the data produced in report().'''
+        report = self.report(session, failfast=failfast)
+        table = tablib.Dataset()
+        table.headers = ['Account', 'Month', 'Revenue']
+        for account in report:
+            for month in report[account]:
+                # note that 'estimated' is ignored because we can't easily
+                # display it in a tabular format
+                cell_data = report[account][month]
+                if 'value' in cell_data:
+                    value = cell_data['value']
+                else:
+                    value = 'ERROR: %s' % cell_data['error']
+                table.append([account, month, value])
+        return table
+
+    def write_report_xls(self, session, output_file):
+        '''Writes an Excel spreadsheet of the data produced in report() to
+        'output_file'.'''
+        table = self.report_table(session, output_file)
+        output_file.write(table.xls)
+
     def _quantize_revenue_in_month(self, session, account, sequence, month):
         '''Returns the approximate amount of energy from the reebill given by
         account and sequence during the given month, assuming the energy was
@@ -240,23 +264,7 @@ class EstimatedRevenue(object):
         # structure(s) to calculate the cost. but currently there are never any
         # utility bills until a reebill has been created. so there will never
         # be rate structure to use unless there is actually a reebill.
-
-        ## if last_reebill has zero renewable energy, replace it with the newest
-        ## bill that has non-zero renewable energy, if there is one
-        #while last_reebill.total_renewable_energy(
-                #ccf_conversion_factor=Decimal("1.0")) == 0:
-            #if last_reebill.sequence == 0:
-                #raise Exception(('%s has no reebills with non-zero renewable '
-                        #'energy') % account)
-            #last_reebill = self.reebill_dao.load_reebill(account,
-                    #last_reebill.sequence - 1)
-
-        #ree_charges = float(last_reebill.ree_charges)
-        #total_renewable_energy = float(last_reebill.total_renewable_energy(
-                #ccf_conversion_factor=Decimal("1.0")))
-        #unit_price = ree_charges / total_renewable_energy
         unit_price = self._get_average_rate(session, account, last_sequence)
-
         energy_price = unit_price * energy_sold_therms
         print 'estimating %s/%s from %s to %s: $%.3f/therm (from #%s) * %.3f therms = $%.2f' % (
                 account, olap_id, start, end, unit_price,
