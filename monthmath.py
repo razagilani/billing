@@ -24,6 +24,8 @@ class Month(object):
                         args[1])
             self.year = args[0]
             self.month = args[1]
+        else:
+            raise ValueError('Arguments must be date, datetime, or year and month numbers')
         self._calendar = calendar.Calendar()
 
     def __repr__(self):
@@ -69,6 +71,9 @@ class Month(object):
         while day <= self.last:
             yield day
             day += timedelta(1)
+
+    def __hash__(self):
+        return hash((self.year, self.month))
 
     @property
     def first(self):

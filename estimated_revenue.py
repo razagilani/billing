@@ -89,30 +89,26 @@ class EstimatedRevenue(object):
                 {'value':0., 'estimated': False}))
         # TODO replace (year, month) tuples with Months
 
-        # accounts = self.state_db.listAccounts(session)
-        accounts = ['10006'] # enable all accounts when this is faster
+        accounts = self.state_db.listAccounts(session)
+        #accounts = ['10024'] # enable all accounts when this is faster
         for account in accounts:
             last_issued_sequence = self.state_db.last_sequence(session,
                     account)
-            last_reebill_end = self.reebill_dao.load_reebill(
-                    account, last_issued_sequence).period_end
+            if last_issued_sequence > 0:
+                last_reebill_end = self.reebill_dao.load_reebill(
+                        account, last_issued_sequence).period_end
+            else:
+                last_reebill_end = None
 
             for month in months_of_past_year():
                 try:
-                    print account, month
-                    #if account == '10006' and month == (2011,6):
-                        #import pdb; pdb.set_trace()
-
                     # get all issued bills that have any part of their periods
                     # inside this month--possibly including a hypothetical bill
                     # whose period would be in this month if it existed. (note
                     # that un-issued bills effectively don't exist for this
                     # purpose, since they may have 0 energy in them).
-                    try:
-                        sequences = self.process.sequences_in_month(
-                                session, account, month.year, month.month)
-                    except ValueError:
-                        import pdb; pdb.set_trace()
+                    sequences = self.process.sequences_in_month(session,
+                            account, month.year, month.month)
 
                     # if there are no sequences, skip (value is 0 by default)
                     if sequences == []:
@@ -128,44 +124,48 @@ class EstimatedRevenue(object):
                             # revenue during this month
                             this_month_energy_for_sequence = self.\
                                     _quantize_revenue_in_month(session,
-                                    account, seq, month.year, month.month)
+                                    account, seq, month)
                         else:
                             # not an issued bill: period starts at start of
                             # month or end of last issued bill period,
                             # whichever comes later, and ends at end of month
+                            if last_reebill_end is None:
+                                start = month.first
+                            else:
+                                start = max(month.first, last_reebill_end)
                             this_month_energy_for_sequence = self.\
                                     _estimate_ree_charge(session, account,
-                                    max(month.first, last_reebill_end),
-                                    month.last)
+                                    start, month.last)
                             # a single estimated bill makes the whole month's
                             # revenue estimated
-                            data[account][month.year, month.month]['estimated'] = True
+                            data[account][month]['estimated'] = True
 
-                        data[account][month.year, month.month]['value'] += this_month_energy_for_sequence
+                        data[account][month]['value'] += this_month_energy_for_sequence
                 except Exception as e:
-                    raise
-                    data[account][month.year, month.month] = {'error': e}
-                    print '%s %s-%s ERROR: %s' % (account, month.year, month.month, e)
+                    data[account][month] = {'error': e}
+                    print '%s %s ERROR: %s' % (account, month, e)
 
         # compute total
         for month in months_of_past_year():
             # add up revenue for all accounts in this month
-            data['total'][month.year, month.month]['value'] = sum(data[acc][month.year, month.month].get('value', 0)
-                    for acc in accounts if not isinstance(data[acc]
-                    [month.year, month.month], Exception))
+            data['total'][month]['value'] = sum(data[acc][month].get('value', 0)
+                    for acc in accounts if not isinstance(data[acc][month],
+                        Exception))
+            #for acc in accounts:
+                #value = data[acc][month]['value']
+                #if not isinstance(value, Exception):
+                    #data['total'][month]['value'] += value
 
             # total value is estimated iff any estimated bills contributed to
             # it (errors are treated as non-estimated zeroes). this will almost
             # certainly be true because utility bills for the present month
             # have not even been received.
-            data['total'][month.year, month.month]['estimated'] = any(data[acc][month.year,
-                month.month].get('estimated',False) == True for acc in accounts)
+            data['total'][month]['estimated'] = any(data[acc][month].get('estimated',False) == True for acc in accounts)
 
         return data
 
 
-    def _quantize_revenue_in_month(self, session, account, sequence, year,
-            month):
+    def _quantize_revenue_in_month(self, session, account, sequence, month):
         '''Returns the approximate amount of energy from the reebill given by
         account and sequence during the given month, assuming the energy was
         evenly distributed over time.'''
@@ -186,7 +186,7 @@ class EstimatedRevenue(object):
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
         ree_charges = float(reebill.ree_charges)
-        days_in_month = dateutils.days_in_month(year, month,
+        days_in_month = dateutils.days_in_month(month.year, month.month,
                 reebill.period_begin, reebill.period_end)
         period_length = (reebill.period_end - reebill.period_begin).days
         revenue_in_month = ree_charges * days_in_month / float(period_length)
@@ -202,7 +202,7 @@ class EstimatedRevenue(object):
         last_reebill = self.reebill_dao.load_reebill(account, last_sequence)
         if start > end:
             raise ValueError('Start %s must precede end %s' % (start, end))
-        if end < last_reebill.period_end:
+        if last_sequence > 0 and end < last_reebill.period_end:
             raise ValueError(('Period [%s, %s) does not exceed last actual '
                     'billing period for account %s, which is [%s, %s)') %
                     (start, end, account, last_reebill.period_begin,
@@ -236,8 +236,8 @@ class EstimatedRevenue(object):
         while last_reebill.total_renewable_energy(
                 ccf_conversion_factor=Decimal("1.0")) == 0:
             if last_reebill.sequence == 0:
-                raise Exception(('No reebills with non-zero renewable '
-                        'energy.') % account)
+                raise Exception(('%s has no reebills with non-zero renewable '
+                        'energy') % account)
             last_reebill = self.reebill_dao.load_reebill(account,
                     last_reebill.sequence - 1)
 
@@ -245,18 +245,15 @@ class EstimatedRevenue(object):
         # bill, we can just divide its renewable energy charge (the price at
         # which its energy was sold to the customer, including the discount) by
         # the quantity of renewable energy
-        try:
-            # TODO: 28825375 - ccf conversion factor is as of yet unavailable so 1 is assumed.
-            ree_charges = float(last_reebill.ree_charges)
-            total_renewable_energy = float(last_reebill.total_renewable_energy(
-                    ccf_conversion_factor=Decimal("1.0")))
-            unit_price = ree_charges / total_renewable_energy
-            energy_price = unit_price * energy_sold_therms
-            print '%s/%s %s to %s: $%.2f/therm (from #%s) * %.3f therms = $%.2f' % (
-                    account, olap_id, start, end, unit_price,
-                    last_reebill.sequence, energy_sold_therms, energy_price)
-        except Exception as e:
-            raise
+        # TODO: 28825375 - ccf conversion factor is as of yet unavailable so 1 is assumed.
+        ree_charges = float(last_reebill.ree_charges)
+        total_renewable_energy = float(last_reebill.total_renewable_energy(
+                ccf_conversion_factor=Decimal("1.0")))
+        unit_price = ree_charges / total_renewable_energy
+        energy_price = unit_price * energy_sold_therms
+        print 'estimating %s/%s from %s to %s: $%.2f/therm (from #%s) * %.3f therms = $%.2f' % (
+                account, olap_id, start, end, unit_price,
+                last_reebill.sequence, energy_sold_therms, energy_price)
         
         return energy_price
 
