@@ -4953,7 +4953,7 @@ function reeBillReady() {
         layout: 'fit',
         sortable: true,
         autoExpandColumn: 'errors',
-
+        frame: true,
         // grid columns
         columns:[{
                 id: 'account',
@@ -5109,6 +5109,7 @@ function reeBillReady() {
         layout: 'fit',
         sortable: true,
         autoExpandColumn: 'account',
+        frame: true,
 
         // grid columns
         columns: revenueGridColumns,
@@ -5150,7 +5151,7 @@ function reeBillReady() {
         id: 'reportTab',
         title: 'Reports',
         disabled: reportPanelDisabled,
-        xtype: 'panel',
+        //xtype: 'panel',
         layout: 'accordion',
         items: [reconciliationGrid, revenueGrid],
     });
