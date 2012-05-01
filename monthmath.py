@@ -93,18 +93,35 @@ class Month(object):
         '''Returns the English abbreviation for the month (e.g. "Jan").'''
         return calendar.month_abbr[self.month]
 
+def current_utc():
+    '''Returns the current UTC month.'''
+    return Month(datetime.utcnow())
+
 def months_of_year(year):
     return [Month(year, i) for i in range(1,13)]
 
-# TODO move dateutils functions into here
 def approximate_month(start, end):
     '''Returns the month with the most days between 'start' and 'end'.'''
+    # TODO move dateutils function into here
     from billing import dateutils
     return Month(*dateutils.estimate_month(start, end))
 
-def months_of_past_year(year, month):
+def months_of_past_year(*args):
+    '''Returns a list of all Months in the year preceding and including the
+    given Month or year and month. (not including the same month in the
+    previous year, so there are always 12 months). With no arguments, returns
+    the last 12 months from the present UTC month.'''
+    if args == ():
+        end_month = current_utc()
+    elif len(args) == 1:
+        end_month = args[0]
+    elif len(args) == 2:
+        end_month = Month(*args)
+    else:
+        raise ValueError('Arguments must be a Month or year and month numbers: %s' % args)
+    # TODO move dateutils function into here
     from billing import dateutils
-    return [Month(y,m) for (y,m) in dateutils.months_of_past_year(year, month)]
+    return [Month(y,m) for (y,m) in dateutils.months_of_past_year(end_month.year, end_month.month)]
 
 if __name__ == '__main__':
     #import pdb; pdb.set_trace()

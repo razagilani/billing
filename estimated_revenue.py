@@ -91,14 +91,13 @@ class EstimatedRevenue(object):
 
         # accounts = self.state_db.listAccounts(session)
         accounts = ['10006'] # enable all accounts when this is faster
-        now = datetime.utcnow()
         for account in accounts:
             last_issued_sequence = self.state_db.last_sequence(session,
                     account)
             last_reebill_end = self.reebill_dao.load_reebill(
                     account, last_issued_sequence).period_end
 
-            for month in months_of_past_year(now.year, now.month):
+            for month in months_of_past_year():
                 try:
                     print account, month
                     #if account == '10006' and month == (2011,6):
@@ -149,7 +148,7 @@ class EstimatedRevenue(object):
                     print '%s %s-%s ERROR: %s' % (account, month.year, month.month, e)
 
         # compute total
-        for month in months_of_past_year(now.year, now.month):
+        for month in months_of_past_year():
             # add up revenue for all accounts in this month
             data['total'][month.year, month.month]['value'] = sum(data[acc][month.year, month.month].get('value', 0)
                     for acc in accounts if not isinstance(data[acc]
