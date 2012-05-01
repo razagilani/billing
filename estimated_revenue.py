@@ -22,6 +22,11 @@ sys.stdout = sys.stderr
 
 calendar = Calendar()
 
+class NoRateError(Exception):
+    '''Raised when a there's no per-therm energy price for a given account and
+    sequence.'''
+    pass
+
 class EstimatedRevenue(object):
 
     def __init__(self, state_db, reebill_dao, ratestructure_dao, splinter):
@@ -52,7 +57,7 @@ class EstimatedRevenue(object):
         # cache of average energy prices ($/therm) by account, month
         self.rate_cache = {}
 
-    def report(self, session):
+    def report(self, session, failfast=False):
         '''Returns a dictionary containing data about real and renewable energy
         charges in reebills for all accounts in the past year. Keys are (year,
         month) tuples. Each value is a dictionary whose key is an account (or
@@ -61,10 +66,13 @@ class EstimatedRevenue(object):
         month was or probably will be that month, and a boolean representing
         whether that value was estimated.
 
-        If there was an error, an Exception is put in the dictionary with the
-        key "error", and "value" and "estimated" keys are omitted.
-        The monthly total only includes accounts for which there wasn't an
-        error.
+        If there was an error, and 'failfast' is False, an Exception is put in
+        the dictionary with the key "error", and "value" and "estimated" keys
+        are omitted. The monthly total only includes accounts for which there
+        wasn't an error.
+
+        If 'failfast' is True, Exceptions are raised immediately rather than
+        stored (for debugging).
 
         Dictionary structure is like this:
         {
@@ -146,6 +154,8 @@ class EstimatedRevenue(object):
 
                         data[account][month]['value'] += this_month_energy_for_sequence
                 except Exception as e:
+                    if failfast:
+                        raise
                     data[account][month] = {'error': e}
                     print '%s %s ERROR: %s' % (account, month, e)
 
@@ -254,13 +264,14 @@ class EstimatedRevenue(object):
         return energy_price
 
 
-    def _get_average_rate(self, session, account, sequence):
+    def _get_average_rate(self, session, account, sequence, use_default=True):
         '''Returns the average per-therm energy price for the reebill (or
         hypothetical reebill period) given by account, sequence. If there's an
         issued reebill for the given sequence, that reebill itself is used to
         compute the rate. If there is no issued reebill for that sequence, the
         rate of the last issued reebill is used. If there are no issued
-        reebills for the account, a global average rate is used.'''
+        reebills for the account at all, a default (global average) rate is
+        used unless 'use_default' is False.'''
         # if the rate is cached, just get it
         if (account, sequence) in self.rate_cache:
             return self.rate_cache[account, sequence]
@@ -284,20 +295,23 @@ class EstimatedRevenue(object):
             rate = self.rate_cache[account, last_sequence]
         else:
             # no cached rates for this account at all: they must be computed
-
             if last_sequence == 0:
-                # TODO get global average here
-                raise Exception(('%s has no reebills with non-zero renewable '
-                        'energy') % account)
-
-            # average price per therm of renewable energy is just renewable
-            # energy charge (the price at which its energy was sold to the
-            # customer, including the discount) / quantity of renewable energy
-            # TODO: 28825375 - ccf conversion factor is as of yet unavailable so 1 is assumed.
-            ree_charges = float(last_reebill.ree_charges)
-            total_renewable_energy = float(last_reebill.total_renewable_energy(
-                    ccf_conversion_factor=Decimal("1.0")))
-            rate = ree_charges / total_renewable_energy
+                # if the account has no reebills with non-zero renewable
+                # energy, use the default rate
+                if use_default:
+                    rate = self._get_default_rate(session)
+                else:
+                    raise NoRateError(("%s has no reebills with non-zero "
+                        "renewable energy."))
+            else:
+                # average price per therm of renewable energy is just renewable
+                # energy charge (the price at which its energy was sold to the
+                # customer, including the discount) / quantity of renewable energy
+                # TODO: 28825375 - ccf conversion factor is as of yet unavailable so 1 is assumed.
+                ree_charges = float(last_reebill.ree_charges)
+                total_renewable_energy = float(last_reebill.total_renewable_energy(
+                        ccf_conversion_factor=Decimal("1.0")))
+                rate = ree_charges / total_renewable_energy
 
         # store rate in cache for this sequence and all others that lack a
         # reebill with non-0 energy
@@ -305,6 +319,36 @@ class EstimatedRevenue(object):
             self.rate_cache[account, s] = rate
 
         return rate
+
+    def _get_default_rate(self, session):
+        '''Returns the per-therm enery price used for estimating revenue for an
+        account that has no reebills or none with any energy in them.'''
+        # if default rate is already cached, return it
+        if 'default' in self.rate_cache:
+            return self.rate_cache['default']
+
+        # compute average rate for every account and month in the report
+        # (after this, all rates will be cached)
+        total, count = 0, 0
+        for month in months_of_past_year():
+            for account in self.state_db.listAccounts(session):
+                sequences = self.process.sequences_in_month(session,
+                        account, month.year, month.month)
+                for sequence in sequences:
+                    # don't use default rates when computing the average, because
+                    # this method is where default rates come from
+                    try:
+                        total += self._get_average_rate(session, account,
+                                sequence, use_default=False)
+                        count += 1
+                    except NoRateError:
+                        pass
+        default_rate = total / float(count)
+        
+        # store default rate in cache
+        self.rate_cache['default'] = default_rate
+
+        return default_rate
 
 
 if __name__ == '__main__':
@@ -331,7 +375,7 @@ if __name__ == '__main__':
     er = EstimatedRevenue(state_db, reebill_dao, ratestructure_dao,
             splinter)
 
-    data = er.report(session)
+    data = er.report(session, failfast=True)
 
     ## print a table
     #all_months = sorted(set(reduce(lambda x,y: x+y, [data[account].keys() for
@@ -350,3 +394,5 @@ if __name__ == '__main__':
     pp(data)
 
     session.commit()
+
+    # TODO test accuracy on historical bills here
