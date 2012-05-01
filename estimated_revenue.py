@@ -46,7 +46,11 @@ class EstimatedRevenue(object):
         # cache of already-loaded reebills for speed--will become especially
         # useful if we start re-computing bills before using their energy, so
         # they need to be recomputed only once
+        # TODO
         self.reebill_cache = {}
+
+        # cache of average energy prices ($/therm) by account, month
+        self.rate_cache = {}
 
     def report(self, session):
         '''Returns a dictionary containing data about real and renewable energy
@@ -90,7 +94,7 @@ class EstimatedRevenue(object):
         # TODO replace (year, month) tuples with Months
 
         accounts = self.state_db.listAccounts(session)
-        # accounts = ['10015'] # enable all accounts when this is faster
+        # accounts = ['10003'] # enable all accounts when this is faster
         for account in accounts:
             last_issued_sequence = self.state_db.last_sequence(session,
                     account)
@@ -151,10 +155,6 @@ class EstimatedRevenue(object):
             data['total'][month]['value'] = sum(data[acc][month].get('value', 0)
                     for acc in accounts if not isinstance(data[acc][month],
                         Exception))
-            #for acc in accounts:
-                #value = data[acc][month]['value']
-                #if not isinstance(value, Exception):
-                    #data['total'][month]['value'] += value
 
             # total value is estimated iff any estimated bills contributed to
             # it (errors are treated as non-estimated zeroes). this will almost
@@ -231,31 +231,80 @@ class EstimatedRevenue(object):
         # utility bills until a reebill has been created. so there will never
         # be rate structure to use unless there is actually a reebill.
 
-        # if last_reebill has zero renewable energy, replace it with the newest
-        # bill that has non-zero renewable energy, if there is one
-        while last_reebill.total_renewable_energy(
-                ccf_conversion_factor=Decimal("1.0")) == 0:
-            if last_reebill.sequence == 0:
-                raise Exception(('%s has no reebills with non-zero renewable '
-                        'energy') % account)
-            last_reebill = self.reebill_dao.load_reebill(account,
-                    last_reebill.sequence - 1)
+        ## if last_reebill has zero renewable energy, replace it with the newest
+        ## bill that has non-zero renewable energy, if there is one
+        #while last_reebill.total_renewable_energy(
+                #ccf_conversion_factor=Decimal("1.0")) == 0:
+            #if last_reebill.sequence == 0:
+                #raise Exception(('%s has no reebills with non-zero renewable '
+                        #'energy') % account)
+            #last_reebill = self.reebill_dao.load_reebill(account,
+                    #last_reebill.sequence - 1)
 
-        # to approximate the price per therm of renewable energy in the last
-        # bill, we can just divide its renewable energy charge (the price at
-        # which its energy was sold to the customer, including the discount) by
-        # the quantity of renewable energy
-        # TODO: 28825375 - ccf conversion factor is as of yet unavailable so 1 is assumed.
-        ree_charges = float(last_reebill.ree_charges)
-        total_renewable_energy = float(last_reebill.total_renewable_energy(
-                ccf_conversion_factor=Decimal("1.0")))
-        unit_price = ree_charges / total_renewable_energy
+        #ree_charges = float(last_reebill.ree_charges)
+        #total_renewable_energy = float(last_reebill.total_renewable_energy(
+                #ccf_conversion_factor=Decimal("1.0")))
+        #unit_price = ree_charges / total_renewable_energy
+        unit_price = self._get_average_rate(session, account, last_sequence)
+
         energy_price = unit_price * energy_sold_therms
-        print 'estimating %s/%s from %s to %s: $%.2f/therm (from #%s) * %.3f therms = $%.2f' % (
+        print 'estimating %s/%s from %s to %s: $%.3f/therm (from #%s) * %.3f therms = $%.2f' % (
                 account, olap_id, start, end, unit_price,
                 last_reebill.sequence, energy_sold_therms, energy_price)
-        
         return energy_price
+
+
+    def _get_average_rate(self, session, account, sequence):
+        '''Returns the average per-therm energy price for the reebill (or
+        hypothetical reebill period) given by account, sequence. If there's an
+        issued reebill for the given sequence, that reebill itself is used to
+        compute the rate. If there is no issued reebill for that sequence, the
+        rate of the last issued reebill is used. If there are no issued
+        reebills for the account, a global average rate is used.'''
+        # if the rate is cached, just get it
+        if (account, sequence) in self.rate_cache:
+            return self.rate_cache[account, sequence]
+
+        # to compute the rate: get the last issued reebill
+        last_sequence = self.state_db.last_issued_sequence(session, account)
+        last_reebill = self.reebill_dao.load_reebill(account, last_sequence)
+
+        # if there's no cached rate for last_sequence, go back through the
+        # sequences until a cached rate or a reebill with non-0 energy is found
+        while last_sequence > 0 and (account, last_sequence) not in \
+                self.rate_cache and last_reebill.total_renewable_energy(
+                ccf_conversion_factor=Decimal("1.0")) == 0:
+            last_sequence -= 1
+            if last_sequence == 0:
+                break
+            last_reebill = self.reebill_dao.load_reebill(account,
+                    last_sequence)
+
+        if (account, last_sequence) in self.rate_cache:
+            rate = self.rate_cache[account, last_sequence]
+        else:
+            # no cached rates for this account at all: they must be computed
+
+            if last_sequence == 0:
+                # TODO get global average here
+                raise Exception(('%s has no reebills with non-zero renewable '
+                        'energy') % account)
+
+            # average price per therm of renewable energy is just renewable
+            # energy charge (the price at which its energy was sold to the
+            # customer, including the discount) / quantity of renewable energy
+            # TODO: 28825375 - ccf conversion factor is as of yet unavailable so 1 is assumed.
+            ree_charges = float(last_reebill.ree_charges)
+            total_renewable_energy = float(last_reebill.total_renewable_energy(
+                    ccf_conversion_factor=Decimal("1.0")))
+            rate = ree_charges / total_renewable_energy
+
+        # store rate in cache for this sequence and all others that lack a
+        # reebill with non-0 energy
+        for s in range(last_reebill.sequence, sequence + 1):
+            self.rate_cache[account, s] = rate
+
+        return rate
 
 
 if __name__ == '__main__':
