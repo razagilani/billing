@@ -26,6 +26,7 @@ from billing.mongo import ReebillDAO
 from billing import nexus_util
 from billing import dateutils
 from billing.dateutils import estimate_month, month_offset, month_difference
+from billing.monthmath import Month, approximate_month
 
 sys.stdout = sys.stderr
 class Process(object):
@@ -804,6 +805,51 @@ class Process(object):
         sequence_offset = month_difference(last_reebill_year,
                 last_reebill_month, year, month)
         return [last_sequence + sequence_offset]
+
+    def sequences_in_month(self, session, account, year, month):
+        '''Returns a list of sequences of all reebills whose periods contain
+        ANY days within the given month. The list is empty if the month
+        precedes the period of the account's first issued reebill, or if the
+        account has no issued reebills at all. When 'sequence' exceeds the last
+        sequence for the account (including un-issued bills in mongo), bill
+        periods are assumed to correspond exactly to calendar months. This is
+        NOT related to the approximate billing month.'''
+        # get all reebills whose periods contain any days in this month, and
+        # their sequences (there should be at most 3)
+        query_month = Month(year, month)
+        sequences_for_month = [r.sequence for r in
+                self.reebill_dao.load_reebills_in_period(account,
+                start_date=query_month.first, end_date=query_month.last)]
+        
+        # get sequence of last reebill and the month in which its period ends,
+        # which will be useful below
+        last_sequence = self.state_db.last_sequence(session, account)
+        last_reebill = self.reebill_dao.load_reebill(account, last_sequence)
+        last_reebill_end_month = Month(last_reebill.period_end)
+
+        # if there's at least one sequence, return the list of sequences. but
+        # if query_month is the month in which the account's last reebill ends,
+        # and that period does not perfectly align with the end of the month,
+        # also include the sequence of an additional hypothetical reebill whose
+        # period would cover the end of the month.
+        if sequences_for_month != []:
+            if last_reebill_end_month == query_month and \
+                    last_reebill.period_end < (last_reebill_end_month + 1).first:
+                sequences_for_month.append(last_sequence + 1)
+            return sequences_for_month
+
+        # if there are no sequences in this month because the query_month
+        # precedes the first reebill's start, or there were never any reebills
+        # at all, return []
+        if last_sequence == 0 or query_month.last < \
+                self.reebill_dao.load_reebill(account, 1).period_begin:
+            return []
+
+        # now query_month must exceed the month in which the account's last
+        # reebill ends. return the sequence determined by counting real months
+        # after the approximate month of the last bill (there is only one
+        # sequence in this case)
+        return [last_sequence + (query_month - last_reebill_end_month)]
 
 
 if __name__ == '__main__':

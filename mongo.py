@@ -1169,10 +1169,10 @@ class ReebillDAO:
     def load_reebills_in_period(self, account, branch=0, start_date=None, end_date=None):
         '''Returns a list of MongoReebills whose period began on or before
         'end_date' and ended on or after 'start_date' (i.e. all bills between
-        those dates and all bills whose period includes either endpoint). If
-        'start_date' and 'end_date' are not given or are None, the time period
-        extends to the begining or end of time, respectively. Sequence 0 is
-        never included.'''
+        those dates and all bills whose period includes either endpoint). The
+        results are ordered by sequence. If 'start_date' and 'end_date' are not
+        given or are None, the time period extends to the begining or end of
+        time, respectively. Sequence 0 is never included.'''
         query = {
             '_id.account': str(account),
             '_id.branch': int(branch),
@@ -1189,6 +1189,7 @@ class ReebillDAO:
                     end_date.day)
             query['period_begin'] = {'$lte': end_datetime}
         result = []
+        docs = self.collection.find(query).sort('sequence')
         for mongo_doc in self.collection.find(query):
             mongo_doc = convert_datetimes(mongo_doc)
             mongo_doc = deep_map(float_to_decimal, mongo_doc)
@@ -1235,6 +1236,18 @@ class ReebillDAO:
         if result == None:
             return None
         return MongoReebill(result).issue_date
+
+    def last_sequence(self, account):
+        '''Returns the sequence of the last reebill for the given account, or 0
+        if no reebills were found. This is different from
+        StateDB.last_sequence() because it uses Mongo; there may be un-issued
+        reebills in Mongo that are not in MySQL.'''
+        result = self.collection.find_one({
+            '_id.account': account
+            }, sort=[('sequence', pymongo.DESCENDING)])
+        if result == None:
+            return 0
+        return MongoReebill(result).sequence
 
 class NoRateStructureError(Exception):
     pass

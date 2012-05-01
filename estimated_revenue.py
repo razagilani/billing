@@ -1,5 +1,7 @@
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+from decimal import Decimal
+from calendar import Calendar
 from collections import defaultdict
 from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
@@ -11,11 +13,14 @@ from billing.processing import state
 from billing.processing.state import StateDB
 from billing.mongo import ReebillDAO
 from billing.dictutils import deep_map
-from decimal import Decimal
+from billing import dateutils
+from billing.monthmath import Month, months_of_past_year
 
 import pprint
 pp = pprint.PrettyPrinter(indent=4).pprint
 sys.stdout = sys.stderr
+
+calendar = Calendar()
 
 class EstimatedRevenue(object):
 
@@ -37,6 +42,11 @@ class EstimatedRevenue(object):
             self.state_db.listAccounts(session)
         ])
         session.commit()
+
+        # cache of already-loaded reebills for speed--will become especially
+        # useful if we start re-computing bills before using their energy, so
+        # they need to be recomputed only once
+        self.reebill_cache = {}
 
     def report(self, session):
         '''Returns a dictionary containing data about real and renewable energy
@@ -75,81 +85,131 @@ class EstimatedRevenue(object):
 
         # dictionary account -> ((year, month) -> { monthtly data })
         # by default, value is 0 and it's not estimated
-        data = defaultdict(lambda: defaultdict(lambda: {'value':0., 'estimated': False}))
+        data = defaultdict(lambda: defaultdict(lambda:
+                {'value':0., 'estimated': False}))
+        # TODO replace (year, month) tuples with Months
 
-        accounts = self.state_db.listAccounts(session)
-        # accounts = ['10024'] # TODO enable all accounts when this is faster
+        # accounts = self.state_db.listAccounts(session)
+        accounts = ['10006'] # enable all accounts when this is faster
         now = datetime.utcnow()
         for account in accounts:
-            last_seq = self.state_db.last_sequence(session, account)
-            for year, month in months_of_past_year(now.year, now.month):
-                try:
-                    # get sequences of bills this month
-                    sequences = self.process.sequences_for_approximate_month(
-                            session, account, year, month)
+            last_issued_sequence = self.state_db.last_sequence(session,
+                    account)
+            last_reebill_end = self.reebill_dao.load_reebill(
+                    account, last_issued_sequence).period_end
 
-                    # for each sequence, add that bill's real or estimated
-                    # renewable energy charge to the total for this month
+            for month in months_of_past_year(now.year, now.month):
+                try:
+                    print account, month
+                    #if account == '10006' and month == (2011,6):
+                        #import pdb; pdb.set_trace()
+
+                    # get all issued bills that have any part of their periods
+                    # inside this month--possibly including a hypothetical bill
+                    # whose period would be in this month if it existed. (note
+                    # that un-issued bills effectively don't exist for this
+                    # purpose, since they may have 0 energy in them).
+                    try:
+                        sequences = self.process.sequences_in_month(
+                                session, account, month.year, month.month)
+                    except ValueError:
+                        import pdb; pdb.set_trace()
+
+                    # if there are no sequences, skip (value is 0 by default)
+                    if sequences == []:
+                        continue
+
+                    # for each sequence, get the approximate portion of the
+                    # corresponding bill's actual or estimated revenue that was
+                    # generated during this month, and add that revenue to the
+                    # total for this month
                     for seq in sequences:
-                        if seq <= last_seq:
-                            data[account][year, month]['value'] += float(
-                                    self.reebill_dao.load_reebill(account,
-                                    seq).ree_charges)
+                        if seq <= last_issued_sequence:
+                            # issued bill: get approximate portion of its
+                            # revenue during this month
+                            this_month_energy_for_sequence = self.\
+                                    _quantize_revenue_in_month(session,
+                                    account, seq, month.year, month.month)
                         else:
-                            data[account][year, month]['value'] += self.\
+                            # not an issued bill: period starts at start of
+                            # month or end of last issued bill period,
+                            # whichever comes later, and ends at end of month
+                            this_month_energy_for_sequence = self.\
                                     _estimate_ree_charge(session, account,
-                                    year, month)
-                            # a single estimated bill makes the whole month
-                            # estimated
-                            data[account][year, month]['estimated'] = True
+                                    max(month.first, last_reebill_end),
+                                    month.last)
+                            # a single estimated bill makes the whole month's
+                            # revenue estimated
+                            data[account][month.year, month.month]['estimated'] = True
+
+                        data[account][month.year, month.month]['value'] += this_month_energy_for_sequence
                 except Exception as e:
-                    data[account][year, month] = {'error': e}
-                    print '%s %s-%s ERROR: %s' % (account, year, month, e)
+                    raise
+                    data[account][month.year, month.month] = {'error': e}
+                    print '%s %s-%s ERROR: %s' % (account, month.year, month.month, e)
 
         # compute total
-        for year, month in months_of_past_year(now.year, now.month):
+        for month in months_of_past_year(now.year, now.month):
             # add up revenue for all accounts in this month
-            data['total'][year, month]['value'] = sum(data[acc][year, month].get('value', 0)
+            data['total'][month.year, month.month]['value'] = sum(data[acc][month.year, month.month].get('value', 0)
                     for acc in accounts if not isinstance(data[acc]
-                    [year, month], Exception))
+                    [month.year, month.month], Exception))
 
             # total value is estimated iff any estimated bills contributed to
             # it (errors are treated as non-estimated zeroes). this will almost
             # certainly be true because utility bills for the present month
             # have not even been received.
-            data['total'][year, month]['estimated'] = any(data[acc][year,
-                month].get('estimated',False) == True for acc in accounts)
+            data['total'][month.year, month.month]['estimated'] = any(data[acc][month.year,
+                month.month].get('estimated',False) == True for acc in accounts)
 
         return data
 
 
-    def _estimate_ree_charge(self, session, account, year, month):
-        '''Returns an estimate of renewable energy charges for a bill that
-        would be issed for the given account in the given month. The month must
-        exceed the approximate month of the account's last real bill.'''
+    def _quantize_revenue_in_month(self, session, account, sequence, year,
+            month):
+        '''Returns the approximate amount of energy from the reebill given by
+        account and sequence during the given month, assuming the energy was
+        evenly distributed over time.'''
+
+        # Rich says we should rely on OLTP, not on the bill, because even if
+        # the bill shows what we actually charged someone, OLTP is a better
+        # representation of how much revenue was actually generated because a
+        # discrepancy between the bill and OLTP means the bill will have to be
+        # re-issued. Bills are gospel, OTLP is truth.
+        # However, due to our rate structure implementation, the only way we
+        # can price the energy from a bill during a particular time period is
+        # to apply the rate structure to recompute the bill's charges for its
+        # entire period. This is equivalent to relying on the bill instead of
+        # OLTP, but recomputing it first. So we decided to to it the easy way
+        # and just rely on the bill. We can make it better later if we want.
+        # (This is also a lot faster and lets us generate the report in real
+        # time instead of using cron.)
+
+        reebill = self.reebill_dao.load_reebill(account, sequence)
+        ree_charges = float(reebill.ree_charges)
+        days_in_month = dateutils.days_in_month(year, month,
+                reebill.period_begin, reebill.period_end)
+        period_length = (reebill.period_end - reebill.period_begin).days
+        revenue_in_month = ree_charges * days_in_month / float(period_length)
+        return revenue_in_month
+
+
+    def _estimate_ree_charge(self, session, account, start, end):
+        '''Returns an estimate of renewable energy charges for a reebill that
+        would be issued for the given account with the period [start, end). The
+        period must be after the end of the account's last issued reebill.'''
         # make sure (year, month) is not the approximate month of a real bill
         last_sequence = self.state_db.last_issued_sequence(session, account)
         last_reebill = self.reebill_dao.load_reebill(account, last_sequence)
-        last_approx_month = estimate_month(last_reebill.period_begin,
-                last_reebill.period_end)
-        if (year, month) <= last_approx_month:
-            raise ValueError(('%s does not exceed last approximate billing '
-                'month for account %s, which is %s') % ((year, month), account,
-                last_approximate_month))
+        if start > end:
+            raise ValueError('Start %s must precede end %s' % (start, end))
+        if end < last_reebill.period_end:
+            raise ValueError(('Period [%s, %s) does not exceed last actual '
+                    'billing period for account %s, which is [%s, %s)') %
+                    (start, end, account, last_reebill.period_begin,
+                    last_reebill.period_end))
         
-        # the period over which to get energy sold is the entire calendar month
-        # up to the present, unless this is the month following that of the
-        # last real bill, in which case the period starts at the end of the
-        # last bill's period (which may precede or follow the first day of this
-        # month).
-        if (year, month) == month_offset(*(last_approx_month + (1,))):
-            start = last_reebill.period_end
-        else:
-            start = date(year, month, 1)
-        month_end_year, month_end_month = month_offset(year, month, 1)
-        end = min(date.today(), date(month_end_year, month_end_month, 1))
-        
-        # get energy sold during that period
+        # get energy sold during the period [start, end)
         olap_id = self.olap_ids[account]
         energy_sold_btu = 0
         for day in date_generator(start, end):
