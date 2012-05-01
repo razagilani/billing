@@ -411,11 +411,32 @@ class BillToolBridge:
                         })
                     rows.append(row)
                     print rows
-                session.commit()
                 return self.dumps({
                     'success': True,
                     'rows': rows
                 })
+        except Exception as e:
+            return self.handle_exception(e)
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate
+    def estimated_revenue_xls(self, **kwargs):
+        '''Responds with the data from the estimated revenue report in the form
+        of an Excel spreadsheet.'''
+        try:
+            with DBSession(self.state_db) as session:
+                spreadsheet_name =  'estimated_revenue.xls'
+                er = EstimatedRevenue(self.state_db, self.reebill_dao,
+                        self.ratestructure_dao, self.splinter)
+                buf = StringIO()
+                er.write_report_xls(session, buf)
+
+                # set headers for file download
+                cherrypy.response.headers['Content-Type'] = 'application/excel'
+                cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
+
+                return buf.getvalue()
         except Exception as e:
             return self.handle_exception(e)
 
