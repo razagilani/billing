@@ -26,7 +26,7 @@ import re
 from StringIO import StringIO
 from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
-from billing import bill, json_util as ju, mongo, dateutils, excel_export, nexus_util as nu
+from billing import bill, json_util as ju, mongo, dateutils, monthmath, excel_export, nexus_util as nu
 from billing.nexus_util import NexusUtil
 from billing.dictutils import deep_map
 from billing.processing import billupload
@@ -391,30 +391,26 @@ class BillToolBridge:
                 data = er.report(session)
 
                 # build list of rows from report data
-                cur_year = datetime.utcnow().year
-                cur_month = datetime.utcnow().month
                 rows = []
                 for account in sorted(data.keys(),
                         # 'total' first
                         cmp=lambda x,y: -1 if x == 'total' else 1 if y == 'total' else cmp(x,y)):
                     row = {'account': 'Total' if account == 'total' else account}
-                    for year, month in data[account].keys():
-                        months_ago = dateutils.month_difference(year, month,
-                                cur_year, cur_month)
-
+                    for month in data[account].keys():
                         # show error message instead of value if there was one
-                        if 'error' in data[account][year, month]:
-                            value = 'ERROR: %s' % data[account][year, month]['error']
-                        elif 'value' in data[account][year, month]:
-                            value = '%.2f' % data[account][year, month]['value']
+                        if 'error' in data[account][month]:
+                            value = 'ERROR: %s' % data[account][month]['error']
+                        elif 'value' in data[account][month]:
+                            value = '%.2f' % data[account][month]['value']
 
                         row.update({
-                            'revenue_%s_months_ago' % months_ago: {
+                            'revenue_%s_months_ago' % (monthmath.current_utc() - month): {
                                 'value': value,
-                                'estimated': data[account][year, month].get('estimated', False)
+                                'estimated': data[account][month].get('estimated', False)
                             }
                         })
                     rows.append(row)
+                    print rows
                 session.commit()
                 return self.dumps({
                     'success': True,
