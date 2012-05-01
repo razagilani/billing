@@ -103,7 +103,7 @@ class EstimatedRevenue(object):
         # TODO replace (year, month) tuples with Months
 
         accounts = self.state_db.listAccounts(session)
-        # accounts = ['10003'] # enable all accounts when this is faster
+        accounts = ['10003', '10004'] # enable all accounts when this is faster
         for account in accounts:
             last_issued_sequence = self.state_db.last_sequence(session,
                     account)
@@ -180,8 +180,10 @@ class EstimatedRevenue(object):
         '''Returns a Tablib table of the data produced in report().'''
         report = self.report(session, failfast=failfast)
         table = tablib.Dataset()
-        table.headers = ['Account', 'Month', 'Revenue']
-        for account in report:
+        table.headers = ['Account'] + [str(month) for month in months_of_past_year()]
+
+        for account in sorted(report.keys()):
+            row = [account]
             for month in report[account]:
                 # note that 'estimated' is ignored because we can't easily
                 # display it in a tabular format
@@ -190,7 +192,8 @@ class EstimatedRevenue(object):
                     value = cell_data['value']
                 else:
                     value = 'ERROR: %s' % cell_data['error']
-                table.append([account, month, value])
+                row.append(value)
+            table.append(row)
         return table
 
     def write_report_xls(self, session, output_file):
@@ -203,6 +206,7 @@ class EstimatedRevenue(object):
         '''Returns the approximate amount of energy from the reebill given by
         account and sequence during the given month, assuming the energy was
         evenly distributed over time.'''
+        print 'quantizing revenue for %s in %s' % (account, month)
 
         # Rich says we should rely on OLTP, not on the bill, because even if
         # the bill shows what we actually charged someone, OLTP is a better
