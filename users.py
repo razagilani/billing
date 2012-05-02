@@ -45,7 +45,7 @@ class UserDAO:
     # the same _default_user (otherwise save-prevention would not work)
     default_user = User({
         '_id':'default',
-        'username':'Default User',
+        'name':'Default User',
         'preferences': {
             'bill_image_resolution': 80
         }
@@ -63,31 +63,35 @@ class UserDAO:
             
         self.collection = connection[self.config['database']][self.config['collection']]
     
-    def create_user(self, username, password):
-        '''Creates a new user with the given username and password and saves it
-        in the database.'''
+    def create_user(self, identifier, password, name=None):
+        '''Creates a new user with the given identifier and password and saves
+        it in the database. The user's human-readable name is 'identifier' by
+        default.'''
+        if name is None:
+            name = identifier
+
         # generate a salt, and hash the password + salt
         salt = bcrypt.gensalt()
         pw_hash = bcrypt.hashpw(password, salt)
 
         # new user is based on default user
         new_user = copy.deepcopy(UserDAO.default_user)
-        new_user.dictionary['username'] = username
-        new_user.dictionary['identifier'] = username
+        new_user.dictionary['_id'] = identifier
+        new_user.dictionary['name'] = name
         new_user.dictionary['password_hash'] = pw_hash
         new_user.dictionary['salt'] = salt
 
         # save in db
         self.save_user(new_user)
 
-    def load_user(self, username, password):
-        '''Returns a User object representing the user given by 'username' and
-        'password'. Returns None if the username/password combination was
+    def load_user(self, identifier, password):
+        '''Returns a User object representing the user given by 'identifier' and
+        'password'. Returns None if the identifier/password combination was
         wrong.'''
         # get user document from mongo (authentication fails if there isn't one
-        # with the given username)
+        # with the given identifier)
         user_dict = self.collection.find_one({
-            '_id': username,
+            '_id': identifier,
         })
         if user_dict is None:
             return None
@@ -141,15 +145,15 @@ if __name__ == '__main__':
         'password': 'dev',
     })
     command = argv[1]
-    username = argv[2]
+    identifier = argv[2]
     password = argv[3]
 
     if command == 'add':
-        dao.create_user(username, password)
+        dao.create_user(identifier, password)
         print 'created'
 
     elif command == 'check':
-        result = dao.load_user(username, password)
+        result = dao.load_user(identifier, password)
         if result is None:
             print 'authentication failed'
         else:
