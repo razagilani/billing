@@ -59,14 +59,15 @@ class EstimatedRevenue(object):
         # cache of average energy prices ($/therm) by account, month
         self.rate_cache = {}
 
-    def report(self, session, failfast=False):
+    def report(self, session, accounts=None, failfast=False):
         '''Returns a dictionary containing data about real and renewable energy
-        charges in reebills for all accounts in the past year. Keys are (year,
-        month) tuples. Each value is a dictionary whose key is an account (or
-        'total') and whose value is a dictionary containing real or estimated
-        renewable energy charge in all reebills whose approximate calendar
-        month was or probably will be that month, and a boolean representing
-        whether that value was estimated.
+        charges in reebills for 'accounts' in the past year (or all accounts,
+        if 'accounts' is not given). Keys are (year, month) tuples. Each value
+        is a dictionary whose key is an account (or 'total') and whose value is
+        a dictionary containing real or estimated renewable energy charge in
+        all reebills whose approximate calendar month was or probably will be
+        that month, and a boolean representing whether that value was
+        estimated.
 
         If there was an error, and 'failfast' is False, an Exception is put in
         the dictionary with the key "error", and "value" and "estimated" keys
@@ -103,8 +104,9 @@ class EstimatedRevenue(object):
                 {'value':0., 'estimated': False}))
         # TODO replace (year, month) tuples with Months
 
-        accounts = self.state_db.listAccounts(session)
-        #accounts = ['10017', '10004'] # enable all accounts when this is faster
+        if accounts == None:
+            accounts = self.state_db.listAccounts(session)
+
         for account in accounts:
             last_issued_sequence = self.state_db.last_sequence(session,
                     account)
@@ -185,10 +187,12 @@ class EstimatedRevenue(object):
 
         for account in sorted(report.keys()):
             row = [account]
-            for month in report[account]:
+            for month in sorted(report[account]):
                 # note that 'estimated' is ignored because we can't easily
                 # display it in a tabular format
                 cell_data = report[account][month]
+                if account == '10006':
+                    print '************************ cell data for 10006 month %s is %s' % (month, cell_data)
                 if 'value' in cell_data:
                     value = cell_data['value']
                 else:
@@ -200,7 +204,7 @@ class EstimatedRevenue(object):
     def write_report_xls(self, session, output_file):
         '''Writes an Excel spreadsheet of the data produced in report() to
         'output_file'.'''
-        table = self.report_table(session, output_file)
+        table = self.report_table(session)
         output_file.write(table.xls)
 
     def _quantize_revenue_in_month(self, session, account, sequence, month):
@@ -426,20 +430,9 @@ if __name__ == '__main__':
     er = EstimatedRevenue(state_db, reebill_dao, ratestructure_dao,
             splinter)
 
-    #data = er.report(session, failfast=True)
-    data = er.report(session)
-
-    ## print a table
-    #all_months = sorted(set(reduce(lambda x,y: x+y, [data[account].keys() for
-        #account in data], [])))
-    #now = date.today()
-    #data_months = months_of_past_year(now.year, now.month)
-    #print '      '+('%10s '*12) % tuple(map(str, data_months))
-    #for account in sorted(data.keys()):
-        #print account + '%10.1f '*12 % tuple([data[account].get((year, month),
-                #0) for (year, month) in data_months])
-    #print 'total' + '%10.1f '*12 % tuple([sum(float(data[account].get((year, month),
-            #0)) for account in data) for (year, month) in data_months])
+    data = er.report(session, failfast=True)
+    #data = er.report(session)
+    print table.csv
 
     data = deep_map(lambda x: dict(x) if type(x) == defaultdict else x, data)
     data = deep_map(lambda x: dict(x) if type(x) == defaultdict else x, data)
