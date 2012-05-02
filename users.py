@@ -131,6 +131,19 @@ class UserDAO:
 
         self.collection.save(user.dictionary)
 
+    def change_password(self, identifier, old_password, new_password):
+        '''Sets a new password for the given user. Returns True for success,
+        false for failure.'''
+        user = self.load_user(identifier, old_password)
+        if user == None:
+            return False
+        # salt stays the same
+        salt = user.dictionary['salt']
+        password_hash = bcrypt.hashpw(new_password, salt)
+        user.dictionary['password_hash'] = password_hash
+        self.save_user(user)
+        return True
+        
 if __name__ == '__main__':
     # command-line arguments
     #parser = argparse.ArgumentParser(description='Create and authenticate user accounts')
@@ -158,3 +171,10 @@ if __name__ == '__main__':
             print 'authentication failed'
         else:
             print 'authentication succeeded:', result
+    elif command == 'change':
+        new_password = argv[4]
+        result = dao.change_password(identifier, password, new_password)
+        if result:
+            print 'password updated'
+        else:
+            print 'password change failed'
