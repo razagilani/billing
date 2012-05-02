@@ -53,7 +53,6 @@ class EstimatedRevenue(object):
         # cache of already-loaded reebills for speed--will become especially
         # useful if we start re-computing bills before using their energy, so
         # they need to be recomputed only once
-        # TODO
         self.reebill_cache = {}
 
         # cache of average energy prices ($/therm) by account, month
@@ -98,12 +97,12 @@ class EstimatedRevenue(object):
         '''
         print 'Generating estimated revenue report'
 
-        # dictionary account -> ((year, month) -> { monthtly data })
+        # dictionary account -> (Month -> { monthtly data })
         # by default, value is 0 and it's not estimated
         data = defaultdict(lambda: defaultdict(lambda:
                 {'value':0., 'estimated': False}))
-        # TODO replace (year, month) tuples with Months
 
+        # use all accounts if 'accounts' argument was not given
         if accounts == None:
             accounts = self.state_db.listAccounts(session)
 
@@ -191,8 +190,6 @@ class EstimatedRevenue(object):
                 # note that 'estimated' is ignored because we can't easily
                 # display it in a tabular format
                 cell_data = report[account][month]
-                if account == '10006':
-                    print '************************ cell data for 10006 month %s is %s' % (month, cell_data)
                 if 'value' in cell_data:
                     value = cell_data['value']
                 else:
@@ -300,7 +297,8 @@ class EstimatedRevenue(object):
         # be rate structure to use unless there is actually a reebill.
         unit_price = self._get_average_rate(session, account, last_sequence)
         energy_price = unit_price * energy_sold_therms
-        # TODO the sequence reported below is not accurate because of rate caching
+        # NOTE the sequence reported below may not be the real origin of the
+        # rate if last_reebill has no energy in it
         print 'estimating %s/%s from %s to %s: $%.3f/therm (from #%s) * %.3f therms = $%.2f' % (
                 account, olap_id, start, end, unit_price,
                 last_reebill.sequence, energy_sold_therms, energy_price)
