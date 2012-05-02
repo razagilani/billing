@@ -1,5 +1,8 @@
 import sys
+import copy
 import pymongo
+import bcrypt
+import argparse
 
 class User:
     '''A class representing a user account. This is a thin wrapper around a
@@ -60,13 +63,41 @@ class UserDAO:
             
         self.collection = connection[self.config['database']][self.config['collection']]
     
+    def create_user(self, username, password):
+        '''Creates a new user with the given username and password and saves it
+        in the database.'''
+        # generate a salt, and hash the password + salt
+        salt = bcrypt.gensalt()
+        pw_hash = bcrypt.hashpw(password, salt)
+
+        # new user is based on default user
+        new_user = copy.deepcopy(UserDAO.default_user)
+        new_user.dictionary['username'] = username
+        new_user.dictionary['identifier'] = username
+        new_user.dictionary['password_hash'] = pw_hash
+        new_user.dictionary['salt'] = salt
+
+        # save in db
+        self.save_user(new_user)
+
     def load_user(self, username, password):
         '''Returns a User object representing the user given by 'username' and
         'password'. Returns None if the username/password combination was
         wrong.'''
-        user_dict = self.collection.find_one({'_id': username,
-            'password': password})
+        # get user document from mongo (authentication fails if there isn't one
+        # with the given username)
+        user_dict = self.collection.find_one({
+            '_id': username,
+        })
         if user_dict is None:
+            return None
+
+        # hash the given password using the salt from the user document
+        pw_hash = bcrypt.hashpw(password, user_dict['salt'])
+
+        # authentication succeeds iff the result matches the password hash
+        # stored in the document
+        if pw_hash == user_dict['password_hash']:
             return None
         return User(user_dict)
 
@@ -95,4 +126,23 @@ class UserDAO:
             return
 
         self.collection.save(user.dictionary)
+
+if __name__ == '__main__':
+    # command-line arguments
+    #parser = argparse.ArgumentParser(description='Create and authenticate user accounts')
+    #parser.add_argument('create', dest=username)
+    from sys import argv
+    command = argv[1]
+    if command == 'add':
+        username = argv[2]
+        password = argv[3]
+        dao = UserDAO({
+            'host': 'localhost',
+            'port': 27017,
+            'database': 'skyline',
+            'collection': 'users',
+            'user': 'dev',
+            'password': 'dev',
+        })
+        dao.create_user(username, password)
 
