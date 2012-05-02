@@ -98,8 +98,8 @@ class UserDAO:
         # authentication succeeds iff the result matches the password hash
         # stored in the document
         if pw_hash == user_dict['password_hash']:
-            return None
-        return User(user_dict)
+            return User(user_dict)
+        return None
 
     def load_openid_user(self, identifier):
         '''Returns a User object representing the user given by 'identifier'
@@ -146,7 +146,11 @@ if __name__ == '__main__':
 
     if command == 'add':
         dao.create_user(username, password)
+        print 'created'
 
     elif command == 'check':
         result = dao.load_user(username, password)
-        print (result == None)
+        if result is None:
+            print 'authentication failed'
+        else:
+            print 'authentication succeeded:', result
