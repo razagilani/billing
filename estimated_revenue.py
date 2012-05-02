@@ -109,8 +109,8 @@ class EstimatedRevenue(object):
             last_issued_sequence = self.state_db.last_sequence(session,
                     account)
             if last_issued_sequence > 0:
-                last_reebill_end = self.reebill_dao.load_reebill(
-                        account, last_issued_sequence).period_end
+                last_reebill_end = self._load_reebill(account,
+                        last_issued_sequence).period_end
             else:
                 last_reebill_end = None
 
@@ -223,7 +223,7 @@ class EstimatedRevenue(object):
         # (This is also a lot faster and lets us generate the report in real
         # time instead of using cron.)
 
-        reebill = self.reebill_dao.load_reebill(account, sequence)
+        reebill = self._load_reebill(account, sequence)
         ree_charges = float(reebill.ree_charges)
         days_in_month = dateutils.days_in_month(month.year, month.month,
                 reebill.period_begin, reebill.period_end)
@@ -238,7 +238,7 @@ class EstimatedRevenue(object):
         period must be after the end of the account's last issued reebill.'''
         # make sure (year, month) is not the approximate month of a real bill
         last_sequence = self.state_db.last_issued_sequence(session, account)
-        last_reebill = self.reebill_dao.load_reebill(account, last_sequence)
+        last_reebill = self._load_reebill(account, last_sequence)
         if start > end:
             raise ValueError('Start %s must precede end %s' % (start, end))
         if last_sequence > 0 and end < last_reebill.period_end:
@@ -303,6 +303,18 @@ class EstimatedRevenue(object):
         return energy_price
 
 
+    def _load_reebill(self, account, sequence):
+        '''Returns the reebill given by account, sequence, taken from cache if
+        possible.'''
+        # load from cache if present
+        if (account, sequence) in self.reebill_cache:
+            return self.reebill_cache[account, sequence]
+
+        # otherwise load from mongo and save in cache
+        reebill = self.reebill_dao.load_reebill(account, sequence)
+        self.reebill_cache[account, sequence] = reebill
+        return reebill
+
     def _get_average_rate(self, session, account, sequence, use_default=True):
         '''Returns the average per-therm energy price for the reebill (or
         hypothetical reebill period) given by account, sequence. If there's an
@@ -317,7 +329,7 @@ class EstimatedRevenue(object):
 
         # to compute the rate: get the last issued reebill
         last_sequence = self.state_db.last_issued_sequence(session, account)
-        last_reebill = self.reebill_dao.load_reebill(account, last_sequence)
+        last_reebill = self._load_reebill(account, last_sequence)
 
         # if there's no cached rate for last_sequence, go back through the
         # sequences until a cached rate or a reebill with non-0 energy is found
@@ -327,7 +339,7 @@ class EstimatedRevenue(object):
             last_sequence -= 1
             if last_sequence == 0:
                 break
-            last_reebill = self.reebill_dao.load_reebill(account,
+            last_reebill = self._load_reebill(account,
                     last_sequence)
 
         if (account, last_sequence) in self.rate_cache:
