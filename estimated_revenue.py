@@ -249,18 +249,26 @@ class EstimatedRevenue(object):
         # get energy sold during the period [start, end)
         olap_id = self.olap_ids[account]
         energy_sold_btu = 0
-        for day in date_generator(start, end):
-            try:
-                daily_sold_btu = self.monguru.get_data_for_day(olap_id,
-                        day).energy_sold
-                if daily_sold_btu == None:
-                    # measure does not exist in the olap doc
+        if start.month == end.month and start.day == 1 and end.day == len(Month(end)):
+            # date range happens to be whole month: get monthly OLAP document
+            energy_sold_btu = self.monguru.get_data_for_month(olap_id,
+                    start.year, start.month).energy_sold
+        else:
+            # not a whole month: use individual days
+            for day in date_generator(start, end):
+                try:
+                    daily_sold_btu = self.monguru.get_data_for_day(olap_id,
+                            day).energy_sold
+                    if daily_sold_btu == None:
+                        # measure does not exist in the olap doc
+                        # TODO this should be an error
+                        daily_sold_btu = 0
+                except ValueError:
+                    # olap doc is missing
                     daily_sold_btu = 0
-            except ValueError:
-                # olap doc is missing
-                daily_sold_btu = 0
-            energy_sold_btu += daily_sold_btu
+                energy_sold_btu += daily_sold_btu
         energy_sold_therms = energy_sold_btu / 100000.
+
 
         # now we figure out how much that energy costs. if the utility bill(s)
         # for this reebill are present, we could get them with
@@ -270,6 +278,7 @@ class EstimatedRevenue(object):
         # be rate structure to use unless there is actually a reebill.
         unit_price = self._get_average_rate(session, account, last_sequence)
         energy_price = unit_price * energy_sold_therms
+        # TODO the sequence reported below is not accurate because of rate caching
         print 'estimating %s/%s from %s to %s: $%.3f/therm (from #%s) * %.3f therms = $%.2f' % (
                 account, olap_id, start, end, unit_price,
                 last_reebill.sequence, energy_sold_therms, energy_price)
