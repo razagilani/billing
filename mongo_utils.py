@@ -13,7 +13,9 @@ def python_convert(x):
     if type(x) is Decimal:
         return x
     if type(x) is unicode:
-        return str(x)
+    # do not convert unicode strings to ascii when retrieving documents from mongo: https://www.pivotaltracker.com/story/show/28857505
+    #    return str(x)
+        return x
     if type(x) is time:
         return x
     if type(x) is date:

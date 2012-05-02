@@ -685,7 +685,7 @@ class RateStructureItem(object):
         Consequently, RSI and Registers have to typically return a 'float' for numerical
         values so that eval() can avoid type mismatches when using +,-,/ and * operators.
         """
-        assert type(rsi_value) is str
+        assert isinstance(rsi_value, basestring)
 
         #caller = inspect.stack()[1][3]
         #print "RSI Evaluate: %s, %s Value: %s" % (self._rsi_binding, caller, rsi_value)
