@@ -20,7 +20,7 @@ class User:
     @property
     def username(self):
         # we get this from the OpenID identity provider
-        return self.dictionary['username']
+        return self.dictionary['name']
 
     @property
     def preferences(self):
