@@ -6,8 +6,9 @@ from collections import defaultdict
 import tablib
 from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
+from skyliner import sky_handlers
 from billing.processing.process import Process
-from billing.dateutils import estimate_month, month_offset, months_of_past_year, date_generator
+from billing.dateutils import estimate_month, month_offset, months_of_past_year, date_generator, date_to_datetime
 from billing.nexus_util import NexusUtil
 from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state
@@ -103,7 +104,7 @@ class EstimatedRevenue(object):
         # TODO replace (year, month) tuples with Months
 
         accounts = self.state_db.listAccounts(session)
-        #accounts = ['10003', '10004'] # enable all accounts when this is faster
+        #accounts = ['10017', '10004'] # enable all accounts when this is faster
         for account in accounts:
             last_issued_sequence = self.state_db.last_sequence(session,
                     account)
@@ -251,24 +252,41 @@ class EstimatedRevenue(object):
         energy_sold_btu = 0
         if start.month == end.month and start.day == 1 and end.day == len(Month(end)):
             # date range happens to be whole month: get monthly OLAP document
-            energy_sold_btu = self.monguru.get_data_for_month(olap_id,
+            monthly_sold_btu = self.monguru.get_data_for_month(olap_id,
                     start.year, start.month).energy_sold
+            if monthly_sold_btu == None:
+                # measure does not exist in olap doc
+                # TODO OK to count this as 0?
+                monthly_sold_btu = 0
+            energy_sold_btu += monthly_sold_btu
         else:
             # not a whole month: use individual days
             for day in date_generator(start, end):
-                try:
-                    daily_sold_btu = self.monguru.get_data_for_day(olap_id,
-                            day).energy_sold
-                    if daily_sold_btu == None:
-                        # measure does not exist in the olap doc
-                        # TODO this should be an error
-                        daily_sold_btu = 0
-                except ValueError:
-                    # olap doc is missing
+                daily_sold_btu = self.monguru.get_data_for_day(olap_id,
+                        day).energy_sold
+                if daily_sold_btu == None:
+                    # measure does not exist in the olap doc
+                    # TODO OK to count this as 0?
                     daily_sold_btu = 0
                 energy_sold_btu += daily_sold_btu
-        energy_sold_therms = energy_sold_btu / 100000.
 
+        # subtract energy for hours marked by unbillable annotations
+        install = self.splinter.get_install_obj_for(olap_id)
+        unbillable_annos = [anno for anno in install.get_annotations() if
+                anno._from >= date_to_datetime(start) and anno._to <=
+                date_to_datetime(end) and anno.unbillable]
+        for anno in unbillable_annos:
+            annotation_btu = 0
+            for hour in sky_handlers.cross_range(anno._from, anno._to):
+                annotation_btu += self.monguru.get_data_for_hour(olap_id,
+                        hour.date(), hour.hour).energy_sold
+            if annotation_btu > 0:
+                print '    subtracting %s BTU for annotation: %s to %s' % (
+                        annotation_btu, anno._from, anno._to)
+                energy_sold_btu -= annotation_btu
+
+        # convert to therms
+        energy_sold_therms = energy_sold_btu / 100000.
 
         # now we figure out how much that energy costs. if the utility bill(s)
         # for this reebill are present, we could get them with
@@ -396,7 +414,8 @@ if __name__ == '__main__':
     er = EstimatedRevenue(state_db, reebill_dao, ratestructure_dao,
             splinter)
 
-    data = er.report(session, failfast=True)
+    #data = er.report(session, failfast=True)
+    data = er.report(session)
 
     ## print a table
     #all_months = sorted(set(reduce(lambda x,y: x+y, [data[account].keys() for
