@@ -96,10 +96,11 @@ class JournalDAO(object):
         # TODO: 17928569 clean up mongo resources here?
         pass
 
-    def log_event(self, user, account, sequence, event_type, **kwargs):
-        '''Logs an event associated with the given user and the reebill given
-        by account and sequence. A timestamp is produced automatically and the
-        contents of kwargs will be inserted directly into the document.'''
+    def log_event(self, user, event_type, account, **kwargs):
+        '''Logs an event associated with the given user and customer account
+        (argument 'sequence' should be given to specify a particular reebill).
+        A timestamp is produced automatically and the contents of kwargs will
+        be inserted directly into the document.'''
         if event_type not in event_names:
             raise ValueError('Unknown event type: %s' % event_type)
 
@@ -117,7 +118,6 @@ class JournalDAO(object):
         journal_entry['date'] = datetime.datetime.utcnow()
         journal_entry['event'] = event_type
         journal_entry['account'] = account
-        journal_entry['sequence'] = sequence
 
         journal_entry_data = bson_convert(journal_entry)
         self.collection.save(journal_entry_data)
