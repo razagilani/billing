@@ -5113,26 +5113,19 @@ function reeBillReady() {
 
         // grid columns
         columns: revenueGridColumns,
-       /* [*/
-            //{
-                //id: 'account', // if this id does not match autoExpandColumn above, we get "Could not load UI configuration from the server: TypeError: Cannot read property 'width' of undefined" and splash does not go away
-                //header: 'Account',
-                //dataIndex: 'account',
-                //forceFit:true,
-            //},
-            //{ id: '11_months_ago', header: '11', dataIndex: 'revenue_11_months_ago', width: 80, renderer: revenueColumnRenderer},
-            //{ id: '10_months_ago', header: '10', dataIndex: 'revenue_10_months_ago', width: 80, renderer: revenueColumnRenderer},
-            //{ id: '9_months_ago', header: '9', dataIndex: 'revenue_9_months_ago', width: 80, renderer: revenueColumnRenderer},
-            //{ id: '8_months_ago', header: '8', dataIndex: 'revenue_8_months_ago', width: 80, renderer: revenueColumnRenderer},
-            //{ id: '7_months_ago', header: '7', dataIndex: 'revenue_7_months_ago', width: 80, renderer: revenueColumnRenderer},
-            //{ id: '6_months_ago', header: '6', dataIndex: 'revenue_6_months_ago', width: 80, renderer: revenueColumnRenderer},
-            //{ id: '5_months_ago', header: '5', dataIndex: 'revenue_5_months_ago', width: 80, renderer: revenueColumnRenderer},
-            //{ id: '4_months_ago', header: '4', dataIndex: 'revenue_4_months_ago', width: 80, renderer: revenueColumnRenderer},
-            //{ id: '3_months_ago', header: '3', dataIndex: 'revenue_3_months_ago', width: 80, renderer: revenueColumnRenderer},
-            //{ id: '2_months_ago', header: '2', dataIndex: 'revenue_2_months_ago', width: 80, renderer: revenueColumnRenderer},
-            //{ id: '1_months_ago', header: '1', dataIndex: 'revenue_1_months_ago', width: 80, renderer: revenueColumnRenderer},
-            //{ id: '0_months_ago', header: '0', dataIndex: 'revenue_0_months_ago', width: 80, renderer: revenueColumnRenderer},
-       /* ]*/
+
+        // toolbar on the top with a download button
+        tbar: new Ext.Toolbar({
+            items: [
+                {
+                    id: 'estimatedRevenueDownloadButton',
+                    iconCls: 'icon-application-go',
+                    xtype: 'linkbutton',
+                    href: "http://"+location.host+"/reebill/estimated_revenue_xls",
+                    text: 'Download Excel Spreadsheet',
+                    disabled: false,
+                },]
+        }),
 
         // paging bar on the bottom
         bbar: new Ext.PagingToolbar({
@@ -5140,7 +5133,7 @@ function reeBillReady() {
             store: revenueGridStore,
             displayInfo: true,
             displayMsg: 'Displaying {0} - {1} of {2}',
-            emptyMsg: "Click the refresh button to show some data.",
+            emptyMsg: "Click the refresh button to generate the report (may take a few minutes).",
         }),
     });
 

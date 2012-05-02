@@ -103,7 +103,7 @@ class EstimatedRevenue(object):
         # TODO replace (year, month) tuples with Months
 
         accounts = self.state_db.listAccounts(session)
-        accounts = ['10003', '10004'] # enable all accounts when this is faster
+        #accounts = ['10003', '10004'] # enable all accounts when this is faster
         for account in accounts:
             last_issued_sequence = self.state_db.last_sequence(session,
                     account)
