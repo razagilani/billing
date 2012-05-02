@@ -132,17 +132,21 @@ if __name__ == '__main__':
     #parser = argparse.ArgumentParser(description='Create and authenticate user accounts')
     #parser.add_argument('create', dest=username)
     from sys import argv
+    dao = UserDAO({
+        'host': 'localhost',
+        'port': 27017,
+        'database': 'skyline',
+        'collection': 'users',
+        'user': 'dev',
+        'password': 'dev',
+    })
     command = argv[1]
+    username = argv[2]
+    password = argv[3]
+
     if command == 'add':
-        username = argv[2]
-        password = argv[3]
-        dao = UserDAO({
-            'host': 'localhost',
-            'port': 27017,
-            'database': 'skyline',
-            'collection': 'users',
-            'user': 'dev',
-            'password': 'dev',
-        })
         dao.create_user(username, password)
 
+    elif command == 'check':
+        result = dao.load_user(username, password)
+        print (result == None)
