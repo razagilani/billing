@@ -1,6 +1,6 @@
 #!/usr/bin/python
 '''Upgrade script to remove all user passwords and replace them with a secure
-hash and salt.'''
+hash and salt. Also changes the "username" key to "name" for clarity.'''
 import bcrypt
 import pymongo
 from pymongo.objectid import ObjectId
@@ -20,6 +20,15 @@ connection = pymongo.Connection(config['host'], config['port'])
 collection = connection[config['database']][config['collection']]
 
 for user in collection.find():
+    # username -> name
+    if 'username' in user:
+        user['name'] = user['username']
+        del user['username']
+        print '%s: fixed name' % user['name']
+    else:
+        print '%s: name already OK' % user['name']
+
+    # password security
     if 'password' in user:
         password = user['password']
         del user['password']
@@ -27,7 +36,8 @@ for user in collection.find():
         pw_hash = bcrypt.hashpw(password, salt)
         user['password_hash'] = pw_hash
         user['salt'] = salt
-        collection.save(user)
-        print 'updated user %s' % user['username']
+        print '%s: fixed password' % user['name']
     else:
-        print 'skipped user %s' % user['username']
+        print '%s password already OK' % user['name']
+
+    collection.save(user)
