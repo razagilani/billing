@@ -305,54 +305,18 @@ example_reebill = {
 		"total_renewable_produced" : null,
 		"total_savings" : 2380.14,
 		"consumption_trend" : [
-			{
-				"quantity" : 176.070325956,
-				"month" : "Dec"
-			},
-			{
-				"quantity" : 131.326916818,
-				"month" : "Jan"
-			},
-			{
-				"quantity" : 208.930598627,
-				"month" : "Feb"
-			},
-			{
-				"quantity" : 254.056862159,
-				"month" : "Mar"
-			},
-			{
-				"quantity" : 261.959046815,
-				"month" : "Apr"
-			},
-			{
-				"quantity" : 292.214836348,
-				"month" : "May"
-			},
-			{
-				"quantity" : 300.407399538,
-				"month" : "Jun"
-			},
-			{
-				"quantity" : 389.158304182,
-				"month" : "Jul"
-			},
-			{
-				"quantity" : 331.316663376,
-				"month" : "Aug"
-			},
-			{
-				"quantity" : 191.795145461,
-				"month" : "Sep"
-			},
-			{
-				"quantity" : 240.325501002,
-				"month" : "Oct"
-			},
-			{
-				"quantity" : 211.297853513,
-				"month" : "Nov"
-			}
+			{ "quantity" : 176.070325956, "month" : "Dec" },
+			{ "quantity" : 131.326916818, "month" : "Jan" },
+			{ "quantity" : 208.930598627, "month" : "Feb" },
+			{ "quantity" : 254.056862159, "month" : "Mar" },
+			{ "quantity" : 261.959046815, "month" : "Apr" },
+			{ "quantity" : 292.214836348, "month" : "May" },
+			{ "quantity" : 300.407399538, "month" : "Jun" },
+			{ "quantity" : 389.158304182, "month" : "Jul" },
+			{ "quantity" : 331.316663376, "month" : "Aug" },
+			{ "quantity" : 191.795145461, "month" : "Sep" },
+			{ "quantity" : 240.325501002, "month" : "Oct" },
+			{ "quantity" : 211.297853513, "month" : "Nov" }
 		],
 		"conventional_utilization" : 0.74,
 		"total_trees" : 41.110613723657075,
@@ -499,7 +463,7 @@ def get_reebill(account, sequence):
     reebill_dict['_id']['sequence'] = sequence
     return MongoReebill(deep_map(float_to_decimal, reebill_dict))
 
-def get_utilbill():
+def get_utilbill_dict():
     '''Returns an example utility bill dictionary.'''
     utilbill_dict = copy.deepcopy(example_utilbill)
     return utilbill_dict
