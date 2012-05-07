@@ -408,13 +408,22 @@ class Process(object):
             # get non-shadow registers in the reebill
             actual_register_readings = reebill.actual_registers(service)
 
-            # apply the registers from the reebill to the probable rate structure
+            # copy the quantity of each non-shadow register in the reebill to
+            # the corresponding register dictionary in the rate structure
+            # ("apply the registers from the reebill to the probable rate structure")
             rate_structure.bind_register_readings(actual_register_readings)
 
-            # process actual charges with non-shadow meter register totals
+            # get all utility charges from the reebill's utility bill (in the
+            # form of a group name -> [list of charges] dictionary)
+            # ("process actual charges with non-shadow meter register totals")
             actual_chargegroups = reebill.actual_chargegroups_for_service(service)
 
-            # iterate over the charge groups, binding the reebill charges to its associated RSI
+            # copy the values of "description", "quantity", "quantity_units",
+            # "rate", and "rate_units" from each charge in all chargegroups to
+            # the corresponding rate structure item (the one that matches its
+            # "rsi_binding")
+            # ("iterate over the charge groups, binding the reebill charges to
+            # its associated RSI")
             for charges in actual_chargegroups.values():
                 rate_structure.bind_charges(charges)
 
