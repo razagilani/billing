@@ -16,9 +16,9 @@ from billing.processing.state import StateDB
 from billing.processing.db_objects import ReeBill, Customer, UtilBill
 from decimal import Decimal
 from billing.dictutils import deep_map
-import copy
 import MySQLdb
 from billing.mongo_utils import python_convert
+from billing.test import example_data
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -570,11 +570,7 @@ class ProcessTest(unittest.TestCase):
             process = Process(self.config, self.state_db, self.reebill_dao,
                     self.rate_structure_dao, self.splinter, self.monguru)
  
-            # first bill ever has late fee of 0
-            bill1 = mongo.MongoReebill(deep_map(mongo.float_to_decimal,
-                    python_convert(copy.deepcopy(self.example_bill))))
-            bill1.account = '99999'
-            bill1.sequence = 1
+            bill1 = example_data.get_reebill('99999', 1)
             bill1.balance_forward = Decimal('100.')
             self.assertEqual(0, process.get_late_charge(session, bill1,
                 date(2011,12,31)))
@@ -604,10 +600,7 @@ class ProcessTest(unittest.TestCase):
             # usable state (in particular, it needs a late charge). that
             # requires a sequence 0 template bill. put one into mongo and then
             # sum bill1.
-            bill0 = mongo.MongoReebill(deep_map(mongo.float_to_decimal,
-                    python_convert(copy.deepcopy(self.example_bill))))
-            bill0.account = '99999'
-            bill0.sequence = 0
+            bill0 = example_data.get_reebill('99999', 0)
             process.sum_bill(session, bill0, bill1)
  
             # but sum_bill() destroys bill1's balance_due, so reset it to
@@ -619,10 +612,7 @@ class ProcessTest(unittest.TestCase):
             # is currently a huge untested mess, and get_late_charge() should
             # be tested in isolation). note that bill1's late charge is set in
             # mongo by process.issue().
-            bill2 = mongo.MongoReebill(deep_map(mongo.float_to_decimal,
-                    python_convert(copy.deepcopy(self.example_bill))))
-            bill2.account = '99999'
-            bill2.sequence = 2
+            bill2 = example_data.get_reebill('99999', 2)
             bill2.balance_due = Decimal('200.')
             # bill2's late_charge_rate is copied from MySQL during rolling, but
             # since bill2 is not created by rolling, it must be set explicitly.
@@ -651,10 +641,7 @@ class ProcessTest(unittest.TestCase):
  
             # create a 3rd bill without issuing bill2. bill3 should have None
             # as its late charge for all dates
-            bill3 = mongo.MongoReebill(deep_map(mongo.float_to_decimal,
-                    python_convert(copy.deepcopy(self.example_bill))))
-            bill3.account = '99999'
-            bill3.sequence = 3
+            bill3 = example_data.get_reebill('99999', 3)
             bill3.balance_due = Decimal('300.')
             self.assertEqual(None, process.get_late_charge(session, bill3,
                 date(2011,12,31)))
@@ -750,14 +737,13 @@ class ProcessTest(unittest.TestCase):
                     self.rate_structure_dao, self.splinter, self.monguru)
 
             # generic reebill
-            bill1 = mongo.MongoReebill(deep_map(mongo.float_to_decimal,
-                    python_convert(copy.deepcopy(self.example_bill))))
+            bill1 = example_data.get_reebill('99999', 1)
             bill1.account = '99999'
             bill1.sequence = 1
 
             # make it have 2 services, 1 suspended
             # (create electric bill by duplicating gas bill)
-            electric_bill = copy.deepcopy(bill1.dictionary['utilbills'][0])
+            electric_bill = example_data.get_utilbill()
             electric_bill['service'] = 'electric'
             bill1.dictionary['utilbills'].append(electric_bill)
             bill1.suspend_service('electric')
