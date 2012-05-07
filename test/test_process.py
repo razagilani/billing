@@ -288,7 +288,7 @@ class ProcessTest(unittest.TestCase):
 
             # make it have 2 services, 1 suspended
             # (create electric bill by duplicating gas bill)
-            electric_bill = example_data.get_utilbill()
+            electric_bill = example_data.get_utilbill_dict()
             electric_bill['service'] = 'electric'
             bill1.dictionary['utilbills'].append(electric_bill)
             bill1.suspend_service('electric')
