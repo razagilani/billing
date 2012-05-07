@@ -86,7 +86,8 @@ class RateStructureDAO(object):
 
         # load the URS
         urs = self.load_urs(utility_name, rate_structure_name, period_begin, period_end)
-        if urs is None: raise Exception("Could not lookup URS")
+        if urs is None: raise Exception("Could not find URS for utility_name %s, rate_structure_name %s, period_begin %s, period_end %s" % (
+                utility_name, rate_structure_name, period_begin, period_end))
 
         # remove the mongo key, because the requester already has this information
         # and we do not want application code depending on the "_id" field.
@@ -438,7 +439,12 @@ class RateStructure(object):
         return needs
 
     def bind_register_readings(self, register_readings):
-
+        '''Takes the list of register dictionaries from a reebill, and for each
+        of those, locates the first register dictionary in this rate structure
+        with the same value for the key "register_binding", and copies the
+        value of "quantity" from the reebill register dictionary to the rate
+        structure register dictionary.'''
+        # previous comment:
         # for the register readings that are passed in, bind their 
         # energy value to the register in this rate structure
         # notifying of ones that don't match
@@ -455,8 +461,10 @@ class RateStructure(object):
                 print "%s not bound to rate structure" % register_reading
 
     def bind_charges(self, charges):
-        '''For each charge in a list of charges, get the charge rsi_binding and
-        apply its values to the rate structure, or override its values.'''
+        '''For each charge in a list of charges, find the corresponding Rate
+        Structure Item (by rsi_binding) and copy the values of "description",
+        "quantity", "quantity_units", "rate", and "rate_units" from the charge
+        to the RSI.'''
         for charge in charges:
             # get rate structure item binding for this charge
             rsi = self.__dict__[charge['rsi_binding']]

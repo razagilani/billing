@@ -324,5 +324,29 @@ class ProcessTest(unittest.TestCase):
                 session.rollback()
             raise
 
+    def test_bind_rate_structure(self):
+        print 'test_bind_rate_structure'
+
+        # make a reebill
+        account, sequence = '99999', 1
+        bill1 = example_data.get_reebill(account, sequence)
+        service = bill1.services[0]
+        utility_name = bill1.utility_name_for_service(service)
+        rate_structure_name = bill1.rate_structure_name_for_service(service)
+
+        # make rate structure documents and save them in db
+        urs_dict = example_data.get_urs_dict()
+        cprs_dict = example_data.get_cprs_dict(account, sequence)
+        self.rate_structure_dao.save_urs(utility_name, rate_structure_name,
+                bill1.period_begin, bill1.period_end, urs_dict)
+        self.rate_structure_dao.save_cprs(account, sequence, 0, utility_name,
+                rate_structure_name, cprs_dict)
+        #rs = self.rate_structure_dao.load_probable_rs(bill1, service)
+        rs = self.rate_structure_dao.load_rate_structure(bill1, service)
+
+        process = Process(self.config, self.state_db, self.reebill_dao,
+                self.rate_structure_dao, self.splinter, self.monguru)
+        process.bindrs(bill1, None)
+
 if __name__ == '__main__':
     unittest.main(failfast=True)
