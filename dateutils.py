@@ -145,6 +145,7 @@ def length_of_w_week(year, w_week):
 ################################################################################
 # months #######################################################################
 
+# TODO remove: this has become monthmath.Month.overlap_with_period
 def days_in_month(year, month, start_date, end_date):
     '''Returns the number of days in 'month' of 'year' between start_date
     (inclusive) and end_date (exclusive).'''
@@ -177,7 +178,7 @@ def days_in_month(year, month, start_date, end_date):
     # otherwise just return number of days in the month
     return calendar.monthrange(year, month)[1]
 
-
+# TODO remove; has gone into monthmath.approximate_month
 def estimate_month(start_date, end_date):
     '''Returns the year and month of the month with the most days between
     start_date and end_date (as a (year, month) tuple).'''
@@ -198,6 +199,7 @@ def estimate_month(start_date, end_date):
                 max_year = year
     return max_year, max_month
 
+# TODO remove; has gone into monthmath
 def months_of_past_year(year, month):
     '''Returns a list of (year, month) tuples representing all months in the
     year preceding and including ('year', 'month') (and not including the same
@@ -212,6 +214,7 @@ def months_of_past_year(year, month):
         a_month = a_month % 12 + 1
     return result
 
+# TODO remove; replaced with arithmetic on monthmath.Months
 def month_offset(year, month, number_of_months):
     '''Returns the month that occurs 'number_of_months' after 'month' of 'year'
     as a (year, month) tuple. 'number_of_months' may be negative. For example,
@@ -220,6 +223,7 @@ def month_offset(year, month, number_of_months):
     year_offset, result_month_index = divmod(month + number_of_months - 1, 12)
     return year + year_offset, result_month_index + 1
 
+# TODO remove; replaced with arithmetic on monthmath.Months
 def month_difference(year1, month1, year2, month2):
     '''Returns the number of months between (year1, month1) and (year2,
     month2). For example, month_difference(2012, 3), month_difference(2012,
@@ -228,6 +232,7 @@ def month_difference(year1, month1, year2, month2):
     month_difference = month2 - month1
     return year_difference * 12 + month_difference
 
+# TODO move into monthmath?
 def nth_weekday(n, weekday_number, month):
     '''Returns a function mapping years to the 'n'th weekday of 'month' in the
     given year, so holidays like "3rd monday of February" can be defined. 'n'
