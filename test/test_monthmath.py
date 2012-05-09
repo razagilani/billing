@@ -164,11 +164,12 @@ class MonthmathTest(unittest.TestCase):
 
         # month - month = int
         self.assertEquals(0, Month(2012, 1) - Month(2012, 1))
-        self.assertEquals(1, Month(2012, 1) - Month(2012, 2))
-        self.assertEquals(-1, Month(2012, 1) - Month(2011, 12))
-        self.assertEquals(6, Month(2012, 1) - Month(2012, 7))
-        self.assertEquals(12, Month(2012, 3) - Month(2013, 3))
-        self.assertEquals(-25, Month(2012, 12) - Month(2010, 11))
+        self.assertEquals(-1, Month(2012, 1) - Month(2012, 2))
+        self.assertEquals(1, Month(2012, 1) - Month(2011, 12))
+        self.assertEquals(6, Month(2012, 7) - Month(2012, 1))
+        self.assertEquals(-6, Month(2012, 1) - Month(2012, 7))
+        self.assertEquals(-12, Month(2012, 3) - Month(2013, 3))
+        self.assertEquals(25, Month(2012, 12) - Month(2010, 11))
 
 if __name__ == '__main__':
     unittest.main()
