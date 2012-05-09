@@ -407,10 +407,15 @@ class RateStructure(object):
 
         This class may be constructed from a URS, UPRS, CPRS or probable rate structure
         """
+        # create a Register object from each dictionary in the "registers" part
+        # of 'rs_data', and make each of those Registers the value of attribute
+        # of this RateStructure, whose name is the "register_binding" in that
+        # dictionary.
         self.registers = [Register(reg_data, None, None) for reg_data in rs_data["registers"]]
         for reg in self.registers:
             if reg.register_binding is None:
                 raise Exception("Register descriptor required.\n%s" % reg)
+            # this is equivalent to "setattr(self, reg.register_binding, reg)"
             self.__dict__[reg.register_binding] = reg
 
         # RSIs refer to RS namespace to access registers,
@@ -424,6 +429,13 @@ class RateStructure(object):
         # RSIs refer to other RSIs by Descriptor.
         # TODO: are self.rates ever referenced? If not, just stick them in self.__dict__
 
+        # do the same thing with RateStructureItems (aka "rates") as with
+        # registers above: create a RateStructureItem object from each
+        # dictionary in the "rates" part of 'rs_data', and add it as an
+        # attribute with the name of its "rsi_binding"
+        # (note that register_binding associates registers in a reebill with
+        # registers in a RateStructure; rsi_binding associates charges in a
+        # reebill with RSIs in a RateStructure)
         self.rates = [RateStructureItem(rsi_data, self) for rsi_data in rs_data["rates"]]
         for rsi in self.rates:
             if rsi.rsi_binding is None:
@@ -431,19 +443,20 @@ class RateStructure(object):
             self.__dict__[rsi.rsi_binding] = rsi
 
 
-    def register_needs(self):
-        """ Return a list of registers that must be populated with energy."""
-        needs = []
-        for register in self.registers:
-            needs.append(register)
-        return needs
+    # TODO remove; never used anywhere
+#    def register_needs(self):
+#        """ Return a list of registers that must be populated with energy."""
+#        needs = []
+#        for register in self.registers:
+#            needs.append(register)
+#        return needs
 
     def bind_register_readings(self, register_readings):
         '''Takes the list of register dictionaries from a reebill, and for each
-        of those, locates the first register dictionary in this rate structure
-        with the same value for the key "register_binding", and copies the
-        value of "quantity" from the reebill register dictionary to the rate
-        structure register dictionary.'''
+        of those, locates a register in this rate structure with the same value
+        for the key "register_binding", and copies the value of "quantity" from
+        the reebill register dictionary to the rate structure register
+        dictionary.'''
         # previous comment:
         # for the register readings that are passed in, bind their 
         # energy value to the register in this rate structure
@@ -452,19 +465,19 @@ class RateStructure(object):
         for register_reading in register_readings:
             # find matching descriptor in rate structure
             matched = False
-            for register_need in self.registers:
-                if register_need.register_binding == register_reading['register_binding']:
+            for register in self.registers:
+                if register.register_binding == register_reading['register_binding']:
                     matched = True
-                    register_need.quantity = register_reading['quantity']
+                    register.quantity = register_reading['quantity']
                     #print "%s bound to rate structure" % register_reading
             if not matched:
                 print "%s not bound to rate structure" % register_reading
 
     def bind_charges(self, charges):
-        '''For each charge in a list of charges, find the corresponding Rate
-        Structure Item (by rsi_binding) and copy the values of "description",
-        "quantity", "quantity_units", "rate", and "rate_units" from the charge
-        to the RSI.'''
+        '''For each charge in a list of charges from a reebill, find the
+        corresponding Rate Structure Item (by rsi_binding) and copy the values
+        of "description", "quantity", "quantity_units", "rate", and
+        "rate_units" from the RSI to the charge.'''
         for charge in charges:
             # get rate structure item binding for this charge
             rsi = self.__dict__[charge['rsi_binding']]
