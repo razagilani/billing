@@ -46,7 +46,7 @@ class Month(object):
     def __add__(self, other):
         '''Adding a Month to an int x returns the Month x months later. Adding a
         timedelta returns that amount of time after midnight on the first of the
-        month.'''
+        month (a datetime).'''
         if isinstance(other, int):
             # extra years are the whole quotient left over after integer
             # division by 12. month is the remainder, but it's in 0-based
@@ -54,7 +54,10 @@ class Month(object):
             quotient, remainder = divmod(self.month + other - 1, 12)
             return Month(self.year + quotient, remainder + 1)
         if isinstance(other, timedelta):
-            return self.first() + other
+            # date + timedelta = date (rounded to the nearest day), so convert
+            # the date into a datetime before adding
+            first = self.first
+            return datetime(first.year, first.month, first.day) + other
 
     def __sub__(self, other):
         '''Subtracting two months gives the number of months difference (int).
