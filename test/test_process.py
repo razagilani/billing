@@ -92,7 +92,6 @@ class ProcessTest(unittest.TestCase):
         session.commit()
 
     def tearDown(self):
-        print 'tearDown'
         '''This gets run even if a test fails.'''
         # clear out mongo test database
         mongo_connection = pymongo.Connection('localhost', 27017)

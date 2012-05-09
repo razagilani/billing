@@ -160,7 +160,17 @@ class MonthmathTest(unittest.TestCase):
         self.assertEquals(Month(2015,1), Month(2012,12) + 25)
 
         # month +/- timedelta = datetime
-        # TODO
+        self.assertEquals(datetime(2012,1,2, 0), Month(2012,1) + timedelta(days=1))
+        self.assertEquals(datetime(2012,1,3, 0), Month(2012,1) + timedelta(days=2))
+        self.assertEquals(datetime(2012,1,31, 0), Month(2012,1) + timedelta(days=30))
+        self.assertEquals(datetime(2012,2,1, 0), Month(2012,1) + timedelta(days=31))
+        self.assertEquals(datetime(2011,12,31, 0), Month(2012,1) + timedelta(days=-1))
+        self.assertEquals(datetime(2011,12,31, 0), Month(2012,1) - timedelta(days=1))
+        self.assertEquals(datetime(2012,1,1, 1), Month(2012,1) + timedelta(hours=1))
+        self.assertEquals(datetime(2012,1,2, 0), Month(2012,1) + timedelta(hours=24))
+        self.assertEquals(datetime(2012,1,2, 1), Month(2012,1) + timedelta(hours=25))
+        self.assertEquals(datetime(2011,12,31, 12), Month(2012,1) + timedelta(hours=-12))
+        self.assertEquals(datetime(2011,12,31, 12), Month(2012,1) - timedelta(hours=12))
 
         # month - month = int
         self.assertEquals(0, Month(2012, 1) - Month(2012, 1))
