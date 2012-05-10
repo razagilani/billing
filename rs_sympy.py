@@ -89,6 +89,7 @@ def two():
 
 
 def three():
+    '''Shows how we could evaluate SymPy expressions typed by the user.'''
     from StringIO import StringIO
     from sympy import mpmath
     from billing.dictutils import dict_merge
@@ -98,8 +99,7 @@ def three():
     def block(low, high, rate):
         return Piecewise((0, q < low), (rate * (q - low), q < high), (rate * (high - low), True))
 
-    io = StringIO('''
-md_gross_receipts_surcharge = Float(0)
+    io = StringIO('''md_gross_receipts_surcharge = Float(0)
 system_charge = Float(36.25)
 energy_first_block = block(0, 300, .3050)
 energy_second_block = block(300, 7000, .2124)
@@ -108,8 +108,7 @@ supply_commodity = .71 * q
 supply_balancing = .014 * q
 pg_county_energy_tax = .065 * q
 md_state_sales_tax = .06 * (system_charge + energy_first_block + energy_second_block + energy_remainder_block)
-md_supply_sales_tax = .06 * (supply_commodity + supply_balancing)
-''')
+md_supply_sales_tax = .06 * (supply_commodity + supply_balancing)''')
 
     charges = { }
     for line in io.readlines():
@@ -164,6 +163,63 @@ md_supply_sales_tax = .06 * (supply_commodity + supply_balancing)
         #for (name, expr) in charges.items() if name.startswith('energy')],
             #[0, 10000])
 
+def four():
+    '''Shows SymPy with units.'''
+    from sympy import sympify
+    from sympy.physics import units
+    # custom units
+    BTU = 1055.05585 * units.joule
+    therm = 100000 * BTU
+    dollar = units.Unit('dollar', '$')
+
+    q = Symbol('quantity')
+
+    def block(low, high, rate):
+        low = low * therm
+        high = high * therm
+        rate = rate * dollar / therm
+        return Piecewise(
+            (dollar * 0.1, q < low),
+            (rate * (q - low), q < high),
+            (rate * (high - low), True)
+        )
+
+    # constant charges
+    md_gross_receipts_surcharge = sympify(0) * dollar
+    system_charge = sympify(36.25) * dollar
+
+    # quantity-dependent charges
+    energy_first_block = block(0, 300, .3050)
+    energy_second_block = block(300, 7000, .2124)
+    energy_remainder_block = block(7000, oo, .1573)
+    supply_commodity = q * .71 * dollar/therm
+    supply_balancing = q * .014 * dollar/therm
+    pg_county_energy_tax = q * .065 * dollar/therm
+
+    # charge-dependent charges
+    md_state_sales_tax = .06 * (system_charge + energy_first_block +
+            energy_second_block + energy_remainder_block)
+    md_supply_sales_tax = .06 * (supply_commodity * supply_balancing)
+
+    total = md_gross_receipts_surcharge + system_charge + energy_first_block \
+            + energy_second_block + energy_remainder_block + supply_commodity \
+            + supply_balancing + pg_county_energy_tax + md_state_sales_tax \
+            + md_supply_sales_tax
+
+    print 'supply_commodity:', supply_commodity.subs(q, 186 * therm)/dollar
+    # for some reason sympy doesn't evaluate this expression, even though it
+    # should be unitless. i think it's because it can't choose which section of
+    # a Piecewise expression is the right one when there are units involved in
+    # the conditions, because ot doesn't know e.g. whether 1*m < 2*m without
+    # knowing what "m" really is.
+    print 'energy_remainder_block:', energy_first_block.subs(q, 186 * therm)/dollar
+    # can be fixed by subsituting "1" for the basic units (meter, kg, sec).
+    # that's not safe for general calculations, but i guess it's ok just before
+    # converting to a unitless number.
+    print 'energy_first_block:', (energy_first_block.subs(q, 186 * therm)/dollar).subs({units.kg: 1,
+        units.m: 1, units.s:1})
+    print 'md_state_sales_tax:', (md_state_sales_tax.subs(q, 186 * therm)/dollar).subs({units.kg: 1,
+        units.m: 1, units.s:1})
 
 if __name__ == '__main__':
-    three()
+    four()
