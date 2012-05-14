@@ -1738,7 +1738,12 @@ class BillToolBridge:
             'sa_postal_code': sa['sa_postal_code'] if 'sa_postal_code' in sa else '',
         }
 
-        account_info['late_charge_rate'] = reebill.late_charge_rate
+        try:
+            account_info['late_charge_rate'] = reebill.late_charge_rate
+        except KeyError:
+            # ignore late charge rate when absent
+            pass
+
         account_info['discount_rate'] = reebill.discount_rate
 
         return self.dumps(account_info)
