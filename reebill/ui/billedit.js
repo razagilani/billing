@@ -5503,7 +5503,7 @@ function reeBillReady() {
                     checkboxes.push({
                         'boxLabel': services[i],
                         'name': services[i] + '_suspended',
-                        'checked': suspended_services.indexOf(services[i]) != -1,
+                        'checked': suspended_services.indexOf(services[i].toLowerCase()) != -1,
                     });
                 }
                 console.log(selected_account + ', ' + selected_sequence + ' checkboxes: '+checkboxes);
