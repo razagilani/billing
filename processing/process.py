@@ -10,7 +10,6 @@ import datetime
 from datetime import date
 import calendar
 import pprint
-import yaml
 from optparse import OptionParser
 from decimal import *
 #
@@ -26,6 +25,7 @@ from billing.mongo import ReebillDAO
 from billing import nexus_util
 from billing import dateutils
 from billing.dateutils import estimate_month, month_offset, month_difference
+from billing.monthmath import Month, approximate_month
 
 sys.stdout = sys.stderr
 class Process(object):
@@ -234,6 +234,8 @@ class Process(object):
         reebill.late_charge_rate = self.state_db.late_charge_rate(session,
                 reebill.account)
 
+        # NOTE suspended_services list is carried over automatically
+
         # create reebill row in state database
         self.state_db.new_rebill(session, reebill.account, reebill.sequence)
 
@@ -366,12 +368,12 @@ class Process(object):
     def attach_utilbills(self, session, account, sequence):
         '''Creates association between the reebill given by 'account',
         'sequence' and all utilbills belonging to that customer whose entire
-        periods are within the date interval [start, end]. The utility bills
-        are marked as processed.'''
+        periods are within the date interval [start, end] and whose services
+        are not suspended. The utility bills are marked as processed.'''
         reebill = self.reebill_dao.load_reebill(account, sequence)
-        begin = reebill.period_begin
-        end = reebill.period_end
-        self.state_db.attach_utilbills(session, account, sequence, begin, end)
+        self.state_db.attach_utilbills(session, account, sequence,
+                reebill.period_begin, reebill.period_end,
+                suspended_services=reebill.suspended_services)
 
     def bind_rate_structure(self, reebill):
             # process the actual charges across all services
@@ -387,7 +389,6 @@ class Process(object):
 
         # process rate structures for all services
         for service in reebill.services:
-
             #
             # All registers for all meters in a given service are made available
             # to the rate structure for the given service.
@@ -399,38 +400,44 @@ class Process(object):
 
             rate_structure = self.rate_structure_dao.load_rate_structure(reebill, service)
 
-            # find out what registers are needed to process this rate structure
-            #register_needs = rate_structure.register_needs()
-
             # get non-shadow registers in the reebill
             actual_register_readings = reebill.actual_registers(service)
 
-            # apply the registers from the reebill to the probable rate structure
+            # copy the quantity of each non-shadow register in the reebill to
+            # the corresponding register dictionary in the rate structure
+            # ("apply the registers from the reebill to the probable rate structure")
             rate_structure.bind_register_readings(actual_register_readings)
 
-            # process actual charges with non-shadow meter register totals
+            # get all utility charges from the reebill's utility bill (in the
+            # form of a group name -> [list of charges] dictionary). for each
+            # charge, find the corresponding rate structure item (the one that
+            # matches its "rsi_binding") and copy the values of "description",
+            # "quantity", "quantity_units", "rate", and "rate_units" in that
+            # RSI to the charge
+            # ("process actual charges with non-shadow meter register totals")
+            # ("iterate over the charge groups, binding the reebill charges to
+            # its associated RSI")
             actual_chargegroups = reebill.actual_chargegroups_for_service(service)
-
-            # iterate over the charge groups, binding the reebill charges to its associated RSI
             for charges in actual_chargegroups.values():
                 rate_structure.bind_charges(charges)
 
-            # don't have to set this because we modified the actual_chargegroups
+            # (original comment "don't have to set this because we modified the
+            # actual_chargegroups" is false--we modified the rate structure
+            # items, but left the charges in the bill unchanged. as far as i
+            # can tell this line of code has no effect)
             reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
+
 
             # hypothetical charges
 
-            # process hypothetical charges with non-shadow + shadow meter register totals
-            # re-load rate structure (TODO: has it been modified above?)
+            # "re-load rate structure" (doesn't this clear out all the changes above?)
             rate_structure = self.rate_structure_dao.load_rate_structure(reebill, service)
 
-            # find out what registers are needed to process this rate structure
-            #register_needs = rate_structure.register_needs()
-
+            # get shadow and non-shadow registers in the reebill
             actual_register_readings = reebill.actual_registers(service)
             shadow_register_readings = reebill.shadow_registers(service)
 
-            # add the shadow register totals to the actual register, and re-process
+            # "add the shadow register totals to the actual register, and re-process"
 
             # TODO: 12205265 Big problem here.... if REG_TOTAL, for example, is used to calculate
             # a rate shown on the utility bill, it works - until REG_TOTAL has the shadow
@@ -439,8 +446,8 @@ class Process(object):
             # one way for actual charge computation and another way for hypothetical charge
             # computation.
 
-            # TODO: probably a better way to do this
-
+            # for each shadow register dictionary: add its quantity to the
+            # quantity of the corresponding non-shadow register
             registers_to_bind = copy.deepcopy(shadow_register_readings)
             for shadow_reading in registers_to_bind:
                 for actual_reading in actual_register_readings:
@@ -448,18 +455,26 @@ class Process(object):
                         shadow_reading['quantity'] += actual_reading['quantity']
                 # TODO: throw exception when registers mismatch
 
-            # apply the combined registers from the reebill to the probable rate structure
+            # copy the quantity of each register dictionary in the reebill to
+            # the corresponding register dictionary in the rate structure
+            # ("apply the combined registers from the reebill to the probable
+            # rate structure")
             rate_structure.bind_register_readings(registers_to_bind)
 
-            # process hypothetical charges with shadow and non-shadow meter register totals
+            # for each hypothetical charge in the reebill, copy the values of
+            # "description", "quantity", "quantity_units", "rate", and
+            # "rate_units" from the corresponding rate structure item to the
+            # charge
+            # ("process hypothetical charges with shadow and non-shadow meter register totals")
+            # ("iterate over the charge groups, binding the reebill charges to its associated RSI")
             hypothetical_chargegroups = reebill.hypothetical_chargegroups_for_service(service)
-
-            # iterate over the charge groups, binding the reebill charges to its associated RSI
             for chargegroup, charges in hypothetical_chargegroups.items():
                 rate_structure.bind_charges(charges)
 
             # don't have to set this because we modified the hypothetical_chargegroups
             #reebill.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
+
+            # NOTE that the reebill has not been modified at all
 
 
     def calculate_statistics(self, prior_reebill, reebill):
@@ -802,6 +817,53 @@ class Process(object):
         sequence_offset = month_difference(last_reebill_year,
                 last_reebill_month, year, month)
         return [last_sequence + sequence_offset]
+
+    def sequences_in_month(self, session, account, year, month):
+        '''Returns a list of sequences of all reebills whose periods contain
+        ANY days within the given month. The list is empty if the month
+        precedes the period of the account's first issued reebill, or if the
+        account has no issued reebills at all. When 'sequence' exceeds the last
+        sequence for the account (including un-issued bills in mongo), bill
+        periods are assumed to correspond exactly to calendar months. This is
+        NOT related to the approximate billing month.'''
+        # get all reebills whose periods contain any days in this month, and
+        # their sequences (there should be at most 3)
+        query_month = Month(year, month)
+        sequences_for_month = [r.sequence for r in
+                self.reebill_dao.load_reebills_in_period(account,
+                start_date=query_month.first, end_date=query_month.last)]
+        
+        # get sequence of last reebill and the month in which its period ends,
+        # which will be useful below
+        last_sequence = self.state_db.last_sequence(session, account)
+
+        # if there's at least one sequence, return the list of sequences. but
+        # if query_month is the month in which the account's last reebill ends,
+        # and that period does not perfectly align with the end of the month,
+        # also include the sequence of an additional hypothetical reebill whose
+        # period would cover the end of the month.
+        if sequences_for_month != []:
+            last_end = self.reebill_dao.load_reebill(account,
+                    last_sequence).period_end
+            if Month(last_end) == query_month and last_end \
+                    < (Month(last_end) + 1).first:
+                sequences_for_month.append(last_sequence + 1)
+            return sequences_for_month
+
+        # if there are no sequences in this month because the query_month
+        # precedes the first reebill's start, or there were never any reebills
+        # at all, return []
+        if last_sequence == 0 or query_month.last < \
+                self.reebill_dao.load_reebill(account, 1).period_begin:
+            return []
+
+        # now query_month must exceed the month in which the account's last
+        # reebill ends. return the sequence determined by counting real months
+        # after the approximate month of the last bill (there is only one
+        # sequence in this case)
+        last_reebill_end = self.reebill_dao.load_reebill(account,
+                last_sequence).period_end
+        return [last_sequence + (query_month - Month(last_reebill_end))]
 
 
 if __name__ == '__main__':

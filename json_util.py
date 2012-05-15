@@ -26,7 +26,7 @@ def __encode_obj__(obj):
 # can't use object_hook when object_pairs_hook is being used
 def __decode_str__(d):
     for name, value in d.items():
-        if type(value) is str:
+        if isinstance(value, basestring):
             # TODO:  and the name of this string is in a dict of fields to be converted to dates
             # otherwise we could very well parse an incoming text field...
             if date_pattern.match(value) is not None: 
@@ -44,14 +44,14 @@ def __convert_to_mnt__(obj):
     new_pairs = []
     for name, value in obj:
         #happens if your key's value is a string
-        if type(value) is str:
+        if isinstance(value, basestring):
             # TODO:  and the name of this string is in a dict of fields to be converted to dates
             if date_pattern.match(value) is not None: 
                 value = datetime.datetime.strptime(value, "%Y-%m-%d").date()
         #happens if your key's value is a list
         elif type(value) is list:
             for n,i in enumerate(value):
-                if type(i) is str:
+                if isinstance(i, basestring):
                     if date_pattern.search(i) is not None:
                         value[n] = datetime.datetime.strptime(value,
                                                               "%Y-%m-%d").date()

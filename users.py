@@ -1,5 +1,8 @@
 import sys
+import copy
 import pymongo
+import bcrypt
+import argparse
 
 class User:
     '''A class representing a user account. This is a thin wrapper around a
@@ -17,7 +20,7 @@ class User:
     @property
     def username(self):
         # we get this from the OpenID identity provider
-        return self.dictionary['username']
+        return self.dictionary['name']
 
     @property
     def preferences(self):
@@ -42,7 +45,7 @@ class UserDAO:
     # the same _default_user (otherwise save-prevention would not work)
     default_user = User({
         '_id':'default',
-        'username':'Default User',
+        'name':'Default User',
         'preferences': {
             'bill_image_resolution': 80
         }
@@ -60,15 +63,47 @@ class UserDAO:
             
         self.collection = connection[self.config['database']][self.config['collection']]
     
-    def load_user(self, username, password):
-        '''Returns a User object representing the user given by 'username' and
-        'password'. Returns None if the username/password combination was
+    def create_user(self, identifier, password, name=None):
+        '''Creates a new user with the given identifier and password and saves
+        it in the database. The user's human-readable name is 'identifier' by
+        default.'''
+        if name is None:
+            name = identifier
+
+        # generate a salt, and hash the password + salt
+        salt = bcrypt.gensalt()
+        pw_hash = bcrypt.hashpw(password, salt)
+
+        # new user is based on default user
+        new_user = copy.deepcopy(UserDAO.default_user)
+        new_user.dictionary['_id'] = identifier
+        new_user.dictionary['name'] = name
+        new_user.dictionary['password_hash'] = pw_hash
+        new_user.dictionary['salt'] = salt
+
+        # save in db
+        self.save_user(new_user)
+
+    def load_user(self, identifier, password):
+        '''Returns a User object representing the user given by 'identifier' and
+        'password'. Returns None if the identifier/password combination was
         wrong.'''
-        user_dict = self.collection.find_one({'_id': username,
-            'password': password})
+        # get user document from mongo (authentication fails if there isn't one
+        # with the given identifier)
+        user_dict = self.collection.find_one({
+            '_id': identifier,
+        })
         if user_dict is None:
             return None
-        return User(user_dict)
+
+        # hash the given password using the salt from the user document
+        pw_hash = bcrypt.hashpw(password, user_dict['salt'])
+
+        # authentication succeeds iff the result matches the password hash
+        # stored in the document
+        if pw_hash == user_dict['password_hash']:
+            return User(user_dict)
+        return None
 
     def load_openid_user(self, identifier):
         '''Returns a User object representing the user given by 'identifier'
@@ -96,3 +131,50 @@ class UserDAO:
 
         self.collection.save(user.dictionary)
 
+    def change_password(self, identifier, old_password, new_password):
+        '''Sets a new password for the given user. Returns True for success,
+        false for failure.'''
+        user = self.load_user(identifier, old_password)
+        if user == None:
+            return False
+        # salt stays the same
+        salt = user.dictionary['salt']
+        password_hash = bcrypt.hashpw(new_password, salt)
+        user.dictionary['password_hash'] = password_hash
+        self.save_user(user)
+        return True
+        
+if __name__ == '__main__':
+    # command-line arguments
+    #parser = argparse.ArgumentParser(description='Create and authenticate user accounts')
+    #parser.add_argument('create', dest=username)
+    from sys import argv
+    dao = UserDAO({
+        'host': 'localhost',
+        'port': 27017,
+        'database': 'skyline',
+        'collection': 'users',
+        'user': 'dev',
+        'password': 'dev',
+    })
+    command = argv[1]
+    identifier = argv[2]
+    password = argv[3]
+
+    if command == 'add':
+        dao.create_user(identifier, password)
+        print 'created'
+
+    elif command == 'check':
+        result = dao.load_user(identifier, password)
+        if result is None:
+            print 'authentication failed'
+        else:
+            print 'authentication succeeded:', result
+    elif command == 'change':
+        new_password = argv[4]
+        result = dao.change_password(identifier, password, new_password)
+        if result:
+            print 'password updated'
+        else:
+            print 'password change failed'

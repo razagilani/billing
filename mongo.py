@@ -19,6 +19,7 @@ from billing.dictutils import deep_map
 import pdb
 import pprint
 pp = pprint.PrettyPrinter(indent=1)
+sys.stdout = sys.stderr
 
 
 # type-conversion functions
@@ -577,7 +578,43 @@ class MongoReebill(object):
     @property
     def services(self):
         '''Returns a list of all services for which there are utilbills.'''
-        return list(set([u['service'] for u in self.dictionary['utilbills']]))
+        return [u['service'] for u in self.dictionary['utilbills']]
+
+    @property
+    def suspended_services(self):
+        '''Returns list of services for which billing is suspended (e.g.
+        because the customer has switched to a different fuel for part of the
+        year). Utility bills for this service should be ignored in the attach
+        operation.'''
+        return self.dictionary.get('suspended_services', [])
+
+    def suspend_service(self, service):
+        '''Adds 'service' to the list of suspended services. Returns True iff
+        it was added, False if it already present.'''
+        print self.services
+        service = service.lower()
+        if service not in [s.lower() for s in self.services]:
+            raise ValueError('Unknown service %s: services are %s' % (service, self.services))
+
+        if 'suspended_services' not in self.dictionary:
+            self.dictionary['suspended_services'] = []
+        if service not in self.dictionary['suspended_services']:
+            self.dictionary['suspended_services'].append(service)
+        print '%s-%s suspended_services set to %s' % (self.account, self.sequence, self.dictionary['suspended_services'])
+
+    def resume_service(self, service):
+        '''Removes 'service' from the list of suspended services. Returns True
+        iff it was removed, False if it was not present.'''
+        service = service.lower()
+        if service not in [s.lower() for s in self.services]:
+            raise ValueError('Unknown service %s: services are %s' % (service, self.services))
+
+        if service in self.dictionary['suspended_services']:
+            self.dictionary['suspended_services'].remove(service)
+            # might as well take out the key if the list is empty
+            if self.dictionary['suspended_services'] == []:
+                del self.dictionary['suspended_services']
+        print '%s-%s suspended_services set to %s' % (self.account, self.sequence, self.dictionary['suspended_services'])
 
     def utilbill_period_for_service(self, service_name):
         '''Returns start & end dates of the first utilbill found whose service
@@ -844,7 +881,8 @@ class MongoReebill(object):
             utility_names = [
                 ub['utility_name'] 
                 for ub in self.dictionary['utilbills']
-                if ub['service'] == service_name
+                # case-insensitive comparison
+                if ub['service'].lower() == service_name.lower()
             ]
         except KeyError:
             # mongo reebills that came from xml reebills lacking "rsbinding" at
@@ -882,10 +920,12 @@ class MongoReebill(object):
         hypothetical utility bill.'''
         return self.dictionary['ree_value']
 
-    @property
-    def total_renewable_energy(self):
+    def total_renewable_energy(self, ccf_conversion_factor=None):
         '''Returns all renewable energy distributed among shadow registers of
-        this reebill, in BTU.'''
+        this reebill, in therms.'''
+        # TODO switch to BTU
+        if type(ccf_conversion_factor) not in (type(None), Decimal):
+            raise ValueError("ccf conversion factor must be a Decimal")
         # TODO: CCF is not an energy unit, and registers actually hold CCF
         # instead of therms. we need to start keeping track of CCF-to-therms
         # conversion factors.
@@ -900,13 +940,17 @@ class MongoReebill(object):
                         if unit == 'therms':
                             total_therms += quantity
                         elif unit == 'btu':
-                            total_therms += quantity / Decimal(100000.0)
+                            total_therms += quantity / Decimal("100000.0")
                         elif unit == 'kwh':
-                            total_therms += quantity / Decimal(.0341214163)
+                            total_therms += quantity / Decimal(".0341214163")
                         elif unit == 'ccf':
-                            raise Exception(("Register contains gas measured "
-                                "in ccf: can't convert that into energy "
-                                "without the multiplier."))
+                            if ccf_conversion_factor is not None:
+                                total_therms += quantity * ccf_conversion_factor
+                            else:
+                                # TODO: 28825375 - need the conversion factor for this
+                                raise Exception(("Register contains gas measured "
+                                    "in ccf: can't convert that into energy "
+                                    "without the multiplier."))
                         else:
                             raise Exception('Unknown energy unit: "%s"' % \
                                     register['quantity_units'])
@@ -1126,10 +1170,10 @@ class ReebillDAO:
     def load_reebills_in_period(self, account, branch=0, start_date=None, end_date=None):
         '''Returns a list of MongoReebills whose period began on or before
         'end_date' and ended on or after 'start_date' (i.e. all bills between
-        those dates and all bills whose period includes either endpoint). If
-        'start_date' and 'end_date' are not given or are None, the time period
-        extends to the begining or end of time, respectively. Sequence 0 is
-        never included.'''
+        those dates and all bills whose period includes either endpoint). The
+        results are ordered by sequence. If 'start_date' and 'end_date' are not
+        given or are None, the time period extends to the begining or end of
+        time, respectively. Sequence 0 is never included.'''
         query = {
             '_id.account': str(account),
             '_id.branch': int(branch),
@@ -1146,6 +1190,7 @@ class ReebillDAO:
                     end_date.day)
             query['period_begin'] = {'$lte': end_datetime}
         result = []
+        docs = self.collection.find(query).sort('sequence')
         for mongo_doc in self.collection.find(query):
             mongo_doc = convert_datetimes(mongo_doc)
             mongo_doc = deep_map(float_to_decimal, mongo_doc)
@@ -1192,6 +1237,18 @@ class ReebillDAO:
         if result == None:
             return None
         return MongoReebill(result).issue_date
+
+    def last_sequence(self, account):
+        '''Returns the sequence of the last reebill for the given account, or 0
+        if no reebills were found. This is different from
+        StateDB.last_sequence() because it uses Mongo; there may be un-issued
+        reebills in Mongo that are not in MySQL.'''
+        result = self.collection.find_one({
+            '_id.account': account
+            }, sort=[('sequence', pymongo.DESCENDING)])
+        if result == None:
+            return 0
+        return MongoReebill(result).sequence
 
 class NoRateStructureError(Exception):
     pass

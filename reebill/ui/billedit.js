@@ -1051,7 +1051,8 @@ function reeBillReady() {
                     //value: addresses['service_address']['sa_postal_code'],
                 },
             ]
-        }];
+        },
+    ]
 
     var accountInfoFormPanel = new Ext.FormPanel(
     {
@@ -4952,7 +4953,7 @@ function reeBillReady() {
         layout: 'fit',
         sortable: true,
         autoExpandColumn: 'errors',
-
+        frame: true,
         // grid columns
         columns:[{
                 id: 'account',
@@ -5024,25 +5025,82 @@ function reeBillReady() {
         sortInfo: {field: 'sequence', direction: 'ASC'}, // descending is DESC
         remoteSort: true,
         fields: [
-            {name: 'account'},
-            {name: '11_months_ago'},
-            {name: '10_months_ago'},
-            {name: '9_months_ago'},
-            {name: '8_months_ago'},
-            {name: '7_months_ago'},
-            {name: '6_months_ago'},
-            {name: '5_months_ago'},
-            {name: '4_months_ago'},
-            {name: '3_months_ago'},
-            {name: '2_months_ago'},
-            {name: '1_months_ago'},
-            {name: '0_months_ago'},
+            {name: 'account', mapping: 'account'},
+            {name: 'revenue_11_months_ago'},
+            {name: 'revenue_10_months_ago'},
+            {name: 'revenue_9_months_ago'},
+            {name: 'revenue_8_months_ago'},
+            {name: 'revenue_7_months_ago'},
+            {name: 'revenue_6_months_ago'},
+            {name: 'revenue_5_months_ago'},
+            {name: 'revenue_4_months_ago'},
+            {name: 'revenue_3_months_ago'},
+            {name: 'revenue_2_months_ago'},
+            {name: 'revenue_1_months_ago'},
+            {name: 'revenue_0_months_ago'},
         ],
     });
 
     revenueGridStore.on('exception', function(type, action, options, response, arg) {
+        // TODO  28823361 better error message when server hangs up on us
         Ext.Msg.alert('Error', 'An error occurred while generating the report');
     });
+
+    var revenueColumnRenderer = function(value, metaData, record, rowIndex, colIndex, store) {
+        // revenueGridStore records are objects containing keys "value",
+        // "error" and/or "estimated". set the style according to that data,
+        // then set the actual text to display to the value of the "value" key
+        // in the record
+        if (value.value.indexOf("ERROR") == 0) {
+            metaData.css = 'revenue-grid-error';
+            return value.value;
+        }
+
+        if (value.estimated) {
+            metaData.css = 'revenue-grid-estimated';
+        } else {
+            metaData.css = 'revenue-grid-normal';
+        }
+        return "$" + value.value;
+    }
+
+    /* dynamically generate estimated revenue grid columns */
+    var revenueGridColumns = [{
+        id: 'account',
+        header: 'Account',
+        dataIndex: 'account',
+        forceFit:true,
+    }];
+    var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
+        'Sep', 'Oct', 'Nov', 'Dec'];
+    var now = new Date();
+    var curYear = now.getUTCFullYear();
+    var curMonth = now.getUTCMonth();
+    var year; var month; var ago = 11;
+    if (month == 11) {
+        year = curYear;
+        month = 1;
+    } else {
+        year = curYear - 1;
+        month = curMonth + 1;
+    }
+    while (year < curYear || (year == curYear && month <= curMonth)) {
+        month_str = monthNames[month] + " " + year;
+        revenueGridColumns.push({
+            id: ago.toString() + '_months_ago',
+            header: month_str,
+            dataIndex: 'revenue_' + ago + '_months_ago',
+            width: 95, 
+            renderer: revenueColumnRenderer,
+        });
+        if (month == 11) {
+            year++;
+            month = 0;            
+        } else {
+            month++;
+        }
+        ago--;
+    }
 
     var revenueGrid = new Ext.grid.GridPanel({
         title:'12-Month Estimated Revenue',
@@ -5051,29 +5109,23 @@ function reeBillReady() {
         layout: 'fit',
         sortable: true,
         autoExpandColumn: 'account',
+        frame: true,
 
         // grid columns
-        columns:[
-            {
-                id: 'account', // if this id does not match autoExpandColumn above, we get "Could not load UI configuration from the server: TypeError: Cannot read property 'width' of undefined" and splash does not go away
-                header: 'Account',
-                dataIndex: 'account',
-                forceFit:true,
-            },
-            // TODO generate column names with abbreviations for the past 12 months (which column gets depends on the current month)
-            { id: '11_months_ago', header: '11', dataIndex: '11_months_ago', width: 80},
-            { id: '10_months_ago', header: '10', dataIndex: '10_months_ago', width: 80},
-            { id: '9_months_ago', header: '9', dataIndex: '9_months_ago', width: 80},
-            { id: '8_months_ago', header: '8', dataIndex: '8_months_ago', width: 80},
-            { id: '7_months_ago', header: '7', dataIndex: '7_months_ago', width: 80},
-            { id: '6_months_ago', header: '6', dataIndex: '6_months_ago', width: 80},
-            { id: '5_months_ago', header: '5', dataIndex: '5_months_ago', width: 80},
-            { id: '4_months_ago', header: '4', dataIndex: '4_months_ago', width: 80},
-            { id: '3_months_ago', header: '3', dataIndex: '3_months_ago', width: 80},
-            { id: '2_months_ago', header: '2', dataIndex: '2_months_ago', width: 80},
-            { id: '1_months_ago', header: '1', dataIndex: '1_months_ago', width: 80},
-            { id: '0_months_ago', header: '0', dataIndex: '0_months_ago', width: 80},
-        ],
+        columns: revenueGridColumns,
+
+        // toolbar on the top with a download button
+        tbar: new Ext.Toolbar({
+            items: [
+                {
+                    id: 'estimatedRevenueDownloadButton',
+                    iconCls: 'icon-application-go',
+                    xtype: 'linkbutton',
+                    href: "http://"+location.host+"/reebill/estimated_revenue_xls",
+                    text: 'Download Excel Spreadsheet',
+                    disabled: false,
+                },]
+        }),
 
         // paging bar on the bottom
         bbar: new Ext.PagingToolbar({
@@ -5081,7 +5133,7 @@ function reeBillReady() {
             store: revenueGridStore,
             displayInfo: true,
             displayMsg: 'Displaying {0} - {1} of {2}',
-            emptyMsg: "Click the refresh button to show some data.",
+            emptyMsg: "Click the refresh button to generate the report (may take a few minutes).",
         }),
     });
 
@@ -5092,7 +5144,7 @@ function reeBillReady() {
         id: 'reportTab',
         title: 'Reports',
         disabled: reportPanelDisabled,
-        xtype: 'panel',
+        //xtype: 'panel',
         layout: 'accordion',
         items: [reconciliationGrid, revenueGrid],
     });
@@ -5431,6 +5483,53 @@ function reeBillReady() {
         chargeItemsPanel.setDisabled(false);
         journalPanel.setDisabled(false);
         mailPanel.setDisabled(false);
+
+        // create checkboxes in Sequential Account Information form for
+        // suspending services of the selected reebill
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/reebill/get_reebill_services?',
+            params: { account: selected_account, sequence: selected_sequence },
+            success: function(result, request) {
+                var jsonData = Ext.util.JSON.decode(result.responseText);
+                var services = jsonData.services;
+                var suspended_services = jsonData.suspended_services;
+
+                // create a checkbox for each service, checked iff that service
+                // is in the bill's suspended_services (there's no handler
+                // because checkbox values are automatically submitted with
+                // "Sequential Account Information" form data)
+                var checkboxes = [];
+                for (i = 0; i < services.length; i++) {
+                    checkboxes.push({
+                        'boxLabel': services[i],
+                        'name': services[i] + '_suspended',
+                        'checked': suspended_services.indexOf(services[i].toLowerCase()) != -1,
+                    });
+                }
+                console.log(selected_account + ', ' + selected_sequence + ' checkboxes: '+checkboxes);
+
+                // replace the existing checkbox group in accountInfoFormPanel (if present) with a new one
+                accountInfoFormPanel.remove('suspended-services');
+                var suspendedServiceCheckboxGroup = new Ext.form.CheckboxGroup({
+                    id: 'suspended-services',
+                    itemCls: 'x-check-group-alt',
+                    fieldLabel: 'Suspended Services',
+                    columns: 1,
+                    items: checkboxes,
+                });
+                accountInfoFormPanel.insert(accountInfoFormPanel.items.getCount(), suspendedServiceCheckboxGroup);
+                // FIXME: accountInfoFormPanel sometimes does not show the
+                // checkbox group even though it and its checkboxes have been
+                // correctly generated. clicking the accordion bar again to
+                // re-show the panel makes it appear.
+                // the following did not help:
+                //accountInfoFormPanel.render();
+                //accountInfoFormPanel.update();
+            },
+            failure: function() {
+                 Ext.MessageBox.alert('Ajax failure', 'get_reebill_services request failed');
+            },
+        });
 
         // finally, update the status bar with current selection
         updateStatusbar(selected_account, selected_sequence, 0);

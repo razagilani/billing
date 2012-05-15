@@ -118,3 +118,16 @@ pre.code{
 .account-grid-black {
     color: black;
 }
+
+/* styles for estimated revenue grid rows */
+.revenue-grid-error {
+    color: red;
+}
+.revenue-grid-estimated {
+    color: gray;
+    /*font-style: oblique;*/ /*neither of these work*/
+    /*font-style: italic; */
+}
+.revenue-grid-normal {
+    color: black;
+}

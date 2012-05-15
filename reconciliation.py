@@ -74,7 +74,7 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
 
             try:
                 # get energy from the bill
-                bill_therms = reebill.total_renewable_energy
+                bill_therms = reebill.total_renewable_energy()
                 result_dict.update({ 'bill_therms': bill_therms })
 
                 # find the date to start getting data from OLAP: in some cases

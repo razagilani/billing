@@ -180,11 +180,14 @@ class StateDB:
         last_account = max(map(int, self.listAccounts(session)))
         return last_account + 1
 
-    def attach_utilbills(self, session, account, sequence, start, end):
+    # TODO move to process.py?
+    def attach_utilbills(self, session, account, sequence, start, end,
+            suspended_services=[]):
         '''Records in MySQL the association between the reebill given by
         'account', 'sequence' and all utilbills belonging to that customer
-        whose entire periods are within the date interval [start, end]. The
-        utility bills are marked as processed.'''
+        whose entire periods are within the date interval [start, end] and
+        whose services are not in 'suspended_services'. The utility bills are
+        marked as processed.'''
         # get customer id from account and the reebill from account and sequence
         customer = session.query(Customer).filter(Customer.account==account).one()
         reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
@@ -192,16 +195,21 @@ class StateDB:
 
         # get all utilbills for this customer whose dates are between 'start'
         # and 'end' (inclusive)
-        utilbills = session.query(UtilBill) \
+        all_utilbills = session.query(UtilBill) \
                 .filter(UtilBill.customer==customer)\
                 .filter(UtilBill.period_start>=start)\
                 .filter(UtilBill.period_end<=end).all()
-        if utilbills == []:
+        if all_utilbills == []:
             raise Exception('No utility bills found between %s and %s' %
                     (start, end))
-        
-        # update 'reebill_id' and 'processed' for each utilbill found
-        for utilbill in utilbills:
+        non_suspended_utilbills = [u for u in all_utilbills if u.service.lower() not in
+                suspended_services]
+        if non_suspended_utilbills == []:
+            raise Exception('No utility bills to attach because the services %s'
+                    ' are suspended' % ', '.join(suspended_services))
+
+        # update 'reebill_id' and 'processed' for each non-suspended utilbill
+        for utilbill in non_suspended_utilbills:
             utilbill.reebill = reebill
             utilbill.processed = True
 
@@ -249,6 +257,17 @@ class StateDB:
             max_sequence =  0
         return max_sequence
         
+    def last_issued_sequence(self, session, account):
+        '''Returns the sequence of the last issued reebill for 'account', or 0
+        if there are no issued reebills.'''
+        customer = session.query(Customer).filter(Customer.account==account).one()
+        max_sequence = session.query(sqlalchemy.func.max(ReeBill.sequence)) \
+                .filter(ReeBill.customer_id==customer.id) \
+                .filter(ReeBill.issued==1).one()[0]
+        if max_sequence is None:
+            max_sequence = 0
+        return max_sequence
+
     def last_utilbill_end_date(self, session, account):
         '''Returns the end date of the latest utilbill for the customer given
         by 'account', or None if there are no utilbills.'''
@@ -260,6 +279,7 @@ class StateDB:
         return None
 
     def new_rebill(self, session, account, sequence):
+        '''Creates a new ReeBill row in the database, returns its id.'''
         customer = session.query(Customer).filter(Customer.account==account).one()
         new_reebill = ReeBill(customer, sequence)
         session.add(new_reebill)
