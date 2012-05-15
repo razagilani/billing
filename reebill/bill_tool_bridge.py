@@ -1335,6 +1335,8 @@ class BillToolBridge:
     def uprsrsi(self, xaction, account, sequence, service, **kwargs):
         if not xaction or not account or not sequence or not service:
             raise ValueError("Bad Parameter Value")
+        # client sends capitalized service names! workaround:
+        service = service.lower()
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
