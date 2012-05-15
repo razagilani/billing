@@ -127,7 +127,7 @@ class Month(object):
         return date(self.year, self.month, len(self))
 
     def strftime(self, format):
-        return datetime.strftime(self.first(), format)
+        return datetime.strftime(self.first, format)
     
     @property
     def name(self):
