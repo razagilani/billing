@@ -43,7 +43,7 @@ class Exporter(object):
         actual) with values wherever charges having those names occur. Utility
         bills with errors are skipped and an error message is printed.'''
         # each account gets its own sheet. 1st 2 columns are account, sequence
-        dataset = tablib.Dataset()
+        dataset = tablib.Dataset(title=account)
         dataset.headers = ['Account', 'Sequence', 'Period Start', 'Period End',
                 'Billing Month', 'Estimated']
 
