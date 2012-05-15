@@ -881,7 +881,8 @@ class MongoReebill(object):
             utility_names = [
                 ub['utility_name'] 
                 for ub in self.dictionary['utilbills']
-                if ub['service'] == service_name
+                # case-insensitive comparison
+                if ub['service'].lower() == service_name.lower()
             ]
         except KeyError:
             # mongo reebills that came from xml reebills lacking "rsbinding" at

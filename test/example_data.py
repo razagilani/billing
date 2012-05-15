@@ -1,4 +1,4 @@
-'''Example data to be used in tests.'''
+'''Provides example data to be used in tests.'''
 import copy
 from datetime import datetime
 from billing.mongo import MongoReebill, float_to_decimal
@@ -381,6 +381,33 @@ example_urs = {
 	]
 }
 
+# the data in this Utility Periodic Rate Structure are made up--as of when i
+# made this, we have no nonempty URPSs.
+example_uprs = {
+	"_id" : {
+		"type" : "URS",
+		"rate_structure_name" : "DC Non Residential Non Heat",
+		"utility_name" : "washgas"
+	},
+	"rates" : [
+		{
+			"rsi_binding" : "SYSTEM_CHARGE",
+			"description" : "System Charge",
+			"rate_units" : "dollars",
+			"uuid" : "b11e2500-01a9-11e1-af85-002422358023",
+			"rate" : "45.6",
+			"quantity" : 1
+		},
+		{
+			"description" : "Delivery tax",
+			"rate" : "0.1",
+			"rsi_binding" : "DELIVERY_TAX",
+			"uuid" : "b11e3216-01a9-11e1-af85-560964835ffb",
+			"quantity" : "REG_TOTAL.quantity"
+		},
+	]
+}
+
 example_cprs = {
 	"_id" : {
 		"account" : "10003",
@@ -469,14 +496,18 @@ def get_utilbill_dict():
     return utilbill_dict
 
 def get_urs_dict():
-    '''Returns an example utility global rate structure.'''
+    '''Returns an example utility global rate structure document.'''
     urs_dict = copy.deepcopy(example_urs)
-    #return RateStructure(urs_dict)
     return urs_dict
 
+def get_uprs_dict():
+    '''Returns an example customer periodic rate structure document.'''
+    uprs_dict = copy.deepcopy(example_uprs)
+    return uprs_dict
+
 def get_cprs_dict(account, sequence):
-    '''Returns an example utility customer periodic rate structure with the
-    given account and sequence.'''
+    '''Returns an example utility customer periodic rate structure document
+    with the given account and sequence.'''
     cprs_dict = copy.deepcopy(example_cprs)
     cprs_dict['_id']['account'] = account
     cprs_dict['_id']['sequence'] = sequence
