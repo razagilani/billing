@@ -69,7 +69,7 @@ class RateStructureTest(unittest.TestCase):
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # load probable rate structure
-        prob_rs = self.rate_structure_dao.load_probable_rs(reebill,
+        prob_rs = self.rate_structure_dao._load_probable_rs_dict(reebill,
                 reebill.services[0])
 
         # each RSI in the probable rate structure should match the version in
