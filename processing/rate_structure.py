@@ -282,12 +282,6 @@ class RateStructureDAO(object):
 
         return rate_structure_data
 
-    # TODO delete me 24252553
-    def save_rs(self, account, sequence, rsbinding, rate_structure):
-
-        yaml.safe_dump(rate_structure, open(os.path.join(self.config["rspath"], rsbinding, account, sequence+".yaml"), "w"), default_flow_style=False)
-
-
 
 class RateStructure(object):
     """ 
