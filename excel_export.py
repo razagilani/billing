@@ -51,14 +51,6 @@ class Exporter(object):
         customer = statedb_session.query(Customer)\
                 .filter(Customer.account==account).one()
 
-        # a "charge name" is a string consisting of a charge group and a
-        # description. the spreadsheet has one column per charge name (so
-        # charges that have the same name but occur in different groups go in
-        # separate columns). obviously, not every charge name will occur in
-        # every bill.
-        # charge names are organized into pairs, since there is always an
-        # actual and hypothetical version of each charge.
-
         for sequence in sorted(self.state_db.listSequences(statedb_session,
                 account)):
             if self.verbose:
@@ -116,19 +108,27 @@ class Exporter(object):
                 charge['description'] += ' (actual)'
             for charge in hypothetical_charges:
                 charge['description'] += ' (hypothetical)'
-            # add totals to charges
-            actual_charges.append({
-                'description': 'Actual Total',
-                'total': sum(ac.get('total', 0) for ac in actual_charges)
-            })
-            hypothetical_charges.append({
-                'description': 'Hypothetical Total',
-                'total': sum(hc.get('total', 0) for hc in hypothetical_charges)
-            })
+            # extra charges: actual and hypothetical totals, difference between
+            # them, Skyline's late fee from the reebill
+            actual_total = sum(ac.get('total', 0) for ac in actual_charges)
+            hypothetical_total = sum(hc.get('total', 0) for hc in hypothetical_charges)
+            extra_charges = [
+                { 'description': 'Actual Total', 'total': actual_total },
+                { 'description': 'Hypothetical Total', 'total': hypothetical_total },
+                {
+                    'description': 'Energy Offset Value (Hypothetical - Actual)',
+                    'total': hypothetical_total - actual_total,
+                },
+                {
+                    'description': 'Skyline Late Charge',
+                    'total': reebill.late_charges \
+                            if hasattr(reebill, 'late_charges') else 0
+                },
+            ]
 
             # write each actual and hypothetical charge in a separate column,
             # creating new columns when necessary
-            for charge in hypothetical_charges + actual_charges:
+            for charge in hypothetical_charges + actual_charges + extra_charges:
                 try:
                     if 'chargegroup' in charge:
                         name = '{chargegroup}: {description}'.format(**charge)
