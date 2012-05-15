@@ -47,7 +47,6 @@ class RateStructureDAO(object):
     When the URS, UPRS and CPRS are merged, a probable rate structure exists.
     It may be used to calculate a bill, or prompt a user for additional 
     processing information.
-
     '''
 
     def __init__(self, config):
@@ -60,7 +59,10 @@ class RateStructureDAO(object):
         self.database = self.connection[config['database']]
         self.collection = self.database[config['collection']]
 
-    def load_probable_rs(self, reebill, service):
+    def _load_probable_rs_dict(self, reebill, service):
+        '''Returns a dictionary of combined rate structure (derived from URS,
+        UPRS, and CPRS) that should be used to compute the charges of
+        'reebill'.'''
         # return a probable rate structure for each utilbill in the reebill
         # all the data needed to identify a probable rate structure
         account = reebill.account
@@ -125,14 +127,16 @@ class RateStructureDAO(object):
         if 'rates' in uprs:
             for uprs_rate in uprs['rates']:
                 # find a matching rate in URS
-                urs_rate = [rate for rate in urs['rates'] if rate['rsi_binding'] == uprs_rate['rsi_binding']]
+                urs_rate = [rate for rate in urs['rates'] if
+                        rate['rsi_binding'] == uprs_rate['rsi_binding']]
                 # URS does not have a rate for UPRS to override, so add it.
                 if len(urs_rate) == 0:
                     urs['rates'].append(uprs_rate)
                 # URS has a rate that the UPRS overrides.
                 if len(urs_rate) == 1:
                     urs_rate[0].update(uprs_rate)
-                if len(urs_rate) > 1: raise Exception('more than one URS rate matches a UPRS rate')
+                if len(urs_rate) > 1:
+                    raise Exception('more than one URS rate matches a UPRS rate')
 
         # UPRS/URS is overridden and augmented by rates in CPRS
 
@@ -140,27 +144,31 @@ class RateStructureDAO(object):
         if 'rates' in cprs:
             for cprs_rate in cprs['rates']:
                 # find a matching rate in the URS that was just overidden by UPRS
-                urs_uprs_rate = [rate for rate in urs['rates'] if rate['rsi_binding'] == cprs_rate['rsi_binding']]
+                urs_uprs_rate = [rate for rate in urs['rates'] if
+                        rate['rsi_binding'] == cprs_rate['rsi_binding']]
                 # URS/UPRS does not have a rate for the CPRS to override, so add it.
                 if len(urs_uprs_rate) == 0:
                     urs['rates'].append(cprs_rate)
                 # URS/UPRS has a rate that the CPRS overrides.
                 if len(urs_uprs_rate) == 1:
                     urs_uprs_rate[0].update(cprs_rate)
-                if len(urs_uprs_rate) > 1: raise Exception('more than one URS/UPRS rate matches a UPRS rate')
+                if len(urs_uprs_rate) > 1:
+                    raise Exception('more than one URS/UPRS rate matches a UPRS rate')
     
         # the URS has been thoroughly overridden by the UPRS and CPRS
         return urs
 
     def load_rate_structure(self, reebill, service):
-        '''Return a RateStructure that acts on URS/UPRS/CPRS combined rate
-        structure.'''
-        rs_data = self.load_probable_rs(reebill, service)
-        return RateStructure(rs_data)
+        '''Returns a RateStructure object representing the combined rate
+        structure used to compute charges for the utility bill of the given
+        service in 'reebill'.'''
+        rs_dict = self._load_probable_rs_dict(reebill, service)
+        return RateStructure(rs_dict)
 
     def load_urs(self, utility_name, rate_structure_name, period_begin=None,
             period_end=None):
-        '''Loads Utility (global) Rate Structure document from Mongo.'''
+        '''Loads Utility (global) Rate Structure document from Mongo, returns
+        it as a dictionary.'''
         # TODO: be able to accept a period_begin/period_end for a service and
         # query the URS in a manner ensuring the correct in-effect URS is
         # obtained
@@ -175,6 +183,8 @@ class RateStructureDAO(object):
         return urs
 
     def load_uprs(self, utility_name, rate_structure_name, effective, expires):
+        '''Loads Utility Periodic Rate Structure docuemnt from Mongo, returns
+        it as a dictionary.'''
         # eventually, return a uprs that may have useful information that
         # matches this service period 
         query = {
@@ -197,6 +207,8 @@ class RateStructureDAO(object):
 
     def load_cprs(self, account, sequence, branch, utility_name,
             rate_structure_name):
+        '''Loads Customer Periodic Rate Structure docuemnt from Mongo, returns
+        it as a dictionary.'''
         query = {
             "_id.type":"CPRS",
             "_id.account":account, 
@@ -210,6 +222,8 @@ class RateStructureDAO(object):
 
     def save_urs(self, utility_name, rate_structure_name, effective, expires,
             rate_structure_data):
+        '''Saves the dictionary 'rate_structure_data' as a Utility (global)
+        Rate Structure document in Mongo.'''
         rate_structure_data['_id'] = { 
             "type":"URS",
             "utility_name": utility_name,
@@ -221,6 +235,8 @@ class RateStructureDAO(object):
 
     def save_uprs(self, utility_name, rate_structure_name, effective, expires,
             rate_structure_data):
+        '''Saves the dictionary 'rate_structure_data' as a Utility Periodic
+        Rate Structure document in Mongo.'''
         rate_structure_data['_id'] = { 
             "type":"UPRS",
             "utility_name": utility_name,
@@ -232,8 +248,10 @@ class RateStructureDAO(object):
         self.collection.save(rate_structure_data)
         return rate_structure_data
 
-    # TODO: rate_structure_data should come first in param list?
-    def save_cprs(self, account, sequence, branch, utility_name, rate_structure_name, rate_structure_data):
+    def save_cprs(self, account, sequence, branch, utility_name,
+            rate_structure_name, rate_structure_data):
+        '''Saves the dictionary 'rate_structure_data' as a Customer Periodic
+        Rate Structure document in Mongo.'''
         rate_structure_data['_id'] = { 
             'type': 'CPRS',
             'account': account,
@@ -245,6 +263,7 @@ class RateStructureDAO(object):
         rate_structure_data = bson_convert(rate_structure_data)
         self.collection.save(rate_structure_data)
         return rate_structure_data
+
 
 class RateStructure(object):
     """ 
