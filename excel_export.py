@@ -7,7 +7,6 @@ from billing.processing import state
 from billing import dateutils
 from billing.monthmath import approximate_month
 from billing.processing.db_objects import UtilBill, ReeBill, Customer
-import sqlalchemy
 
 import pprint
 pformat = pprint.PrettyPrinter().pformat
@@ -16,6 +15,8 @@ LOG_FILE_NAME = 'xls_export.log'
 LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
 class Exporter(object):
+    '''Exports a spreadsheet with data about utility bill charges.'''
+
     def __init__(self, state_db, reebill_dao, verbose=False):
         # objects for database access
         self.state_db = state_db
@@ -23,14 +24,13 @@ class Exporter(object):
         self.verbose = verbose
 
     def export(self, statedb_session, output_file, account=None):
-        '''Writes a spreadsheet to output_file containing all utility bills for
-        the given account. If 'account' is not given, writes one sheet for each
-        account.'''
+        '''Writes an Excel spreadsheet to output_file containing all utility
+        bills for the given account. If 'account' is not given, writes one
+        sheet for each account.'''
         book = tablib.Databook()
         if account == None:
-            for an_account in sorted(self.state_db.listAccounts(statedb_session)):
-                # TODO name sheet with account name
-                book.add_sheet(self.get_account_sheet(statedb_session, an_account))
+            for acc in sorted(self.state_db.listAccounts(statedb_session)):
+                book.add_sheet(self.get_account_sheet(statedb_session, acc))
         else:
             book.add_sheet(self.get_account_sheet(statedb_session, account))
         output_file.write(book.xls)
@@ -48,7 +48,8 @@ class Exporter(object):
                 'Billing Month', 'Estimated']
 
         # load customer from MySQL in order to load reebill and utilbill below
-        customer = statedb_session.query(Customer).filter(Customer.account==account).one()
+        customer = statedb_session.query(Customer)\
+                .filter(Customer.account==account).one()
 
         # a "charge name" is a string consisting of a charge group and a
         # description. the spreadsheet has one column per charge name (so
@@ -58,9 +59,11 @@ class Exporter(object):
         # charge names are organized into pairs, since there is always an
         # actual and hypothetical version of each charge.
 
-        for sequence in sorted(self.state_db.listSequences(statedb_session, account)):
+        for sequence in sorted(self.state_db.listSequences(statedb_session,
+                account)):
             if self.verbose:
                 print '%s-%s' % (account, sequence)
+
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
             # load reebill from MySQL in order to load utilbill below
@@ -78,8 +81,7 @@ class Exporter(object):
                 print 'No utilbills in MySQL for %s-%s' % (account, sequence)
                 estimated = False
 
-            # new row.
-            # initially contains 5 columns: account, sequence, start,
+            # new row. initially contains 5 columns: account, sequence, start,
             # end, fuzzy month
             row = [
                 account,
@@ -87,7 +89,8 @@ class Exporter(object):
                 sequence,
                 reebill.period_begin.strftime(dateutils.ISO_8601_DATE),
                 reebill.period_end.strftime(dateutils.ISO_8601_DATE),
-                # TODO rich hypothesizes that for utilities, the fuzzy "billing month" is the month in which the billing period ends
+                # TODO rich hypothesizes that for utilities, the fuzzy "billing
+                # month" is the month in which the billing period ends
                 approximate_month(reebill.period_begin,
                         reebill.period_end).strftime('%Y-%m'),
                 'Yes' if estimated else 'No'
@@ -104,15 +107,15 @@ class Exporter(object):
             # name, with (actual) or (hypothetical) appended
             services = reebill.services
             actual_charges = sorted(reduce(lambda x,y: x+y,
-                    [reebill.actual_chargegroups_flattened(service) for service in
-                    services]), key=lambda x:x['description'])
+                    [reebill.actual_chargegroups_flattened(service)
+                    for service in services]), key=lambda x:x['description'])
             hypothetical_charges = sorted(reduce(lambda x,y: x+y,
-                    [reebill.hypothetical_chargegroups_flattened(service) for service in
-                    services]), key=lambda x:x['description'])
+                    [reebill.hypothetical_chargegroups_flattened(service)
+                    for service in services]), key=lambda x:x['description'])
             for charge in actual_charges:
-                charge['description'] = charge['description'] + ' (actual)'
+                charge['description'] += ' (actual)'
             for charge in hypothetical_charges:
-                charge['description'] = charge['description'] + ' (hypothetical)'
+                charge['description'] += ' (hypothetical)'
             # add totals to charges
             actual_charges.append({
                 'description': 'Actual Total',
@@ -128,7 +131,7 @@ class Exporter(object):
             for charge in hypothetical_charges + actual_charges:
                 try:
                     if 'chargegroup' in charge:
-                        name = charge['chargegroup'] + ': ' + charge['description']
+                        name = '{chargegroup}: {description}'.format(**charge)
                     else:
                         # totals do not have a chargegroup
                         name = charge['description']
@@ -155,7 +158,8 @@ class Exporter(object):
                             if row[col_idx] == '':
                                 row[col_idx] = total
                             else:
-                                row[col_idx] = 'ERROR: duplicate charge name %s' % name
+                                row[col_idx] = ('ERROR: duplicate charge name'
+                                        '"%s"') % name
                         # write cell in existing column
                         except IndexError as index_error:
                             import ipdb; ipdb.set_trace()
@@ -164,11 +168,12 @@ class Exporter(object):
                         # existing dataset, then put total in a new cell at the
                         # end of the row
                         #dataset.append_col([''] * dataset.height, header=name)
-                        # TODO fix https://github.com/kennethreitz/tablib/issues/64
+                        # TODO https://github.com/kennethreitz/tablib/issues/64
                         if dataset.height == 0:
                             dataset.headers.append(name)
                         else:
-                            dataset.append_col([''] * dataset.height, header=name)
+                            dataset.append_col([''] * dataset.height,
+                                    header=name)
                         row.append(str(total))
             dataset.append(row)
 
