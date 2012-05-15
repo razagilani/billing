@@ -51,29 +51,17 @@ class RateStructureDAO(object):
     '''
 
     def __init__(self, config):
-
-        self.config = config
-        self.connection = None
-        self.database = None
-        self.collection = None
-
         try:
-            self.connection = pymongo.Connection(self.config['host'], int(self.config['port']))
+            self.connection = pymongo.Connection(config['host'],
+                    int(config['port']))
         except Exception as e: 
             print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
             raise e
-        
-        self.database = self.connection[self.config['database']]
-        self.collection = self.database[self.config['collection']]
-
-    def __del__(self):
-        # TODO: 17928569 clean up mongo resources here?
-        pass
+        self.database = self.connection[config['database']]
+        self.collection = self.database[config['collection']]
 
     def load_probable_rs(self, reebill, service):
-
         # return a probable rate structure for each utilbill in the reebill
-
         # all the data needed to identify a probable rate structure
         account = reebill.account
         sequence = reebill.sequence
@@ -81,16 +69,19 @@ class RateStructureDAO(object):
         rsbinding = reebill.rate_structure_name_for_service(service)
         utility_name = reebill.utility_name_for_service(service)
         rate_structure_name = reebill.rate_structure_name_for_service(service)
-        (period_begin, period_end) = reebill.utilbill_period_for_service(service)
-
+        period_begin, period_end = reebill.utilbill_period_for_service(service)
 
         # load the URS
-        urs = self.load_urs(utility_name, rate_structure_name, period_begin, period_end)
-        if urs is None: raise Exception("Could not find URS for utility_name %s, rate_structure_name %s, period_begin %s, period_end %s" % (
-                utility_name, rate_structure_name, period_begin, period_end))
+        urs = self.load_urs(utility_name, rate_structure_name, period_begin,
+                period_end)
+        if urs is None:
+            raise Exception(("Could not find URS for utility_name %s, "
+                    "rate_structure_name %s, period %s - %s") % (utility_name,
+                    rate_structure_name, period_begin, period_end))
 
-        # remove the mongo key, because the requester already has this information
-        # and we do not want application code depending on the "_id" field.
+        # remove the mongo key, because the requester already has this
+        # information and we do not want application code depending on the
+        # "_id" field.
         del urs['_id']
 
         # remove uuids because they are not used in rate structure computation
@@ -101,19 +92,23 @@ class RateStructureDAO(object):
             del urs_reg['uuid']
 
         # load the UPRS
-        uprs = self.load_uprs(utility_name, rate_structure_name, period_begin, period_end)
+        uprs = self.load_uprs(utility_name, rate_structure_name, period_begin,
+                period_end)
 
-        # remove the mongo key, because the requester already has this information
-        # and we do not want application code depending on the "_id" field.
+        # remove the mongo key, because the requester already has this
+        # information and we do not want application code depending on the
+        # "_id" field.
         del uprs['_id']
 
-        # remove the uuids because they are not used in rate structure computation
+        # remove the uuids because they are not used in rate structure
+        # computation
         if 'rates' in uprs:
             for uprs_rate in uprs['rates']:
                 del uprs_rate['uuid']
 
         # load the CPRS
-        cprs = self.load_cprs(account, sequence, branch, utility_name, rate_structure_name)
+        cprs = self.load_cprs(account, sequence, branch, utility_name,
+                rate_structure_name)
 
         # remove the mongo key, because the requester already has this information
         # and we do not want application code depending on the "_id" field.
@@ -123,7 +118,6 @@ class RateStructureDAO(object):
         if 'rates' in cprs:
             for cprs_rate in cprs['rates']:
                 del cprs_rate['uuid']
-
 
         # URS is overridden and augmented by rates in UPRS
 
@@ -159,36 +153,30 @@ class RateStructureDAO(object):
         return urs
 
     def load_rate_structure(self, reebill, service):
-        # TODO: redundant with load_probable_rs. remove one of them?
         '''Return a RateStructure that acts on URS/UPRS/CPRS combined rate
         structure.'''
         rs_data = self.load_probable_rs(reebill, service)
         return RateStructure(rs_data)
 
-    # TODO: consider just accepting a reebill
-    def load_urs(self, utility_name, rate_structure_name, period_begin=None, period_end=None):
-
-        # TODO: be able to accept a period_begin/period_end for a service and query 
-        # the URS in a manner ensuring the correct in-effect URS is obtained
-
+    def load_urs(self, utility_name, rate_structure_name, period_begin=None,
+            period_end=None):
+        '''Loads Utility (global) Rate Structure document from Mongo.'''
+        # TODO: be able to accept a period_begin/period_end for a service and
+        # query the URS in a manner ensuring the correct in-effect URS is
+        # obtained
         query = {
             "_id.type":"URS",
             "_id.utility_name": utility_name,
             "_id.rate_structure_name": rate_structure_name,
             #"_id.effective": effect<=period_begin,
             #"_id.expires": expires>=period_begin,
-
         }
         urs = self.collection.find_one(query)
-
         return urs
 
-    # TODO: consider just accepting a reebill
     def load_uprs(self, utility_name, rate_structure_name, effective, expires):
-
-        # eventually, return a uprs that may have useful information that matches this service period 
-        uprs = {'_id': None}
-
+        # eventually, return a uprs that may have useful information that
+        # matches this service period 
         query = {
             "_id.type":"UPRS",
             "_id.utility_name": utility_name,
@@ -196,57 +184,43 @@ class RateStructureDAO(object):
             "_id.effective": datetime(effective.year, effective.month, effective.day),
             "_id.expires": datetime(expires.year, expires.month, expires.day),
         }
-
         uprs = self.collection.find_one(query)
-
         # create it if it does not exist
-        # the same behavior should probably be implemented for URS and CPRS so that they can be lazily created
+        # the same behavior should probably be implemented for URS and CPRS so
+        # that they can be lazily created
         # TODO 24253017
         if uprs is None:
             uprs = {'rates':[]} 
-            uprs = self.save_uprs(utility_name, rate_structure_name, effective, expires, uprs)
-
+            uprs = self.save_uprs(utility_name, rate_structure_name, effective,
+                    expires, uprs)
         return uprs
 
-    # TODO: consider just accepting a reebill
-    def load_cprs(self, account, sequence, branch, utility_name, rate_structure_name):
-        # TODO param types
-
-        #print "load_cprs %s %s %s %s %s" % (type(account), type(sequence), type(branch), type(utility_name), type(rate_structure_name))
-        #print "load_cprs %s %s %s %s %s" % (account, sequence, branch, utility_name, rate_structure_name)
-
+    def load_cprs(self, account, sequence, branch, utility_name,
+            rate_structure_name):
         query = {
             "_id.type":"CPRS",
             "_id.account":account, 
             "_id.sequence": int(sequence), 
             "_id.rate_structure_name": rate_structure_name, 
             "_id.utility_name": utility_name, 
-            "_id.branch":int(branch)}
-
+            "_id.branch":int(branch)
+        }
         cprs = self.collection.find_one(query)
-
         return cprs
 
-    def save_urs(self, utility_name, rate_structure_name, effective, expires, rate_structure_data):
-
+    def save_urs(self, utility_name, rate_structure_name, effective, expires,
+            rate_structure_data):
         rate_structure_data['_id'] = { 
             "type":"URS",
             "utility_name": utility_name,
             "rate_structure_name": rate_structure_name,
-            # TODO: support date ranges for URS
-            #'effective': effective,
-            #'expires': expires
         }
-
-
         rate_structure_data = bson_convert(rate_structure_data)
-
         self.collection.save(rate_structure_data)
-
         return rate_structure_data
 
-    def save_uprs(self, utility_name, rate_structure_name, effective, expires, rate_structure_data):
-
+    def save_uprs(self, utility_name, rate_structure_name, effective, expires,
+            rate_structure_data):
         rate_structure_data['_id'] = { 
             "type":"UPRS",
             "utility_name": utility_name,
@@ -254,18 +228,12 @@ class RateStructureDAO(object):
             'effective': effective,
             'expires': expires
         }
-
-
         rate_structure_data = bson_convert(rate_structure_data)
-
         self.collection.save(rate_structure_data)
-
         return rate_structure_data
 
-    # TODO: consider just accepting a ReeBill
     # TODO: rate_structure_data should come first in param list?
     def save_cprs(self, account, sequence, branch, utility_name, rate_structure_name, rate_structure_data):
-
         rate_structure_data['_id'] = { 
             'type': 'CPRS',
             'account': account,
@@ -274,14 +242,9 @@ class RateStructureDAO(object):
             'utility_name': utility_name,
             'rate_structure_name': rate_structure_name,
         }
-
-
         rate_structure_data = bson_convert(rate_structure_data)
-
         self.collection.save(rate_structure_data)
-
         return rate_structure_data
-
 
 class RateStructure(object):
     """ 
@@ -294,8 +257,8 @@ class RateStructure(object):
     A RateStructure stores lots of state.  Reload it for a new uncomputed one.
     """
 
-    # TODO: make sure register descriptor and rate structure item bindings do not collide
-
+    # TODO: make sure register descriptor and rate structure item bindings do
+    # not collide
     registers = []
     rates = []
 
@@ -341,14 +304,6 @@ class RateStructure(object):
                 raise Exception("RSI descriptor required.\n%s" % rsi)
             self.__dict__[rsi.rsi_binding] = rsi
 
-
-    # TODO remove; never used anywhere
-#    def register_needs(self):
-#        """ Return a list of registers that must be populated with energy."""
-#        needs = []
-#        for register in self.registers:
-#            needs.append(register)
-#        return needs
 
     def bind_register_readings(self, register_readings):
         '''Takes the list of register dictionaries from a reebill, and for each
@@ -409,6 +364,7 @@ class RateStructure(object):
         for rsi in self.rates:
             s += str(rsi)
         return s
+
 
 class Register(object):
 
@@ -487,29 +443,6 @@ class Register(object):
     def identifier(self, value):
         self._identifier = value
 
-    #def valid_hours(self, theDate):
-        #return [(0, 23)]
-        ## no idea what this code does--what is inclusion[3]?
-        #"""For a given date, return a list of tuples that describe the ranges of hours 
-        #this register should accumulate energy
-        #e.g. [(8,12), (15,19)] == 8:00:00AM to 11:59:59, and 3:00:00pm to 6:59:59
-        #Taken from fetch_bill_data.Register."""
-        #'''
-        #hour_tups = []
-        #for inclusion in self.inclusions:
-            ## if theDate matches a holiday listed as an inclusion, meter is on the entire day.
-            ## Full day in inclusion (holiday) override weekday rules
-            #if theDate in inclusion[3]:
-                #return [(0, 23)]
-            #if theDate.isoweekday() in inclusion[2]:
-                ## weekday matches, make sure it is not excluded due to full day in exclusion (holiday)
-                #for exclusion in self.exclusions:
-                    #if (theDate in exclusion[3]):
-                        #return []
-                #hour_tups.append((inclusion[0], inclusion[1]))
-        #'''
-        #return hour_tups
-
     def __str__(self):
         return "Register %s: %s, %s, %s" % (
             self.register_binding if self.register_binding else 'No Descriptor',
@@ -518,10 +451,9 @@ class Register(object):
             self.quantity_units if self.quantity_units else 'No Quantity Units',
         )
 
-class RateStructureItem(object):
 
-    """ 
-    Container class for RSIs.  This serves as a class from which RateStructureItem instances are obtained
+class RateStructureItem(object):
+    """ Container class for RSIs.  This serves as a class from which RateStructureItem instances are obtained
     via definition in the rs data. An RSI consists of (importantly) a descriptor, quantity, rate and total.
     The descriptor must be set and map to the bill rsibinding for a given charge.
     The quantity may be a number or a python expression, usually the variable of a register in the rate_structure.
@@ -549,11 +481,8 @@ class RateStructureItem(object):
         used to instantiate the parent RateStructure.
         The allowed types for the values of an RSI property are those that are python native: str, float or int.
         """
-
         self._rate_structure = rate_structure
-
         for key in props:
-
             # all keys passed are prepended with an _
             # and directly set in this instance
             # because we cover these RSI instance attributes 
@@ -594,36 +523,28 @@ class RateStructureItem(object):
             return None
 
     def evaluate(self, rsi_value):
-        """
-        An RSI value is an str that has an expression that may be evaluated.
-        An RSI expression can be as simple as a number, or as complex as a Python
+        """An RSI value is an str that has an expression that may be evaluated. An
+        RSI expression can be as simple as a number, or as complex as a Python
         statement that references values of other RSIs.
 
-        Knowing the behavior of eval() is important to understand this implementation.
-        eval() returns a type that is a function of the expression passed into it.
-        Much of the time, there is a floating point number in an expression.
-        Consequently, RSI and Registers have to typically return a 'float' for numerical
-        values so that eval() can avoid type mismatches when using +,-,/ and * operators.
-        """
+        Knowing the behavior of eval() is important to understand this
+        implementation. eval() returns a type that is a function of the
+        expression passed into it. Much of the time, there is a floating point
+        number in an expression. Consequently, RSI and Registers have to
+        typically return a 'float' for numerical values so that eval() can
+        avoid type mismatches when using +,-,/ and * operators. """
         assert isinstance(rsi_value, basestring)
 
-        #caller = inspect.stack()[1][3]
-        #print "RSI Evaluate: %s, %s Value: %s" % (self._rsi_binding, caller, rsi_value)
-
         try:
-
             # eval results in a recursive evaluation of all referenced expressions
             # eval evals rsi_value in the context of self._rate_structure.__dict__
             # this enables the rsi_value to contain references to attributes 
             # (registers and RSIs) that are held in the RateStructure
             result = eval(rsi_value, self._rate_structure.__dict__)
-            #print "RSI Evaluate Result: %s %s" % (type(result), result)
-
             # an evaluated result can be a string or float or who knows what
             return result
 
         except RuntimeError as re:
-
             # TODO: set RSI state to track recursion.
             raise RecursionError(self.descriptor, rsi_value)
 
@@ -648,10 +569,7 @@ class RateStructureItem(object):
 
     @property
     def total(self):
-        """
-        """
         if self.evaluated_total is False:
-
             if hasattr(self, "_total"):
                 self._total = self.evaluate(self._total)
                 self.evaluated_total = True
@@ -671,7 +589,6 @@ class RateStructureItem(object):
                 # quantities or rates may be a string or float due to eval()
                 q = self.quantity
                 r = self.rate
-                    
                 t = Decimal(str(q)) * Decimal(str(r))
 
                 # perform decimal round rule. 
@@ -682,11 +599,8 @@ class RateStructureItem(object):
                 # Because it is used as a term in expressions that are passed into
                 # eval().  And, eval cannot do things like divide by a string.
                 # e.g. PER_THERM_RATE, rate Value: 8.31 / REG_THERMS.quantity
-
                 self._total = float(t)
-
                 self.evaluated_total = True
-
                 return self._total
 
         else:
@@ -694,7 +608,6 @@ class RateStructureItem(object):
 
     @property
     def description(self):
-
         if hasattr(self, "_description"):
             return self._description
         else:
@@ -720,7 +633,6 @@ class RateStructureItem(object):
 
     @property
     def quantity_units(self):
-
         if hasattr(self, "_quantity_units"):
             return self._quantity_units
         else:
@@ -741,16 +653,13 @@ class RateStructureItem(object):
 
     @property
     def rate_units(self):
-
         return self._rate_units if hasattr(self, "_rate_units") else None
 
     @property
     def roundrule(self):
-
         return self._roundrule if hasattr(self, "_roundrule") else None
 
     def __str__(self):
-
         s = 'Unevaluated RSI\n'
         s += 'rsi_binding: %s\n' % (self._rsi_binding if hasattr(self, '_rsi_binding') else '')
         s += 'description: %s\n' % (self._description if hasattr(self, '_description') else '')
@@ -773,6 +682,7 @@ class RateStructureItem(object):
             s += 'total: %s\n' % (self.total)
             s += '\n'
         return s
+
 class RSIError(Exception):
     """Base class for exceptions in this module."""
     def __init__(self, descriptor, msg):
@@ -780,6 +690,8 @@ class RSIError(Exception):
         self.msg = msg
     def __str__(self):
         return "%s %s" % (self.descriptor, self.msg)
+
+# errors that occur during evaluation of rate structure "quantity" expressions
 
 class RecursionError(RSIError):
     pass
@@ -792,6 +704,3 @@ class NoSuchRSIError(RSIError):
 
 class BadExpressionError(RSIError):
     pass
-
-
-
