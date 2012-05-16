@@ -568,8 +568,12 @@ class Process(object):
                     # (but, inexplicably, that's not true: we bill webster
                     # house (10019) starting in october 2011 but its first
                     # monthly olap doc is in november.)
-                    renewable_energy_btus = self.monguru.get_data_for_month(
-                            install, year, month).energy_sold
+                    try:
+                        renewable_energy_btus = self.monguru.get_data_for_month(
+                                install, year, month).energy_sold
+                    except ValueError as e:
+                        print >> sys.stderr, 'Missing olap document for %s, %s-%s: skipped, but the graph will be wrong'
+                        renewable_energy_btus = 0
 
                 therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
                 next_stats['consumption_trend'].append({
