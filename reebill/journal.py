@@ -42,7 +42,7 @@ class JournalEntry(mongoengine.Document):
     # all possible fields and their types
     date = mongoengine.DateTimeField(required=True)
     user = mongoengine.StringField(required=True) # eventually replace with ReferenceField to user document?
-    event = mongoengine.StringField(choices=event_names)
+    event = mongoengine.StringField(choices=event_names.keys())
     account = mongoengine.StringField(required=True)
     sequence = mongoengine.IntField()
     msg = mongoengine.StringField() # only for Note events
@@ -110,9 +110,12 @@ class JournalDAO(object):
             except KeyError:
                 msg = ''
                 print >> sys.stderr, 'journal entry of type "Note" has no "msg" key:', last_entry
-            description = '%s on %s: %s' % (event_name, last_entry['date'].strftime(dateutils.ISO_8601_DATE), msg)
+            description = '%s on %s: %s' % (event_name,
+                    last_entry['date'].strftime(dateutils.ISO_8601_DATE),
+                    msg)
         else:
-            description = '%s on %s' % (event_name, last_entry['date'].strftime(dateutils.ISO_8601_DATE))
+            description = '%s on %s' % (event_name,
+                    last_entry['date'].strftime(dateutils.ISO_8601_DATE))
         return description
 
 
