@@ -2257,7 +2257,7 @@ class BillToolBridge:
         journal_entries = self.journal_dao.load_entries(account)
         # TODO make journal entries a class and use MongoKit--clean up this ugliness
         for entry in journal_entries:
-            # TODO replace user identifier with user name
+            # TODO 29715501 replace user identifier with user name
             # (UserDAO.load_user() currently requires a password to load a
             # user, but we just want to translate an indentifier into a
             # name)
