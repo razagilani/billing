@@ -3,6 +3,7 @@ import sys
 import datetime
 import uuid
 import copy
+import operator
 import pymongo
 import mongoengine
 from billing.mongo_utils import bson_convert
@@ -16,7 +17,7 @@ sys.stdout = sys.stderr
 event_names = {
     'Note': 'Note', # log event as a note
     'ReeBillRolled': 'Reebill rolled',
-    'ReeBillBoundtoREE': 'RE&E offset bound',
+    'ReeBillBoundtoREE': 'RE&E offset bound', # TODO fix capitalization
     'ReeBillUsagePeriodUpdated': 'Usage period updated',
     'ReeBillBillingPeriodUpdated': 'Billing period updated',
     'ReeBillRateStructureModified': 'Rate structure modified',
@@ -48,6 +49,25 @@ class JournalEntry(mongoengine.Document):
     msg = mongoengine.StringField() # only for Note events
     address = mongoengine.StringField() # only for ReeBillMailed events
 
+    def to_dict(self):
+        '''Returns a JSON-ready dictionary representation of this journal
+        entry.'''
+        # TODO see if there's a way in MongoKit to get all the fields instead
+        # of explictly checking them all
+        result = dict([
+            ('date', self.date),
+            ('user', self.user),
+            ('event', self.event),
+            ('account', self.account)
+        ])
+        if hasattr(self, 'sequence'):
+            result.update({'sequence': self.sequence})
+        if hasattr(self, 'msg'):
+            result.update({'msg': self.msg})
+        if hasattr(self, 'addresss'):
+            result.update({'addresss': self.addresss})
+
+        return result
 
 class JournalDAO(object):
     '''Data Access Object for Journal Entries. Currently handles loading/saving
@@ -84,11 +104,11 @@ class JournalDAO(object):
         journal_entry.save()
 
     def load_entries(self, account):
+        '''Returns a list of JSON-ready dictionaries of all journal entries for
+        the given account.'''
         journal_entries = sorted(JournalEntry.objects(account=account),
-                key=JournalEntry.date)
-        # convert each entry into a dict, and copy to prevent outside code from
-        # modifying the real database document
-        return [copy.deepcopy(entry.__dict__) for entry in journal_entries]
+                key=operator.attrgetter('date'))
+        return [entry.to_dict() for entry in journal_entries]
 
     def last_event_description(self, account):
         '''Returns a human-readable description of the last event for the given

@@ -58,6 +58,27 @@ class JournalTest(unittest.TestCase):
         self.assertEquals(1, entry.sequence)
         self.assertEquals('jwatson@skylineinnovations.com', entry.address)
 
+    def test_load_entries(self):
+        # 3 entries for 2 accounts
+        self.dao.log_event(self.user, JournalDAO.ReeBillRolled, 'account1',
+                sequence=1)
+        self.dao.log_event(self.user, JournalDAO.Note, 'account1',
+                sequence=2, msg='texf of a note')
+        self.dao.log_event(self.user, JournalDAO.ReeBillBoundtoREE, 'account2',
+                sequence=1)
+
+        # load entries for account1
+        entries1 = self.dao.load_entries('account1')
+        self.assertEquals(2, len(entries1))
+        roll1, note1 = entries1
+        self.assertEquals(JournalDAO.ReeBillRolled, roll1['event'])
+        self.assertEquals(JournalDAO.Note, note1['event'])
+
+        # load entries for account2
+        entries2 = self.dao.load_entries('account2')
+        self.assertEquals(1, len(entries2))
+        bound2 = entries2[0]
+        self.assertEquals(JournalDAO.ReeBillBoundtoREE, bound2['event'])
 
 if __name__ == '__main__':
     unittest.main()
