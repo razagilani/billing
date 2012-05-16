@@ -2265,7 +2265,6 @@ class BillToolBridge:
             # put a string containing all non-standard journal entry data
             # in an 'extra' field for display in the browser
             extra_data = copy.deepcopy(entry)
-            del extra_data['_id']
             del extra_data['account']
             if 'sequence' in extra_data:
                 del extra_data['sequence']

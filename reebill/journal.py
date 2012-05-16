@@ -108,7 +108,9 @@ class JournalDAO(object):
         the given account.'''
         journal_entries = sorted(JournalEntry.objects(account=account),
                 key=operator.attrgetter('date'))
-        return [entry.to_dict() for entry in journal_entries]
+        print 'journal_entries', journal_entries
+        result = [entry.to_dict() for entry in journal_entries]
+        return result
 
     def last_event_description(self, account):
         '''Returns a human-readable description of the last event for the given
@@ -146,12 +148,9 @@ for event_name in event_names.keys():
 
 if __name__ == '__main__':
     dao = JournalDAO(database='skyline', collection='journal')
-    entries = dao.load_entries('10003')
-
-    # fake user object to create an event (just needs an identifier)
     class FakeUser(object): pass
-    fakeuser = FakeUser()
-    setattr(fakeuser, 'identifier', 'fake')
-
-    # log a Note event
-    dao.log_event(fakeuser, JournalDAO.Note, '99999', sequence=1, msg='hello')
+    user = FakeUser()
+    setattr(user, 'identifier', 'dan')
+    dao.log_event(user, JournalDAO.Note, '10003', msg="Does this note show up?!")
+    entries = dao.load_entries('10003')
+    print entries

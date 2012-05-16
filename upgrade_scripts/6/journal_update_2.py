@@ -7,7 +7,7 @@ journaldb_config = {
     'host': 'localhost',
     'port': 27017,
     'database': 'skyline',
-    'collection': 'reebills',
+    'collection': 'journal',
 }
 
 connection = pymongo.Connection(journaldb_config['host'], journaldb_config['port'])
