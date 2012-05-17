@@ -130,10 +130,12 @@ class Process(object):
 
         lc = self.get_late_charge(session, present_reebill)
         if lc is not None:
+            # set late charge and include it in balance_due
             present_reebill.late_charges = lc
             present_reebill.balance_due = present_reebill.balance_forward + \
                     present_reebill.ree_charges + present_reebill.late_charges
         else:
+            # ignore late charge
             present_reebill.balance_due = present_reebill.balance_forward + \
                     present_reebill.ree_charges
 
@@ -271,7 +273,7 @@ class Process(object):
 
         outstanding_balance = self.get_outstanding_balance(session,
                 reebill.account, reebill.sequence - 1)
-        return (1 + reebill.late_charge_rate) * outstanding_balance
+        return (reebill.late_charge_rate) * outstanding_balance
 
     def get_outstanding_balance(self, session, account, sequence=None):
         '''Returns the balance due of the reebill given by account and sequence
