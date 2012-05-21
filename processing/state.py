@@ -355,8 +355,9 @@ class StateDB:
         returns bills with indices in [start, start + limit).'''
 
         # SQLAlchemy query to get account & dates for all utilbills
-        query = session.query(UtilBill).with_lockmode('read').join(Customer). \
-            filter(Customer.account==account).order_by(Customer.account, UtilBill.period_start)
+        query = session.query(UtilBill).with_lockmode('read').join(Customer)\
+                .filter(Customer.account==account)\
+                .order_by(Customer.account, UtilBill.period_start)
 
         if start is None:
             return query, query.count()
@@ -372,7 +373,8 @@ class StateDB:
         states (see comment in db_objects.UtilBill for explanation of utility
         bill states). The bill is initially marked as un-processed.'''
 
-        print >> sys.stderr, 'incoming utility bill: state %s, service %s' % (state, service)
+        print >> sys.stderr, 'incoming utility bill: state %s, service %s' % (
+                state, service)
 
         # get customer id from account number
         customer = session.query(Customer).filter(Customer.account==account) \
@@ -413,8 +415,9 @@ class StateDB:
 
             if list(bills_to_replace) == []:
                 # TODO this error message is kind of obscure
-                raise Exception(("Can't upload a bill for dates %s, %s because"
-                    " one already exists with a more final state"))
+                raise Exception(("Can't upload a utility bill for dates %s,"
+                    " %s because one already exists with a more final"
+                    " state than %s") % (begin_date, end_date, state))
             bill_to_replace = bills_to_replace.one()
                 
             # now there is exactly one bill with the same dates and its state is
@@ -439,6 +442,31 @@ class StateDB:
                     service=service, period_start=start, period_end=end)
             # put it in the database
             session.add(utilbill)
+
+    def trim_hypothetical_utilbills(self, session, account, service):
+        '''Deletes hypothetical utility bills for the given account and service
+        whose periods precede the start date of the earliest non-hypothetical
+        utility bill or follow the end date of the last utility bill.'''
+        customer = session.query(Customer).filter(Customer.account==account) \
+                .one()
+        first_real_utilbill = session.query(UtilBill)\
+                .filter(UtilBill.customer==customer)\
+                .filter(UtilBill.state!=UtilBill.Hypothetical)\
+                .order_by(asc(UtilBill.period_start))[0]
+        last_real_utilbill = session.query(UtilBill)\
+                .filter(UtilBill.customer==customer)\
+                .filter(UtilBill.state!=UtilBill.Hypothetical)\
+                .order_by(desc(UtilBill.period_start))[0]
+        hypothetical_utilbills = session.query(UtilBill)\
+                .filter(UtilBill.customer==customer)\
+                .filter(UtilBill.state==UtilBill.Hypothetical)\
+                .order_by(asc(UtilBill.period_start)).all()
+        for hb in hypothetical_utilbills:
+            if (hb.period_start < first_real_utilbill.period_end \
+                    and hb.period_end < first_real_utilbill.period_end)\
+                    or (hb.period_end > last_real_utilbill.period_start\
+                    and hb.period_start > last_real_utilbill.period_end):
+                session.delete(hb)
 
     def create_payment(self, session, account, date, description, credit):
         customer = session.query(Customer).filter(Customer.account==account).one()
