@@ -5484,6 +5484,8 @@ function reeBillReady() {
         journalPanel.setDisabled(false);
         mailPanel.setDisabled(false);
 
+        /* TODO re-enable service suspension checkboxes
+         * https://www.pivotaltracker.com/story/show/29557205
         // create checkboxes in Sequential Account Information form for
         // suspending services of the selected reebill
         Ext.Ajax.request({
@@ -5503,7 +5505,7 @@ function reeBillReady() {
                     checkboxes.push({
                         'boxLabel': services[i],
                         'name': services[i] + '_suspended',
-                        'checked': suspended_services.indexOf(services[i]) != -1,
+                        'checked': suspended_services.indexOf(services[i].toLowerCase()) != -1,
                     });
                 }
                 console.log(selected_account + ', ' + selected_sequence + ' checkboxes: '+checkboxes);
@@ -5530,6 +5532,7 @@ function reeBillReady() {
                  Ext.MessageBox.alert('Ajax failure', 'get_reebill_services request failed');
             },
         });
+        */
 
         // finally, update the status bar with current selection
         updateStatusbar(selected_account, selected_sequence, 0);

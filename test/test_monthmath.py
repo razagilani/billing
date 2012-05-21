@@ -181,5 +181,9 @@ class MonthmathTest(unittest.TestCase):
         self.assertEquals(-12, Month(2012, 3) - Month(2013, 3))
         self.assertEquals(25, Month(2012, 12) - Month(2010, 11))
 
+    def test_strftime(self):
+        self.assertEquals('2012-01-01T00:00:00Z',
+                Month(2012,1).strftime('%Y-%m-%dT%H:%M:%SZ'))
+
 if __name__ == '__main__':
     unittest.main()

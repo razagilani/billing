@@ -1344,6 +1344,8 @@ class BillToolBridge:
     def uprsrsi(self, xaction, account, sequence, service, **kwargs):
         if not xaction or not account or not sequence or not service:
             raise ValueError("Bad Parameter Value")
+        # client sends capitalized service names! workaround:
+        service = service.lower()
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
@@ -1747,7 +1749,12 @@ class BillToolBridge:
             'sa_postal_code': sa['sa_postal_code'] if 'sa_postal_code' in sa else '',
         }
 
-        account_info['late_charge_rate'] = reebill.late_charge_rate
+        try:
+            account_info['late_charge_rate'] = reebill.late_charge_rate
+        except KeyError:
+            # ignore late charge rate when absent
+            pass
+
         account_info['discount_rate'] = reebill.discount_rate
 
         return self.dumps(account_info)
@@ -2259,7 +2266,7 @@ class BillToolBridge:
         journal_entries = self.journal_dao.load_entries(account)
         # TODO make journal entries a class and use MongoKit--clean up this ugliness
         for entry in journal_entries:
-            # TODO replace user identifier with user name
+            # TODO 29715501 replace user identifier with user name
             # (UserDAO.load_user() currently requires a password to load a
             # user, but we just want to translate an indentifier into a
             # name)
@@ -2267,7 +2274,6 @@ class BillToolBridge:
             # put a string containing all non-standard journal entry data
             # in an 'extra' field for display in the browser
             extra_data = copy.deepcopy(entry)
-            del extra_data['_id']
             del extra_data['account']
             if 'sequence' in extra_data:
                 del extra_data['sequence']

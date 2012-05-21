@@ -13,7 +13,7 @@ import os
 fabapi.env.roledefs = {'atsite': ['ec2-user@ec2-50-16-73-74.compute-1.amazonaws.com'], 'skyline': ['tyrell']}
 
 # how do keys get mapped to hosts? Works like magic.
-fabapi.env.key_filename = ['/home/randrews/Dropbox/Skyline-IT/ec2keys/reebill-atsite.pem']
+#fabapi.env.key_filename = ['/home/randrews/Dropbox/Skyline-IT/ec2keys/reebill-atsite.pem']
 
 root_dir = os.path.dirname(os.path.abspath(__file__))
 exclude_from = 'fabexcludes.txt'
