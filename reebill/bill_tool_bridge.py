@@ -37,6 +37,7 @@ from billing.reebill.journal import JournalDAO
 from billing.users import UserDAO, User
 from billing import calendar_reports
 from billing.estimated_revenue import EstimatedRevenue
+from billing.session_contextmanager import DBSession
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -69,12 +70,6 @@ def random_wait(target):
         time.sleep(t)
         return target(*args, **kwargs)
     return random_wait_wrapper
-
-#class DBSession(object): #def __enter__(self, state_db):
-        #self.session = state_db.session()
-        #return self.session
-    #def __exit__(self):
-        #self.session.rollback()
 
 class Unauthenticated(Exception):
     pass
@@ -131,19 +126,6 @@ def json_exception(method):
             return btb_instance.handle_exception(e)
     return wrapper
 
-
-class DBSession(object):
-    '''Context manager for using "with" for database session.'''
-    def __init__(self, state_db):
-        self.state_db = state_db
-
-    def __enter__(self):
-        self.session = self.state_db.session()
-        return self.session
-
-    def __exit__(self, type, value, traceback):
-        print 'exit: %type={type}, value=%{value}, traceback=%{traceback}'.format(**vars())
-        self.session.rollback()
 
 # TODO 11454025 rename to ProcessBridge or something
 # TODO (object)?
@@ -327,13 +309,13 @@ class BillToolBridge:
             self.process = process.Process(
                 self.config, self.state_db, self.reebill_dao,
                 self.ratestructure_dao,
+                self.billUpload,
                 self.splinter, self.splinter.get_monguru()
             )
         else:
             self.process = process.Process(self.config, self.state_db,
-                    self.reebill_dao, self.ratestructure_dao,
-                    None,
-                    None)
+                    self.reebill_dao, self.ratestructure_dao, self.billUpload,
+                    None, None)
 
 
         # create a ReebillRenderer

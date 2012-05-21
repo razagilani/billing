@@ -66,7 +66,6 @@ class BillUpload(object):
 
         # convert dates into the proper format, & report error if that fails
         try:
-            print "WTF %s %s " % (begin_date, end_date)
             formatted_begin_date = format_date(str(begin_date))
             formatted_end_date = format_date(str(end_date))
         except Exception as e:
