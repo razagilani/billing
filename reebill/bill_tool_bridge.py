@@ -4,6 +4,15 @@ File: bill_tool_bridge.py
 Description: Allows bill tool to be invoked as a CGI
 '''
 import sys
+import os
+import pprint
+
+# 29926885 output environment configs to debug virtual env
+pprint.pprint(os.environ)
+pprint.pprint(sys.path)
+pprint.pprint(sys.prefix)
+
+
 import traceback
 import json
 import cherrypy
@@ -37,7 +46,7 @@ from billing.reebill.journal import JournalDAO
 from billing.users import UserDAO, User
 from billing import calendar_reports
 from billing.estimated_revenue import EstimatedRevenue
-import pprint
+
 pp = pprint.PrettyPrinter(indent=4)
 
 sys.stdout = sys.stderr
