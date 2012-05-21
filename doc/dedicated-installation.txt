@@ -52,18 +52,20 @@ Install gcc and python heads so packages like pymongo and numpy can compile C ex
 Install the following packages with sudo pip install [package]
     cherrypy
     jinja2
-    ordereddict
     pymongo
-    sqlalchemy
-    argparse
-    numpy
     mongokit
     fabulous
+    code
+    sqlalchemy
+    py-bcrypt
+    argparse
+    numpy
     reportlab
     simplejson
     MySQL-Python
     xlwt
     pyyaml
+    ordereddict
 
 For Rendering Images
     sudo yum install ImageMagick
@@ -75,7 +77,7 @@ Chart Director 'pychartdir'
     Chart Director is installed by:
         tar xvf chartdir_python_linux.tar
         mv ChartDirector /usr/lib/python2.6/site-packages
-        The add python path to WSGI Daemon Process /usr/lib/python2.6/site-packages/ChartDirector/lib
+        Then add python path to WSGIDaemonProcess directive in Apache2 /usr/lib/python2.6/site-packages/ChartDirector/lib
 
 MySQL
     sudo yum install mysql-server
