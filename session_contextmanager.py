@@ -25,9 +25,12 @@ class DBSession(object):
         return self.session
 
     def __exit__(self, type, value, traceback):
-        print 'exit: %type={type}, value=%{value}, traceback=%{traceback}'.format(**vars())
+        if (type, value, traceback) != (None, None, None):
+            # there was an error
+            print ('DBSession exit: type={type}, value="%{value}", '
+                    'traceback=%{traceback}').format(**vars())
+        # when there wasn't an error, rollback has no effect
         self.session.rollback()
-
 
 
 if __name__ == '__main__':
