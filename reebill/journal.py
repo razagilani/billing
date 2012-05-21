@@ -3,9 +3,9 @@ import sys
 import datetime
 import uuid
 import copy
+import operator
 import pymongo
-#import mongokit
-#from mongokit import OR, IS
+import mongoengine
 from billing.mongo_utils import bson_convert
 from billing.mongo_utils import python_convert
 from billing import dateutils
@@ -17,7 +17,7 @@ sys.stdout = sys.stderr
 event_names = {
     'Note': 'Note', # log event as a note
     'ReeBillRolled': 'Reebill rolled',
-    'ReeBillBoundtoREE': 'RE&E offset bound',
+    'ReeBillBoundtoREE': 'RE&E offset bound', # TODO fix capitalization
     'ReeBillUsagePeriodUpdated': 'Usage period updated',
     'ReeBillBillingPeriodUpdated': 'Billing period updated',
     'ReeBillRateStructureModified': 'Rate structure modified',
@@ -31,70 +31,57 @@ event_names = {
     # TODO add utility bill uploaded? that has an account but no sequence
 }
 
-#class JournalEntry(mongokit.Document):
-class JournalEntry(object):
-    '''MongoKit schema definition for journal entry document.'''
-    # In normal MongoKit usage one defines __database__ and __collection__
-    # properties here. But we want to configure the databse and collection
-    # dynamically, so we "register" this class with the database collection
-    # object in the JournalDAO constructor, which makes this class a property
-    # of JournalDAO's 'collection'; we use collection.JournalEntry instead of
-    # just JournalEntry to create journal entries that belong to that
-    # collection.
+class JournalEntry(mongoengine.Document):
+    '''MongoEngine schema definition for journal entry document.'''
+
+    # MongoEngine assumes the collection to use is the document class name
+    # lowercased, but here we want to use the collection named "journal":
+    meta = {'collection': 'journal'}
+    # TODO create class dynamically to set collection name to the one passed
+    # into JournalDAO constructor? i think python provides a way to do that...
 
     # all possible fields and their types
-    #structure = {
-    #    # the required fields
-    #    'date': datetime.datetime,
-    #    'user': basestring, # user identifier (not username)
-    #    'event': IS(*event_names), # one of the event names defined above
-    #    'account': basestring,
-    #    'sequence': int,
-    #    # only for Note events
-    #    'msg': basestring,
+    date = mongoengine.DateTimeField(required=True)
+    user = mongoengine.StringField(required=True) # eventually replace with ReferenceField to user document?
+    event = mongoengine.StringField(choices=event_names.keys())
+    account = mongoengine.StringField(required=True)
+    sequence = mongoengine.IntField()
+    msg = mongoengine.StringField() # only for Note events
+    address = mongoengine.StringField() # only for ReeBillMailed events
 
-    #    # only for ReeBillMailed events
-    #    'address': basestring,
-    #    #...
-    #}
+    def to_dict(self):
+        '''Returns a JSON-ready dictionary representation of this journal
+        entry.'''
+        # TODO see if there's a way in MongoKit to get all the fields instead
+        # of explictly checking them all
+        result = dict([
+            ('date', self.date),
+            ('user', self.user),
+            ('event', self.event),
+            ('account', self.account)
+        ])
+        if hasattr(self, 'sequence'):
+            result.update({'sequence': self.sequence})
+        if hasattr(self, 'msg'):
+            result.update({'msg': self.msg})
+        if hasattr(self, 'addresss'):
+            result.update({'addresss': self.addresss})
 
-    # subset of the above fields that are required in every document
-    # TODO sequence should not be required for AccountCreated event
-    #required_fields = ['date', 'user', 'event', 'account', 'sequence']
-
-    # allow non-unicode string types that mongokit forbids by default (for some
-    # reason 'str' must be included to allow str values in basestring
-    # variables, even though all strs are basestrings)
-    #authorized_types = mongokit.Document.authorized_types + [str, basestring] 
-
-    # prevent MongoKit from inserting None for all non-required fields when
-    # they're not given?
-    #use_schemaless = True
-    # (does not work)
-
+        return result
 
 class JournalDAO(object):
+    '''Data Access Object for Journal Entries. Currently handles loading/saving
+    of journal entry documents, but may disappear when we switch over
+    completely to the MongoEngine way of doing things (documents save()
+    themselves).'''
 
     def __init__(self, database, collection, host='localhost', port=27017):
         try:
-            # mongokit Connection is subclass of pymongo Connection
-            #self.connection = mongokit.Connection(host, int(port))
-            self.connection = pymongo.Connection(host, int(port))
+            self.connection = mongoengine.connect(database, host=host,
+                    port=int(port))
         except Exception as e: 
             print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
             raise e
-
-        # mongokit requires some kind of association between the JournalEntry
-        # class and the database Connection. this makes the JournalEntry class
-        # a property of the Connection object.
-        #self.connection.register(JournalEntry)
-        
-        self.database = self.connection[database]
-        self.collection = self.database[collection]
-
-    def __del__(self):
-        # TODO: 17928569 clean up mongo resources here?
-        pass
 
     def log_event(self, user, event_type, account, **kwargs):
         '''Logs an event associated with the given user and customer account
@@ -104,38 +91,31 @@ class JournalDAO(object):
         if event_type not in event_names:
             raise ValueError('Unknown event type: %s' % event_type)
 
-        # create empty JournalEntry object: you must use
-        # collection.JournalEntry and not just JournalEntry, because the latter
-        # doesn't know what class it's supposed to be associated with
-        #journal_entry = self.collection.JournalEntry()
-        journal_entry = {} 
+        # create journal entry object with the required fields
+        journal_entry = JournalEntry(user=user.identifier,
+                date=datetime.datetime.utcnow(), event=event_type,
+                account=account)
 
+        # optional fields
         for kwarg, value in kwargs.iteritems():
-            journal_entry[kwarg] = value
+            setattr(journal_entry, kwarg, value)
 
-        # required fields
-        journal_entry['user'] = user.identifier
-        journal_entry['date'] = datetime.datetime.utcnow()
-        journal_entry['event'] = event_type
-        journal_entry['account'] = account
-
-        journal_entry_data = bson_convert(journal_entry)
-        self.collection.save(journal_entry_data)
-        #journal_entry.save()
+        # save in Mongo
+        journal_entry.save()
 
     def load_entries(self, account):
-        # TODO pagination
-        query = { "account": account }
-        journal_entries = self.collection.find(query).sort('date')
-        # copy each entry to prevent outside code from modifying the real
-        # database document
-        # TODO remove python_convert?
-        return [copy.deepcopy(python_convert(journal_entry)) for journal_entry
-                in journal_entries]
+        '''Returns a list of JSON-ready dictionaries of all journal entries for
+        the given account.'''
+        journal_entries = sorted(JournalEntry.objects(account=account),
+                key=operator.attrgetter('date'))
+        print 'journal_entries', journal_entries
+        result = [entry.to_dict() for entry in journal_entries]
+        return result
 
     def last_event_description(self, account):
         '''Returns a human-readable description of the last event for the given
         account. Returns an empty string if the account has no events.'''
+        # TODO convert to MongoEngine style
         entries = self.load_entries(account)
         if entries == []:
             return ''
@@ -152,9 +132,12 @@ class JournalDAO(object):
             except KeyError:
                 msg = ''
                 print >> sys.stderr, 'journal entry of type "Note" has no "msg" key:', last_entry
-            description = '%s on %s: %s' % (event_name, last_entry['date'].strftime(dateutils.ISO_8601_DATE), msg)
+            description = '%s on %s: %s' % (event_name,
+                    last_entry['date'].strftime(dateutils.ISO_8601_DATE),
+                    msg)
         else:
-            description = '%s on %s' % (event_name, last_entry['date'].strftime(dateutils.ISO_8601_DATE))
+            description = '%s on %s' % (event_name,
+                    last_entry['date'].strftime(dateutils.ISO_8601_DATE))
         return description
 
 
@@ -165,11 +148,9 @@ for event_name in event_names.keys():
 
 if __name__ == '__main__':
     dao = JournalDAO(database='skyline', collection='journal')
-    entries = dao.load_entries('10003')
-
     class FakeUser(object): pass
-    fakeuser = FakeUser()
-    setattr(fakeuser, 'identifier', 'fake')
-
-    import pdb; pdb.set_trace()
-    dao.log_event(fakeuser, '99999', 1, 'Note', msg='hello')
+    user = FakeUser()
+    setattr(user, 'identifier', 'dan')
+    dao.log_event(user, JournalDAO.Note, '10003', msg="Does this note show up?!")
+    entries = dao.load_entries('10003')
+    print entries

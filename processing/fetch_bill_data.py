@@ -143,7 +143,7 @@ def get_interval_meter_data_source(csv_file, timestamp_column=0,
 
         # iterate over the hour range, adding up energy at 15-mintute intervals
         # and also checking timestamps
-        total = 0
+        total = Decimal(0)
         i = first_timestamp_index
         while timestamps[i] < last_timestamp:
             expected_timestamp = first_timestamp + timedelta(
@@ -152,7 +152,7 @@ def get_interval_meter_data_source(csv_file, timestamp_column=0,
                 raise Exception(('Bad timestamps for hour range %s %s: '
                     'expected %s, found %s') % (day, hour_range,
                         expected_timestamp, timestamps[i]))
-            total += values[i]
+            total += Decimal(values[i])
             i+= 1
         # unfortunately the last energy value must be gotten separately.
         # TODO: add a do-while loop to python
@@ -160,7 +160,7 @@ def get_interval_meter_data_source(csv_file, timestamp_column=0,
             raise Exception(('Bad timestamps for hour range %s %s: '
                 'expected %s, found %s') % (day, hour_range,
                     expected_timestamp, timestamps[i]))
-        total += values[i]
+        total += Decimal(values[i])
 
         return total
 
