@@ -66,6 +66,7 @@ Install the following packages with sudo pip install [package]
     xlwt
     pyyaml
     ordereddict
+    mongoengine
 
 For Rendering Images
     sudo yum install ImageMagick
