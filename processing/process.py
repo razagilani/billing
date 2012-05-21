@@ -20,7 +20,7 @@ from billing.processing import state
 from billing.mongo import MongoReebill
 from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state
-from billing.processing.db_objects import Payment, Customer
+from billing.processing.db_objects import Payment, Customer, UtilBill
 from billing.mongo import ReebillDAO
 from billing import nexus_util
 from billing import dateutils
@@ -38,11 +38,12 @@ class Process(object):
     config = None
     
     def __init__(self, config, state_db, reebill_dao, rate_structure_dao,
-            splinter, monguru):
+            billupload, splinter, monguru):
         self.config = config
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
         self.reebill_dao = reebill_dao
+        self.billupload = billupload
         self.splinter = splinter
         self.monguru = monguru
 
@@ -59,32 +60,38 @@ class Process(object):
         bill for the given account and service, "hypothetical" utility bills
         will be added to cover the gap between this bill's period and the
         previous newest or oldest one respectively.'''
+
+        # get & save end date of last bill (before uploading a new bill which
+        # may come later)
+        original_last_end = self.state_db.last_utilbill_end_date(session,
+                account)
+
         if bill_file is None:
             # if there's no file, this is a "skyline estimated bill":
             # record it in the database with that state, but don't upload
             # anything
             self.state_db.record_utilbill_in_database(session, account,
-                    service, begin_date, end_date, datetime.utcnow(),
-                    state=db_objects.UtilBill.SkylineEstimated)
+                    service, begin_date, end_date, datetime.datetime.utcnow(),
+                    state=UtilBill.SkylineEstimated)
         else:
             # if there is a file, get the Python file object and name
             # string from CherryPy, and pass those to BillUpload to upload
             # the file (so BillUpload can stay independent of CherryPy)
-            upload_result = self.billUpload.upload(account, begin_date,
-                    end_date, bill_file, filename)
+            upload_result = self.billupload.upload(account, begin_date,
+                    end_date, bill_file, file_name)
             if upload_result is True:
                 self.state_db.record_utilbill_in_database(session, account,
-                        service, begin_date, end_date, datetime.utcnow())
+                        service, begin_date, end_date,
+                        datetime.datetime.utcnow())
             else:
                 raise IOError('File upload failed: %s %s %s' % (file_name,
                     begin_date, end_date))
 
         # if begin_date does not match end date of latest existing bill, create
         # hypothetical bills to cover the gap
-        latest_end_date = self.state_db.last_utilbill_end_date(session, account)
-        if latest_end_date is not None and begin_date_as_date > latest_end_date:
+        if original_last_end is not None and begin_date > original_last_end:
             self.state_db.fill_in_hypothetical_utilbills(session, account,
-                    service, latest_end_date, begin_date_as_date)
+                    service, original_last_end, begin_date)
 
     def sum_bill(self, session, prior_reebill, present_reebill):
         '''Compute everything about the bill that can be continuously
