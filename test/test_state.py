@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import unittest
+from datetime import date
 from billing.processing import state
 from billing import mongo
 from billing import dateutils
@@ -44,6 +45,6 @@ class StateTest(unittest.TestCase):
         # if we're right 95% of the time, guess_next_reebill_end_date() works
         self.assertTrue(correct_count / float(count) > .95)
         session.commit()
-
+        
 if __name__ == '__main__':
     unittest.main()

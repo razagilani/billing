@@ -51,6 +51,41 @@ class Process(object):
         session.add(new_customer)
         return new_customer
 
+    def upload_utility_bill(self, session, account, service, begin_date,
+            end_date, bill_file, file_name):
+        '''Uploads 'bill_file' with the name 'file_name' as a utility bill for
+        the given account, service, and dates. If the upload succeeds, a row is
+        added to the utilbill table. If this is the newest or oldest utility
+        bill for the given account and service, "hypothetical" utility bills
+        will be added to cover the gap between this bill's period and the
+        previous newest or oldest one respectively.'''
+        if bill_file is None:
+            # if there's no file, this is a "skyline estimated bill":
+            # record it in the database with that state, but don't upload
+            # anything
+            self.state_db.record_utilbill_in_database(session, account,
+                    service, begin_date, end_date, datetime.utcnow(),
+                    state=db_objects.UtilBill.SkylineEstimated)
+        else:
+            # if there is a file, get the Python file object and name
+            # string from CherryPy, and pass those to BillUpload to upload
+            # the file (so BillUpload can stay independent of CherryPy)
+            upload_result = self.billUpload.upload(account, begin_date,
+                    end_date, bill_file, filename)
+            if upload_result is True:
+                self.state_db.record_utilbill_in_database(session, account,
+                        service, begin_date, end_date, datetime.utcnow())
+            else:
+                raise IOError('File upload failed: %s %s %s' % (file_name,
+                    begin_date, end_date))
+
+        # if begin_date does not match end date of latest existing bill, create
+        # hypothetical bills to cover the gap
+        latest_end_date = self.state_db.last_utilbill_end_date(session, account)
+        if latest_end_date is not None and begin_date_as_date > latest_end_date:
+            self.state_db.fill_in_hypothetical_utilbills(session, account,
+                    service, latest_end_date, begin_date_as_date)
+
     def sum_bill(self, session, prior_reebill, present_reebill):
         '''Compute everything about the bill that can be continuously
         recomputed. This should be called immediately after roll_bill()
@@ -78,20 +113,23 @@ class Process(object):
         present_reebill.hypothetical_total = Decimal("0")
         present_reebill.actual_total = Decimal("0")
 
-        # sum up chargegroups into total per utility bill and accumulate reebill values
+        # sum up chargegroups into total per utility bill and accumulate
+        # reebill values
         for service in present_reebill.services:
 
             actual_total = Decimal("0")
             hypothetical_total = Decimal("0")
 
-            for chargegroup, charges in present_reebill.actual_chargegroups_for_service(service).items():
+            for chargegroup, charges in present_reebill.\
+                    actual_chargegroups_for_service(service).items():
                 actual_subtotal = Decimal("0")
                 for charge in charges:
                     actual_subtotal += charge["total"]
                     actual_total += charge["total"]
                 #TODO: subtotals for chargegroups?
 
-            for chargegroup, charges in present_reebill.hypothetical_chargegroups_for_service(service).items():
+            for chargegroup, charges in present_reebill.\
+                    hypothetical_chargegroups_for_service(service).items():
                 hypothetical_subtotal = Decimal("0")
                 for charge in charges:
                     hypothetical_subtotal += charge["total"]
@@ -100,19 +138,23 @@ class Process(object):
 
             # calculate utilbill level numbers
             present_reebill.set_actual_total_for_service(service, actual_total)
-            present_reebill.set_hypothetical_total_for_service(service, hypothetical_total)
+            present_reebill.set_hypothetical_total_for_service(service,
+                    hypothetical_total)
 
             ree_value = hypothetical_total - actual_total
-            ree_charges = (Decimal("1") - discount_rate) * (hypothetical_total - actual_total)
+            ree_charges = (Decimal("1") - discount_rate) * (hypothetical_total 
+                    - actual_total)
             ree_savings = discount_rate * (hypothetical_total - actual_total)
 
-            present_reebill.set_ree_value_for_service(service, ree_value.quantize(Decimal('.00')))
+            present_reebill.set_ree_value_for_service(service, 
+                    ree_value.quantize(Decimal('.00')))
             present_reebill.set_ree_charges_for_service(service, ree_charges)
             present_reebill.set_ree_savings_for_service(service, ree_savings)
 
 
         # accumulate at the reebill level
-        present_reebill.hypothetical_total = present_reebill.hypothetical_total + hypothetical_total
+        present_reebill.hypothetical_total = present_reebill.hypothetical_total\
+                + hypothetical_total
         present_reebill.actual_total = present_reebill.actual_total + actual_total
 
         present_reebill.ree_value = Decimal(present_reebill.ree_value + ree_value).quantize(Decimal('.00'))

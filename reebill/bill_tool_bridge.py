@@ -2198,6 +2198,7 @@ class BillToolBridge:
     @json_exception
     def upload_utility_bill(self, account, service, begin_date, end_date,
             file_to_upload, **args):
+        # TODO: refactor
         with DBSession(self.state_db) as session:
             if not account or not begin_date or not end_date or not file_to_upload:
                 raise ValueError("Bad Parameter Value")
@@ -2208,41 +2209,16 @@ class BillToolBridge:
             end_date_as_date = datetime.strptime(end_date, '%Y-%m-%d').date()
             self.validate_utilbill_period(begin_date_as_date, end_date_as_date)
 
-            session = self.state_db.session()
+            try:
+                self.process.upload_utility_bill(session, account, service,
+                        begin_date_as_date, end_date_as_date, file_to_upload.file,
+                        file_to_upload.filename if file_to_upload else None)
+            except IOError:
+                self.logger.error('file upload failed:', begin_date, end_date,
+                        file_to_upload.filename)
+                raise
 
-            # if begin_date does not match end date of latest existing bill,
-            # create hypothetical bills to cover the gap
-            latest_end_date = self.state_db.last_utilbill_end_date(session, account)
-            if latest_end_date is not None and begin_date_as_date > latest_end_date:
-                self.state_db.fill_in_hypothetical_utilbills(session, account,
-                        service, latest_end_date, begin_date_as_date)
-
-            if file_to_upload.file is None:
-                # if there's no file, this is a "skyline estimated bill":
-                # record it in the database with that state, but don't upload
-                # anything
-                self.state_db.record_utilbill_in_database(session, account,
-                        service, begin_date, end_date, datetime.utcnow(),
-                        state=db_objects.UtilBill.SkylineEstimated)
-                session.commit()
-                return self.dumps({'success':True})
-            else:
-                # if there is a file, get the Python file object and name
-                # string from CherryPy, and pass those to BillUpload to upload
-                # the file (so BillUpload can stay independent of CherryPy)
-                upload_result = self.billUpload.upload(account, begin_date,
-                        end_date, file_to_upload.file, file_to_upload.filename)
-                if upload_result is True:
-                    self.state_db.record_utilbill_in_database(session, account,
-                            service, begin_date, end_date, datetime.utcnow())
-                    session.commit()
-                    return self.dumps({'success':True})
-                else:
-                    self.logger.error('file upload failed:', begin_date, end_date,
-                            file_to_upload.filename)
-                    session.commit()
-                    return self.dumps({'success':False, 'errors': {
-                        'reason':'file upload failed', 'details':'Returned False'}})
+            return self.dumps({'success': True})
 
     #
     ################

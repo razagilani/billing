@@ -480,5 +480,6 @@ class ProcessTest(unittest.TestCase):
                 sales_tax['total'],
                 places=2)
 
+
 if __name__ == '__main__':
     unittest.main(failfast=True)
