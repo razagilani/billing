@@ -2409,6 +2409,9 @@ class BillToolBridge:
                 # was doing this
                 return self.listUtilBills(**kwargs)
             elif xaction == 'update':
+                # TODO move out of BillToolBridge, make into its own function
+                # so it's testable
+
                 # only the start and end dates can be updated.
                 # parse data from the client: for some reason it returns single
                 # utility bill row in a json string called "rows"
@@ -2444,11 +2447,17 @@ class BillToolBridge:
 
                 # change dates in MySQL
                 session = self.state_db.session()
-                utilbill = session.query(db_objects.UtilBill).filter(db_objects.UtilBill.id==utilbill_id).one()
+                utilbill = session.query(db_objects.UtilBill)\
+                        .filter(db_objects.UtilBill.id==utilbill_id).one()
                 if utilbill.has_reebill:
                     raise Exception("Can't edit utility bills that have already been attached to a reebill.")
                 utilbill.period_start = new_period_start
                 utilbill.period_end = new_period_end
+
+                # delete any hypothetical utility bills that were created to
+                # cover gaps that no longer exist
+                self.process.state_db.trim_hypothetical_utilbills(session,
+                        account, utilbill.service)
                 session.commit()
 
                 return self.dumps({'success': True})
