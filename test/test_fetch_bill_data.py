@@ -174,9 +174,9 @@ class FetchTest(unittest.TestCase):
         # all customers have exactly 1 shadowed meter). putting energy into the
         # shadow registers of that specific meter is the same as putting it
         # into all shadowed meters.
-        reebill = self.reebill_dao.load_reebill('10004', 18)
-        assert reebill.period_begin == date(2011,9,5)
-        assert reebill.period_end == date(2011,10,4)
+        reebill = self.reebill_dao.load_reebill('10004', 15)
+        assert reebill.period_begin == date(2011,6,6)
+        assert reebill.period_end == date(2011,7,6)
         meters = reduce(lambda x,y:x+y, [reebill.meters_for_service(s) for s in reebill.services], [])
 
         # should have 2 meters with the identifiers shown

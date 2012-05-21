@@ -48,8 +48,9 @@ class StateTest(unittest.TestCase):
         c.execute("delete from customer")
         mysql_connection.commit()
 
-    @unittest.skip("")
+    @unittest.skip("TODO re-enable. creation of another StateDB instance breaks the test even though it's a different DB and clear_mappers is run in setUp")
     def test_guess_next_reebill_end_date(self):
+        '''Compare real end date to the one that would have been prediected.'''
         # use the real dev database
         state_db = state.StateDB(**{
             'user':'dev',
@@ -57,7 +58,6 @@ class StateTest(unittest.TestCase):
             'host':'localhost',
             'database':'skyline_dev'
         })
-        '''Compare real end date to the one that would have been prediected.'''
         total = 0
         count = 0
         correct_count = 0
