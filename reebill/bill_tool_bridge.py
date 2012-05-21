@@ -4,6 +4,15 @@ File: bill_tool_bridge.py
 Description: Allows bill tool to be invoked as a CGI
 '''
 import sys
+import os
+import pprint
+
+# 29926885 output environment configs to debug virtual env
+pprint.pprint(os.environ)
+pprint.pprint(sys.path)
+pprint.pprint(sys.prefix)
+
+
 import traceback
 import json
 import cherrypy
@@ -945,11 +954,16 @@ class BillToolBridge:
 
             # result is a list of dictionaries of the form
             # {account: full name, dayssince: days}
-            session = self.state_db.session()
-            statuses = self.state_db.retrieve_status_days_since(session,
-                    kwargs.get('sort', None), kwargs.get('dir', None))
-            # sort by account--TODO do the sorting in the database query itself
-            #statuses.sort(key=lambda s: s.account)
+
+            sortcol = kwargs.get('sort', None)
+            sortdir = kwargs.get('dir', None)
+            if sortdir == 'ASC':
+                sortreverse = False
+            else:
+                sortreverse = True
+
+            # pass the sort params if we want the db to do any sorting work
+            statuses = self.state_db.retrieve_status_days_since(session, sortcol, sortdir)
 
             name_dicts = self.nexus_util.all_names_for_accounts([s.account for s in statuses])
             rows = [dict([
@@ -965,19 +979,51 @@ class BillToolBridge:
                 ('provisionable', False),
             ]) for i, status in enumerate(statuses)]
 
+            if sortcol == 'account':
+                rows.sort(key=lambda r: r['account'], reverse=sortreverse)
+            elif sortcol == 'codename':
+                rows.sort(key=lambda r: r['codename'], reverse=sortreverse)
+            elif sortcol == 'casualname':
+                rows.sort(key=lambda r: r['casualname'], reverse=sortreverse)
+            elif sortcol == 'primusname':
+                rows.sort(key=lambda r: r['primusname'], reverse=sortreverse)
+            elif sortcol == 'dayssince':
+                rows.sort(key=lambda r: r['dayssince'], reverse=sortreverse)
+            elif sortcol == 'lastevent':
+                rows.sort(key=lambda r: r['lastevent'], reverse=sortreverse)
+
             # also get customers from Nexus who don't exist in billing yet
             # (do not sort these; just append them to the end)
             # TODO: we DO want to sort these, but we just want to them to come
             # after all the billing billing customers
             non_billing_customers = self.nexus_util.get_non_billing_customers()
+            morerows = []
             for customer in non_billing_customers:
-                rows.append(dict([
+                morerows.append(dict([
                     # we have the olap_id too but we don't show it
+                    ('account', 'n/a'),
                     ('codename', customer['codename']),
                     ('casualname', customer['casualname']),
                     ('primusname', customer['primus']),
+                    ('dayssince', 'n/a'),
+                    ('lastevent', 'n/a'),
                     ('provisionable', True)
                 ]))
+
+            if sortcol == 'account':
+                morerows.sort(key=lambda r: r['account'], reverse=sortreverse)
+            elif sortcol == 'codename':
+                morerows.sort(key=lambda r: r['codename'], reverse=sortreverse)
+            elif sortcol == 'casualname':
+                morerows.sort(key=lambda r: r['casualname'], reverse=sortreverse)
+            elif sortcol == 'primusname':
+                morerows.sort(key=lambda r: r['primusname'], reverse=sortreverse)
+            elif sortcol == 'dayssince':
+                morerows.sort(key=lambda r: r['dayssince'], reverse=sortreverse)
+            elif sortcol == 'lastevent':
+                morerows.sort(key=lambda r: r['lastevent'], reverse=sortreverse)
+
+            rows.extend(morerows)
 
             # count includes both billing and non-billing customers (front end
             # needs this for pagination)
@@ -2180,7 +2226,6 @@ class BillToolBridge:
     @json_exception
     def upload_utility_bill(self, account, service, begin_date, end_date,
             file_to_upload, **args):
-        # TODO: refactor
         with DBSession(self.state_db) as session:
             if not account or not begin_date or not end_date or not file_to_upload:
                 raise ValueError("Bad Parameter Value")

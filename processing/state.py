@@ -490,16 +490,18 @@ class StateDB:
         # SQLAlchemy query to get account & dates for all utilbills
         entityQuery = session.query(StatusDaysSince)
 
-        if sort_order == 'ASC':
-            sortedQuery = entityQuery.order_by(asc(StatusDaysSince.dayssince))
-        else:
-            sortedQuery = entityQuery.order_by(desc(StatusDaysSince.dayssince))
+        # example of how db sorting would be done
+        #if sort_col == 'dayssince' and sort_order == 'ASC':
+        #    sortedQuery = entityQuery.order_by(asc(StatusDaysSince.dayssince))
+        #elif sort_colr == 'dayssince' and sort_order == 'DESC':
+        #    sortedQuery = entityQuery.order_by(desc(StatusDaysSince.dayssince))
+        #lockmodeQuery = sortedQuery.with_lockmode("read")
 
-        lockmodeQuery = sortedQuery.with_lockmode("read")
+        lockmodeQuery = entityQuery.with_lockmode("read")
 
-        print lockmodeQuery
+        result = lockmodeQuery.all()
 
-        return lockmodeQuery.all()
+        return result
 
     def retrieve_status_unbilled(self, session, start, limit):
         # SQLAlchemy query to get account & dates for all utilbills
