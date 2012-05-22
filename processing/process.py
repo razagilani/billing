@@ -361,7 +361,7 @@ class Process(object):
                 reebill.branch, utility_name, rate_structure_name, cprs)
 
         # create new account in mysql
-        customer = self.state_db.new_account(session, name, account, discount_rate, late_charge_rate)
+        customer = self.new_account(session, name, account, discount_rate, late_charge_rate)
 
         return customer
 
