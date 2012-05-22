@@ -1,0 +1,324 @@
+Generic AWS Hosting Configuration Instructions for ReeBill
+==========================================================
+
+How to create a dedicated host running once instance of ReeBill
+
+DNS 
+---
+
+[customer].skylineinnovations.net must point to an AWS dynamic name or an Elastic IP
+
+
+
+SSL
+---
+
+SSL Certificates are not configured at this time
+
+
+AWS Host Setup
+--------------
+
+Create reebill hosting security group admitting SSH and HTTP/S
+
+32 bit Amazon Linux AMI ami-31814f58, Small instance
+
+
+SSH Keys are saved in IT/ec2keys
+
+Connecting to the newly configured host:   
+ssh -i /home/randrews/Dropbox/Skyline-IT/ec2keys/reebill-atsite.pem ec2-user@ec2-50-16-73-74.compute-1.amazonaws.com
+
+
+Create user for running and deploying ReeBill
+
+    sudo useradd -s /bin/bash --create-home reebill
+    sudo passwd reebill [passwd] 
+    set passwd, storing it in keepass (necessary? do we ever log-in as the application user?)
+
+
+Install Packages
+================
+
+The AWS Linux AMI is based on Fedora and uses yum.
+
+Update the host
+    sudo yum update
+Obtain pip
+    sudo easy_install pip
+Install gcc and python heads so packages like pymongo and numpy can compile C extensions
+    sudo yum install python-devel gcc
+
+Install the following packages with sudo pip install [package]
+    cherrypy
+    jinja2
+    pymongo
+    mongokit
+    fabulous
+    code
+    sqlalchemy
+    py-bcrypt
+    argparse
+    numpy
+    reportlab
+    simplejson
+    MySQL-Python
+    xlwt
+    pyyaml
+    ordereddict
+    mongoengine
+
+For Rendering Images
+    sudo yum install ImageMagick
+    sudo yum install html2ps
+    sudo yum install poppler-utils (for pdftoppm)
+    
+
+Chart Director 'pychartdir'
+    Chart Director is installed by:
+        tar xvf chartdir_python_linux.tar
+        mv ChartDirector /usr/lib/python2.6/site-packages
+        Then add python path to WSGIDaemonProcess directive in Apache2 /usr/lib/python2.6/site-packages/ChartDirector/lib
+
+MySQL
+    sudo yum install mysql-server
+    
+    # for MySQL-Python
+    sudo yum install mysql-devel.i686
+    change the root user's password
+
+
+    [ec2-user@domU-12-31-39-07-5C-C2 site-packages]$ sudo service mysqld start
+    Initializing MySQL database:  Installing MySQL system tables...
+    OK
+    Filling help tables...
+    OK
+
+    To start mysqld at boot time you have to copy
+    support-files/mysql.server to the right place for your system
+
+    PLEASE REMEMBER TO SET A PASSWORD FOR THE MySQL root USER !
+    To do so, start the server, then issue the following commands:
+
+    /usr/bin/mysqladmin -u root password 'new-password'
+    /usr/bin/mysqladmin -u root -h domU-12-31-39-07-5C-C2 password 'new-password'
+
+    Alternatively you can run:
+    /usr/bin/mysql_secure_installation
+
+    which will also give you the option of removing the test
+    databases and anonymous user created by default.  This is
+    strongly recommended for production servers.
+
+    See the manual for more instructions.
+
+    You can start the MySQL daemon with:
+    cd /usr ; /usr/bin/mysqld_safe &
+
+    You can test the MySQL daemon with mysql-test-run.pl
+    cd /usr/mysql-test ; perl mysql-test-run.pl
+
+    Please report any problems with the /usr/bin/mysqlbug script!
+
+
+
+    didnt do this So that an administrative user can run connect remotely
+        grant all on skyline.* to 'root'@'%.local' identified by '[password]';
+
+    create database skyline_[env]
+    use skyline_[env]
+
+    create user 'reebill'@'%' identified by '[password]'
+    # needs to be done to allow connections from localhost
+    create user 'reebill'@'localhost' identified by '[password]';
+    # for connecting from anywhere
+    #grant all on skyline.* to 'reebill'@'%' identified by '[password]';
+    # for connecting from localhost
+    grant all on skyline.* to 'reebill'@'localhost' identified by '[password]';
+
+
+    Loading the database
+    --------------------
+
+        # root has to create the schema because full privileged users do not have all the privileges to do so
+        mysql -uroot -p[password] -Dskyline < /var/local/reebill/billing/db/processing/billdb.sql
+
+
+Mongo
+=====
+
+    The following must be added to the AWS Linux AMI's /etc/yum.repos.d/10gen.repo
+        [10gen]
+        name=10gen Repository
+        baseurl=http://downloads-distro.mongodb.org/repo/redhat/os/i686
+        gpgcheck=0
+
+    sudo yum install mongo
+    sudo service mongod start
+
+
+
+Install Apache2: 
+    sudo yum install httpd.i686
+Test successfull install:  http://ec2-107-21-175-174.compute-1.amazonaws.com/
+
+Install mod_wsgi.i686
+    sudo yum install mod_wsgi.i686
+Test:  ???
+
+Python 2.6.7 appears pre-installed
+
+Configure Apache2 
+=================
+
+    Predicates
+    ----------
+
+    Installed Apache2
+    Installed and enabled mod_wsgi for Python WSGI applications
+    Created user that will run the WSGI code
+        sudo mkdir /var/local/reebill
+        sudo chown -R reebill:reebill /var/local/reebill
+
+    Deployed software in the WSGI code directory
+
+
+    Big catch on AWS Linux AMI:  
+        http://code.google.com/p/modwsgi/wiki/ConfigurationIssues
+        Add this to the wsgi module config file
+        WSGISocketPrefix /var/run/wsgi
+    
+
+    Virtual Hosting
+    ---------------
+
+    Configure a name based virtual host for your development environment
+        Ensure that the Apache2 host knows of the virtual hostnames so Apache can start virtual hosts with ServerName directive
+
+        Add to /etc/hosts:
+            [local ip address] atsite
+
+        Ensure that NameVirtualHost *:80 is declared in an appropriate httpd configuration file
+
+        Declare the virtual host's name in the site configuration file
+            ServerName [virtualhostname]
+
+        Restart Apache2
+            sudo service httpd restart
+
+    Example virtual host config directive
+    -------------------------------------
+        <VirtualHost *:80>
+                ServerName atsite.skylineinnovations.net
+
+                ServerAdmin admin@skylineinnovations.com
+
+                DocumentRoot /var/local/reebill/billing/reebill/ui
+                <Directory /var/local/reebill/billing/reebill/ui>
+                        DirectoryIndex /reebill
+                        Options FollowSymLinks
+                        AllowOverride None
+                </Directory>
+                # directory where utility bill images are saved
+                Alias /utilitybillimages /tmp/billimages
+                #<Directory /tmp/billimages-prod>
+                    #Order deny,allow
+                    #Allow from all
+                    #Options Indexes FollowSymLinks MultiViews
+                    #AllowOverride None
+                #</Directory>
+
+
+                ErrorLog /var/log/httpd/reebill-error.log
+
+                # Possible values include: debug, info, notice, warn, error, crit,
+                # alert, emerg.
+                LogLevel error
+
+                CustomLog /var/log/httpd/reebill-access.log combined
+
+                WSGIScriptAlias /reebill /var/local/reebill/billing/reebill/bill_tool_bridge.py
+
+                #WSGIDaemonProcess reebill user=reebill group=reebill processes=1 threads=10 python-path=/var/local/reebill/lib/python2.6/site-packages/ChartDirector/lib/:/var/local/reebill-prod/lib/python2.6/site-packages
+                # dedicated host, shared python environment
+                WSGIDaemonProcess reebill user=reebill group=reebill processes=1 threads=10 python-path=/var/local/reebill/:/usr/lib/python2.6/site-packages/ChartDirector/lib
+
+                WSGIProcessGroup reebill
+
+
+        </VirtualHost>
+
+
+
+    Deploy software
+    ---------------
+
+    fab deploy -R atsite
+    
+
+
+
+
+Creating Initial User
+=====================
+
+    [ec2-user@domU-12-31-39-07-5C-C2 billing]$ mongo
+    MongoDB shell version: 2.0.2
+    connecting to: test
+    > use skyline
+    switched to db skyline
+    > db.users.find()
+    > db.users.save({ "_id" : "atsite", "username" : "atsite", "preferences" : { "bill_image_resolution" : 90 } })
+
+
+Ensure Ext plug-ins are properly installed
+==========================================
+
+fabexcludes no longer excludes them
+    GET http://atsite.skylineinnovations.net/ext-3.3.1/examples/ux/css/Spinner.css 404 (Not Found)
+    GET http://atsite.skylineinnovations.net/ext-3.3.1/examples/ux/Spinner.js 404 (Not Found)
+    GET http://atsite.skylineinnovations.net/ext-3.3.1/examples/ux/SpinnerField.js 404 (Not Found)
+    GET http://atsite.skylineinnovations.net/ext-3.3.1/examples/ux/GroupSummary.js 404 (Not Found)
+
+
+
+MISC
+====
+
+The WSGI user must own the /db directory
+
+
+CRON
+====
+
+Necessary cron jobs for running ReeBill
+
+The python path for cron jobs should be .:/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib/
+
+python/var/local/reebill-prod/lib/python2.6/site-packages/billing/reconciliation.py --statedb skyline_prod --stateuser prod --statepw AXUPU4XGMSN --billdb skyline-prod
+
+
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+PYTHONPATH=/var/local/reebill-stage/lib/python2.6/site-packages:/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib
+
+for staging env:
+
+# m h  dom mon dow   command
+0 2 * * * /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/admin/destage.bash
+0 3 * * * /var/local/reebill-stage/lib/python2.6/site-packages/billing/reconciliation.py --statedb skyline_stage  --stateuser stage --statepw stage --billdb skyline-stage --olapdb dev --skip-oltp
+
+
+for prod env:
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+PYTHONPATH=/var/local/reebill-prod/lib/python2.6/site-packages:/var/local/reebill-prod/lib/python2.6/site-packages/ChartDirector/lib
+
+# m h  dom mon dow   command
+0 15 * * * /var/local/reebill-prod/lib/python2.6/site-packages/billing/reebill/admin/backup.bash
+0 3 * * * /var/local/reebill-prod/lib/python2.6/site-packages/billing/reconciliation.py --statedb skyline_prod  --stateuser root --statepw vLGhTZu9eq4ULvbbKzlE --billdb skyline-prod --olapdb dev --skip-oltp
+
+
+
