@@ -108,7 +108,6 @@ class JournalDAO(object):
         the given account.'''
         journal_entries = sorted(JournalEntry.objects(account=account),
                 key=operator.attrgetter('date'))
-        print 'journal_entries', journal_entries
         result = [entry.to_dict() for entry in journal_entries]
         return result
 
