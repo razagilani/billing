@@ -16,7 +16,6 @@ mysql -uroot -proot -D skyline_dev < ${now}billing_mysql.dmp
 mongorestore --drop --db skyline --collection ratestructure ${now}ratestructure_mongo/skyline-prod/ratestructure.bson
 mongorestore --drop --db skyline --collection reebills ${now}reebills_mongo/skyline-prod/reebills.bson
 mongorestore --drop --db skyline --collection journal ${now}journal_mongo/skyline-prod/journal.bson
-mongorestore --drop --db skyline --collection eventlog ${now}eventlog_mongo/skyline-prod/eventlog.bson
 mongorestore --drop --db skyline --collection users ${now}users_mongo/skyline-prod/users.bson
 
 # delete local bill files and replace with a copy from staging on tyrell

@@ -20,7 +20,7 @@ from billing.processing import state
 from billing.mongo import MongoReebill
 from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state
-from billing.processing.db_objects import Payment, Customer
+from billing.processing.db_objects import Payment, Customer, UtilBill
 from billing.mongo import ReebillDAO
 from billing import nexus_util
 from billing import dateutils
@@ -38,11 +38,12 @@ class Process(object):
     config = None
     
     def __init__(self, config, state_db, reebill_dao, rate_structure_dao,
-            splinter, monguru):
+            billupload, splinter, monguru):
         self.config = config
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
         self.reebill_dao = reebill_dao
+        self.billupload = billupload
         self.splinter = splinter
         self.monguru = monguru
 
@@ -50,6 +51,72 @@ class Process(object):
         new_customer = Customer(name, account, discount_rate, late_charge_rate)
         session.add(new_customer)
         return new_customer
+
+    def upload_utility_bill(self, session, account, service, begin_date,
+            end_date, bill_file, file_name):
+        '''Uploads 'bill_file' with the name 'file_name' as a utility bill for
+        the given account, service, and dates. If the upload succeeds, a row is
+        added to the utilbill table. If this is the newest or oldest utility
+        bill for the given account and service, "hypothetical" utility bills
+        will be added to cover the gap between this bill's period and the
+        previous newest or oldest one respectively.'''
+
+        # get & save end date of last bill (before uploading a new bill which
+        # may come later)
+        original_last_end = self.state_db.last_utilbill_end_date(session,
+                account)
+
+        if bill_file is None:
+            # if there's no file, this is a "skyline estimated bill":
+            # record it in the database with that state, but don't upload
+            # anything
+            self.state_db.record_utilbill_in_database(session, account,
+                    service, begin_date, end_date, datetime.datetime.utcnow(),
+                    state=UtilBill.SkylineEstimated)
+        else:
+            # if there is a file, get the Python file object and name
+            # string from CherryPy, and pass those to BillUpload to upload
+            # the file (so BillUpload can stay independent of CherryPy)
+            upload_result = self.billupload.upload(account, begin_date,
+                    end_date, bill_file, file_name)
+            if upload_result is True:
+                self.state_db.record_utilbill_in_database(session, account,
+                        service, begin_date, end_date,
+                        datetime.datetime.utcnow())
+            else:
+                raise IOError('File upload failed: %s %s %s' % (file_name,
+                    begin_date, end_date))
+
+        # if begin_date does not match end date of latest existing bill, create
+        # hypothetical bills to cover the gap
+        if original_last_end is not None and begin_date > original_last_end:
+            self.state_db.fill_in_hypothetical_utilbills(session, account,
+                    service, original_last_end, begin_date)
+
+    def delete_utility_bill(self, session, account, service, start_date, end_date):
+        '''Deletes the utility bill given by customer account, service, and
+        period dates, if it's not associated or attached to a reebill. Raises
+        an exception if the utility bill cannot be deleted.'''
+        utilbill = session.query(UtilBill)\
+                .filter(UtilBill.period_start==start_date and
+                UtilBill.period_end==end_date).one()
+        if utilbill.has_reebill:
+            raise Exception("Can't delete an attached utility bill.")
+
+        # find out if some reebill in mongo has this utilbill associated with
+        # it. (there should be at most one.)
+        possible_reebills = self.reebill_dao.load_reebills_in_period(account,
+                start_date=start_date, end_date=end_date)
+        if len(possible_reebills) > 0:
+            raise Exception(("Can't delete a utility bill that has reebill"
+                " associated with it."))
+
+        # OK to delete now.
+        # first try to delete the file on disk
+        self.billupload.delete_utilbill_file(account, start_date, end_date)
+
+        # TODO move to StateDB?
+        session.delete(utilbill)
 
     def sum_bill(self, session, prior_reebill, present_reebill):
         '''Compute everything about the bill that can be continuously
@@ -78,20 +145,23 @@ class Process(object):
         present_reebill.hypothetical_total = Decimal("0")
         present_reebill.actual_total = Decimal("0")
 
-        # sum up chargegroups into total per utility bill and accumulate reebill values
+        # sum up chargegroups into total per utility bill and accumulate
+        # reebill values
         for service in present_reebill.services:
 
             actual_total = Decimal("0")
             hypothetical_total = Decimal("0")
 
-            for chargegroup, charges in present_reebill.actual_chargegroups_for_service(service).items():
+            for chargegroup, charges in present_reebill.\
+                    actual_chargegroups_for_service(service).items():
                 actual_subtotal = Decimal("0")
                 for charge in charges:
                     actual_subtotal += charge["total"]
                     actual_total += charge["total"]
                 #TODO: subtotals for chargegroups?
 
-            for chargegroup, charges in present_reebill.hypothetical_chargegroups_for_service(service).items():
+            for chargegroup, charges in present_reebill.\
+                    hypothetical_chargegroups_for_service(service).items():
                 hypothetical_subtotal = Decimal("0")
                 for charge in charges:
                     hypothetical_subtotal += charge["total"]
@@ -100,19 +170,23 @@ class Process(object):
 
             # calculate utilbill level numbers
             present_reebill.set_actual_total_for_service(service, actual_total)
-            present_reebill.set_hypothetical_total_for_service(service, hypothetical_total)
+            present_reebill.set_hypothetical_total_for_service(service,
+                    hypothetical_total)
 
             ree_value = hypothetical_total - actual_total
-            ree_charges = (Decimal("1") - discount_rate) * (hypothetical_total - actual_total)
+            ree_charges = (Decimal("1") - discount_rate) * (hypothetical_total 
+                    - actual_total)
             ree_savings = discount_rate * (hypothetical_total - actual_total)
 
-            present_reebill.set_ree_value_for_service(service, ree_value.quantize(Decimal('.00')))
+            present_reebill.set_ree_value_for_service(service, 
+                    ree_value.quantize(Decimal('.00')))
             present_reebill.set_ree_charges_for_service(service, ree_charges)
             present_reebill.set_ree_savings_for_service(service, ree_savings)
 
 
         # accumulate at the reebill level
-        present_reebill.hypothetical_total = present_reebill.hypothetical_total + hypothetical_total
+        present_reebill.hypothetical_total = present_reebill.hypothetical_total\
+                + hypothetical_total
         present_reebill.actual_total = present_reebill.actual_total + actual_total
 
         present_reebill.ree_value = Decimal(present_reebill.ree_value + ree_value).quantize(Decimal('.00'))
@@ -370,8 +444,8 @@ class Process(object):
     def attach_utilbills(self, session, account, sequence):
         '''Creates association between the reebill given by 'account',
         'sequence' and all utilbills belonging to that customer whose entire
-        periods are within the date interval [start, end] and whose services
-        are not suspended. The utility bills are marked as processed.'''
+        periods are within the reebill's period and whose services are not
+        suspended. The utility bills are marked as processed.'''
         reebill = self.reebill_dao.load_reebill(account, sequence)
         self.state_db.attach_utilbills(session, account, sequence,
                 reebill.period_begin, reebill.period_end,
