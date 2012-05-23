@@ -1833,7 +1833,8 @@ class BillToolBridge:
                     .get('%s_suspended' % service.lower(), '') == 'on':
                 reebill.suspend_service(service.lower())
                 print service, 'suspended'
-            else:
+            elif kwargs.get('%s_suspended' % service, '') == 'off' or kwargs \
+                    .get('%s_suspended' % service.lower(), '') == 'off':
                 print service, 'resumed'
                 reebill.resume_service(service.lower())
 
