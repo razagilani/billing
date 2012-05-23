@@ -389,6 +389,7 @@ class StateDB:
         # error message. 26147819
 
         # get existing bills matching dates and service
+        # (there should be at most one, but you never know)
         existing_bills = session.query(UtilBill) \
                 .filter(UtilBill.customer_id==customer.id) \
                 .filter(UtilBill.service==service) \
@@ -462,10 +463,12 @@ class StateDB:
                 .filter(UtilBill.state==UtilBill.Hypothetical)\
                 .order_by(asc(UtilBill.period_start)).all()
         for hb in hypothetical_utilbills:
-            if (hb.period_start < first_real_utilbill.period_end \
-                    and hb.period_end < first_real_utilbill.period_end)\
-                    or (hb.period_end > last_real_utilbill.period_start\
-                    and hb.period_start > last_real_utilbill.period_end):
+            # delete if entire period comes before end of first real bill or
+            # after start of last real bill
+            if (hb.period_start <= first_real_utilbill.period_end \
+                    and hb.period_end <= first_real_utilbill.period_end)\
+                    or (hb.period_end >= last_real_utilbill.period_start\
+                    and hb.period_start >= last_real_utilbill.period_start):
                 session.delete(hb)
 
     def create_payment(self, session, account, date, description, credit):
