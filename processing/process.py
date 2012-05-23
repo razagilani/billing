@@ -197,7 +197,6 @@ class Process(object):
         # not been issued, 0 before the previous bill's due date, and non-0
         # after that)
 
-
         # now grab the prior bill and pull values forward
         present_reebill.prior_balance = prior_reebill.balance_due
         present_reebill.balance_forward = present_reebill.prior_balance - present_reebill.payment_received
@@ -688,8 +687,8 @@ class Process(object):
                         renewable_energy_btus = self.monguru.get_data_for_month(
                                 install, year, month).energy_sold
                     except Exception as e:
-                        # TODO 28319257 use a logger for this
-                        print "warning monguru error: %s:" % e
+                        print >> sys.stderr, 'Missing olap document for %s, %s-%s: skipped, but the graph will be wrong'
+                        renewable_energy_btus = 0
 
                 therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
                 next_stats['consumption_trend'].append({
