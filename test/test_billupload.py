@@ -80,6 +80,27 @@ port = 27017
                 self.billupload.get_utilbill_file_path(account, new_start,
                 new_end, extension='pdf'))
 
+    def test_delete_utilbill_file(self):
+        account = '99999'
+        start, end = date(2012,1,1), date(2012,2,1)
+        path = self.billupload.get_utilbill_file_path(account, start, end,
+                extension='pdf')
+
+        # path should not exist yet
+        assert not os.access(path, os.F_OK)
+
+        # create parent directories of bill file, then create bill file itself
+        # with some text in it
+        os.makedirs(os.path.split(path)[0])
+        with open(path, 'w') as bill_file:
+            bill_file.write('this is a test')
+
+        # delete the file
+        self.billupload.delete_utilbill_file(account, start, end)
+
+        # now the file should not exist
+        self.assertFalse(os.access(path, os.F_OK))
+
 if __name__ == '__main__':
     #unittest.main(failfast=True)
     unittest.main()

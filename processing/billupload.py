@@ -177,6 +177,14 @@ class BillUpload(object):
         # move
         shutil.move(old_path, new_path)
 
+    def delete_utilbill_file(self, account, period_start, period_end):
+        '''Deletes the utility bill file given by account and period.'''
+        # TODO due to multiple services, utility bills cannot be uniquely
+        # identified by account and period!
+        # see https://www.pivotaltracker.com/story/show/30079049
+        path = self.get_utilbill_file_path(account, period_start, period_end)
+        os.remove(path)
+
     def get_reebill_file_path(self, account, sequence, branch=0):
         # TODO implement like the utilbill version
         pass

@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import sys
+import os
 import unittest
 from StringIO import StringIO
 import ConfigParser
@@ -44,12 +45,12 @@ class ProcessTest(unittest.TestCase):
         config_file = StringIO('''[runtime]
 integrate_skyline_backend = true
 [billimages]
-bill_image_directory = /tmp/billimages
+bill_image_directory = /tmp/test/billimages
 show_reebill_images = true
 [billdb]
-billpath = /db-dev/skyline/bills/
-database = skyline
-utilitybillpath = /db-dev/skyline/utilitybills/
+billpath = /tmp/test/db-test/skyline/bills/
+database = test
+utilitybillpath = /tmp/test/db-test/skyline/utilitybills/
 collection = reebills
 host = localhost
 port = 27017
@@ -591,6 +592,58 @@ port = 27017
             self.assertEqual(UtilBill.Complete, bills[i].state)
 
             session.commit()
+
+    def test_delete_utility_bill(self):
+        account, service, = '99999', 'gas'
+        start, end = date(2012,1,1), date(2012,2,1)
+        process = Process(self.config, self.state_db, self.reebill_dao,
+                self.rate_structure_dao, self.billupload, self.splinter,
+                self.monguru)
+
+        with DBSession(self.state_db) as session:
+            # create utility bill, and make sure it exists in db and filesystem
+            process.upload_utility_bill(session, account, service, start, end,
+                    StringIO("test"), 'january.pdf')
+            assert self.state_db.list_utilbills(session, account)[1] == 1
+            bill_file_path = self.billupload.get_utilbill_file_path(account,
+                    start, end)
+            assert os.access(bill_file_path, os.F_OK)
+
+            # unassociated: deletion should succeed
+            process.delete_utility_bill(session, account, service, start, end)
+            self.assertEqual(0, self.state_db.list_utilbills(session, account)[1])
+            self.assertFalse(os.access(bill_file_path, os.F_OK))
+
+            # re-upload the bill
+            process.upload_utility_bill(session, account, service, start, end,
+                    StringIO("test"), 'january.pdf')
+            assert self.state_db.list_utilbills(session, account)[1] == 1
+            bill_file_path = self.billupload.get_utilbill_file_path(account,
+                    start, end)
+            assert os.access(bill_file_path, os.F_OK)
+
+            # associated with reebill that has not been issued: should fail
+            # (association is currently done purely by date range)
+            mongo_reebill = example_data.get_reebill(account, 1)
+            mongo_reebill.set_utilbill_period_for_service(service, (start, end))
+            mongo_reebill.period_begin = start
+            mongo_reebill.period_end = end
+            self.reebill_dao.save_reebill(mongo_reebill)
+            import pdb; pdb.set_trace()
+            self.assertRaises(Exception, process.delete_utility_bill, session,
+                    account, service, start, end)
+
+            # attached to reebill: should fail (this reebill is not created by
+            # rolling, the way it's usually done, and only exists in MySQL)
+            reebill = self.state_db.new_rebill(session, account, 1)
+            utilbill = self.state_db.list_utilbills(session, account)[0].one()
+            process.attach_utilbills(session, account, 1)
+            assert utilbill.reebill == reebill
+            self.assertRaises(Exception, process.delete_utility_bill, session,
+                    account, service, start, end)
+
+            session.commit()
+
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)

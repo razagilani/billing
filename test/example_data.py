@@ -115,7 +115,7 @@ example_utilbill = {
         ]
     },
     "ree_charges" : 118.42,
-    "service" : "Gas",
+    "service" : "gas",
     "serviceaddress" : {
         "postalcode" : "20010",
         "city" : "Washington",
