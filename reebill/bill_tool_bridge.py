@@ -2418,8 +2418,6 @@ class BillToolBridge:
                 # utility bill row in a json string called "rows"
                 rows = ju.loads(kwargs['rows'])
                 utilbill_id = rows['id']
-                #new_period_start = datetime.strptime(rows['period_start'], '%y-%m-%dt%h:%m:%s').date() # iso 8601
-                #new_period_end = datetime.strptime(rows['period_end'], '%y-%m-%dt%h:%m:%s').date()
                 new_period_start = datetime.strptime(rows['period_start'],
                         dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
                 new_period_end = datetime.strptime(rows['period_end'],

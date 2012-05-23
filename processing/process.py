@@ -93,6 +93,31 @@ class Process(object):
             self.state_db.fill_in_hypothetical_utilbills(session, account,
                     service, original_last_end, begin_date)
 
+    def delete_utility_bill(self, session, account, service, start_date, end_date):
+        '''Deletes the utility bill given by customer account, service, and
+        period dates, if it's not associated or attached to a reebill. Raises
+        an exception if the utility bill cannot be deleted.'''
+        utilbill = session.query(UtilBill)\
+                .filter(UtilBill.period_start==start_date and
+                UtilBill.period_end==end_date).one()
+        if utilbill.has_reebill:
+            raise Exception("Can't delete an attached utility bill.")
+
+        # find out if some reebill in mongo has this utilbill associated with
+        # it. (there should be at most one.)
+        possible_reebills = self.reebill_dao.load_reebills_in_period(account,
+                start_date=start_date, end_date=end_date)
+        if len(possible_reebills) > 0:
+            raise Exception(("Can't delete a utility bill that has reebill"
+                " associated with it."))
+
+        # OK to delete now.
+        # first try to delete the file on disk
+        self.billupload.delete_utilbill_file(account, start_date, end_date)
+
+        # TODO move to StateDB?
+        session.delete(utilbill)
+
     def sum_bill(self, session, prior_reebill, present_reebill):
         '''Compute everything about the bill that can be continuously
         recomputed. This should be called immediately after roll_bill()
@@ -419,8 +444,8 @@ class Process(object):
     def attach_utilbills(self, session, account, sequence):
         '''Creates association between the reebill given by 'account',
         'sequence' and all utilbills belonging to that customer whose entire
-        periods are within the date interval [start, end] and whose services
-        are not suspended. The utility bills are marked as processed.'''
+        periods are within the reebill's period and whose services are not
+        suspended. The utility bills are marked as processed.'''
         reebill = self.reebill_dao.load_reebill(account, sequence)
         self.state_db.attach_utilbills(session, account, sequence,
                 reebill.period_begin, reebill.period_end,

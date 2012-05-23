@@ -279,10 +279,12 @@ class StateDB:
         return None
 
     def new_rebill(self, session, account, sequence):
-        '''Creates a new ReeBill row in the database, returns its id.'''
+        '''Creates a new ReeBill row in the database and returns the new
+        ReeBill object corresponding to it.'''
         customer = session.query(Customer).filter(Customer.account==account).one()
         new_reebill = ReeBill(customer, sequence)
         session.add(new_reebill)
+        return new_reebill
 
     def issue(self, session, account, sequence):
         '''Marks the given reebill as issued. Does not set the issue date or
