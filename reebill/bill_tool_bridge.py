@@ -530,7 +530,7 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     def logout(self):
-        if 'user' in cherrypy.session:
+        if hasattr(cherrypy, 'session') and 'user' in cherrypy.session:
             self.logger.info('user "%s" logged out' % (cherrypy.session['user'].username))
             del cherrypy.session['user']
         raise cherrypy.HTTPRedirect('/login.html')
