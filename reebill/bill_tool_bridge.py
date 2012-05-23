@@ -46,7 +46,8 @@ from billing.reebill.journal import JournalDAO
 from billing.users import UserDAO, User
 from billing import calendar_reports
 from billing.estimated_revenue import EstimatedRevenue
-
+from billing.session_contextmanager import DBSession
+import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
 sys.stdout = sys.stderr
@@ -78,12 +79,6 @@ def random_wait(target):
         time.sleep(t)
         return target(*args, **kwargs)
     return random_wait_wrapper
-
-#class DBSession(object): #def __enter__(self, state_db):
-        #self.session = state_db.session()
-        #return self.session
-    #def __exit__(self):
-        #self.session.rollback()
 
 class Unauthenticated(Exception):
     pass
@@ -140,19 +135,6 @@ def json_exception(method):
             return btb_instance.handle_exception(e)
     return wrapper
 
-
-class DBSession(object):
-    '''Context manager for using "with" for database session.'''
-    def __init__(self, state_db):
-        self.state_db = state_db
-
-    def __enter__(self):
-        self.session = self.state_db.session()
-        return self.session
-
-    def __exit__(self, type, value, traceback):
-        print 'exit: %type={type}, value=%{value}, traceback=%{traceback}'.format(**vars())
-        self.session.rollback()
 
 # TODO 11454025 rename to ProcessBridge or something
 # TODO (object)?
@@ -336,13 +318,13 @@ class BillToolBridge:
             self.process = process.Process(
                 self.config, self.state_db, self.reebill_dao,
                 self.ratestructure_dao,
+                self.billUpload,
                 self.splinter, self.splinter.get_monguru()
             )
         else:
             self.process = process.Process(self.config, self.state_db,
-                    self.reebill_dao, self.ratestructure_dao,
-                    None,
-                    None)
+                    self.reebill_dao, self.ratestructure_dao, self.billUpload,
+                    None, None)
 
 
         # create a ReebillRenderer
@@ -548,7 +530,7 @@ class BillToolBridge:
     @cherrypy.expose
     @random_wait
     def logout(self):
-        if 'user' in cherrypy.session:
+        if hasattr(cherrypy, 'session') and 'user' in cherrypy.session:
             self.logger.info('user "%s" logged out' % (cherrypy.session['user'].username))
             del cherrypy.session['user']
         raise cherrypy.HTTPRedirect('/login.html')
@@ -2254,41 +2236,17 @@ class BillToolBridge:
             end_date_as_date = datetime.strptime(end_date, '%Y-%m-%d').date()
             self.validate_utilbill_period(begin_date_as_date, end_date_as_date)
 
-            session = self.state_db.session()
+            try:
+                self.process.upload_utility_bill(session, account, service,
+                        begin_date_as_date, end_date_as_date, file_to_upload.file,
+                        file_to_upload.filename if file_to_upload else None)
+            except IOError:
+                self.logger.error('file upload failed:', begin_date, end_date,
+                        file_to_upload.filename)
+                raise
 
-            # if begin_date does not match end date of latest existing bill,
-            # create hypothetical bills to cover the gap
-            latest_end_date = self.state_db.last_utilbill_end_date(session, account)
-            if latest_end_date is not None and begin_date_as_date > latest_end_date:
-                self.state_db.fill_in_hypothetical_utilbills(session, account,
-                        service, latest_end_date, begin_date_as_date)
-
-            if file_to_upload.file is None:
-                # if there's no file, this is a "skyline estimated bill":
-                # record it in the database with that state, but don't upload
-                # anything
-                self.state_db.record_utilbill_in_database(session, account,
-                        service, begin_date, end_date, datetime.utcnow(),
-                        state=db_objects.UtilBill.SkylineEstimated)
-                session.commit()
-                return self.dumps({'success':True})
-            else:
-                # if there is a file, get the Python file object and name
-                # string from CherryPy, and pass those to BillUpload to upload
-                # the file (so BillUpload can stay independent of CherryPy)
-                upload_result = self.billUpload.upload(account, begin_date,
-                        end_date, file_to_upload.file, file_to_upload.filename)
-                if upload_result is True:
-                    self.state_db.record_utilbill_in_database(session, account,
-                            service, begin_date, end_date, datetime.utcnow())
-                    session.commit()
-                    return self.dumps({'success':True})
-                else:
-                    self.logger.error('file upload failed:', begin_date, end_date,
-                            file_to_upload.filename)
-                    session.commit()
-                    return self.dumps({'success':False, 'errors': {
-                        'reason':'file upload failed', 'details':'Returned False'}})
+            session.commit()
+            return self.dumps({'success': True})
 
     #
     ################
@@ -2452,20 +2410,25 @@ class BillToolBridge:
                 # was doing this
                 return self.listUtilBills(**kwargs)
             elif xaction == 'update':
+                # TODO move out of BillToolBridge, make into its own function
+                # so it's testable
+
                 # only the start and end dates can be updated.
                 # parse data from the client: for some reason it returns single
                 # utility bill row in a json string called "rows"
                 rows = ju.loads(kwargs['rows'])
                 utilbill_id = rows['id']
-                new_period_start = datetime.strptime(rows['period_start'], '%y-%m-%dt%h:%m:%s').date() # iso 8601
-                new_period_end = datetime.strptime(rows['period_end'], '%y-%m-%dt%h:%m:%s').date()
+                new_period_start = datetime.strptime(rows['period_start'],
+                        dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
+                new_period_end = datetime.strptime(rows['period_end'],
+                        dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
 
                 # check that new dates are reasonable
                 self.validate_utilbill_period(new_period_start, new_period_end)
 
                 # find utilbill in mysql
                 session = self.state_db.session()
-                utilbill = session.query(db_objects.utilbill).filter(
+                utilbill = session.query(db_objects.UtilBill).filter(
                         db_objects.UtilBill.id==utilbill_id).one()
                 customer = session.query(db_objects.Customer).filter(
                         db_objects.Customer.id==utilbill.customer_id).one()
@@ -2481,17 +2444,21 @@ class BillToolBridge:
                         # https://www.pivotaltracker.com/story/show/24869817
                         utilbill.period_start,
                         utilbill.period_end,
-                        #datetime.strftime(utilbill.period_start, billupload.INPUT_DATE_FORMAT),
-                        #datetime.strftime(utilbill.period_end, billupload.INPUT_DATE_FORMAT),
                         new_period_start, new_period_end)
 
                 # change dates in MySQL
                 session = self.state_db.session()
-                utilbill = session.query(db_objects.UtilBill).filter(db_objects.UtilBill.id==utilbill_id).one()
+                utilbill = session.query(db_objects.UtilBill)\
+                        .filter(db_objects.UtilBill.id==utilbill_id).one()
                 if utilbill.has_reebill:
                     raise Exception("Can't edit utility bills that have already been attached to a reebill.")
                 utilbill.period_start = new_period_start
                 utilbill.period_end = new_period_end
+
+                # delete any hypothetical utility bills that were created to
+                # cover gaps that no longer exist
+                self.process.state_db.trim_hypothetical_utilbills(session,
+                        customer.account, utilbill.service)
                 session.commit()
 
                 return self.dumps({'success': True})

@@ -6,8 +6,9 @@ import unittest
 import math
 
 # convenient format strings
-ISO_8601_DATETIME = '%Y-%m-%dT%H:%M:%SZ'
 ISO_8601_DATE = '%Y-%m-%d'
+ISO_8601_DATETIME = '%Y-%m-%dT%H:%M:%SZ'
+ISO_8601_DATETIME_WITHOUT_ZONE = '%Y-%m-%dT%H:%M:%S'
 
 def date_generator(from_date, to_date):
     """Yields dates based on from_date up to but excluding to_date.  The reason

@@ -1,19 +1,23 @@
 #!/usr/bin/python
 import sys
+import os
 import unittest
 from StringIO import StringIO
 import ConfigParser
+import logging
 import pymongo
 import sqlalchemy
 from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
 from datetime import date, datetime, timedelta
 from billing import dateutils, mongo
+from billing.session_contextmanager import DBSession
 from billing.dateutils import estimate_month, month_offset
 from billing.processing import rate_structure
 from billing.processing.process import Process
 from billing.processing.state import StateDB
 from billing.processing.db_objects import ReeBill, Customer, UtilBill
+from billing.processing.billupload import BillUpload
 from decimal import Decimal
 from billing.dictutils import deep_map
 import MySQLdb
@@ -31,12 +35,26 @@ class ProcessTest(unittest.TestCase):
         #super(ProcessTest, self).__init__(methodName)
 
     def setUp(self):
+        print 'setUp'
+
         # this method runs before every test.
         # clear SQLAlchemy mappers so StateDB can be instantiated again
         sqlalchemy.orm.clear_mappers()
 
         # everything needed to create a Process object
-        config_file = StringIO('''[runtime]\nintegrate_skyline_backend = true''')
+        config_file = StringIO('''[runtime]
+integrate_skyline_backend = true
+[billimages]
+bill_image_directory = /tmp/test/billimages
+show_reebill_images = true
+[billdb]
+billpath = /tmp/test/db-test/skyline/bills/
+database = test
+utilitybillpath = /tmp/test/db-test/skyline/utilitybills/
+collection = reebills
+host = localhost
+port = 27017
+''')
         self.config = ConfigParser.RawConfigParser()
         self.config.readfp(config_file)
         self.reebill_dao = mongo.ReebillDAO({
@@ -47,6 +65,7 @@ class ProcessTest(unittest.TestCase):
             'host': 'localhost',
             'port': 27017
         })
+        self.billupload = BillUpload(self.config, logging.getLogger('test'))
         self.rate_structure_dao = rate_structure.RateStructureDAO({
             'database': 'test',
             'collection': 'ratestructure',
@@ -56,7 +75,7 @@ class ProcessTest(unittest.TestCase):
         self.splinter = Splinter('http://duino-drop.appspot.com/', 'tyrell',
                 'dev')
         self.monguru = Monguru('tyrell', 'dev')
-
+        
         # temporary hack to get a bill that's always the same
         # this bill came straight out of mongo (except for .date() applied to
         # datetimes)
@@ -91,6 +110,10 @@ class ProcessTest(unittest.TestCase):
         session.add(customer)
         session.commit()
 
+        #self.process = Process(self.config, self.state_db, self.reebill_dao,
+                #self.rate_structure_dao, self.billupload, self.splinter,
+                #self.monguru)
+
     def tearDown(self):
         '''This gets run even if a test fails.'''
         # clear out mongo test database
@@ -112,7 +135,8 @@ class ProcessTest(unittest.TestCase):
         try:
             session = self.state_db.session()
             process = Process(self.config, self.state_db, self.reebill_dao,
-                    self.rate_structure_dao, self.splinter, self.monguru)
+                    self.rate_structure_dao, self.billupload, self.splinter,
+                    self.monguru)
  
             bill1 = example_data.get_reebill('99999', 1)
             bill1.balance_forward = Decimal('100.')
@@ -278,7 +302,8 @@ class ProcessTest(unittest.TestCase):
         try:
             session = self.state_db.session()
             process = Process(self.config, self.state_db, self.reebill_dao,
-                    self.rate_structure_dao, self.splinter, self.monguru)
+                    self.rate_structure_dao, self.billupload, self.splinter,
+                    self.monguru)
 
             # generic reebill
             bill1 = example_data.get_reebill('99999', 1)
@@ -345,7 +370,8 @@ class ProcessTest(unittest.TestCase):
         # compute charges in the bill using the rate structure created from the
         # above documents
         process = Process(self.config, self.state_db, self.reebill_dao,
-                self.rate_structure_dao, self.splinter, self.monguru)
+                self.rate_structure_dao, self.billupload, self.splinter,
+                self.monguru)
         process.bindrs(bill1, None)
 
         # ##############################################################
@@ -480,5 +506,145 @@ class ProcessTest(unittest.TestCase):
                 sales_tax['total'],
                 places=2)
 
+
+    def test_upload_utility_bill(self):
+        '''Tests saving of utility bills in database (which also belongs partly
+        to StateDB); does not test saving of utility bill files (which belongs
+        to BillUpload).'''
+        print 'test_upload_utility_bill'
+        with DBSession(self.state_db) as session:
+            account, service = '99999', 'gas'
+            process = Process(self.config, self.state_db, self.reebill_dao,
+                    self.rate_structure_dao, self.billupload, self.splinter,
+                    self.monguru)
+
+            # one utility bill
+            file1 = StringIO("Let's pretend this is a PDF")
+            process.upload_utility_bill(session, account, service,
+                    date(2012,1,1), date(2012,2,1), file1, 'january.pdf')
+            bills = self.state_db.list_utilbills(session,
+                    account)[0].filter(UtilBill.service==service).all()
+            self.assertEqual(1, len(bills))
+            self.assertEqual(UtilBill.Complete, bills[0].state)
+            self.assertEqual(date(2012,1,1), bills[0].period_start)
+            self.assertEqual(date(2012,2,1), bills[0].period_end)
+
+            # second contiguous bill
+            file2 = StringIO("Let's pretend this is a PDF")
+            process.upload_utility_bill(session, account, service,
+                    date(2012,2,1), date(2012,3,1), file2, 'february.pdf')
+            bills = self.state_db.list_utilbills(session,
+                    account)[0].filter(UtilBill.service==service).all()
+            self.assertEqual(2, len(bills))
+            self.assertEqual(UtilBill.Complete, bills[0].state)
+            self.assertEqual(date(2012,1,1), bills[0].period_start)
+            self.assertEqual(date(2012,2,1), bills[0].period_end)
+            self.assertEqual(UtilBill.Complete, bills[1].state)
+            self.assertEqual(date(2012,2,1), bills[1].period_start)
+            self.assertEqual(date(2012,3,1), bills[1].period_end)
+
+            # 3rd bill without a file ("skyline estimated")
+            process.upload_utility_bill(session, account, service,
+                    date(2012,3,1), date(2012,4,1), None, None)
+            bills = self.state_db.list_utilbills(session,
+                    account)[0].filter(UtilBill.service==service).all()
+            self.assertEqual(3, len(bills))
+            self.assertEqual(UtilBill.Complete, bills[0].state)
+            self.assertEqual(date(2012,1,1), bills[0].period_start)
+            self.assertEqual(date(2012,2,1), bills[0].period_end)
+            self.assertEqual(UtilBill.Complete, bills[1].state)
+            self.assertEqual(date(2012,2,1), bills[1].period_start)
+            self.assertEqual(date(2012,3,1), bills[1].period_end)
+            self.assertEqual(UtilBill.SkylineEstimated, bills[2].state)
+            self.assertEqual(date(2012,3,1), bills[2].period_start)
+            self.assertEqual(date(2012,4,1), bills[2].period_end)
+
+            # 4th bill without a gap between it and th 3rd bill: hypothetical
+            # bills should be inserted
+            file4 = StringIO("File of the July bill.")
+            process.upload_utility_bill(session, account, service,
+                    date(2012,7,1), date(2012,8,1), file4, 'july.pdf')
+            bills = self.state_db.list_utilbills(session,
+                    account)[0].filter(UtilBill.service==service).all()
+            self.assertEqual(UtilBill.Complete, bills[0].state)
+            self.assertEqual(date(2012,1,1), bills[0].period_start)
+            self.assertEqual(date(2012,2,1), bills[0].period_end)
+            self.assertEqual(UtilBill.Complete, bills[1].state)
+            self.assertEqual(date(2012,2,1), bills[1].period_start)
+            self.assertEqual(date(2012,3,1), bills[1].period_end)
+            self.assertEqual(UtilBill.SkylineEstimated, bills[2].state)
+            self.assertEqual(date(2012,3,1), bills[2].period_start)
+            self.assertEqual(date(2012,4,1), bills[2].period_end)
+
+            # there should be at least 5 bills (it doesn't matter how many).
+            # the hypothetical ones should be contiguous from the start of the
+            # gap to the end.
+            self.assertGreater(len(bills), 4)
+            i = 3
+            while bills[i].period_end <= date(2012,7,1):
+                self.assertEqual(bills[i-1].period_end, bills[i].period_start)
+                self.assertEqual(UtilBill.Hypothetical, bills[i].state)
+                i += 1
+            # Complete bill for July should be the last one
+            self.assertEqual(len(bills)-1, i)
+            self.assertEqual(date(2012,7,1), bills[i].period_start)
+            self.assertEqual(date(2012,8,1), bills[i].period_end)
+            self.assertEqual(UtilBill.Complete, bills[i].state)
+
+            session.commit()
+
+    def test_delete_utility_bill(self):
+        account, service, = '99999', 'gas'
+        start, end = date(2012,1,1), date(2012,2,1)
+        process = Process(self.config, self.state_db, self.reebill_dao,
+                self.rate_structure_dao, self.billupload, self.splinter,
+                self.monguru)
+
+        with DBSession(self.state_db) as session:
+            # create utility bill, and make sure it exists in db and filesystem
+            process.upload_utility_bill(session, account, service, start, end,
+                    StringIO("test"), 'january.pdf')
+            assert self.state_db.list_utilbills(session, account)[1] == 1
+            bill_file_path = self.billupload.get_utilbill_file_path(account,
+                    start, end)
+            assert os.access(bill_file_path, os.F_OK)
+
+            # unassociated: deletion should succeed
+            process.delete_utility_bill(session, account, service, start, end)
+            self.assertEqual(0, self.state_db.list_utilbills(session, account)[1])
+            self.assertFalse(os.access(bill_file_path, os.F_OK))
+
+            # re-upload the bill
+            process.upload_utility_bill(session, account, service, start, end,
+                    StringIO("test"), 'january.pdf')
+            assert self.state_db.list_utilbills(session, account)[1] == 1
+            bill_file_path = self.billupload.get_utilbill_file_path(account,
+                    start, end)
+            assert os.access(bill_file_path, os.F_OK)
+
+            # associated with reebill that has not been issued: should fail
+            # (association is currently done purely by date range)
+            mongo_reebill = example_data.get_reebill(account, 1)
+            mongo_reebill.set_utilbill_period_for_service(service, (start, end))
+            mongo_reebill.period_begin = start
+            mongo_reebill.period_end = end
+            self.reebill_dao.save_reebill(mongo_reebill)
+            import pdb; pdb.set_trace()
+            self.assertRaises(Exception, process.delete_utility_bill, session,
+                    account, service, start, end)
+
+            # attached to reebill: should fail (this reebill is not created by
+            # rolling, the way it's usually done, and only exists in MySQL)
+            reebill = self.state_db.new_rebill(session, account, 1)
+            utilbill = self.state_db.list_utilbills(session, account)[0].one()
+            process.attach_utilbills(session, account, 1)
+            assert utilbill.reebill == reebill
+            self.assertRaises(Exception, process.delete_utility_bill, session,
+                    account, service, start, end)
+
+            session.commit()
+
+
 if __name__ == '__main__':
-    unittest.main(failfast=True)
+    #unittest.main(failfast=True)
+    unittest.main()
