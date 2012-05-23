@@ -2245,6 +2245,7 @@ class BillToolBridge:
                         file_to_upload.filename)
                 raise
 
+            session.commit()
             return self.dumps({'success': True})
 
     #
@@ -2417,15 +2418,19 @@ class BillToolBridge:
                 # utility bill row in a json string called "rows"
                 rows = ju.loads(kwargs['rows'])
                 utilbill_id = rows['id']
-                new_period_start = datetime.strptime(rows['period_start'], '%y-%m-%dt%h:%m:%s').date() # iso 8601
-                new_period_end = datetime.strptime(rows['period_end'], '%y-%m-%dt%h:%m:%s').date()
+                #new_period_start = datetime.strptime(rows['period_start'], '%y-%m-%dt%h:%m:%s').date() # iso 8601
+                #new_period_end = datetime.strptime(rows['period_end'], '%y-%m-%dt%h:%m:%s').date()
+                new_period_start = datetime.strptime(rows['period_start'],
+                        dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
+                new_period_end = datetime.strptime(rows['period_end'],
+                        dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
 
                 # check that new dates are reasonable
                 self.validate_utilbill_period(new_period_start, new_period_end)
 
                 # find utilbill in mysql
                 session = self.state_db.session()
-                utilbill = session.query(db_objects.utilbill).filter(
+                utilbill = session.query(db_objects.UtilBill).filter(
                         db_objects.UtilBill.id==utilbill_id).one()
                 customer = session.query(db_objects.Customer).filter(
                         db_objects.Customer.id==utilbill.customer_id).one()
@@ -2441,8 +2446,6 @@ class BillToolBridge:
                         # https://www.pivotaltracker.com/story/show/24869817
                         utilbill.period_start,
                         utilbill.period_end,
-                        #datetime.strftime(utilbill.period_start, billupload.INPUT_DATE_FORMAT),
-                        #datetime.strftime(utilbill.period_end, billupload.INPUT_DATE_FORMAT),
                         new_period_start, new_period_end)
 
                 # change dates in MySQL
@@ -2457,7 +2460,7 @@ class BillToolBridge:
                 # delete any hypothetical utility bills that were created to
                 # cover gaps that no longer exist
                 self.process.state_db.trim_hypothetical_utilbills(session,
-                        account, utilbill.service)
+                        customer.account, utilbill.service)
                 session.commit()
 
                 return self.dumps({'success': True})
