@@ -609,12 +609,11 @@ class MongoReebill(object):
         if service not in [s.lower() for s in self.services]:
             raise ValueError('Unknown service %s: services are %s' % (service, self.services))
 
-        if service in self.dictionary['suspended_services']:
+        if service in self.dictionary.get('suspended_services', {}):
             self.dictionary['suspended_services'].remove(service)
             # might as well take out the key if the list is empty
             if self.dictionary['suspended_services'] == []:
                 del self.dictionary['suspended_services']
-        print '%s-%s suspended_services set to %s' % (self.account, self.sequence, self.dictionary['suspended_services'])
 
     def utilbill_period_for_service(self, service_name):
         '''Returns start & end dates of the first utilbill found whose service
