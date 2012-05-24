@@ -109,116 +109,227 @@ class MongoReebill(object):
 
     def __init__(self, reebill_data):
 
-        # if no xml_reebill is passed in, assume we are
-        # having self.dictionary set externally because
         # the bill was found in mongo
         if type(reebill_data) is dict:
-            self.dictionary = reebill_data
+            self.reebill_dict = reebill_data
             return
 
-        # ok, not being constructed for mongo, so let's initialize our fields properly
+        # return a new instance based on an existing instance
+        elif type(reebill_data) is MongoReebill:
+
+            reebill = reebill_data
+
+            # copy the dict passed because we set it here as instance data and start
+            # operating on that data. This destroys the reebill from whence it came
+            self.reebill_dict = copy.copy(reebill.reebill_dict)
+
+            # increment sequence
+            self.sequence = reebill.sequence + 1
+
+            # set start date of each utility bill in this reebill to the end date
+            # of the previous utility bill for that service
+            for service in reebill.services:
+                prev_start, prev_end = reebill.utilbill_period_for_service(service)
+                self.set_utilbill_period_for_service(service, (prev_end, None))
+
+            # https://www.pivotaltracker.com/story/show/22547583
+            # TODO: 22547583
+            # this code is related to what must be done when constructing a
+            # new instance of a reebill.  What is missing is setting up initial
+            # chargegroups and registers, for example.
+
+            # process rebill
+            self.period_begin = reebill.period_end
+            self.period_end = None
+            self.total_adjustment = Decimal("0.00")
+            self.hypothetical_total = Decimal("0.00")
+            self.actual_total = Decimal("0.00")
+            self.ree_value = Decimal("0.00")
+            self.ree_charges = Decimal("0.00")
+            self.ree_savings = Decimal("0.00")
+            self.due_date = None
+            self.issue_date = None
+            self.motd = None
+
+            # this should always be set from the value in MySQL, which holds the
+            # "current" discount rate for each customer
+            self.discount_rate = Decimal("0.00")
+
+            self.prior_balance = Decimal("0.00")
+            self.total_due = Decimal("0.00")
+            self.balance_due = Decimal("0.00")
+            self.payment_received = Decimal("0.00")
+            self.balance_forward = Decimal("0.00")
+
+            for service in self.services:
+                # get utilbill numbers and zero them out
+                self.set_actual_total_for_service(service, Decimal("0.00")) 
+                self.set_hypothetical_total_for_service(service, Decimal("0.00")) 
+                self.set_ree_value_for_service(service, Decimal("0.00")) 
+                self.set_ree_savings_for_service(service, Decimal("0.00")) 
+                self.set_ree_charges_for_service(service, Decimal("0.00")) 
+
+                # set new UUID's & clear out the last bound charges
+                actual_chargegroups = self.actual_chargegroups_for_service(service)
+                for (group, charges) in actual_chargegroups.items():
+                    for charge in charges:
+                        charge['uuid'] = str(UUID.uuid1())
+                        if 'rate' in charge: del charge['rate']
+                        if 'quantity' in charge: del charge['quantity']
+                        if 'total' in charge: del charge['total']
+                        
+                self.set_actual_chargegroups_for_service(service, actual_chargegroups)
+
+                hypothetical_chargegroups = self.hypothetical_chargegroups_for_service(service)
+                for (group, charges) in hypothetical_chargegroups.items():
+                    for charge in charges:
+                        charge['uuid'] = str(UUID.uuid1())
+                        if 'rate' in charge: del charge['rate']
+                        if 'quantity' in charge: del charge['quantity']
+                        if 'total' in charge: del charge['total']
+                        
+                self.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
+
+           
+                # reset measured usage
+
+                for service in self.services:
+                    for meter in self.meters_for_service(service):
+                        self.set_meter_read_date(service, meter['identifier'], None, meter['present_read_date'])
+                    for actual_register in self.actual_registers(service):
+                        self.set_actual_register_quantity(actual_register['identifier'], 0.0)
+                    for shadow_register in self.shadow_registers(service):
+                        self.set_shadow_register_quantity(shadow_register['identifier'], 0.0)
 
 
-        # TODO merge in roll bill reset code into behavior of mongo_reebill and use it here
+                # zero out statistics section
+                statistics = self.statistics
 
-        self.dictionary = {}
-        self.account = ""
-        self.sequence = 0 
-        self.branch = 0 
-        self.issue_date = None
-        self.due_date = None
-        self.period_begin = None
-        self.period_end = None
-        self.balance_due = Decimal("0.00") 
-        self.prior_balance = Decimal("0.00") 
-        self.payment_received = Decimal("0.00")
+                statistics["conventional_consumed"] = 0
+                statistics["renewable_consumed"] = 0
+                statistics["renewable_utilization"] = 0
+                statistics["conventional_utilization"] = 0
+                statistics["renewable_produced"] = 0
+                statistics["co2_offset"] = 0
+                statistics["total_savings"] = Decimal("0.00")
+                statistics["total_renewable_consumed"] = 0
+                statistics["total_renewable_produced"] = 0
+                statistics["total_trees"] = 0
+                statistics["total_co2_offset"] = 0
 
-        # consider a reset addr function
-        self.billing_address = {"ba_addressee": None, "ba_street1": None, "ba_city": None, "ba_state": None, "ba_postalcode": None}
-        self.service_address = {"sa_addressee": None, "sa_street1": None, "sa_city": None, "sa_state": None, "sa_postalcode": None}
-        self.ree_charges = Decimal("0.00")
-        self.ree_savings = Decimal("0.00")
-        self.total_adjustment = Decimal("0.00")
-        self.balance_forward = Decimal("0.00")
-        self.motd = "New customer template"
+                # TODO: 22554017
+                # leave consumption trend alone since we want to carry it forward until it is based on the cubes
+                # at which time we can just recreate the whole trend
 
-        #consider a reset statistics function
-        self.statistics = {
-          "renewable_utilization" : None,
-          "total_co2_offset" : None,
-          "total_savings" : None,
-          "conventional_consumed" : None,
-          "conventional_utilization" : None,
-          "consumption_trend" : [
-            {
-                "quantity" : None,
-                "month" : "Nov"
-            },
-            {
-                "quantity" : None,
-                "month" : "Dec"
-            },
-            {
-                "quantity" : None,
-                "month" : "Jan"
-            },
-            {
-                "quantity" : None,
-                "month" : "Feb"
-            },
-            {
-                "quantity" : None,
-                "month" : "Mar"
-            },
-            {
-                "quantity" : None,
-                "month" : "Apr"
-            },
-            {
-                "quantity" : None,
-                "month" : "May"
-            },
-            {
-                "quantity" : None,
-                "month" : "Jun"
-            },
-            {
-                "quantity" : None,
-                "month" : "Jul"
-            },
-            {
-                "quantity" : None,
-                "month" : "Aug"
-            },
-            {
-                "quantity" : None,
-                "month" : "Sep"
-            },
-            {
-                "quantity" : None,
-                "month" : "Oct"
+                self.statistics = statistics
+
+        # return a new empty instance
+        elif type(reebill_data) is None:
+
+
+            # TODO merge in roll bill reset code into behavior of mongo_reebill and use it here
+
+            self.reebill_dict = {}
+            self.account = ""
+            self.sequence = 0 
+            self.branch = 0 
+            self.issue_date = None
+            self.due_date = None
+            self.period_begin = None
+            self.period_end = None
+            self.balance_due = Decimal("0.00") 
+            self.prior_balance = Decimal("0.00") 
+            self.payment_received = Decimal("0.00")
+
+            # consider a reset addr function
+            self.billing_address = {"ba_addressee": None, "ba_street1": None, "ba_city": None, "ba_state": None, "ba_postalcode": None}
+            self.service_address = {"sa_addressee": None, "sa_street1": None, "sa_city": None, "sa_state": None, "sa_postalcode": None}
+            self.ree_charges = Decimal("0.00")
+            self.ree_savings = Decimal("0.00")
+            self.total_adjustment = Decimal("0.00")
+            self.balance_forward = Decimal("0.00")
+            self.motd = "New customer template"
+
+            #consider a reset statistics function
+            self.statistics = {
+              "renewable_utilization" : None,
+              "total_co2_offset" : None,
+              "total_savings" : None,
+              "conventional_consumed" : None,
+              "conventional_utilization" : None,
+              "consumption_trend" : [
+                {
+                    "quantity" : None,
+                    "month" : "Nov"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Dec"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Jan"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Feb"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Mar"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Apr"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "May"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Jun"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Jul"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Aug"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Sep"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Oct"
+                }
+              ],
+              "total_trees" : None,
+              "co2_offset" : None,
+              "total_renewable_consumed" : None,
+              "renewable_consumed" : None
             }
-          ],
-          "total_trees" : None,
-          "co2_offset" : None,
-          "total_renewable_consumed" : None,
-          "renewable_consumed" : None
-        }
 
 
 
 
 
-        self.actual_total = Decimal("0.00")
-        self.hypothetical_total = Decimal("0.00")
+            self.actual_total = Decimal("0.00")
+            self.hypothetical_total = Decimal("0.00")
 
-        #initialize first utilbill here.
-        #need to choose a default service
-        #once the utilbill is initially created, we leave it to other processes to add services, etc..
-        #utilbill section:
-        #    "hypothetical_chargegroups" : {
-        #        "All Charges" : [
+            #initialize first utilbill here.
+            #need to choose a default service
+            #once the utilbill is initially created, we leave it to other processes to add services, etc..
+            #utilbill section:
+            #    "hypothetical_chargegroups" : {
+            #        "All Charges" : [
 
+
+        else:
+            raise ValueError("Bad Parameter Value")
 
 
 
@@ -230,24 +341,24 @@ class MongoReebill(object):
     # change.
     @property
     def account(self):
-        return self.dictionary['_id']['account']
+        return self.reebill_dict['_id']['account']
     @account.setter
     def account(self, value):
-        self.dictionary['_id']['account'] = value
+        self.reebill_dict['_id']['account'] = value
     
     @property
     def sequence(self):
-        return self.dictionary['_id']['sequence']
+        return self.reebill_dict['_id']['sequence']
     @sequence.setter
     def sequence(self, value):
-        self.dictionary['_id']['sequence'] = value
+        self.reebill_dict['_id']['sequence'] = value
 
     @property
     def branch(self):
-        return self.dictionary['_id']['branch']
+        return self.reebill_dict['_id']['branch']
     @branch.setter
     def branch(self, value):
-        self.dictionary['_id']['branch'] = int(value)
+        self.reebill_dict['_id']['branch'] = int(value)
     
     @property
     def issue_date(self):
@@ -255,51 +366,51 @@ class MongoReebill(object):
         no information to be had by throwing a key exception on a missing
         issue_date.  """
 
-        if 'issue_date' in self.dictionary:
-            return python_convert(self.dictionary['issue_date'])
+        if 'issue_date' in self.reebill_dict:
+            return python_convert(self.reebill_dict['issue_date'])
 
         return None
 
     @issue_date.setter
     def issue_date(self, value):
-        self.dictionary['issue_date'] = value
+        self.reebill_dict['issue_date'] = value
 
     @property
     def due_date(self):
-        return python_convert(self.dictionary['due_date'])
+        return python_convert(self.reebill_dict['due_date'])
     @due_date.setter
     def due_date(self, value):
-        self.dictionary['due_date'] = value
+        self.reebill_dict['due_date'] = value
 
     @property
     def period_begin(self):
-        return python_convert(self.dictionary['period_begin'])
+        return python_convert(self.reebill_dict['period_begin'])
     @period_begin.setter
     def period_begin(self, value):
-        self.dictionary['period_begin'] = value
+        self.reebill_dict['period_begin'] = value
 
     @property
     def period_end(self):
-        return python_convert(self.dictionary['period_end'])
+        return python_convert(self.reebill_dict['period_end'])
     @period_end.setter
     def period_end(self, value):
-        self.dictionary['period_end'] = value
+        self.reebill_dict['period_end'] = value
     
     @property
     def discount_rate(self):
         '''Discount rate is a Decimal.'''
-        return self.dictionary['discount_rate']
+        return self.reebill_dict['discount_rate']
     @discount_rate.setter
     def discount_rate(self, value):
-        self.dictionary['discount_rate'] = value
+        self.reebill_dict['discount_rate'] = value
 
     @property
     def balance_due(self):
         '''Returns a Decimal.'''
-        return self.dictionary['balance_due']
+        return self.reebill_dict['balance_due']
     @balance_due.setter
     def balance_due(self, value):
-        self.dictionary['balance_due'] = value
+        self.reebill_dict['balance_due'] = value
 
     @property
     def late_charge_rate(self):
@@ -307,10 +418,10 @@ class MongoReebill(object):
         # currently, there is a population of reebills that do not have a late_charge_rate
         # because late_charge_rate was not yet implemented.
         # and since we may want to know this, let the key exception be raised.
-        return self.dictionary['late_charge_rate']
+        return self.reebill_dict['late_charge_rate']
     @late_charge_rate.setter
     def late_charge_rate(self, value):
-        self.dictionary['late_charge_rate'] = value
+        self.reebill_dict['late_charge_rate'] = value
 
     @property
     def late_charges(self):
@@ -318,111 +429,111 @@ class MongoReebill(object):
         ReeBills were not part of a late charge program.  Consequently, we
         would want to present bills from the past without a late charge box in
         the UI.  So, an exception if they don't exist.  """
-        return self.dictionary['late_charges']
+        return self.reebill_dict['late_charges']
 
     @late_charges.setter
     def late_charges(self, value):
         if type(value) is not Decimal: raise ValueError("Requires Decimal")
-        self.dictionary['late_charges'] = value
+        self.reebill_dict['late_charges'] = value
 
     @property
     def billing_address(self):
         '''Returns a dict.'''
-        return self.dictionary['billing_address']
+        return self.reebill_dict['billing_address']
     @billing_address.setter
     def billing_address(self, value):
         '''Returns a dict.'''
-        self.dictionary['billing_address'] = value
+        self.reebill_dict['billing_address'] = value
 
     @property
     def service_address(self):
         '''Returns a dict.'''
-        return self.dictionary['service_address']
+        return self.reebill_dict['service_address']
     @service_address.setter
     def service_address(self, value):
-        self.dictionary['service_address'] = value
+        self.reebill_dict['service_address'] = value
 
     @property
     def prior_balance(self):
-        return self.dictionary['prior_balance']
+        return self.reebill_dict['prior_balance']
     @prior_balance.setter
     def prior_balance(self, value):
-        self.dictionary['prior_balance'] = value
+        self.reebill_dict['prior_balance'] = value
 
     @property
     def payment_received(self):
-        return self.dictionary['payment_received']
+        return self.reebill_dict['payment_received']
 
     @payment_received.setter
     def payment_received(self, value):
-        self.dictionary['payment_received'] = value
+        self.reebill_dict['payment_received'] = value
 
     @property
     def total_adjustment(self):
-        return self.dictionary['total_adjustment']
+        return self.reebill_dict['total_adjustment']
     @total_adjustment.setter
     def total_adjustment(self, value):
-        self.dictionary['total_adjustment'] = value
+        self.reebill_dict['total_adjustment'] = value
 
     @property
     def ree_charges(self):
-        return self.dictionary['ree_charges']
+        return self.reebill_dict['ree_charges']
     @ree_charges.setter
     def ree_charges(self, value):
-        self.dictionary['ree_charges'] = value
+        self.reebill_dict['ree_charges'] = value
 
     @property
     def ree_savings(self):
-        return self.dictionary['ree_savings']
+        return self.reebill_dict['ree_savings']
     @ree_savings.setter
     def ree_savings(self, value):
-        self.dictionary['ree_savings'] = value
+        self.reebill_dict['ree_savings'] = value
 
     @property
     def balance_forward(self):
-        return self.dictionary['balance_forward']
+        return self.reebill_dict['balance_forward']
     @balance_forward.setter
     def balance_forward(self, value):
-        self.dictionary['balance_forward'] = value
+        self.reebill_dict['balance_forward'] = value
 
     @property
     def motd(self):
         '''"motd" = "message of the day"; it's optional, so the reebill may not
         have one.'''
-        return self.dictionary.get('message', '')
+        return self.reebill_dict.get('message', '')
     @motd.setter
     def motd(self, value):
-        self.dictionary['message'] = value
+        self.reebill_dict['message'] = value
 
     @property
     def statistics(self):
         '''Returns a dictionary of the information that goes in the
         "statistics" section of reebill.'''
-        return self.dictionary['statistics']
+        return self.reebill_dict['statistics']
     @statistics.setter
     def statistics(self, value):
-        self.dictionary['statistics'].update(value)
+        self.reebill_dict['statistics'].update(value)
 
     @property
     def actual_total(self):
-        return self.dictionary['actual_total']
+        return self.reebill_dict['actual_total']
     @actual_total.setter
     def actual_total(self, value):
-        self.dictionary['actual_total'] = value
+        self.reebill_dict['actual_total'] = value
 
     @property
     def hypothetical_total(self):
-        return self.dictionary['hypothetical_total']
+        return self.reebill_dict['hypothetical_total']
     @hypothetical_total.setter
     def hypothetical_total(self, value):
-        self.dictionary['hypothetical_total'] = value
+        self.reebill_dict['hypothetical_total'] = value
 
     @property
     def ree_value(self):
-        return self.dictionary['ree_value']
+        return self.reebill_dict['ree_value']
     @ree_value.setter
     def ree_value(self, value):
-        self.dictionary['ree_value'] = value
+        self.reebill_dict['ree_value'] = value
 
     def hypothetical_total_for_service(self, service_name):
         '''Returns the total of hypothetical charges for the utilbill whose
@@ -430,7 +541,7 @@ class MongoReebill(object):
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
         totals = [ub['hypothetical_total']
-                for ub in self.dictionary['utilbills']
+                for ub in self.reebill_dict['utilbills']
                 if ub['service'] == service_name]
         if totals == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
@@ -440,7 +551,7 @@ class MongoReebill(object):
 
     def set_hypothetical_total_for_service(self, service_name, new_total):
 
-        for ub in self.dictionary['utilbills']:
+        for ub in self.reebill_dict['utilbills']:
             if ub['service'] == service_name:
                 ub['hypothetical_total'] = new_total
 
@@ -450,7 +561,7 @@ class MongoReebill(object):
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
         totals = [ub['actual_total']
-                for ub in self.dictionary['utilbills']
+                for ub in self.reebill_dict['utilbills']
                 if ub['service'] == service_name]
         if totals == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
@@ -460,7 +571,7 @@ class MongoReebill(object):
 
     def set_actual_total_for_service(self, service_name, new_total):
 
-        for ub in self.dictionary['utilbills']:
+        for ub in self.reebill_dict['utilbills']:
             if ub['service'] == service_name:
                 ub['actual_total'] = new_total
 
@@ -471,7 +582,7 @@ class MongoReebill(object):
         exception is raised if that happens (or if there's no utilbill for that
         service).'''
         totals = [ub['ree_value']
-                for ub in self.dictionary['utilbills']
+                for ub in self.reebill_dict['utilbills']
                 if ub['service'] == service_name]
         if totals == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
@@ -480,13 +591,13 @@ class MongoReebill(object):
         return totals[0]
 
     def set_ree_value_for_service(self, service_name, new_ree_value):
-        for ub in self.dictionary['utilbills']:
+        for ub in self.reebill_dict['utilbills']:
             if ub['service'] == service_name:
                 ub['ree_value'] = new_ree_value
 
     def ree_savings_for_service(self, service_name):
         totals = [ub['ree_savings']
-                for ub in self.dictionary['utilbills']
+                for ub in self.reebill_dict['utilbills']
                 if ub['service'] == service_name]
         if totals == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
@@ -496,13 +607,13 @@ class MongoReebill(object):
 
     def set_ree_savings_for_service(self, service_name, new_ree_savings):
 
-        for ub in self.dictionary['utilbills']:
+        for ub in self.reebill_dict['utilbills']:
             if ub['service'] == service_name:
                 ub['ree_savings'] = new_ree_savings
 
     def ree_charges_for_service(self, service_name):
         totals = [ub['ree_charges']
-                for ub in self.dictionary['utilbills']
+                for ub in self.reebill_dict['utilbills']
                 if ub['service'] == service_name]
         if totals == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
@@ -511,7 +622,7 @@ class MongoReebill(object):
         return totals[0]
 
     def set_ree_charges_for_service(self, service_name, new_ree_charges):
-        for ub in self.dictionary['utilbills']:
+        for ub in self.reebill_dict['utilbills']:
             if ub['service'] == service_name:
                 ub['ree_charges'] = new_ree_charges
 
@@ -522,7 +633,7 @@ class MongoReebill(object):
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
         chargegroup_lists = [ub['hypothetical_chargegroups']
-                for ub in self.dictionary['utilbills']
+                for ub in self.reebill_dict['utilbills']
                 if ub['service'] == service_name]
         if chargegroup_lists == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
@@ -535,7 +646,7 @@ class MongoReebill(object):
         '''Set hypothetical chargegroups, based on actual chargegroups.  This is used
         because it is customary to define the actual charges and base the hypothetical
         charges on them.'''
-        for ub in self.dictionary['utilbills']:
+        for ub in self.reebill_dict['utilbills']:
             if ub['service'] == service_name:
                 ub['hypothetical_chargegroups'] = new_chargegroups
 
@@ -545,7 +656,7 @@ class MongoReebill(object):
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
         chargegroup_lists = [ub['actual_chargegroups']
-                for ub in self.dictionary['utilbills']
+                for ub in self.reebill_dict['utilbills']
                 if ub['service'] == service_name]
         if chargegroup_lists == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
@@ -557,7 +668,7 @@ class MongoReebill(object):
         '''Set hypothetical chargegroups, based on actual chargegroups.  This is used
         because it is customary to define the actual charges and base the hypothetical
         charges on them.'''
-        for ub in self.dictionary['utilbills']:
+        for ub in self.reebill_dict['utilbills']:
             if ub['service'] == service_name:
                 ub['actual_chargegroups'] = new_chargegroups
 
@@ -567,7 +678,7 @@ class MongoReebill(object):
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
         chargegroup_lists = [ub['actual_chargegroups'].keys()
-                for ub in self.dictionary['utilbills']
+                for ub in self.reebill_dict['utilbills']
                 if ub['service'] == service_name]
         if chargegroup_lists == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
@@ -578,7 +689,7 @@ class MongoReebill(object):
     @property
     def services(self):
         '''Returns a list of all services for which there are utilbills.'''
-        return [u['service'] for u in self.dictionary['utilbills']]
+        return [u['service'] for u in self.reebill_dict['utilbills']]
 
     @property
     def suspended_services(self):
@@ -586,7 +697,7 @@ class MongoReebill(object):
         because the customer has switched to a different fuel for part of the
         year). Utility bills for this service should be ignored in the attach
         operation.'''
-        return self.dictionary.get('suspended_services', [])
+        return self.reebill_dict.get('suspended_services', [])
 
     def suspend_service(self, service):
         '''Adds 'service' to the list of suspended services. Returns True iff
@@ -596,11 +707,11 @@ class MongoReebill(object):
         if service not in [s.lower() for s in self.services]:
             raise ValueError('Unknown service %s: services are %s' % (service, self.services))
 
-        if 'suspended_services' not in self.dictionary:
-            self.dictionary['suspended_services'] = []
-        if service not in self.dictionary['suspended_services']:
-            self.dictionary['suspended_services'].append(service)
-        print '%s-%s suspended_services set to %s' % (self.account, self.sequence, self.dictionary['suspended_services'])
+        if 'suspended_services' not in self.reebill_dict:
+            self.reebill_dict['suspended_services'] = []
+        if service not in self.reebill_dict['suspended_services']:
+            self.reebill_dict['suspended_services'].append(service)
+        print '%s-%s suspended_services set to %s' % (self.account, self.sequence, self.reebill_dict['suspended_services'])
 
     def resume_service(self, service):
         '''Removes 'service' from the list of suspended services. Returns True
@@ -609,11 +720,11 @@ class MongoReebill(object):
         if service not in [s.lower() for s in self.services]:
             raise ValueError('Unknown service %s: services are %s' % (service, self.services))
 
-        if service in self.dictionary.get('suspended_services', {}):
-            self.dictionary['suspended_services'].remove(service)
+        if service in self.reebill_dict.get('suspended_services', {}):
+            self.reebill_dict['suspended_services'].remove(service)
             # might as well take out the key if the list is empty
-            if self.dictionary['suspended_services'] == []:
-                del self.dictionary['suspended_services']
+            if self.reebill_dict['suspended_services'] == []:
+                del self.reebill_dict['suspended_services']
 
     def utilbill_period_for_service(self, service_name):
         '''Returns start & end dates of the first utilbill found whose service
@@ -624,7 +735,7 @@ class MongoReebill(object):
             (
                 u['period_begin'] if 'period_begin' in u else None,
                 u['period_end'] if 'period_end' in u else None
-            )  for u in self.dictionary['utilbills'] if u['service'] == service_name
+            )  for u in self.reebill_dict['utilbills'] if u['service'] == service_name
         ]
         if date_string_pairs == []:
             raise Exception('No utilbills for service "%s"' % service_name)
@@ -643,7 +754,7 @@ class MongoReebill(object):
         if len(period) != 2:
             raise Exception('Utilbill period malformed "%s"' % period)
         
-        for utilbill in self.dictionary['utilbills']:
+        for utilbill in self.reebill_dict['utilbills']:
             if utilbill['service'] == service_name:
                 utilbill['period_begin'] = period[0]
                 utilbill['period_end'] = period[1]
@@ -667,7 +778,7 @@ class MongoReebill(object):
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
 
-        meters_lists = [ub['meters'] for ub in self.dictionary['utilbills'] if
+        meters_lists = [ub['meters'] for ub in self.reebill_dict['utilbills'] if
                 ub['service'] == service_name]
 
         if meters_lists == []:
@@ -692,7 +803,7 @@ class MongoReebill(object):
         new_meters = [meter for meter in meters if meter['identifier'] != identifier]
         print "new set of meters %s" % new_meters
         
-        for ub in self.dictionary['utilbills']:
+        for ub in self.reebill_dict['utilbills']:
             if ub['service'] == service:
                 ub['meters'] = new_meters
 
@@ -706,7 +817,7 @@ class MongoReebill(object):
             'registers': [],
         }
 
-        for ub in self.dictionary['utilbills']:
+        for ub in self.reebill_dict['utilbills']:
             if ub['service'] == service:
                 ub['meters'].append(new_meter)
 
@@ -756,7 +867,7 @@ class MongoReebill(object):
     def set_meter_actual_register(self, service, meter_identifier, register_identifier, quantity):
         ''' Set the total for a specified meter register.'''
 
-        for ub in self.dictionary['utilbills']:
+        for ub in self.reebill_dict['utilbills']:
             if ub['service'] == service:
                 for meter in ub['meters']:
                     if meter['identifier'] == meter_identifier:
@@ -879,7 +990,7 @@ class MongoReebill(object):
         try:
             utility_names = [
                 ub['utility_name'] 
-                for ub in self.dictionary['utilbills']
+                for ub in self.reebill_dict['utilbills']
                 # case-insensitive comparison
                 if ub['service'].lower() == service_name.lower()
             ]
@@ -899,7 +1010,7 @@ class MongoReebill(object):
         try:
             rs_bindings = [
                 ub['rate_structure_binding'] 
-                for ub in self.dictionary['utilbills']
+                for ub in self.reebill_dict['utilbills']
                 if ub['service'] == service_name
             ]
         except KeyError:
@@ -917,7 +1028,7 @@ class MongoReebill(object):
     def savings(self):
         '''Value of renewable energy generated, or total savings from
         hypothetical utility bill.'''
-        return self.dictionary['ree_value']
+        return self.reebill_dict['ree_value']
 
     def total_renewable_energy(self, ccf_conversion_factor=None):
         '''Returns all renewable energy distributed among shadow registers of
@@ -930,7 +1041,7 @@ class MongoReebill(object):
         # conversion factors.
         # https://www.pivotaltracker.com/story/show/22171391
         total_therms = Decimal(0)
-        for utilbill in self.dictionary['utilbills']:
+        for utilbill in self.reebill_dict['utilbills']:
             for meter in utilbill['meters']:
                 for register in meter['registers']:
                     if register['shadow'] == True:
@@ -973,7 +1084,7 @@ class MongoReebill(object):
         # This should probably not be done in here, but rather by some helper object?
 
         flat_charges = []
-        for ub in self.dictionary['utilbills']:
+        for ub in self.reebill_dict['utilbills']:
             if ub['service'] == service:
                 for (chargegroup, charges) in ub[chargegroups].items(): 
                     for charge in charges:
@@ -990,7 +1101,7 @@ class MongoReebill(object):
 
     def set_chargegroups_flattened(self, service, flat_charges, chargegroups):
 
-        for ub in self.dictionary['utilbills']:
+        for ub in self.reebill_dict['utilbills']:
             if ub['service'] == service:
                 # TODO sort flat_charges before groupby
                 # They post sorted, but that is no guarantee...
@@ -1006,99 +1117,6 @@ class MongoReebill(object):
                         new_chargegroups[cg].append(charge)
 
                 ub[chargegroups] = new_chargegroups
-
-
-    def reset(self):
-        # TODO: 22547583
-        # Resets a previously populated ReeBill
-        # this code is related to what must be done when constructing a
-        # new instance of a reebill.  What is missing is setting up initial
-        # chargegroups and registers, for example.
-
-        # process rebill
-        self.period_begin = None
-        self.period_end = None
-        self.total_adjustment = Decimal("0.00")
-        self.hypothetical_total = Decimal("0.00")
-        self.actual_total = Decimal("0.00")
-        self.ree_value = Decimal("0.00")
-        self.ree_charges = Decimal("0.00")
-        self.ree_savings = Decimal("0.00")
-        self.due_date = None
-        self.issue_date = None
-        self.motd = None
-
-        # this should always be set from the value in MySQL, which holds the
-        # "current" discount rate for each customer
-        self.discount_rate = Decimal("0.00")
-
-        self.prior_balance = Decimal("0.00")
-        self.total_due = Decimal("0.00")
-        self.balance_due = Decimal("0.00")
-        self.payment_received = Decimal("0.00")
-        self.balance_forward = Decimal("0.00")
-
-        for service in self.services:
-            # get utilbill numbers and zero them out
-            self.set_actual_total_for_service(service, Decimal("0.00")) 
-            self.set_hypothetical_total_for_service(service, Decimal("0.00")) 
-            self.set_ree_value_for_service(service, Decimal("0.00")) 
-            self.set_ree_savings_for_service(service, Decimal("0.00")) 
-            self.set_ree_charges_for_service(service, Decimal("0.00")) 
-
-            # set new UUID's & clear out the last bound charges
-            actual_chargegroups = self.actual_chargegroups_for_service(service)
-            for (group, charges) in actual_chargegroups.items():
-                for charge in charges:
-                    charge['uuid'] = str(UUID.uuid1())
-                    if 'rate' in charge: del charge['rate']
-                    if 'quantity' in charge: del charge['quantity']
-                    if 'total' in charge: del charge['total']
-                    
-            self.set_actual_chargegroups_for_service(service, actual_chargegroups)
-
-            hypothetical_chargegroups = self.hypothetical_chargegroups_for_service(service)
-            for (group, charges) in hypothetical_chargegroups.items():
-                for charge in charges:
-                    charge['uuid'] = str(UUID.uuid1())
-                    if 'rate' in charge: del charge['rate']
-                    if 'quantity' in charge: del charge['quantity']
-                    if 'total' in charge: del charge['total']
-                    
-            self.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
-
-       
-        # reset measured usage
-
-        for service in self.services:
-            for meter in self.meters_for_service(service):
-                self.set_meter_read_date(service, meter['identifier'], None, meter['present_read_date'])
-            for actual_register in self.actual_registers(service):
-                self.set_actual_register_quantity(actual_register['identifier'], 0.0)
-            for shadow_register in self.shadow_registers(service):
-                self.set_shadow_register_quantity(shadow_register['identifier'], 0.0)
-
-
-        # zero out statistics section
-        statistics = self.statistics
-
-        statistics["conventional_consumed"] = 0
-        statistics["renewable_consumed"] = 0
-        statistics["renewable_utilization"] = 0
-        statistics["conventional_utilization"] = 0
-        statistics["renewable_produced"] = 0
-        statistics["co2_offset"] = 0
-        statistics["total_savings"] = Decimal("0.00")
-        statistics["total_renewable_consumed"] = 0
-        statistics["total_renewable_produced"] = 0
-        statistics["total_trees"] = 0
-        statistics["total_co2_offset"] = 0
-
-        # TODO: 22554017
-        # leave consumption trend alone since we want to carry it forward until it is based on the cubes
-        # at which time we can just recreate the whole trend
-
-        self.statistics = statistics
 
 
 class ReebillDAO:
@@ -1200,7 +1218,7 @@ class ReebillDAO:
         '''Saves the MongoReebill 'reebill' into the database. If a document
         with the same account & sequence number already exists, the existing
         document is replaced with this one.'''
-        mongo_doc = bson_convert(copy.deepcopy(reebill.dictionary))
+        mongo_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
 
         self.collection.save(mongo_doc)
 

@@ -270,49 +270,36 @@ class Process(object):
             self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence + 1,
                 reebill.branch, utility_name, rate_structure_name, cprs)
 
-        # increment sequence
-        reebill.sequence = reebill.sequence + 1
+        # construct a new reebill from an old one.
+        # if we wanted a copy, we would copy the current ReeBill
+        # but we don't want a copy, we want a new instance.
+        print "C reebill period end is %s" % reebill.period_end
+        new_reebill = MongoReebill(reebill)
 
-        # set start date of each utility bill in this reebill to the end date
-        # of the previous utility bill for that service
-        for service in reebill.services:
-            prev_start, prev_end = reebill.utilbill_period_for_service(service)
-            reebill.set_utilbill_period_for_service(service, (prev_end, None))
+        print "A reebill period end is %s" % reebill.period_end
 
-        # save original end date of reebill before resetting: this will become
-        # the new begin date and is needed to guess the new end date
-        old_period_end = reebill.period_end
-
-        # clear out much but not all data in the bill, including dates
-        reebill.reset()
-        # TODO: unclear that call to reset() belongs here. it should go as
-        # early in the method as possible; putting it here suggests that
-        # reset() wipes out everything below this call but not any of the
-        # things preceding it, which is probably not true. and if it were, why
-        # does reset() only reset such an arbitrary subset of the reebill's
-        # data?
-        # we do have a story suggesting that the reset method should/will go
-        # away:
-        # https://www.pivotaltracker.com/story/show/22547583
-
-        # set reebill begin date and probable end date
-        reebill.period_begin = old_period_end
         new_period_end, utilbills = state.guess_utilbills_and_end_date(session,
-                reebill.account, old_period_end)
-        reebill.period_end = new_period_end
+                reebill.account, reebill.period_end)
 
-        # set discount rate to the instananeous value in MySQL
-        reebill.discount_rate = self.state_db.discount_rate(session,
+        print "B reebill period end is %s" % reebill.period_end
+
+        print "******* new period, utilbills is %s " % new_period_end, utilbills
+        new_reebill.period_end = new_period_end
+
+        # set discount rate to the instananeous value from MySQL
+        new_reebill.discount_rate = self.state_db.discount_rate(session,
                 reebill.account)
 
-        # set late charge rate to the instananeous value in MySQL
-        reebill.late_charge_rate = self.state_db.late_charge_rate(session,
+        # set late charge rate to the instananeous value from MySQL
+        new_reebill.late_charge_rate = self.state_db.late_charge_rate(session,
                 reebill.account)
 
         # NOTE suspended_services list is carried over automatically
 
         # create reebill row in state database
-        self.state_db.new_rebill(session, reebill.account, reebill.sequence)
+        self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
+
+        return new_reebill
 
 
     def get_late_charge(self, session, reebill, day=date.today()):
