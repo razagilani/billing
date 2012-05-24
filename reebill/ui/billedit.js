@@ -4854,8 +4854,10 @@ function reeBillReady() {
         },
         items: [
             journalEntryField, 
-            journalEntryResetButton, journalEntrySubmitButton,
-            journalEntryAccountField, journalEntrySequenceField
+            journalEntryResetButton,
+            journalEntrySubmitButton,
+            journalEntryAccountField,
+            journalEntrySequenceField
         ],
         hideLabels: false,
         labelAlign: 'left',   // or 'right' or 'top'
@@ -5337,9 +5339,7 @@ function reeBillReady() {
         // update the journal form panel so entries get submitted to currently selected account
         // need to set account into a hidden field here since there is no data store behind the form
         journalFormPanel.getForm().findField("account").setValue(account)
-        // TODO: 1320091681504 if an account is selected w/o a sequence, a journal entry can't be made
-        // clear reebill data when a new account is selected
-        // TODO: 1320091681504 if an account is selected w/o a sequence, a journal entry can't be made
+        // TODO: 20513861 clear reebill data when a new account is selected
         journalFormPanel.getForm().findField("sequence").setValue(null)
         configureUBPeriodsForms(null, null, null);
         configureUBMeasuredUsagesForms(null, null, null);
@@ -5420,10 +5420,8 @@ function reeBillReady() {
         //deleteButton.setDisabled(sequenceRecord.get('committed'))
 
         // update the journal form panel so entries get submitted to currently selected account
-        // need to set account into a hidden field here since there is no data store behind the form
+        journalFormPanel.getForm().findField("account").setValue(account)
         journalFormPanel.getForm().findField("sequence").setValue(sequence)
-
-
 
 
         // TODO:23046181 abort connections in progress
