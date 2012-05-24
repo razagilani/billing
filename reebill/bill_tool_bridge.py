@@ -2303,11 +2303,10 @@ class BillToolBridge:
         Sequence is optional in case the entry applies to the account as whole,
         but should be provided if it's associated with a particular reebill.'''
         try:
-            # TODO: 1320091681504  allow a journal entry to be made without a sequence
             if not account or not entry:
                 raise ValueError("Bad Parameter Value")
-            if 'sequence' in kwargs:
-                sequence = int(kwargs['sequence'])
+            if sequence:
+                sequence = int(sequence)
                 self.journal_dao.log_event(cherrypy.session['user'],
                         JournalDAO.Note, account, sequence=sequence, msg=entry)
             else:
