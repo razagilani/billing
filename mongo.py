@@ -5,6 +5,7 @@ from datetime import date, time, datetime
 from decimal import Decimal
 import pymongo
 from billing.mutable_named_tuple import MutableNamedTuple
+import functools
 
 from urlparse import urlparse
 import httplib
@@ -56,6 +57,15 @@ def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
         return [convert_datetimes(element, datetime_keys, ancestor_key) for element in x]
     return x
 
+
+def check_issued(method):
+    '''Decorator to evaluate the issued state.'''
+    @functools.wraps(method)
+    def wrapper(instance, *args, **kwargs):
+        if 'issue_date' in instance.reebill_dict and instance.reebill_dict['issue_date'] is not None:
+            raise Exception("ReeBill cannot be modified once isssued.")
+        return method(instance, *args, **kwargs)
+    return wrapper
 
 class MongoReebill(object):
     '''Class representing the reebill data structure stored in MongoDB. All
@@ -230,94 +240,95 @@ class MongoReebill(object):
             # TODO merge in roll bill reset code into behavior of mongo_reebill and use it here
 
             self.reebill_dict = {}
-            self.account = ""
-            self.sequence = 0 
-            self.branch = 0 
-            self.issue_date = None
-            self.due_date = None
-            self.period_begin = None
-            self.period_end = None
-            self.balance_due = Decimal("0.00") 
-            self.prior_balance = Decimal("0.00") 
-            self.payment_received = Decimal("0.00")
+            # the properties below have to be set in reebill_dict as they are not attributes of a MongoReebill
+            #self.account = ""
+            #self.sequence = 0 
+            #self.branch = 0 
+            #self.issue_date = None
+            #self.due_date = None
+            #self.period_begin = None
+            #self.period_end = None
+            #self.balance_due = Decimal("0.00") 
+            #self.prior_balance = Decimal("0.00") 
+            #self.payment_received = Decimal("0.00")
 
             # consider a reset addr function
-            self.billing_address = {"ba_addressee": None, "ba_street1": None, "ba_city": None, "ba_state": None, "ba_postalcode": None}
-            self.service_address = {"sa_addressee": None, "sa_street1": None, "sa_city": None, "sa_state": None, "sa_postalcode": None}
-            self.ree_charges = Decimal("0.00")
-            self.ree_savings = Decimal("0.00")
-            self.total_adjustment = Decimal("0.00")
-            self.balance_forward = Decimal("0.00")
-            self.motd = "New customer template"
+            #self.billing_address = {"ba_addressee": None, "ba_street1": None, "ba_city": None, "ba_state": None, "ba_postalcode": None}
+            #self.service_address = {"sa_addressee": None, "sa_street1": None, "sa_city": None, "sa_state": None, "sa_postalcode": None}
+            #self.ree_charges = Decimal("0.00")
+            #self.ree_savings = Decimal("0.00")
+            #self.total_adjustment = Decimal("0.00")
+            #self.balance_forward = Decimal("0.00")
+            #self.motd = "New customer template"
 
             #consider a reset statistics function
-            self.statistics = {
-              "renewable_utilization" : None,
-              "total_co2_offset" : None,
-              "total_savings" : None,
-              "conventional_consumed" : None,
-              "conventional_utilization" : None,
-              "consumption_trend" : [
-                {
-                    "quantity" : None,
-                    "month" : "Nov"
-                },
-                {
-                    "quantity" : None,
-                    "month" : "Dec"
-                },
-                {
-                    "quantity" : None,
-                    "month" : "Jan"
-                },
-                {
-                    "quantity" : None,
-                    "month" : "Feb"
-                },
-                {
-                    "quantity" : None,
-                    "month" : "Mar"
-                },
-                {
-                    "quantity" : None,
-                    "month" : "Apr"
-                },
-                {
-                    "quantity" : None,
-                    "month" : "May"
-                },
-                {
-                    "quantity" : None,
-                    "month" : "Jun"
-                },
-                {
-                    "quantity" : None,
-                    "month" : "Jul"
-                },
-                {
-                    "quantity" : None,
-                    "month" : "Aug"
-                },
-                {
-                    "quantity" : None,
-                    "month" : "Sep"
-                },
-                {
-                    "quantity" : None,
-                    "month" : "Oct"
-                }
-              ],
-              "total_trees" : None,
-              "co2_offset" : None,
-              "total_renewable_consumed" : None,
-              "renewable_consumed" : None
-            }
+            #self.statistics = {
+            # "renewable_utilization" : None,
+            #  "total_co2_offset" : None,
+            #  "total_savings" : None,
+            #  "conventional_consumed" : None,
+            #  "conventional_utilization" : None,
+            #  "consumption_trend" : [
+            #    {
+            #        "quantity" : None,
+            #        "month" : "Nov"
+            #    },
+            #    {
+            #        "quantity" : None,
+            #        "month" : "Dec"
+            #    },
+            #    {
+            #        "quantity" : None,
+            #        "month" : "Jan"
+            #    },
+            #    {
+            #        "quantity" : None,
+            #        "month" : "Feb"
+            #    },
+            #    {
+            #        "quantity" : None,
+            #        "month" : "Mar"
+            #    },
+            #    {
+            #        "quantity" : None,
+            #        "month" : "Apr"
+            #    },
+            #    {
+            #        "quantity" : None,
+            #        "month" : "May"
+            #    },
+            #    {
+            #        "quantity" : None,
+            #        "month" : "Jun"
+            #    },
+            #    {
+            #        "quantity" : None,
+            #        "month" : "Jul"
+            #    },
+            #    {
+            #        "quantity" : None,
+            #        "month" : "Aug"
+            #    },
+            #    {
+            #        "quantity" : None,
+            #        "month" : "Sep"
+            #    },
+            #    {
+            #        "quantity" : None,
+            #        "month" : "Oct"
+            #    }
+            #  ],
+            #  "total_trees" : None,
+            #  "co2_offset" : None,
+            #  "total_renewable_consumed" : None,
+            #  "renewable_consumed" : None
+            #}
 
 
 
 
 
-            self.actual_total = Decimal("0.00")
+            #self.actual_total = Decimal("0.00")
             self.hypothetical_total = Decimal("0.00")
 
             #initialize first utilbill here.
@@ -441,8 +452,8 @@ class MongoReebill(object):
         '''Returns a dict.'''
         return self.reebill_dict['billing_address']
     @billing_address.setter
+    @check_issued
     def billing_address(self, value):
-        '''Returns a dict.'''
         self.reebill_dict['billing_address'] = value
 
     @property
