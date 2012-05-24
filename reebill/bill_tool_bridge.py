@@ -1,4 +1,4 @@
-#!/usr/bin/python
+
 '''
 File: bill_tool_bridge.py
 Description: Allows bill tool to be invoked as a CGI
@@ -624,13 +624,14 @@ class BillToolBridge:
     @json_exception
     def roll(self, account, sequence, **args):
         with DBSession(self.state_db) as session:
-            session = None
+            # why is session initialized and reassigned within context manager?
+            #session = None
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
-            session = self.state_db.session()
+            #session = self.state_db.session()
             reebill = self.reebill_dao.load_reebill(account, sequence)
-            self.process.roll_bill(session, reebill)
-            self.reebill_dao.save_reebill(reebill)
+            new_reebill = self.process.roll_bill(session, reebill)
+            self.reebill_dao.save_reebill(new_reebill)
             self.journal_dao.log_event(cherrypy.session['user'],
                     JournalDAO.ReeBillRolled, account, sequence=sequence)
             session.commit()
@@ -642,6 +643,7 @@ class BillToolBridge:
     @json_exception
     def pay(self, account, sequence, **args):
         with DBSession(self.state_db) as session:
+            # why is session initialized and reassigned within context manager?
             session = None
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
