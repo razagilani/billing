@@ -1813,20 +1813,22 @@ class BillToolBridge:
                 return self.dumps({'success': False, 'errors': {'reason':'Late Charge Rate', 'details':'must be between 0 and 1', 'late_charge_rate':'Invalid late charge rate'}})
             reebill.late_charge_rate = Decimal(late_charge_rate)
         
-        ba = reebill.billing_address
-        sa = reebill.service_address
+        ba = {}
+        sa = {}
         
-        reebill.billing_address['ba_addressee'] = ba_addressee
-        reebill.billing_address['ba_street1'] = ba_street1
-        reebill.billing_address['ba_city'] = ba_city
-        reebill.billing_address['ba_state'] = ba_state
-        reebill.billing_address['ba_postal_code'] = ba_postal_code
+        ba['ba_addressee'] = ba_addressee
+        ba['ba_street1'] = ba_street1
+        ba['ba_city'] = ba_city
+        ba['ba_state'] = ba_state
+        ba['ba_postal_code'] = ba_postal_code
+        reebill.billing_address = ba
 
-        reebill.service_address['sa_addressee'] = sa_addressee
-        reebill.service_address['sa_street1'] = sa_street1
-        reebill.service_address['sa_city'] = sa_city
-        reebill.service_address['sa_state'] = sa_state
-        reebill.service_address['sa_postal_code'] = sa_postal_code
+        sa['sa_addressee'] = sa_addressee
+        sa['sa_street1'] = sa_street1
+        sa['sa_city'] = sa_city
+        sa['sa_state'] = sa_state
+        sa['sa_postal_code'] = sa_postal_code
+        reebill.service_address = sa
 
         # set disabled services (services not mentioned in the request are
         # automatically resumed)
