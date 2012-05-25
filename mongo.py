@@ -77,8 +77,7 @@ class MongoReebill(object):
 
         where type conversions occur - 
             Should only happen on load/save so that object references are not
-            lost. Moreover, initial xml load provides preferred types such
-            as Decimal and datetime.  
+            lost. 
             The lifecycle should be:  load from source converting to preferred
             python types.  Use class.  save to source converting to preferred
             source types.  
@@ -119,12 +118,12 @@ class MongoReebill(object):
 
     def __init__(self, reebill_data):
 
-        # the bill was found in mongo
+        # the bill is being instantiated from Mongo 
         if type(reebill_data) is dict:
             self.reebill_dict = reebill_data
             return
 
-        # return a new instance based on an existing instance
+        # the bill is being instantiated from an existing instance
         elif type(reebill_data) is MongoReebill:
 
             reebill = reebill_data
@@ -141,12 +140,6 @@ class MongoReebill(object):
             for service in reebill.services:
                 prev_start, prev_end = reebill.utilbill_period_for_service(service)
                 self.set_utilbill_period_for_service(service, (prev_end, None))
-
-            # https://www.pivotaltracker.com/story/show/22547583
-            # TODO: 22547583
-            # this code is related to what must be done when constructing a
-            # new instance of a reebill.  What is missing is setting up initial
-            # chargegroups and registers, for example.
 
             # process rebill
             self.period_begin = reebill.period_end
@@ -226,10 +219,7 @@ class MongoReebill(object):
                 statistics["total_renewable_produced"] = 0
                 statistics["total_trees"] = 0
                 statistics["total_co2_offset"] = 0
-
-                # TODO: 22554017
-                # leave consumption trend alone since we want to carry it forward until it is based on the cubes
-                # at which time we can just recreate the whole trend
+                statistics["consumption_trend"] = []
 
                 self.statistics = statistics
 
@@ -237,99 +227,28 @@ class MongoReebill(object):
         elif type(reebill_data) is None:
 
 
-            # TODO merge in roll bill reset code into behavior of mongo_reebill and use it here
-
             self.reebill_dict = {}
-            # the properties below have to be set in reebill_dict as they are not attributes of a MongoReebill
-            #self.account = ""
-            #self.sequence = 0 
-            #self.branch = 0 
-            #self.issue_date = None
-            #self.due_date = None
-            #self.period_begin = None
-            #self.period_end = None
-            #self.balance_due = Decimal("0.00") 
-            #self.prior_balance = Decimal("0.00") 
-            #self.payment_received = Decimal("0.00")
+
+            # initialize the reebill_dict through the MongoReeBill interface
+            self.account = ""
+            self.sequence = 0 
+            self.branch = 0 
+            self.issue_date = None
+            self.due_date = None
+            self.period_begin = None
+            self.period_end = None
+            self.balance_due = Decimal("0.00") 
+            self.prior_balance = Decimal("0.00") 
+            self.payment_received = Decimal("0.00")
 
             # consider a reset addr function
-            #self.billing_address = {"ba_addressee": None, "ba_street1": None, "ba_city": None, "ba_state": None, "ba_postalcode": None}
-            #self.service_address = {"sa_addressee": None, "sa_street1": None, "sa_city": None, "sa_state": None, "sa_postalcode": None}
-            #self.ree_charges = Decimal("0.00")
-            #self.ree_savings = Decimal("0.00")
-            #self.total_adjustment = Decimal("0.00")
-            #self.balance_forward = Decimal("0.00")
-            #self.motd = "New customer template"
-
-            #consider a reset statistics function
-            #self.statistics = {
-            # "renewable_utilization" : None,
-            #  "total_co2_offset" : None,
-            #  "total_savings" : None,
-            #  "conventional_consumed" : None,
-            #  "conventional_utilization" : None,
-            #  "consumption_trend" : [
-            #    {
-            #        "quantity" : None,
-            #        "month" : "Nov"
-            #    },
-            #    {
-            #        "quantity" : None,
-            #        "month" : "Dec"
-            #    },
-            #    {
-            #        "quantity" : None,
-            #        "month" : "Jan"
-            #    },
-            #    {
-            #        "quantity" : None,
-            #        "month" : "Feb"
-            #    },
-            #    {
-            #        "quantity" : None,
-            #        "month" : "Mar"
-            #    },
-            #    {
-            #        "quantity" : None,
-            #        "month" : "Apr"
-            #    },
-            #    {
-            #        "quantity" : None,
-            #        "month" : "May"
-            #    },
-            #    {
-            #        "quantity" : None,
-            #        "month" : "Jun"
-            #    },
-            #    {
-            #        "quantity" : None,
-            #        "month" : "Jul"
-            #    },
-            #    {
-            #        "quantity" : None,
-            #        "month" : "Aug"
-            #    },
-            #    {
-            #        "quantity" : None,
-            #        "month" : "Sep"
-            #    },
-            #    {
-            #        "quantity" : None,
-            #        "month" : "Oct"
-            #    }
-            #  ],
-            #  "total_trees" : None,
-            #  "co2_offset" : None,
-            #  "total_renewable_consumed" : None,
-            #  "renewable_consumed" : None
-            #}
-
-
-
-
-
-            #self.actual_total = Decimal("0.00")
-            self.hypothetical_total = Decimal("0.00")
+            self.billing_address = {"ba_addressee": None, "ba_street1": None, "ba_city": None, "ba_state": None, "ba_postalcode": None}
+            self.service_address = {"sa_addressee": None, "sa_street1": None, "sa_city": None, "sa_state": None, "sa_postalcode": None}
+            self.ree_charges = Decimal("0.00")
+            self.ree_savings = Decimal("0.00")
+            self.total_adjustment = Decimal("0.00")
+            self.balance_forward = Decimal("0.00")
+            self.motd = "New customer template"
 
             #initialize first utilbill here.
             #need to choose a default service
@@ -337,6 +256,74 @@ class MongoReebill(object):
             #utilbill section:
             #    "hypothetical_chargegroups" : {
             #        "All Charges" : [
+
+            #consider a reset statistics function
+            self.statistics = {
+             "renewable_utilization" : None,
+              "total_co2_offset" : None,
+              "total_savings" : None,
+              "conventional_consumed" : None,
+              "conventional_utilization" : None,
+              "consumption_trend" : [
+                {
+                    "quantity" : None,
+                    "month" : "Nov"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Dec"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Jan"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Feb"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Mar"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Apr"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "May"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Jun"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Jul"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Aug"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Sep"
+                },
+                {
+                    "quantity" : None,
+                    "month" : "Oct"
+                }
+              ],
+              "total_trees" : None,
+              "co2_offset" : None,
+              "total_renewable_consumed" : None,
+              "renewable_consumed" : None
+            }
+
+
+            self.actual_total = Decimal("0.00")
+            self.hypothetical_total = Decimal("0.00")
+
 
 
         else:
