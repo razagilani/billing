@@ -71,15 +71,22 @@ def mail(recipients, merge_fields, bill_path, bill_files):
     from email.mime.base import MIMEBase
     from email.mime.image import MIMEImage
 
-    from_user = config.get("mailer", "from")
-    originator = config.get("mailer", "originator")
-    password = config.get("mailer", "password")
+    from_user = config["from"]
+    originator = config["originator"]
+    password = config["password"]
 
     # outer container, attachments declare their type
     container = MIMEMultipart()
     container['Subject'] = "Skyline Innovations: Your Monthly Bill for %s" % (merge_fields["sa_street1"])
     container['From'] = from_user
     container['To'] = recipients
+
+    if "bcc_list" in config:
+        bcc_addrs = config["bcc_list"]
+        if len(bcc_addrs):
+            bcc_list = [bcc_addr.lstrip(" ") for bcc_addr in bcc_addrs.split(",")]
+            container['Bcc'] = ', '.join(bcc_list)
+
 
     (text, html) = bind_template(merge_fields)
 
@@ -128,7 +135,7 @@ def mail(recipients, merge_fields, bill_path, bill_files):
     # grr... outlook seems to display the plain message first. wtf.
     container.attach(part2)
 
-    server = smtplib.SMTP(config.get("mailer","smtp_host"), int(config.get("mailer", "smtp_port")))
+    server = smtplib.SMTP(config["smtp_host"], int(config["smtp_port"]))
     server.ehlo()
     server.starttls()
     server.ehlo()
