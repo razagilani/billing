@@ -215,6 +215,7 @@ class BillToolBridge:
             self.config.set('mailer', 'smtp_port', '587')
             self.config.set('mailer', 'originator', 'jwatson@skylineinnovations.com')
             self.config.set('mailer', 'from', '"Jules Watson" <jwatson@skylineinnovations.com>')
+            self.config.set('mailer', 'bcc_list', '')
             self.config.set('mailer', 'password', 'password')
             self.config.add_section('authentication')
             self.config.set('authentication', 'authenticate', 'true')
@@ -331,8 +332,7 @@ class BillToolBridge:
         self.renderer = render.ReebillRenderer(dict(self.config.items('reebillrendering')), self.logger)
 
         # configure mailer
-        # TODO: pass in specific configs?
-        bill_mailer.config = self.config
+        bill_mailer.config = dict(self.config.items("mailer"))
 
         # create one RateStructureDAO to user for all ratestructure queries
         rsdb_config_section = self.config.items("rsdb")
