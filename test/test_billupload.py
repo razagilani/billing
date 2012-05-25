@@ -26,6 +26,7 @@ show_reebill_images = true
 billpath = /tmp/test/db-test/skyline/bills/
 database = skyline
 utilitybillpath = /tmp/test/db-test/skyline/utilitybills/
+utility_bill_trash_directory = /tmp/test/db-test/skyline/utilitybills-deleted
 collection = reebills
 host = localhost
 port = 27017
@@ -86,8 +87,10 @@ port = 27017
         path = self.billupload.get_utilbill_file_path(account, start, end,
                 extension='pdf')
 
-        # path should not exist yet
+        # path should not exist yet, and the trash directory should be empty
         assert not os.access(path, os.F_OK)
+        for root, dirs, files in os.walk(self.billupload.utilbill_trash_dir):
+            assert (dirs, files) == ([], [])
 
         # create parent directories of bill file, then create bill file itself
         # with some text in it
@@ -95,11 +98,21 @@ port = 27017
         with open(path, 'w') as bill_file:
             bill_file.write('this is a test')
 
-        # delete the file
-        self.billupload.delete_utilbill_file(account, start, end)
+        # delete the file, and get the path it was moved to
+        new_path = self.billupload.delete_utilbill_file(account, start, end)
 
-        # now the file should not exist
+        # now the file should not exist at its original path
         self.assertFalse(os.access(path, os.F_OK))
+
+        # but there should now be one file in the trash path, and its path
+        # should be 'new_path'
+        self.assertEqual(1,
+                len(list(os.walk(self.billupload.utilbill_trash_dir))))
+        for root, dirs, files in os.walk(self.billupload.utilbill_trash_dir):
+            self.assertEqual([], dirs)
+            self.assertEqual(1, len(files))
+            self.assertEqual(new_path, os.path.join(root, files[0]))
+            print new_path
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
