@@ -5,12 +5,14 @@ import errno
 import logging
 import time
 import datetime
+from uuid import uuid1
 import re
 import subprocess
 import glob
 import shutil
 import ConfigParser
 from db_objects import Customer, UtilBill
+from billing.dateutils import ISO_8601_DATETIME_WITHOUT_ZONE
 
 sys.stdout = sys.stderr
 
@@ -45,6 +47,10 @@ class BillUpload(object):
         # get bill image directory from config file
         self.bill_image_directory = self.config.get('billimages',
                 'bill_image_directory')
+
+        # directory where utility bill images are stored after being "deleted"
+        self.utilbill_trash_dir = self.config.get('billdb',
+                'utility_bill_trash_directory')
         
         self.logger = logger
         
@@ -178,16 +184,26 @@ class BillUpload(object):
         shutil.move(old_path, new_path)
 
     def delete_utilbill_file(self, account, period_start, period_end):
-        '''Deletes the utility bill file given by account and period.'''
+        '''Deletes the utility bill file given by account and period, by moving
+        it to 'utilbill_trash_dir'. The path to the new file is returned.'''
         # TODO due to multiple services, utility bills cannot be uniquely
-        # identified by account and period!
+        # identified by account and period
         # see https://www.pivotaltracker.com/story/show/30079049
         path = self.get_utilbill_file_path(account, period_start, period_end)
-        os.remove(path)
+        deleted_file_name = 'deleted_utilbill_%s_%s' % (account, uuid1())
+        new_path = os.path.join(self.utilbill_trash_dir, deleted_file_name)
+        
+        # create trash directory if it doesn't exist yet
+        create_directory_if_necessary(self.utilbill_trash_dir, self.logger)
+
+        # move the file
+        shutil.move(path, new_path)
+
+        return new_path
 
     def get_reebill_file_path(self, account, sequence, branch=0):
         # TODO implement like the utilbill version
-        pass
+        raise Exception("not implemented")
 
     # TODO rename: ImagePath -> ImageName
     def getUtilBillImagePath(self, account, begin_date, end_date, resolution):

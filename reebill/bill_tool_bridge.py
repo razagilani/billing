@@ -2470,13 +2470,32 @@ class BillToolBridge:
                 raise Exception('utilbill_grid() does not accept xaction "create"')
             elif xaction == 'destroy':
                 # "rows" is either a single id or a list of ids
+                account = kwargs["account"]
                 rows = ju.loads(kwargs['rows'])
                 if type(rows) is int:
                     ids = [rows]
                 else:
                     ids = rows
+
+                # delete each utility bill, and log the deletion in the journal
+                # with the path where the utility bill file was moved
                 for utilbill_id in ids:
-                    self.process.delete_utility_bill(session, utilbill_id)
+                    # load utilbill to get its dates and service
+                    utilbill = session.query(db_objects.UtilBill)\
+                            .filter(db_objects.UtilBill.id == utilbill_id).one()
+                    start, end = utilbill.period_start, utilbill.period_end
+                    service = utilbill.service
+
+                    # delete it & get new path
+                    deleted_path = self.process.delete_utility_bill(session,
+                            utilbill_id)
+
+                    # log it
+                    self.journal_dao.log_event(cherrypy.session['user'],
+                            JournalDAO.UtilBillDeleted, account,
+                            start_date=start, end_date=end, service=service,
+                            deleted_path=deleted_path)
+
                 session.commit()
                 return self.dumps({'success': True})
 

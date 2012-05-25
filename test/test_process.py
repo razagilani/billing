@@ -51,6 +51,7 @@ show_reebill_images = true
 billpath = /tmp/test/db-test/skyline/bills/
 database = test
 utilitybillpath = /tmp/test/db-test/skyline/utilitybills/
+utility_bill_trash_directory = /tmp/test/db-test/skyline/utilitybills-deleted
 collection = reebills
 host = localhost
 port = 27017
@@ -617,10 +618,14 @@ port = 27017
                     .filter(UtilBill.period_start == start)\
                     .filter(UtilBill.period_end == end).one().id
 
-            # unassociated: deletion should succeed
-            process.delete_utility_bill(session, utilbill_id)
+            # unassociated: deletion should succeed (row removed from database,
+            # file moved to trash directory)
+            new_path = process.delete_utility_bill(session, utilbill_id)
             self.assertEqual(0, self.state_db.list_utilbills(session, account)[1])
             self.assertFalse(os.access(bill_file_path, os.F_OK))
+            self.assertRaises(IOError, self.billupload.get_utilbill_file_path,
+                    account, start, end)
+            self.assertTrue(os.access(new_path, os.F_OK))
 
             # re-upload the bill
             process.upload_utility_bill(session, account, service, start, end,

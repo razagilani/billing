@@ -119,9 +119,10 @@ class Process(object):
         #session.delete(utilbill)
 
     def delete_utility_bill(self, session, utilbill_id):
-        '''Deletes the utility bill given by utilbill_id, if it's not
-        associated or attached to a reebill. Raises a ValueError if the utility
-        bill cannot be deleted.'''
+        '''Deletes the utility bill given by utilbill_id (if it's not
+        associated or attached to a reebill) and returns the path where the
+        file was moved (it never really gets deleted). Raises a ValueError if
+        the utility bill cannot be deleted.'''
         utilbill = session.query(UtilBill)\
                 .filter(UtilBill.id==utilbill_id).one()
         if utilbill.has_reebill:
@@ -138,11 +139,14 @@ class Process(object):
 
         # OK to delete now.
         # first try to delete the file on disk
-        self.billupload.delete_utilbill_file(utilbill.customer.account,
-                utilbill.period_start, utilbill.period_end)
+        new_path = self.billupload.delete_utilbill_file(
+                utilbill.customer.account, utilbill.period_start,
+                utilbill.period_end)
 
         # TODO move to StateDB?
         session.delete(utilbill)
+
+        return new_path
 
     def sum_bill(self, session, prior_reebill, present_reebill):
         '''Compute everything about the bill that can be continuously

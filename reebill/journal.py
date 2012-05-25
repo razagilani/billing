@@ -27,6 +27,7 @@ event_names = {
     'ReeBillAttached': 'Reebill attached to utility bills',
     'PaymentEntered': 'Payment entered',
     'AccountCreated': 'Account created', # no sequence associated with this one
+    'UtilBillDeleted': 'Utility bill deleted'
 
     # TODO add utility bill uploaded? that has an account but no sequence
 }
@@ -46,26 +47,45 @@ class JournalEntry(mongoengine.Document):
     event = mongoengine.StringField(choices=event_names.keys())
     account = mongoengine.StringField(required=True)
     sequence = mongoengine.IntField()
-    msg = mongoengine.StringField() # only for Note events
-    address = mongoengine.StringField() # only for ReeBillMailed events
+
+    # only for Note events
+    msg = mongoengine.StringField()
+
+    # only for ReeBillMailed events
+    address = mongoengine.StringField()
+
+    # only for UtilBillDeleted events (datetimes are actually dates)
+    start_date = mongoengine.DateTimeField()
+    end_date = mongoengine.DateTimeField()
+    service = mongoengine.StringField()
+    deleted_path = mongoengine.StringField()
 
     def to_dict(self):
         '''Returns a JSON-ready dictionary representation of this journal
         entry.'''
         # TODO see if there's a way in MongoKit to get all the fields instead
         # of explictly checking them all
+        # https://www.pivotaltracker.com/story/show/30232105
         result = dict([
             ('date', self.date),
             ('user', self.user),
             ('event', self.event),
             ('account', self.account)
         ])
-        if hasattr(self, 'sequence'):
+        if hasattr(self, 'sequence') and self.sequence is not None:
             result.update({'sequence': self.sequence})
-        if hasattr(self, 'msg'):
+        if hasattr(self, 'msg') and self.msg is not None:
             result.update({'msg': self.msg})
-        if hasattr(self, 'addresss'):
-            result.update({'addresss': self.addresss})
+        if hasattr(self, 'address') and self.address is not None:
+            result.update({'address': self.address})
+        if hasattr(self, 'start_date') and self.start_date is not None:
+            result.update({'start_date': self.start_date})
+        if hasattr(self, 'end_date') and self.end_date is not None:
+            result.update({'end_date': self.end_date})
+        if hasattr(self, 'service') and self.service is not None:
+            result.update({'service': self.service})
+        if hasattr(self, 'deleted_path') and self.deleted_path is not None:
+            result.update({'deleted_path': self.deleted_path})
 
         return result
 
