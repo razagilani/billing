@@ -312,8 +312,20 @@ function reeBillReady() {
 
     });
 
-    var utilbillColModel = new Ext.grid.ColumnModel(
-    {
+    utilbillGridStore.on('exception', function(dataProxy, type, action,
+                options, response, arg) {
+        if (type == 'remote' && action == 'destroy' && response.success !=
+                true) {
+            Ext.Msg.alert('Error', response.raw.errors.reason + " " +
+                    response.raw.errors.details);
+        } else {
+            // catch-all for other errors
+            Ext.Msg.alert('Error', "utilbillGridStore error: type "+type
+                +", action "+action+", response "+response);
+        }
+    });
+
+    var utilbillColModel = new Ext.grid.ColumnModel({
         columns:[{
                 id: 'name',
                 header: 'Name',
@@ -367,6 +379,23 @@ function reeBillReady() {
     // in the mail tab
     var utilbillGrid = new Ext.grid.EditorGridPanel({
         flex: 1,
+        tbar: new Ext.Toolbar({
+            items: [{
+                xtype: 'button',
+                // ref places a name for this component into the grid so it may be referenced as [name]Grid.removeBtn...
+                id: 'utilbillRemoveButton',
+                iconCls: 'icon-delete',
+                text: 'Delete',
+                disabled: false,
+                handler: function() {
+                    //utilbillGrid.stopEditing();
+                    var selections = utilbillGrid.getSelectionModel().getSelections();
+                    for (var i = 0; i < selections.length; i++) {
+                        utilbillGridStore.remove(selections[i]);
+                    }
+                }
+            }]
+        }),
         bbar: new Ext.PagingToolbar({
             // TODO: constant
             pageSize: 25,
@@ -453,6 +482,9 @@ function reeBillReady() {
 
     utilbillGrid.getSelectionModel().on('selectionchange', function(sm){
         //utilbillGrid.getTopToolbar().findById('utilbillInsertBtn').setDisabled(sm.getCount() <1);
+        console.log(sm.getSelections());
+        var enable = sm.getSelections().every(function(r) {return r.data.editable});
+        utilbillGrid.getTopToolbar().findById('utilbillRemoveButton').setDisabled(!enable);
     });
   
 

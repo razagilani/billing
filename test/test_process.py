@@ -594,6 +594,8 @@ port = 27017
             session.commit()
 
     def test_delete_utility_bill(self):
+        print 'test_delete_utility_bill'
+
         account, service, = '99999', 'gas'
         start, end = date(2012,1,1), date(2012,2,1)
         process = Process(self.config, self.state_db, self.reebill_dao,
@@ -608,9 +610,15 @@ port = 27017
             bill_file_path = self.billupload.get_utilbill_file_path(account,
                     start, end)
             assert os.access(bill_file_path, os.F_OK)
+            customer = session.query(Customer)\
+                    .filter(Customer.account == account).one()
+            utilbill_id = session.query(UtilBill)\
+                    .filter(UtilBill.customer_id == customer.id)\
+                    .filter(UtilBill.period_start == start)\
+                    .filter(UtilBill.period_end == end).one().id
 
             # unassociated: deletion should succeed
-            process.delete_utility_bill(session, account, service, start, end)
+            process.delete_utility_bill(session, utilbill_id)
             self.assertEqual(0, self.state_db.list_utilbills(session, account)[1])
             self.assertFalse(os.access(bill_file_path, os.F_OK))
 
@@ -621,6 +629,10 @@ port = 27017
             bill_file_path = self.billupload.get_utilbill_file_path(account,
                     start, end)
             assert os.access(bill_file_path, os.F_OK)
+            utilbill_id = session.query(UtilBill)\
+                    .filter(UtilBill.customer_id == customer.id)\
+                    .filter(UtilBill.period_start == start)\
+                    .filter(UtilBill.period_end == end).one().id
 
             # associated with reebill that has not been issued: should fail
             # (association is currently done purely by date range)
@@ -629,9 +641,8 @@ port = 27017
             mongo_reebill.period_begin = start
             mongo_reebill.period_end = end
             self.reebill_dao.save_reebill(mongo_reebill)
-            import pdb; pdb.set_trace()
-            self.assertRaises(Exception, process.delete_utility_bill, session,
-                    account, service, start, end)
+            self.assertRaises(ValueError, process.delete_utility_bill, session,
+                    utilbill_id)
 
             # attached to reebill: should fail (this reebill is not created by
             # rolling, the way it's usually done, and only exists in MySQL)
@@ -639,8 +650,8 @@ port = 27017
             utilbill = self.state_db.list_utilbills(session, account)[0].one()
             process.attach_utilbills(session, account, 1)
             assert utilbill.reebill == reebill
-            self.assertRaises(Exception, process.delete_utility_bill, session,
-                    account, service, start, end)
+            self.assertRaises(ValueError, process.delete_utility_bill, session,
+                    utilbill_id)
 
             session.commit()
 

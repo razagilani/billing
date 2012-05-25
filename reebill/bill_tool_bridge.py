@@ -2431,7 +2431,6 @@ class BillToolBridge:
                 self.validate_utilbill_period(new_period_start, new_period_end)
 
                 # find utilbill in mysql
-                session = self.state_db.session()
                 utilbill = session.query(db_objects.UtilBill).filter(
                         db_objects.UtilBill.id==utilbill_id).one()
                 customer = session.query(db_objects.Customer).filter(
@@ -2451,7 +2450,6 @@ class BillToolBridge:
                         new_period_start, new_period_end)
 
                 # change dates in MySQL
-                session = self.state_db.session()
                 utilbill = session.query(db_objects.UtilBill)\
                         .filter(db_objects.UtilBill.id==utilbill_id).one()
                 if utilbill.has_reebill:
@@ -2468,9 +2466,19 @@ class BillToolBridge:
                 return self.dumps({'success': True})
             elif xaction == 'create':
                 # creation happens via upload_utility_bill
+                # TODO move here?
                 raise Exception('utilbill_grid() does not accept xaction "create"')
             elif xaction == 'destroy':
-                raise Exception('utilbill_grid() does not accept xaction "destroy"')
+                # "rows" is either a single id or a list of ids
+                rows = ju.loads(kwargs['rows'])
+                if type(rows) is int:
+                    ids = [rows]
+                else:
+                    ids = rows
+                for utilbill_id in ids:
+                    self.process.delete_utility_bill(session, utilbill_id)
+                session.commit()
+                return self.dumps({'success': True})
 
     @cherrypy.expose
     @random_wait
