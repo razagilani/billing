@@ -299,7 +299,10 @@ class BillToolBridge:
         rsdb_config_section = self.config.items("rsdb")
         self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
 
-        # TODO configure journal classes with db, collection, etc.
+        # TODO configure journal classes with db, collection, etc. (not done
+        # through JournalDAO anymore)
+        self.journal_dao = journal.JournalDAO(dict(
+            self.config.items('journaldb')))
 
         # create a Splinter
         self.splinter = Splinter(self.config.get('skyline_backend',
