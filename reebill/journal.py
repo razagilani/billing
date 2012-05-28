@@ -36,7 +36,8 @@ class JournalDAO(object):
         if len(entries) == 0:
             return ''
         last_entry = entries[-1]
-        return str(last_entry)
+        return '%s on %s' % (str(last_entry),
+                last_entry.date.strftime(ISO_8601_DATE))
 
     def load_entries(self, account):
         '''Returns a list of dictionaries describing all entries for the given
@@ -72,10 +73,16 @@ class JournalEntry(mongoengine.Document):
     account = mongoengine.StringField(required=True)
 
     def __str__(self):
-        '''Short human-readable description. Most subclasses will not need to
-        override this.'''
-        return '%s on %s' % (self.description(),
-                self.date.strftime(ISO_8601_DATE))
+        '''Short human-readable description without date.'''
+        return 'generic event--you should never see this!'
+
+    def name(self):
+        return 'generic event--you should never see this!'
+
+    def description(self):
+        '''Long human-readable description without date--same as __str__ by
+        default.'''
+        return str(self)
 
     def to_dict(self):
         '''Returns a JSON-ready dictionary representation of this journal
@@ -96,10 +103,9 @@ class AccountCreatedEvent(JournalEntry):
         AccountCreatedEvent(user=user.identifier, account=account).save()
 
     def __str__(self):
-        return 'Account %s created on %s' % (self.account,
-                self.date.strftime(ISO_8601_DATE))
+        return 'Account %s created' % (self.account)
 
-    def description(self):
+    def name(self):
         return 'Account Created'
     
 class Note(JournalEntry):
@@ -118,9 +124,9 @@ class Note(JournalEntry):
         result.save()
 
     def __str__(self):
-        return 'Note on %s: %s' % (self.date.strftime(ISO_8601_DATE), self.msg)
+        return 'Note: %s' % (self.msg)
 
-    def description(self):
+    def name(self):
         return 'Note'
 
     def to_dict(self):
@@ -146,10 +152,14 @@ class UtilBillDeletedEvent(JournalEntry):
                 deleted_path=deleted_path).save()
     
     def __str__(self):
-        return '%s %s utility bill deleted on %s' % (self.account,
-                self.service, self.date.strftime(ISO_8601_DATE))
+        return '%s %s utility bill deleted' % (self.account, self.service)
 
     def description(self):
+        return ('%s utility bill for service "%s" (from %s to %s) deleted, '
+                'moved to %s') % (self.account, self.service,
+                self.start_date, self.end_date, self.deleted_path)
+
+    def name(self):
         return 'Utility bill deleted'
 
     def to_dict(self):
@@ -179,10 +189,9 @@ class ReeBillRolledEvent(SequenceEvent):
                 sequence=sequence).save()
 
     def __str__(self):
-        return '%s-%s rolled on %s' % (self.account, self.sequence,
-                self.date.strftime(ISO_8601_DATE))
+        return 'Reebill %s-%s rolled' % (self.account, self.sequence)
 
-    def description(self):
+    def name(self):
         return 'Reebill rolled'
 
 class ReeBillBoundEvent(SequenceEvent):
@@ -192,10 +201,9 @@ class ReeBillBoundEvent(SequenceEvent):
                 sequence=sequence).save()
 
     def __str__(self):
-        return '%s-%s bound to REE on %s' % (self.account, self.sequence,
-                self.date.strftime(ISO_8601_DATE))
+        return 'Reebill %s-%s bound to REE' % (self.account, self.sequence)
 
-    def description(self):
+    def name(self):
         return 'Reebill bound to REE'
 
 class ReeBillDeletedEvent(SequenceEvent):
@@ -205,10 +213,9 @@ class ReeBillDeletedEvent(SequenceEvent):
                 sequence=sequence).save()
 
     def __str__(self):
-        return '%s-%s deleted on %s' % (self.account, self.sequence,
-                self.date.strftime(ISO_8601_DATE))
+        return 'Reebill %s-%s deleted' % (self.account, self.sequence)
 
-    def description(self):
+    def name(self):
         return 'Reebill deleted' 
 
 class ReeBillAttachedEvent(SequenceEvent):
@@ -218,10 +225,9 @@ class ReeBillAttachedEvent(SequenceEvent):
                 sequence=sequence).save()
 
     def __str__(self):
-        return '%s-%s attached on %s' % (self.account, self.sequence,
-                self.date.strftime(ISO_8601_DATE))
+        return 'Reebill %s-%s attached' % (self.account, self.sequence)
 
-    def description(self):
+    def name(self):
         return 'Reebill attached to utility bills' 
 
 class ReeBillMailedEvent(SequenceEvent):
@@ -239,9 +245,11 @@ class ReeBillMailedEvent(SequenceEvent):
         return result
 
     def __str__(self):
-        return '%s-%s mailed on %s' % (self.account, self.sequence,
-                self.date.strftime(ISO_8601_DATE))
+        return 'Reebill %s-%s mailed' % (self.account, self.sequence)
 
     def description(self):
+        return 'Reebill %s-%s mailed to "%s"' % (self.account, self.sequence, self.address)
+
+    def name(self):
         return 'Reebill mailed'
 
