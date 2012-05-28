@@ -8,7 +8,7 @@ import pymongo
 import mongoengine
 from billing.mongo_utils import bson_convert
 from billing.mongo_utils import python_convert
-from billing import dateutils
+from billing.dateutils import ISO_8601_DATE
 
 sys.stdout = sys.stderr
 
@@ -20,21 +20,23 @@ sys.stdout = sys.stderr
 # UtilBillDeleted
 # TODO add utility bill uploaded? that has an account but no sequence
 
-# MongoEngine connection--TODO configure from config file
-connection = mongoengine.connect('test')
-
 class JournalDAO(object):
+    '''Performs queries for events in the journal.'''
+
+    def __init__(self, host, port, database, collection):
+        # global mongoengine connection object (not actually related to
+        # JournalDAO itself)
+        # TODO figure out how to use this the right way
+        mongoengine.connect(database, host=host, port=int(port))
+
     def last_event_description(self, account):
         '''Returns a human-readable description of the last event for the given
         account. Returns an empty string if the account has no events.'''
-        entries = JournalEntry.objects
+        entries = list(JournalEntry.objects(account=account))
         if len(entries) == 0:
             return ''
         last_entry = entries[-1]
-        event_name = last_entry.description()
-        description = '%s on %s' % (event_name,
-                last_entry.date.strftime(dateutils.ISO_8601_DATE))
-        return description
+        return str(last_entry)
 
     def load_entries(self, account):
         '''Returns a list of dictionaries describing all entries for the given
@@ -42,7 +44,7 @@ class JournalDAO(object):
         result = []
         for event in JournalEntry.objects(account=account):
             d = event.to_dict()
-            d.update({'event': event.description()}) # TODO human-readable class names
+            d.update({'event': event.description()})
             result.append(d)
         return result
 
@@ -69,6 +71,12 @@ class JournalEntry(mongoengine.Document):
     user = mongoengine.StringField(required=True) # eventually replace with ReferenceField to user document?
     account = mongoengine.StringField(required=True)
 
+    def __str__(self):
+        '''Short human-readable description. Most subclasses will not need to
+        override this.'''
+        return '%s on %s' % (self.description(),
+                self.date.strftime(ISO_8601_DATE))
+
     def to_dict(self):
         '''Returns a JSON-ready dictionary representation of this journal
         entry.'''
@@ -87,6 +95,10 @@ class AccountCreatedEvent(JournalEntry):
     def save_instance(cls, user, account):
         AccountCreatedEvent(user=user.identifier, account=account).save()
 
+    def __str__(self):
+        return 'Account %s created on %s' % (self.account,
+                self.date.strftime(ISO_8601_DATE))
+
     def description(self):
         return 'Account Created'
     
@@ -104,6 +116,9 @@ class Note(JournalEntry):
         if sequence is not None:
             result.sequence = sequence
         result.save()
+
+    def __str__(self):
+        return 'Note on %s: %s' % (self.date.strftime(ISO_8601_DATE), self.msg)
 
     def description(self):
         return 'Note'
@@ -130,6 +145,10 @@ class UtilBillDeletedEvent(JournalEntry):
                 start_date=start_date, end_date=end_date, service=service,
                 deleted_path=deleted_path).save()
     
+    def __str__(self):
+        return '%s %s utility bill deleted on %s' % (self.account,
+                self.service, self.date.strftime(ISO_8601_DATE))
+
     def description(self):
         return 'Utility bill deleted'
 
@@ -159,6 +178,10 @@ class ReeBillRolledEvent(SequenceEvent):
         ReeBillRolledEvent(user=user.identifier, account=account,
                 sequence=sequence).save()
 
+    def __str__(self):
+        return '%s-%s rolled on %s' % (self.account, self.sequence,
+                self.date.strftime(ISO_8601_DATE))
+
     def description(self):
         return 'Reebill rolled'
 
@@ -167,6 +190,10 @@ class ReeBillBoundEvent(SequenceEvent):
     def save_instance(cls, user, account, sequence):
         ReeBillBoundEvent(user=user.identifier, account=account,
                 sequence=sequence).save()
+
+    def __str__(self):
+        return '%s-%s bound to REE on %s' % (self.account, self.sequence,
+                self.date.strftime(ISO_8601_DATE))
 
     def description(self):
         return 'Reebill bound to REE'
@@ -177,6 +204,10 @@ class ReeBillDeletedEvent(SequenceEvent):
         ReeBillDeletedEvent(user=user.identifier, account=account,
                 sequence=sequence).save()
 
+    def __str__(self):
+        return '%s-%s deleted on %s' % (self.account, self.sequence,
+                self.date.strftime(ISO_8601_DATE))
+
     def description(self):
         return 'Reebill deleted' 
 
@@ -185,6 +216,10 @@ class ReeBillAttachedEvent(SequenceEvent):
     def save_instance(cls, user, account, sequence):
         ReeBillAttachedEvent(user=user.identifier, account=account,
                 sequence=sequence).save()
+
+    def __str__(self):
+        return '%s-%s attached on %s' % (self.account, self.sequence,
+                self.date.strftime(ISO_8601_DATE))
 
     def description(self):
         return 'Reebill attached to utility bills' 
@@ -203,14 +238,10 @@ class ReeBillMailedEvent(SequenceEvent):
         result.update({'address': self.address})
         return result
 
+    def __str__(self):
+        return '%s-%s mailed on %s' % (self.account, self.sequence,
+                self.date.strftime(ISO_8601_DATE))
+
     def description(self):
         return 'Reebill mailed'
 
-if __name__ == '__main__':
-    dao = JournalDAO(database='skyline', collection='journal')
-    class FakeUser(object): pass
-    user = FakeUser()
-    setattr(user, 'identifier', 'dan')
-    dao.log_event(user, JournalDAO.Note, '10003', msg="Does this note show up?!")
-    entries = dao.load_entries('10003')
-    print entries
