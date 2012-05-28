@@ -4747,18 +4747,15 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'sequence',
             },{
-                header: 'Event Type',
+                header: 'Event',
                 sortable: true,
                 dataIndex: 'event',
-            },{
-                header: 'Message',
-                sortable: true,
-                dataIndex: 'msg',
-            },{
+                width: 600,
+            },/*{
                 header: 'Data', // misc key-value pairs
                 sortable: true,
                 dataIndex: 'extra',
-            },
+            },*/
         ]
     });
     /* TODO: 20493983 enable for admin user
