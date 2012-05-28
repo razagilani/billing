@@ -11,8 +11,6 @@ import pprint
 pprint.pprint(os.environ)
 pprint.pprint(sys.path)
 pprint.pprint(sys.prefix)
-
-
 import traceback
 import json
 import cherrypy
@@ -42,7 +40,6 @@ from billing.processing import billupload
 from billing.processing import process, state, db_objects, fetch_bill_data as fbd, rate_structure as rs
 from billing.processing.billupload import BillUpload
 from billing.reebill import render, journal, bill_mailer
-from billing.reebill.journal import JournalDAO
 from billing.users import UserDAO, User
 from billing import calendar_reports
 from billing.estimated_revenue import EstimatedRevenue
@@ -302,9 +299,7 @@ class BillToolBridge:
         rsdb_config_section = self.config.items("rsdb")
         self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
 
-        # create a JournalDAO
-        journaldb_config_section = self.config.items("journaldb")
-        self.journal_dao = journal.JournalDAO(**dict(journaldb_config_section))
+        # TODO configure journal classes with db, collection, etc.
 
         # create a Splinter
         self.splinter = Splinter(self.config.get('skyline_backend',
@@ -602,15 +597,15 @@ class BillToolBridge:
 
             # record account creation
             # (no sequence associated with this)
-            self.journal_dao.log_event(cherrypy.session['user'],
-                    JournalDAO.AccountCreated, customer.account)
+            journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
+                    customer.account)
             self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
 
             # record reebill roll separately ("so that performance can be
             # measured": 25282041)
-            self.journal_dao.log_event(cherrypy.session['user'],
-                    JournalDAO.ReeBillRolled, account, sequence=0)
+            journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
+                    customer.account, 0)
 
             # get next next account number to send it back to the client so it
             # can be shown in the account-creation form
@@ -632,8 +627,8 @@ class BillToolBridge:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             new_reebill = self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(new_reebill)
-            self.journal_dao.log_event(cherrypy.session['user'],
-                    JournalDAO.ReeBillRolled, account, sequence=sequence)
+            journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
+                    account, sequence)
             session.commit()
             return self.dumps({'success': True})
 
@@ -681,8 +676,8 @@ class BillToolBridge:
                 reebill
             )
         self.reebill_dao.save_reebill(reebill)
-        self.journal_dao.log_event(cherrypy.session['user'],
-                JournalDAO.ReeBillBoundtoREE, account, sequence=sequence)
+        journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
+                account, sequence)
         return self.dumps({'success': True})
 
 
@@ -716,8 +711,8 @@ class BillToolBridge:
                 timestamp_format=timestamp_format, energy_unit=energy_unit)
 
         self.reebill_dao.save_reebill(reebill)
-        self.journal_dao.log_event(cherrypy.session['user'],
-                JournalDAO.ReeBillBoundtoREE, account, sequence=sequence)
+        journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
+                account, sequence)
         return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -797,9 +792,8 @@ class BillToolBridge:
             self.process.attach_utilbills(session, reebill.account,
                     reebill.sequence)
 
-            self.journal_dao.log_event(cherrypy.session['user'],
-                    JournalDAO.ReeBillAttached, reebill.account,
-                    sequence=reebill.sequence)
+            journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
+                    reebill.account, reebill.sequence)
             session.commit()
             return self.dumps({'success': True})
 
@@ -859,9 +853,8 @@ class BillToolBridge:
                         account), bill_file_names);
 
             for reebill in all_bills:
-                self.journal_dao.log_event(cherrypy.session['user'],
-                        JournalDAO.ReeBillMailed, reebill.account,
-                        sequence=reebill.sequence, address=recipients)
+                journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
+                        reebill.account, reebill.sequence, recipients)
                 self.process.issue(session, reebill.account, reebill.sequence)
                 self.process.attach_utilbills(session, reebill.account,
                         reebill.sequence)
@@ -1723,9 +1716,8 @@ class BillToolBridge:
                 if type(sequences) is int: sequences = [sequences]
                 for sequence in sequences:
                     self.process.delete_reebill(session, account, sequence)
-                    self.journal_dao.log_event(cherrypy.session['user'],
-                            JournalDAO.ReeBillDeleted, account,
-                            sequence=sequence)
+                    journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
+                            account, sequence)
                 session.commit()
                 return self.dumps({'success': True})
 
@@ -2306,21 +2298,16 @@ class BillToolBridge:
         '''Saves the text 'entry' as a Note in the journal for 'account'.
         Sequence is optional in case the entry applies to the account as whole,
         but should be provided if it's associated with a particular reebill.'''
-        try:
-            if not account or not entry:
-                raise ValueError("Bad Parameter Value")
-            if sequence:
-                sequence = int(sequence)
-                self.journal_dao.log_event(cherrypy.session['user'],
-                        JournalDAO.Note, account, sequence=sequence, msg=entry)
-            else:
-                self.journal_dao.log_event(cherrypy.session['user'],
-                        JournalDAO.Note, account, msg=entry)
-
-            return self.dumps({'success':True})
-
-        except Exception as e:
-            return self.handle_exception(e)
+        if not account or not entry:
+            raise ValueError("Bad Parameter Value")
+        if sequence:
+            sequence = int(sequence)
+            journal.Note.save_instance(cherrypy.session['user'], account,
+                    entry, sequence=sequence)
+        else:
+            journal.Note.save_instance(cherrypy.session['user'], account,
+                    entry)
+        return self.dumps({'success':True})
 
  
     # TODO merge into utilbill_grid(); this is not called by the front-end anymore
@@ -2491,10 +2478,8 @@ class BillToolBridge:
                             utilbill_id)
 
                     # log it
-                    self.journal_dao.log_event(cherrypy.session['user'],
-                            JournalDAO.UtilBillDeleted, account,
-                            start_date=start, end_date=end, service=service,
-                            deleted_path=deleted_path)
+                    journal.UtilBillDeletedEvent.save_instance(cherrypy.session['user'],
+                            account, start, end, service, deleted_path)
 
                 session.commit()
                 return self.dumps({'success': True})

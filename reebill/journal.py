@@ -12,53 +12,62 @@ from billing import dateutils
 
 sys.stdout = sys.stderr
 
-# list of events (keys) and their human-readable descriptions
-# Outside this class, always refer to these as Journal.ReeBillRolled, etc.
-event_names = {
-    'Note': 'Note', # log event as a note
-    'ReeBillRolled': 'Reebill rolled',
-    'ReeBillBoundtoREE': 'RE&E offset bound', # TODO fix capitalization
-    'ReeBillUsagePeriodUpdated': 'Usage period updated',
-    'ReeBillBillingPeriodUpdated': 'Billing period updated',
-    'ReeBillRateStructureModified': 'Rate structure modified',
-    'ReeBillCommitted': 'Reebill committed', # TODO delete? has this ever been used?
-    'ReeBillMailed': 'Utility bills attached to reebill',
-    'ReeBillDeleted': 'Reebill deleted',
-    'ReeBillAttached': 'Reebill attached to utility bills',
-    'PaymentEntered': 'Payment entered',
-    'AccountCreated': 'Account created', # no sequence associated with this one
-    'UtilBillDeleted': 'Utility bill deleted'
+# list of event types proposed but not used yet:
+# ReeBillUsagePeriodUpdated
+# ReeBillBillingPeriodUpdated
+# ReeBillRateStructureModified
+# PaymentEntered
+# UtilBillDeleted
+# TODO add utility bill uploaded? that has an account but no sequence
 
-    # TODO add utility bill uploaded? that has an account but no sequence
-}
+# MongoEngine connection--TODO configure from config file
+connection = mongoengine.connect('test')
+
+class JournalDAO(object):
+    def last_event_description(self, account):
+        '''Returns a human-readable description of the last event for the given
+        account. Returns an empty string if the account has no events.'''
+        # TODO convert to MongoEngine style
+        entries = JournalEntry.objects
+        if len(entries) == 0:
+            return ''
+        last_entry = entries[-1]
+        event_name = str(last_entry.__class__) # TODO human-readable event names
+        description = '%s on %s' % (event_name,
+                last_entry.date.strftime(dateutils.ISO_8601_DATE))
+        return description
+
+    def load_entries(self, account):
+        '''Returns a list of dictionaries describing all entries for the given
+        account.'''
+        result = []
+        for event in JournalEntry.objects(account=account):
+            d = event.to_dict()
+            d.update({'event': event.__class__.__name__})
+            result.append(d)
+        return result
 
 class JournalEntry(mongoengine.Document):
-    '''MongoEngine schema definition for journal entry document.'''
+    '''Base class containing MongoEngine schema definition for all journal
+    entries. This class should not be instantiated, and does not even have a
+    constructor because MongoEngine makes a constructor for it, to which it
+    passes the values of all the fields. That means you can't define a
+    constructor whose arguments do not include all the field names. All
+    descendants of mongoengine.Document also have this problem, so they have
+    save_instance() class methods which create an instance of the class and
+    save it in Mongo.'''
 
     # MongoEngine assumes the collection to use is the document class name
     # lowercased, but here we want to use the collection named "journal":
-    meta = {'collection': 'journal'}
+    meta = {'collection': 'journal', 'allow_inheritance': True}
     # TODO create class dynamically to set collection name to the one passed
     # into JournalDAO constructor? i think python provides a way to do that...
 
     # all possible fields and their types
-    date = mongoengine.DateTimeField(required=True)
+    date = mongoengine.DateTimeField(required=True,
+            default=datetime.datetime.utcnow())
     user = mongoengine.StringField(required=True) # eventually replace with ReferenceField to user document?
-    event = mongoengine.StringField(choices=event_names.keys())
     account = mongoengine.StringField(required=True)
-    sequence = mongoengine.IntField()
-
-    # only for Note events
-    msg = mongoengine.StringField()
-
-    # only for ReeBillMailed events
-    address = mongoengine.StringField()
-
-    # only for UtilBillDeleted events (datetimes are actually dates)
-    start_date = mongoengine.DateTimeField()
-    end_date = mongoengine.DateTimeField()
-    service = mongoengine.StringField()
-    deleted_path = mongoengine.StringField()
 
     def to_dict(self):
         '''Returns a JSON-ready dictionary representation of this journal
@@ -66,104 +75,114 @@ class JournalEntry(mongoengine.Document):
         # TODO see if there's a way in MongoKit to get all the fields instead
         # of explictly checking them all
         # https://www.pivotaltracker.com/story/show/30232105
-        result = dict([
+        return dict([
             ('date', self.date),
             ('user', self.user),
-            ('event', self.event),
             ('account', self.account)
         ])
-        if hasattr(self, 'sequence') and self.sequence is not None:
+
+class AccountCreatedEvent(JournalEntry):
+    @classmethod
+    def save_instance(cls, user, account):
+        AccountCreatedEvent(user=user.identifier, account=account).save()
+    
+class Note(JournalEntry):
+    '''JournalEntry subclass for Note events.'''
+    event = 'Note'
+    msg = mongoengine.StringField(required=True)
+
+    # sequence is optional
+    sequence = mongoengine.IntField()
+    
+    @classmethod
+    def save_instance(cls, user, account, message, sequence=None):
+        result = Note(user=user.identifier, account=account, msg=message)
+        if sequence is not None:
+            result.sequence = sequence
+        result.save()
+
+    def to_dict(self):
+        result = super(Note, self).to_dict()
+        if hasattr(self, 'sequence'):
             result.update({'sequence': self.sequence})
-        if hasattr(self, 'msg') and self.msg is not None:
-            result.update({'msg': self.msg})
-        if hasattr(self, 'address') and self.address is not None:
-            result.update({'address': self.address})
-        if hasattr(self, 'start_date') and self.start_date is not None:
-            result.update({'start_date': self.start_date})
-        if hasattr(self, 'end_date') and self.end_date is not None:
-            result.update({'end_date': self.end_date})
-        if hasattr(self, 'service') and self.service is not None:
-            result.update({'service': self.service})
-        if hasattr(self, 'deleted_path') and self.deleted_path is not None:
-            result.update({'deleted_path': self.deleted_path})
-
+        result.update({'msg': self.msg})
         return result
 
-class JournalDAO(object):
-    '''Data Access Object for Journal Entries. Currently handles loading/saving
-    of journal entry documents, but may disappear when we switch over
-    completely to the MongoEngine way of doing things (documents save()
-    themselves).'''
+class UtilBillDeletedEvent(JournalEntry):
+    event = 'UtilBillDeleted'
+    
+    # mongo does not support date types and MongoEngine does not provide a
+    # workaround. they will just be stored as datetimes
+    start_date = mongoengine.DateTimeField()
+    end_date = mongoengine.DateTimeField()
+    service = mongoengine.StringField()
+    deleted_path = mongoengine.StringField()
 
-    def __init__(self, database, collection, host='localhost', port=27017):
-        try:
-            self.connection = mongoengine.connect(database, host=host,
-                    port=int(port))
-        except Exception as e: 
-            print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
-            raise e
-
-    def log_event(self, user, event_type, account, **kwargs):
-        '''Logs an event associated with the given user and customer account
-        (argument 'sequence' should be given to specify a particular reebill).
-        A timestamp is produced automatically and the contents of kwargs will
-        be inserted directly into the document.'''
-        if event_type not in event_names:
-            raise ValueError('Unknown event type: %s' % event_type)
-
-        # create journal entry object with the required fields
-        journal_entry = JournalEntry(user=user.identifier,
-                date=datetime.datetime.utcnow(), event=event_type,
-                account=account)
-
-        # optional fields
-        for kwarg, value in kwargs.iteritems():
-            setattr(journal_entry, kwarg, value)
-
-        # save in Mongo
-        journal_entry.save()
-
-    def load_entries(self, account):
-        '''Returns a list of JSON-ready dictionaries of all journal entries for
-        the given account.'''
-        journal_entries = sorted(JournalEntry.objects(account=account),
-                key=operator.attrgetter('date'))
-        result = [entry.to_dict() for entry in journal_entries]
+    @classmethod
+    def save_instance(cls, user, account, start_date, end_date, service,
+            deleted_path):
+        UtilBillDeletedEvent(user=user.identifier, account=account,
+                start_date=start_date, end_date=end_date, service=service,
+                deleted_path=deleted_path).save()
+    
+    def to_dict(self):
+        result = super(UtilBillDeletedEvent, self).to_dict()
+        result.update({
+            'start_date': self.start_date,
+            'end_date': self.end_date,
+            'service': self.service,
+            'deleted_path': self.deleted_path
+        })
         return result
 
-    def last_event_description(self, account):
-        '''Returns a human-readable description of the last event for the given
-        account. Returns an empty string if the account has no events.'''
-        # TODO convert to MongoEngine style
-        entries = self.load_entries(account)
-        if entries == []:
-            return ''
-        last_entry = entries[-1]
-        try:
-            event_name = event_names[last_entry['event']]
-        except KeyError:
-            # TODO fix the data
-            print >> sys.stderr, 'account %s has a journal entry with no "event" key: fix it!' % account
-            event_name = '???'
-        if event_name == JournalDAO.Note:
-            try:
-                msg = last_entry['msg']
-            except KeyError:
-                msg = ''
-                print >> sys.stderr, 'journal entry of type "Note" has no "msg" key:', last_entry
-            description = '%s on %s: %s' % (event_name,
-                    last_entry['date'].strftime(dateutils.ISO_8601_DATE),
-                    msg)
-        else:
-            description = '%s on %s' % (event_name,
-                    last_entry['date'].strftime(dateutils.ISO_8601_DATE))
-        return description
+class SequenceEvent(JournalEntry):
+    '''Base class for events that are associated with a particular reebill. Do
+    not instantiate.'''
+    sequence = mongoengine.IntField(required=True)
 
+    def to_dict(self):
+        result = super(SequenceEvent, self).to_dict()
+        result.update({'sequence': self.sequence})
+        return result
 
-# make each key in the 'event_names' dict a property of the class (with its own
-# name as its value)
-for event_name in event_names.keys():
-    setattr(JournalDAO, event_name, event_name)
+class ReeBillRolledEvent(SequenceEvent):
+    @classmethod
+    def save_instance(cls, user, account, sequence):
+        ReeBillRolledEvent(user=user.identifier, account=account,
+                sequence=sequence).save()
+
+class ReeBillBoundEvent(SequenceEvent):
+    @classmethod
+    def save_instance(cls, user, account, sequence):
+        ReeBillBoundEvent(user=user.identifier, account=account,
+                sequence=sequence).save()
+
+class ReeBillDeletedEvent(SequenceEvent):
+    @classmethod
+    def save_instance(cls, user, account, sequence):
+        ReeBillDeletedEvent(user=user.identifier, account=account,
+                sequence=sequence).save()
+
+class ReeBillAttachedEvent(SequenceEvent):
+    @classmethod
+    def save_instance(cls, user, account, sequence):
+        ReeBillAttachedEvent(user=user.identifier, account=account,
+                sequence=sequence).save()
+
+class ReeBillMailedEvent(SequenceEvent):
+    # email recipient(s)
+    address = mongoengine.StringField()
+    
+    @classmethod
+    def save_instance(cls, user, account, sequence, address):
+        ReeBillMailedEvent(user=user.identifier, account=account,
+                sequence=sequence, address=address).save()
+
+    def to_dict(self):
+        result = super(ReeBillMailedEvent, self).to_dict()
+        result.update({'address': self.address})
+        return result
+
 
 if __name__ == '__main__':
     dao = JournalDAO(database='skyline', collection='journal')
