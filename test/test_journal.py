@@ -1,9 +1,13 @@
 import unittest
 import pymongo
+import mongoengine
 from datetime import date, datetime, timedelta
 from billing.reebill import journal
+from billing.dateutils import ISO_8601_DATE
 
 class JournalTest(unittest.TestCase):
+
+    # TODO test __str__ methods and descriptions of all event types
 
     def assertDatetimesClose(self, d1, d2):
         '''Asserts that datetimes d1 and d2 differ by less than 2 seconds.'''
@@ -25,12 +29,17 @@ class JournalTest(unittest.TestCase):
         self.database = 'test'
         self.collection = 'journal'
 
+        mongoengine.connect(self.database)
+
         # fake user object to create an event (just needs an
         # identifier)
         class FakeUser(object): pass
         user = FakeUser()
         setattr(user, 'identifier', 'dan')
         self.user = user
+
+        self.dao = journal.JournalDAO(host='localhost', port=27017,
+                database=self.database, collection=self.collection)
 
     def tearDown(self):
         # clear out database
@@ -148,18 +157,27 @@ class JournalTest(unittest.TestCase):
                 sequence=1)
 
         # load entries for account1
-        dao = journal.JournalDAO()
-        entries1 = dao.load_entries('account1')
+        entries1 = self.dao.load_entries('account1')
         self.assertEquals(2, len(entries1))
         roll1, note1 = entries1
         self.assertEquals('Reebill rolled', roll1['event'])
         self.assertEquals('Note', note1['event'])
 
         # load entries for account2
-        entries2 = dao.load_entries('account2')
+        entries2 = self.dao.load_entries('account2')
         self.assertEquals(1, len(entries2))
         bound2 = entries2[0]
         self.assertEquals('Reebill bound to REE', bound2['event'])
 
+    def test_last_event_description(self):
+        journal.Note.save_instance(self.user, 'account1', 'text of a note',
+                sequence=2)
+        journal.ReeBillRolledEvent.save_instance(self.user, 'account1', sequence=1)
+        journal.ReeBillBoundEvent.save_instance(self.user, 'account2',
+                sequence=1)
+        description = self.dao.last_event_description('account1')
+        self.assertEqual('Reebill rolled on ' + datetime.utcnow().date()
+                .strftime(ISO_8601_DATE), description)
+        
 if __name__ == '__main__':
     unittest.main(failfast=True)

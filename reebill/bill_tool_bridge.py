@@ -301,7 +301,7 @@ class BillToolBridge:
 
         # TODO configure journal classes with db, collection, etc. (not done
         # through JournalDAO anymore)
-        self.journal_dao = journal.JournalDAO(dict(
+        self.journal_dao = journal.JournalDAO(**dict(
             self.config.items('journaldb')))
 
         # create a Splinter
@@ -324,7 +324,6 @@ class BillToolBridge:
             self.process = process.Process(self.config, self.state_db,
                     self.reebill_dao, self.ratestructure_dao, self.billUpload,
                     None, None)
-
 
         # create a ReebillRenderer
         self.renderer = render.ReebillRenderer(dict(self.config.items('reebillrendering')), self.logger)
