@@ -27,12 +27,11 @@ class JournalDAO(object):
     def last_event_description(self, account):
         '''Returns a human-readable description of the last event for the given
         account. Returns an empty string if the account has no events.'''
-        # TODO convert to MongoEngine style
         entries = JournalEntry.objects
         if len(entries) == 0:
             return ''
         last_entry = entries[-1]
-        event_name = str(last_entry.__class__) # TODO human-readable event names
+        event_name = last_entry.description()
         description = '%s on %s' % (event_name,
                 last_entry.date.strftime(dateutils.ISO_8601_DATE))
         return description
@@ -43,19 +42,20 @@ class JournalDAO(object):
         result = []
         for event in JournalEntry.objects(account=account):
             d = event.to_dict()
-            d.update({'event': event.__class__.__name__})
+            d.update({'event': event.description()}) # TODO human-readable class names
             result.append(d)
         return result
 
 class JournalEntry(mongoengine.Document):
-    '''Base class containing MongoEngine schema definition for all journal
-    entries. This class should not be instantiated, and does not even have a
-    constructor because MongoEngine makes a constructor for it, to which it
-    passes the values of all the fields. That means you can't define a
-    constructor whose arguments do not include all the field names. All
-    descendants of mongoengine.Document also have this problem, so they have
-    save_instance() class methods which create an instance of the class and
-    save it in Mongo.'''
+    '''MongoEngine schema definition for all journal entries.
+    
+    This class should not be instantiated, and does not even have a constructor
+    because MongoEngine makes a constructor for it, to which it passes the
+    values of all the fields below as keyword arguments. That means you can't
+    define a constructor whose arguments do not include all the field names.
+
+    All descendants also have this problem, so they have save_instance() class
+    methods which create an instance of the class and save it in Mongo.'''
 
     # MongoEngine assumes the collection to use is the document class name
     # lowercased, but here we want to use the collection named "journal":
@@ -72,8 +72,9 @@ class JournalEntry(mongoengine.Document):
     def to_dict(self):
         '''Returns a JSON-ready dictionary representation of this journal
         entry.'''
-        # TODO see if there's a way in MongoKit to get all the fields instead
-        # of explictly checking them all
+        # TODO see if there's a way in MongoKit to get all the fields of a
+        # mongoengine.Document. if so, to_dict() can be defined once here and
+        # subclasses don't need to worry about it.
         # https://www.pivotaltracker.com/story/show/30232105
         return dict([
             ('date', self.date),
@@ -85,6 +86,9 @@ class AccountCreatedEvent(JournalEntry):
     @classmethod
     def save_instance(cls, user, account):
         AccountCreatedEvent(user=user.identifier, account=account).save()
+
+    def description(self):
+        return 'Account Created'
     
 class Note(JournalEntry):
     '''JournalEntry subclass for Note events.'''
@@ -101,6 +105,9 @@ class Note(JournalEntry):
             result.sequence = sequence
         result.save()
 
+    def description(self):
+        return 'Note'
+
     def to_dict(self):
         result = super(Note, self).to_dict()
         if hasattr(self, 'sequence'):
@@ -109,8 +116,6 @@ class Note(JournalEntry):
         return result
 
 class UtilBillDeletedEvent(JournalEntry):
-    event = 'UtilBillDeleted'
-    
     # mongo does not support date types and MongoEngine does not provide a
     # workaround. they will just be stored as datetimes
     start_date = mongoengine.DateTimeField()
@@ -125,6 +130,9 @@ class UtilBillDeletedEvent(JournalEntry):
                 start_date=start_date, end_date=end_date, service=service,
                 deleted_path=deleted_path).save()
     
+    def description(self):
+        return 'Utility bill deleted'
+
     def to_dict(self):
         result = super(UtilBillDeletedEvent, self).to_dict()
         result.update({
@@ -151,11 +159,17 @@ class ReeBillRolledEvent(SequenceEvent):
         ReeBillRolledEvent(user=user.identifier, account=account,
                 sequence=sequence).save()
 
+    def description(self):
+        return 'Reebill rolled'
+
 class ReeBillBoundEvent(SequenceEvent):
     @classmethod
     def save_instance(cls, user, account, sequence):
         ReeBillBoundEvent(user=user.identifier, account=account,
                 sequence=sequence).save()
+
+    def description(self):
+        return 'Reebill bound to REE'
 
 class ReeBillDeletedEvent(SequenceEvent):
     @classmethod
@@ -163,11 +177,17 @@ class ReeBillDeletedEvent(SequenceEvent):
         ReeBillDeletedEvent(user=user.identifier, account=account,
                 sequence=sequence).save()
 
+    def description(self):
+        return 'Reebill deleted' 
+
 class ReeBillAttachedEvent(SequenceEvent):
     @classmethod
     def save_instance(cls, user, account, sequence):
         ReeBillAttachedEvent(user=user.identifier, account=account,
                 sequence=sequence).save()
+
+    def description(self):
+        return 'Reebill attached to utility bills' 
 
 class ReeBillMailedEvent(SequenceEvent):
     # email recipient(s)
@@ -183,6 +203,8 @@ class ReeBillMailedEvent(SequenceEvent):
         result.update({'address': self.address})
         return result
 
+    def description(self):
+        return 'Reebill mailed'
 
 if __name__ == '__main__':
     dao = JournalDAO(database='skyline', collection='journal')

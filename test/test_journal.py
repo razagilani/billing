@@ -152,14 +152,14 @@ class JournalTest(unittest.TestCase):
         entries1 = dao.load_entries('account1')
         self.assertEquals(2, len(entries1))
         roll1, note1 = entries1
-        self.assertEquals('ReeBillRolledEvent', roll1['event'])
+        self.assertEquals('Reebill rolled', roll1['event'])
         self.assertEquals('Note', note1['event'])
 
         # load entries for account2
         entries2 = dao.load_entries('account2')
         self.assertEquals(1, len(entries2))
         bound2 = entries2[0]
-        self.assertEquals('ReeBillBoundEvent', bound2['event'])
+        self.assertEquals('Reebill bound to REE', bound2['event'])
 
 if __name__ == '__main__':
     unittest.main(failfast=True)
