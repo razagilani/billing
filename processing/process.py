@@ -229,7 +229,9 @@ class Process(object):
 
         # now grab the prior bill and pull values forward
         present_reebill.prior_balance = prior_reebill.balance_due
-        present_reebill.balance_forward = present_reebill.prior_balance - present_reebill.payment_received
+        # TODO total_adjustment
+        present_reebill.balance_forward = present_reebill.prior_balance - present_reebill.payment_received + present_reebill.total_adjustment
+
 
         lc = self.get_late_charge(session, present_reebill)
         if lc is not None:
@@ -242,7 +244,6 @@ class Process(object):
             present_reebill.balance_due = present_reebill.balance_forward + \
                     present_reebill.ree_charges
 
-        # TODO total_adjustment
 
 
     def copy_actual_charges(self, reebill):
