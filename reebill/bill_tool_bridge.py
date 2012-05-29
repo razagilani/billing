@@ -966,7 +966,7 @@ class BillToolBridge:
                 ('primusname', name_dicts[status.account]['primus'] if
                     'primus' in name_dicts[status.account] else ''),
                 ('dayssince', status.dayssince),
-                ('lastevent', self.journal_dao.last_event_description(status.account)),
+                ('lastevent', self.journal_dao.last_event_summary(status.account)),
                 ('provisionable', False),
             ]) for i, status in enumerate(statuses)]
 

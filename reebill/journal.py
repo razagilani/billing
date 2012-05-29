@@ -29,9 +29,9 @@ class JournalDAO(object):
         # TODO figure out how to use this the right way
         mongoengine.connect(database, host=host, port=int(port))
 
-    def last_event_description(self, account):
-        '''Returns a human-readable description of the last event for the given
-        account. Returns an empty string if the account has no events.'''
+    def last_event_summary(self, account):
+        '''Returns a short human-readable description of the last event for the
+        given account. Returns an empty string if the account has no events.'''
         entries = list(JournalEntry.objects(account=account))
         if len(entries) == 0:
             return ''
@@ -155,9 +155,10 @@ class UtilBillDeletedEvent(JournalEntry):
         return '%s %s utility bill deleted' % (self.account, self.service)
 
     def description(self):
-        return ('%s utility bill for service "%s" (from %s to %s) deleted, '
+        return ('%s utility bill for service "%s" from %s to %s deleted, '
                 'moved to %s') % (self.account, self.service,
-                self.start_date, self.end_date, self.deleted_path)
+                self.start_date.date(), self.end_date.date(),
+                self.deleted_path)
 
     def name(self):
         return 'Utility bill deleted'
