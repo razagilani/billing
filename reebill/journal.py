@@ -4,10 +4,9 @@ import datetime
 import uuid
 import copy
 import operator
+import abc
 import pymongo
 import mongoengine
-from billing.mongo_utils import bson_convert
-from billing.mongo_utils import python_convert
 from billing.dateutils import ISO_8601_DATE
 
 sys.stdout = sys.stderr
@@ -17,22 +16,20 @@ sys.stdout = sys.stderr
 # ReeBillBillingPeriodUpdated
 # ReeBillRateStructureModified
 # PaymentEntered
-# UtilBillDeleted
-# TODO add utility bill uploaded? that has an account but no sequence
+# TODO add utility bill uploaded?
 
 class JournalDAO(object):
     '''Performs queries for events in the journal.'''
 
     def __init__(self, host, port, database, collection):
-        # global mongoengine connection object (not actually related to
-        # JournalDAO itself)
-        # TODO figure out how to use this the right way
-        mongoengine.connect(database, host=host, port=int(port))
+        # MongoEngine connection is global (association of journal entry
+        # documents with database is done by their "db_alias")
+        pass
 
     def last_event_summary(self, account):
         '''Returns a short human-readable description of the last event for the
         given account. Returns an empty string if the account has no events.'''
-        entries = list(JournalEntry.objects(account=account))
+        entries = list(Event.objects(account=account))
         if len(entries) == 0:
             return ''
         last_entry = entries[-1]
@@ -43,14 +40,15 @@ class JournalDAO(object):
         '''Returns a list of dictionaries describing all entries for the given
         account.'''
         result = []
-        for event in JournalEntry.objects(account=account):
+        for event in Event.objects(account=account):
             d = event.to_dict()
             d.update({'event': event.description()})
             result.append(d)
         return result
 
-class JournalEntry(mongoengine.Document):
-    '''MongoEngine schema definition for all journal entries.
+# TODO rename to Event
+class Event(mongoengine.Document):
+    '''MongoEngine schema definition for all events in the journal.
     
     This class should not be instantiated, and does not even have a constructor
     because MongoEngine makes a constructor for it, to which it passes the
@@ -60,13 +58,22 @@ class JournalEntry(mongoengine.Document):
     All descendants also have this problem, so they have save_instance() class
     methods which create an instance of the class and save it in Mongo.'''
 
-    # MongoEngine assumes the collection to use is the document class name
-    # lowercased, but here we want to use the collection named "journal":
-    meta = {'collection': 'journal', 'allow_inheritance': True}
-    # TODO create class dynamically to set collection name to the one passed
-    # into JournalDAO constructor? i think python provides a way to do that...
+    meta = {
+        # all Event documents are associated with the database of the
+        # MongoEngine connection whose "alias" is "journal", which should be
+        # created by calling mongoengine.connect(alias="journal") in
+        # BillToolBridge.__init__. if a class other than BTB wants to use the
+        # journal, it must call mongoengine.connect itself.
+        #'db_alias': 'journal',
 
-    # all possible fields and their types
+        # collection name is hard-coded. i think there's no way to avoid that
+        # unless the class is created dynamically.
+        'collection': 'journal',
+
+        'allow_inheritance': True
+    }
+
+    # fields in all journal entries and their types
     date = mongoengine.DateTimeField(required=True,
             default=datetime.datetime.utcnow())
     user = mongoengine.StringField(required=True) # eventually replace with ReferenceField to user document?
@@ -74,10 +81,10 @@ class JournalEntry(mongoengine.Document):
 
     def __str__(self):
         '''Short human-readable description without date.'''
-        return 'generic event--you should never see this!'
+        raise NotImplementedError("Subclasses should override this.")
 
     def name(self):
-        return 'generic event--you should never see this!'
+        raise NotImplementedError("Subclasses should override this.")
 
     def description(self):
         '''Long human-readable description without date--same as __str__ by
@@ -97,7 +104,7 @@ class JournalEntry(mongoengine.Document):
             ('account', self.account)
         ])
 
-class AccountCreatedEvent(JournalEntry):
+class AccountCreatedEvent(Event):
     @classmethod
     def save_instance(cls, user, account):
         AccountCreatedEvent(user=user.identifier, account=account).save()
@@ -107,9 +114,9 @@ class AccountCreatedEvent(JournalEntry):
 
     def name(self):
         return 'Account Created'
-    
-class Note(JournalEntry):
-    '''JournalEntry subclass for Note events.'''
+
+class Note(Event):
+    '''Event subclass for Note events.'''
     event = 'Note'
     msg = mongoengine.StringField(required=True)
 
@@ -136,7 +143,7 @@ class Note(JournalEntry):
         result.update({'msg': self.msg})
         return result
 
-class UtilBillDeletedEvent(JournalEntry):
+class UtilBillDeletedEvent(Event):
     # mongo does not support date types and MongoEngine does not provide a
     # workaround. they will just be stored as datetimes
     start_date = mongoengine.DateTimeField()
@@ -173,7 +180,7 @@ class UtilBillDeletedEvent(JournalEntry):
         })
         return result
 
-class SequenceEvent(JournalEntry):
+class SequenceEvent(Event):
     '''Base class for events that are associated with a particular reebill. Do
     not instantiate.'''
     sequence = mongoengine.IntField(required=True)

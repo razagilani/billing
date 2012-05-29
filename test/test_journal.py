@@ -27,8 +27,9 @@ class JournalTest(unittest.TestCase):
 
     def setUp(self):
         self.database = 'test'
-        self.collection = 'journal'
 
+        #mongoengine.connect('test', alias='journal')
+        # only default connection seems to work
         mongoengine.connect(self.database)
 
         # fake user object to create an event (just needs an
@@ -39,7 +40,7 @@ class JournalTest(unittest.TestCase):
         self.user = user
 
         self.dao = journal.JournalDAO(host='localhost', port=27017,
-                database=self.database, collection=self.collection)
+                database=self.database, collection='journal')
 
     def tearDown(self):
         # clear out database
@@ -48,7 +49,7 @@ class JournalTest(unittest.TestCase):
 
     def test_account_created(self):
         journal.AccountCreatedEvent.save_instance(self.user, '99999')
-        entries = journal.JournalEntry.objects
+        entries = journal.Event.objects
         self.assertEquals(1, len(entries))
         entry = entries[0]
         self.assertTrue(isinstance(entry, journal.AccountCreatedEvent))
@@ -64,7 +65,7 @@ class JournalTest(unittest.TestCase):
     def test_note(self):
         journal.Note.save_instance(self.user, '99999', 'hello',
                 sequence=1)
-        entries = journal.JournalEntry.objects
+        entries = journal.Event.objects
         self.assertEquals(1, len(entries))
         entry = entries[0]
         self.assertDatetimesClose(datetime.utcnow(), entry.date)
@@ -85,7 +86,7 @@ class JournalTest(unittest.TestCase):
         journal.UtilBillDeletedEvent.save_instance(self.user, '99999',
                 date(2012,1,1), date(2012,2,1), 'gas',
                 '/tmp/a_deleted_bill')
-        entries = journal.JournalEntry.objects
+        entries = journal.Event.objects
         self.assertEquals(1, len(entries))
         entry = entries[0]
         self.assertDatetimesClose(datetime.utcnow(), entry.date)
@@ -109,7 +110,7 @@ class JournalTest(unittest.TestCase):
     def test_reebill_mailed(self):
         journal.ReeBillMailedEvent.save_instance(self.user, '99999', 1,
                 'jwatson@skylineinnovations.com')
-        entries = journal.JournalEntry.objects
+        entries = journal.Event.objects
         self.assertEquals(1, len(entries))
         entry = entries[0]
         self.assertDatetimesClose(datetime.utcnow(), entry.date)
@@ -150,33 +151,33 @@ class JournalTest(unittest.TestCase):
 
     def test_load_entries(self):
         # 3 entries for 2 accounts
-        journal.ReeBillRolledEvent.save_instance(self.user, 'account1', sequence=1)
-        journal.Note.save_instance(self.user, 'account1', 'text of a note',
+        journal.ReeBillRolledEvent.save_instance(self.user, '90001', sequence=1)
+        journal.Note.save_instance(self.user, '90001', 'text of a note',
                 sequence=2)
-        journal.ReeBillBoundEvent.save_instance(self.user, 'account2',
+        journal.ReeBillBoundEvent.save_instance(self.user, '90002',
                 sequence=1)
 
-        # load entries for account1
-        entries1 = self.dao.load_entries('account1')
+        # load entries for 99999
+        entries1 = self.dao.load_entries('90001')
         self.assertEquals(2, len(entries1))
         roll1, note1 = entries1
-        self.assertEquals('Reebill rolled', roll1['event'])
-        self.assertEquals('Note', note1['event'])
+        self.assertEquals('Reebill 90001-1 rolled', roll1['event'])
+        self.assertEquals('Note: text of a note', note1['event'])
 
         # load entries for account2
-        entries2 = self.dao.load_entries('account2')
+        entries2 = self.dao.load_entries('90002')
         self.assertEquals(1, len(entries2))
         bound2 = entries2[0]
-        self.assertEquals('Reebill bound to REE', bound2['event'])
+        self.assertEquals('Reebill 90002-1 bound to REE', bound2['event'])
 
-    def test_last_event_description(self):
-        journal.Note.save_instance(self.user, 'account1', 'text of a note',
+    def test_last_event_summary(self):
+        journal.Note.save_instance(self.user, '90001', 'text of a note',
                 sequence=2)
-        journal.ReeBillRolledEvent.save_instance(self.user, 'account1', sequence=1)
-        journal.ReeBillBoundEvent.save_instance(self.user, 'account2',
+        journal.ReeBillRolledEvent.save_instance(self.user, '90001', sequence=1)
+        journal.ReeBillBoundEvent.save_instance(self.user, '90002',
                 sequence=1)
-        description = self.dao.last_event_description('account1')
-        self.assertEqual('Reebill rolled on ' + datetime.utcnow().date()
+        description = self.dao.last_event_summary('90001')
+        self.assertEqual('Reebill 90001-1 rolled on ' + datetime.utcnow().date()
                 .strftime(ISO_8601_DATE), description)
         
 if __name__ == '__main__':

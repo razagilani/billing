@@ -5,12 +5,7 @@ Description: Allows bill tool to be invoked as a CGI
 '''
 import sys
 import os
-import pprint
 
-# 29926885 output environment configs to debug virtual env
-pprint.pprint(os.environ)
-pprint.pprint(sys.path)
-pprint.pprint(sys.prefix)
 import traceback
 import json
 import cherrypy
@@ -31,6 +26,7 @@ import copy
 import functools
 import re
 from StringIO import StringIO
+import mongoengine
 from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
 from billing import bill, json_util as ju, mongo, dateutils, monthmath, excel_export, nexus_util as nu
@@ -44,10 +40,15 @@ from billing.users import UserDAO, User
 from billing import calendar_reports
 from billing.estimated_revenue import EstimatedRevenue
 from billing.session_contextmanager import DBSession
+
 import pprint
+sys.stdout = sys.stderr
+# 29926885 output environment configs to debug virtual env
+pprint.pprint(os.environ)
+pprint.pprint(sys.path)
+pprint.pprint(sys.prefix)
 pp = pprint.PrettyPrinter(indent=4)
 
-sys.stdout = sys.stderr
 
 # from http://code.google.com/p/modwsgi/wiki/DebuggingTechniques#Python_Interactive_Debugger
 class Debugger:
@@ -299,10 +300,18 @@ class BillToolBridge:
         rsdb_config_section = self.config.items("rsdb")
         self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
 
-        # TODO configure journal classes with db, collection, etc. (not done
-        # through JournalDAO anymore)
-        self.journal_dao = journal.JournalDAO(**dict(
-            self.config.items('journaldb')))
+        # configure journal:
+        # create a MongoEngine connection "alias" named "journal" with which
+        # journal.Event subclasses (in journal.py) can associate themselves by
+        # setting meta = {'db_alias': 'journal'}. the collection name is still
+        # hard-coded.
+        journal_config = dict(self.config.items('journaldb'))
+        #mongoengine.connect(journal_config['database'],
+                #host=journal_config['host'], port=int(journal_config['port']),
+                #alias='journal')
+        mongoengine.connect(journal_config['database'],
+                host=journal_config['host'], port=int(journal_config['port']))
+        self.journal_dao = journal.JournalDAO(**dict(journal_config))
 
         # create a Splinter
         self.splinter = Splinter(self.config.get('skyline_backend',
