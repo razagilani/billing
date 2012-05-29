@@ -4034,6 +4034,7 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'lastevent',
                 renderer: accountGridColumnRenderer,
+                width: 350,
             },
         ]
     });
@@ -4841,7 +4842,7 @@ function reeBillReady() {
             // doesn't seem to work
             forceFit: true,
         },
-        title: 'Journal Entries',
+        title: 'Journal Entries', // TODO include account name
         clicksToEdit: 1
     });
 
