@@ -4,7 +4,6 @@ import datetime
 import uuid
 import copy
 import operator
-import abc
 import pymongo
 import mongoengine
 from billing.dateutils import ISO_8601_DATE
@@ -81,6 +80,10 @@ class Event(mongoengine.Document):
 
     def __str__(self):
         '''Short human-readable description without date.'''
+        # Event can't be an abstract class because its metaclass is something
+        # from MongoEngine, meaning it can't also have ABCMeta as its
+        # metaclass. (every class's metaclass must be a subclass of its
+        # superclass's metaclass.)
         raise NotImplementedError("Subclasses should override this.")
 
     def name(self):
