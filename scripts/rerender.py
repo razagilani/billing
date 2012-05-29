@@ -41,7 +41,7 @@ for account in accounts:
                 reebill, 
                 billdb_config["billpath"] + account,
                 "%.4d.pdf" % int(sequence),
-                "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
+                "EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
                 False
             )
         except Exception as e:
