@@ -592,7 +592,6 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             if not name or not account or not discount_rate or not template_account:
                 raise ValueError("Bad Parameter Value")
-            session = self.state_db.session()
             customer = self.process.create_new_account(session, account, name,
                     discount_rate, late_charge_rate, template_account)
             reebill = self.reebill_dao.load_reebill(account, 0)
@@ -621,11 +620,8 @@ class BillToolBridge:
     @json_exception
     def roll(self, account, sequence, **args):
         with DBSession(self.state_db) as session:
-            # why is session initialized and reassigned within context manager?
-            #session = None
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
-            #session = self.state_db.session()
             reebill = self.reebill_dao.load_reebill(account, sequence)
             new_reebill = self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(new_reebill)
@@ -641,10 +637,8 @@ class BillToolBridge:
     def pay(self, account, sequence, **args):
         with DBSession(self.state_db) as session:
             # why is session initialized and reassigned within context manager?
-            session = None
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
-            session = self.state_db.session()
             reebill = self.reebill_dao.load_reebill(account, sequence)
 
             self.process.pay_bill(session, reebill)
@@ -1672,6 +1666,7 @@ class BillToolBridge:
                     'description': new_payment.description,
                     'credit': str(new_payment.credit),
                     }]
+                session.commit()
                 return self.dumps({'success':True, 'rows':row})
             elif xaction == "destroy":
                 rows = json.loads(kwargs["rows"])
@@ -1707,9 +1702,11 @@ class BillToolBridge:
                 return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
 
             elif xaction == "update":
+                session.commit()
                 return self.dumps({'success':False})
 
             elif xaction == "create":
+                session.commit()
                 return self.dumps({'success':False})
 
             elif xaction == "destroy":
@@ -2456,6 +2453,7 @@ class BillToolBridge:
             elif xaction == 'create':
                 # creation happens via upload_utility_bill
                 # TODO move here?
+                session.commit()
                 raise Exception('utilbill_grid() does not accept xaction "create"')
             elif xaction == 'destroy':
                 # "rows" is either a single id or a list of ids
