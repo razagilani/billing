@@ -293,7 +293,7 @@ class BillToolBridge:
 
         # create a MongoReeBillDAO
         self.billdb_config = dict(self.config.items("billdb"))
-        self.reebill_dao = mongo.ReebillDAO(self.billdb_config)
+        self.reebill_dao = mongo.ReebillDAO(self.state_db, **self.billdb_config)
 
         # create a RateStructureDAO
         rsdb_config_section = self.config.items("rsdb")

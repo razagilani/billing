@@ -16,6 +16,7 @@ import copy
 from billing.mongo_utils import bson_convert, python_convert
 import uuid as UUID
 from billing.dictutils import deep_map
+from billing.session_contextmanager import DBSession
 
 import pdb
 import pprint
@@ -1120,25 +1121,20 @@ class MongoReebill(object):
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
-    def __init__(self, config):
-
-        self.config = config
-
-        self.connection = None
+    def __init__(self, state_db, host='localhost', port=27017,
+            database='reebills', **kwargs):
+        self.state_db = state_db
 
         try:
-            self.connection = pymongo.Connection(self.config['host'], int(self.config['port'])) 
+            self.connection = pymongo.Connection(host, int(port)) 
         except Exception as e: 
             print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
             raise e
         finally:
-            if self.connection is not None:
-                #self.connection.disconnect()
-                # TODO when to disconnect from the database?
-                pass
+            # TODO when to disconnect from the database?
+            pass
         
-        self.collection = self.connection[self.config['database']]['reebills']
-    
+        self.collection = self.connection[database]['reebills']
 
     def load_reebill(self, account, sequence, branch=0):
         if account is None: return None
@@ -1216,6 +1212,11 @@ class ReebillDAO:
         '''Saves the MongoReebill 'reebill' into the database. If a document
         with the same account & sequence number already exists, the existing
         document is replaced with this one.'''
+        with DBSession(self.state_db) as session:
+            if self.state_db.is_issued(session, reebill.account, reebill.sequence):
+                raise Exception("Can't modify an issued reebill.")
+            session.commit()
+        
         mongo_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
 
         self.collection.save(mongo_doc)
