@@ -726,26 +726,40 @@ class BillToolBridge:
             if not account or not sequence:
                 raise ValueError("Bad Parameter Value")
 
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-            prior_reebill = self.reebill_dao.load_reebill(account, int(sequence)-1)
-            self.process.calculate_reperiod(reebill)
-            self.process.bind_rate_structure(reebill)
+            reebill = self.state_db.get_reebill(session, account, sequence)
+            descendent_reebills = self.state_db.get_descendent_reebills(session, account, sequence)
 
-            # recalculate the bill's 'payment_received'
-            self.process.pay_bill(session, reebill)
+            # stick the current sequence in front of its descendents
+            descendent_reebills.insert(0, reebill)
 
-            # TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
-            self.reebill_dao.save_reebill(reebill)
-            reebill = self.reebill_dao.load_reebill(account, sequence)
+            for reebill in descendent_reebills:
 
-            self.process.sum_bill(session, prior_reebill, reebill)
+                mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
+                prior_mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, int(reebill.sequence)-1)
 
-            # TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
-            self.reebill_dao.save_reebill(reebill)
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-            self.process.calculate_statistics(prior_reebill, reebill)
+                self.process.calculate_reperiod(mongo_reebill)
 
-            self.reebill_dao.save_reebill(reebill)
+                try:
+                    self.process.bind_rate_structure(mongo_reebill)
+                except Exception as e:
+                    print "Could not load ratestructure for reebill, skipping calculating charge details"
+
+                # recalculate the bill's 'payment_received'
+                self.process.pay_bill(session, mongo_reebill)
+
+                # TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
+                self.reebill_dao.save_reebill(mongo_reebill)
+                mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
+
+                self.process.sum_bill(session, prior_mongo_reebill, mongo_reebill)
+
+                # TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
+                self.reebill_dao.save_reebill(mongo_reebill)
+                mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
+                self.process.calculate_statistics(prior_mongo_reebill, mongo_reebill)
+
+                self.reebill_dao.save_reebill(mongo_reebill)
+
             session.commit()
             return self.dumps({'success': True})
 
@@ -1054,19 +1068,20 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def all_ree_charges(self, **args):
-        with DBSession(self.state_db) as session:
-            rows, total_count = self.process.all_ree_charges(session)
-            session.commit()
-            return self.dumps({'success': True, 'rows':rows, 'results':total_count})
+    # doesn't look like this is ever called
+    #def reebill_details(self, **args):
+    #    with DBSession(self.state_db) as session:
+    #        rows, total_count = self.process.reebill_report(session)
+    #        session.commit()
+    #        return self.dumps({'success': True, 'rows':rows, 'results':total_count})
 
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
     @json_exception
-    def all_ree_charges_xls(self, **args):
+    def reebill_details_xls(self, **args):
         with DBSession(self.state_db) as session:
-            rows, total_count = self.process.all_ree_charges(session)
+            rows, total_count = self.process.reebill_report(session)
 
             buf = StringIO()
 
@@ -1075,11 +1090,23 @@ class BillToolBridge:
             sheet = workbook.add_sheet('All REE Charges')
             row_index = 0
 
-            headings = ['Account','Sequence',
+            headings = ['Account','Sequence', 
                 'Billing Addressee', 'Service Addressee',
-                'Issue Date', 'Period Begin', 'Period End', 'RE&E Value', 
-                'RE&E Charges', 'utility charges', 'hypothesized charges',
-                'RE&E Energy Therms', 'Marginal Rate per Therm']
+                'Issue Date', 'Period Begin', 'Period End', 
+                'Hypothesized Charges', 'Actual Utility Charges', 
+                'RE&E Value', 
+                'Prior Balance',
+                'Payment Applied',
+                'Payment Date',
+                'Payment Amount',
+                'Adjustment',
+                'Balance Forward',
+                'RE&E Charges',
+                'Balance Due',
+                '', # spacer
+                'RE&E Energy',
+                'Average Rate per Unit RE&E',
+                ]
             for i, heading in enumerate(headings):
                 sheet.write(row_index, i, heading)
             row_index += 1
@@ -1102,12 +1129,22 @@ class BillToolBridge:
                     sa['sa_postal_code'] if 'sa_postal_code' in sa and sa['sa_postal_code'] is not None else "",
                 )
 
-                actual_row = [row['account'], row['sequence'], bill_addr_str,
-                        service_addr_str, row['issue_date'],
-                        row['period_begin'], row['period_end'],
-                        row['ree_value'], row['ree_charges'],
-                        row['actual_charges'], row['hypothetical_charges'],
-                        row['total_energy'], row['marginal_rate_therm'] ]
+                actual_row = [row['account'], row['sequence'], 
+                        bill_addr_str, service_addr_str, 
+                        row['issue_date'], row['period_begin'], row['period_end'],
+                        row['hypothetical_charges'], row['actual_charges'], 
+                        row['ree_value'], 
+                        row['prior_balance'],
+                        row['payment_applied'],
+                        row['payment_date'],
+                        row['payment_amount'],
+                        row['total_adjustment'],
+                        row['balance_forward'],
+                        row['ree_charges'],
+                        row['balance_due'],
+                        '', # spacer
+                        row['total_ree'],
+                        row['average_rate_unit_ree'] ]
                 for i, cell_text in enumerate(actual_row):
                     sheet.write(row_index, i, cell_text)
                 row_index += 1
@@ -1127,7 +1164,7 @@ class BillToolBridge:
     @json_exception
     def all_ree_charges_csv_altitude(self, **args):
         with DBSession(self.state_db) as session:
-            rows, total_count = self.process.all_ree_charges(session)
+            rows, total_count = self.process.reebill_report(session)
 
             import csv
             import StringIO
@@ -1696,13 +1733,37 @@ class BillToolBridge:
                         int(start), int(limit), account)
                 rows = []
                 for reebill in reebills:
-                    # we have to load each bill from Mongo to get its period dates
+                    row_dict = {}
                     mongo_reebill = self.reebill_dao.load_reebill(account, reebill.sequence)
-                    rows.append({
-                        'id': reebill.sequence, 'sequence': reebill.sequence,
-                        'period_start': mongo_reebill.period_begin,
-                        'period_end': mongo_reebill.period_end
-                    })
+
+                    row_dict['id'] = reebill.sequence
+                    row_dict['sequence'] = reebill.sequence
+                    try: row_dict['issue_date'] = mongo_reebill.issue_date 
+                    except: pass
+                    try: row_dict['period_start'] = mongo_reebill.period_begin
+                    except: pass
+                    try: row_dict['period_end'] = mongo_reebill.period_end
+                    except: pass
+                    try: row_dict['hypothetical_total'] = mongo_reebill.hypothetical_total
+                    except: pass
+                    try: row_dict['actual_total'] = mongo_reebill.actual_total
+                    except: pass
+                    try: row_dict['ree_value'] = mongo_reebill.ree_value
+                    except: pass
+                    try: row_dict['prior_balance'] = mongo_reebill.prior_balance
+                    except: pass
+                    try: row_dict['payment_received'] = mongo_reebill.payment_received
+                    except: pass
+                    try: row_dict['total_adjustment'] = mongo_reebill.total_adjustment
+                    except: pass
+                    try: row_dict['balance_forward'] = mongo_reebill.balance_forward
+                    except: pass
+                    try: row_dict['ree_charges'] = mongo_reebill.ree_charges
+                    except: pass
+                    try: row_dict['balance_due'] = mongo_reebill.balance_due
+                    except: pass
+
+                    rows.append(row_dict)
                 session.commit()
                 return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
 
