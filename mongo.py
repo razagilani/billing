@@ -1172,7 +1172,7 @@ class ReebillDAO:
             "_id.branch": int(branch),
         }
 
-        mongo_docs = self.collection.find(query)
+        mongo_docs = self.collection.find(query, sort=[("_id.sequence",pymongo.ASCENDING)])
 
         mongo_reebills = []
         for doc in mongo_docs:
