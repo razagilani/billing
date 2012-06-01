@@ -295,11 +295,20 @@ class StateDB:
                 .filter(ReeBill.sequence==sequence).one()
         reeBill.issued = 1
 
-    def is_issued(self, session, account, sequence):
-        customer = session.query(Customer).filter(Customer.account==account).one()
-        reebill = session.query(ReeBill) \
-                .filter(ReeBill.customer_id==customer.id) \
-                .filter(ReeBill.sequence==sequence).one()
+    def is_issued(self, session, account, sequence, allow_nonexistent=False):
+        '''Returns true if the reebill given by account and sequence has been
+        issued, false otherwise. If allow_nonexistent is True, a reebill not
+        present in the state database will be treated as un-issued.'''
+        try:
+            customer = session.query(Customer)\
+                    .filter(Customer.account==account).one()
+            reebill = session.query(ReeBill) \
+                    .filter(ReeBill.customer_id==customer.id) \
+                    .filter(ReeBill.sequence==sequence).one()
+        except NoResultFound:
+            if allow_nonexistent:
+                return False
+            raise
         return reebill.issued == 1
 
     def account_exists(self, session, account):
