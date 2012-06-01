@@ -229,7 +229,9 @@ class Process(object):
 
         # now grab the prior bill and pull values forward
         present_reebill.prior_balance = prior_reebill.balance_due
-        present_reebill.balance_forward = present_reebill.prior_balance - present_reebill.payment_received
+        # TODO total_adjustment
+        present_reebill.balance_forward = present_reebill.prior_balance - present_reebill.payment_received + present_reebill.total_adjustment
+
 
         lc = self.get_late_charge(session, present_reebill)
         if lc is not None:
@@ -242,7 +244,6 @@ class Process(object):
             present_reebill.balance_due = present_reebill.balance_forward + \
                     present_reebill.ree_charges
 
-        # TODO total_adjustment
 
 
     def copy_actual_charges(self, reebill):
@@ -768,14 +769,23 @@ class Process(object):
         # mark as issued in mysql
         self.state_db.issue(session, account, sequence)
 
-    def all_ree_charges(self, session):
+    def reebill_report(self, session):
         accounts = self.state_db.listAccounts(session)
         rows = [] 
         totalCount = 0
         for account in accounts:
+            payments = self.state_db.payments(session, account)
             for reebill in self.reebill_dao.load_reebills_for(account):
-                totalCount += 1
                 row = {}
+
+                # iterate the payments and find the ones that apply. 
+                if (reebill.period_begin is not None and reebill.period_end is not None):
+                    applicable_payments = filter(lambda x: x.date > reebill.period_begin and x.date < reebill.period_end, payments)
+                    # pop the ones that get applied from the payment list
+                    # (there is a bug due to the reebill periods overlapping, where a payment may be applicable more than ones)
+                    for applicable_payment in applicable_payments:
+                        payments.remove(applicable_payment)
+
                 row['account'] = account
                 row['sequence'] = reebill.sequence
                 row['billing_address'] = reebill.billing_address
@@ -783,25 +793,100 @@ class Process(object):
                 row['issue_date'] = reebill.issue_date
                 row['period_begin'] = reebill.period_begin
                 row['period_end'] = reebill.period_end
-                row['ree_value'] = reebill.ree_value.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                row['ree_charges'] = reebill.ree_charges.quantize(
-                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
                 row['actual_charges'] = reebill.actual_total.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
                 row['hypothetical_charges'] = reebill.hypothetical_total.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                total_energy_therms = self.total_ree_in_reebill(reebill)\
+                total_ree = self.total_ree_in_reebill(reebill)\
                         .quantize(Decimal(".0"), rounding=ROUND_HALF_EVEN)
-                row['total_energy'] = total_energy_therms
-                if total_energy_therms != Decimal(0):
-                    row['marginal_rate_therm'] = ((reebill.hypothetical_total -
-                            reebill.actual_total)/total_energy_therms)\
+                row['total_ree'] = total_ree
+                if total_ree != Decimal(0):
+                    row['average_rate_unit_ree'] = ((reebill.hypothetical_total -
+                            reebill.actual_total)/total_ree)\
                             .quantize(Decimal(".00"),
                             rounding=ROUND_HALF_EVEN)
                 else:
-                    row['marginal_rate_therm'] = 0
-                rows.append(row)
+                    row['average_rate_unit_ree'] = 0
+                row['ree_value'] = reebill.ree_value.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['prior_balance'] = reebill.prior_balance.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['balance_forward'] = reebill.balance_forward.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                try:
+                    row['total_adjustment'] = reebill.total_adjustment.quantize(
+                            Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                except:
+                    row['total_adjustment'] = None
+                row['payment_applied'] = reebill.payment_received.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+
+                row['ree_charges'] = reebill.ree_charges.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['balance_due'] = reebill.balance_due.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+
+                # normally, only one payment.  Multiple payments their own new rows...
+                if applicable_payments:
+                    row['payment_date'] = applicable_payments[0].date
+                    row['payment_amount'] = applicable_payments[0].credit
+                    rows.append(row)
+                    totalCount += 1
+                    applicable_payments.pop(0)
+                    for applicable_payment in applicable_payments:
+                        row = {}
+                        # ok, there was more than one applicable payment
+                        row['account'] = account
+                        row['sequence'] = reebill.sequence
+                        row['billing_address'] = {}
+                        row['service_address'] = {}
+                        row['issue_date'] = None
+                        row['period_begin'] = None
+                        row['period_end'] = None
+                        row['actual_charges'] = None
+                        row['hypothetical_charges'] = None
+                        row['total_ree'] = None
+                        row['average_rate_unit_ree'] = None 
+                        row['ree_value'] = None
+                        row['prior_balance'] = None
+                        row['balance_forward'] = None
+                        row['total_adjustment'] = None
+                        row['payment_applied'] = None
+                        row['ree_charges'] = None
+                        row['balance_due'] = None
+                        row['payment_date'] = applicable_payment.date
+                        row['payment_amount'] = applicable_payment.credit
+                        rows.append(row)
+                        totalCount += 1
+                else:
+                    row['payment_date'] = None
+                    row['payment_amount'] = None
+                    rows.append(row)
+                    totalCount += 1
+
+            row = {}
+            row['account'] = None
+            row['sequence'] = None
+            row['billing_address'] = {}
+            row['service_address'] = {}
+            row['issue_date'] = None
+            row['period_begin'] = None
+            row['period_end'] = None
+            row['actual_charges'] = None
+            row['hypothetical_charges'] = None
+            row['total_ree'] = None
+            row['average_rate_unit_ree'] = None 
+            row['ree_value'] = None
+            row['prior_balance'] = None
+            row['balance_forward'] = None
+            row['total_adjustment'] = None
+            row['payment_applied'] = None
+            row['ree_charges'] = None
+            row['balance_due'] = None
+            row['payment_date'] = None
+            row['payment_amount'] = None
+            rows.append(row)
+            totalCount += 1
 
         return rows, totalCount
 
