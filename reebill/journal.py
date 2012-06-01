@@ -34,7 +34,7 @@ class JournalDAO(object):
         '''Returns a list of dictionaries describing all entries for the given
         account.'''
         result = []
-        for event in Event.objects():
+        for event in Event.objects(account=account):
             d = event.to_dict()
             d.update({'event': event.description()})
             result.append(d)
