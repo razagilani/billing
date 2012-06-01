@@ -237,10 +237,10 @@ class ReeBillAttachedEvent(SequenceEvent):
                 sequence=sequence).save()
 
     def __str__(self):
-        return 'Reebill %s-%s attached' % (self.account, self.sequence)
+        return 'Reebill %s-%s attached to utility bills' % (self.account, self.sequence)
 
     def name(self):
-        return 'Reebill attached to utility bills' 
+        return 'Reebill attached' 
 
 class ReeBillMailedEvent(SequenceEvent):
     meta = {'db_alias': 'journal'}
