@@ -28,9 +28,7 @@ class JournalTest(unittest.TestCase):
     def setUp(self):
         self.database = 'test'
 
-        #mongoengine.connect('test', alias='journal')
-        # only default connection seems to work
-        mongoengine.connect(self.database)
+        result = mongoengine.connect(self.database, alias='journal')
 
         # fake user object to create an event (just needs an
         # identifier)

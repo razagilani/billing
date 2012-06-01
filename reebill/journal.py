@@ -20,11 +20,6 @@ sys.stdout = sys.stderr
 class JournalDAO(object):
     '''Performs queries for events in the journal.'''
 
-    def __init__(self, host, port, database, collection):
-        # MongoEngine connection is global (association of journal entry
-        # documents with database is done by their "db_alias")
-        pass
-
     def last_event_summary(self, account):
         '''Returns a short human-readable description of the last event for the
         given account. Returns an empty string if the account has no events.'''
@@ -39,13 +34,12 @@ class JournalDAO(object):
         '''Returns a list of dictionaries describing all entries for the given
         account.'''
         result = []
-        for event in Event.objects(account=account):
+        for event in Event.objects():
             d = event.to_dict()
             d.update({'event': event.description()})
             result.append(d)
         return result
 
-# TODO rename to Event
 class Event(mongoengine.Document):
     '''MongoEngine schema definition for all events in the journal.
     
@@ -60,10 +54,10 @@ class Event(mongoengine.Document):
     meta = {
         # all Event documents are associated with the database of the
         # MongoEngine connection whose "alias" is "journal", which should be
-        # created by calling mongoengine.connect(alias="journal") in
+        # created by calling mongoengine.connect(alias='journal') in
         # BillToolBridge.__init__. if a class other than BTB wants to use the
-        # journal, it must call mongoengine.connect itself.
-        #'db_alias': 'journal',
+        # journal, it must call mongoengine.connect(alias='journal') itself.
+        'db_alias': 'journal',
 
         # collection name is hard-coded. i think there's no way to avoid that
         # unless the class is created dynamically.
@@ -108,6 +102,7 @@ class Event(mongoengine.Document):
         ])
 
 class AccountCreatedEvent(Event):
+    meta = {'db_alias': 'journal'}
     @classmethod
     def save_instance(cls, user, account):
         AccountCreatedEvent(user=user.identifier, account=account).save()
@@ -119,7 +114,7 @@ class AccountCreatedEvent(Event):
         return 'Account Created'
 
 class Note(Event):
-    '''Event subclass for Note events.'''
+    meta = {'db_alias': 'journal'}
     event = 'Note'
     msg = mongoengine.StringField(required=True)
 
@@ -147,6 +142,7 @@ class Note(Event):
         return result
 
 class UtilBillDeletedEvent(Event):
+    meta = {'db_alias': 'journal'}
     # mongo does not support date types and MongoEngine does not provide a
     # workaround. they will just be stored as datetimes
     start_date = mongoengine.DateTimeField()
@@ -184,6 +180,7 @@ class UtilBillDeletedEvent(Event):
         return result
 
 class SequenceEvent(Event):
+    meta = {'db_alias': 'journal'}
     '''Base class for events that are associated with a particular reebill. Do
     not instantiate.'''
     sequence = mongoengine.IntField(required=True)
@@ -194,6 +191,7 @@ class SequenceEvent(Event):
         return result
 
 class ReeBillRolledEvent(SequenceEvent):
+    meta = {'db_alias': 'journal'}
     @classmethod
     def save_instance(cls, user, account, sequence):
         ReeBillRolledEvent(user=user.identifier, account=account,
@@ -206,6 +204,7 @@ class ReeBillRolledEvent(SequenceEvent):
         return 'Reebill rolled'
 
 class ReeBillBoundEvent(SequenceEvent):
+    meta = {'db_alias': 'journal'}
     @classmethod
     def save_instance(cls, user, account, sequence):
         ReeBillBoundEvent(user=user.identifier, account=account,
@@ -218,6 +217,7 @@ class ReeBillBoundEvent(SequenceEvent):
         return 'Reebill bound to REE'
 
 class ReeBillDeletedEvent(SequenceEvent):
+    meta = {'db_alias': 'journal'}
     @classmethod
     def save_instance(cls, user, account, sequence):
         ReeBillDeletedEvent(user=user.identifier, account=account,
@@ -230,6 +230,7 @@ class ReeBillDeletedEvent(SequenceEvent):
         return 'Reebill deleted' 
 
 class ReeBillAttachedEvent(SequenceEvent):
+    meta = {'db_alias': 'journal'}
     @classmethod
     def save_instance(cls, user, account, sequence):
         ReeBillAttachedEvent(user=user.identifier, account=account,
@@ -242,6 +243,7 @@ class ReeBillAttachedEvent(SequenceEvent):
         return 'Reebill attached to utility bills' 
 
 class ReeBillMailedEvent(SequenceEvent):
+    meta = {'db_alias': 'journal'}
     # email recipient(s)
     address = mongoengine.StringField()
     

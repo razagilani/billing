@@ -306,12 +306,10 @@ class BillToolBridge:
         # setting meta = {'db_alias': 'journal'}. the collection name is still
         # hard-coded.
         journal_config = dict(self.config.items('journaldb'))
-        #mongoengine.connect(journal_config['database'],
-                #host=journal_config['host'], port=int(journal_config['port']),
-                #alias='journal')
         mongoengine.connect(journal_config['database'],
-                host=journal_config['host'], port=int(journal_config['port']))
-        self.journal_dao = journal.JournalDAO(**dict(journal_config))
+                host=journal_config['host'], port=int(journal_config['port']),
+                alias='journal')
+        self.journal_dao = journal.JournalDAO()
 
         # create a Splinter
         self.splinter = Splinter(self.config.get('skyline_backend',
@@ -2264,7 +2262,6 @@ class BillToolBridge:
         if not xaction or not account:
             raise ValueError("Bad Parameter Value")
         journal_entries = self.journal_dao.load_entries(account)
-        # TODO make journal entries a class and use MongoKit--clean up this ugliness
         for entry in journal_entries:
             # TODO 29715501 replace user identifier with user name
             # (UserDAO.load_user() currently requires a password to load a
