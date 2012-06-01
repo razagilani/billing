@@ -353,11 +353,11 @@ class MongoReebill(object):
         self.reebill_dict['_id']['sequence'] = value
 
     @property
-    def branch(self):
-        return self.reebill_dict['_id']['branch']
-    @branch.setter
-    def branch(self, value):
-        self.reebill_dict['_id']['branch'] = int(value)
+    def version(self):
+        return self.reebill_dict['_id']['version']
+    @version.setter
+    def version(self, value):
+        self.reebill_dict['_id']['version'] = int(value)
     
     @property
     def issue_date(self):
@@ -1136,21 +1136,21 @@ class ReebillDAO:
         
         self.collection = self.connection[database]['reebills']
 
-    def load_reebill(self, account, sequence, branch=0):
+    def load_reebill(self, account, sequence, version=0):
         if account is None: return None
         if sequence is None: return None
 
         query = {
             "_id.account": str(account),
-            "_id.branch": int(branch),
             # TODO stop passing in sequnce as a string from BillToolBridge
-            "_id.sequence": int(sequence)
+            "_id.sequence": int(sequence),
+            "_id.version": version,
         }
         mongo_doc = self.collection.find_one(query)
 
         if mongo_doc is None:
-            raise Exception("No ReeBill found for %s-%s (branch %s)" % (
-                account, sequence, branch))
+            raise Exception("No ReeBill found for %s-%s (version %s)" % (
+                account, sequence, version))
 
         mongo_doc = deep_map(float_to_decimal, mongo_doc)
         mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
@@ -1158,14 +1158,14 @@ class ReebillDAO:
 
         return mongo_reebill
 
-    def load_reebills_for(self, account, branch=0):
+    def load_reebills_for(self, account, version=0):
         # TODO remove--redundant with load_reebills_in_period when no dates are given, except for exclusion of sequence 0
 
         if not account: return None
 
         query = {
             "_id.account": str(account),
-            "_id.branch": int(branch),
+            '_id.version': version
         }
 
         mongo_docs = self.collection.find(query)
@@ -1178,7 +1178,8 @@ class ReebillDAO:
 
         return mongo_reebills
     
-    def load_reebills_in_period(self, account, branch=0, start_date=None, end_date=None):
+    def load_reebills_in_period(self, account, version=0, start_date=None,
+            end_date=None):
         '''Returns a list of MongoReebills whose period began on or before
         'end_date' and ended on or after 'start_date' (i.e. all bills between
         those dates and all bills whose period includes either endpoint). The
@@ -1187,8 +1188,8 @@ class ReebillDAO:
         time, respectively. Sequence 0 is never included.'''
         query = {
             '_id.account': str(account),
-            '_id.branch': int(branch),
-            '_id.sequence': {'$gt': 0}
+            '_id.sequence': {'$gt': 0},
+            '_id.version': version,
         }
         # add dates to query if present (converting dates into datetimes
         # because mongo only allows datetimes)
@@ -1208,14 +1209,18 @@ class ReebillDAO:
             result.append(MongoReebill(mongo_doc))
         return result
         
-    def save_reebill(self, reebill):
+    def save_reebill(self, reebill, force=False):
         '''Saves the MongoReebill 'reebill' into the database. If a document
         with the same account & sequence number already exists, the existing
-        document is replaced with this one.'''
-        with DBSession(self.state_db) as session:
-            if self.state_db.is_issued(session, reebill.account, reebill.sequence):
-                raise Exception("Can't modify an issued reebill.")
-            session.commit()
+        document is replaced with this one. Replacing an already-issued reebill
+        (as determined by StateDB) is forbidden unless 'force' is True (this
+        should only be used for testing).'''
+        if not force:
+            with DBSession(self.state_db) as session:
+                if self.state_db.is_issued(session, reebill.account,
+                        reebill.sequence, allow_nonexistent=True):
+                    raise Exception("Can't modify an issued reebill.")
+                session.commit()
         
         mongo_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
 

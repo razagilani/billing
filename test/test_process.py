@@ -58,14 +58,6 @@ port = 27017
 ''')
         self.config = ConfigParser.RawConfigParser()
         self.config.readfp(config_file)
-        self.reebill_dao = mongo.ReebillDAO({
-            'billpath': '/db-dev/skyline/bills/',
-            'database': 'test',
-            'utilitybillpath': '/db-dev/skyline/utilitybills/',
-            'collection': 'test_reebills',
-            'host': 'localhost',
-            'port': 27017
-        })
         self.billupload = BillUpload(self.config, logging.getLogger('test'))
         self.rate_structure_dao = rate_structure.RateStructureDAO({
             'database': 'test',
@@ -110,6 +102,15 @@ port = 27017
         customer = Customer('Test Customer', '99999', .12, .34)
         session.add(customer)
         session.commit()
+
+        self.reebill_dao = mongo.ReebillDAO(self.state_db, **{
+            'billpath': '/db-dev/skyline/bills/',
+            'database': 'test',
+            'utilitybillpath': '/db-dev/skyline/utilitybills/',
+            'collection': 'test_reebills',
+            'host': 'localhost',
+            'port': 27017
+        })
 
         #self.process = Process(self.config, self.state_db, self.reebill_dao,
                 #self.rate_structure_dao, self.billupload, self.splinter,
@@ -175,7 +176,7 @@ port = 27017
             # but sum_bill() destroys bill1's balance_due, so reset it to
             # the right value, and save it in mongo
             bill1.balance_due = Decimal('100.')
-            self.reebill_dao.save_reebill(bill1)
+            self.reebill_dao.save_reebill(bill1, force=True)
  
             # create second bill (not by rolling, because process.roll_bill()
             # is currently a huge untested mess, and get_late_charge() should

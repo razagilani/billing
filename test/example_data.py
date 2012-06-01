@@ -272,7 +272,7 @@ example_utilbill = {
 example_reebill = {
 	"_id" : {
 		"account" : "10003",
-		"branch" : 0,
+		"version" : 0,
 		"sequence" : 17
 	},
 	"ree_charges" : 118.42,
@@ -283,7 +283,7 @@ example_reebill = {
 	"issue_date" : null,
 	"utilbills" : [ example_utilbill ],
 	"payment_received" : 0,
-	"branch" : 0,
+	"version" : 0,
 	"period_end" : ISODate("2011-12-14T00:00:00Z"),
 	"actual_total" : 743.49,
 	"due_date" : null,
@@ -414,7 +414,7 @@ example_cprs = {
 		"sequence" : 17,
 		"utility_name" : "washgas",
 		"rate_structure_name" : "DC Non Residential Non Heat",
-		"branch" : 0,
+		"version" : 0,
 		"type" : "CPRS"
 	},
 	"rates" : [
