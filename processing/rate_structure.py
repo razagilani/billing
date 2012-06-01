@@ -57,7 +57,7 @@ class RateStructureDAO(object):
             print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
             raise e
         self.database = self.connection[config['database']]
-        self.collection = self.database[config['collection']]
+        self.collection = self.database['ratestructure']
 
     def _load_probable_rs_dict(self, reebill, service):
         '''Returns a dictionary of combined rate structure (derived from URS,

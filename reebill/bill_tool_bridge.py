@@ -1,11 +1,9 @@
-
 '''
 File: bill_tool_bridge.py
 Description: Allows bill tool to be invoked as a CGI
 '''
 import sys
 import os
-
 import traceback
 import json
 import cherrypy
@@ -41,6 +39,12 @@ from billing import calendar_reports
 from billing.estimated_revenue import EstimatedRevenue
 from billing.session_contextmanager import DBSession
 
+# collection names: all collections are now hard-coded. maybe this should go in
+# some kind of documentation when we have documentation...
+# rate structures: 'ratestructure'
+# reebills: 'reebill'
+# users: 'users'
+
 import pprint
 sys.stdout = sys.stderr
 # 29926885 output environment configs to debug virtual env
@@ -48,7 +52,6 @@ pprint.pprint(os.environ)
 pprint.pprint(sys.path)
 pprint.pprint(sys.prefix)
 pp = pprint.PrettyPrinter(indent=4)
-
 
 # from http://code.google.com/p/modwsgi/wiki/DebuggingTechniques#Python_Interactive_Debugger
 class Debugger:
@@ -180,7 +183,6 @@ class BillToolBridge:
             self.config.set('journaldb', 'host', 'localhost')
             self.config.set('journaldb', 'port', '27017')
             self.config.set('journaldb', 'database', 'skyline')
-            self.config.set('journaldb', 'collection', 'journal')
             self.config.add_section('http')
             self.config.set('http', 'socket_port', '8185')
             self.config.set('http', 'socket_host', '10.0.0.250')
@@ -189,14 +191,12 @@ class BillToolBridge:
             self.config.set('rsdb', 'host', 'localhost')
             self.config.set('rsdb', 'port', '27017')
             self.config.set('rsdb', 'database', 'skyline')
-            self.config.set('rsdb', 'collection', 'reebills')
             self.config.add_section('billdb')
             self.config.set('billdb', 'utilitybillpath', '[root]db/skyline/utilitybills/')
             self.config.set('billdb', 'billpath', '[root]db/skyline/bills/')
             self.config.set('billdb', 'host', 'localhost')
             self.config.set('billdb', 'port', '27017')
             self.config.set('billdb', 'database', 'skyline')
-            self.config.set('billdb', 'collection', 'reebills')
             self.config.add_section('statedb')
             self.config.set('statedb', 'host', 'localhost')
             self.config.set('statedb', 'database', 'skyline')
@@ -205,7 +205,6 @@ class BillToolBridge:
             self.config.add_section('usersdb')
             self.config.set('usersdb', 'host', 'localhost')
             self.config.set('usersdb', 'database', 'skyline')
-            self.config.set('usersdb', 'collection', 'users')
             self.config.set('usersdb', 'user', 'dev')
             self.config.set('usersdb', 'password', 'dev')
             self.config.add_section('mailer')
@@ -303,8 +302,7 @@ class BillToolBridge:
         # configure journal:
         # create a MongoEngine connection "alias" named "journal" with which
         # journal.Event subclasses (in journal.py) can associate themselves by
-        # setting meta = {'db_alias': 'journal'}. the collection name is still
-        # hard-coded.
+        # setting meta = {'db_alias': 'journal'}.
         journal_config = dict(self.config.items('journaldb'))
         mongoengine.connect(journal_config['database'],
                 host=journal_config['host'], port=int(journal_config['port']),
