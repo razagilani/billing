@@ -61,7 +61,7 @@ class UserDAO:
             print >> sys.stderr, "Exception when connecting to Mongo:" + str(e)
             raise
             
-        self.collection = connection[self.config['database']][self.config['collection']]
+        self.collection = connection[self.config['database']]['users']
     
     def create_user(self, identifier, password, name=None):
         '''Creates a new user with the given identifier and password and saves

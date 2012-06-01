@@ -1137,7 +1137,7 @@ class ReebillDAO:
                 # TODO when to disconnect from the database?
                 pass
         
-        self.collection = self.connection[self.config['database']][self.config['collection']]
+        self.collection = self.connection[self.config['database']]['reebills']
     
 
     def load_reebill(self, account, sequence, branch=0):
