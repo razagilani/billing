@@ -613,6 +613,16 @@ function reeBillReady() {
             {name: 'sequence'},
             {name: 'period_start'},
             {name: 'period_end'},
+            {name: 'hypothetical_total'},
+            {name: 'actual_total'},
+            {name: 'ree_value'},
+            {name: 'prior_balance'},
+            {name: 'payment_received'},
+            {name: 'total_adjustment'},
+            {name: 'balance_forward'},
+            {name: 'balance_forward'},
+            {name: 'ree_charges'},
+            {name: 'balance_due'},
         ],
     });
 
@@ -683,15 +693,72 @@ function reeBillReady() {
                 header: 'Sequence',
                 sortable: true,
                 dataIndex: 'sequence',
-                editor: new Ext.form.TextField({allowBlank: true})
-            }, {
+                //editor: new Ext.form.TextField({allowBlank: true})
+                width: 30,
+            },{
                 header: 'Start Date',
                 sortable: true,
                 dataIndex: 'period_start',
-            }, {
+                width: 70,
+            },{
                 header: 'End Date',
                 sortable: true,
                 dataIndex: 'period_end',
+                width: 70,
+            },{
+                header: 'Hypo',
+                sortable: false,
+                dataIndex: 'hypothetical_total',
+                width: 65,
+                align: 'right',
+            },{
+                header: 'Actual',
+                sortable: false,
+                dataIndex: 'actual_total',
+                width: 65,
+                align: 'right',
+            },{
+                header: 'RE&E Value',
+                sortable: false,
+                dataIndex: 'ree_value',
+                width: 65,
+                align: 'right',
+            },{
+                header: 'Prior Balance',
+                sortable: false,
+                dataIndex: 'prior_balance',
+                width: 65,
+                align: 'right',
+            },{
+                header: 'Payment',
+                sortable: false,
+                dataIndex: 'payment_received',
+                width: 65,
+                align: 'right',
+            },{
+                header: 'Adjustment',
+                sortable: false,
+                dataIndex: 'total_adjustment',
+                width: 65,
+                align: 'right',
+            },{
+                header: 'Balance Fwd',
+                sortable: false,
+                dataIndex: 'balance_forward',
+                width: 65,
+                align: 'right',
+            },{
+                header: 'RE&E Charges',
+                sortable: false,
+                dataIndex: 'ree_charges',
+                width: 65,
+                align: 'right',
+            },{
+                header: 'Balance Due',
+                sortable: false,
+                dataIndex: 'balance_due',
+                width: 65,
+                align: 'right',
             },
         ]
     });
@@ -4175,8 +4242,8 @@ function reeBillReady() {
                 id: 'accountReeValueExportCSVBtn',
                 iconCls: 'icon-application-go',
                 xtype: 'linkbutton',
-                href: "http://"+location.host+"/reebill/all_ree_charges_xls",
-                text: 'Export REE Value XLS',
+                href: "http://"+location.host+"/reebill/reebill_details_xls",
+                text: 'Export ReeBill XLS',
                 disabled: false,
             },{
                 id: 'exportButton',
