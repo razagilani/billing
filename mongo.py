@@ -4,21 +4,18 @@ import datetime
 from datetime import date, time, datetime
 from decimal import Decimal
 import pymongo
-from billing.mutable_named_tuple import MutableNamedTuple
 import functools
-
 from urlparse import urlparse
 import httplib
 import string
 import base64
 import itertools as it
 import copy
-from billing.mongo_utils import bson_convert, python_convert
 import uuid as UUID
+from billing.mongo_utils import bson_convert, python_convert
 from billing.dictutils import deep_map
+from billing.dateutils import date_to_datetime
 from billing.session_contextmanager import DBSession
-
-import pdb
 import pprint
 pp = pprint.PrettyPrinter(indent=1)
 sys.stdout = sys.stderr
@@ -1138,8 +1135,11 @@ class ReebillDAO:
 
     def load_reebill(self, account, sequence, version='max'):
         '''Returns the reebill with the given account and sequence, and the
-        greatest version by default. 'version' may be a specific version number
-        (starting at 0).'''
+        greatest version by default. If 'version' is a specific version number,
+        that version will be returned. If 'version' is a date, and there exist
+        versions before that date, the greatest version issued before that date
+        is chosen. Otherwise the greatest version overall will be returned.'''
+        # TODO looks like somebody's temporary hack should be removed
         if account is None: return None
         if sequence is None: return None
 
@@ -1154,6 +1154,17 @@ class ReebillDAO:
         elif version == 'max':
             mongo_doc = self.collection.find(query, sort=[('_id.version',
                 pymongo.DESCENDING)])[0]
+        elif isinstance(version, date):
+            version_dt = date_to_datetime(version)
+            docs = self.collection.find(query, sort=[('_id.version',
+                    pymongo.ASCENDING)])
+            earliest_issue_date = docs[0]['issue_date']
+            if earliest_issue_date is not None and earliest_issue_date < version_dt:
+                docs_before_date = [d for d in docs if d['issue_date'] < version_dt]
+                mongo_doc = docs_before_date[len(docs_before_date)-1]
+            else:
+                # TODO None comes last as issue date?
+                mongo_doc = docs[docs.count()-1]
         else:
             raise ValueError('Unknown version specifier "%s"' % version)
 
