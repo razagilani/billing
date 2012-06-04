@@ -78,6 +78,14 @@ class ReebillDAOTest(unittest.TestCase):
         b2 = example_data.get_reebill('99999', 2, version=0)
         b3 = example_data.get_reebill('99999', 3, version=0)
         b3_1 = example_data.get_reebill('99999', 3, version=1)
+
+        b1.issue_date = date(2012,1,1)
+        b1_1.issue_date = date(2012,2,15)
+        b1_2.issue_date = date(2012,3,15)
+        b2.issue_date = date(2012,2,1)
+        b3.issue_date = date(2012,3,1)
+        b3_1.issue_date = date(2012,4,15)
+
         self.reebill_dao.save_reebill(b0)
         self.reebill_dao.save_reebill(b1)
         self.reebill_dao.save_reebill(b1_1)
@@ -117,6 +125,24 @@ class ReebillDAOTest(unittest.TestCase):
         self.assertEqual(2, b1_max.version)
         self.assertEqual(0, b2_max.version)
         self.assertEqual(1, b3_max.version)
+
+        # get versions by issue date:
+        # when date precedes all bills, version should always be max
+        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 0, version=date(2011,1,1)).version)
+        self.assertEqual(2, self.reebill_dao.load_reebill('99999', 1, version=date(2011,1,1)).version)
+        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 2, version=date(2011,1,1)).version)
+        self.assertEqual(1, self.reebill_dao.load_reebill('99999', 3, version=date(2011,1,1)).version)
+        # when date follows all bills, version should always be max
+        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 0, version=date(2013,1,1)).version)
+        self.assertEqual(2, self.reebill_dao.load_reebill('99999', 1, version=date(2013,1,1)).version)
+        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 2, version=date(2013,1,1)).version)
+        self.assertEqual(1, self.reebill_dao.load_reebill('99999', 3, version=date(2013,1,1)).version)
+        # date between issue dates of 1-0 and 1-1
+        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 1, version=date(2012,1,15)).version)
+        # date between issue dates of 1-1 and 1-2
+        self.assertEqual(1, self.reebill_dao.load_reebill('99999', 1, version=date(2012,3,1)).version)
+        # date between issue dates of 3-0 and 3-1
+        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 3, version=date(2012,4,1)).version)
 
         # error when reebill is not found
         self.assertRaises(Exception, self.reebill_dao.load_reebill, '10003', 1)
