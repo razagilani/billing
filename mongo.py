@@ -1136,10 +1136,10 @@ class ReebillDAO:
         
         self.collection = self.connection[database]['reebills']
 
-    def load_reebill(self, account, sequence, version=0):
+    def load_reebill(self, account, sequence, version='max'):
         '''Returns the reebill with the given account and sequence, and the
-        verion 0 by default. 'version' may be a specific version number, or
-        "max" to get the greatest version.'''
+        greatest version by default. 'version' may be a specific version number
+        (starting at 0).'''
         if account is None: return None
         if sequence is None: return None
 
