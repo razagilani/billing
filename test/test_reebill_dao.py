@@ -109,6 +109,14 @@ class ReebillDAOTest(unittest.TestCase):
         self.assertEqual(1, b1_2.sequence)
         self.assertEqual(2, b1_2.version)
         self.assertEqual(1, b3_1.version)
+        b0_max = self.reebill_dao.load_reebill('99999', 0, version='max')
+        b1_max = self.reebill_dao.load_reebill('99999', 1, version='max')
+        b2_max = self.reebill_dao.load_reebill('99999', 2, version='max')
+        b3_max = self.reebill_dao.load_reebill('99999', 3, version='max')
+        self.assertEqual(0, b0_max.version)
+        self.assertEqual(2, b1_max.version)
+        self.assertEqual(0, b2_max.version)
+        self.assertEqual(1, b3_max.version)
 
         # error when reebill is not found
         self.assertRaises(Exception, self.reebill_dao.load_reebill, '10003', 1)

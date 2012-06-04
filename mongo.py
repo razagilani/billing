@@ -1137,6 +1137,9 @@ class ReebillDAO:
         self.collection = self.connection[database]['reebills']
 
     def load_reebill(self, account, sequence, version=0):
+        '''Returns the reebill with the given account and sequence, and the
+        verion 0 by default. 'version' may be a specific version number, or
+        "max" to get the greatest version.'''
         if account is None: return None
         if sequence is None: return None
 
@@ -1144,9 +1147,15 @@ class ReebillDAO:
             "_id.account": str(account),
             # TODO stop passing in sequnce as a string from BillToolBridge
             "_id.sequence": int(sequence),
-            "_id.version": version,
         }
-        mongo_doc = self.collection.find_one(query)
+        if isinstance(version, int):
+            query.update({'_id.version': version})
+            mongo_doc = self.collection.find_one(query)
+        elif version == 'max':
+            mongo_doc = self.collection.find(query, sort=[('_id.version',
+                pymongo.DESCENDING)])[0]
+        else:
+            raise ValueError('Unknown version specifier "%s"' % version)
 
         if mongo_doc is None:
             raise Exception("No ReeBill found for %s-%s (version %s)" % (
