@@ -332,6 +332,10 @@ class Process(object):
         return new_reebill
 
 
+    def new_version(self, session, reebill):
+        # TODO
+        pass
+
     def get_late_charge(self, session, reebill, day=date.today()):
         '''Returns the late charge for the given reebill on 'day', which is the
         present by default. ('day' will only affect the result for a bill that
