@@ -86,19 +86,19 @@ class ReebillDAOTest(unittest.TestCase):
         self.reebill_dao.save_reebill(b3)
         self.reebill_dao.save_reebill(b3_1)
 
-        # with no extra args to load_reebill(), only version 0 should come out
-        b0 = self.reebill_dao.load_reebill('99999', 0)
-        b1 = self.reebill_dao.load_reebill('99999', 1)
-        b2 = self.reebill_dao.load_reebill('99999', 2)
-        b3 = self.reebill_dao.load_reebill('99999', 3)
-        self.assertEqual(0, b0.sequence)
-        self.assertEqual(0, b0.version)
-        self.assertEqual(1, b1.sequence)
-        self.assertEqual(0, b1.version)
-        self.assertEqual(2, b2.sequence)
-        self.assertEqual(0, b2.version)
-        self.assertEqual(3, b3.sequence)
-        self.assertEqual(0, b3.version)
+        # with no extra args to load_reebill(), maximum version should come out
+        b0_max = self.reebill_dao.load_reebill('99999', 0)
+        b1_max = self.reebill_dao.load_reebill('99999', 1)
+        b2_max = self.reebill_dao.load_reebill('99999', 2)
+        b3_max = self.reebill_dao.load_reebill('99999', 3)
+        self.assertEqual(0, b0_max.sequence)
+        self.assertEqual(0, b0_max.version)
+        self.assertEqual(1, b1_max.sequence)
+        self.assertEqual(2, b1_max.version)
+        self.assertEqual(2, b2_max.sequence)
+        self.assertEqual(0, b2_max.version)
+        self.assertEqual(3, b3_max.sequence)
+        self.assertEqual(1, b3_max.version)
 
         # try getting specific versions
         b1_1 = self.reebill_dao.load_reebill('99999', 1, version=1)
