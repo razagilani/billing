@@ -12,7 +12,7 @@ bills_fixed, bills_total = 0, 0
 for bill in bills:
     if 'branch' in bill['_id']:
         # remove old doc
-        reebills_collection.remove(bill['_id'])
+        reebills_collection.remove({'_id': bill['_id']})
         # fix it and save
         del bill['_id']['branch']
         bill['_id']['version'] = 0
@@ -29,7 +29,7 @@ rs_fixed, rs_total = 0, 0
 for cprs in cprss:
     if 'branch' in cprs['_id']:
         # remove old doc
-        rs_collection.remove(cprs['_id'])
+        rs_collection.remove({'_id': cprs['_id']})
         # fix it and save
         del cprs['_id']['branch']
         cprs['_id']['version'] = 0
