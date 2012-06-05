@@ -19,8 +19,8 @@ import skyliner
 from billing.processing import state
 from billing.mongo import MongoReebill
 from billing.processing.rate_structure import RateStructureDAO
-from billing.processing import state
-from billing.processing.db_objects import Payment, Customer, UtilBill
+from billing.processing import state, fetch_bill_data
+from billing.processing.db_objects import Payment, Customer, UtilBill, ReeBill
 from billing.mongo import ReebillDAO
 from billing import nexus_util
 from billing import dateutils
@@ -332,9 +332,46 @@ class Process(object):
         return new_reebill
 
 
-    def new_version(self, session, reebill):
-        # TODO
-        pass
+    def new_version(self, session, account, sequence):
+        '''Creates a new version of the given reebill: duplicates the Mongo
+        document, re-computes the bill, saves it, and increments the
+        max_version number in MySQL. Returns the new reebill object.'''
+        customer = session.query(Customer).filter(Customer.account==account).one()
+
+        if sequence <= 0:
+            raise ValueError('Only sequence >= q can have multiple versions.')
+
+        # get current max version from MySQL
+        max_version = self.state_db.max_version(session, account, sequence)
+
+        # load that version's document from Mongo (even if higher version
+        # exists in Mongo, it doesn't count unless MySQL knows about it)
+        reebill = self.reebill_dao.load_reebill(account, sequence,
+                version=max_version)
+
+        # increment version, and make un-issued
+        reebill.version = max_version + 1
+        reebill.issue_date = None
+
+        # get sequence predecessor, to compute balance forward
+        predecessor = self.reebill_dao.load_reebill(account, sequence-1)
+
+        # re-bind
+        # TODO re-enable (might want to make an object that pretends to be
+        # SkyInstall to test this)
+        #fetch_bill_data.fetch_oltp_data(self.splinter,
+                #nexus_util.NexusUtil().olap_id(account), reebill)
+
+        # recompute
+        self.sum_bill(session, predecessor, reebill)
+
+        # save in mongo
+        self.reebill_dao.save_reebill(reebill)
+
+        # increment max version in mysql
+        self.state_db.increment_version(session, account, sequence)
+
+        return reebill
 
     def get_late_charge(self, session, reebill, day=date.today()):
         '''Returns the late charge for the given reebill on 'day', which is the

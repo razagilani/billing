@@ -20,6 +20,22 @@ billdb_config = {
 
 class StateTest(unittest.TestCase):
     def setUp(self):
+        # clear out database
+        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
+        c = mysql_connection.cursor()
+        c.execute("delete from payment")
+        c.execute("delete from utilbill")
+        c.execute("delete from rebill")
+        c.execute("delete from customer")
+        mysql_connection.commit()
+
+        # insert one customer (not relying on StateDB)
+        c = mysql_connection.cursor()
+        c.execute('''insert into customer
+                (name, account, discountrate, latechargerate) values
+                ('Test Customer', 99999, .12, .34)''')
+        mysql_connection.commit()
+
         sqlalchemy.orm.clear_mappers()
         self.state_db = state.StateDB(**{
             'user':'dev',
@@ -28,14 +44,6 @@ class StateTest(unittest.TestCase):
             'database':'test'
         })
         self.reebill_dao = mongo.ReebillDAO(billdb_config)
-
-        # insert one customer (not relying on StateDB)
-        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        c = mysql_connection.cursor()
-        c.execute('''insert into customer
-                (name, account, discountrate, latechargerate) values
-                ('Test Customer', 99999, .12, .34)''')
-        mysql_connection.commit()
 
     def tearDown(self):
         '''This gets run even if a test fails.'''
@@ -139,6 +147,28 @@ class StateTest(unittest.TestCase):
             self.assertEqual((date(2012,6,1), date(2012,7,1)),
                     (bills[2].period_start, bills[2].period_end))
         
+            session.commit()
+
+    def test_new_reebill(self):
+        with DBSession(self.state_db) as session:
+            b = self.state_db.new_rebill(session, '99999', 1)
+            self.assertEqual('99999', b.customer.account)
+            self.assertEqual(1, b.sequence)
+            self.assertEqual(0, b.max_version)
+            self.assertEqual(0, b.issued)
+            session.commit()
+
+    def test_versions(self):
+        '''Tests both max_version() and increment_version().'''
+        with DBSession(self.state_db) as session:
+            b = self.state_db.new_rebill(session, '99999', 1)
+            self.assertEqual(0, self.state_db.max_version(session, '99999', 1))
+            self.state_db.increment_version(session, '99999', 1)
+            self.assertEqual(1, self.state_db.max_version(session, '99999', 1))
+            self.state_db.increment_version(session, '99999', 1)
+            self.assertEqual(2, self.state_db.max_version(session, '99999', 1))
+            self.state_db.increment_version(session, '99999', 1)
+            self.assertEqual(3, self.state_db.max_version(session, '99999', 1))
             session.commit()
 
 if __name__ == '__main__':

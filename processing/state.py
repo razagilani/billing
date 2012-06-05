@@ -125,6 +125,7 @@ class StateDB:
         # statements that are executed
         engine = create_engine('mysql://%s:%s@%s:3306/%s' % (user, password,
                 host, database), pool_recycle=3600, pool_size=db_connections)
+        self.engine = engine
         metadata = MetaData(engine)
 
         # table objects loaded automatically from database
@@ -138,23 +139,16 @@ class StateDB:
         # mappings
         mapper(StatusDaysSince, status_days_since_view,primary_key=[status_days_since_view.c.account])
         mapper(StatusUnbilled, status_unbilled_view, primary_key=[status_unbilled_view.c.account])
-
-        mapper(Customer, customer_table, \
-                properties={
-                    'utilbills': relationship(UtilBill, backref='customer'), \
+        mapper(Customer, customer_table, properties={
+                    'utilbills': relationship(UtilBill, backref='customer'),
                     'reebills': relationship(ReeBill, backref='customer')
                 })
-
         mapper(ReeBill, reebill_table)
-
-        mapper(UtilBill, utilbill_table, \
-                properties={
+        mapper(UtilBill, utilbill_table, properties={
                     # "lazy='joined'" makes SQLAlchemy eagerly load utilbill customers
                     'reebill': relationship(ReeBill, backref='utilbill', lazy='joined')
                 })
-
-        mapper(Payment, payment_table, \
-                properties={
+        mapper(Payment, payment_table, properties={
                     'customer': relationship(Customer, backref='payment')
                 })
 
@@ -231,6 +225,26 @@ class StateDB:
         # delete the reebill
         session.delete(reebill)
 
+    def max_version(self, session, account, sequence):
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        reebill = session.query(ReeBill)\
+                .filter(ReeBill.customer==customer)\
+                .filter(ReeBill.sequence==sequence).one()
+        # SQLAlchemy returns a "long" here for some reason, so convert to int
+        return int(reebill.max_version)
+
+    def increment_version(self, session, account, sequence):
+        '''Incrementes the max_version of the given reebill (to indicate that a
+        new version was successfully created).'''
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        reebill = session.query(ReeBill)\
+                .filter(ReeBill.customer==customer).one()
+        print 'in increment_version: reebill id is', id(reebill)
+        reebill.issued = 1
+        reebill.max_version += 1
+
     def discount_rate(self, session, account):
         '''Returns the discount rate for the customer given by account.'''
         result = session.query(Customer).filter_by(account=account).one().\
@@ -282,7 +296,7 @@ class StateDB:
         '''Creates a new ReeBill row in the database and returns the new
         ReeBill object corresponding to it.'''
         customer = session.query(Customer).filter(Customer.account==account).one()
-        new_reebill = ReeBill(customer, sequence)
+        new_reebill = ReeBill(customer, sequence, 0)
         session.add(new_reebill)
         return new_reebill
 

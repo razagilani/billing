@@ -4,7 +4,7 @@ import MySQLdb
 statedb_config = {
     'host': 'localhost',
     'password': 'dev',
-    'database': 'skyline_dev',
+    'database': 'test',
     'user': 'dev'
 }
 
