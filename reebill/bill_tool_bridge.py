@@ -310,9 +310,11 @@ class BillToolBridge:
         self.journal_dao = journal.JournalDAO()
 
         # create a Splinter
-        self.splinter = Splinter(self.config.get('skyline_backend',
-            'oltp_url'), self.config.get('skyline_backend', 'olap_host'),
-            self.config.get('skyline_backend', 'olap_database'))
+        #self.splinter = Splinter(self.config.get('skyline_backend',
+            #'oltp_url'), self.config.get('skyline_backend', 'olap_host'),
+            #self.config.get('skyline_backend', 'olap_database'))
+        from billing.test import fake_skyliner
+        self.splinter = fake_skyliner.FakeSplinter()
 
         # create one Process object to use for all related bill processing
         # TODO it's theoretically bad to hard-code these, but all skyliner
@@ -1786,6 +1788,20 @@ class BillToolBridge:
                             account, sequence)
                 session.commit()
                 return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def new_reebill_version(self, account, sequence, **args):
+        '''Creates a new version of the given reebill, if it's not issued.'''
+        sequence = int(sequence)
+        with DBSession(self.state_db) as session:
+            # Process will complain if new version is not issued
+            new_reebill = self.process.new_version(session, account, sequence)
+            session.commit()
+        return self.dumps({'success': True, 'new_version':
+            new_reebill.version})
 
     ################
     # Handle addresses

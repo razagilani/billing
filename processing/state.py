@@ -235,14 +235,20 @@ class StateDB:
         return int(reebill.max_version)
 
     def increment_version(self, session, account, sequence):
-        '''Incrementes the max_version of the given reebill (to indicate that a
-        new version was successfully created).'''
+        '''Incrementes the max_version of the given issued reebill (to indicate
+        that a new version was successfully created). After the new version is
+        created, the reebill is no longer issued, because the newest version
+        has not been issued.'''
         customer = session.query(Customer)\
                 .filter(Customer.account==account).one()
         reebill = session.query(ReeBill)\
-                .filter(ReeBill.customer==customer).one()
-        print 'in increment_version: reebill id is', id(reebill)
-        reebill.issued = 1
+                .filter(ReeBill.customer==customer)\
+                .filter(ReeBill.sequence==sequence).one()
+        if not self.is_issued(session, account, sequence):
+            raise ValueError(("Can't increment version of %s-%s because "
+                    "version %s is not issued yet") % (account, sequence,
+                        reebill.max_version))
+        reebill.issued = 0
         reebill.max_version += 1
 
     def discount_rate(self, session, account):
@@ -302,17 +308,19 @@ class StateDB:
 
     def issue(self, session, account, sequence):
         '''Marks the given reebill as issued. Does not set the issue date or
-        due date.'''
+        due date (which are in Mongo).'''
         customer = session.query(Customer).filter(Customer.account==account).one()
         reeBill = session.query(ReeBill) \
                 .filter(ReeBill.customer_id==customer.id) \
                 .filter(ReeBill.sequence==sequence).one()
         reeBill.issued = 1
 
-    def is_issued(self, session, account, sequence, allow_nonexistent=False):
-        '''Returns true if the reebill given by account and sequence has been
-        issued, false otherwise. If allow_nonexistent is True, a reebill not
-        present in the state database will be treated as un-issued.'''
+    def is_issued(self, session, account, sequence, version='max',
+            allow_nonexistent=False):
+        '''Returns true if the reebill given by account, sequence, and version
+        (latest version by default) has been issued, false otherwise. If
+        'allow_nonexistent' is True, a reebill not present in the state
+        database will be treated as un-issued.'''
         try:
             customer = session.query(Customer)\
                     .filter(Customer.account==account).one()
@@ -323,7 +331,15 @@ class StateDB:
             if allow_nonexistent:
                 return False
             raise
-        return reebill.issued == 1
+        if version == 'max':
+            return reebill.issued == 1
+        elif isinstance(version, int):
+            # any version prior to the latest is assumed to be issued, since
+            # otherwise the latest version could not have been created
+            return (version < reebill.max_version) \
+                    or (version == reebill.max_version and reebill.issued)
+        else:
+            raise ValueError('Unknown version specifier "%s"' % version)
 
     def account_exists(self, session, account):
         try:

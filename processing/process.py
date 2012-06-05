@@ -341,7 +341,7 @@ class Process(object):
         customer = session.query(Customer).filter(Customer.account==account).one()
 
         if sequence <= 0:
-            raise ValueError('Only sequence >= q can have multiple versions.')
+            raise ValueError('Only sequence >= 0 can have multiple versions.')
 
         # get current max version from MySQL
         max_version = self.state_db.max_version(session, account, sequence)

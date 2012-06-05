@@ -42,8 +42,6 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
 
 
 function reeBillReady() {
-
-
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
     // the current Reebill Account-Sequence being acted on
@@ -551,16 +549,41 @@ function reeBillReady() {
 
     var deleteButton = new Ext.Button({
         text: 'Delete selected reebill',
+        iconCls: 'icon-delete',
         //disabled: true, // TODO should be disabled when there's no reebill selected or the currently-selected bill is not deletable
         handler: function() {
             var s = reeBillGrid.getSelectionModel().getSelections();
-            for(var i = 0, r; r = s[i]; i++)
-            {
+            for(var i = 0, r; r = s[i]; i++) {
                 reeBillStore.remove(r);
             }
             reeBillStore.save();
         }
     })
+
+    var versionButton = new Ext.Button({
+        text: 'Create new version',
+        //disabled: true, // TODO should be disabled when there's no reebill selected or the currently-selected bill is not deletable
+        handler: function() {
+            Ext.Msg.show({title: "Please wait while new version is created", closable: false});
+            Ext.Ajax.request({
+                url: 'http://'+location.host+'/reebill/new_reebill_version',
+                params: { account: selected_account, sequence: selected_sequence },
+                success: function(result, request) {
+                    var jsonData = Ext.util.JSON.decode(result.responseText);
+                    Ext.Msg.hide();
+                    if (jsonData.success == true) {
+                        Ext.MessageBox.alert("New version created", jsonData.new_version);
+                    } else {
+                        Ext.MessageBox.alert("Error", jsonData.errors.reason);
+                    }
+                },
+                failure: function() {
+                    Ext.Msg.hide();
+                    Ext.MessageBox.alert('Ajax failure', 'new_reebill_version request failed');
+                },
+            });
+        }
+    });
 
     var initialReebill =  {
         rows: [
@@ -790,13 +813,9 @@ function reeBillReady() {
                     billOperationButton,
                 ],
             },
-            { xtype: 'tbseparator' },
-            {
-                xtype: 'panel',
-                items: [
-                    deleteButton,
-                ],
-            },
+
+            deleteButton,
+            versionButton
         ]
     });
 

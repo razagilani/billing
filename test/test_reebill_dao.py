@@ -8,6 +8,7 @@ from billing.processing.state import StateDB
 from billing.processing.db_objects import ReeBill, Customer, UtilBill
 import MySQLdb
 from billing.test import example_data
+from billing.mongo import NoSuchReeBillException
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -145,9 +146,9 @@ class ReebillDAOTest(unittest.TestCase):
         self.assertEqual(0, self.reebill_dao.load_reebill('99999', 3, version=date(2012,4,1)).version)
 
         # error when reebill is not found
-        self.assertRaises(Exception, self.reebill_dao.load_reebill, '10003', 1)
-        self.assertRaises(Exception, self.reebill_dao.load_reebill, '99999', 10)
-        self.assertRaises(Exception, self.reebill_dao.load_reebill, '99999', 1, version=5)
+        self.assertRaises(NoSuchReeBillException, self.reebill_dao.load_reebill, '10003', 1)
+        self.assertRaises(NoSuchReeBillException, self.reebill_dao.load_reebill, '99999', 10)
+        self.assertRaises(NoSuchReeBillException, self.reebill_dao.load_reebill, '99999', 1, version=5)
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
