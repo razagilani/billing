@@ -434,9 +434,10 @@ class Process(object):
         return max(Decimal(0), reebill.balance_due - payment_total)
 
     def delete_reebill(self, session, account, sequence):
-        '''Deletes the reebill given by 'account' and 'sequence': removes state
-        data and utility bill associations from MySQL, and actual bill data
-        from Mongo. A reebill that has been issued can't be deleted.'''
+        '''Deletes the latest version of the reebill given by 'account' and
+        'sequence': removes state data and utility bill associations from
+        MySQL, and actual bill data from Mongo. A reebill that has been issued
+        can't be deleted.'''
         # TODO add branch, which MySQL doesn't have yet:
         # https://www.pivotaltracker.com/story/show/24374911 
 
@@ -444,19 +445,20 @@ class Process(object):
         if self.state_db.is_issued(session, account, sequence):
             raise Exception("Can't delete an issued reebill.")
 
-        # delete reebill document from Mongo
-        self.reebill_dao.delete_reebill(account, sequence)
-
         # delete reebill state data from MySQL and dissociate utilbills from it
+        # (save max version first because row may be deleted)
+        max_version = self.state_db.max_version(session, account, sequence)
         self.state_db.delete_reebill(session, account, sequence)
 
-    def create_new_account(self, session, account, name, discount_rate, late_charge_rate, template_account):
+        # delete highest-version reebill document from Mongo
+        self.reebill_dao.delete_reebill(account, sequence, max_version)
 
+
+    def create_new_account(self, session, account, name, discount_rate,
+            late_charge_rate, template_account):
         result = self.state_db.account_exists(session, account)
-
         if result is True:
             raise Exception("Account exists")
-
         template_last_sequence = self.state_db.last_sequence(session, template_account)
 
         #TODO 22598787 use the active branch of the template_account
@@ -478,7 +480,6 @@ class Process(object):
         # TODO: 22597151 refactor
         # for each service, duplicate the CPRS
         for service in reebill.services:
-
             utility_name = reebill.utility_name_for_service(service)
             rate_structure_name = reebill.rate_structure_name_for_service(service)
 

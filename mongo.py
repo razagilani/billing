@@ -1252,18 +1252,17 @@ class ReebillDAO:
 
         self.collection.save(mongo_doc)
 
-    def delete_reebill(self, account, sequence, branch=0):
+    def delete_reebill(self, account, sequence, version):
+        import ipdb; ipdb.set_trace()
         self.collection.remove({
-            '_id.account': str(account),
-            '_id.sequence': int(sequence),
-            '_id.branch': int(branch)
+            '_id.account': account,
+            '_id.sequence': sequence,
+            '_id.version': version,
         }, safe=True)
 
     def get_first_bill_date_for_account(self, account):
         '''Returns the start date of the account's earliest reebill, or None if
         no reebills exist for the customer.'''
-        #TODO 24722017 it isn't clear which date is intended - the date of the earliest service? Or, the dates of the individual services?
-        # It is assummed that the date of the earliest service period is desired.
         query = {
             '_id.account': account,
             '_id.sequence': 1,

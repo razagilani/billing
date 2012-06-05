@@ -25,6 +25,7 @@ from billing.mongo_utils import python_convert
 from billing.test import example_data
 from billing.test.fake_skyliner import FakeSplinter, FakeMonguru
 from billing.nexus_util import NexusUtil
+from billing.mongo import NoSuchReeBillException
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -675,6 +676,33 @@ port = 27017
         self.assertEqual(1, new_bill.sequence)
         self.assertEqual(1, new_bill.version)
         self.assertEqual(1, self.state_db.max_version(session, '99999', 1))
+
+    def test_delete_reebill(self):
+        account = '99999'
+        with DBSession(self.state_db) as session:
+            # create sequence 1 version 0, not issued
+            self.state_db.new_rebill(session, account, 1)
+            self.reebill_dao.save_reebill(example_data.get_reebill(account,
+                1, version=0))
+            assert self.state_db.listSequences(session, account) == [1]
+            self.reebill_dao.load_reebill(account, 1, version=0)
+
+            # delete it
+            self.process.delete_reebill(session, account, 1)
+            self.assertEqual([], self.state_db.listSequences(session, account))
+            import ipdb; ipdb.set_trace()
+            self.assertRaises(NoSuchReeBillException, self.reebill_dao.load_reebill,
+                    account, 1, version=0)
+
+            # re-create it and issue: can't be deleted
+            self.state_db.new_rebill(session, account, 1)
+            self.reebill_dao.save_reebill(example_data.get_reebill(account,
+                1, version=0))
+            assert self.state_db.listSequences(session, account) == [1]
+            self.reebill_dao.load_reebill(account, 1, version=0)
+            self.assertRaises(Exception, self.process.delete_reebill, account, 1)
+
+            session.commit()
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
