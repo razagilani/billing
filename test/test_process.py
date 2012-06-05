@@ -23,6 +23,7 @@ from billing.dictutils import deep_map
 import MySQLdb
 from billing.mongo_utils import python_convert
 from billing.test import example_data
+from billing.test.fake_skyliner import FakeSplinter, FakeMonguru
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -73,9 +74,8 @@ port = 27017
             'host': 'localhost',
             'port': 27017
         })
-        self.splinter = Splinter('http://duino-drop.appspot.com/', 'tyrell',
-                'dev')
-        self.monguru = Monguru('tyrell', 'dev')
+        self.splinter = FakeSplinter()
+        self.monguru = FakeMonguru
         
         # temporary hack to get a bill that's always the same
         # this bill came straight out of mongo (except for .date() applied to
