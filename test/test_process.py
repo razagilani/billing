@@ -24,6 +24,7 @@ import MySQLdb
 from billing.mongo_utils import python_convert
 from billing.test import example_data
 from billing.test.fake_skyliner import FakeSplinter, FakeMonguru
+from billing.nexus_util import NexusUtil
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -67,7 +68,6 @@ port = 27017
             'port': 27017
         })
         self.splinter = FakeSplinter()
-        self.monguru = FakeMonguru
         
         # temporary hack to get a bill that's always the same
         # this bill came straight out of mongo (except for .date() applied to
@@ -112,12 +112,9 @@ port = 27017
             'port': 27017
         })
 
-        #self.process = Process(self.config, self.state_db, self.reebill_dao,
-                #self.rate_structure_dao, self.billupload, self.splinter,
-                #self.monguru)
         self.process = Process(self.config, self.state_db, self.reebill_dao,
-                self.rate_structure_dao, self.billupload, self.splinter,
-                self.monguru)
+                self.rate_structure_dao, self.billupload, NexusUtil(),
+                self.splinter)
 
     def tearDown(self):
         '''This gets run even if a test fails.'''
@@ -512,9 +509,9 @@ port = 27017
         print 'test_upload_utility_bill'
         with DBSession(self.state_db) as session:
             account, service = '99999', 'gas'
-            self.process = Process(self.config, self.state_db, self.reebill_dao,
-                    self.rate_structure_dao, self.billupload, self.splinter,
-                    self.monguru)
+            #self.process = Process(self.config, self.state_db, self.reebill_dao,
+                    #self.rate_structure_dao, self.billupload, self.splinter,
+                    #self.monguru)
 
             # one utility bill
             file1 = StringIO("Let's pretend this is a PDF")
@@ -593,12 +590,8 @@ port = 27017
 
     def test_delete_utility_bill(self):
         print 'test_delete_utility_bill'
-
         account, service, = '99999', 'gas'
         start, end = date(2012,1,1), date(2012,2,1)
-        process = Process(self.config, self.state_db, self.reebill_dao,
-                self.rate_structure_dao, self.billupload, self.splinter,
-                self.monguru)
 
         with DBSession(self.state_db) as session:
             # create utility bill, and make sure it exists in db and filesystem
@@ -658,9 +651,6 @@ port = 27017
             session.commit()
 
     def test_new_version(self):
-        process = Process(self.config, self.state_db, self.reebill_dao,
-                self.rate_structure_dao, self.billupload, self.splinter,
-                self.monguru)
         with DBSession(self.state_db) as session:
             self.state_db.new_rebill(session, '99999', 1)
             session.commit()
@@ -673,7 +663,7 @@ port = 27017
         self.reebill_dao.save_reebill(one)
 
         with DBSession(self.state_db) as session:
-            new_bill = process.new_version(session, '99999', 1)
+            new_bill = self.process.new_version(session, '99999', 1)
             session.commit()
 
         self.assertEqual('99999', new_bill.account)

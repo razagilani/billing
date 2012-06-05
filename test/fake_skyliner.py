@@ -7,11 +7,14 @@ def one_hour_of_energy():
     return random() * 100000
 
 class FakeSplinter(object):
+    def __init__(self):
+        self.monguru = FakeMonguru()
+
     def get_install_obj_for(self, olap_id):
         return FakeSkyInstall()
 
     def get_monguru(self):
-        return FakeMonguru()
+        return self.monguru
 
 class FakeSkyInstall(object):
     def get_billable_energy(self, day, hour_range=(0,24), places=None):
