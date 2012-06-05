@@ -190,6 +190,17 @@ class SequenceEvent(Event):
         result.update({'sequence': self.sequence})
         return result
 
+#class SequenceVersionEvent(SequenceEvent):
+    #meta = {'db_alias': 'journal'}
+    #'''Base class for events that are associated with a particular version of a
+    #reebill version. Do not instantiate.'''
+    #sequence = mongoengine.IntField(required=True)
+
+    #def to_dict(self):
+        #result = super(SequenceEvent, self).to_dict()
+        #result.update({'sequence': self.sequence})
+        #return result
+
 class ReeBillRolledEvent(SequenceEvent):
     meta = {'db_alias': 'journal'}
     @classmethod
@@ -261,8 +272,31 @@ class ReeBillMailedEvent(SequenceEvent):
         return 'Reebill %s-%s mailed' % (self.account, self.sequence)
 
     def description(self):
-        return 'Reebill %s-%s mailed to "%s"' % (self.account, self.sequence, self.address)
+        return 'Reebill %s-%s mailed to "%s"' % (self.account, self.sequence,
+                self.address)
 
     def name(self):
         return 'Reebill mailed'
+
+class NewReebillVersionEvent(SequenceEvent):
+    meta = {'db_alias': 'journal'}
+    # version number of new reebill (not predecessor)
+    version = mongoengine.IntField()
+    
+    @classmethod
+    def save_instance(cls, user, account, sequence, version):
+        NewReebillVersionEvent(user=user.identifier, account=account,
+                sequence=sequence, version=version).save()
+
+    def to_dict(self):
+        result = super(NewReebillVersionEvent, self).to_dict()
+        result.update({'version': self.version})
+        return result
+
+    def __str__(self):
+        return 'Version %s of reebill %s-%s created' % (self.version,
+                self.account, self.sequence)
+
+    def name(self):
+        return 'New version'
 
