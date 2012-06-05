@@ -572,6 +572,7 @@ function reeBillReady() {
                     var jsonData = Ext.util.JSON.decode(result.responseText);
                     Ext.Msg.hide();
                     if (jsonData.success == true) {
+                        reeBillStore.reload();
                         Ext.MessageBox.alert("New version created", jsonData.new_version);
                     } else {
                         Ext.MessageBox.alert("Error", jsonData.errors.reason);
@@ -636,6 +637,7 @@ function reeBillReady() {
             {name: 'sequence'},
             {name: 'period_start'},
             {name: 'period_end'},
+            {name: 'corrections'},
             {name: 'hypothetical_total'},
             {name: 'actual_total'},
             {name: 'ree_value'},
@@ -717,7 +719,12 @@ function reeBillReady() {
                 sortable: true,
                 dataIndex: 'sequence',
                 //editor: new Ext.form.TextField({allowBlank: true})
-                width: 30,
+                width: 40,
+            },{
+                header: 'Corrections',
+                sortable: false,
+                dataIndex: 'corrections',
+                width: 45,
             },{
                 header: 'Start Date',
                 sortable: true,
