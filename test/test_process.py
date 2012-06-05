@@ -188,19 +188,19 @@ port = 27017
             bill2.late_charge_rate = Decimal('0.34')
 
             # bill2's late charge should be 0 before bill1's due date, and
-            # after the due date, it's balance * (1 + late charge rate), i.e.
-            # 100 * (1 + .34)
+            # after the due date, it's balance * late charge rate, i.e.
+            # 100 * .34
             self.assertEqual(0, process.get_late_charge(session, bill2,
                 date(2011,12,31)))
             self.assertEqual(0, process.get_late_charge(session, bill2,
                 date(2012,1,2)))
             self.assertEqual(0, process.get_late_charge(session, bill2,
                 date(2012,1,31)))
-            self.assertEqual(134, process.get_late_charge(session, bill2,
+            self.assertEqual(34, process.get_late_charge(session, bill2,
                 date(2012,2,1)))
-            self.assertEqual(134, process.get_late_charge(session, bill2,
+            self.assertEqual(34, process.get_late_charge(session, bill2,
                 date(2012,2,2)))
-            self.assertEqual(134, process.get_late_charge(session, bill2,
+            self.assertEqual(34, process.get_late_charge(session, bill2,
                 date(2013,1,1)))
  
             # in order to get late charge of a 3rd bill, bill2 must be put into
@@ -315,7 +315,8 @@ port = 27017
             # (create electric bill by duplicating gas bill)
             electric_bill = example_data.get_utilbill_dict()
             electric_bill['service'] = 'electric'
-            bill1.dictionary['utilbills'].append(electric_bill)
+            # TODO it's bad to directly modify reebill_dict
+            bill1.reebill_dict['utilbills'].append(electric_bill)
             bill1.suspend_service('electric')
             self.assertEquals(['electric'], bill1.suspended_services)
 
@@ -325,13 +326,13 @@ port = 27017
 
             # save utilbills in MySQL
             self.state_db.record_utilbill_in_database(session, bill1.account,
-                    bill1.dictionary['utilbills'][0]['service'],
-                    bill1.dictionary['utilbills'][0]['period_begin'],
-                    bill1.dictionary['utilbills'][0]['period_end'], date.today())
+                    bill1.reebill_dict['utilbills'][0]['service'],
+                    bill1.reebill_dict['utilbills'][0]['period_begin'],
+                    bill1.reebill_dict['utilbills'][0]['period_end'], date.today())
             self.state_db.record_utilbill_in_database(session, bill1.account,
-                    bill1.dictionary['utilbills'][1]['service'],
-                    bill1.dictionary['utilbills'][1]['period_begin'],
-                    bill1.dictionary['utilbills'][1]['period_end'], date.today())
+                    bill1.reebill_dict['utilbills'][1]['service'],
+                    bill1.reebill_dict['utilbills'][1]['period_begin'],
+                    bill1.reebill_dict['utilbills'][1]['period_end'], date.today())
 
             process.attach_utilbills(session, bill1.account, bill1.sequence)
 
