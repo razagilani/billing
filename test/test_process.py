@@ -59,14 +59,6 @@ port = 27017
 ''')
         self.config = ConfigParser.RawConfigParser()
         self.config.readfp(config_file)
-        self.reebill_dao = mongo.ReebillDAO({
-            'billpath': '/db-dev/skyline/bills/',
-            'database': 'test',
-            'utilitybillpath': '/db-dev/skyline/utilitybills/',
-            'collection': 'test_reebills',
-            'host': 'localhost',
-            'port': 27017
-        })
         self.billupload = BillUpload(self.config, logging.getLogger('test'))
         self.rate_structure_dao = rate_structure.RateStructureDAO({
             'database': 'test',
@@ -111,6 +103,18 @@ port = 27017
         session.add(customer)
         session.commit()
 
+        self.reebill_dao = mongo.ReebillDAO(self.state_db, **{
+            'billpath': '/db-dev/skyline/bills/',
+            'database': 'test',
+            'utilitybillpath': '/db-dev/skyline/utilitybills/',
+            'collection': 'test_reebills',
+            'host': 'localhost',
+            'port': 27017
+        })
+
+        #self.process = Process(self.config, self.state_db, self.reebill_dao,
+                #self.rate_structure_dao, self.billupload, self.splinter,
+                #self.monguru)
         self.process = Process(self.config, self.state_db, self.reebill_dao,
                 self.rate_structure_dao, self.billupload, self.splinter,
                 self.monguru)
@@ -172,7 +176,7 @@ port = 27017
             # but sum_bill() destroys bill1's balance_due, so reset it to
             # the right value, and save it in mongo
             bill1.balance_due = Decimal('100.')
-            self.reebill_dao.save_reebill(bill1)
+            self.reebill_dao.save_reebill(bill1, force=True)
  
             # create second bill (not by rolling, because process.roll_bill()
             # is currently a huge untested mess, and get_late_charge() should
@@ -592,6 +596,9 @@ port = 27017
 
         account, service, = '99999', 'gas'
         start, end = date(2012,1,1), date(2012,2,1)
+        process = Process(self.config, self.state_db, self.reebill_dao,
+                self.rate_structure_dao, self.billupload, self.splinter,
+                self.monguru)
 
         with DBSession(self.state_db) as session:
             # create utility bill, and make sure it exists in db and filesystem
@@ -650,6 +657,29 @@ port = 27017
 
             session.commit()
 
+    def test_new_version(self):
+        process = Process(self.config, self.state_db, self.reebill_dao,
+                self.rate_structure_dao, self.billupload, self.splinter,
+                self.monguru)
+        with DBSession(self.state_db) as session:
+            self.state_db.new_rebill(session, '99999', 1)
+            session.commit()
+        
+        # put reebill documents for sequence 0 and 1 in mongo (0 is needed to
+        # recompute 1)
+        zero = example_data.get_reebill('99999', 0, version=0)
+        one = example_data.get_reebill('99999', 1, version=0)
+        self.reebill_dao.save_reebill(zero)
+        self.reebill_dao.save_reebill(one)
+
+        with DBSession(self.state_db) as session:
+            new_bill = process.new_version(session, '99999', 1)
+            session.commit()
+
+        self.assertEqual('99999', new_bill.account)
+        self.assertEqual(1, new_bill.sequence)
+        self.assertEqual(1, new_bill.version)
+        self.assertEqual(1, self.state_db.max_version(session, '99999', 1))
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
