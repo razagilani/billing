@@ -208,22 +208,32 @@ class StateDB:
             utilbill.processed = True
 
     def delete_reebill(self, session, account, sequence):
+        '''Deletes the latest version of the given reebill, if it's not
+        issued.'''
         # TODO add branch, which MySQL doesn't have yet:
         # https://www.pivotaltracker.com/story/show/24374911 
 
-        # get customer id from account
-        customer = session.query(Customer).filter(Customer.account==account).one()
-
-        # look up reebill by account, sequence
-        reebill = session.query(ReeBill).filter(ReeBill.customer==customer) \
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        reebill = session.query(ReeBill)\
+                .filter(ReeBill.customer==customer) \
                 .filter(ReeBill.sequence==sequence).one()
+        if self.is_issued(session, account, sequence):
+            raise Exception("Can't delete an issued reebill")
         
         # find all utilbills attached to this reebill and detach them
-        for utilbill in session.query(UtilBill).filter(UtilBill.reebill==reebill):
+        for utilbill in session.query(UtilBill)\
+                .filter(UtilBill.reebill==reebill):
             utilbill.reebill = None
 
-        # delete the reebill
-        session.delete(reebill)
+        if reebill.max_version > 0:
+            # all versions except the last are considered issued, so decrement
+            # max_version and set issued to true
+            reebill.max_version -= 1
+            reebill.issued = 1
+        else:
+            # there's only one version, so really delete it
+            session.delete(reebill)
 
     def max_version(self, session, account, sequence):
         customer = session.query(Customer)\
