@@ -651,10 +651,6 @@ port = 27017
             session.commit()
 
     def test_new_version(self):
-        with DBSession(self.state_db) as session:
-            self.state_db.new_rebill(session, '99999', 1)
-            session.commit()
-        
         # put reebill documents for sequence 0 and 1 in mongo (0 is needed to
         # recompute 1)
         zero = example_data.get_reebill('99999', 0, version=0)
@@ -662,6 +658,15 @@ port = 27017
         self.reebill_dao.save_reebill(zero)
         self.reebill_dao.save_reebill(one)
 
+        # TODO creating new version of 1 should fail until it's issued
+
+        # issue reebill 1
+        with DBSession(self.state_db) as session:
+            self.state_db.new_rebill(session, '99999', 1)
+            self.process.issue(session, '99999', 1, issue_date=date(2012,1,1))
+            session.commit()
+
+        # create new version of 1
         with DBSession(self.state_db) as session:
             new_bill = self.process.new_version(session, '99999', 1)
             session.commit()

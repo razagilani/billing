@@ -1115,6 +1115,9 @@ class MongoReebill(object):
                 ub[chargegroups] = new_chargegroups
 
 
+class NoSuchReeBillException(Exception):
+    pass
+
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
@@ -1152,8 +1155,9 @@ class ReebillDAO:
             query.update({'_id.version': version})
             mongo_doc = self.collection.find_one(query)
         elif version == 'max':
-            mongo_doc = self.collection.find(query, sort=[('_id.version',
-                pymongo.DESCENDING)])[0]
+            cursor = self.collection.find(query, sort=[('_id.version',
+                pymongo.DESCENDING)])
+            mongo_doc = cursor[0] if cursor.count() > 0 else None
         elif isinstance(version, date):
             version_dt = date_to_datetime(version)
             docs = self.collection.find(query, sort=[('_id.version',
@@ -1168,7 +1172,7 @@ class ReebillDAO:
             raise ValueError('Unknown version specifier "%s"' % version)
 
         if mongo_doc is None:
-            raise Exception("No ReeBill found for %s-%s (version %s)" % (
+            raise NoSuchReeBillException("No ReeBill found for %s-%s,version=%s" % (
                 account, sequence, version))
 
         mongo_doc = deep_map(float_to_decimal, mongo_doc)
@@ -1230,14 +1234,17 @@ class ReebillDAO:
         
     def save_reebill(self, reebill, force=False):
         '''Saves the MongoReebill 'reebill' into the database. If a document
-        with the same account & sequence number already exists, the existing
-        document is replaced with this one. Replacing an already-issued reebill
-        (as determined by StateDB) is forbidden unless 'force' is True (this
-        should only be used for testing).'''
+        with the same account, sequence, and version already exists, the existing
+        document is replaced.
+        
+        Replacing an already-issued reebill (as determined by StateDB, using
+        the rule that all versions except the highest are issued) is forbidden
+        unless 'force' is True (this should only be used for testing).'''
         if not force:
             with DBSession(self.state_db) as session:
                 if self.state_db.is_issued(session, reebill.account,
-                        reebill.sequence, allow_nonexistent=True):
+                        reebill.sequence, version=reebill.version,
+                        allow_nonexistent=True):
                     raise Exception("Can't modify an issued reebill.")
                 session.commit()
         
