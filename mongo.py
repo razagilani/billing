@@ -1163,7 +1163,6 @@ class ReebillDAO:
                 docs_before_date = [d for d in docs if d['issue_date'] < version_dt]
                 mongo_doc = docs_before_date[len(docs_before_date)-1]
             else:
-                # TODO None comes last as issue date?
                 mongo_doc = docs[docs.count()-1]
         else:
             raise ValueError('Unknown version specifier "%s"' % version)

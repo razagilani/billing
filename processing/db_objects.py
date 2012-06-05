@@ -13,11 +13,11 @@ class Customer(object):
                 % (self.name, self.account, self.discountrate)
 
 class ReeBill(object):
-    def __init__(self, customer, sequence, max_version):
+    def __init__(self, customer, sequence, max_version=0):
         self.customer = customer
         self.sequence = sequence
-        self.max_version = max_version
         self.issued = 0
+        self.max_version = max_version
     def __repr__(self):
         return '<ReeBill(account=%s, sequence=%s, max_version=%s, issued=%s)>' \
                 % (self.customer, self.sequence, self.max_version, self.issued)
@@ -57,8 +57,8 @@ class UtilBill(object):
         return self.reebill != None
 
     def __repr__(self):
-        return '<UtilBill(customer=%s, period_start=%s, period_end=%s)>' \
-                % (self.customer, self.period_start, self.period_end)
+        return '<UtilBill(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
+                % (self.customer, self.service, self.period_start, self.period_end)
 
 class Payment(object):
     def __init__(self, customer, date, description, credit):

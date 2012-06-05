@@ -661,6 +661,29 @@ port = 27017
 
             session.commit()
 
+    def test_new_version(self):
+        process = Process(self.config, self.state_db, self.reebill_dao,
+                self.rate_structure_dao, self.billupload, self.splinter,
+                self.monguru)
+        with DBSession(self.state_db) as session:
+            self.state_db.new_rebill(session, '99999', 1)
+            session.commit()
+        
+        # put reebill documents for sequence 0 and 1 in mongo (0 is needed to
+        # recompute 1)
+        zero = example_data.get_reebill('99999', 0, version=0)
+        one = example_data.get_reebill('99999', 1, version=0)
+        self.reebill_dao.save_reebill(zero)
+        self.reebill_dao.save_reebill(one)
+
+        with DBSession(self.state_db) as session:
+            new_bill = process.new_version(session, '99999', 1)
+            session.commit()
+
+        self.assertEqual('99999', new_bill.account)
+        self.assertEqual(1, new_bill.sequence)
+        self.assertEqual(1, new_bill.version)
+        self.assertEqual(1, self.state_db.max_version(session, '99999', 1))
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
