@@ -105,7 +105,7 @@ class JournalTest(unittest.TestCase):
             }, entry.to_dict())
 
     def test_reebill_mailed(self):
-        journal.ReeBillMailedEvent.save_instance(self.user, '99999', 1, 0,
+        journal.ReeBillMailedEvent.save_instance(self.user, '99999', 1,
                 'jwatson@skylineinnovations.com')
         entries = journal.Event.objects
         self.assertEquals(1, len(entries))
@@ -115,13 +115,11 @@ class JournalTest(unittest.TestCase):
         self.assertTrue(isinstance(entry, journal.ReeBillMailedEvent))
         self.assertEquals('99999', entry.account)
         self.assertEquals(1, entry.sequence)
-        self.assertEquals(0, entry.version)
         self.assertEquals('jwatson@skylineinnovations.com', entry.address)
         self.assertDictMatch({
             'user': 'dan',
             'account': '99999',
             'sequence': 1,
-            'version': 0,
             'address': 'jwatson@skylineinnovations.com',
             'date': datetime.utcnow()
             }, entry.to_dict())
@@ -146,12 +144,12 @@ class JournalTest(unittest.TestCase):
             }, entry.to_dict())
 
     def test_simple_sequence_events(self):
-        '''Tests all the subclasses of SpecificReebillEvent that don't have
-        extra data besides user, account, and sequence.'''
+        '''Tests all the subclasses of SequenceEvent that don't have extra data
+        besides user, account, and sequence.'''
         classes = [journal.ReeBillRolledEvent, journal.ReeBillBoundEvent,
                 journal.ReeBillDeletedEvent, journal.ReeBillAttachedEvent]
         for cls in classes:
-            cls.save_instance(self.user, '99999', 1, 0)
+            cls.save_instance(self.user, '99999', 1)
             entries = cls.objects
             self.assertEquals(1, len(entries))
             entry = entries[0]
@@ -164,38 +162,39 @@ class JournalTest(unittest.TestCase):
                 'user': 'dan',
                 'account': '99999',
                 'sequence': 1,
-                'version': 0,
                 'date': datetime.utcnow()
                 }, entry.to_dict())
 
     def test_load_entries(self):
         # 3 entries for 2 accounts
-        journal.ReeBillRolledEvent.save_instance(self.user, '90001', 1, 0)
+        journal.ReeBillRolledEvent.save_instance(self.user, '90001', sequence=1)
         journal.Note.save_instance(self.user, '90001', 'text of a note',
                 sequence=2)
-        journal.ReeBillBoundEvent.save_instance(self.user, '90002', 1, 0)
+        journal.ReeBillBoundEvent.save_instance(self.user, '90002',
+                sequence=1)
 
         # load entries for 99999
         entries1 = self.dao.load_entries('90001')
         self.assertEquals(2, len(entries1))
         roll1, note1 = entries1
-        self.assertEquals('Reebill 90001-1-0 rolled', roll1['event'])
+        self.assertEquals('Reebill 90001-1 rolled', roll1['event'])
         self.assertEquals('Note: text of a note', note1['event'])
 
         # load entries for account2
         entries2 = self.dao.load_entries('90002')
         self.assertEquals(1, len(entries2))
         bound2 = entries2[0]
-        self.assertEquals('Reebill 90002-1-0 bound to REE', bound2['event'])
+        self.assertEquals('Reebill 90002-1 bound to REE', bound2['event'])
 
     def test_last_event_summary(self):
         journal.Note.save_instance(self.user, '90001', 'text of a note',
                 sequence=2)
-        journal.ReeBillRolledEvent.save_instance(self.user, '90001', 1, 0)
-        journal.ReeBillBoundEvent.save_instance(self.user, '90002', 1, 0)
+        journal.ReeBillRolledEvent.save_instance(self.user, '90001', sequence=1)
+        journal.ReeBillBoundEvent.save_instance(self.user, '90002',
+                sequence=1)
         description = self.dao.last_event_summary('90001')
-        self.assertEqual('Reebill 90001-1-0 rolled on ' +
-                datetime.utcnow().date() .strftime(ISO_8601_DATE), description)
+        self.assertEqual('Reebill 90001-1 rolled on ' + datetime.utcnow().date()
+                .strftime(ISO_8601_DATE), description)
         
 if __name__ == '__main__':
     unittest.main(failfast=True)
