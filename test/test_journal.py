@@ -37,8 +37,7 @@ class JournalTest(unittest.TestCase):
         setattr(user, 'identifier', 'dan')
         self.user = user
 
-        self.dao = journal.JournalDAO(host='localhost', port=27017,
-                database=self.database, collection='journal')
+        self.dao = journal.JournalDAO()
 
     def tearDown(self):
         # clear out database
@@ -123,6 +122,25 @@ class JournalTest(unittest.TestCase):
             'sequence': 1,
             'address': 'jwatson@skylineinnovations.com',
             'date': datetime.utcnow()
+            }, entry.to_dict())
+
+    def test_new_version(self):
+        journal.NewReebillVersionEvent.save_instance(self.user, '99999', 1, 23)
+        entries = journal.Event.objects
+        self.assertEquals(1, len(entries))
+        entry = entries[0]
+        self.assertTrue(isinstance(entry, journal.NewReebillVersionEvent))
+        self.assertDatetimesClose(datetime.utcnow(), entry.date)
+        self.assertEquals(self.user.identifier, entry.user)
+        self.assertEquals('99999', entry.account)
+        self.assertEquals(1, entry.sequence)
+        self.assertEquals(23, entry.version)
+        self.assertDictMatch({
+            'user': 'dan',
+            'account': '99999',
+            'sequence': 1,
+            'version': 23,
+            'date': datetime.utcnow(),
             }, entry.to_dict())
 
     def test_simple_sequence_events(self):
