@@ -976,9 +976,11 @@ class BillToolBridge:
                 sortreverse = True
 
             # pass the sort params if we want the db to do any sorting work
-            statuses = self.state_db.retrieve_status_days_since(session, sortcol, sortdir)
+            statuses = self.state_db.retrieve_status_days_since(session,
+                    sortcol, sortdir)
 
-            name_dicts = self.nexus_util.all_names_for_accounts([s.account for s in statuses])
+            name_dicts = self.nexus_util.all_names_for_accounts([s.account for
+                s in statuses])
             rows = [dict([
                 ('account', status.account),
                 ('codename', name_dicts[status.account]['codename'] if
@@ -988,7 +990,8 @@ class BillToolBridge:
                 ('primusname', name_dicts[status.account]['primus'] if
                     'primus' in name_dicts[status.account] else ''),
                 ('dayssince', status.dayssince),
-                ('lastevent', self.journal_dao.last_event_summary(status.account)),
+                ('lastevent',
+                    self.journal_dao.last_event_summary(status.account)),
                 ('provisionable', False),
             ]) for i, status in enumerate(statuses)]
 

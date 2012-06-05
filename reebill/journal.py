@@ -191,20 +191,6 @@ class SpecificReebillEvent(Event):
         result.update({'sequence': self.sequence, 'version': self.version})
         return result
 
-class ReeBillRolledEvent(SpecificReebillEvent):
-    meta = {'db_alias': 'journal'}
-    @classmethod
-    def save_instance(cls, user, account, sequence, version):
-        ReeBillRolledEvent(user=user.identifier, account=account,
-                sequence=sequence, version=version).save()
-
-    def __str__(self):
-        return 'Reebill %s-%s-%s rolled' % (self.account, self.sequence,
-                self.version)
-
-    def name(self):
-        return 'Reebill rolled'
-
 class ReeBillBoundEvent(SpecificReebillEvent):
     meta = {'db_alias': 'journal'}
     @classmethod
@@ -218,6 +204,20 @@ class ReeBillBoundEvent(SpecificReebillEvent):
 
     def name(self):
         return 'Reebill bound to REE'
+
+class ReeBillRolledEvent(SpecificReebillEvent):
+    meta = {'db_alias': 'journal'}
+    @classmethod
+    def save_instance(cls, user, account, sequence, version):
+        ReeBillRolledEvent(user=user.identifier, account=account,
+                sequence=sequence, version=version).save()
+
+    def __str__(self):
+        return 'Reebill %s-%s-%s rolled' % (self.account, self.sequence,
+                self.version)
+
+    def name(self):
+        return 'Reebill rolled'
 
 class ReeBillDeletedEvent(SpecificReebillEvent):
     meta = {'db_alias': 'journal'}
