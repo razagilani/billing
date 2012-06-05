@@ -371,6 +371,24 @@ class StateDB:
 
         return slice, count
 
+    def get_reebill(self, session, account, sequence):
+
+        query = session.query(ReeBill).join(Customer) \
+            .filter(Customer.account==account) \
+            .filter(ReeBill.sequence==sequence).one()
+
+        return query
+
+    def get_descendent_reebills(self, session, account, sequence):
+
+        query = session.query(ReeBill).join(Customer) \
+            .filter(Customer.account==account) \
+            .order_by(ReeBill.sequence)
+
+        slice = query[int(sequence):]
+
+        return slice
+
     def list_utilbills(self, session, account, start=None, limit=None):
         '''Queries the database for account, start date, and end date of bills
         in a slice of the utilbills table; returns the slice and the total
@@ -539,7 +557,9 @@ class StateDB:
         
 
     def payments(self, session, account):
-        payments = session.query(Payment).join(Customer).filter(Customer.account==account).all()
+        payments = session.query(Payment).join(Customer)\
+            .filter(Customer.account==account).order_by(Payment.date).all()
+
         return payments
 
     def retrieve_status_days_since(self, session, sort_col, sort_order):
