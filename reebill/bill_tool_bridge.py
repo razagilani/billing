@@ -323,7 +323,8 @@ class BillToolBridge:
                 self.config, self.state_db, self.reebill_dao,
                 self.ratestructure_dao,
                 self.billUpload,
-                self.splinter, self.splinter.get_monguru()
+                self.nexus_util,
+                self.splinter
             )
         else:
             self.process = process.Process(self.config, self.state_db,

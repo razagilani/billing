@@ -38,14 +38,15 @@ class Process(object):
     config = None
     
     def __init__(self, config, state_db, reebill_dao, rate_structure_dao,
-            billupload, splinter, monguru):
+            billupload, nexus_util, splinter):
         self.config = config
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
         self.reebill_dao = reebill_dao
         self.billupload = billupload
+        self.nexus_util = nexus_util
         self.splinter = splinter
-        self.monguru = monguru
+        self.monguru = self.splinter.get_monguru()
 
     def new_account(self, session, name, account, discount_rate, late_charge_rate):
         new_customer = Customer(name, account, discount_rate, late_charge_rate)
@@ -360,8 +361,8 @@ class Process(object):
         # re-bind
         # TODO re-enable (might want to make an object that pretends to be
         # SkyInstall to test this)
-        #fetch_bill_data.fetch_oltp_data(self.splinter,
-                #nexus_util.NexusUtil().olap_id(account), reebill)
+        fetch_bill_data.fetch_oltp_data(self.splinter,
+                self.nexus_util.olap_id(account), reebill)
 
         # recompute
         self.sum_bill(session, predecessor, reebill)
@@ -705,7 +706,7 @@ class Process(object):
             print 'integrate skyline backend is:', self.config.getboolean('runtime', 'integrate_skyline_backend')
 
             # objects for getting olap data
-            olap_id = nexus_util.NexusUtil().olap_id(reebill.account)
+            olap_id = self.nexus_util.olap_id(reebill.account)
             install = self.splinter.get_install_obj_for(olap_id)
 
             bill_year, bill_month = dateutils.estimate_month(
