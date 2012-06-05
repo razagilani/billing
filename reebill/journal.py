@@ -179,83 +179,89 @@ class UtilBillDeletedEvent(Event):
         })
         return result
 
-class SpecificReebillEvent(Event):
+class SequenceEvent(Event):
     meta = {'db_alias': 'journal'}
-    '''Base class for events that are associated with a particular reebill
-    (sequence and version). Do not instantiate.'''
+    '''Base class for events that are associated with a particular reebill. Do
+    not instantiate.'''
     sequence = mongoengine.IntField(required=True)
-    version = mongoengine.IntField(required=True, default=0)
 
     def to_dict(self):
-        result = super(SpecificReebillEvent, self).to_dict()
-        result.update({'sequence': self.sequence, 'version': self.version})
+        result = super(SequenceEvent, self).to_dict()
+        result.update({'sequence': self.sequence})
         return result
 
-class ReeBillBoundEvent(SpecificReebillEvent):
+#class SequenceVersionEvent(SequenceEvent):
+    #meta = {'db_alias': 'journal'}
+    #'''Base class for events that are associated with a particular version of a
+    #reebill version. Do not instantiate.'''
+    #sequence = mongoengine.IntField(required=True)
+
+    #def to_dict(self):
+        #result = super(SequenceEvent, self).to_dict()
+        #result.update({'sequence': self.sequence})
+        #return result
+
+class ReeBillRolledEvent(SequenceEvent):
     meta = {'db_alias': 'journal'}
     @classmethod
-    def save_instance(cls, user, account, sequence, version):
-        ReeBillBoundEvent(user=user.identifier, account=account,
-                sequence=sequence, version=version).save()
-
-    def __str__(self):
-        return 'Reebill %s-%s-%s bound to REE' % (self.account, self.sequence,
-                self.version)
-
-    def name(self):
-        return 'Reebill bound to REE'
-
-class ReeBillRolledEvent(SpecificReebillEvent):
-    meta = {'db_alias': 'journal'}
-    @classmethod
-    def save_instance(cls, user, account, sequence, version):
+    def save_instance(cls, user, account, sequence):
         ReeBillRolledEvent(user=user.identifier, account=account,
-                sequence=sequence, version=version).save()
+                sequence=sequence).save()
 
     def __str__(self):
-        return 'Reebill %s-%s-%s rolled' % (self.account, self.sequence,
-                self.version)
+        return 'Reebill %s-%s rolled' % (self.account, self.sequence)
 
     def name(self):
         return 'Reebill rolled'
 
-class ReeBillDeletedEvent(SpecificReebillEvent):
+class ReeBillBoundEvent(SequenceEvent):
     meta = {'db_alias': 'journal'}
     @classmethod
-    def save_instance(cls, user, account, sequence, version):
-        ReeBillDeletedEvent(user=user.identifier, account=account,
-                sequence=sequence, version=version).save()
+    def save_instance(cls, user, account, sequence):
+        ReeBillBoundEvent(user=user.identifier, account=account,
+                sequence=sequence).save()
 
     def __str__(self):
-        return 'Reebill %s-%s-%s deleted' % (self.account, self.sequence,
-                self.version)
+        return 'Reebill %s-%s bound to REE' % (self.account, self.sequence)
+
+    def name(self):
+        return 'Reebill bound to REE'
+
+class ReeBillDeletedEvent(SequenceEvent):
+    meta = {'db_alias': 'journal'}
+    @classmethod
+    def save_instance(cls, user, account, sequence):
+        ReeBillDeletedEvent(user=user.identifier, account=account,
+                sequence=sequence).save()
+
+    def __str__(self):
+        return 'Reebill %s-%s deleted' % (self.account, self.sequence)
 
     def name(self):
         return 'Reebill deleted' 
 
-class ReeBillAttachedEvent(SpecificReebillEvent):
+class ReeBillAttachedEvent(SequenceEvent):
     meta = {'db_alias': 'journal'}
     @classmethod
-    def save_instance(cls, user, account, sequence, version):
+    def save_instance(cls, user, account, sequence):
         ReeBillAttachedEvent(user=user.identifier, account=account,
-                sequence=sequence, version=version).save()
+                sequence=sequence).save()
 
     def __str__(self):
-        return 'Reebill %s-%s-%s attached to utility bills' % (self.account,
-                self.sequence, self.version)
+        return 'Reebill %s-%s attached to utility bills' % (self.account, self.sequence)
 
     def name(self):
         return 'Reebill attached' 
 
-class ReeBillMailedEvent(SpecificReebillEvent):
+class ReeBillMailedEvent(SequenceEvent):
     meta = {'db_alias': 'journal'}
     # email recipient(s)
     address = mongoengine.StringField()
     
     @classmethod
-    def save_instance(cls, user, account, sequence, version, address):
+    def save_instance(cls, user, account, sequence, address):
         ReeBillMailedEvent(user=user.identifier, account=account,
-                sequence=sequence, version=version, address=address).save()
+                sequence=sequence, address=address).save()
 
     def to_dict(self):
         result = super(ReeBillMailedEvent, self).to_dict()
@@ -263,17 +269,16 @@ class ReeBillMailedEvent(SpecificReebillEvent):
         return result
 
     def __str__(self):
-        return 'Reebill %s-%s-%s mailed' % (self.account, self.sequence,
-                self.version)
+        return 'Reebill %s-%s mailed' % (self.account, self.sequence)
 
     def description(self):
-        return 'Reebill %s-%s-%s mailed to "%s"' % (self.account,
-                self.sequence, self.version, self.address)
+        return 'Reebill %s-%s mailed to "%s"' % (self.account, self.sequence,
+                self.address)
 
     def name(self):
         return 'Reebill mailed'
 
-class NewReebillVersionEvent(SpecificReebillEvent):
+class NewReebillVersionEvent(SequenceEvent):
     meta = {'db_alias': 'journal'}
     # version number of new reebill (not predecessor)
     version = mongoengine.IntField()
