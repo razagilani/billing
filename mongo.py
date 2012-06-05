@@ -1187,7 +1187,7 @@ class ReebillDAO:
             '_id.version': version
         }
 
-        mongo_docs = self.collection.find(query)
+        mongo_docs = self.collection.find(query, sort=[("_id.sequence",pymongo.ASCENDING)])
 
         mongo_reebills = []
         for doc in mongo_docs:
