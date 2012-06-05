@@ -1766,6 +1766,9 @@ class BillToolBridge:
                     try: row_dict['balance_due'] = mongo_reebill.balance_due
                     except: pass
 
+                    version = self.state_db.max_version(session, account, reebill.sequence)
+                    row_dict['corrections'] = str(version) if version > 0 else "-"
+
                     rows.append(row_dict)
                 session.commit()
                 return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
