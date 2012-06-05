@@ -111,9 +111,9 @@ port = 27017
         session.add(customer)
         session.commit()
 
-        #self.process = Process(self.config, self.state_db, self.reebill_dao,
-                #self.rate_structure_dao, self.billupload, self.splinter,
-                #self.monguru)
+        self.process = Process(self.config, self.state_db, self.reebill_dao,
+                self.rate_structure_dao, self.billupload, self.splinter,
+                self.monguru)
 
     def tearDown(self):
         '''This gets run even if a test fails.'''
@@ -135,21 +135,18 @@ port = 27017
         '''Tests computation of late charges (without rolling bills).'''
         try:
             session = self.state_db.session()
-            process = Process(self.config, self.state_db, self.reebill_dao,
-                    self.rate_structure_dao, self.billupload, self.splinter,
-                    self.monguru)
  
             bill1 = example_data.get_reebill('99999', 1)
             bill1.balance_forward = Decimal('100.')
-            self.assertEqual(0, process.get_late_charge(session, bill1,
+            self.assertEqual(0, self.process.get_late_charge(session, bill1,
                 date(2011,12,31)))
-            self.assertEqual(0, process.get_late_charge(session, bill1,
+            self.assertEqual(0, self.process.get_late_charge(session, bill1,
                 date(2012,1,1)))
-            self.assertEqual(0, process.get_late_charge(session, bill1,
+            self.assertEqual(0, self.process.get_late_charge(session, bill1,
                 date(2012,1,2)))
-            self.assertEqual(0, process.get_late_charge(session, bill1,
+            self.assertEqual(0, self.process.get_late_charge(session, bill1,
                 date(2012,2,1)))
-            self.assertEqual(0, process.get_late_charge(session, bill1,
+            self.assertEqual(0, self.process.get_late_charge(session, bill1,
                 date(2012,2,2)))
  
             # issue bill 1, so a later bill can have a late charge based on the
@@ -158,7 +155,7 @@ port = 27017
             # issued.)
             self.reebill_dao.save_reebill(bill1)
             self.state_db.new_rebill(session, bill1.account, bill1.sequence)
-            process.issue(session, bill1.account, bill1.sequence,
+            self.process.issue(session, bill1.account, bill1.sequence,
                     issue_date=date(2012,1,1))
             # since process.issue() only modifies databases, bill1 must be
             # re-loaded from mongo to reflect its new issue date
@@ -170,7 +167,7 @@ port = 27017
             # requires a sequence 0 template bill. put one into mongo and then
             # sum bill1.
             bill0 = example_data.get_reebill('99999', 0)
-            process.sum_bill(session, bill0, bill1)
+            self.process.sum_bill(session, bill0, bill1)
  
             # but sum_bill() destroys bill1's balance_due, so reset it to
             # the right value, and save it in mongo
@@ -190,31 +187,31 @@ port = 27017
             # bill2's late charge should be 0 before bill1's due date, and
             # after the due date, it's balance * late charge rate, i.e.
             # 100 * .34
-            self.assertEqual(0, process.get_late_charge(session, bill2,
+            self.assertEqual(0, self.process.get_late_charge(session, bill2,
                 date(2011,12,31)))
-            self.assertEqual(0, process.get_late_charge(session, bill2,
+            self.assertEqual(0, self.process.get_late_charge(session, bill2,
                 date(2012,1,2)))
-            self.assertEqual(0, process.get_late_charge(session, bill2,
+            self.assertEqual(0, self.process.get_late_charge(session, bill2,
                 date(2012,1,31)))
-            self.assertEqual(34, process.get_late_charge(session, bill2,
+            self.assertEqual(34, self.process.get_late_charge(session, bill2,
                 date(2012,2,1)))
-            self.assertEqual(34, process.get_late_charge(session, bill2,
+            self.assertEqual(34, self.process.get_late_charge(session, bill2,
                 date(2012,2,2)))
-            self.assertEqual(34, process.get_late_charge(session, bill2,
+            self.assertEqual(34, self.process.get_late_charge(session, bill2,
                 date(2013,1,1)))
  
             # in order to get late charge of a 3rd bill, bill2 must be put into
             # mysql and "summed"
             self.state_db.new_rebill(session, bill2.account, bill2.sequence)
-            process.sum_bill(session, bill1, bill2)
+            self.process.sum_bill(session, bill1, bill2)
  
             # create a 3rd bill without issuing bill2. bill3 should have None
             # as its late charge for all dates
             bill3 = example_data.get_reebill('99999', 3)
             bill3.balance_due = Decimal('300.')
-            self.assertEqual(None, process.get_late_charge(session, bill3,
+            self.assertEqual(None, self.process.get_late_charge(session, bill3,
                 date(2011,12,31)))
-            self.assertEqual(None, process.get_late_charge(session, bill3,
+            self.assertEqual(None, self.process.get_late_charge(session, bill3,
                 date(2013,1,1)))
  
             session.commit()
@@ -245,6 +242,7 @@ port = 27017
         })
         process = Process(self.config, self.state_db, reebill_dao,
                 self.rate_structure_dao, self.splinter, self.monguru)
+
         session = self.state_db.session()
         for account in self.state_db.listAccounts(session):
             for sequence in self.state_db.listSequences(session, account):
@@ -302,9 +300,6 @@ port = 27017
         print 'test_service_suspension'
         try:
             session = self.state_db.session()
-            process = Process(self.config, self.state_db, self.reebill_dao,
-                    self.rate_structure_dao, self.billupload, self.splinter,
-                    self.monguru)
 
             # generic reebill
             bill1 = example_data.get_reebill('99999', 1)
@@ -334,7 +329,7 @@ port = 27017
                     bill1.reebill_dict['utilbills'][1]['period_begin'],
                     bill1.reebill_dict['utilbills'][1]['period_end'], date.today())
 
-            process.attach_utilbills(session, bill1.account, bill1.sequence)
+            self.process.attach_utilbills(session, bill1.account, bill1.sequence)
 
             # only the gas bill should be attached
             customer = session.query(Customer).filter(Customer.account==bill1.account).all()
@@ -371,10 +366,7 @@ port = 27017
 
         # compute charges in the bill using the rate structure created from the
         # above documents
-        process = Process(self.config, self.state_db, self.reebill_dao,
-                self.rate_structure_dao, self.billupload, self.splinter,
-                self.monguru)
-        process.bindrs(bill1, None)
+        self.process.bindrs(bill1, None)
 
         # ##############################################################
         # check that each actual (utility) charge was computed correctly:
@@ -516,13 +508,13 @@ port = 27017
         print 'test_upload_utility_bill'
         with DBSession(self.state_db) as session:
             account, service = '99999', 'gas'
-            process = Process(self.config, self.state_db, self.reebill_dao,
+            self.process = Process(self.config, self.state_db, self.reebill_dao,
                     self.rate_structure_dao, self.billupload, self.splinter,
                     self.monguru)
 
             # one utility bill
             file1 = StringIO("Let's pretend this is a PDF")
-            process.upload_utility_bill(session, account, service,
+            self.process.upload_utility_bill(session, account, service,
                     date(2012,1,1), date(2012,2,1), file1, 'january.pdf')
             bills = self.state_db.list_utilbills(session,
                     account)[0].filter(UtilBill.service==service).all()
@@ -533,7 +525,7 @@ port = 27017
 
             # second contiguous bill
             file2 = StringIO("Let's pretend this is a PDF")
-            process.upload_utility_bill(session, account, service,
+            self.process.upload_utility_bill(session, account, service,
                     date(2012,2,1), date(2012,3,1), file2, 'february.pdf')
             bills = self.state_db.list_utilbills(session,
                     account)[0].filter(UtilBill.service==service).all()
@@ -546,7 +538,7 @@ port = 27017
             self.assertEqual(date(2012,3,1), bills[1].period_end)
 
             # 3rd bill without a file ("skyline estimated")
-            process.upload_utility_bill(session, account, service,
+            self.process.upload_utility_bill(session, account, service,
                     date(2012,3,1), date(2012,4,1), None, None)
             bills = self.state_db.list_utilbills(session,
                     account)[0].filter(UtilBill.service==service).all()
@@ -564,7 +556,7 @@ port = 27017
             # 4th bill without a gap between it and th 3rd bill: hypothetical
             # bills should be inserted
             file4 = StringIO("File of the July bill.")
-            process.upload_utility_bill(session, account, service,
+            self.process.upload_utility_bill(session, account, service,
                     date(2012,7,1), date(2012,8,1), file4, 'july.pdf')
             bills = self.state_db.list_utilbills(session,
                     account)[0].filter(UtilBill.service==service).all()
@@ -600,13 +592,10 @@ port = 27017
 
         account, service, = '99999', 'gas'
         start, end = date(2012,1,1), date(2012,2,1)
-        process = Process(self.config, self.state_db, self.reebill_dao,
-                self.rate_structure_dao, self.billupload, self.splinter,
-                self.monguru)
 
         with DBSession(self.state_db) as session:
             # create utility bill, and make sure it exists in db and filesystem
-            process.upload_utility_bill(session, account, service, start, end,
+            self.process.upload_utility_bill(session, account, service, start, end,
                     StringIO("test"), 'january.pdf')
             assert self.state_db.list_utilbills(session, account)[1] == 1
             bill_file_path = self.billupload.get_utilbill_file_path(account,
@@ -621,7 +610,7 @@ port = 27017
 
             # unassociated: deletion should succeed (row removed from database,
             # file moved to trash directory)
-            new_path = process.delete_utility_bill(session, utilbill_id)
+            new_path = self.process.delete_utility_bill(session, utilbill_id)
             self.assertEqual(0, self.state_db.list_utilbills(session, account)[1])
             self.assertFalse(os.access(bill_file_path, os.F_OK))
             self.assertRaises(IOError, self.billupload.get_utilbill_file_path,
@@ -629,7 +618,7 @@ port = 27017
             self.assertTrue(os.access(new_path, os.F_OK))
 
             # re-upload the bill
-            process.upload_utility_bill(session, account, service, start, end,
+            self.process.upload_utility_bill(session, account, service, start, end,
                     StringIO("test"), 'january.pdf')
             assert self.state_db.list_utilbills(session, account)[1] == 1
             bill_file_path = self.billupload.get_utilbill_file_path(account,
@@ -647,17 +636,17 @@ port = 27017
             mongo_reebill.period_begin = start
             mongo_reebill.period_end = end
             self.reebill_dao.save_reebill(mongo_reebill)
-            self.assertRaises(ValueError, process.delete_utility_bill, session,
-                    utilbill_id)
+            self.assertRaises(ValueError, self.process.delete_utility_bill,
+                    session, utilbill_id)
 
             # attached to reebill: should fail (this reebill is not created by
             # rolling, the way it's usually done, and only exists in MySQL)
             reebill = self.state_db.new_rebill(session, account, 1)
             utilbill = self.state_db.list_utilbills(session, account)[0].one()
-            process.attach_utilbills(session, account, 1)
+            self.process.attach_utilbills(session, account, 1)
             assert utilbill.reebill == reebill
-            self.assertRaises(ValueError, process.delete_utility_bill, session,
-                    utilbill_id)
+            self.assertRaises(ValueError, self.process.delete_utility_bill,
+                    session, utilbill_id)
 
             session.commit()
 
