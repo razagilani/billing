@@ -1253,7 +1253,6 @@ class ReebillDAO:
         self.collection.save(mongo_doc)
 
     def delete_reebill(self, account, sequence, version):
-        import ipdb; ipdb.set_trace()
         self.collection.remove({
             '_id.account': account,
             '_id.sequence': sequence,

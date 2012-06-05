@@ -690,7 +690,6 @@ port = 27017
             # delete it
             self.process.delete_reebill(session, account, 1)
             self.assertEqual([], self.state_db.listSequences(session, account))
-            import ipdb; ipdb.set_trace()
             self.assertRaises(NoSuchReeBillException, self.reebill_dao.load_reebill,
                     account, 1, version=0)
 
