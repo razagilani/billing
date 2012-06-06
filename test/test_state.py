@@ -236,6 +236,38 @@ class StateTest(unittest.TestCase):
             self.assertEqual(2, self.state_db.max_version(session, acc, seq))
             session.commit()
 
+    def test_get_unissued_corrections(self):
+        with DBSession(self.state_db) as session:
+            # reebills 1-4, 1-3 issued
+            self.state_db.new_rebill(session, '99999', 1)
+            self.state_db.new_rebill(session, '99999', 2)
+            self.state_db.new_rebill(session, '99999', 3)
+            self.state_db.issue(session, '99999', 1)
+            self.state_db.issue(session, '99999', 2)
+            self.state_db.issue(session, '99999', 3)
+
+            # no unissued corrections yet
+            self.assertEquals([],
+                    self.state_db.get_unissued_corrections(session, '99999'))
+
+            # make corrections on 1 and 3
+            self.state_db.increment_version(session, '99999', 1)
+            self.state_db.increment_version(session, '99999', 3)
+            self.assertEquals([(1, 1), (3, 1)],
+                    self.state_db.get_unissued_corrections(session, '99999'))
+
+            # issue 3
+            self.state_db.issue(session, '99999', 3)
+            self.assertEquals([(1, 1)],
+                    self.state_db.get_unissued_corrections(session, '99999'))
+
+            # issue 1
+            self.state_db.issue(session, '99999', 1)
+            self.assertEquals([],
+                    self.state_db.get_unissued_corrections(session, '99999'))
+
+            session.commit()
+
     def test_delete_reebill(self):
         account = '99999'
         with DBSession(self.state_db) as session:

@@ -375,6 +375,22 @@ class Process(object):
 
         return reebill
 
+    def get_unissued_corrections(self, session, account):
+        '''Returns sequences and balance adjustments of all un-issued versions
+        of reebills > 0 for the given account.'''
+        result = []
+        for seq, max_version in self.state_db.get_unissued_corrections(session,
+                account):
+            # balance adjustment is difference between latest version's
+            # balance_due and the previous version's
+            latest_version = self.reebill_dao.load_reebill(account, seq,
+                    version=max_version)
+            prev_version = self.reebill_dao.load_reebill(account, seq,
+                    max_version-1)
+            adjustment = latest_version.balance_due - prev_version.balance_due
+            result.append((seq, max_version, adjustment))
+        return result
+
     def get_late_charge(self, session, reebill, day=date.today()):
         '''Returns the late charge for the given reebill on 'day', which is the
         present by default. ('day' will only affect the result for a bill that

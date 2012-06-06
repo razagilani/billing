@@ -677,6 +677,53 @@ port = 27017
         self.assertEqual(1, new_bill.version)
         self.assertEqual(1, self.state_db.max_version(session, '99999', 1))
 
+    def test_get_unissued_corrections(self):
+        acc = '99999'
+        with DBSession(self.state_db) as session:
+            # reebills 1-4, 1-3 issued
+            zero = example_data.get_reebill(acc, 0)
+            one = example_data.get_reebill(acc, 1)
+            two = example_data.get_reebill(acc, 2)
+            three = example_data.get_reebill(acc, 3)
+            four = example_data.get_reebill(acc, 4)
+            zero.balance_due = 100
+            one.balance_due = 100
+            two.balance_due = 100
+            three.balance_due = 100
+            four.balance_due = 100
+            self.reebill_dao.save_reebill(zero)
+            self.reebill_dao.save_reebill(one)
+            self.reebill_dao.save_reebill(two)
+            self.reebill_dao.save_reebill(three)
+            self.reebill_dao.save_reebill(four)
+            self.state_db.new_rebill(session, acc, 1)
+            self.state_db.new_rebill(session, acc, 2)
+            self.state_db.new_rebill(session, acc, 3)
+            self.state_db.new_rebill(session, acc, 4)
+            self.state_db.issue(session, acc, 1)
+            self.state_db.issue(session, acc, 2)
+            self.state_db.issue(session, acc, 3)
+
+            # no unissued corrections yet
+            self.assertEquals([],
+                    self.process.get_unissued_corrections(session, acc))
+
+            # make corrections on 1 and 3
+            self.process.new_version(session, acc, 1)
+            self.process.new_version(session, acc, 3)
+            one_1 = self.reebill_dao.load_reebill(acc, 1, version=1)
+            three_1 = self.reebill_dao.load_reebill(acc, 3, version=1)
+            one_1.balance_due = 120
+            three_1.balance_due = 95
+            self.reebill_dao.save_reebill(one_1)
+            self.reebill_dao.save_reebill(three_1)
+
+            # there should be 2 adjustments: +$20 for 1-1, and -$5 for 3-1
+            self.assertEqual([(1, 1, 20), (3, 1, -5)],
+                    self.process.get_unissued_corrections(session, acc))
+
+            session.commit()
+
     def test_delete_reebill(self):
         account = '99999'
         with DBSession(self.state_db) as session:
