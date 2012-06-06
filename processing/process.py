@@ -376,8 +376,8 @@ class Process(object):
         return reebill
 
     def get_unissued_corrections(self, session, account):
-        '''Returns sequences and balance adjustments of all un-issued versions
-        of reebills > 0 for the given account.'''
+        '''Returns (sequence, max_version, balance adjustment) of all un-issued
+        versions of reebills > 0 for the given account.'''
         result = []
         for seq, max_version in self.state_db.get_unissued_corrections(session,
                 account):
@@ -390,6 +390,47 @@ class Process(object):
             adjustment = latest_version.balance_due - prev_version.balance_due
             result.append((seq, max_version, adjustment))
         return result
+
+    def apply_correction(self, session, account, correction_sequence,
+            target_sequence):
+        '''Applies adjustments from the unissued correction given by
+        'correction_sequence' to the reebill given by 'target_sequence' for the
+        given account. The unissued correction is marked as issued.'''
+        all_unissued_corrections = self.get_unissued_corrections(session,
+                account)
+
+        # corrections can only be applied to an un-issued reebill whose version
+        # is 0
+        max_version = self.state_db.max_version(session, account,
+                target_sequence)
+        if self.state_db.is_issued(session, account, target_sequence) \
+                or max_version > 0:
+            raise ValueError(("Can't apply corrections to an issued reebill "
+                "or another correction."))
+        
+        # validate correction sequence
+        if not any([c[0] == correction_sequence for c in
+                all_unissued_corrections]):
+            raise ValueError(("Sequence %s doesn't have an un-issued "
+                "correction"))
+
+        # load target reebill from mongo (and, for recomputation, version 0 of
+        # its predecessor)
+        target_reebill = self.reebill_dao.load_reebill(account,
+                target_sequence, version=max_version)
+        target_reebill_predecessor = self.reebill_dao.load_reebill(account,
+                target_sequence - 1, version=0)
+
+        # apply adjustment
+        correction = [c for c in all_unissued_corrections if c[0] ==
+                correction_sequence][0]
+        _, _, adjustment = correction
+        target_reebill.total_adjustment += adjustment
+        self.sum_bill(session, target_reebill_predecessor, target_reebill)
+        self.reebill_dao.save_reebill(target_reebill)
+
+        # issue
+        self.issue(session, account, correction_sequence)
 
     def get_late_charge(self, session, reebill, day=date.today()):
         '''Returns the late charge for the given reebill on 'day', which is the
