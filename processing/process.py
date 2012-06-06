@@ -401,24 +401,28 @@ class Process(object):
 
         # corrections can only be applied to an un-issued reebill whose version
         # is 0
-        max_version = self.state_db.max_version(session, account,
+        target_max_version = self.state_db.max_version(session, account,
                 target_sequence)
         if self.state_db.is_issued(session, account, target_sequence) \
-                or max_version > 0:
+                or target_max_version > 0:
             raise ValueError(("Can't apply correction %s to %s-%s, "
                     "because the latter is an issued reebill or another "
                     "correction.") % (correction_sequence, account, target_sequence))
         
+        print '***** all_unissued_corrections', all_unissued_corrections
+        print '***** correction_sequence', correction_sequence, type(correction_sequence)
+        print '***', [c[0] == correction_sequence for c in all_unissued_corrections]
+
         # validate correction sequence
         if not any([c[0] == correction_sequence for c in
                 all_unissued_corrections]):
             raise ValueError(("Sequence %s doesn't have an un-issued "
-                "correction"))
+                "correction") % correction_sequence)
 
         # load target reebill from mongo (and, for recomputation, version 0 of
         # its predecessor)
         target_reebill = self.reebill_dao.load_reebill(account,
-                target_sequence, version=max_version)
+                target_sequence, version=target_max_version)
         target_reebill_predecessor = self.reebill_dao.load_reebill(account,
                 target_sequence - 1, version=0)
 
