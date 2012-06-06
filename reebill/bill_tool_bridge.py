@@ -822,6 +822,22 @@ class BillToolBridge:
     def mail(self, account, sequences, recipients, **kwargs):
         if not account or not sequences or not recipients:
             raise ValueError("Bad Parameter Value")
+
+        # if there are multiple corrections, cherrypy actually parses the JSON,
+        # so "corrections" is a list! but it doesn't turn the contents of the
+        # list into integers
+        print 'AAAAAAAAAAAAAA'
+        if 'corrections' in kwargs:
+            print 'BBBBBBBBBBBBBBBB', type(kwargs['corrections'])
+            if isinstance(kwargs['corrections'], basestring):
+                print '1111111111111111'
+                corrections_to_apply = [int(kwargs['corrections'])]
+            else:
+                print '222222222222222'
+                corrections_to_apply = map(int, kwargs['corrections'])
+        else:
+            print 'no corrections in kwargs:', kwargs
+
         with DBSession(self.state_db) as session:
             # get sequences of all unissued corrections for this account
             unissued_corrections = [c[0] for c in
@@ -834,14 +850,12 @@ class BillToolBridge:
                     unissued_corrections})
             # if the client has specified corrections, make sure they're all valid
             elif 'corrections' in kwargs:
+                print 'CCCCCCCCCC'
                 print '***** unissued corrections:', unissued_corrections
-                # cherrypy actually parses the JSON, so "corrections" is a list!
-                # but it doesn't turn the contents of the list into integers
-                corrections_to_apply = kwargs['corrections']
-                for c in map(int, corrections_to_apply):
+                print '***** corrections_to_apply:', corrections_to_apply
+                for c in corrections_to_apply:
                     if c not in unissued_corrections:
                         raise Exception("No unissued correction for sequence %s" % c)
-
 
             # sequences will come in as a string if there is one element in post data. 
             # If there are more, it will come in as a list of strings
@@ -854,9 +868,7 @@ class BillToolBridge:
             all_bills = [self.reebill_dao.load_reebill(account, sequence) for
                     sequence in sequences]
 
-            # set issue date 
-            for reebill in all_bills:
-                self.process.issue(session, reebill.account, reebill.sequence)
+            print '&&&2 5 is issued?', self.state_db.is_issued(session, account, 5)
 
             # apply corrections
             if 'corrections_to_apply' in locals():
@@ -864,6 +876,10 @@ class BillToolBridge:
                     for correction_sequence in corrections_to_apply:
                         self.process.apply_correction(session, account,
                                 correction_sequence, reebill.sequence)
+
+            # set issue date 
+            for reebill in all_bills:
+                self.process.issue(session, reebill.account, reebill.sequence)
 
             #  TODO: 21305875  Do this until reebill is being passed around
             #  problem is all_bills is not reloaded after .issue
