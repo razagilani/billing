@@ -163,7 +163,7 @@ class Process(object):
         discount_rate = present_reebill.discount_rate
         if not discount_rate:
             raise Exception("%s-%s-%s has no discount rate" % (present_reebill.account, 
-                present_reebill.sequence, present_reebill.branch))
+                present_reebill.sequence, present_reebill.version))
 
         # reset ree_charges, ree_value, ree_savings so we can accumulate across
         # all services
@@ -294,13 +294,13 @@ class Process(object):
 
             # load current CPRS
             cprs = self.rate_structure_dao.load_cprs(reebill.account, reebill.sequence,
-                reebill.branch, utility_name, rate_structure_name)
+                reebill.version, utility_name, rate_structure_name)
             if cprs is None:
                 raise Exception("No current CPRS")
 
             # save it with same account, next sequence
             self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence + 1,
-                reebill.branch, utility_name, rate_structure_name, cprs)
+                reebill.version, utility_name, rate_structure_name, cprs)
 
         # construct a new reebill from an old one.
         # if we wanted a copy, we would copy the current ReeBill
@@ -405,8 +405,9 @@ class Process(object):
                 target_sequence)
         if self.state_db.is_issued(session, account, target_sequence) \
                 or max_version > 0:
-            raise ValueError(("Can't apply corrections to an issued reebill "
-                "or another correction."))
+            raise ValueError(("Can't apply correction %s to %s-%s, "
+                    "because the latter is an issued reebill or another "
+                    "correction.") % (correction_sequence, account, target_sequence))
         
         # validate correction sequence
         if not any([c[0] == correction_sequence for c in
@@ -518,13 +519,13 @@ class Process(object):
             raise Exception("Account exists")
         template_last_sequence = self.state_db.last_sequence(session, template_account)
 
-        #TODO 22598787 use the active branch of the template_account
+        #TODO 22598787 use the active version of the template_account
         reebill = self.reebill_dao.load_reebill(template_account, template_last_sequence, 0)
 
         # reset this bill to the new account
         reebill.account = account
         reebill.sequence = 0
-        reebill.branch = 0
+        reebill.version = 0
         reebill.reset()
 
         reebill.billing_address = {}
@@ -549,7 +550,7 @@ class Process(object):
 
             # save the CPRS for the new reebill
             self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence,
-                reebill.branch, utility_name, rate_structure_name, cprs)
+                reebill.version, utility_name, rate_structure_name, cprs)
 
         # create new account in mysql
         customer = self.new_account(session, name, account, discount_rate, late_charge_rate)

@@ -1480,11 +1480,9 @@ function reeBillReady() {
     });
     mailDataConn.autoAbort = true;
     mailDataConn.disableCaching = true;
-    function mailReebillOperation(sequences)
-    {
+    function mailReebillOperation(sequences) {
         Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', function(btn, recipients){
-            if (btn == 'ok')
-            {
+            if (btn == 'ok') {
                 mailDataConn.request({
                     params: {
                         account: selected_account,
@@ -1498,10 +1496,30 @@ function reeBillReady() {
                         catch(e) {
                             alert("Could not decode JSON data");
                         }
-                        if(true !== o.success) {
-                            Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
-                        } else {
+                        if (o.success == true) {
                             Ext.Msg.alert('Success', "mail successfully sent");
+                        } else if (o.success !== true && o['corrections'] != undefined) {
+                            var result = Ext.Msg.confirm('Corrections must be applied',
+                                'Corrections from the following reebills will be applied to this reebill: '
+                                + o.corrections + '. Are you sure you want to issue it?', function(answer) {
+                                    if (answer == 'yes') {
+                                        mailDataConn.request({
+                                            params: { account: selected_account, recipients: recipients, sequences: sequences, corrections: o.corrections},
+                                            success: function(response, options) {
+                                                var o2 = Ext.decode(response.responseText);
+                                                if (o.success == true)
+                                                    Ext.Msg.alert('Success', "mail successfully sent");
+                                                else
+                                                    Ext.Msg.alert('Error', o2.errors.reason + o2.errors.details);
+                                            },
+                                            failure: function() {
+                                                Ext.Msg.alert('Failure', "mail response fail");
+                                            }
+                                        });
+                                    }
+                                });
+                        } else {
+                            Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
                         }
                     },
                     failure: function () {
