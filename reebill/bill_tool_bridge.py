@@ -831,11 +831,14 @@ class BillToolBridge:
             # client to confirm the corrections.
             if 'corrections' not in kwargs and len(unissued_corrections) > 0:
                 return self.dumps({'success': False, 'corrections':
-                    corrections})
+                    unissued_corrections})
             # if the client has specified corrections, make sure they're all valid
             elif 'corrections' in kwargs:
-                corrections_to_apply = self.loads(kwargs['corrections'])
-                for c in corrections_to_apply:
+                print '***** unissued corrections:', unissued_corrections
+                # cherrypy actually parses the JSON, so "corrections" is a list!
+                # but it doesn't turn the contents of the list into integers
+                corrections_to_apply = kwargs['corrections']
+                for c in map(int, corrections_to_apply):
                     if c not in unissued_corrections:
                         raise Exception("No unissued correction for sequence %s" % c)
 
@@ -854,6 +857,13 @@ class BillToolBridge:
             # set issue date 
             for reebill in all_bills:
                 self.process.issue(session, reebill.account, reebill.sequence)
+
+            # apply corrections
+            if 'corrections_to_apply' in locals():
+                for reebill in all_bills:
+                    for correction_sequence in corrections_to_apply:
+                        self.process.apply_correction(session, account,
+                                correction_sequence, reebill.sequence)
 
             #  TODO: 21305875  Do this until reebill is being passed around
             #  problem is all_bills is not reloaded after .issue
@@ -887,11 +897,13 @@ class BillToolBridge:
                         account), bill_file_names);
 
             for reebill in all_bills:
+                # journal mailing
                 journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
                         reebill.account, reebill.sequence, recipients)
-                self.process.issue(session, reebill.account, reebill.sequence)
+                # attach and issue
                 self.process.attach_utilbills(session, reebill.account,
                         reebill.sequence)
+                self.process.issue(session, reebill.account, reebill.sequence)
             session.commit()
             return self.dumps({'success': True})
 
