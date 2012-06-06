@@ -261,6 +261,18 @@ class StateDB:
         reebill.issued = 0
         reebill.max_version += 1
 
+    def get_unissued_corrections(self, session, account):
+        '''Returns a list of (sequence, max_version) pairs for bills that have
+        versions > 0 that have not been issued.'''
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        reebills = session.query(ReeBill)\
+                .filter(ReeBill.customer==customer)\
+                .filter(ReeBill.max_version > 0)\
+                .filter(ReeBill.issued==0).all()
+        return [(int(reebill.sequence), int(reebill.max_version)) for reebill
+                in reebills]
+
     def discount_rate(self, session, account):
         '''Returns the discount rate for the customer given by account.'''
         result = session.query(Customer).filter_by(account=account).one().\
