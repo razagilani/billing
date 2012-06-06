@@ -244,6 +244,24 @@ class StateDB:
         # SQLAlchemy returns a "long" here for some reason, so convert to int
         return int(reebill.max_version)
 
+    def max_issued_version(self, session, account, sequence):
+        '''Returns the greatest version of the given reebill that has been
+        issued. (This should differ by at most 1 from the maximum version
+        overall, since a new version can't be created if the last one hasn't
+        been issued.) If no version has ever been issued, returns None.'''
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        reebill = session.query(ReeBill)\
+                .filter(ReeBill.customer==customer)\
+                .filter(ReeBill.sequence==sequence).one()
+        # SQLAlchemy returns a "long" here for some reason, so convert to int
+        if reebill.issued == 1:
+            return int(reebill.max_version)
+        elif reebill.max_version == 0:
+            return None
+        else:
+            return int(reebill.max_version - 1)
+        
     def increment_version(self, session, account, sequence):
         '''Incrementes the max_version of the given issued reebill (to indicate
         that a new version was successfully created). After the new version is

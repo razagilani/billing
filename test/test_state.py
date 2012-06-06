@@ -159,13 +159,16 @@ class StateTest(unittest.TestCase):
             session.commit()
 
     def test_versions(self):
-        '''Tests max_version(), increment_version(), and the behavior of
-        is_issued() multiple versions.'''
+        '''Tests max_version(), max_issued_version(), increment_version(), and
+        the behavior of is_issued() with multiple versions.'''
         acc, seq = '99999', 1
         with DBSession(self.state_db) as session:
-            # initially max_version is 0 and issued is false
+            # initially max_version is 0, max_issued_version is None, and issued
+            # is false
             b = self.state_db.new_rebill(session, acc, seq)
             self.assertEqual(0, self.state_db.max_version(session, acc, seq))
+            self.assertEqual(None, self.state_db.max_issued_version(session, acc,
+                seq))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
                 version=0))
@@ -179,6 +182,7 @@ class StateTest(unittest.TestCase):
             # incrementing version to 1 should fail when the bill is not issued
             self.assertRaises(Exception, self.state_db.increment_version, session, acc, seq)
             self.assertEqual(0, self.state_db.max_version(session, acc, seq))
+            self.assertEqual(None, self.state_db.max_issued_version(session, acc, seq))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
                 version=0))
@@ -202,6 +206,7 @@ class StateTest(unittest.TestCase):
                 version=10))
             self.state_db.increment_version(session, acc, seq)
             self.assertEqual(1, self.state_db.max_version(session, acc, seq))
+            self.assertEqual(0, self.state_db.max_issued_version(session, acc, seq))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq))
             self.assertEqual(True, self.state_db.is_issued(session, acc, seq,
                 version=0))
@@ -214,6 +219,7 @@ class StateTest(unittest.TestCase):
 
             # issue & increment version to 2
             self.state_db.issue(session, acc, seq)
+            self.assertEqual(1, self.state_db.max_issued_version(session, acc, seq))
             self.assertEqual(True, self.state_db.is_issued(session, acc, seq))
             self.assertEqual(True, self.state_db.is_issued(session, acc, seq,
                 version=0))
@@ -234,6 +240,12 @@ class StateTest(unittest.TestCase):
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
                 version=10))
             self.assertEqual(2, self.state_db.max_version(session, acc, seq))
+            self.assertEqual(1, self.state_db.max_issued_version(session, acc, seq))
+
+            # issue version 2
+            self.state_db.issue(session, acc, seq)
+            self.assertEqual(2, self.state_db.max_issued_version(session, acc, seq))
+
             session.commit()
 
     def test_get_unissued_corrections(self):

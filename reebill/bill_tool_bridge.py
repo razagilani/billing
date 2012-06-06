@@ -819,11 +819,27 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def mail(self, account, sequences, recipients, **args):
+    def mail(self, account, sequences, recipients, **kwargs):
         if not account or not sequences or not recipients:
             raise ValueError("Bad Parameter Value")
-
         with DBSession(self.state_db) as session:
+            # get sequences of all unissued corrections for this account
+            unissued_corrections = [c[0] for c in
+                    self.process.get_unissued_corrections(session, account)]
+            # if there are un-issued corrections and the client has not given
+            # the "corrections" argument, return success: false and ask the
+            # client to confirm the corrections.
+            if 'corrections' not in kwargs and len(unissued_corrections) > 0:
+                return self.dumps({'success': False, 'corrections':
+                    corrections})
+            # if the client has specified corrections, make sure they're all valid
+            elif 'corrections' in kwargs:
+                corrections_to_apply = self.loads(kwargs['corrections'])
+                for c in corrections_to_apply:
+                    if c not in unissued_corrections:
+                        raise Exception("No unissued correction for sequence %s" % c)
+
+
             # sequences will come in as a string if there is one element in post data. 
             # If there are more, it will come in as a list of strings
             if type(sequences) is not list:
