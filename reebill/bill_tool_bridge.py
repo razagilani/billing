@@ -828,14 +828,10 @@ class BillToolBridge:
         # if there are multiple corrections, cherrypy actually parses the JSON,
         # so "corrections" is a list! but it doesn't turn the contents of the
         # list into integers
-        print 'AAAAAAAAAAAAAA'
         if 'corrections' in kwargs:
-            print 'BBBBBBBBBBBBBBBB', type(kwargs['corrections'])
             if isinstance(kwargs['corrections'], basestring):
-                print '1111111111111111'
                 corrections_to_apply = [int(kwargs['corrections'])]
             else:
-                print '222222222222222'
                 corrections_to_apply = map(int, kwargs['corrections'])
         else:
             print 'no corrections in kwargs:', kwargs
@@ -852,9 +848,6 @@ class BillToolBridge:
                     unissued_corrections})
             # if the client has specified corrections, make sure they're all valid
             elif 'corrections' in kwargs:
-                print 'CCCCCCCCCC'
-                print '***** unissued corrections:', unissued_corrections
-                print '***** corrections_to_apply:', corrections_to_apply
                 for c in corrections_to_apply:
                     if c not in unissued_corrections:
                         raise Exception("No unissued correction for sequence %s" % c)
@@ -869,8 +862,6 @@ class BillToolBridge:
             # sequences is [u'17']
             all_bills = [self.reebill_dao.load_reebill(account, sequence) for
                     sequence in sequences]
-
-            print '&&&2 5 is issued?', self.state_db.is_issued(session, account, 5)
 
             # apply corrections
             if 'corrections_to_apply' in locals():
