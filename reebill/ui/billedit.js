@@ -1454,11 +1454,9 @@ function reeBillReady() {
     });
     mailDataConn.autoAbort = true;
     mailDataConn.disableCaching = true;
-    function mailReebillOperation(sequences)
-    {
+    function mailReebillOperation(sequences) {
         Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', function(btn, recipients){
-            if (btn == 'ok')
-            {
+            if (btn == 'ok') {
                 mailDataConn.request({
                     params: {
                         account: selected_account,
@@ -4111,12 +4109,16 @@ function reeBillReady() {
         colModel: accountColModel,
         selModel: new Ext.grid.RowSelectionModel({
             singleSelect: true,
-            listeners: {
-                rowselect: function (selModel, index, record) {
-                    loadReeBillUIForAccount(record.data.account);
-                    return false;
-                }
-            }
+        listeners: {
+            rowselect: function (selModel, index, record) {
+               console.log("selectionchange");
+               loadReeBillUIForAccount(record.data.account);
+               return false;
+           },
+        rowdeselect: function(selModel, index, record) {
+             loadReeBillUIForAccount(null);
+         }
+        },
         }),
         store: accountStore,
         enableColumnMove: false,
@@ -4280,7 +4282,7 @@ function reeBillReady() {
         selModel: new Ext.grid.RowSelectionModel({
             singleSelect: true,
             listeners: {
-                rowselect: function (selModel, index, record) {
+                selectionchange: function (selModel, index, record) {
                     loadReeBillUIForAccount(record.data.account);
                 }
             }
@@ -4909,7 +4911,8 @@ function reeBillReady() {
             // doesn't seem to work
             forceFit: true,
         },
-        title: 'Journal Entries', // TODO include account name
+        // this is actually set in loadReeBillUIForAccount()
+        title: 'Journal Entries ' + selected_account,
         clicksToEdit: 1
     });
 
@@ -4969,7 +4972,7 @@ function reeBillReady() {
     var journalPanel = new Ext.Panel({
         id: 'journalTab',
         title: 'Journal',
-        disabled: journalPanelDisabled,
+        disabled: true,
         xtype: 'panel',
         layout: 'vbox',
         layoutConfig : {
@@ -5376,7 +5379,6 @@ function reeBillReady() {
 
     // load things global to the account
     function loadReeBillUIForAccount(account) {
-
         selected_account = account;
         selected_sequence = null;
 
@@ -5392,6 +5394,12 @@ function reeBillReady() {
         // TODO 25226739: don't overwrite if they don't need to be updated.  Causes UI to flash.
         Ext.DomHelper.overwrite('utilbillimagebox', getImageBoxHTML(null, 'Utility bill', 'utilbill', NO_UTILBILL_SELECTED_MESSAGE), true);
         Ext.DomHelper.overwrite('reebillimagebox', getImageBoxHTML(null, 'Reebill', 'reebill', NO_REEBILL_SELECTED_MESSAGE), true);
+
+        if (account == null) {
+            /* no account selected */
+            journalPanel.setDisabled(true);
+            return;
+        }
 
         // update list of ReeBills (for mailing) for this account
         //mailReeBillStore.setBaseParam("account", account)
@@ -5465,6 +5473,7 @@ function reeBillReady() {
         journalPanel.setDisabled(false);
         mailPanel.setDisabled(false);
 
+        journalGrid.setTitle('Journal Entries for ' + account);
     }
 
 
