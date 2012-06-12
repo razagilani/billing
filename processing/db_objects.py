@@ -9,17 +9,18 @@ class Customer(object):
         self.discountrate = discount_rate
         self.latechargerate = late_charge_rate
     def __repr__(self):
-        return '<Customer(%s, %s, %s)>' \
+        return '<Customer(name=%s, account=%s, discountrate=%s)>' \
                 % (self.name, self.account, self.discountrate)
 
 class ReeBill(object):
-    def __init__(self, customer, sequence):
+    def __init__(self, customer, sequence, max_version=0):
         self.customer = customer
         self.sequence = sequence
         self.issued = 0
+        self.max_version = max_version
     def __repr__(self):
-        return '<ReeBill(%s, %s, %s)>' \
-                % (self.customer, self.sequence, self.issued)
+        return '<ReeBill(account=%s, sequence=%s, max_version=%s, issued=%s)>' \
+                % (self.customer, self.sequence, self.max_version, self.issued)
 
 class UtilBill(object):
     # utility bill states:
@@ -56,8 +57,8 @@ class UtilBill(object):
         return self.reebill != None
 
     def __repr__(self):
-        return '<UtilBill(%s, %s, %s)>' \
-                % (self.customer, self.period_start, self.period_end)
+        return '<UtilBill(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
+                % (self.customer, self.service, self.period_start, self.period_end)
 
 class Payment(object):
     def __init__(self, customer, date, description, credit):
@@ -66,7 +67,7 @@ class Payment(object):
         self.description = description
         self.credit = credit
     def __repr__(self):
-        return '<Payment(%s, %s, %s, %s)>' \
+        return '<Payment(customer=%s, date=%s, description=%s, credit=%s)>' \
                 % (self.customer, self.date, \
                         self.description, self.credit)
 

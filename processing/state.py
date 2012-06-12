@@ -125,6 +125,7 @@ class StateDB:
         # statements that are executed
         engine = create_engine('mysql://%s:%s@%s:3306/%s' % (user, password,
                 host, database), pool_recycle=3600, pool_size=db_connections)
+        self.engine = engine
         metadata = MetaData(engine)
 
         # table objects loaded automatically from database
@@ -138,23 +139,16 @@ class StateDB:
         # mappings
         mapper(StatusDaysSince, status_days_since_view,primary_key=[status_days_since_view.c.account])
         mapper(StatusUnbilled, status_unbilled_view, primary_key=[status_unbilled_view.c.account])
-
-        mapper(Customer, customer_table, \
-                properties={
-                    'utilbills': relationship(UtilBill, backref='customer'), \
+        mapper(Customer, customer_table, properties={
+                    'utilbills': relationship(UtilBill, backref='customer'),
                     'reebills': relationship(ReeBill, backref='customer')
                 })
-
         mapper(ReeBill, reebill_table)
-
-        mapper(UtilBill, utilbill_table, \
-                properties={
+        mapper(UtilBill, utilbill_table, properties={
                     # "lazy='joined'" makes SQLAlchemy eagerly load utilbill customers
                     'reebill': relationship(ReeBill, backref='utilbill', lazy='joined')
                 })
-
-        mapper(Payment, payment_table, \
-                properties={
+        mapper(Payment, payment_table, properties={
                     'customer': relationship(Customer, backref='payment')
                 })
 
@@ -214,22 +208,88 @@ class StateDB:
             utilbill.processed = True
 
     def delete_reebill(self, session, account, sequence):
+        '''Deletes the latest version of the given reebill, if it's not
+        issued.'''
         # TODO add branch, which MySQL doesn't have yet:
         # https://www.pivotaltracker.com/story/show/24374911 
 
-        # get customer id from account
-        customer = session.query(Customer).filter(Customer.account==account).one()
-
-        # look up reebill by account, sequence
-        reebill = session.query(ReeBill).filter(ReeBill.customer==customer) \
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        reebill = session.query(ReeBill)\
+                .filter(ReeBill.customer==customer) \
                 .filter(ReeBill.sequence==sequence).one()
+        if self.is_issued(session, account, sequence):
+            raise Exception("Can't delete an issued reebill")
         
         # find all utilbills attached to this reebill and detach them
-        for utilbill in session.query(UtilBill).filter(UtilBill.reebill==reebill):
+        for utilbill in session.query(UtilBill)\
+                .filter(UtilBill.reebill==reebill):
             utilbill.reebill = None
 
-        # delete the reebill
-        session.delete(reebill)
+        if reebill.max_version > 0:
+            # all versions except the last are considered issued, so decrement
+            # max_version and set issued to true
+            reebill.max_version -= 1
+            reebill.issued = 1
+        else:
+            # there's only one version, so really delete it
+            session.delete(reebill)
+
+    def max_version(self, session, account, sequence):
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        reebill = session.query(ReeBill)\
+                .filter(ReeBill.customer==customer)\
+                .filter(ReeBill.sequence==sequence).one()
+        # SQLAlchemy returns a "long" here for some reason, so convert to int
+        return int(reebill.max_version)
+
+    def max_issued_version(self, session, account, sequence):
+        '''Returns the greatest version of the given reebill that has been
+        issued. (This should differ by at most 1 from the maximum version
+        overall, since a new version can't be created if the last one hasn't
+        been issued.) If no version has ever been issued, returns None.'''
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        reebill = session.query(ReeBill)\
+                .filter(ReeBill.customer==customer)\
+                .filter(ReeBill.sequence==sequence).one()
+        # SQLAlchemy returns a "long" here for some reason, so convert to int
+        if reebill.issued == 1:
+            return int(reebill.max_version)
+        elif reebill.max_version == 0:
+            return None
+        else:
+            return int(reebill.max_version - 1)
+        
+    def increment_version(self, session, account, sequence):
+        '''Incrementes the max_version of the given issued reebill (to indicate
+        that a new version was successfully created). After the new version is
+        created, the reebill is no longer issued, because the newest version
+        has not been issued.'''
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        reebill = session.query(ReeBill)\
+                .filter(ReeBill.customer==customer)\
+                .filter(ReeBill.sequence==sequence).one()
+        if not self.is_issued(session, account, sequence):
+            raise ValueError(("Can't increment version of %s-%s because "
+                    "version %s is not issued yet") % (account, sequence,
+                        reebill.max_version))
+        reebill.issued = 0
+        reebill.max_version += 1
+
+    def get_unissued_corrections(self, session, account):
+        '''Returns a list of (sequence, max_version) pairs for bills that have
+        versions > 0 that have not been issued.'''
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        reebills = session.query(ReeBill)\
+                .filter(ReeBill.customer==customer)\
+                .filter(ReeBill.max_version > 0)\
+                .filter(ReeBill.issued==0).all()
+        return [(int(reebill.sequence), int(reebill.max_version)) for reebill
+                in reebills]
 
     def discount_rate(self, session, account):
         '''Returns the discount rate for the customer given by account.'''
@@ -282,25 +342,44 @@ class StateDB:
         '''Creates a new ReeBill row in the database and returns the new
         ReeBill object corresponding to it.'''
         customer = session.query(Customer).filter(Customer.account==account).one()
-        new_reebill = ReeBill(customer, sequence)
+        new_reebill = ReeBill(customer, sequence, 0)
         session.add(new_reebill)
         return new_reebill
 
     def issue(self, session, account, sequence):
         '''Marks the given reebill as issued. Does not set the issue date or
-        due date.'''
+        due date (which are in Mongo).'''
         customer = session.query(Customer).filter(Customer.account==account).one()
         reeBill = session.query(ReeBill) \
                 .filter(ReeBill.customer_id==customer.id) \
                 .filter(ReeBill.sequence==sequence).one()
         reeBill.issued = 1
 
-    def is_issued(self, session, account, sequence):
-        customer = session.query(Customer).filter(Customer.account==account).one()
-        reebill = session.query(ReeBill) \
-                .filter(ReeBill.customer_id==customer.id) \
-                .filter(ReeBill.sequence==sequence).one()
-        return reebill.issued == 1
+    def is_issued(self, session, account, sequence, version='max',
+            allow_nonexistent=False):
+        '''Returns true if the reebill given by account, sequence, and version
+        (latest version by default) has been issued, false otherwise. If
+        'allow_nonexistent' is True, a reebill not present in the state
+        database will be treated as un-issued.'''
+        try:
+            customer = session.query(Customer)\
+                    .filter(Customer.account==account).one()
+            reebill = session.query(ReeBill) \
+                    .filter(ReeBill.customer_id==customer.id) \
+                    .filter(ReeBill.sequence==sequence).one()
+        except NoResultFound:
+            if allow_nonexistent:
+                return False
+            raise
+        if version == 'max':
+            return reebill.issued == 1
+        elif isinstance(version, int):
+            # any version prior to the latest is assumed to be issued, since
+            # otherwise the latest version could not have been created
+            return (version < reebill.max_version) \
+                    or (version == reebill.max_version and reebill.issued)
+        else:
+            raise ValueError('Unknown version specifier "%s"' % version)
 
     def account_exists(self, session, account):
         try:

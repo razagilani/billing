@@ -28,20 +28,19 @@ class DBSession(object):
         return session
 
     def __exit__(self, type, value, traceback):
-        # all params none if no exception was raised within the context manager
         if (type, value, traceback) != (None, None, None):
-            print ('DBSession Exception: type={type}, value="%{value}", '
+            print ('dbsession exception: type={type}, value="%{value}", '
                     'traceback=%{traceback}').format(**vars())
             session = self.state_db.session()
             session.rollback()
             # allow the exception to be raised from the consumer of the context manager
             # return true to suppress it, false or do nothing to raise it
-            print "DBSession __exit__  thread %s, self %s, session %s" % (thread.get_ident(), self, session)
+            print "dbsession __exit__  thread %s, self %s, session %s" % (thread.get_ident(), self, session)
         else:
             # there was no error
             session = self.state_db.session()
             session.commit()
-            print "DBSession __exit__  thread %s, self %s, session %s" % (thread.get_ident(), self, session)
+            print "dbsession __exit__  thread %s, self %s, session %s" % (thread.get_ident(), self, session)
 
 
 

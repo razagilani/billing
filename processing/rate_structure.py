@@ -67,7 +67,7 @@ class RateStructureDAO(object):
         # all the data needed to identify a probable rate structure
         account = reebill.account
         sequence = reebill.sequence
-        branch = reebill.branch
+        version = reebill.version
         rsbinding = reebill.rate_structure_name_for_service(service)
         utility_name = reebill.utility_name_for_service(service)
         rate_structure_name = reebill.rate_structure_name_for_service(service)
@@ -109,7 +109,7 @@ class RateStructureDAO(object):
                 del uprs_rate['uuid']
 
         # load the CPRS
-        cprs = self.load_cprs(account, sequence, branch, utility_name,
+        cprs = self.load_cprs(account, sequence, version, utility_name,
                 rate_structure_name)
 
         # remove the mongo key, because the requester already has this information
@@ -205,7 +205,7 @@ class RateStructureDAO(object):
                     expires, uprs)
         return uprs
 
-    def load_cprs(self, account, sequence, branch, utility_name,
+    def load_cprs(self, account, sequence, version, utility_name,
             rate_structure_name):
         '''Loads Customer Periodic Rate Structure docuemnt from Mongo, returns
         it as a dictionary.'''
@@ -215,7 +215,7 @@ class RateStructureDAO(object):
             "_id.sequence": int(sequence), 
             "_id.rate_structure_name": rate_structure_name, 
             "_id.utility_name": utility_name, 
-            "_id.branch":int(branch)
+            "_id.version":int(version)
         }
         cprs = self.collection.find_one(query)
         return cprs
@@ -248,7 +248,7 @@ class RateStructureDAO(object):
         self.collection.save(rate_structure_data)
         return rate_structure_data
 
-    def save_cprs(self, account, sequence, branch, utility_name,
+    def save_cprs(self, account, sequence, version, utility_name,
             rate_structure_name, rate_structure_data):
         '''Saves the dictionary 'rate_structure_data' as a Customer Periodic
         Rate Structure document in Mongo.'''
@@ -256,7 +256,7 @@ class RateStructureDAO(object):
             'type': 'CPRS',
             'account': account,
             'sequence': int(sequence),
-            'branch': int(branch),
+            'version': int(version),
             'utility_name': utility_name,
             'rate_structure_name': rate_structure_name,
         }
