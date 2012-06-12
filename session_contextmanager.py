@@ -22,7 +22,7 @@ class DBSession(object):
     def __enter__(self):
         # session is thread local so we don't need to store it
         session = self.state_db.session()
-        print "DBSession __enter__ thread %s, self %s, session %s" % (thread.get_ident(), self, session)
+        #print "DBSession __enter__ thread %s, self %s, session %s" % (thread.get_ident(), self, session)
         return session
 
     def __exit__(self, type, value, traceback):
@@ -38,7 +38,7 @@ class DBSession(object):
             # there was no error
             session = self.state_db.session()
             session.commit()
-            print "dbsession __exit__  thread %s, self %s, session %s" % (thread.get_ident(), self, session)
+            #print "dbsession __exit__  thread %s, self %s, session %s" % (thread.get_ident(), self, session)
 
 
 
