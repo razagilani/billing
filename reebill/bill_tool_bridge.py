@@ -1703,9 +1703,9 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def payment(self, xaction, account, **kwargs):
+        if not xaction or not account:
+            raise ValueError("Bad parameter value")
         with DBSession(self.state_db) as session:
-            if not xaction or not account:
-                raise ValueError("Bad parameter value")
             if xaction == "read":
                 payments = self.state_db.payments(session, account)
                 payments = [{

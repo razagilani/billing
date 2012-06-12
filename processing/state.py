@@ -570,7 +570,7 @@ class StateDB:
                     and hb.period_start >= last_real_utilbill.period_start):
                 session.delete(hb)
 
-    def create_payment(self, session, account, date, description, credit):
+    def create_payment(self, session, account, date_received, description, credit):
         customer = session.query(Customer).filter(Customer.account==account).one()
         new_payment = Payment(customer, date, description, credit)
 
