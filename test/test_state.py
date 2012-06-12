@@ -123,7 +123,6 @@ class StateTest(unittest.TestCase):
 
             self.state_db.trim_hypothetical_utilbills(session, account,
                     service)
-            session.commit()
 
         with DBSession(self.state_db) as session:
             # the survivors should be the ones with at least one period date in
@@ -139,7 +138,6 @@ class StateTest(unittest.TestCase):
             self.assertEqual((date(2012,6,1), date(2012,7,1)),
                     (bills[2].period_start, bills[2].period_end))
         
-            session.commit()
 
 if __name__ == '__main__':
     unittest.main()

@@ -585,8 +585,6 @@ port = 27017
             self.assertEqual(date(2012,8,1), bills[i].period_end)
             self.assertEqual(UtilBill.Complete, bills[i].state)
 
-            session.commit()
-
     def test_delete_utility_bill(self):
         print 'test_delete_utility_bill'
 
@@ -647,9 +645,6 @@ port = 27017
             assert utilbill.reebill == reebill
             self.assertRaises(ValueError, self.process.delete_utility_bill,
                     session, utilbill_id)
-
-            session.commit()
-
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
