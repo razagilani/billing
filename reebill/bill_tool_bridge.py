@@ -683,7 +683,7 @@ class BillToolBridge:
             )
         self.reebill_dao.save_reebill(reebill)
         journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                account, sequence)
+                account, sequence, reebill.version)
         return self.dumps({'success': True})
 
 
@@ -718,7 +718,7 @@ class BillToolBridge:
 
         self.reebill_dao.save_reebill(reebill)
         journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                account, sequence)
+                account, sequence, reebill.version)
         return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -813,7 +813,7 @@ class BillToolBridge:
                     reebill.sequence)
 
             journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-                    reebill.account, reebill.sequence)
+                    reebill.account, reebill.sequence, reebill.version)
             #session.commit()
             return self.dumps({'success': True})
 
@@ -1825,9 +1825,10 @@ class BillToolBridge:
                 # single edit comes in not in a list
                 if type(sequences) is int: sequences = [sequences]
                 for sequence in sequences:
-                    self.process.delete_reebill(session, account, sequence)
-                    journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
+                    deleted_version = self.process.delete_reebill(session,
                             account, sequence)
+                    journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
+                            account, sequence, deleted_version)
                 #session.commit()
                 return self.dumps({'success': True})
 

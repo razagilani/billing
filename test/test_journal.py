@@ -146,8 +146,7 @@ class JournalTest(unittest.TestCase):
     def test_simple_sequence_events(self):
         '''Tests all the subclasses of SequenceEvent that don't have extra data
         besides user, account, and sequence.'''
-        classes = [journal.ReeBillRolledEvent, journal.ReeBillBoundEvent,
-                journal.ReeBillDeletedEvent, journal.ReeBillAttachedEvent]
+        classes = [journal.ReeBillRolledEvent]
         for cls in classes:
             cls.save_instance(self.user, '99999', 1)
             entries = cls.objects
@@ -165,13 +164,35 @@ class JournalTest(unittest.TestCase):
                 'date': datetime.utcnow()
                 }, entry.to_dict())
 
+    def test_simple_version_events(self):
+        '''Tests all the subclasses of VersionEvent that don't have extra data
+        besides user, account, sequence, and version.'''
+        classes = [journal.ReeBillBoundEvent, journal.ReeBillDeletedEvent,
+                journal.ReeBillAttachedEvent]
+        for cls in classes:
+            cls.save_instance(self.user, '99999', 1, 0)
+            entries = cls.objects
+            self.assertEquals(1, len(entries))
+            entry = entries[0]
+            self.assertDatetimesClose(datetime.utcnow(), entry.date)
+            self.assertEquals(self.user.identifier, entry.user)
+            self.assertTrue(isinstance(entry, cls))
+            self.assertEquals('99999', entry.account)
+            self.assertEquals(1, entry.sequence)
+            self.assertDictMatch({
+                'user': 'dan',
+                'account': '99999',
+                'sequence': 1,
+                'version': 0,
+                'date': datetime.utcnow()
+                }, entry.to_dict())
+
     def test_load_entries(self):
         # 3 entries for 2 accounts
         journal.ReeBillRolledEvent.save_instance(self.user, '90001', sequence=1)
         journal.Note.save_instance(self.user, '90001', 'text of a note',
                 sequence=2)
-        journal.ReeBillBoundEvent.save_instance(self.user, '90002',
-                sequence=1)
+        journal.ReeBillBoundEvent.save_instance(self.user, '90002', 1, 0)
 
         # load entries for 99999
         entries1 = self.dao.load_entries('90001')
@@ -189,12 +210,12 @@ class JournalTest(unittest.TestCase):
     def test_last_event_summary(self):
         journal.Note.save_instance(self.user, '90001', 'text of a note',
                 sequence=2)
-        journal.ReeBillRolledEvent.save_instance(self.user, '90001', sequence=1)
-        journal.ReeBillBoundEvent.save_instance(self.user, '90002',
-                sequence=1)
+        journal.ReeBillRolledEvent.save_instance(self.user, '90001', 1)
+        journal.ReeBillBoundEvent.save_instance(self.user, '90002', 1, 0)
         description = self.dao.last_event_summary('90001')
         self.assertEqual('Reebill 90001-1 rolled on ' + datetime.utcnow().date()
                 .strftime(ISO_8601_DATE), description)
         
 if __name__ == '__main__':
-    unittest.main(failfast=True)
+    #unittest.main(failfast=True)
+    unittest.main()

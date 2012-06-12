@@ -501,10 +501,8 @@ class Process(object):
         '''Deletes the latest version of the reebill given by 'account' and
         'sequence': removes state data and utility bill associations from
         MySQL, and actual bill data from Mongo. A reebill that has been issued
-        can't be deleted.'''
-        # TODO add branch, which MySQL doesn't have yet:
-        # https://www.pivotaltracker.com/story/show/24374911 
-
+        can't be deleted. Returns the version of the reebill that was
+        deleted (the highest ersion before deletion).'''
         # don't delete an issued reebill
         if self.state_db.is_issued(session, account, sequence):
             raise Exception("Can't delete an issued reebill.")
@@ -516,6 +514,8 @@ class Process(object):
 
         # delete highest-version reebill document from Mongo
         self.reebill_dao.delete_reebill(account, sequence, max_version)
+
+        return max_version
 
 
     def create_new_account(self, session, account, name, discount_rate,
