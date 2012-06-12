@@ -671,7 +671,6 @@ port = 27017
         with DBSession(self.state_db) as session:
             new_bill = self.process.new_version(session, '99999', 1)
             session.commit()
-
         self.assertEqual('99999', new_bill.account)
         self.assertEqual(1, new_bill.sequence)
         self.assertEqual(1, new_bill.version)
