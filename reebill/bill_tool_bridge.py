@@ -588,7 +588,6 @@ class BillToolBridge:
         strings).'''
         with DBSession(self.state_db) as session:
             next_account = self.state_db.get_next_account_number(session)
-            #session.commit()
             return ju.dumps({'success': True, 'account': next_account})
             
     @cherrypy.expose
@@ -618,7 +617,6 @@ class BillToolBridge:
             # get next next account number to send it back to the client so it
             # can be shown in the account-creation form
             next_account = self.state_db.get_next_account_number(session)
-            #session.commit()
             return self.dumps({'success': True, 'nextAccount': next_account})
 
     @cherrypy.expose
@@ -634,7 +632,6 @@ class BillToolBridge:
             self.reebill_dao.save_reebill(new_reebill)
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
                     account, sequence)
-            #session.commit()
             return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -650,7 +647,6 @@ class BillToolBridge:
 
             self.process.pay_bill(session, reebill)
             self.reebill_dao.save_reebill(reebill)
-            #session.commit()
             return self.dumps({'success': True})
 
 
@@ -762,7 +758,6 @@ class BillToolBridge:
 
                 self.reebill_dao.save_reebill(mongo_reebill)
 
-            #session.commit()
             return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -811,7 +806,6 @@ class BillToolBridge:
 
             journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
                     reebill.account, reebill.sequence)
-            #session.commit()
             return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -875,7 +869,6 @@ class BillToolBridge:
                 self.process.issue(session, reebill.account, reebill.sequence)
                 self.process.attach_utilbills(session, reebill.account,
                         reebill.sequence)
-            #session.commit()
             return self.dumps({'success': True})
 
 
@@ -920,7 +913,6 @@ class BillToolBridge:
             accounts = self.state_db.listAccounts(session)
             rows = [{'account': account, 'name': full_name} for account,
                     full_name in zip(accounts, self.full_names_of_accounts(accounts))]
-            #session.commit()
             return self.dumps({'success': True, 'rows':rows})
 
 
@@ -945,7 +937,6 @@ class BillToolBridge:
             rows = [{'sequence': sequence,
                 'committed': self.state_db.is_issued(session, account, sequence)}
                 for sequence in sequences]
-            #session.commit()
             return self.dumps({'success': True, 'rows':rows})
 
 
@@ -1044,7 +1035,6 @@ class BillToolBridge:
             # take slice for one page of the grid's data
             rows = rows[start:start+limit]
 
-            #session.commit()
             return self.dumps({'success': True, 'rows':rows, 'results':count})
 
     @cherrypy.expose
@@ -1063,7 +1053,6 @@ class BillToolBridge:
             for row in rows:
                 row.update({'outstandingbalance': '$%.2f' % self.process\
                         .get_outstanding_balance(session,row['account'])})
-            #session.commit()
             return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
 
     @cherrypy.expose
@@ -1157,7 +1146,6 @@ class BillToolBridge:
                         datetime.now().strftime("%Y%m%d")
 
             workbook.save(buf)
-            #session.commit()
             return buf.getvalue()
 
     @cherrypy.expose
@@ -1202,7 +1190,6 @@ class BillToolBridge:
 
 
             data = buf.getvalue()
-            #session.commit()
             return data
 
     @cherrypy.expose
@@ -1229,7 +1216,6 @@ class BillToolBridge:
             cherrypy.response.headers['Content-Type'] = 'application/excel'
             cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
 
-            #session.commit()
             return buf.getvalue()
 
     @cherrypy.expose
@@ -1248,7 +1234,6 @@ class BillToolBridge:
             cherrypy.response.headers['Content-Type'] = 'application/excel'
             cherrypy.response.headers['Content-Disposition'] = ('attachment;'
                     ' filename=%s_daily_average_energy.xls') % (account)
-            #session.commit()
             return buf.getvalue()
 
     @cherrypy.expose
@@ -1678,7 +1663,6 @@ class BillToolBridge:
                     'description': payment.description, 
                     'credit': str(payment.credit),
                 } for payment in payments]
-                #session.commit()
                 return self.dumps({'success': True, 'rows':payments})
             elif xaction == "update":
                 rows = json.loads(kwargs["rows"])
@@ -1693,7 +1677,6 @@ class BillToolBridge:
                         row['description'],
                         row['credit'],
                     )
-                #session.commit()
                 return self.dumps({'success':True})
             elif xaction == "create":
                 new_payment = self.state_db.create_payment(session, account,
@@ -1710,7 +1693,6 @@ class BillToolBridge:
                     'description': new_payment.description,
                     'credit': str(new_payment.credit),
                     }]
-                #session.commit()
                 return self.dumps({'success':True, 'rows':row})
             elif xaction == "destroy":
                 rows = json.loads(kwargs["rows"])
@@ -1718,7 +1700,6 @@ class BillToolBridge:
                 if type(rows) is int: rows = [rows]
                 for oid in rows:
                     self.state_db.delete_payment(session, oid)
-                #session.commit()
                 return self.dumps({'success':True})
 
     @cherrypy.expose
@@ -1766,15 +1747,12 @@ class BillToolBridge:
                     except: pass
 
                     rows.append(row_dict)
-                #session.commit()
                 return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
 
             elif xaction == "update":
-                #session.commit()
                 return self.dumps({'success':False})
 
             elif xaction == "create":
-                #session.commit()
                 return self.dumps({'success':False})
 
             elif xaction == "destroy":
@@ -1785,7 +1763,6 @@ class BillToolBridge:
                     self.process.delete_reebill(session, account, sequence)
                     journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
                             account, sequence)
-                #session.commit()
                 return self.dumps({'success': True})
 
     ################
@@ -2309,7 +2286,6 @@ class BillToolBridge:
                         file_to_upload.filename)
                 raise
 
-            #session.commit()
             return self.dumps({'success': True})
 
     #
@@ -2420,7 +2396,6 @@ class BillToolBridge:
                 ('editable', not ub.has_reebill)
             ]) for i, ub in enumerate(utilbills)]
 
-            #session.commit()
             return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
     
     @cherrypy.expose
@@ -2440,7 +2415,6 @@ class BillToolBridge:
                 # (https://www.pivotaltracker.com/story/show/23569087). temporary
                 # fix is to make it a datetime with a later time.
                 the_datetime = datetime(the_date.year, the_date.month, the_date.day, 23)
-            #session.commit()
             return self.dumps({'success':True, 'date': the_datetime})
 
     def validate_utilbill_period(self, start, end):
@@ -2514,13 +2488,11 @@ class BillToolBridge:
                 # cover gaps that no longer exist
                 self.process.state_db.trim_hypothetical_utilbills(session,
                         customer.account, utilbill.service)
-                #session.commit()
 
                 return self.dumps({'success': True})
             elif xaction == 'create':
                 # creation happens via upload_utility_bill
                 # TODO move here?
-                #session.commit()
                 raise Exception('utilbill_grid() does not accept xaction "create"')
             elif xaction == 'destroy':
                 # "rows" is either a single id or a list of ids
@@ -2548,7 +2520,6 @@ class BillToolBridge:
                     journal.UtilBillDeletedEvent.save_instance(cherrypy.session['user'],
                             account, start, end, service, deleted_path)
 
-                #session.commit()
                 return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -2688,7 +2659,6 @@ class BillToolBridge:
                 # we want to return success to ajax call and then load the tree in page
                 #return self.dumps({'success':True, 'reebill_structure':tree});
                 # but the TreeLoader doesn't abide by the above ajax packet
-                #session.commit()
                 return self.dumps(tree);
 
     @cherrypy.expose
@@ -2749,7 +2719,6 @@ class BillToolBridge:
                         'node_key': new_registers[0]['identifier'],
                     }
                 self.reebill_dao.save_reebill(reebill)
-                #session.commit()
                 return self.dumps({'success': True, 'node':new_node })
 
     @cherrypy.expose
@@ -2768,7 +2737,6 @@ class BillToolBridge:
                 elif node_type == 'register':
                     raise Exception("finish me")
             self.reebill_dao.save_reebill(reebill)
-            #session.commit()
             return self.dumps({'success': True })
 
     @cherrypy.expose
@@ -2834,7 +2802,6 @@ class BillToolBridge:
                     }
 
             self.reebill_dao.save_reebill(reebill)
-            #session.commit()
             return self.dumps({'success': True, 'node':updated_node})
 
         
