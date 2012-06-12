@@ -1155,9 +1155,13 @@ class ReebillDAO:
             query.update({'_id.version': version})
             mongo_doc = self.collection.find_one(query)
         elif version == 'max':
-            cursor = self.collection.find(query, sort=[('_id.version',
-                pymongo.DESCENDING)])
-            mongo_doc = cursor[0] if cursor.count() > 0 else None
+            # get max version from MySQL, since that's the definitive source of
+            # information on what officially exists
+            with DBSession(self.state_db) as session:
+                max_version = self.state_db.max_version(session, account, sequence)
+                session.commit()
+            query.update({'_id.version': max_version})
+            mongo_doc = self.collection.find_one(query)
         elif isinstance(version, date):
             version_dt = date_to_datetime(version)
             docs = self.collection.find(query, sort=[('_id.version',
