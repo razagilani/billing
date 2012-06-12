@@ -342,6 +342,8 @@ class Process(object):
 
         if sequence <= 0:
             raise ValueError('Only sequence >= 0 can have multiple versions.')
+        if not self.state_db.is_issued(session, account, sequence):
+            raise ValueError("Can't create new version of an un-issued bill.")
 
         # get current max version from MySQL
         max_version = self.state_db.max_version(session, account, sequence)
