@@ -11,8 +11,6 @@ import threading
 import thread
 import time
 import random
-from billing import mongo
-from billing.reebill import render
 from billing.processing import state
 from billing.processing.db_objects import ReeBill, Customer
 
