@@ -294,7 +294,7 @@ class BillToolBridge:
 
         # create a MongoReeBillDAO
         self.billdb_config = dict(self.config.items("billdb"))
-        self.reebill_dao = mongo.ReebillDAO(self.billdb_config)
+        self.reebill_dao = mongo.ReebillDAO(self.state_db, **self.billdb_config)
 
         # create a RateStructureDAO
         rsdb_config_section = self.config.items("rsdb")
@@ -311,9 +311,11 @@ class BillToolBridge:
         self.journal_dao = journal.JournalDAO()
 
         # create a Splinter
-        self.splinter = Splinter(self.config.get('skyline_backend',
-            'oltp_url'), self.config.get('skyline_backend', 'olap_host'),
-            self.config.get('skyline_backend', 'olap_database'))
+        #self.splinter = Splinter(self.config.get('skyline_backend',
+            #'oltp_url'), self.config.get('skyline_backend', 'olap_host'),
+            #self.config.get('skyline_backend', 'olap_database'))
+        from billing.test import fake_skyliner
+        self.splinter = fake_skyliner.FakeSplinter()
 
         # create one Process object to use for all related bill processing
         # TODO it's theoretically bad to hard-code these, but all skyliner
@@ -324,7 +326,8 @@ class BillToolBridge:
                 self.config, self.state_db, self.reebill_dao,
                 self.ratestructure_dao,
                 self.billUpload,
-                self.splinter, self.splinter.get_monguru()
+                self.nexus_util,
+                self.splinter
             )
         else:
             self.process = process.Process(self.config, self.state_db,
@@ -676,7 +679,7 @@ class BillToolBridge:
             )
         self.reebill_dao.save_reebill(reebill)
         journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                account, sequence)
+                account, sequence, reebill.version)
         return self.dumps({'success': True})
 
 
@@ -711,7 +714,7 @@ class BillToolBridge:
 
         self.reebill_dao.save_reebill(reebill)
         journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                account, sequence)
+                account, sequence, reebill.version)
         return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -805,18 +808,44 @@ class BillToolBridge:
                     reebill.sequence)
 
             journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-                    reebill.account, reebill.sequence)
+                    reebill.account, reebill.sequence, reebill.version)
             return self.dumps({'success': True})
 
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
     @json_exception
-    def mail(self, account, sequences, recipients, **args):
+    def mail(self, account, sequences, recipients, **kwargs):
         if not account or not sequences or not recipients:
             raise ValueError("Bad Parameter Value")
 
+        # if there are multiple corrections, cherrypy actually parses the JSON,
+        # so "corrections" is a list! but it doesn't turn the contents of the
+        # list into integers
+        if 'corrections' in kwargs:
+            if isinstance(kwargs['corrections'], basestring):
+                corrections_to_apply = [int(kwargs['corrections'])]
+            else:
+                corrections_to_apply = map(int, kwargs['corrections'])
+        else:
+            print 'no corrections in kwargs:', kwargs
+
         with DBSession(self.state_db) as session:
+            # get sequences of all unissued corrections for this account
+            unissued_corrections = [c[0] for c in
+                    self.process.get_unissued_corrections(session, account)]
+            # if there are un-issued corrections and the client has not given
+            # the "corrections" argument, return success: false and ask the
+            # client to confirm the corrections.
+            if 'corrections' not in kwargs and len(unissued_corrections) > 0:
+                return self.dumps({'success': False, 'corrections':
+                    unissued_corrections})
+            # if the client has specified corrections, make sure they're all valid
+            elif 'corrections' in kwargs:
+                for c in corrections_to_apply:
+                    if c not in unissued_corrections:
+                        raise Exception("No unissued correction for sequence %s" % c)
+
             # sequences will come in as a string if there is one element in post data. 
             # If there are more, it will come in as a list of strings
             if type(sequences) is not list:
@@ -827,6 +856,13 @@ class BillToolBridge:
             # sequences is [u'17']
             all_bills = [self.reebill_dao.load_reebill(account, sequence) for
                     sequence in sequences]
+
+            # apply corrections
+            if 'corrections_to_apply' in locals():
+                for reebill in all_bills:
+                    for correction_sequence in corrections_to_apply:
+                        self.process.apply_correction(session, account,
+                                correction_sequence, reebill.sequence)
 
             # set issue date 
             for reebill in all_bills:
@@ -1652,9 +1688,9 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def payment(self, xaction, account, **kwargs):
+        if not xaction or not account:
+            raise ValueError("Bad parameter value")
         with DBSession(self.state_db) as session:
-            if not xaction or not account:
-                raise ValueError("Bad parameter value")
             if xaction == "read":
                 payments = self.state_db.payments(session, account)
                 payments = [{
@@ -1746,6 +1782,13 @@ class BillToolBridge:
                     try: row_dict['balance_due'] = mongo_reebill.balance_due
                     except: pass
 
+                    version = self.state_db.max_version(session, account, reebill.sequence)
+                    issued = self.state_db.is_issued(session, account, reebill.sequence)
+                    if version > 0:
+                        row_dict['corrections'] = str(version) + ('' if issued else ' (not issued)')
+                    else:
+                        row_dict['corrections'] = '-' if issued else '(not issued)'
+
                     rows.append(row_dict)
                 return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
 
@@ -1760,10 +1803,27 @@ class BillToolBridge:
                 # single edit comes in not in a list
                 if type(sequences) is int: sequences = [sequences]
                 for sequence in sequences:
-                    self.process.delete_reebill(session, account, sequence)
-                    journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
+                    deleted_version = self.process.delete_reebill(session,
                             account, sequence)
+                    journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
+                            account, sequence, deleted_version)
                 return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def new_reebill_version(self, account, sequence, **args):
+        '''Creates a new version of the given reebill, if it's not issued.'''
+        sequence = int(sequence)
+        with DBSession(self.state_db) as session:
+            # Process will complain if new version is not issued
+            new_reebill = self.process.new_version(session, account, sequence)
+            journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
+                    account, sequence, new_reebill.version)
+            session.commit()
+        return self.dumps({'success': True, 'new_version':
+            new_reebill.version})
 
     ################
     # Handle addresses
