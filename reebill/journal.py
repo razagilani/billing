@@ -230,7 +230,7 @@ class ReeBillMailedEvent(SequenceEvent):
         return result
 
     def __str__(self):
-        return 'Reebill %s-%s-%s mailed' % (self.account, self.sequence, self.version)
+        return 'Reebill %s-%s mailed' % (self.account, self.sequence)
 
     def description(self):
         return 'Reebill %s-%s mailed to "%s"' % (self.account, self.sequence,
