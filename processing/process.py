@@ -305,17 +305,11 @@ class Process(object):
         # construct a new reebill from an old one.
         # if we wanted a copy, we would copy the current ReeBill
         # but we don't want a copy, we want a new instance.
-        print "C reebill period end is %s" % reebill.period_end
         new_reebill = MongoReebill(reebill)
-
-        print "A reebill period end is %s" % reebill.period_end
 
         new_period_end, utilbills = state.guess_utilbills_and_end_date(session,
                 reebill.account, reebill.period_end)
 
-        print "B reebill period end is %s" % reebill.period_end
-
-        print "******* new period, utilbills is %s " % new_period_end, utilbills
         new_reebill.period_end = new_period_end
 
         # set discount rate to the instananeous value from MySQL
@@ -357,8 +351,12 @@ class Process(object):
         reebill.version = max_version + 1
         reebill.issue_date = None
 
-        # get sequence predecessor, to compute balance forward
-        predecessor = self.reebill_dao.load_reebill(account, sequence-1)
+        # get sequence predecessor, to compute balance forward and prior
+        # balance. this is always version 0, because we want those values to be
+        # the same as they were on version 0 of this bill--we don't care about
+        # any corrections that might have been made to that bill later.
+        predecessor = self.reebill_dao.load_reebill(account, sequence-1,
+                version=0)
 
         # re-bind
         # TODO re-enable (might want to make an object that pretends to be
