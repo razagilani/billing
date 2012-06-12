@@ -768,7 +768,8 @@ class Process(object):
 
         if (self.config.getboolean('runtime', 'integrate_skyline_backend') is True):
             # fill in data for "Monthly Renewable Energy Consumption" graph
-            print 'integrate skyline backend is:', self.config.getboolean('runtime', 'integrate_skyline_backend')
+            print 'integrate skyline backend is:', self.config.getboolean('runtime',
+                    'integrate_skyline_backend')
 
             # objects for getting olap data
             olap_id = self.nexus_util.olap_id(reebill.account)
@@ -812,7 +813,8 @@ class Process(object):
                         renewable_energy_btus = self.monguru.get_data_for_month(
                                 install, year, month).energy_sold
                     except Exception as e:
-                        print >> sys.stderr, 'Missing olap document for %s, %s-%s: skipped, but the graph will be wrong'
+                        print >> sys.stderr, ('Missing olap document for %s, '
+                                '%s-%s: skipped, but the graph will be wrong')
                         renewable_energy_btus = 0
 
                 therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
@@ -835,7 +837,8 @@ class Process(object):
 
         rebill_periodbegindate = datetime.datetime.max
         for beginning in utilbill_period_beginnings:
-            candidate_date = datetime.datetime(beginning.year, beginning.month, beginning.day, 0, 0, 0)
+            candidate_date = datetime.datetime(beginning.year, beginning.month,
+                    beginning.day, 0, 0, 0)
             # find minimum date
             if (candidate_date < rebill_periodbegindate):
                 rebill_periodbegindate = candidate_date
@@ -843,7 +846,8 @@ class Process(object):
         rebill_periodenddate = datetime.datetime.min 
         for end in utilbill_period_ends:
             # find maximum date
-            candidate_date = datetime.datetime(end.year, end.month, end.day, 0, 0, 0)
+            candidate_date = datetime.datetime(end.year, end.month, end.day, 0,
+                    0, 0)
             if (candidate_date > rebill_periodenddate):
                 rebill_periodenddate = candidate_date
 

@@ -587,8 +587,6 @@ port = 27017
             self.assertEqual(date(2012,8,1), bills[i].period_end)
             self.assertEqual(UtilBill.Complete, bills[i].state)
 
-            session.commit()
-
     def test_delete_utility_bill(self):
         print 'test_delete_utility_bill'
         account, service, = '99999', 'gas'

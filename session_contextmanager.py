@@ -11,35 +11,39 @@ import threading
 import thread
 import time
 import random
-from billing.processing import state
-from billing.processing.db_objects import ReeBill, Customer
+from sys import stderr
 
 class DBSession(object):
     '''Context manager for using "with" for database session.'''
-    def __init__(self, state_db):
+    def __init__(self, state_db, logger=None):
+        '''If 'logger' is given, it will be used to record exceptions that
+        caused the context manager to exit.'''
         self.state_db = state_db
+        self.logger = logger
 
     def __enter__(self):
         # session is thread local so we don't need to store it
         session = self.state_db.session()
-        #print "DBSession __enter__ thread %s, self %s, session %s" % (thread.get_ident(), self, session)
         return session
 
-    def __exit__(self, type, value, traceback):
-        if (type, value, traceback) != (None, None, None):
-            print ('dbsession exception: type={type}, value="%{value}", '
-                    'traceback=%{traceback}').format(**vars())
-            session = self.state_db.session()
-            session.rollback()
-            # allow the exception to be raised from the consumer of the context manager
-            # return true to suppress it, false or do nothing to raise it
-            print "dbsession __exit__  thread %s, self %s, session %s" % (thread.get_ident(), self, session)
-        else:
-            # there was no error
+    def __exit__(self, exc_type, value, traceback):
+        if (exc_type, value, traceback) == (None, None, None):
+            # there was no error: auto-commit the database session.
             session = self.state_db.session()
             session.commit()
-            #print "dbsession __exit__  thread %s, self %s, session %s" % (thread.get_ident(), self, session)
+        else:
+            # an exception happened: roll back the session, print the error to
+            # stderr, and also log it if there's a logger
+            session = self.state_db.session()
+            session.rollback()
+            print >> stderr, ('DBSession exception in thread %s: '
+                    'type={exc_type}, value="%{value}", traceback=%{traceback}'
+                    ).format(thread.get_ident(), **vars())
+            if self.logger is not None:
+                # 'value' is the exception
+                self.logger.error('%s:\n%s' % (value, traceback))
 
+            # NOTE you can return True here to suppress the exception
 
 
 if __name__ == '__main__':
