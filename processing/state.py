@@ -536,9 +536,10 @@ class StateDB:
         
 
     def payments(self, session, account):
+        '''Returns list of all payments for the given account ordered by
+        date_received.'''
         payments = session.query(Payment).join(Customer)\
-            .filter(Customer.account==account).order_by(Payment.date).all()
-
+            .filter(Customer.account==account).order_by(Payment.date_received).all()
         return payments
 
     def retrieve_status_days_since(self, session, sort_col, sort_order):
