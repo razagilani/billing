@@ -8,6 +8,7 @@ from billing.processing.db_objects import Customer, UtilBill
 from billing import mongo
 from billing import dateutils
 from billing.session_contextmanager import DBSession
+from billing.test import utils
 
 billdb_config = {
     'billpath': '/db-dev/skyline/bills/',
@@ -18,7 +19,7 @@ billdb_config = {
     'port': '27017'
 }
 
-class StateTest(unittest.TestCase):
+class StateTest(utils.TestCase):
     def setUp(self):
         sqlalchemy.orm.clear_mappers()
         self.state_db = state.StateDB(**{
@@ -142,15 +143,38 @@ class StateTest(unittest.TestCase):
     def test_payment(self):
         acc = '99999'
         with DBSession(self.state_db) as session:
+            # one payment on jan 15
             self.state_db.create_payment(session, acc, date(2012,1,15),
                     'payment 1', 100)
+            self.assertEqual([], self.state_db.find_payment(session, acc,
+                    date(2011,12,1), date(2012,1,14)))
+            self.assertEqual([], self.state_db.find_payment(session, acc,
+                    date(2012,1,16), date(2012,2,1)))
+            self.assertEqual([], self.state_db.find_payment(session, acc,
+                    date(2012,2,1), date(2012,1,1)))
             payments = self.state_db.find_payment(session, acc, date(2012,1,1),
                     date(2012,2,1))
+            p = payments[0]
             self.assertEqual(1, len(payments))
             self.assertEqual((acc, date(2012,1,15), 'payment 1', 100),
-                    (payments[0].customer.account, payments[0].date_applied,
-                    payments[0].description, payments[0].credit))
-        # TODO more
+                    (p.customer.account, p.date_applied, p.description,
+                    p.credit))
+            self.assertEqual(datetime.utcnow().date(), p.date_received)
+
+            # another payment on feb 1
+            self.state_db.create_payment(session, acc, date(2012, 2, 1),
+                    'payment 2', 150)
+            self.assertEqual([p], self.state_db.find_payment(session, acc,
+                    date(2012,1,1), date(2012,1,31)))
+            self.assertEqual([], self.state_db.find_payment(session, acc,
+                    date(2012,2,2), date(2012,3,1)))
+            payments = self.state_db.find_payment(session, acc, date(2012,1,16),
+                    date(2012,3,1))
+            self.assertEqual(1, len(payments))
+            p = payments[0]
+            self.assertEqual((acc, date(2012,2,1), 'payment 2', 150),
+                    (p.customer.account, p.date_applied, p.description,
+                    p.credit))
 
 if __name__ == '__main__':
     unittest.main()
