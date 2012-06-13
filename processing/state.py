@@ -4,7 +4,7 @@ Utility functions to interact with state database
 """
 import os, sys
 import datetime
-from datetime import timedelta
+from datetime import timedelta, datetime
 import sqlalchemy
 from sqlalchemy import Table, Integer, String, Float, MetaData, ForeignKey
 from sqlalchemy import create_engine
@@ -491,45 +491,46 @@ class StateDB:
                     and hb.period_start >= last_real_utilbill.period_start):
                 session.delete(hb)
 
-    def create_payment(self, session, account, date, description, credit):
-        customer = session.query(Customer).filter(Customer.account==account).one()
-        new_payment = Payment(customer, date, description, credit)
-
+    def create_payment(self, session, account, date_applied, description,
+            credit):
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        new_payment = Payment(customer, datetime.utcnow(), date_applied,
+                description, credit)
         session.add(new_payment)
-
         return new_payment
 
-    def update_payment(self, session, oid, date, description, credit):
-        # get the object
+    def update_payment(self, session, oid, date_applied, description, credit):
+        '''Sets the date_applied, description, and credit of the payment with
+        id 'oid'.'''
         payment = session.query(Payment).filter(Payment.id == oid).one()
-
-        # update the object
-        # TODO: is there a better way to update an object from a dict from the post?
-        # TODO: this type parsing should definitely be done in Payment
-        from datetime import datetime
-        from decimal import Decimal
-        # TODO: EXT posts in this format - figure out how to control dates better
-        payment.date = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S").date()
+        if isinstance(date_applied, basestring):
+            payment.date_applied = datetime.strptime(date_applied,
+                    "%Y-%m-%dT%H:%M:%S").date()
+        else:
+            payment.date_applied = date_applied
         payment.description = description
         payment.credit = Decimal(credit)
 
     def delete_payment(self, session, oid):
-        # get the object
+        '''Deletes the payment with id 'oid'.'''
         payment = session.query(Payment).filter(Payment.id == oid).one()
-
         session.delete(payment)
 
     def find_payment(self, session, account, periodbegin, periodend):
-        '''periodbegin and periodend must be non-overlapping between bills.
-        This is in direct opposition to the reebill period concept, which is a
-        period that covers all services for a given reebill and thus overlap
-        between bills.  Therefore, a non overlapping period could be just the
-        first utility service on the reebill. If the periods overlap, payments
-        will be applied more than once. See 11093293'''
-        payments = session.query(Payment).filter(Payment.customer_id == Customer.id) \
+        '''Returns a list of payment objects whose date_applied is in
+        [periodbegin, period_end).'''
+        # periodbegin and periodend must be non-overlapping between bills. This
+        # is in direct opposition to the reebill period concept, which is a
+        # period that covers all services for a given reebill and thus overlap
+        # between bills.  Therefore, a non overlapping period could be just the
+        # first utility service on the reebill. If the periods overlap,
+        # payments will be applied more than once. See 11093293
+        payments = session.query(Payment)\
+            .filter(Payment.customer_id == Customer.id) \
             .filter(Customer.account == account) \
-            .filter(and_(Payment.date >= periodbegin, Payment.date < periodend)) \
-            .all()
+            .filter(and_(Payment.date_applied >= periodbegin,
+                    Payment.date_applied < periodend)).all()
         return payments
         
 

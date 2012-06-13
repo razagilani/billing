@@ -60,15 +60,18 @@ class UtilBill(object):
                 % (self.customer, self.period_start, self.period_end)
 
 class Payment(object):
-    def __init__(self, customer, date, description, credit):
+    def __init__(self, customer, date_received, date_applied, description,
+            credit):
         self.customer = customer
-        self.date = date
+        self.date_received = date_received
+        self.date_applied = date_applied
         self.description = description
         self.credit = credit
+
     def __repr__(self):
-        return '<Payment(%s, %s, %s, %s)>' \
-                % (self.customer, self.date, \
-                        self.description, self.credit)
+        return '<Payment(%s, %s, %s, %s, %s)>' \
+                % (self.customer, self.date_received, \
+                        self.date_applied, self.description, self.credit)
 
 class StatusUnbilled(object):
     def __init__(self, account):

@@ -139,5 +139,18 @@ class StateTest(unittest.TestCase):
                     (bills[2].period_start, bills[2].period_end))
         
 
+    def test_payment(self):
+        acc = '99999'
+        with DBSession(self.state_db) as session:
+            self.state_db.create_payment(session, acc, date(2012,1,15),
+                    'payment 1', 100)
+            payments = self.state_db.find_payment(session, acc, date(2012,1,1),
+                    date(2012,2,1))
+            self.assertEqual(1, len(payments))
+            self.assertEqual((acc, date(2012,1,15), 'payment 1', 100),
+                    (payments[0].customer.account, payments[0].date_applied,
+                    payments[0].description, payments[0].credit))
+        # TODO more
+
 if __name__ == '__main__':
     unittest.main()
