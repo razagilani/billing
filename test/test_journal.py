@@ -143,6 +143,42 @@ class JournalTest(unittest.TestCase):
             'date': datetime.utcnow(),
             }, entry.to_dict())
 
+    def test_reebill_issued(self):
+        # normal reebill
+        journal.ReeBillIssuedEvent.save_instance(self.user, '99999', 1, 0)
+        entries = journal.Event.objects
+        self.assertEquals(1, len(entries))
+        entry = entries[0]
+        self.assertTrue(isinstance(entry, journal.ReeBillIssuedEvent))
+        self.assertDatetimesClose(datetime.utcnow(), entry.date)
+        self.assertEquals(self.user.identifier, entry.user)
+        self.assertEquals('99999', entry.account)
+        self.assertEquals(1, entry.sequence)
+        self.assertEquals(0, entry.version)
+        self.assertDictMatch({
+            'user': 'dan',
+            'account': '99999',
+            'sequence': 1,
+            'version': 0,
+            'date': datetime.utcnow(),
+            }, entry.to_dict())
+
+        # correction 2 on sequence 3 issued with sequence 5
+        journal.ReeBillIssuedEvent.save_instance(self.user, '99999', 3, 2,
+                applied_sequence=5)
+        entries = journal.Event.objects
+        self.assertEquals(2, len(entries))
+        entry = entries[1]
+        self.assertEquals(5, entry.applied_sequence)
+        self.assertDictMatch({
+            'user': 'dan',
+            'account': '99999',
+            'sequence': 3,
+            'version': 2,
+            'applied_sequence': 5,
+            'date': datetime.utcnow(),
+            }, entry.to_dict())
+
     def test_simple_sequence_events(self):
         '''Tests all the subclasses of SequenceEvent that don't have extra data
         besides user, account, and sequence.'''

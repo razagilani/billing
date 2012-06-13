@@ -294,6 +294,45 @@ class ReeBillAttachedEvent(VersionEvent):
     def name(self):
         return 'Reebill attached' 
 
+class ReeBillIssuedEvent(VersionEvent):
+    '''Issuing of an actual version-0 reebill or a correction applied to later
+    bill. For a correction, 'applied_sequence' (the sequence to which the
+    adjustment was applied) should be given.'''
+    meta = {'db_alias': 'journal'}
+    applied_sequence = mongoengine.IntField(required=False)
+
+    @classmethod
+    def save_instance(cls, user, account, sequence, version,
+            applied_sequence=None):
+        if applied_sequence is None:
+            # normal reebill
+            assert version == 0
+            ReeBillIssuedEvent(user=user.identifier, account=account,
+                    sequence=sequence, version=version).save()
+        else:
+            # correction
+            ReeBillIssuedEvent(user=user.identifier, account=account,
+                    sequence=sequence, version=version,
+                    applied_sequence=applied_sequence).save()
+
+    def to_dict(self):
+        result = super(ReeBillIssuedEvent, self).to_dict()
+        if self.applied_sequence is not None:
+            result.update({'applied_sequence': self.applied_sequence})
+        return result
+
+    def __str__(self):
+        if self.applied_sequence is not None:
+            return 'Correction %s-%s-%s issued with sequence %s' % (
+                    self.account, self.sequence, self.version,
+                    self.applied_sequence)
+        else:
+            return 'Reebill %s-%s-%s issued' % (self.account, self.sequence,
+                    self.version)
+
+    def name(self):
+        return 'Reebill issued' 
+
 class NewReebillVersionEvent(VersionEvent):
     meta = {'db_alias': 'journal'}
     
