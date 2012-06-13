@@ -820,19 +820,14 @@ class BillToolBridge:
         marked as issued.'''
         for correction_sequence in corrections:
             # validate correction sequence
-            if correction_sequence not in self.process\
-                    .get_unissued_corrections(session, account):
+            unissued_corrections = self.process\
+                    .get_unissued_correction_sequences(session, account)
+            if correction_sequence not in unissued_corrections:
                 raise Exception("No unissued correction for sequence %s" %
                         correction_sequence)
             # apply correction to later bill, mark it as issued
             self.process.apply_correction(session, account,
-                    correction_sequence, all_bills[0].sequence)
-            # journal issuing of correction
-            journal.ReeBillIssuedEvent.save_instance(
-                    cherrypy.session['user'], account,
-                    correction_sequence,
-                    self.state_db.max_version(correction_sequence),
-                    applied_sequence=all_bills[0].sequence)
+                    correction_sequence, sequence)
 
         # issue
         self.process.issue(session, account, sequence)
@@ -844,31 +839,76 @@ class BillToolBridge:
     def mail(self, account, sequences, recipients, **kwargs):
         if not account or not sequences or not recipients:
             raise ValueError("Bad Parameter Value")
+        # sequences will come in as a string if there is one element in post data. 
+        # If there are more, it will come in as a list of strings
+        if type(sequences) is list:
+            sequences = map(int, sequnces)
+        else:
+            sequences = [int(sequences)]
 
         # if there are multiple corrections, cherrypy actually parses the JSON,
         # so "corrections" is a list! but it doesn't turn the contents of the
         # list into integers
         if 'corrections' in kwargs:
             if isinstance(kwargs['corrections'], basestring):
-                #corrections_to_apply = [int(kwargs['corrections'])]
-                corrections_to_apply = kwargs['corrections'].split(',')
+                corrections_to_apply = map(int, kwargs['corrections'].split(','))
             else:
                 corrections_to_apply = map(int, kwargs['corrections'])
 
+        # 1st transaction: issue
         with DBSession(self.state_db) as session:
-            # sequences will come in as a string if there is one element in post data. 
-            # If there are more, it will come in as a list of strings
-            if type(sequences) is not list:
-                sequences = [sequences]
-            # acquire the most recent reebill from the sequence list and use
-            # its values for the merge
-            sequences = [sequence for sequence in sequences]
-            # sequences is [u'17']
-            all_bills = [self.reebill_dao.load_reebill(account, sequence) for
-                    sequence in sequences]
+            # get unissued subset of 'sequences'
+            unissued_sequences = sorted([s for s in sequences if not
+                    self.state_db.is_issued(session, account, s)])
 
-            #  TODO: 21305875  Do this until reebill is being passed around
-            #  problem is all_bills is not reloaded after .issue
+            # if this account has unissued corrections and there is at least
+            # one unissued bill (about to be issued) and the client didn't
+            # specify corrections to apply, complain (client will show
+            # confirmation message)
+            unissued_corrections = self.process.get_unissued_correction_sequences(
+                    session, account)
+            if len(unissued_corrections) > 0 and len(unissued_sequences) > 0 \
+                    and 'corrections' not in kwargs:
+                return self.dumps({'success': False,
+                        'corrections': unissued_corrections})
+
+            # attach utility bills to all unissued bills
+            for unissued_sequence in unissued_sequences:
+                self.attach_utilbills(session, account, unissued_sequence)
+
+            if 'corrections_to_apply' in locals():
+                # apply all corrections to earliest un-issued bill, then issue
+                # that and all other un-issued bills
+                self.issue(session, account, unissued_sequences[0],
+                        corrections=corrections_to_apply)
+                for unissued_sequence in unissued_sequences[1:]:
+                    self.issue(session, account, unissued_sequence)
+            else:
+                # no corrections: just issue all un-issued bills
+                for unissued_sequence in unissued_sequences:
+                    self.issue(session, account, unissued_sequence)
+
+            # journal attaching of utility bills
+            for unissued_sequence in unissued_sequences:
+                journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
+                        account, unissued_sequence, self.state_db.max_version(session,
+                        account, unissued_sequence))
+            # journal issuing of corrections (applied to the earliest unissued
+            # bill), if any
+            if 'corrections_to_apply' in locals():
+                for correction_sequence in corrections_to_apply:
+                    journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
+                            account, unissued_sequences[0],
+                            self.state_db.max_version(session, account,
+                            correction_sequence), applied_sequence=unissued_sequences[0])
+            # journal issuing of all unissued bills
+            for unissued_sequence in unissued_sequences:
+                journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
+                        account, unissued_sequence, 0)
+
+
+        # 2nd transaction: mail
+        with DBSession(self.state_db) as session:
             all_bills = [self.reebill_dao.load_reebill(account, sequence) for
                     sequence in sequences]
 
@@ -883,39 +923,7 @@ class BillToolBridge:
                     True
                 )
 
-
-            # get sequences of the unissued subset of the bills about to be
-            # mailed (if any)
-            unissued_sequences = sorted([b.sequence for b in all_bills if not
-                    self.state_db.is_issued(session, account, b.sequence)])
-
-            # if there are unissued corrections and there is at least one
-            # unissued bill (about to be issued) and the client didn't specify
-            # corrections to apply, complain (client will show confirmation
-            # message)
-            unissued_corrections = self.process.get_unissued_corrections(
-                    session, account)
-            if len(unissued_corrections) > 0 and len(unissued_sequences) > 0 \
-                    and 'corrections' not in kwargs:
-                return self.dumps({'success': False,
-                        'corrections': unissued_corrections})
-
-            # attach utility bills to all unissued bills
-            for unissued_sequence in unissued_sequences:
-                self.attach_utilbills(session, account, unissued_sequence)
-
-            # issue un-issued bills and apply all corrections to earliest
-            # un-issued bill
-            if 'corrections_to_apply' in locals():
-                self.issue(session, account, unissued_sequences[0],
-                        corrections=corrections_to_apply)
-                for unissued_sequence in unissued_sequences[1:]:
-                    self.issue(session, account, unissued_sequence)
-            else:
-                for unissued_sequence in unissued_sequences:
-                    self.issue(session, account, unissued_sequence)
-
-            # the last element
+            # "the last element" (???)
             most_recent_bill = all_bills[-1]
             bill_file_names = ["%.4d.pdf" % int(sequence) for sequence in sequences]
             bill_dates = ["%s" % (b.period_end) for b in all_bills]
@@ -928,17 +936,6 @@ class BillToolBridge:
             bill_mailer.mail(recipients, merge_fields,
                     os.path.join(self.config.get("billdb", "billpath"),
                         account), bill_file_names);
-
-            # journal issuing of corrections and all unissued bills
-            if 'corrections_to_apply' in locals():
-                for correction_sequence in corrections_to_apply:
-                    max_version = self.state_db.max_version(session, account,
-                            correction_sequence)
-                    journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
-                            account, unissued_sequences[0], max_version)
-            for unissued_sequence in unissued_sequences:
-                journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
-                        account, unissued_sequence, 0)
 
             # journal mailing of every bill
             for reebill in all_bills:
