@@ -60,6 +60,12 @@ class UtilBill(object):
                 % (self.customer, self.period_start, self.period_end)
 
 class Payment(object):
+    '''date_received is the date when Skyline recorded the payment.
+    date_applied is the date that the payment is "for", from the customer's
+    perspective. Normally these are the same, but an error in an old payment
+    can be corrected by entering a new payment with the same date_applied as
+    the old one, whose credit is the true amount minus the previously-entered
+    amount.'''
     def __init__(self, customer, date_received, date_applied, description,
             credit):
         self.customer = customer
@@ -67,6 +73,14 @@ class Payment(object):
         self.date_applied = date_applied
         self.description = description
         self.credit = credit
+
+    def to_dict(self):
+        return {
+            'id': self.id, 
+            'date': str(self.date),
+            'description': self.description,
+            'credit': str(self.credit),
+        }
 
     def __repr__(self):
         return '<Payment(%s, %s, %s, %s, %s)>' \

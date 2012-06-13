@@ -1657,13 +1657,8 @@ class BillToolBridge:
                 raise ValueError("Bad parameter value")
             if xaction == "read":
                 payments = self.state_db.payments(session, account)
-                payments = [{
-                    'id': payment.id, 
-                    'date': str(payment.date),
-                    'description': payment.description, 
-                    'credit': str(payment.credit),
-                } for payment in payments]
-                return self.dumps({'success': True, 'rows':payments})
+                return self.dumps({'success': True,
+                    'rows': [payment.to_dict() for payment in payments]})
             elif xaction == "update":
                 rows = json.loads(kwargs["rows"])
                 # single edit comes in not in a list
@@ -1679,21 +1674,10 @@ class BillToolBridge:
                     )
                 return self.dumps({'success':True})
             elif xaction == "create":
+                # date applied is today by default (can be edited later)
                 new_payment = self.state_db.create_payment(session, account,
-                        date.today(), "New Entry", "0.00")
-                # This session must be committed here, because the ORM
-                # will not populate the id without a commit.
-                # TODO: 25643535 - this commit is dangerously early 
-                session.commit()
-                # TODO: is there a better way to populate a dictionary from an
-                # ORM object dict?
-                row = [{
-                    'id': new_payment.id, 
-                    'date': str(new_payment.date),
-                    'description': new_payment.description,
-                    'credit': str(new_payment.credit),
-                    }]
-                return self.dumps({'success':True, 'rows':row})
+                        datetime.utcnow.date(), "New Entry", "0.00")
+                return self.dumps({'success':True, 'rows':[new_payment.to_dict()]})
             elif xaction == "destroy":
                 rows = json.loads(kwargs["rows"])
                 # single delete comes in not in a list
