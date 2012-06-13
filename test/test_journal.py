@@ -4,26 +4,11 @@ import mongoengine
 from datetime import date, datetime, timedelta
 from billing.reebill import journal
 from billing.dateutils import ISO_8601_DATE
+from billing.test import utils
 
-class JournalTest(unittest.TestCase):
+class JournalTest(utils.TestCase):
 
     # TODO test __str__ methods and descriptions of all event types
-
-    def assertDatetimesClose(self, d1, d2):
-        '''Asserts that datetimes d1 and d2 differ by less than 2 seconds.'''
-        self.assertLess(abs(d1 - d2), timedelta(seconds=10))
-
-    def assertDictMatch(self, d1, d2):
-        '''Asserts that the two dictionaries are the same, up to str/unicode
-        difference in strings and datetimes may only be close.'''
-        self.assertEqual(sorted(d1.keys()), sorted(d2.keys()))
-        for k, v in d1.iteritems():
-            self.assertTrue(k in d2)
-            v2 = d2[k]
-            if type(v) is datetime and type(v2) is datetime:
-                self.assertDatetimesClose(v, v2)
-            else:
-                self.assertEquals(v, v2)
 
     def setUp(self):
         self.database = 'test'
@@ -37,8 +22,7 @@ class JournalTest(unittest.TestCase):
         setattr(user, 'identifier', 'dan')
         self.user = user
 
-        self.dao = journal.JournalDAO(host='localhost', port=27017,
-                database=self.database, collection='journal')
+        self.dao = journal.JournalDAO()
 
     def tearDown(self):
         # clear out database

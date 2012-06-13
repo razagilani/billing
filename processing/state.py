@@ -530,7 +530,7 @@ class StateDB:
             .filter(Payment.customer_id == Customer.id) \
             .filter(Customer.account == account) \
             .filter(and_(Payment.date_applied >= periodbegin,
-                    Payment.date_applied < periodend)).all()
+            Payment.date_applied < periodend)).all()
         return payments
         
 
