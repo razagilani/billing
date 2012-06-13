@@ -1668,7 +1668,7 @@ class BillToolBridge:
                     self.state_db.update_payment(
                         session,
                         row['id'],
-                        row['date'],
+                        row['date_applied'],
                         row['description'],
                         row['credit'],
                     )
@@ -1676,7 +1676,7 @@ class BillToolBridge:
             elif xaction == "create":
                 # date applied is today by default (can be edited later)
                 new_payment = self.state_db.create_payment(session, account,
-                        datetime.utcnow.date(), "New Entry", "0.00")
+                        datetime.utcnow().date(), "New Entry", "0.00")
                 return self.dumps({'success':True, 'rows':[new_payment.to_dict()]})
             elif xaction == "destroy":
                 rows = json.loads(kwargs["rows"])

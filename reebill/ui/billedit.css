@@ -119,6 +119,14 @@ pre.code{
     color: black;
 }
 
+/* styles for coloring payment grid rows */
+.payment-grid-frozen {
+    color: gray;
+}
+.payment-grid-editable {
+    color: black;
+}
+
 /* styles for estimated revenue grid rows */
 .revenue-grid-error {
     color: red;
