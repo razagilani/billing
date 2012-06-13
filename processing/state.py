@@ -494,6 +494,7 @@ class StateDB:
 
     def create_payment(self, session, account, date_applied, description,
             credit):
+        '''Adds a new payment, returns the new Payment object.'''
         customer = session.query(Customer)\
                 .filter(Customer.account==account).one()
         new_payment = Payment(customer, datetime.utcnow(), date_applied,
