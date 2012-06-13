@@ -159,7 +159,9 @@ class StateTest(utils.TestCase):
             self.assertEqual((acc, date(2012,1,15), 'payment 1', 100),
                     (p.customer.account, p.date_applied, p.description,
                     p.credit))
-            self.assertEqual(datetime.utcnow().date(), p.date_received)
+            self.assertDatetimesClose(datetime.utcnow(), p.date_received)
+            # should be editable since it was created today
+            #self.assertEqual(True, p.to_dict()['editable'])
 
             # another payment on feb 1
             self.state_db.create_payment(session, acc, date(2012, 2, 1),
