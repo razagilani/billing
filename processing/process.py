@@ -360,7 +360,7 @@ class Process(object):
         # get sum of all payments since the last bill was issued
         customer = session.query(Customer).filter(Customer.account==account).one()
         payments = session.query(Payment).filter(Payment.customer==customer)\
-                .filter(Payment.date >= reebill.issue_date)
+                .filter(Payment.date_applied >= reebill.issue_date)
         payment_total = sum(payment.credit for payment in payments.all())
 
         # result cannot be negative
@@ -807,7 +807,7 @@ class Process(object):
 
                 # normally, only one payment.  Multiple payments their own new rows...
                 if applicable_payments:
-                    row['payment_date'] = applicable_payments[0].date
+                    row['payment_date'] = applicable_payments[0].date_applied
                     row['payment_amount'] = applicable_payments[0].credit
                     rows.append(row)
                     totalCount += 1
@@ -833,7 +833,7 @@ class Process(object):
                         row['payment_applied'] = None
                         row['ree_charges'] = None
                         row['balance_due'] = None
-                        row['payment_date'] = applicable_payment.date
+                        row['payment_date'] = applicable_payment.date_appied
                         row['payment_amount'] = applicable_payment.credit
                         rows.append(row)
                         totalCount += 1
