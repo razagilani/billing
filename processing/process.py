@@ -93,31 +93,6 @@ class Process(object):
             self.state_db.fill_in_hypothetical_utilbills(session, account,
                     service, original_last_end, begin_date)
 
-    #def delete_utility_bill(self, session, account, service, start_date, end_date):
-        #'''Deletes the utility bill given by customer account, service, and
-        #period dates, if it's not associated or attached to a reebill. Raises
-        #an exception if the utility bill cannot be deleted.'''
-        #utilbill = session.query(UtilBill)\
-                #.filter(UtilBill.period_start==start_date and
-                #UtilBill.period_end==end_date).one()
-        #if utilbill.has_reebill:
-            #raise Exception("Can't delete an attached utility bill.")
-
-        ## find out if some reebill in mongo has this utilbill associated with
-        ## it. (there should be at most one.)
-        #possible_reebills = self.reebill_dao.load_reebills_in_period(account,
-                #start_date=start_date, end_date=end_date)
-        #if len(possible_reebills) > 0:
-            #raise Exception(("Can't delete a utility bill that has reebill"
-                #" associated with it."))
-
-        ## OK to delete now.
-        ## first try to delete the file on disk
-        #self.billupload.delete_utilbill_file(account, start_date, end_date)
-
-        ## TODO move to StateDB?
-        #session.delete(utilbill)
-
     def delete_utility_bill(self, session, utilbill_id):
         '''Deletes the utility bill given by utilbill_id (if it's not
         associated or attached to a reebill) and returns the path where the
