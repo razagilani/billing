@@ -5,6 +5,7 @@ Utility functions to interact with state database
 import os, sys
 import datetime
 from datetime import timedelta, datetime
+from decimal import Decimal
 import sqlalchemy
 from sqlalchemy import Table, Integer, String, Float, MetaData, ForeignKey
 from sqlalchemy import create_engine
@@ -510,7 +511,7 @@ class StateDB:
         else:
             payment.date_applied = date_applied
         payment.description = description
-        payment.credit = Decimal(credit)
+        payment.credit = credit
 
     def delete_payment(self, session, oid):
         '''Deletes the payment with id 'oid'.'''

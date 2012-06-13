@@ -171,10 +171,26 @@ class StateTest(utils.TestCase):
             payments = self.state_db.find_payment(session, acc, date(2012,1,16),
                     date(2012,3,1))
             self.assertEqual(1, len(payments))
-            p = payments[0]
+            q = payments[0]
             self.assertEqual((acc, date(2012,2,1), 'payment 2', 150),
-                    (p.customer.account, p.date_applied, p.description,
-                    p.credit))
+                    (q.customer.account, q.date_applied, q.description,
+                    q.credit))
+
+            # update feb 1: move it to mar 1
+            self.state_db.update_payment(session, q.id, date(2012,3,1),
+                        'new description', 200)
+            payments = self.state_db.find_payment(session, acc, date(2012,1,16),
+                    date(2012,3,2))
+            self.assertEqual(1, len(payments))
+            q = payments[0]
+            self.assertEqual((acc, date(2012,3,1), 'new description', 200),
+                    (q.customer.account, q.date_applied, q.description,
+                    q.credit))
+
+            # delete jan 15
+            self.state_db.delete_payment(session, p.id)
+            self.assertEqual([q], self.state_db.find_payment(session, acc,
+                    date(2012,1,1), date(2012,4,1)))
 
 if __name__ == '__main__':
     unittest.main()
