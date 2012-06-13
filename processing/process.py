@@ -393,6 +393,9 @@ class Process(object):
             result.append((seq, max_version, adjustment))
         return result
 
+    def get_unissued_correction_sequences(self, session, account):
+        return [c[0] for c in self.get_unissued_corrections(session, account)]
+
     def apply_correction(self, session, account, correction_sequence,
             target_sequence):
         '''Applies adjustments from the unissued correction given by
@@ -491,7 +494,7 @@ class Process(object):
         # get sum of all payments since the last bill was issued
         customer = session.query(Customer).filter(Customer.account==account).one()
         payments = session.query(Payment).filter(Payment.customer==customer)\
-                .filter(Payment.date >= reebill.issue_date)
+                .filter(Payment.date_applied >= reebill.issue_date)
         payment_total = sum(payment.credit for payment in payments.all())
 
         # result cannot be negative
