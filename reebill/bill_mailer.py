@@ -81,11 +81,6 @@ def mail(recipients, merge_fields, bill_path, bill_files):
     container['From'] = from_user
     container['To'] = recipients
 
-    if "bcc_list" in config:
-        bcc_addrs = config["bcc_list"]
-        if len(bcc_addrs):
-            bcc_list = [bcc_addr.lstrip(" ") for bcc_addr in bcc_addrs.split(",")]
-            container['Bcc'] = ', '.join(bcc_list)
 
 
     (text, html) = bind_template(merge_fields)
@@ -135,12 +130,22 @@ def mail(recipients, merge_fields, bill_path, bill_files):
     # grr... outlook seems to display the plain message first. wtf.
     container.attach(part2)
 
+
     server = smtplib.SMTP(config["smtp_host"], int(config["smtp_port"]))
     server.ehlo()
     server.starttls()
     server.ehlo()
     server.login(originator, password)
-    server.sendmail(originator, recipients, container.as_string())
+    server.sendmail(originator, container['To'], container.as_string())
+
+    if "bcc_list" in config:
+        bcc_addrs = config["bcc_list"]
+        if len(bcc_addrs):
+            bcc_list = [bcc_addr.lstrip(" ") for bcc_addr in bcc_addrs.split(",")]
+            container['Bcc'] = ', '.join(bcc_list)
+
+    server.sendmail(originator, container['Bcc'], container.as_string())
+
     server.close()
 
 def parse_args(): 
