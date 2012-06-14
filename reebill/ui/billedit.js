@@ -842,12 +842,15 @@ function reeBillReady() {
         selModel: new Ext.grid.RowSelectionModel({
             singleSelect: true,
             listeners: {
+                /* rowdeselect is always called before rowselect when the selection changes. */
+                rowdeselect: function(selModel, index, record) {
+                     loadReeBillUIForSequence(selected_account, null);
+                     console.log('deselect');
+                },
                 rowselect: function (selModel, index, record) {
                     // TODO: have other widgets pull when this selection is made
                     loadReeBillUIForSequence(selected_account, record.data.sequence);
-                },
-                rowdeselect: function(selModel, index, record) {
-                     loadReeBillUIForSequence(null);
+                    console.log('select: ' + selected_account + ', ' + record.data.sequence);
                 },
             }
         }),
@@ -5578,6 +5581,11 @@ function reeBillReady() {
         /* null argument means no sequence is selected */
         deleteButton.setDisabled(sequence == null);
         versionButton.setDisabled(sequence == null)
+
+        /* the rest of this applies only for a valid sequence */
+        if (sequence == null) {
+            return;
+        }
 
         selected_account = account;
         selected_sequence = sequence;
