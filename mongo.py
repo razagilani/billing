@@ -1212,12 +1212,22 @@ class ReebillDAO:
         those dates and all bills whose period includes either endpoint). The
         results are ordered by sequence. If 'start_date' and 'end_date' are not
         given or are None, the time period extends to the begining or end of
-        time, respectively. Sequence 0 is never included.'''
+        time, respectively. Sequence 0 is never included.
+        
+        'version' may be a specific version number, or 'any' to get all
+        versions.'''
         query = {
             '_id.account': str(account),
             '_id.sequence': {'$gt': 0},
-            '_id.version': version,
         }
+        if isinstance(version, int):
+            query.update({'_id.version': version})
+        elif version == 'any':
+            pass
+        else:
+            raise ValueError('Unknown version specifier "%s"' % version)
+        # TODO max version
+
         # add dates to query if present (converting dates into datetimes
         # because mongo only allows datetimes)
         if start_date is not None:

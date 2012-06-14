@@ -104,11 +104,11 @@ class Process(object):
         if utilbill.has_reebill:
             raise ValueError("Can't delete an attached utility bill.")
 
-        # find out if some reebill in mongo has this utilbill associated with
-        # it. (there should be at most one.)
+        # find out if any version of any reebill in mongo has this utilbill
+        # associated with it. if so, it can't be deleted.
         possible_reebills = self.reebill_dao.load_reebills_in_period(
                 utilbill.customer.account, start_date=utilbill.period_start,
-                end_date=utilbill.period_end)
+                end_date=utilbill.period_end, version='any')
         if len(possible_reebills) > 0:
             raise ValueError(("Can't delete a utility bill that has reebill"
                 " associated with it."))

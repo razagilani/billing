@@ -647,6 +647,20 @@ port = 27017
             self.assertRaises(ValueError, self.process.delete_utility_bill,
                     session, utilbill_id)
 
+            # deletion should fail if any version of a reebill has an
+            # association with the utility bill. create a new version of the
+            # reebill that does not have this utilbill.
+            self.reebill_dao.save_reebill(example_data.get_reebill(account, 0))
+            self.process.issue(session, account, 1)
+            self.process.new_version(session, account, 1)
+            mongo_reebill.version = 1
+            mongo_reebill.set_utilbill_period_for_service(service, (start -
+                    timedelta(days=365), end - timedelta(days=365)))
+            mongo_reebill.period_begin = start - timedelta(days=365)
+            mongo_reebill.period_end = end - timedelta(days=365)
+            self.reebill_dao.save_reebill(mongo_reebill)
+            self.assertRaises(ValueError, self.process.delete_utility_bill,
+                    session, utilbill_id)
             session.commit()
 
     def test_new_version(self):
@@ -785,5 +799,5 @@ port = 27017
             session.commit()
 
 if __name__ == '__main__':
-    #unittest.main(failfast=True)
-    unittest.main()
+    unittest.main(failfast=True)
+    #unittest.main()
