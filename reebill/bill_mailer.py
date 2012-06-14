@@ -136,7 +136,7 @@ def mail(recipients, merge_fields, bill_path, bill_files):
     server.starttls()
     server.ehlo()
     server.login(originator, password)
-    server.sendmail(originator, container['To'], container.as_string())
+    server.sendmail(originator, container['To'].split(','), container.as_string())
 
     if "bcc_list" in config:
         bcc_addrs = config["bcc_list"]
@@ -144,7 +144,7 @@ def mail(recipients, merge_fields, bill_path, bill_files):
             bcc_list = [bcc_addr.lstrip(" ") for bcc_addr in bcc_addrs.split(",")]
             container['Bcc'] = ', '.join(bcc_list)
 
-            server.sendmail(originator, container['Bcc'], container.as_string())
+            server.sendmail(originator, container['Bcc'].split(','), container.as_string())
 
     server.close()
 
