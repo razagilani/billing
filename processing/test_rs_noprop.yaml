@@ -1,0 +1,18 @@
+name: NONRES-MGT-L-V-IIB-Winter
+service: Electric
+effective: 2010-09-01
+expires: 2010-10-15
+registers: 
+    - descriptor: REG_TOTAL
+      description: Total kWh register
+      quantity: 500
+      quantityunits: kWh
+rates:
+    - descriptor: NODE_A
+      description: Node A
+      quantity: REG_TOTAL.quantity
+      rate: NODE_B.rate
+      total:
+    - descriptor: NODE_B
+      description: Node B
+      quantity: 1
