@@ -3666,7 +3666,8 @@ function reeBillReady() {
         fields: [
             // map Record's field to json object's key of same name
             {name: 'id', mapping: 'id'},
-            {name: 'date', mapping: 'date'},
+            {name: 'date_applied', mapping: 'date_applied'},
+            {name: 'date_received', mapping: 'date_received'},
             {name: 'description', mapping: 'description'},
             {name: 'credit', mapping: 'credit'},
         ]
@@ -3697,13 +3698,15 @@ function reeBillReady() {
         root: 'rows',
         idProperty: 'id',
         fields: [
-            {
-                name: 'date',
-                type: 'date',
-                dateFormat: 'Y-m-d'
-            },
+            //{name: 'date_received', type: 'datetime',
+                //dateFormat: Date.patterns['ISO8601Long']},
+            {name: 'date_received', type: 'date',
+                // server formats datetimes like "2011-09-12T00:00:00" and this matches the "c" format, but ext-js doesn't accept it this way
+                dateFormat: "c"},
+            {name: 'date_applied', type: 'date', dateFormat: 'Y-m-d'},
             {name: 'description'},
             {name: 'credit'},
+            {name: 'editable'} // not visible in grid
         ],
     });
 
@@ -3730,27 +3733,44 @@ function reeBillReady() {
         paymentStore.setBaseParam("account", selected_account);
     });
 
-    var paymentColModel = new Ext.grid.ColumnModel(
-    {
+    function paymentColRenderer(value, metaData, record, rowIndex, colIndex,
+            store) {
+        if (record.data.editable) {
+            metaData.css = 'payment-grid-editable';
+        } else {
+            metaData.css = 'payment-grid-frozen';
+        }
+        return value;
+    }
+    var paymentColModel = new Ext.grid.ColumnModel({
         columns: [
-            {
-                header: 'Date',
+            new Ext.grid.DateColumn({
+                header: 'Date Received',
                 sortable: true,
-                dataIndex: 'date',
-                renderer: function(date) { if (date) return date.format("Y-m-d"); },
+                dataIndex: 'date_received',
+                format: Date.patterns['ISO8601Long'],
+                renderer: paymentColRenderer,
+            }),
+            new Ext.grid.DateColumn({
+                header: 'Date Applied',
+                sortable: true,
+                dataIndex: 'date_applied',
                 editor: new Ext.form.DateField({
                     allowBlank: false,
                     format: 'Y-m-d',
                }),
-            },{
+            }),
+            {
                 header: 'Description',
                 sortable: true,
                 dataIndex: 'description',
+                renderer: paymentColRenderer,
                 editor: new Ext.form.TextField({allowBlank: true})
             },{
                 header: 'Credit',
                 sortable: true,
                 dataIndex: 'credit',
+                renderer: paymentColRenderer,
                 editor: new Ext.form.TextField({allowBlank: true})
             },
         ]
@@ -3764,8 +3784,7 @@ function reeBillReady() {
                 iconCls: 'icon-add',
                 text: 'Insert',
                 disabled: false,
-                handler: function()
-                {
+                handler: function() {
                     paymentGrid.stopEditing();
 
                     // grab the current selection - only one row may be selected per singlselect configuration
@@ -3783,7 +3802,6 @@ function reeBillReady() {
                     //paymentStore.insert(insertionPoint + 1, r);
                     paymentStore.add([r]);
                     //paymentGrid.startEditing(insertionPoint +1,1);
-                    
                 }
             },{
                 xtype: 'tbseparator'
@@ -3801,8 +3819,7 @@ function reeBillReady() {
 
                     // TODO single row selection only, test allowing multirow selection
                     var s = paymentGrid.getSelectionModel().getSelections();
-                    for(var i = 0, r; r = s[i]; i++)
-                    {
+                    for(var i = 0, r; r = s[i]; i++) {
                         paymentStore.remove(r);
                     }
                     paymentStore.save(); 
@@ -3832,6 +3849,13 @@ function reeBillReady() {
     paymentGrid.getSelectionModel().on('selectionchange', function(sm){
         //paymentGrid.getTopToolbar().findById('paymentInsertBtn').setDisabled(sm.getCount() <1);
         paymentGrid.getTopToolbar().findById('paymentRemoveBtn').setDisabled(sm.getCount() <1);
+    });
+
+    // for bid editing of payments that the server says are not "editable"
+    paymentGrid.on('beforeedit', function(e) {
+        if (!e.record.data.editable) {
+            return false;
+        }
     });
 
     //
@@ -4157,7 +4181,6 @@ function reeBillReady() {
             singleSelect: true,
         listeners: {
             rowselect: function (selModel, index, record) {
-               console.log("selectionchange");
                loadReeBillUIForAccount(record.data.account);
                return false;
            },

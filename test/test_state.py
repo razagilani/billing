@@ -8,6 +8,7 @@ from billing.processing.db_objects import Customer, UtilBill
 from billing import mongo
 from billing import dateutils
 from billing.session_contextmanager import DBSession
+from billing.test import utils
 
 billdb_config = {
     'billpath': '/db-dev/skyline/bills/',
@@ -18,7 +19,7 @@ billdb_config = {
     'port': '27017'
 }
 
-class StateTest(unittest.TestCase):
+class StateTest(utils.TestCase):
     def setUp(self):
         # clear out database
         mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
@@ -306,6 +307,61 @@ class StateTest(unittest.TestCase):
             self.assertRaises(Exception, self.state_db.delete_reebill, session, account, 1)
 
             session.commit()
+
+    def test_payments(self):
+        acc = '99999'
+        with DBSession(self.state_db) as session:
+            # one payment on jan 15
+            self.state_db.create_payment(session, acc, date(2012,1,15),
+                    'payment 1', 100)
+            self.assertEqual([], self.state_db.find_payment(session, acc,
+                    date(2011,12,1), date(2012,1,14)))
+            self.assertEqual([], self.state_db.find_payment(session, acc,
+                    date(2012,1,16), date(2012,2,1)))
+            self.assertEqual([], self.state_db.find_payment(session, acc,
+                    date(2012,2,1), date(2012,1,1)))
+            payments = self.state_db.find_payment(session, acc, date(2012,1,1),
+                    date(2012,2,1))
+            p = payments[0]
+            self.assertEqual(1, len(payments))
+            self.assertEqual((acc, date(2012,1,15), 'payment 1', 100),
+                    (p.customer.account, p.date_applied, p.description,
+                    p.credit))
+            self.assertDatetimesClose(datetime.utcnow(), p.date_received)
+            # should be editable since it was created today
+            #self.assertEqual(True, p.to_dict()['editable'])
+
+            # another payment on feb 1
+            self.state_db.create_payment(session, acc, date(2012, 2, 1),
+                    'payment 2', 150)
+            self.assertEqual([p], self.state_db.find_payment(session, acc,
+                    date(2012,1,1), date(2012,1,31)))
+            self.assertEqual([], self.state_db.find_payment(session, acc,
+                    date(2012,2,2), date(2012,3,1)))
+            payments = self.state_db.find_payment(session, acc, date(2012,1,16),
+                    date(2012,3,1))
+            self.assertEqual(1, len(payments))
+            q = payments[0]
+            self.assertEqual((acc, date(2012,2,1), 'payment 2', 150),
+                    (q.customer.account, q.date_applied, q.description,
+                    q.credit))
+            self.assertEqual([p, q], self.state_db.payments(session, acc))
+
+            # update feb 1: move it to mar 1
+            self.state_db.update_payment(session, q.id, date(2012,3,1),
+                        'new description', 200)
+            payments = self.state_db.find_payment(session, acc, date(2012,1,16),
+                    date(2012,3,2))
+            self.assertEqual(1, len(payments))
+            q = payments[0]
+            self.assertEqual((acc, date(2012,3,1), 'new description', 200),
+                    (q.customer.account, q.date_applied, q.description,
+                    q.credit))
+
+            # delete jan 15
+            self.state_db.delete_payment(session, p.id)
+            self.assertEqual([q], self.state_db.find_payment(session, acc,
+                    date(2012,1,1), date(2012,4,1)))
 
 if __name__ == '__main__':
     unittest.main()

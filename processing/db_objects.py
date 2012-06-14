@@ -61,15 +61,34 @@ class UtilBill(object):
                 % (self.customer, self.service, self.period_start, self.period_end)
 
 class Payment(object):
-    def __init__(self, customer, date, description, credit):
+    '''date_received is the datetime when Skyline recorded the payment.
+    date_applied is the date that the payment is "for", from the customer's
+    perspective. Normally these are on the same day, but an error in an old
+    payment can be corrected by entering a new payment with the same
+    date_applied as the old one, whose credit is the true amount minus the
+    previously-entered amount.'''
+    def __init__(self, customer, date_received, date_applied, description,
+            credit):
         self.customer = customer
-        self.date = date
+        self.date_received = date_received # datetime
+        self.date_applied = date_applied   # date
         self.description = description
         self.credit = credit
+
+    def to_dict(self):
+        return {
+            'id': self.id, 
+            'date_received': self.date_received,
+            'date_applied': self.date_applied,
+            'description': self.description,
+            'credit': self.credit,
+            'editable': datetime.utcnow() - self.date_received < timedelta(24)
+        }
+
     def __repr__(self):
-        return '<Payment(customer=%s, date=%s, description=%s, credit=%s)>' \
-                % (self.customer, self.date, \
-                        self.description, self.credit)
+        return '<Payment(%s, %s, %s, %s, %s)>' \
+                % (self.customer, self.date_received, \
+                        self.date_applied, self.description, self.credit)
 
 class StatusUnbilled(object):
     def __init__(self, account):
