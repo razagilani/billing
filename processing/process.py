@@ -109,9 +109,12 @@ class Process(object):
         possible_reebills = self.reebill_dao.load_reebills_in_period(
                 utilbill.customer.account, start_date=utilbill.period_start,
                 end_date=utilbill.period_end, version='any')
-        if len(possible_reebills) > 0:
-            raise ValueError(("Can't delete a utility bill that has reebill"
-                " associated with it."))
+        for pb in possible_reebills:
+            if utilbill.service in pb.services and \
+                    pb.utilbill_period_for_service(utilbill.service) \
+                    == (utilbill.period_start, utilbill.period_end):
+                raise ValueError(("Can't delete a utility bill that has reebill"
+                    " associated with it."))
 
         # OK to delete now.
         # first try to delete the file on disk
