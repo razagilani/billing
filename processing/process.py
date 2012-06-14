@@ -19,8 +19,8 @@ import skyliner
 from billing.processing import state
 from billing.mongo import MongoReebill
 from billing.processing.rate_structure import RateStructureDAO
-from billing.processing import state
-from billing.processing.db_objects import Payment, Customer, UtilBill
+from billing.processing import state, fetch_bill_data
+from billing.processing.db_objects import Payment, Customer, UtilBill, ReeBill
 from billing.mongo import ReebillDAO
 from billing import nexus_util
 from billing import dateutils
@@ -38,14 +38,15 @@ class Process(object):
     config = None
     
     def __init__(self, config, state_db, reebill_dao, rate_structure_dao,
-            billupload, splinter, monguru):
+            billupload, nexus_util, splinter):
         self.config = config
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
         self.reebill_dao = reebill_dao
         self.billupload = billupload
+        self.nexus_util = nexus_util
         self.splinter = splinter
-        self.monguru = monguru
+        self.monguru = self.splinter.get_monguru()
 
     def new_account(self, session, name, account, discount_rate, late_charge_rate):
         new_customer = Customer(name, account, discount_rate, late_charge_rate)
@@ -137,7 +138,7 @@ class Process(object):
         discount_rate = present_reebill.discount_rate
         if not discount_rate:
             raise Exception("%s-%s-%s has no discount rate" % (present_reebill.account, 
-                present_reebill.sequence, present_reebill.branch))
+                present_reebill.sequence, present_reebill.version))
 
         # reset ree_charges, ree_value, ree_savings so we can accumulate across
         # all services
@@ -205,7 +206,9 @@ class Process(object):
         # now grab the prior bill and pull values forward
         present_reebill.prior_balance = prior_reebill.balance_due
         # TODO total_adjustment
-        present_reebill.balance_forward = present_reebill.prior_balance - present_reebill.payment_received + present_reebill.total_adjustment
+        present_reebill.balance_forward = present_reebill.prior_balance - \
+                present_reebill.payment_received + \
+                present_reebill.total_adjustment
 
 
         lc = self.get_late_charge(session, present_reebill)
@@ -268,28 +271,22 @@ class Process(object):
 
             # load current CPRS
             cprs = self.rate_structure_dao.load_cprs(reebill.account, reebill.sequence,
-                reebill.branch, utility_name, rate_structure_name)
+                reebill.version, utility_name, rate_structure_name)
             if cprs is None:
                 raise Exception("No current CPRS")
 
             # save it with same account, next sequence
             self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence + 1,
-                reebill.branch, utility_name, rate_structure_name, cprs)
+                reebill.version, utility_name, rate_structure_name, cprs)
 
         # construct a new reebill from an old one.
         # if we wanted a copy, we would copy the current ReeBill
         # but we don't want a copy, we want a new instance.
-        print "C reebill period end is %s" % reebill.period_end
         new_reebill = MongoReebill(reebill)
-
-        print "A reebill period end is %s" % reebill.period_end
 
         new_period_end, utilbills = state.guess_utilbills_and_end_date(session,
                 reebill.account, reebill.period_end)
 
-        print "B reebill period end is %s" % reebill.period_end
-
-        print "******* new period, utilbills is %s " % new_period_end, utilbills
         new_reebill.period_end = new_period_end
 
         # set discount rate to the instananeous value from MySQL
@@ -307,6 +304,118 @@ class Process(object):
 
         return new_reebill
 
+
+    def new_version(self, session, account, sequence):
+        '''Creates a new version of the given reebill: duplicates the Mongo
+        document, re-computes the bill, saves it, and increments the
+        max_version number in MySQL. Returns the new reebill object.'''
+        customer = session.query(Customer).filter(Customer.account==account).one()
+
+        if sequence <= 0:
+            raise ValueError('Only sequence >= 0 can have multiple versions.')
+        if not self.state_db.is_issued(session, account, sequence):
+            raise ValueError("Can't create new version of an un-issued bill.")
+
+        # get current max version from MySQL
+        max_version = self.state_db.max_version(session, account, sequence)
+
+        # load that version's document from Mongo (even if higher version
+        # exists in Mongo, it doesn't count unless MySQL knows about it)
+        reebill = self.reebill_dao.load_reebill(account, sequence,
+                version=max_version)
+
+        # increment version, and make un-issued
+        reebill.version = max_version + 1
+        reebill.issue_date = None
+
+        # get sequence predecessor, to compute balance forward and prior
+        # balance. this is always version 0, because we want those values to be
+        # the same as they were on version 0 of this bill--we don't care about
+        # any corrections that might have been made to that bill later.
+        predecessor = self.reebill_dao.load_reebill(account, sequence-1,
+                version=0)
+
+        # re-bind
+        # TODO re-enable (might want to make an object that pretends to be
+        # SkyInstall to test this)
+        fetch_bill_data.fetch_oltp_data(self.splinter,
+                self.nexus_util.olap_id(account), reebill)
+
+        # recompute
+        self.sum_bill(session, predecessor, reebill)
+
+        # save in mongo
+        self.reebill_dao.save_reebill(reebill)
+
+        # increment max version in mysql
+        self.state_db.increment_version(session, account, sequence)
+
+        return reebill
+
+    def get_unissued_corrections(self, session, account):
+        '''Returns (sequence, max_version, balance adjustment) of all un-issued
+        versions of reebills > 0 for the given account.'''
+        result = []
+        for seq, max_version in self.state_db.get_unissued_corrections(session,
+                account):
+            # balance adjustment is difference between latest version's
+            # balance_due and the previous version's
+            latest_version = self.reebill_dao.load_reebill(account, seq,
+                    version=max_version)
+            prev_version = self.reebill_dao.load_reebill(account, seq,
+                    max_version-1)
+            adjustment = latest_version.balance_due - prev_version.balance_due
+            result.append((seq, max_version, adjustment))
+        return result
+
+    def get_unissued_correction_sequences(self, session, account):
+        return [c[0] for c in self.get_unissued_corrections(session, account)]
+
+    def apply_correction(self, session, account, correction_sequence,
+            target_sequence):
+        '''Applies adjustments from the unissued correction given by
+        'correction_sequence' to the reebill given by 'target_sequence' for the
+        given account. The unissued correction is marked as issued.'''
+        all_unissued_corrections = self.get_unissued_corrections(session,
+                account)
+
+        # corrections can only be applied to an un-issued reebill whose version
+        # is 0
+        target_max_version = self.state_db.max_version(session, account,
+                target_sequence)
+        if self.state_db.is_issued(session, account, target_sequence) \
+                or target_max_version > 0:
+            raise ValueError(("Can't apply correction %s to %s-%s, "
+                    "because the latter is an issued reebill or another "
+                    "correction.") % (correction_sequence, account, target_sequence))
+        
+        print '***** all_unissued_corrections', all_unissued_corrections
+        print '***** correction_sequence', correction_sequence, type(correction_sequence)
+        print '***', [c[0] == correction_sequence for c in all_unissued_corrections]
+
+        # validate correction sequence
+        if not any([c[0] == correction_sequence for c in
+                all_unissued_corrections]):
+            raise ValueError(("Sequence %s doesn't have an un-issued "
+                "correction") % correction_sequence)
+
+        # load target reebill from mongo (and, for recomputation, version 0 of
+        # its predecessor)
+        target_reebill = self.reebill_dao.load_reebill(account,
+                target_sequence, version=target_max_version)
+        target_reebill_predecessor = self.reebill_dao.load_reebill(account,
+                target_sequence - 1, version=0)
+
+        # apply adjustment
+        correction = [c for c in all_unissued_corrections if c[0] ==
+                correction_sequence][0]
+        _, _, adjustment = correction
+        target_reebill.total_adjustment += adjustment
+        self.sum_bill(session, target_reebill_predecessor, target_reebill)
+        self.reebill_dao.save_reebill(target_reebill)
+
+        # issue
+        self.issue(session, account, correction_sequence)
 
     def get_late_charge(self, session, reebill, day=date.today()):
         '''Returns the late charge for the given reebill on 'day', which is the
@@ -367,38 +476,40 @@ class Process(object):
         return max(Decimal(0), reebill.balance_due - payment_total)
 
     def delete_reebill(self, session, account, sequence):
-        '''Deletes the reebill given by 'account' and 'sequence': removes state
-        data and utility bill associations from MySQL, and actual bill data
-        from Mongo. A reebill that has been issued can't be deleted.'''
-        # TODO add branch, which MySQL doesn't have yet:
-        # https://www.pivotaltracker.com/story/show/24374911 
-
+        '''Deletes the latest version of the reebill given by 'account' and
+        'sequence': removes state data and utility bill associations from
+        MySQL, and actual bill data from Mongo. A reebill that has been issued
+        can't be deleted. Returns the version of the reebill that was
+        deleted (the highest ersion before deletion).'''
         # don't delete an issued reebill
         if self.state_db.is_issued(session, account, sequence):
             raise Exception("Can't delete an issued reebill.")
 
-        # delete reebill document from Mongo
-        self.reebill_dao.delete_reebill(account, sequence)
-
         # delete reebill state data from MySQL and dissociate utilbills from it
+        # (save max version first because row may be deleted)
+        max_version = self.state_db.max_version(session, account, sequence)
         self.state_db.delete_reebill(session, account, sequence)
 
-    def create_new_account(self, session, account, name, discount_rate, late_charge_rate, template_account):
+        # delete highest-version reebill document from Mongo
+        self.reebill_dao.delete_reebill(account, sequence, max_version)
 
+        return max_version
+
+
+    def create_new_account(self, session, account, name, discount_rate,
+            late_charge_rate, template_account):
         result = self.state_db.account_exists(session, account)
-
         if result is True:
             raise Exception("Account exists")
-
         template_last_sequence = self.state_db.last_sequence(session, template_account)
 
-        #TODO 22598787 use the active branch of the template_account
+        #TODO 22598787 use the active version of the template_account
         reebill = self.reebill_dao.load_reebill(template_account, template_last_sequence, 0)
 
         # reset this bill to the new account
         reebill.account = account
         reebill.sequence = 0
-        reebill.branch = 0
+        reebill.version = 0
         reebill.reset()
 
         reebill.billing_address = {}
@@ -411,7 +522,6 @@ class Process(object):
         # TODO: 22597151 refactor
         # for each service, duplicate the CPRS
         for service in reebill.services:
-
             utility_name = reebill.utility_name_for_service(service)
             rate_structure_name = reebill.rate_structure_name_for_service(service)
 
@@ -424,7 +534,7 @@ class Process(object):
 
             # save the CPRS for the new reebill
             self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence,
-                reebill.branch, utility_name, rate_structure_name, cprs)
+                reebill.version, utility_name, rate_structure_name, cprs)
 
         # create new account in mysql
         customer = self.new_account(session, name, account, discount_rate, late_charge_rate)
@@ -640,7 +750,7 @@ class Process(object):
                     'integrate_skyline_backend')
 
             # objects for getting olap data
-            olap_id = nexus_util.NexusUtil().olap_id(reebill.account)
+            olap_id = self.nexus_util.olap_id(reebill.account)
             install = self.splinter.get_install_obj_for(olap_id)
 
             bill_year, bill_month = dateutils.estimate_month(
