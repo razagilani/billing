@@ -1140,17 +1140,6 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    # doesn't look like this is ever called
-    #def reebill_details(self, **args):
-    #    with DBSession(self.state_db) as session:
-    #        rows, total_count = self.process.reebill_report(session)
-    #        session.commit()
-    #        return self.dumps({'success': True, 'rows':rows, 'results':total_count})
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
     def reebill_details_xls(self, **args):
         with DBSession(self.state_db) as session:
             rows, total_count = self.process.reebill_report(session)
