@@ -10,8 +10,7 @@ import cherrypy
 import jinja2, os
 import string, re
 import ConfigParser
-from datetime import datetime
-from datetime import date
+from datetime import datetime, date, timedelta
 import itertools as it
 from decimal import Decimal
 import uuid as UUID # uuid collides with locals so both module and locals are renamed
@@ -352,6 +351,15 @@ class BillToolBridge:
         # the url that was called. This is a good client side debug feature
         # when you need to associate ajax calls with ajax responses.
         #data['url'] = cherrypy.url()
+
+        # round datetimes to nearest second so Ext-JS JsonReader can parse them
+        def round_datetime(x):
+            if isinstance(x, datetime):
+                return datetime(x.year, x.month, x.day, x.hour, x.minute,
+                        x.second)
+            return x
+        data = deep_map(round_datetime, data)
+
         return ju.dumps(data)
     
     @cherrypy.expose
@@ -1675,8 +1683,11 @@ class BillToolBridge:
                 return self.dumps({'success':True})
             elif xaction == "create":
                 # date applied is today by default (can be edited later)
+                today = datetime.utcnow().date()
                 new_payment = self.state_db.create_payment(session, account,
-                        datetime.utcnow().date(), "New Entry", "0.00")
+                        today, "New Entry", 0)
+                new_payment = self.state_db.find_payment(session, account,
+                        today, (today + timedelta(1)))[0]
                 return self.dumps({'success':True, 'rows':[new_payment.to_dict()]})
             elif xaction == "destroy":
                 rows = json.loads(kwargs["rows"])

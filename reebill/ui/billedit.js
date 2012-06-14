@@ -3652,8 +3652,11 @@ function reeBillReady() {
         root: 'rows',
         idProperty: 'id',
         fields: [
-            {name: 'date_received', type: 'datetime',
-                dateFormat: Date.patterns['ISO8601Long']},
+            //{name: 'date_received', type: 'datetime',
+                //dateFormat: Date.patterns['ISO8601Long']},
+            {name: 'date_received', type: 'date',
+                // server formats datetimes like "2011-09-12T00:00:00" and this matches the "c" format, but ext-js doesn't accept it this way
+                dateFormat: "c"},
             {name: 'date_applied', type: 'date', dateFormat: 'Y-m-d'},
             {name: 'description'},
             {name: 'credit'},
