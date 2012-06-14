@@ -550,7 +550,7 @@ function reeBillReady() {
     var deleteButton = new Ext.Button({
         text: 'Delete selected reebill',
         iconCls: 'icon-delete',
-        //disabled: true, // TODO should be disabled when there's no reebill selected or the currently-selected bill is not deletable
+        disabled: true,
         handler: function() {
             var s = reeBillGrid.getSelectionModel().getSelections();
             for(var i = 0, r; r = s[i]; i++) {
@@ -562,7 +562,8 @@ function reeBillReady() {
 
     var versionButton = new Ext.Button({
         text: 'Create new version',
-        //disabled: true, // TODO should be disabled when there's no reebill selected or the currently-selected bill is not deletable
+        iconCls: 'icon-add',
+        disabled: true,
         handler: function() {
             Ext.Msg.show({title: "Please wait while new version is created", closable: false});
             Ext.Ajax.request({
@@ -844,7 +845,10 @@ function reeBillReady() {
                 rowselect: function (selModel, index, record) {
                     // TODO: have other widgets pull when this selection is made
                     loadReeBillUIForSequence(selected_account, record.data.sequence);
-                }
+                },
+                rowdeselect: function(selModel, index, record) {
+                     loadReeBillUIForSequence(null);
+                },
             }
         }),
         store: reeBillStore,
@@ -5571,12 +5575,9 @@ function reeBillReady() {
     reeBillImageDataConn.disableCaching = true;
 
     function loadReeBillUIForSequence(account, sequence) {
-
-        // TODO: 25227109 properly reset reebill UI if no sequence is selected
-
-        if (account == null || sequence == null) {
-            throw "Account and Sequence must be set";
-        }
+        /* null argument means no sequence is selected */
+        deleteButton.setDisabled(sequence == null);
+        versionButton.setDisabled(sequence == null)
 
         selected_account = account;
         selected_sequence = sequence;
@@ -5597,7 +5598,6 @@ function reeBillReady() {
         // update the journal form panel so entries get submitted to currently selected account
         journalFormPanel.getForm().findField("account").setValue(account)
         journalFormPanel.getForm().findField("sequence").setValue(sequence)
-
 
         // TODO:23046181 abort connections in progress
         configureReeBillEditor(selected_account, selected_sequence);
