@@ -793,52 +793,79 @@ class BillToolBridge:
         )
         return self.dumps({'success': True})
 
-    def attach_utilbills(self, session, account, sequence):
+    def attach_utility_bills(self, session, account, sequence):
         '''Finalizes association between the reebill given by 'account',
         'sequence' and its utility bills by recording it in the state database
         and marking the utility bills as processed. Utility bills for suspended
         services are skipped. Note that this does not issue the reebill or give
         it an issue date.'''
         # finalize utility bill association
-        self.process.attach_utilbills(session, reebill.account,
-                reebill.sequence)
+        self.process.attach_utilbills(session, account,
+                sequence)
 
+        version = self.state_db.max_version(session, account, sequence)
         journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-                reebill.account, reebill.sequence, reebill.version)
+                account, sequence, version)
 
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
     @json_exception
     def attach_utilbills(self, account, sequence, **args):
+        '''Handles AJAX call to attach utility bills without issuing. Normally
+        this is done through 'issue'.'''
         if not account or not sequence:
             raise ValueError("Bad Parameter Value")
-
         with DBSession(self.state_db) as session:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             if reebill is None:
                 raise Exception('No reebill for account %s, sequence %s')
-            self.attach_utilbills(session, account, sequence)
+            self.attach_utility_bills(session, account, sequence)
             return self.dumps({'success': True})
 
-    def issue(self, session, account, sequence, corrections=[]):
-        '''Marks the latest version of the given reebill as issued. If
-        'corrections' (a list of sequences of unissued versions of earlier
-        bills) is given, the corrections are applied to the later bill and also
-        marked as issued.'''
-        for correction_sequence in corrections:
-            # validate correction sequence
-            unissued_corrections = self.process\
-                    .get_unissued_correction_sequences(session, account)
-            if correction_sequence not in unissued_corrections:
-                raise Exception("No unissued correction for sequence %s" %
-                        correction_sequence)
-            # apply correction to later bill, mark it as issued
-            self.process.apply_correction(session, account,
-                    correction_sequence, sequence)
+    def issue_reebills(self, session, account, sequences,
+            apply_corrections=True):
+        # TODO replace unissued_sequences with sequences
+        # get unissued subset of 'sequences'
+        unissued_sequences = sorted([s for s in sequences if not
+                self.state_db.is_issued(session, account, s)])
 
-        # issue
-        self.process.issue(session, account, sequence)
+        # attach utility bills to all unissued bills
+        for unissued_sequence in unissued_sequences:
+            self.attach_utility_bills(session, account, unissued_sequence)
+
+        if apply_corrections:
+            # get unissued corrections for this account
+            unissued_correction_sequences = self\
+                    .process.get_unissued_correction_sequences(session, account)
+
+            # apply all corrections to earliest un-issued bill, then issue
+            # that and all other un-issued bills
+            self.process.apply_corrections(session, account,
+                    unissued_sequences[0])
+        # issue all unissued reebills
+        for unissued_sequence in unissued_sequences:
+            self.process.issue(session, account, unissued_sequence)
+
+        # journal attaching of utility bills
+        for unissued_sequence in unissued_sequences:
+            journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
+                    account, unissued_sequence, self.state_db.max_version(session,
+                    account, unissued_sequence))
+        # journal issuing of corrections (applied to the earliest unissued
+        # bill), if any
+        if apply_corrections:
+            for correction_sequence in unissued_correction_sequences:
+                journal.ReeBillIssuedEvent.save_instance(
+                        cherrypy.session['user'],
+                        account, unissued_sequences[0],
+                        self.state_db.max_version(session, account,
+                        correction_sequence),
+                        applied_sequence=unissued_sequences[0])
+        # journal issuing of all unissued bills
+        for unissued_sequence in unissued_sequences:
+            journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
+                    account, unissued_sequence, 0)
 
     @cherrypy.expose
     @random_wait
@@ -879,40 +906,14 @@ class BillToolBridge:
                     and 'corrections' not in kwargs:
                 return self.dumps({'success': False,
                         'corrections': unissued_corrections})
-
-            # attach utility bills to all unissued bills
-            for unissued_sequence in unissued_sequences:
-                self.attach_utilbills(session, account, unissued_sequence)
-
             if 'corrections_to_apply' in locals():
-                # apply all corrections to earliest un-issued bill, then issue
-                # that and all other un-issued bills
-                self.issue(session, account, unissued_sequences[0],
-                        corrections=corrections_to_apply)
-                for unissued_sequence in unissued_sequences[1:]:
-                    self.issue(session, account, unissued_sequence)
-            else:
-                # no corrections: just issue all un-issued bills
-                for unissued_sequence in unissued_sequences:
-                    self.issue(session, account, unissued_sequence)
-
-            # journal attaching of utility bills
-            for unissued_sequence in unissued_sequences:
-                journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-                        account, unissued_sequence, self.state_db.max_version(session,
-                        account, unissued_sequence))
-            # journal issuing of corrections (applied to the earliest unissued
-            # bill), if any
-            if 'corrections_to_apply' in locals():
-                for correction_sequence in corrections_to_apply:
-                    journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
-                            account, unissued_sequences[0],
-                            self.state_db.max_version(session, account,
-                            correction_sequence), applied_sequence=unissued_sequences[0])
-            # journal issuing of all unissued bills
-            for unissued_sequence in unissued_sequences:
-                journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
-                        account, unissued_sequence, 0)
+                # make sure corrections_to_apply is all of them (currently,
+                # client code guarantees this)
+                if not sorted(corrections_to_apply) == sorted(
+                        unissued_corrections):
+                    raise ValueError('All corrections must be issued.')
+            self.issue_reebills(session, account, unissued_sequences,
+                    apply_corrections=('corrections_to_apply' in locals()))
 
 
         # 2nd transaction: mail

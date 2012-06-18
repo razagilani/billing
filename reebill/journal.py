@@ -274,7 +274,7 @@ class ReeBillDeletedEvent(VersionEvent):
                 sequence=sequence, version=version).save()
 
     def __str__(self):
-        return 'Reebill %s-%s deleted' % (self.account, self.sequence,
+        return 'Reebill %s-%s-%s deleted' % (self.account, self.sequence,
                 self.version)
 
     def name(self):
