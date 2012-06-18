@@ -345,7 +345,8 @@ class StateTest(utils.TestCase):
             self.assertEqual((acc, date(2012,2,1), 'payment 2', 150),
                     (q.customer.account, q.date_applied, q.description,
                     q.credit))
-            self.assertEqual([p, q], self.state_db.payments(session, acc))
+            self.assertEqual(sorted([p, q]),
+                    sorted(self.state_db.payments(session, acc)))
 
             # update feb 1: move it to mar 1
             self.state_db.update_payment(session, q.id, date(2012,3,1),
