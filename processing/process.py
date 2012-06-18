@@ -709,8 +709,14 @@ class Process(object):
         prev_stats = prev_bill.statistics
 
         # determine re to ce utilization ratio
-        re_utilization = Decimal(str(re / (re + ce))).quantize(Decimal('.00'), rounding=ROUND_UP)
-        ce_utilization = Decimal(str(ce / (re + ce))).quantize(Decimal('.00'), rounding=ROUND_DOWN)
+        if re + ce > 0:
+            re_utilization = Decimal(str(re / (re + ce)))\
+                    .quantize(Decimal('.00'), rounding=ROUND_UP)
+            ce_utilization = Decimal(str(ce / (re + ce)))\
+                        .quantize(Decimal('.00'), rounding=ROUND_DOWN)
+        else:
+            re_utilization = 0
+            ce_utilization = 0
 
         # update utilization stats
         next_stats['renewable_utilization'] = re_utilization

@@ -1,5 +1,5 @@
 from random import random
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 def one_hour_of_energy():
@@ -20,6 +20,10 @@ class FakeSkyInstall(object):
     def get_billable_energy(self, day, hour_range=(0,24), places=None):
         hours = hour_range[1] - hour_range[0]
         return Decimal(one_hour_of_energy() * hours)
+
+    @property
+    def install_commissioned(self):
+        return date(2000, 1, 1)
 
 class FakeCubeDocument(object):
     def __init__(self, energy_sold):
