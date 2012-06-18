@@ -334,7 +334,9 @@ class Process(object):
             cprs = self.rate_structure_dao.load_cprs(reebill.account,
                     reebill.sequence, reebill.version, utility_name, rs_name)
             if cprs is None:
-                raise Exception('No CPRS found for %s-%s-%s, %s, %s' % (account, sequence, version, utility_name, rs_name))
+                raise Exception('No CPRS found for %s-%s-%s, %s, %s' %
+                        (account, sequence, reebill.version, utility_name,
+                        rs_name))
             self.rate_structure_dao.save_cprs(account, sequence, max_version +
                     1, utility_name, rs_name, cprs)
 

@@ -343,7 +343,9 @@ example_urs = {
 	"_id" : {
 		"type" : "URS",
 		"rate_structure_name" : "DC Non Residential Non Heat",
-		"utility_name" : "washgas"
+		"utility_name" : "washgas",
+        "effective": datetime(2000, 1, 1),
+        "expires": datetime(2020, 12, 31)
 	},
 	"registers" : [
 		{
@@ -385,9 +387,11 @@ example_urs = {
 # made this, we have no nonempty URPSs.
 example_uprs = {
 	"_id" : {
-		"type" : "URS",
+		"type" : "UPRS",
 		"rate_structure_name" : "DC Non Residential Non Heat",
-		"utility_name" : "washgas"
+		"utility_name" : "washgas",
+        "effective": datetime(2000, 1, 1),
+        "expires": datetime(2020, 12, 31)
 	},
 	"rates" : [
 		{

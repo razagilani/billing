@@ -607,6 +607,12 @@ port = 27017
                     .filter(UtilBill.period_start == start)\
                     .filter(UtilBill.period_end == end).one().id
 
+            # rate structures (needed to create new version)
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999',
+                1))
+
             # unassociated: deletion should succeed (row removed from database,
             # file moved to trash directory)
             new_path = self.process.delete_utility_bill(session, utilbill_id)
@@ -665,20 +671,14 @@ port = 27017
 
     def test_new_version(self):
         # put reebill documents for sequence 0 and 1 in mongo (0 is needed to
-        # recompute 1)
+        # recompute 1), and rate structures for 1
         zero = example_data.get_reebill('99999', 0, version=0)
         one = example_data.get_reebill('99999', 1, version=0)
         self.reebill_dao.save_reebill(zero)
         self.reebill_dao.save_reebill(one)
-        urs = example_data.get_urs_dict()
-        uprs = example_data.get_uprs_dict()
-        cprs = example_data.get_cprs_dict()
-        self.reebill.save_urs(urs['utility_name'], urs['rate_structure_name'],
-                urs['effective'], urs['expires'], urs)
-        self.reebill.save_uprs(uprs['utility_name'], uprs['rate_structure_name'],
-                uprs['effective'], uprs['expires'], uprs)
-        self.reebill.save_cprs('99999', 1, 0,
-                cprs['utility_name'], cprs['rate_structure_name'], cprs)
+        self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+        self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+        self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
 
         # TODO creating new version of 1 should fail until it's issued
 
@@ -696,9 +696,15 @@ port = 27017
         self.assertEqual(1, new_bill.sequence)
         self.assertEqual(1, new_bill.version)
         self.assertEqual(1, self.state_db.max_version(session, '99999', 1))
-
-        # TODO check for creation of new version of rate structure
-        # (requires putting rate structures in mongo)
+        # new version of CPRS(s) should also be created, so rate structure
+        # should be loadable
+        for s in new_bill.services:
+            self.assertNotEqual(None,
+                    self.rate_structure_dao.load_cprs('99999', 1,
+                    new_bill.version, new_bill.utility_name_for_service(s),
+                    new_bill.rate_structure_name_for_service(s)))
+            self.assertNotEqual(None,
+                    self.rate_structure_dao.load_rate_structure(new_bill, s))
 
     def test_correction_issuing(self):
         '''Tests get_unissued_corrections() and apply_corrections().'''
@@ -727,6 +733,14 @@ port = 27017
             self.state_db.issue(session, acc, 1)
             self.state_db.issue(session, acc, 2)
             self.state_db.issue(session, acc, 3)
+
+            # rate structures
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 2))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 3))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 4))
 
             # no unissued corrections yet
             self.assertEquals([],
