@@ -720,6 +720,10 @@ port = 27017
             self.assertEquals([],
                     self.process.get_unissued_corrections(session, acc))
 
+            # try to apply nonexistent corrections
+            self.assertRaises(ValueError, self.process.apply_corrections,
+                    session, acc, 4)
+
             # make corrections on 1 and 3
             self.process.new_version(session, acc, 1)
             self.process.new_version(session, acc, 3)
@@ -734,42 +738,29 @@ port = 27017
             self.assertEqual([(1, 1, 20), (3, 1, -5)],
                     self.process.get_unissued_corrections(session, acc))
 
-            # try to apply a nonexistent correction to an unissued bill
-            self.assertRaises(ValueError, self.process.apply_correction,
-                    session, acc, 2, 4)
-            # try to apply a valid correction to an issued bill
-            self.assertRaises(ValueError, self.process.apply_correction,
-                    session, acc, 1, 2)
-            # try to apply a valid correction to another correction
-            self.assertRaises(ValueError, self.process.apply_correction,
-                    session, acc, 1, 3)
+            # try to apply corrections to an issued bill
+            self.assertRaises(ValueError, self.process.apply_corrections,
+                    session, acc, 2)
+            # try to apply corrections to a correction
+            self.assertRaises(ValueError, self.process.apply_corrections,
+                    session, acc, 3)
 
             # get original balance of reebill 4 before applying corrections
             four = self.reebill_dao.load_reebill(acc, 4)
             self.process.sum_bill(session, three, four)
             four_original_balance = four.balance_due
 
-            # apply correction 1 to un-issued reebill 4. reebill 4 should be
-            # updated, and now only correction 3 should be unissued
-            self.process.apply_correction(session, acc, 1, 4)
-            four = self.reebill_dao.load_reebill(acc, 4)
-            self.assertEqual(20, four.total_adjustment)
-            self.assertEqual(four_original_balance + 20, four.balance_due)
-            self.assertTrue(self.state_db.is_issued(session, acc, 1))
-            self.assertFalse(self.state_db.is_issued(session, acc, 3))
-            self.assertEqual([(3, 1, -5)],
-                    self.process.get_unissued_corrections(session, acc))
-
-            # apply correction 3 to un-issued reebill 4. no more unissued
-            # corrections.
-            self.process.apply_correction(session, acc, 3, 4)
+            # apply corrections to un-issued reebill 4. reebill 4 should be
+            # updated, and the corrections (1 & 3) should be issued
+            self.process.apply_corrections(session, acc, 4)
             four = self.reebill_dao.load_reebill(acc, 4)
             self.assertEqual(15, four.total_adjustment)
             self.assertEqual(four_original_balance + 15, four.balance_due)
             self.assertTrue(self.state_db.is_issued(session, acc, 1))
             self.assertTrue(self.state_db.is_issued(session, acc, 3))
-            self.assertEqual([],
-                    self.process.get_unissued_corrections(session, acc))
+            self.assertEqual([], self.process.get_unissued_corrections(session,
+                    acc))
+
             session.commit()
 
     def test_delete_reebill(self):
