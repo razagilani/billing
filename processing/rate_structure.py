@@ -252,6 +252,7 @@ class RateStructureDAO(object):
             rate_structure_name, rate_structure_data):
         '''Saves the dictionary 'rate_structure_data' as a Customer Periodic
         Rate Structure document in Mongo.'''
+        print '***************', rate_structure_data
         rate_structure_data['_id'] = { 
             'type': 'CPRS',
             'account': account,

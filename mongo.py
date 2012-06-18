@@ -1176,8 +1176,8 @@ class ReebillDAO:
             raise ValueError('Unknown version specifier "%s"' % version)
 
         if mongo_doc is None:
-            raise NoSuchReeBillException("No ReeBill found for %s-%s,version=%s" % (
-                account, sequence, version))
+            raise NoSuchReeBillException(("No ReeBill found: query was %s")
+                    % (query))
 
         mongo_doc = deep_map(float_to_decimal, mongo_doc)
         mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies

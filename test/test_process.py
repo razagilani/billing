@@ -670,6 +670,15 @@ port = 27017
         one = example_data.get_reebill('99999', 1, version=0)
         self.reebill_dao.save_reebill(zero)
         self.reebill_dao.save_reebill(one)
+        urs = example_data.get_urs_dict()
+        uprs = example_data.get_uprs_dict()
+        cprs = example_data.get_cprs_dict()
+        self.reebill.save_urs(urs['utility_name'], urs['rate_structure_name'],
+                urs['effective'], urs['expires'], urs)
+        self.reebill.save_uprs(uprs['utility_name'], uprs['rate_structure_name'],
+                uprs['effective'], uprs['expires'], uprs)
+        self.reebill.save_cprs('99999', 1, 0,
+                cprs['utility_name'], cprs['rate_structure_name'], cprs)
 
         # TODO creating new version of 1 should fail until it's issued
 
@@ -687,6 +696,9 @@ port = 27017
         self.assertEqual(1, new_bill.sequence)
         self.assertEqual(1, new_bill.version)
         self.assertEqual(1, self.state_db.max_version(session, '99999', 1))
+
+        # TODO check for creation of new version of rate structure
+        # (requires putting rate structures in mongo)
 
     def test_correction_issuing(self):
         '''Tests get_unissued_corrections() and apply_corrections().'''
