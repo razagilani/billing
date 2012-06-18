@@ -220,6 +220,11 @@ class RateStructureDAO(object):
         cprs = self.collection.find_one(query)
         return cprs
 
+    def save_rs(self, rate_structure_data):
+        '''Easy way to save rate structure without unnecessary arguments.'''
+        rate_structure_data = bson_convert(rate_structure_data)
+        self.collection.save(rate_structure_data)
+
     def save_urs(self, utility_name, rate_structure_name, effective, expires,
             rate_structure_data):
         '''Saves the dictionary 'rate_structure_data' as a Utility (global)
@@ -252,7 +257,6 @@ class RateStructureDAO(object):
             rate_structure_name, rate_structure_data):
         '''Saves the dictionary 'rate_structure_data' as a Customer Periodic
         Rate Structure document in Mongo.'''
-        print '***************', rate_structure_data
         rate_structure_data['_id'] = { 
             'type': 'CPRS',
             'account': account,
