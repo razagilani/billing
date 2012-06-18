@@ -278,14 +278,14 @@ class Process(object):
             if cprs is None:
                 raise Exception("No current CPRS")
 
-            # save it with same account, next sequence
+            # save it with same account, next sequence, version 0
             self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence + 1,
-                reebill.version, utility_name, rate_structure_name, cprs)
+                    0, utility_name, rate_structure_name, cprs)
 
-        # construct a new reebill from an old one.
-        # if we wanted a copy, we would copy the current ReeBill
-        # but we don't want a copy, we want a new instance.
+        # construct a new reebill from an old one. the new one's version is
+        # always 0 even if it was created from a non-0 version of the old one.
         new_reebill = MongoReebill(reebill)
+        new_reebill.version = 0
 
         new_period_end, utilbills = state.guess_utilbills_and_end_date(session,
                 reebill.account, reebill.period_end)
@@ -326,6 +326,17 @@ class Process(object):
         # exists in Mongo, it doesn't count unless MySQL knows about it)
         reebill = self.reebill_dao.load_reebill(account, sequence,
                 version=max_version)
+
+        # duplicate rate structures (CPRS)
+        for service in reebill.services:
+            utility_name = reebill.utility_name_for_service(service)
+            rs_name = reebill.rate_structure_name_for_service(service)
+            cprs = self.rate_structure_dao.load_cprs(reebill.account,
+                    reebill.sequence, reebill.version, utility_name, rs_name)
+            if cprs is None:
+                raise Exception('No CPRS found for %s-%s-%s, %s, %s' % (account, sequence, version, utility_name, rs_name))
+            self.rate_structure_dao.save_cprs(account, sequence, max_version +
+                    1, utility_name, rs_name, cprs)
 
         # increment version, and make un-issued
         reebill.version = max_version + 1
