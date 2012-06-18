@@ -4358,7 +4358,7 @@ function reeBillReady() {
         selModel: new Ext.grid.RowSelectionModel({
             singleSelect: true,
             listeners: {
-                selectionchange: function (selModel, index, record) {
+                rowselect: function (selModel, index, record) {
                     loadReeBillUIForAccount(record.data.account);
                 }
             }

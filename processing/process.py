@@ -885,7 +885,9 @@ class Process(object):
 
                 # iterate the payments and find the ones that apply. 
                 if (reebill.period_begin is not None and reebill.period_end is not None):
-                    applicable_payments = filter(lambda x: x.date > reebill.period_begin and x.date < reebill.period_end, payments)
+                    applicable_payments = filter(lambda x: x.date_applied >
+                            reebill.period_begin and x.date_applied <
+                            reebill.period_end, payments)
                     # pop the ones that get applied from the payment list
                     # (there is a bug due to the reebill periods overlapping, where a payment may be applicable more than ones)
                     for applicable_payment in applicable_payments:
@@ -959,7 +961,7 @@ class Process(object):
                         row['payment_applied'] = None
                         row['ree_charges'] = None
                         row['balance_due'] = None
-                        row['payment_date'] = applicable_payment.date_appied
+                        row['payment_date'] = applicable_payment.date_applied
                         row['payment_amount'] = applicable_payment.credit
                         rows.append(row)
                         totalCount += 1
