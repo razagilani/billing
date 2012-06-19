@@ -399,7 +399,8 @@ class BillToolBridge:
         grid.''' 
         with DBSession(self.state_db) as session:
             er = EstimatedRevenue(self.state_db, self.reebill_dao,
-                    self.ratestructure_dao, self.splinter)
+                    self.ratestructure_dao, self.billUpload, self.nexus_util,
+                    self.splinter)
             data = er.report(session)
 
             # build list of rows from report data
