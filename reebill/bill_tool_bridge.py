@@ -26,6 +26,7 @@ from StringIO import StringIO
 import mongoengine
 from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
+from billing.test import fake_skyliner
 from billing import bill, json_util as ju, mongo, dateutils, monthmath, excel_export, nexus_util as nu
 from billing.nexus_util import NexusUtil
 from billing.dictutils import deep_map
@@ -310,11 +311,12 @@ class BillToolBridge:
         self.journal_dao = journal.JournalDAO()
 
         # create a Splinter
-        #self.splinter = Splinter(self.config.get('skyline_backend',
-            #'oltp_url'), self.config.get('skyline_backend', 'olap_host'),
-            #self.config.get('skyline_backend', 'olap_database'))
-        from billing.test import fake_skyliner
-        self.splinter = fake_skyliner.FakeSplinter()
+        if self.config.getboolean('skyline_backend', 'mock_skyliner'):
+            self.splinter = fake_skyliner.FakeSplinter()
+        else:
+            self.splinter = Splinter(self.config.get('skyline_backend',
+                'oltp_url'), self.config.get('skyline_backend', 'olap_host'),
+                self.config.get('skyline_backend', 'olap_database'))
 
         # create one Process object to use for all related bill processing
         # TODO it's theoretically bad to hard-code these, but all skyliner
