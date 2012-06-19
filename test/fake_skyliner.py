@@ -25,6 +25,9 @@ class FakeSkyInstall(object):
     def install_commissioned(self):
         return date(2000, 1, 1)
 
+    def get_annotations(self):
+        return []
+
 class FakeCubeDocument(object):
     def __init__(self, energy_sold):
         self.timestamp = datetime.utcnow()
