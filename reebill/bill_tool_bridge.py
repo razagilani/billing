@@ -739,13 +739,8 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value")
 
             reebill = self.state_db.get_reebill(session, account, sequence)
-            descendent_reebills = self.state_db.get_descendent_reebills(session, account, sequence)
-
-            # stick the current sequence in front of its descendents
-            descendent_reebills.insert(0, reebill)
-
+            descendent_reebills = [reebill]
             for reebill in descendent_reebills:
-
                 mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
                 prior_mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, int(reebill.sequence)-1)
 
