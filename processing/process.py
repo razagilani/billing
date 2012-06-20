@@ -37,16 +37,16 @@ class Process(object):
 
     config = None
     
-    def __init__(self, config, state_db, reebill_dao, rate_structure_dao,
-            billupload, nexus_util, splinter):
-        self.config = config
+    def __init__(self, state_db, reebill_dao, rate_structure_dao, billupload,
+            nexus_util, splinter=None):
+        '''If 'splinter' is not none, Skyline back-end should be used.'''
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
         self.reebill_dao = reebill_dao
         self.billupload = billupload
         self.nexus_util = nexus_util
         self.splinter = splinter
-        self.monguru = self.splinter.get_monguru()
+        self.monguru = None if splinter is None else splinter.get_monguru()
 
     def new_account(self, session, name, account, discount_rate, late_charge_rate):
         new_customer = Customer(name, account, discount_rate, late_charge_rate)
@@ -760,10 +760,8 @@ class Process(object):
         next_stats['total_trees'] = next_stats['total_co2_offset']/Decimal("1300.0")
         
 
-        if (self.config.getboolean('runtime', 'integrate_skyline_backend') is True):
+        if self.splinter is not None:
             # fill in data for "Monthly Renewable Energy Consumption" graph
-            print 'integrate skyline backend is:', self.config.getboolean('runtime',
-                    'integrate_skyline_backend')
 
             # objects for getting olap data
             olap_id = self.nexus_util.olap_id(reebill.account)
