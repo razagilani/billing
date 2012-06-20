@@ -7,6 +7,7 @@ import math
 from decimal import *
 from itertools import groupby
 from datetime import datetime
+import subprocess
 import reportlab  
 from reportlab.platypus import BaseDocTemplate, Paragraph, Table, TableStyle, Spacer, Image, PageTemplate, Frame, PageBreak, NextPageTemplate
 from reportlab.platypus.flowables import UseUpSpace
@@ -139,10 +140,13 @@ def stringify(d):
     return d
 
 class ReebillRenderer:
-    def __init__(self, config, logger):
+    def __init__(self, config, state_db, reebill_dao, logger):
         '''Config should be a dict of configuration keys and values.'''
         # directory for temporary image file storage
         self.temp_directory = config['temp_directory']
+
+        self.state_db = state_db
+        self.reebill_dao = reebill_dao
 
         # global reebill logger for reporting errors
         self.logger = logger
@@ -150,7 +154,32 @@ class ReebillRenderer:
         # create temp directory if it doesn't exist
         create_directory_if_necessary(self.temp_directory, self.logger)
 
-    def render(self, reebill, outputdir, outputfile, backgrounds, verbose):
+
+    def render(self, session, account, sequence, outputdir, outputfile,
+            backgrounds, verbose):
+        # render each version
+        max_version = self.state_db.max_version(session, account, sequence)
+        for version in range(max_version + 1):
+            reebill = self.reebill_dao.load_reebill(account, sequence, version=version)
+            self.render_version(reebill, outputdir, outputfile + '-%s' %
+                    version, backgrounds, verbose)
+
+        # concatenate version pdfs
+        input_paths = ['%s-%s' % (os.path.join(outputdir, outputfile), v)
+                for v in range(max_version + 1)]
+        output_path = os.path.join(outputdir, outputfile)
+        command = ['pdftk'] + input_paths + ['cat', 'output', output_path]
+        print command
+        result = subprocess.Popen(command, stderr=subprocess.PIPE)
+        result.wait()
+        if result.returncode != 0:
+            raise Exception('rendering failed: ' + result.communicate()[1])
+
+        # delete version pdfs, leaving only the combined version
+        for input_path in input_paths:
+            os.remove(input_path)
+
+    def render_version(self, reebill, outputdir, outputfile, backgrounds, verbose):
         styles = getSampleStyleSheet()
         styles.add(ParagraphStyle(name='BillLabel', fontName='VerdanaB', fontSize=10, leading=10))
         styles.add(ParagraphStyle(name='BillLabelRight', fontName='VerdanaB', fontSize=10, leading=10, alignment=TA_RIGHT))
@@ -773,3 +802,34 @@ def equivalentTrees(poundsCarbonAvoided = 0):
     """One ton per tree over the lifetime, ~13 lbs a year.
     Assume 1.08 pounds per bill period"""
     return int(poundsCarbon) * 1.08
+
+if __name__ == '__main__':
+    from billing.mongo import ReebillDAO
+    from billing.processing.state import StateDB
+    from billing.session_contextmanager import DBSession
+    from billing.processing.process import Process
+    sdb = StateDB(**{
+        'host': 'localhost',
+        'database': 'skyline_dev',
+        'user': 'dev',
+        'password': 'dev'
+    })
+    reebill_dao = ReebillDAO(sdb, **{
+        'host': 'localhost',
+        'database': 'skyline',
+        'user': 'dev',
+        'password': 'dev'
+    })
+    renderer = ReebillRenderer(
+            {'temp_directory': '/tmp/rendering/'},
+            sdb, reebill_dao, None)
+    with DBSession(sdb) as s:
+        renderer.render(
+            s,
+            '10023', 
+            8,
+            '/tmp/rendering/10023/',
+            "10023-8.pdf",
+            "EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
+            False
+        )
