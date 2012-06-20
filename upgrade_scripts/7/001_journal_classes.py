@@ -1,3 +1,4 @@
+#!/usr/bin/python
 '''Sets _cls and _types fields for journal entry documents so MongoEngine knows
 what class they are.'''
 import pymongo
