@@ -298,7 +298,7 @@ class BillToolBridge:
 
         # create a RateStructureDAO
         rsdb_config_section = self.config.items("rsdb")
-        self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
+        self.ratestructure_dao = rs.RateStructureDAO(**dict(rsdb_config_section))
 
         # configure journal:
         # create a MongoEngine connection "alias" named "journal" with which
@@ -334,10 +334,6 @@ class BillToolBridge:
 
         # configure mailer
         bill_mailer.config = dict(self.config.items("mailer"))
-
-        # create one RateStructureDAO to user for all ratestructure queries
-        rsdb_config_section = self.config.items("rsdb")
-        self.ratestructure_dao = rs.RateStructureDAO(dict(rsdb_config_section))
 
         # determine whether authentication is on or off
         self.authentication_on = self.config.getboolean('authentication', 'authenticate')
