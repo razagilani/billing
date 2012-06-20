@@ -62,7 +62,7 @@ port = 27017
         self.config = ConfigParser.RawConfigParser()
         self.config.readfp(config_file)
         self.billupload = BillUpload(self.config, logging.getLogger('test'))
-        self.rate_structure_dao = rate_structure.RateStructureDAO({
+        self.rate_structure_dao = rate_structure.RateStructureDAO(**{
             'database': 'test',
             'collection': 'ratestructure',
             'host': 'localhost',
