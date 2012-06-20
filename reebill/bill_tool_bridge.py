@@ -1686,8 +1686,7 @@ class BillToolBridge:
                 today = datetime.utcnow().date()
                 new_payment = self.state_db.create_payment(session, account,
                         today, "New Entry", 0)
-                new_payment = self.state_db.find_payment(session, account,
-                        today, (today + timedelta(1)))[0]
+                session.flush()
                 return self.dumps({'success':True, 'rows':[new_payment.to_dict()]})
             elif xaction == "destroy":
                 rows = json.loads(kwargs["rows"])
