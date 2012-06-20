@@ -321,19 +321,13 @@ class BillToolBridge:
         # create one Process object to use for all related bill processing
         # TODO it's theoretically bad to hard-code these, but all skyliner
         # configuration is hard-coded right now anyway
-        self.runtime_config = dict(self.config.items('runtime'))
         if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
-            self.process = process.Process(
-                self.config, self.state_db, self.reebill_dao,
-                self.ratestructure_dao,
-                self.billUpload,
-                self.nexus_util,
-                self.splinter
-            )
+            self.process = process.Process(self.state_db, self.reebill_dao,
+                    self.ratestructure_dao, self.billUpload, self.nexus_util,
+                    self.splinter)
         else:
-            self.process = process.Process(self.config, self.state_db,
-                    self.reebill_dao, self.ratestructure_dao, self.billUpload,
-                    None, None)
+            self.process = process.Process(self.state_db, self.reebill_dao,
+                    self.ratestructure_dao, self.billUpload, None, None)
 
         # create a ReebillRenderer
         self.renderer = render.ReebillRenderer(dict(self.config.items('reebillrendering')), self.logger)
