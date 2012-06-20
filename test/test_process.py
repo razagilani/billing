@@ -24,6 +24,8 @@ import MySQLdb
 from billing.mongo_utils import python_convert
 from billing.test import example_data
 from billing.test.fake_skyliner import FakeSplinter, FakeMonguru
+from billing.nexus_util import NexusUtil
+from billing.mongo import NoSuchReeBillException
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -59,23 +61,14 @@ port = 27017
 ''')
         self.config = ConfigParser.RawConfigParser()
         self.config.readfp(config_file)
-        self.reebill_dao = mongo.ReebillDAO({
-            'billpath': '/db-dev/skyline/bills/',
-            'database': 'test',
-            'utilitybillpath': '/db-dev/skyline/utilitybills/',
-            'collection': 'test_reebills',
-            'host': 'localhost',
-            'port': 27017
-        })
         self.billupload = BillUpload(self.config, logging.getLogger('test'))
-        self.rate_structure_dao = rate_structure.RateStructureDAO({
+        self.rate_structure_dao = rate_structure.RateStructureDAO(**{
             'database': 'test',
             'collection': 'ratestructure',
             'host': 'localhost',
             'port': 27017
         })
         self.splinter = FakeSplinter()
-        self.monguru = FakeMonguru
         
         # temporary hack to get a bill that's always the same
         # this bill came straight out of mongo (except for .date() applied to
@@ -111,9 +104,18 @@ port = 27017
         session.add(customer)
         session.commit()
 
-        self.process = Process(self.config, self.state_db, self.reebill_dao,
-                self.rate_structure_dao, self.billupload, self.splinter,
-                self.monguru)
+        self.reebill_dao = mongo.ReebillDAO(self.state_db, **{
+            'billpath': '/db-dev/skyline/bills/',
+            'database': 'test',
+            'utilitybillpath': '/db-dev/skyline/utilitybills/',
+            'collection': 'test_reebills',
+            'host': 'localhost',
+            'port': 27017
+        })
+
+        self.process = Process(self.state_db, self.reebill_dao,
+                self.rate_structure_dao, self.billupload, NexusUtil(),
+                self.splinter)
 
     def tearDown(self):
         '''This gets run even if a test fails.'''
@@ -172,7 +174,7 @@ port = 27017
             # but sum_bill() destroys bill1's balance_due, so reset it to
             # the right value, and save it in mongo
             bill1.balance_due = Decimal('100.')
-            self.reebill_dao.save_reebill(bill1)
+            self.reebill_dao.save_reebill(bill1, force=True)
  
             # create second bill (not by rolling, because process.roll_bill()
             # is currently a huge untested mess, and get_late_charge() should
@@ -508,9 +510,9 @@ port = 27017
         print 'test_upload_utility_bill'
         with DBSession(self.state_db) as session:
             account, service = '99999', 'gas'
-            self.process = Process(self.config, self.state_db, self.reebill_dao,
-                    self.rate_structure_dao, self.billupload, self.splinter,
-                    self.monguru)
+            #self.process = Process(self.config, self.state_db, self.reebill_dao,
+                    #self.rate_structure_dao, self.billupload, self.splinter,
+                    #self.monguru)
 
             # one utility bill
             file1 = StringIO("Let's pretend this is a PDF")
@@ -587,7 +589,6 @@ port = 27017
 
     def test_delete_utility_bill(self):
         print 'test_delete_utility_bill'
-
         account, service, = '99999', 'gas'
         start, end = date(2012,1,1), date(2012,2,1)
 
@@ -605,6 +606,12 @@ port = 27017
                     .filter(UtilBill.customer_id == customer.id)\
                     .filter(UtilBill.period_start == start)\
                     .filter(UtilBill.period_end == end).one().id
+
+            # rate structures (needed to create new version)
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999',
+                1))
 
             # unassociated: deletion should succeed (row removed from database,
             # file moved to trash directory)
@@ -646,6 +653,168 @@ port = 27017
             self.assertRaises(ValueError, self.process.delete_utility_bill,
                     session, utilbill_id)
 
+            # deletion should fail if any version of a reebill has an
+            # association with the utility bill. create a new version of the
+            # reebill that does not have this utilbill.
+            self.reebill_dao.save_reebill(example_data.get_reebill(account, 0))
+            self.process.issue(session, account, 1)
+            self.process.new_version(session, account, 1)
+            mongo_reebill.version = 1
+            mongo_reebill.set_utilbill_period_for_service(service, (start -
+                    timedelta(days=365), end - timedelta(days=365)))
+            mongo_reebill.period_begin = start - timedelta(days=365)
+            mongo_reebill.period_end = end - timedelta(days=365)
+            self.reebill_dao.save_reebill(mongo_reebill)
+            self.assertRaises(ValueError, self.process.delete_utility_bill,
+                    session, utilbill_id)
+            session.commit()
+
+    def test_new_version(self):
+        # put reebill documents for sequence 0 and 1 in mongo (0 is needed to
+        # recompute 1), and rate structures for 1
+        zero = example_data.get_reebill('99999', 0, version=0)
+        one = example_data.get_reebill('99999', 1, version=0)
+        self.reebill_dao.save_reebill(zero)
+        self.reebill_dao.save_reebill(one)
+        self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+        self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+        self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
+
+        # TODO creating new version of 1 should fail until it's issued
+
+        # issue reebill 1
+        with DBSession(self.state_db) as session:
+            self.state_db.new_rebill(session, '99999', 1)
+            self.process.issue(session, '99999', 1, issue_date=date(2012,1,1))
+            session.commit()
+
+        # create new version of 1
+        with DBSession(self.state_db) as session:
+            new_bill = self.process.new_version(session, '99999', 1)
+            session.commit()
+        self.assertEqual('99999', new_bill.account)
+        self.assertEqual(1, new_bill.sequence)
+        self.assertEqual(1, new_bill.version)
+        self.assertEqual(1, self.state_db.max_version(session, '99999', 1))
+        # new version of CPRS(s) should also be created, so rate structure
+        # should be loadable
+        for s in new_bill.services:
+            self.assertNotEqual(None,
+                    self.rate_structure_dao.load_cprs('99999', 1,
+                    new_bill.version, new_bill.utility_name_for_service(s),
+                    new_bill.rate_structure_name_for_service(s)))
+            self.assertNotEqual(None,
+                    self.rate_structure_dao.load_rate_structure(new_bill, s))
+
+    def test_correction_issuing(self):
+        '''Tests get_unissued_corrections() and apply_corrections().'''
+        acc = '99999'
+        with DBSession(self.state_db) as session:
+            # reebills 1-4, 1-3 issued
+            zero = example_data.get_reebill(acc, 0)
+            one = example_data.get_reebill(acc, 1)
+            two = example_data.get_reebill(acc, 2)
+            three = example_data.get_reebill(acc, 3)
+            four = example_data.get_reebill(acc, 4)
+            zero.balance_due = 100
+            one.balance_due = 100
+            two.balance_due = 100
+            three.balance_due = 100
+            four.balance_due = 100
+            self.reebill_dao.save_reebill(zero)
+            self.reebill_dao.save_reebill(one)
+            self.reebill_dao.save_reebill(two)
+            self.reebill_dao.save_reebill(three)
+            self.reebill_dao.save_reebill(four)
+            self.state_db.new_rebill(session, acc, 1)
+            self.state_db.new_rebill(session, acc, 2)
+            self.state_db.new_rebill(session, acc, 3)
+            self.state_db.new_rebill(session, acc, 4)
+            self.state_db.issue(session, acc, 1)
+            self.state_db.issue(session, acc, 2)
+            self.state_db.issue(session, acc, 3)
+
+            # rate structures
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 2))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 3))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 4))
+
+            # no unissued corrections yet
+            self.assertEquals([],
+                    self.process.get_unissued_corrections(session, acc))
+
+            # try to apply nonexistent corrections
+            self.assertRaises(ValueError, self.process.apply_corrections,
+                    session, acc, 4)
+
+            # make corrections on 1 and 3
+            self.process.new_version(session, acc, 1)
+            self.process.new_version(session, acc, 3)
+            one_1 = self.reebill_dao.load_reebill(acc, 1, version=1)
+            three_1 = self.reebill_dao.load_reebill(acc, 3, version=1)
+            one_1.balance_due = 120
+            three_1.balance_due = 95
+            self.reebill_dao.save_reebill(one_1)
+            self.reebill_dao.save_reebill(three_1)
+
+            # there should be 2 adjustments: +$20 for 1-1, and -$5 for 3-1
+            self.assertEqual([(1, 1, 20), (3, 1, -5)],
+                    self.process.get_unissued_corrections(session, acc))
+
+            # try to apply corrections to an issued bill
+            self.assertRaises(ValueError, self.process.apply_corrections,
+                    session, acc, 2)
+            # try to apply corrections to a correction
+            self.assertRaises(ValueError, self.process.apply_corrections,
+                    session, acc, 3)
+
+            # get original balance of reebill 4 before applying corrections
+            four = self.reebill_dao.load_reebill(acc, 4)
+            self.process.sum_bill(session, three, four)
+            four_original_balance = four.balance_due
+
+            # apply corrections to un-issued reebill 4. reebill 4 should be
+            # updated, and the corrections (1 & 3) should be issued
+            self.process.apply_corrections(session, acc, 4)
+            four = self.reebill_dao.load_reebill(acc, 4)
+            self.assertEqual(15, four.total_adjustment)
+            self.assertEqual(four_original_balance + 15, four.balance_due)
+            self.assertTrue(self.state_db.is_issued(session, acc, 1))
+            self.assertTrue(self.state_db.is_issued(session, acc, 3))
+            self.assertEqual([], self.process.get_unissued_corrections(session,
+                    acc))
+
+            session.commit()
+
+    def test_delete_reebill(self):
+        account = '99999'
+        with DBSession(self.state_db) as session:
+            # create sequence 1 version 0, not issued
+            self.state_db.new_rebill(session, account, 1)
+            self.reebill_dao.save_reebill(example_data.get_reebill(account,
+                1, version=0))
+            assert self.state_db.listSequences(session, account) == [1]
+            self.reebill_dao.load_reebill(account, 1, version=0)
+
+            # delete it
+            self.process.delete_reebill(session, account, 1)
+            self.assertEqual([], self.state_db.listSequences(session, account))
+            self.assertRaises(NoSuchReeBillException, self.reebill_dao.load_reebill,
+                    account, 1, version=0)
+
+            # re-create it and issue: can't be deleted
+            self.state_db.new_rebill(session, account, 1)
+            self.reebill_dao.save_reebill(example_data.get_reebill(account,
+                1, version=0))
+            assert self.state_db.listSequences(session, account) == [1]
+            self.reebill_dao.load_reebill(account, 1, version=0)
+            self.assertRaises(Exception, self.process.delete_reebill, account, 1)
+
+            session.commit()
+
 if __name__ == '__main__':
-    #unittest.main(failfast=True)
-    unittest.main()
+    unittest.main(failfast=True)
+    #unittest.main()
