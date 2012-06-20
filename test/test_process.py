@@ -113,7 +113,7 @@ port = 27017
             'port': 27017
         })
 
-        self.process = Process(self.config, self.state_db, self.reebill_dao,
+        self.process = Process(self.state_db, self.reebill_dao,
                 self.rate_structure_dao, self.billupload, NexusUtil(),
                 self.splinter)
 
