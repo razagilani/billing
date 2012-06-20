@@ -330,7 +330,9 @@ class BillToolBridge:
                     self.ratestructure_dao, self.billUpload, None, None)
 
         # create a ReebillRenderer
-        self.renderer = render.ReebillRenderer(dict(self.config.items('reebillrendering')), self.logger)
+        self.renderer = render.ReebillRenderer(
+                dict(self.config.items('reebillrendering')), self.state_db,
+                self.reebill_dao, self.logger)
 
         # configure mailer
         bill_mailer.config = dict(self.config.items("mailer"))
@@ -766,20 +768,24 @@ class BillToolBridge:
     def render(self, account, sequence, **args):
         if not account or not sequence:
             raise ValueError("Bad Parameter Value")
+        sequence = int(sequence)
         if not self.config.getboolean('billimages', 'show_reebill_images'):
             return self.dumps({'success': False, 'errors': {'reason':
                     ('"Render" does nothing because reebill images have '
                     'been turned off.'), 'details': ''}})
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        # TODO 22598787 - branch awareness
-        self.renderer.render(
-            reebill, 
-            self.config.get("billdb", "billpath")+ "%s" % account, 
-            "%.4d.pdf" % int(sequence),
-            "EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
-            False
-        )
-        return self.dumps({'success': True})
+        with DBSession(self.state_db) as session:
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            # TODO 22598787 - branch awareness
+            self.renderer.render(
+                session,
+                account,
+                sequence,
+                self.config.get("billdb", "billpath")+ "%s" % account, 
+                "%.4d.pdf" % int(sequence),
+                "EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
+                False
+            )
+            return self.dumps({'success': True})
 
     def attach_utility_bills(self, session, account, sequence):
         '''Finalizes association between the reebill given by 'account',
@@ -913,7 +919,7 @@ class BillToolBridge:
             # TODO 25560415 this fails if reebill rendering is turned
             # off--there should be a better error message
             for reebill in all_bills:
-                self.renderer.render(reebill, 
+                self.renderer.render(session, account, sequence, 
                     self.config.get("billdb", "billpath")+ "%s" % reebill.account, 
                     "%.4d.pdf" % int(reebill.sequence),
                     "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
@@ -1739,6 +1745,7 @@ class BillToolBridge:
                 today = datetime.utcnow().date()
                 new_payment = self.state_db.create_payment(session, account,
                         today, "New Entry", 0)
+                # Payment object lacks "id" until row is inserted in database
                 session.flush()
                 return self.dumps({'success':True, 'rows':[new_payment.to_dict()]})
             elif xaction == "destroy":
