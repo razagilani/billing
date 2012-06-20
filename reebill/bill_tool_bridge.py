@@ -1303,6 +1303,7 @@ class BillToolBridge:
     def cprsrsi(self, xaction, account, sequence, service, **kwargs):
         if not xaction or not sequence or not service:
             raise ValueError("Bad Parameter Value")
+        service = service.lower()
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
@@ -1316,7 +1317,7 @@ class BillToolBridge:
         rate_structure = self.ratestructure_dao.load_cprs(
             reebill.account, 
             reebill.sequence, 
-            reebill.branch,
+            reebill.version,
             reebill.utility_name_for_service(service),
             reebill.rate_structure_name_for_service(service)
         )
@@ -1580,6 +1581,7 @@ class BillToolBridge:
     def ursrsi(self, xaction, account, sequence, service, **kwargs):
         if not xaction or not account or not sequence or not service:
             raise ValueError("Bad Parameter Value")
+        service = service.lower()
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
