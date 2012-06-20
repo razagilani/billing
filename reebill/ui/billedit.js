@@ -576,7 +576,8 @@ function reeBillReady() {
                         reeBillStore.reload();
                         Ext.MessageBox.alert("New version created", jsonData.new_version);
                     } else {
-                        Ext.MessageBox.alert("Error", jsonData.errors.reason);
+                        Ext.MessageBox.alert("Error", jsonData.errors.reason +
+                            "\n" + jsonData.errors.details);
                     }
                 },
                 failure: function() {
