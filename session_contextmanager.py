@@ -12,10 +12,6 @@ import thread
 import time
 import random
 from sys import stderr
-from billing import mongo
-from billing.reebill import render
-from billing.processing import state
-from billing.processing.db_objects import ReeBill, Customer
 
 class DBSession(object):
     '''Context manager for using "with" for database session.'''

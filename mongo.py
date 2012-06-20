@@ -4,20 +4,18 @@ import datetime
 from datetime import date, time, datetime
 from decimal import Decimal
 import pymongo
-from billing.mutable_named_tuple import MutableNamedTuple
 import functools
-
 from urlparse import urlparse
 import httplib
 import string
 import base64
 import itertools as it
 import copy
-from billing.mongo_utils import bson_convert, python_convert
 import uuid as UUID
+from billing.mongo_utils import bson_convert, python_convert
 from billing.dictutils import deep_map
-
-import pdb
+from billing.dateutils import date_to_datetime
+from billing.session_contextmanager import DBSession
 import pprint
 pp = pprint.PrettyPrinter(indent=1)
 sys.stdout = sys.stderr
@@ -352,11 +350,11 @@ class MongoReebill(object):
         self.reebill_dict['_id']['sequence'] = value
 
     @property
-    def branch(self):
-        return self.reebill_dict['_id']['branch']
-    @branch.setter
-    def branch(self, value):
-        self.reebill_dict['_id']['branch'] = int(value)
+    def version(self):
+        return self.reebill_dict['_id']['version']
+    @version.setter
+    def version(self, value):
+        self.reebill_dict['_id']['version'] = int(value)
     
     @property
     def issue_date(self):
@@ -1117,44 +1115,69 @@ class MongoReebill(object):
                 ub[chargegroups] = new_chargegroups
 
 
+class NoSuchReeBillException(Exception):
+    pass
+
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
-    def __init__(self, config):
-
-        self.config = config
-
-        self.connection = None
+    def __init__(self, state_db, host='localhost', port=27017,
+            database='reebills', **kwargs):
+        self.state_db = state_db
 
         try:
-            self.connection = pymongo.Connection(self.config['host'], int(self.config['port'])) 
+            self.connection = pymongo.Connection(host, int(port)) 
         except Exception as e: 
             print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
             raise e
         finally:
-            if self.connection is not None:
-                #self.connection.disconnect()
-                # TODO when to disconnect from the database?
-                pass
+            # TODO when to disconnect from the database?
+            pass
         
-        self.collection = self.connection[self.config['database']]['reebills']
-    
+        self.collection = self.connection[database]['reebills']
 
-    def load_reebill(self, account, sequence, branch=0):
+    def load_reebill(self, account, sequence, version='max'):
+        '''Returns the reebill with the given account and sequence, and the
+        greatest version by default. If 'version' is a specific version number,
+        that version will be returned. If 'version' is a date, and there exist
+        versions before that date, the greatest version issued before that date
+        is chosen. Otherwise the greatest version overall will be returned.'''
+        # TODO looks like somebody's temporary hack should be removed
         if account is None: return None
         if sequence is None: return None
 
         query = {
             "_id.account": str(account),
-            "_id.branch": int(branch),
             # TODO stop passing in sequnce as a string from BillToolBridge
-            "_id.sequence": int(sequence)
+            "_id.sequence": int(sequence),
         }
-        mongo_doc = self.collection.find_one(query)
+        if isinstance(version, int):
+            query.update({'_id.version': version})
+            mongo_doc = self.collection.find_one(query)
+        elif version == 'max':
+            # get max version from MySQL, since that's the definitive source of
+            # information on what officially exists
+            with DBSession(self.state_db) as session:
+                max_version = self.state_db.max_version(session, account, sequence)
+                session.commit()
+            query.update({'_id.version': max_version})
+            mongo_doc = self.collection.find_one(query)
+        elif isinstance(version, date):
+            version_dt = date_to_datetime(version)
+            docs = self.collection.find(query, sort=[('_id.version',
+                    pymongo.ASCENDING)])
+            earliest_issue_date = docs[0]['issue_date']
+            if earliest_issue_date is not None and earliest_issue_date < version_dt:
+                docs_before_date = [d for d in docs if d['issue_date'] < version_dt]
+                mongo_doc = docs_before_date[len(docs_before_date)-1]
+            else:
+                mongo_doc = docs[docs.count()-1]
+        else:
+            raise ValueError('Unknown version specifier "%s"' % version)
 
         if mongo_doc is None:
-            raise Exception("No ReeBill found for %s-%s (branch %s)" % (
-                account, sequence, branch))
+            raise NoSuchReeBillException(("No ReeBill found: query was %s")
+                    % (query))
 
         mongo_doc = deep_map(float_to_decimal, mongo_doc)
         mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
@@ -1162,14 +1185,14 @@ class ReebillDAO:
 
         return mongo_reebill
 
-    def load_reebills_for(self, account, branch=0):
+    def load_reebills_for(self, account, version=0):
         # TODO remove--redundant with load_reebills_in_period when no dates are given, except for exclusion of sequence 0
 
         if not account: return None
 
         query = {
             "_id.account": str(account),
-            "_id.branch": int(branch),
+            '_id.version': version
         }
 
         mongo_docs = self.collection.find(query, sort=[("_id.sequence",pymongo.ASCENDING)])
@@ -1182,18 +1205,29 @@ class ReebillDAO:
 
         return mongo_reebills
     
-    def load_reebills_in_period(self, account, branch=0, start_date=None, end_date=None):
+    def load_reebills_in_period(self, account, version=0, start_date=None,
+            end_date=None):
         '''Returns a list of MongoReebills whose period began on or before
         'end_date' and ended on or after 'start_date' (i.e. all bills between
         those dates and all bills whose period includes either endpoint). The
         results are ordered by sequence. If 'start_date' and 'end_date' are not
         given or are None, the time period extends to the begining or end of
-        time, respectively. Sequence 0 is never included.'''
+        time, respectively. Sequence 0 is never included.
+        
+        'version' may be a specific version number, or 'any' to get all
+        versions.'''
         query = {
             '_id.account': str(account),
-            '_id.branch': int(branch),
-            '_id.sequence': {'$gt': 0}
+            '_id.sequence': {'$gt': 0},
         }
+        if isinstance(version, int):
+            query.update({'_id.version': version})
+        elif version == 'any':
+            pass
+        else:
+            raise ValueError('Unknown version specifier "%s"' % version)
+        # TODO max version
+
         # add dates to query if present (converting dates into datetimes
         # because mongo only allows datetimes)
         if start_date is not None:
@@ -1212,26 +1246,36 @@ class ReebillDAO:
             result.append(MongoReebill(mongo_doc))
         return result
         
-    def save_reebill(self, reebill):
+    def save_reebill(self, reebill, force=False):
         '''Saves the MongoReebill 'reebill' into the database. If a document
-        with the same account & sequence number already exists, the existing
-        document is replaced with this one.'''
+        with the same account, sequence, and version already exists, the existing
+        document is replaced.
+        
+        Replacing an already-issued reebill (as determined by StateDB, using
+        the rule that all versions except the highest are issued) is forbidden
+        unless 'force' is True (this should only be used for testing).'''
+        if not force:
+            with DBSession(self.state_db) as session:
+                if self.state_db.is_issued(session, reebill.account,
+                        reebill.sequence, version=reebill.version,
+                        allow_nonexistent=True):
+                    raise Exception("Can't modify an issued reebill.")
+                session.commit()
+        
         mongo_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
 
         self.collection.save(mongo_doc)
 
-    def delete_reebill(self, account, sequence, branch=0):
+    def delete_reebill(self, account, sequence, version):
         self.collection.remove({
-            '_id.account': str(account),
-            '_id.sequence': int(sequence),
-            '_id.branch': int(branch)
+            '_id.account': account,
+            '_id.sequence': sequence,
+            '_id.version': version,
         }, safe=True)
 
     def get_first_bill_date_for_account(self, account):
         '''Returns the start date of the account's earliest reebill, or None if
         no reebills exist for the customer.'''
-        #TODO 24722017 it isn't clear which date is intended - the date of the earliest service? Or, the dates of the individual services?
-        # It is assummed that the date of the earliest service period is desired.
         query = {
             '_id.account': account,
             '_id.sequence': 1,
