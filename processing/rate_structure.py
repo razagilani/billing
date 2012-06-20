@@ -49,14 +49,15 @@ class RateStructureDAO(object):
     processing information.
     '''
 
-    def __init__(self, config):
+    def __init__(self, host, port, database, **kwargs):
+        '''kwargs catches extra junk from config dictionary unpacked into
+        constructor arguments.'''
         try:
-            self.connection = pymongo.Connection(config['host'],
-                    int(config['port']))
+            self.connection = pymongo.Connection(host, int(port))
         except Exception as e: 
             print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
             raise e
-        self.database = self.connection[config['database']]
+        self.database = self.connection[database]
         self.collection = self.database['ratestructure']
 
     def _load_probable_rs_dict(self, reebill, service):
