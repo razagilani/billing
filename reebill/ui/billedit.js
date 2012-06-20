@@ -4814,6 +4814,7 @@ function reeBillReady() {
         data: initialjournal,
         root: 'rows',
         idProperty: '_id',
+        sortInfo: {field: 'date', direction: 'DESC'},
         fields: [
             {name: '_id'},
             {
