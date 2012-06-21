@@ -19,7 +19,8 @@ class FakeSplinter(object):
 class FakeSkyInstall(object):
     def get_billable_energy(self, day, hour_range=(0,24), places=5):
         hours = hour_range[1] - hour_range[0]
-        energy = Decimal(one_hour_of_energy()) * hours
+        # NOTE you can't pass a float into Decimal() in 2.6, only 2.7
+        energy = Decimal(str(one_hour_of_energy())) * hours
         return energy.quantize(Decimal('1.'+'0'*places))
 
     @property
