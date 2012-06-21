@@ -17,9 +17,10 @@ class FakeSplinter(object):
         return self.monguru
 
 class FakeSkyInstall(object):
-    def get_billable_energy(self, day, hour_range=(0,24), places=None):
+    def get_billable_energy(self, day, hour_range=(0,24), places=5):
         hours = hour_range[1] - hour_range[0]
-        return Decimal(one_hour_of_energy() * hours)
+        energy = Decimal(one_hour_of_energy()) * hours
+        return energy.quantize(Decimal('1.'+'0'*places))
 
     @property
     def install_commissioned(self):

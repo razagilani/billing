@@ -673,13 +673,8 @@ class BillToolBridge:
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
-            fbd.fetch_oltp_data(
-                Splinter(self.config.get('skyline_backend', 'oltp_url'),
-                    self.config.get('skyline_backend', 'olap_host'),
-                    self.config.get('skyline_backend', 'olap_database')),
-                self.nexus_util.olap_id(account),
-                reebill
-            )
+            fbd.fetch_oltp_data(self.splinter,
+                    self.nexus_util.olap_id(account), reebill)
         self.reebill_dao.save_reebill(reebill)
         journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, sequence, reebill.version)
