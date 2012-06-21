@@ -1138,12 +1138,22 @@ class ReebillDAO:
         
         self.collection = self.connection[database]['reebills']
 
+    def _get_version_query(self, account, sequence, specifier):
+        '''Returns the version part of a Mongo query for a reebill based on the
+        "version specifier": .'''
+
+        # TODO
+        if isinstance(specifier, date):
+            raise NotImplementedError
+
+        raise ValueError('Unknown version specifier "%s"' % specifier)
+
     def load_reebill(self, account, sequence, version='max'):
-        '''Returns the reebill with the given account and sequence, and the
-        greatest version by default. If 'version' is a specific version number,
-        that version will be returned. If 'version' is a date, and there exist
-        versions before that date, the greatest version issued before that date
-        is chosen. Otherwise the greatest version overall will be returned.'''
+        '''Returns the reebill with the given account and sequence, and the a
+        version: a specific version number, an issue date (before which the
+        greatest issued version is returned, and after which the greatest
+        overall version is returned), or 'max', which specifies the greatest
+        version overall.'''
         # TODO looks like somebody's temporary hack should be removed
         if account is None: return None
         if sequence is None: return None
@@ -1153,6 +1163,10 @@ class ReebillDAO:
             # TODO stop passing in sequnce as a string from BillToolBridge
             "_id.sequence": int(sequence),
         }
+
+        # TODO figure out how to move this into _get_version_query(): it can't
+        # be expressed as part of the query, except maybe with a javascript
+        # "where" clause
         if isinstance(version, int):
             query.update({'_id.version': version})
             mongo_doc = self.collection.find_one(query)
@@ -1187,25 +1201,14 @@ class ReebillDAO:
 
         return mongo_reebill
 
-    def load_reebills_for(self, account, version=0):
-        # TODO remove--redundant with load_reebills_in_period when no dates are given, except for exclusion of sequence 0
-
+    def load_reebills_for(self, account, version='max'):
+        '''Returns all reebills for the given account with the specified
+        version (see _get_version_query above).'''
         if not account: return None
 
-        query = {
-            "_id.account": str(account),
-            '_id.version': version
-        }
-
-        mongo_docs = self.collection.find(query, sort=[("_id.sequence",pymongo.ASCENDING)])
-
-        mongo_reebills = []
-        for doc in mongo_docs:
-            doc = deep_map(float_to_decimal, doc)
-            doc = convert_datetimes(doc) # this must be an assignment because it copies
-            mongo_reebills.append(MongoReebill(doc))
-
-        return mongo_reebills
+        with DBSession(self.state_db) as session:
+            sequences = self.state_db.listaccount, Sequences(session, account)
+        return [self.load_reebill(account, sequence) for sequence in sequences]
     
     def load_reebills_in_period(self, account, version=0, start_date=None,
             end_date=None):
