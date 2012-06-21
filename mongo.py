@@ -1074,6 +1074,8 @@ class MongoReebill(object):
         return self.chargegroups_flattened(service, chargegroups)
 
     def chargegroups_flattened(self, service, chargegroups):
+        if service not in self.services:
+            raise ValueError('Unknown service "%s"' % service)
 
         # flatten structure into an array of dictionaries, one for each charge
         # this has to be done because the grid editor is  looking for a flat table

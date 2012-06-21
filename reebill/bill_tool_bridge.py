@@ -2038,6 +2038,7 @@ class BillToolBridge:
     def actualCharges(self, xaction, service, account, sequence, **kwargs):
         if not xaction or not account or not sequence or not service:
             raise ValueError("Bad Parameter Value")
+        service = service.lower()
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
@@ -2125,6 +2126,7 @@ class BillToolBridge:
     def hypotheticalCharges(self, xaction, service, account, sequence, **kwargs):
         if not xaction or not account or not sequence or not service:
             raise ValueError("Bad Parameter Value")
+        service = service.lower()
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
