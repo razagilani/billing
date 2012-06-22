@@ -1980,8 +1980,8 @@ function reeBillReady() {
         // all children inherit flex
         flex: 1,
         layoutConfig : {
-            //pack : 'start',
-            //align : 'stretch',
+            pack : 'start',
+            align : 'stretch',
         },
         items: null // configureUBMeasuredUsagesForm sets this
     });
@@ -5373,13 +5373,13 @@ function reeBillReady() {
             reeBillPanel,
             ubBillPeriodsPanel,
             ubMeasuredUsagesPanel,
-            rateStructurePanel,
-            chargeItemsPanel,
-            journalPanel,
-            mailPanel,
-            reportPanel,
-            preferencesPanel,
-            aboutPanel,
+            //rateStructurePanel,
+            //chargeItemsPanel,
+            //journalPanel,
+            //mailPanel,
+            //reportPanel,
+            //preferencesPanel,
+            //aboutPanel,
         ]
     });
 
