@@ -352,8 +352,6 @@ class Process(object):
                 version=0)
 
         # re-bind
-        # TODO re-enable (might want to make an object that pretends to be
-        # SkyInstall to test this)
         fetch_bill_data.fetch_oltp_data(self.splinter,
                 self.nexus_util.olap_id(account), reebill)
 

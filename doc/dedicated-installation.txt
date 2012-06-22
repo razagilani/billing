@@ -72,6 +72,7 @@ For Rendering Images
     sudo yum install ImageMagick
     sudo yum install html2ps
     sudo yum install poppler-utils (for pdftoppm)
+    sudo yum install pdftk
     
 
 Chart Director 'pychartdir'
