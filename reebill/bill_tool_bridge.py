@@ -815,30 +815,28 @@ class BillToolBridge:
 
     def issue_reebills(self, session, account, sequences,
             apply_corrections=True):
-        # TODO replace unissued_sequences with sequences
-        # get unissued subset of 'sequences'
-        unissued_sequences = sorted([s for s in sequences if not
-                self.state_db.is_issued(session, account, s)])
-
+        '''Issues all unissued bills given by account and sequences. These must
+        be version 0, not corrections. If apply_corrections is True, all
+        unissued corrections will be applied to the earliest unissued bill in
+        sequences.'''
         # attach utility bills to all unissued bills
-        for unissued_sequence in unissued_sequences:
+        for unissued_sequence in sequences:
             self.attach_utility_bills(session, account, unissued_sequence)
 
         if apply_corrections:
             # get unissued corrections for this account
-            unissued_correction_sequences = self\
-                    .process.get_unissued_correction_sequences(session, account)
+            unissued_correction_sequences = self.process\
+                    .get_unissued_correction_sequences(session, account)
 
             # apply all corrections to earliest un-issued bill, then issue
             # that and all other un-issued bills
-            self.process.apply_corrections(session, account,
-                    unissued_sequences[0])
+            self.process.apply_corrections(session, account, sequences[0])
         # issue all unissued reebills
-        for unissued_sequence in unissued_sequences:
+        for unissued_sequence in sequences:
             self.process.issue(session, account, unissued_sequence)
 
         # journal attaching of utility bills
-        for unissued_sequence in unissued_sequences:
+        for unissued_sequence in sequences:
             journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
                     account, unissued_sequence, self.state_db.max_version(session,
                     account, unissued_sequence))
@@ -848,12 +846,12 @@ class BillToolBridge:
             for correction_sequence in unissued_correction_sequences:
                 journal.ReeBillIssuedEvent.save_instance(
                         cherrypy.session['user'],
-                        account, unissued_sequences[0],
+                        account, sequences[0],
                         self.state_db.max_version(session, account,
                         correction_sequence),
-                        applied_sequence=unissued_sequences[0])
+                        applied_sequence=sequences[0])
         # journal issuing of all unissued bills
-        for unissued_sequence in unissued_sequences:
+        for unissued_sequence in sequences:
             journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
                     account, unissued_sequence, 0)
 
@@ -867,7 +865,7 @@ class BillToolBridge:
         # sequences will come in as a string if there is one element in post data. 
         # If there are more, it will come in as a list of strings
         if type(sequences) is list:
-            sequences = map(int, sequnces)
+            sequences = map(int, sequences)
         else:
             sequences = [int(sequences)]
 
@@ -882,28 +880,34 @@ class BillToolBridge:
 
         # 1st transaction: issue
         with DBSession(self.state_db) as session:
-            # get unissued subset of 'sequences'
-            unissued_sequences = sorted([s for s in sequences if not
-                    self.state_db.is_issued(session, account, s)])
+            # don't issue anything unless at least one of the unissued bills is
+            # not a correction (because corrections must be applied to a bill
+            # that isn't a correction)
+            if any(self.state_db.max_version(session, account, s) == 0 and not
+                    self.state_db.is_issued(session, account, s) for s in
+                    sequences):
+                # get unissued subset of 'sequences'
+                unissued_sequences = sorted([s for s in sequences if not
+                        self.state_db.is_issued(session, account, s)])
 
-            # if this account has unissued corrections and there is at least
-            # one unissued bill (about to be issued) and the client didn't
-            # specify corrections to apply, complain (client will show
-            # confirmation message)
-            unissued_corrections = self.process.get_unissued_correction_sequences(
-                    session, account)
-            if len(unissued_corrections) > 0 and len(unissued_sequences) > 0 \
-                    and 'corrections' not in kwargs:
-                return self.dumps({'success': False,
-                        'corrections': unissued_corrections})
-            if 'corrections_to_apply' in locals():
-                # make sure corrections_to_apply is all of them (currently,
-                # client code guarantees this)
-                if not sorted(corrections_to_apply) == sorted(
-                        unissued_corrections):
-                    raise ValueError('All corrections must be issued.')
-            self.issue_reebills(session, account, unissued_sequences,
-                    apply_corrections=('corrections_to_apply' in locals()))
+                # if this account has unissued corrections and there is at least
+                # one unissued bill (about to be issued) and the client didn't
+                # specify corrections to apply, complain (client will show
+                # confirmation message)
+                unissued_corrections = self.process.get_unissued_correction_sequences(
+                        session, account)
+                if len(unissued_corrections) > 0 and len(unissued_sequences) > 0 \
+                        and 'corrections' not in kwargs:
+                    return self.dumps({'success': False,
+                            'corrections': unissued_corrections})
+                if 'corrections_to_apply' in locals():
+                    # make sure corrections_to_apply is all of them (currently,
+                    # client code guarantees this)
+                    if not sorted(corrections_to_apply) == sorted(
+                            unissued_corrections):
+                        raise ValueError('All corrections must be issued.')
+                self.issue_reebills(session, account, unissued_sequences,
+                        apply_corrections=('corrections_to_apply' in locals()))
 
 
         # 2nd transaction: mail
