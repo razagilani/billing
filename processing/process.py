@@ -820,8 +820,9 @@ class Process(object):
              
 
 
-    def calculate_reperiod(self, reebill):
-        """ Set the Renewable Energy bill Period """
+    def set_reebill_period(self, reebill):
+        '''Sets the period dates of 'reebill' to the earliest utility bill
+        start date and latest utility bill end date.'''
         #reebill = self.reebill_dao.load_reebill(account, sequence)
         
         utilbill_period_beginnings = []
