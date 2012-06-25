@@ -207,12 +207,18 @@ class StateDB:
             utilbill.reebill = reebill
             utilbill.processed = True
 
+    def utilbills_for_reebill(self, session, account, sequence):
+        '''Returns all utility bills for the reebill given by account,
+        sequence.'''
+        customer = session.query(Customer).filter(Customer.account==account).one()
+        reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
+                .filter(ReeBill.sequence==sequence).one()
+        utilbills = session.query(UtilBill).filter(UtilBill.reebill==reebill)
+        return utilbills.all()
+
     def delete_reebill(self, session, account, sequence):
         '''Deletes the latest version of the given reebill, if it's not
         issued.'''
-        # TODO add branch, which MySQL doesn't have yet:
-        # https://www.pivotaltracker.com/story/show/24374911 
-
         customer = session.query(Customer)\
                 .filter(Customer.account==account).one()
         reebill = session.query(ReeBill)\
@@ -221,10 +227,14 @@ class StateDB:
         if self.is_issued(session, account, sequence):
             raise Exception("Can't delete an issued reebill")
         
-        # find all utilbills attached to this reebill and detach them
-        for utilbill in session.query(UtilBill)\
-                .filter(UtilBill.reebill==reebill):
-            utilbill.reebill = None
+        # if the version is 0, detach all utility bills. otherwise leave them
+        # as they are, because the attachment needs to be preserved for the
+        # decremented version.
+        # NOTE see https://www.pivotaltracker.com/story/show/31629749
+        if reebill.max_version == 0:
+            for utilbill in session.query(UtilBill)\
+                    .filter(UtilBill.reebill==reebill):
+                utilbill.reebill = None
 
         if reebill.max_version > 0:
             # all versions except the last are considered issued, so decrement
