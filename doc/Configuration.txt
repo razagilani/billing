@@ -127,3 +127,9 @@ Bill entry UI
 
 client JS needs to proxy to bill_tool_bridge
 
+
+Tesseract
+=========
+
+    apt-get install libtiff-dev
+    apt-get install g++
