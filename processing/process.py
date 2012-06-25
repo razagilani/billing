@@ -27,6 +27,11 @@ from billing import dateutils
 from billing.dateutils import estimate_month, month_offset, month_difference
 from billing.monthmath import Month, approximate_month
 
+class IssuedBillError(Exception):
+    '''Exception for trying to modify a bill that has been issued. Use this in
+    all those situations.'''
+    pass
+
 sys.stdout = sys.stderr
 class Process(object):
     """ Class with a variety of utility procedures for processing bills.
@@ -491,7 +496,7 @@ class Process(object):
         deleted (the highest ersion before deletion).'''
         # don't delete an issued reebill
         if self.state_db.is_issued(session, account, sequence):
-            raise Exception("Can't delete an issued reebill.")
+            raise IssuedBillError("Can't delete an issued reebill.")
 
         # delete reebill state data from MySQL and dissociate utilbills from it
         # (save max version first because row may be deleted)
@@ -849,7 +854,8 @@ class Process(object):
         '''Sets the issue date of the reebill given by account, sequence to
         'issue_date' (or today by default) and the due date to 30 days from the
         issue date. The reebill's late charge is set to its permanent value in
-        mongo, and the reebill is marked as issued in the state database.'''
+        mongo, and the reebill is marked as issued in the state database.
+        Does not attach utililty bills.'''
         # set issue date and due date in mongo
         reebill = self.reebill_dao.load_reebill(account, sequence)
         reebill.issue_date = issue_date
