@@ -1775,6 +1775,10 @@ class BillToolBridge:
                     row_dict = {}
                     mongo_reebill = self.reebill_dao.load_reebill(account, reebill.sequence)
 
+                    # TODO: clean up. if a reebill lacks any of these keys,
+                    # that's an error we do not want to bury. and there would
+                    # be nothing wrong with putting a nice to_dict() method
+                    # inside MongoReebill.
                     row_dict['id'] = reebill.sequence
                     row_dict['sequence'] = reebill.sequence
                     try: row_dict['issue_date'] = mongo_reebill.issue_date 
@@ -1808,6 +1812,10 @@ class BillToolBridge:
                         row_dict['corrections'] = str(version) + ('' if issued else ' (not issued)')
                     else:
                         row_dict['corrections'] = '-' if issued else '(not issued)'
+
+                    row_dict['total_error'] = self.process.get_total_error(
+                            session, account, reebill.sequence)
+                    print '&&&&&&&&&&&&&&&&', row_dict['total_error']
 
                     rows.append(row_dict)
                 return self.dumps({'success': True, 'rows':rows, 'results':totalCount})

@@ -430,6 +430,15 @@ class Process(object):
         self.sum_bill(session, target_reebill_predecessor, target_reebill)
         self.reebill_dao.save_reebill(target_reebill)
 
+    def get_total_error(self, session, account, sequence):
+        '''Returns the net difference between the ree_charges of the latest
+        version (issued or not) and version 0 of the reebill given by account,
+        sequence.'''
+        earliest = self.reebill_dao.load_reebill(account, sequence, version=0)
+        latest = self.reebill_dao.load_reebill(account, sequence, 'max')
+        print '********************* %s - %s' % (latest.ree_charges, earliest.ree_charges)
+        return latest.ree_charges - earliest.ree_charges
+
     def get_late_charge(self, session, reebill, day=date.today()):
         '''Returns the late charge for the given reebill on 'day', which is the
         present by default. ('day' will only affect the result for a bill that

@@ -650,6 +650,7 @@ function reeBillReady() {
             {name: 'balance_forward'},
             {name: 'ree_charges'},
             {name: 'balance_due'},
+            {name: 'total_error'},
         ],
     });
 
@@ -726,6 +727,11 @@ function reeBillReady() {
                 header: 'Corrections',
                 sortable: false,
                 dataIndex: 'corrections',
+                width: 45,
+            },{
+                header: 'Total Error',
+                sortable: false,
+                dataIndex: 'total_error',
                 width: 45,
             },{
                 header: 'Start Date',
