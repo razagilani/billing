@@ -436,7 +436,6 @@ class Process(object):
         sequence.'''
         earliest = self.reebill_dao.load_reebill(account, sequence, version=0)
         latest = self.reebill_dao.load_reebill(account, sequence, 'max')
-        print '********************* %s - %s' % (latest.ree_charges, earliest.ree_charges)
         return latest.ree_charges - earliest.ree_charges
 
     def get_late_charge(self, session, reebill, day=date.today()):
