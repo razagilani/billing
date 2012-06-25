@@ -1815,7 +1815,6 @@ class BillToolBridge:
 
                     row_dict['total_error'] = self.process.get_total_error(
                             session, account, reebill.sequence)
-                    print '&&&&&&&&&&&&&&&&', row_dict['total_error']
 
                     rows.append(row_dict)
                 return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
