@@ -82,49 +82,10 @@ Chart Director 'pychartdir'
         Then add python path to WSGIDaemonProcess directive in Apache2 /usr/lib/python2.6/site-packages/ChartDirector/lib
 
 MySQL
-    sudo yum install mysql-server
-    
-    # for MySQL-Python
-    sudo yum install mysql-devel.i686
-    change the root user's password
 
+    See /docs/host-setup.txt for details on installing MySQL
 
-    [ec2-user@domU-12-31-39-07-5C-C2 site-packages]$ sudo service mysqld start
-    Initializing MySQL database:  Installing MySQL system tables...
-    OK
-    Filling help tables...
-    OK
-
-    To start mysqld at boot time you have to copy
-    support-files/mysql.server to the right place for your system
-
-    PLEASE REMEMBER TO SET A PASSWORD FOR THE MySQL root USER !
-    To do so, start the server, then issue the following commands:
-
-    /usr/bin/mysqladmin -u root password 'new-password'
-    /usr/bin/mysqladmin -u root -h domU-12-31-39-07-5C-C2 password 'new-password'
-
-    Alternatively you can run:
-    /usr/bin/mysql_secure_installation
-
-    which will also give you the option of removing the test
-    databases and anonymous user created by default.  This is
-    strongly recommended for production servers.
-
-    See the manual for more instructions.
-
-    You can start the MySQL daemon with:
-    cd /usr ; /usr/bin/mysqld_safe &
-
-    You can test the MySQL daemon with mysql-test-run.pl
-    cd /usr/mysql-test ; perl mysql-test-run.pl
-
-    Please report any problems with the /usr/bin/mysqlbug script!
-
-
-
-    didnt do this So that an administrative user can run connect remotely
-        grant all on skyline.* to 'root'@'%.local' identified by '[password]';
+    grant all on skyline.* to 'root'@'%.local' identified by '[password]';
 
     create database skyline_[env]
     use skyline_[env]
@@ -137,50 +98,6 @@ MySQL
     # for connecting from localhost
     grant all on skyline.* to 'reebill'@'localhost' identified by '[password]';
 
-    If pip install MySQL-Python fails with the following error, mysql_config is not available.
-    Install it by: sudo apt-get install libmysqlclient-dev
-
-            $ pip install MySQL-Python
-            Downloading/unpacking MySQL-Python
-              Downloading MySQL-python-1.2.3.tar.gz (70Kb): 70Kb downloaded
-              Running setup.py egg_info for package MySQL-Python
-                sh: mysql_config: not found
-                Traceback (most recent call last):
-                  File "<string>", line 14, in <module>
-                  File "/home/randrews/.virtualenvs/reebill/build/MySQL-Python/setup.py", line 15, in <module>
-                    metadata, options = get_config()
-                  File "setup_posix.py", line 43, in get_config
-                    libs = mysql_config("libs_r")
-                  File "setup_posix.py", line 24, in mysql_config
-                    raise EnvironmentError("%s not found" % (mysql_config.path,))
-                EnvironmentError: mysql_config not found
-                Complete output from command python setup.py egg_info:
-                sh: mysql_config: not found
-
-            Traceback (most recent call last):
-
-              File "<string>", line 14, in <module>
-
-              File "/home/randrews/.virtualenvs/reebill/build/MySQL-Python/setup.py", line 15, in <module>
-
-                metadata, options = get_config()
-
-              File "setup_posix.py", line 43, in get_config
-
-                libs = mysql_config("libs_r")
-
-              File "setup_posix.py", line 24, in mysql_config
-
-                raise EnvironmentError("%s not found" % (mysql_config.path,))
-
-            EnvironmentError: mysql_config not found
-
-            ----------------------------------------
-            Command python setup.py egg_info failed with error code 1 in /home/randrews/.virtualenvs/reebill/build/MySQL-Python
-            Storing complete log in /home/randrews/.pip/pip.log
-
-
-
 
 
     Loading the database
@@ -190,29 +107,9 @@ MySQL
         mysql -uroot -p[password] -Dskyline < /var/local/reebill/billing/db/processing/billdb.sql
 
 
-Mongo
-=====
-
-    The following must be added to the AWS Linux AMI's /etc/yum.repos.d/10gen.repo
-        [10gen]
-        name=10gen Repository
-        baseurl=http://downloads-distro.mongodb.org/repo/redhat/os/i686
-        gpgcheck=0
-
-    sudo yum install mongo
-    sudo service mongod start
 
 
 
-Install Apache2: 
-    sudo yum install httpd.i686
-Test successfull install:  http://ec2-107-21-175-174.compute-1.amazonaws.com/
-
-Install mod_wsgi.i686
-    sudo yum install mod_wsgi.i686
-Test:  ???
-
-Python 2.6.7 appears pre-installed
 
 Configure Apache2 
 =================
