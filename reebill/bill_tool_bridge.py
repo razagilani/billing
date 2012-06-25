@@ -720,6 +720,8 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
+    # TODO clean this up and move it out of BillToolBridge
+    # https://www.pivotaltracker.com/story/show/31404685
     def bindrs(self, account, sequence, **args):
         '''Handler for the front end's "Compute Bill" operation.'''
         with DBSession(self.state_db) as session:
@@ -732,7 +734,7 @@ class BillToolBridge:
                 mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
                 prior_mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, int(reebill.sequence)-1)
 
-                self.process.calculate_reperiod(mongo_reebill)
+                self.process.set_reebill_period(mongo_reebill)
 
                 try:
                     self.process.bind_rate_structure(mongo_reebill)
