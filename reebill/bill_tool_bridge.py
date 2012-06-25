@@ -433,7 +433,8 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             spreadsheet_name =  'estimated_revenue.xls'
             er = EstimatedRevenue(self.state_db, self.reebill_dao,
-                    self.ratestructure_dao, self.splinter)
+                    self.ratestructure_dao, self.billUpload, self.nexus_util,
+                    self.splinter)
             buf = StringIO()
             er.write_report_xls(session, buf)
 
