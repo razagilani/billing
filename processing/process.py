@@ -378,19 +378,22 @@ class Process(object):
         reebill.version = max_version + 1
         reebill.issue_date = None
 
-        # get sequence predecessor, to compute balance forward and prior
-        # balance. this is always version 0, because we want those values to be
-        # the same as they were on version 0 of this bill--we don't care about
-        # any corrections that might have been made to that bill later.
-        predecessor = self.reebill_dao.load_reebill(account, sequence-1,
-                version=0)
-
         # re-bind
         fetch_bill_data.fetch_oltp_data(self.splinter,
                 self.nexus_util.olap_id(account), reebill)
 
-        # recompute
+        # recompute, using sequence predecessor to compute balance forward and
+        # prior balance. this is always version 0, because we want those values
+        # to be the same as they were on version 0 of this bill--we don't care
+        # about any corrections that might have been made to that bill later.
+        predecessor = self.reebill_dao.load_reebill(account, sequence-1,
+                version=0)
+
         self.sum_bill(session, predecessor, reebill)
+        # load reebill from mongo again to get its updated charges (yes, this
+        # design sucks)
+        reebill = self.reebill_dao.load_reebill(reebill.account,
+                reebill.sequence, reebill.version)
 
         # save in mongo
         self.reebill_dao.save_reebill(reebill)
