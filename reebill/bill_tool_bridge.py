@@ -673,7 +673,7 @@ class BillToolBridge:
         sequence = int(sequence)
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
-        print self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
+        if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
             fbd.fetch_oltp_data(self.splinter,
                     self.nexus_util.olap_id(account), reebill)
         self.reebill_dao.save_reebill(reebill)
