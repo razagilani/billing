@@ -115,6 +115,8 @@ class RateStructureDAO(object):
 
         # remove the mongo key, because the requester already has this information
         # and we do not want application code depending on the "_id" field.
+        if cprs is None:
+            import ipdb; ipdb.set_trace()
         del cprs['_id']
 
         # remove the uuids because they are not used in rate structure computation
@@ -219,6 +221,9 @@ class RateStructureDAO(object):
             "_id.version":int(version)
         }
         cprs = self.collection.find_one(query)
+        if cprs is None:
+            import ipdb; ipdb.set_trace()
+            raise ValueError('Could not find CPRS: query was %s' % query)
         return cprs
 
     def save_rs(self, rate_structure_data):
