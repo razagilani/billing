@@ -728,11 +728,11 @@ function reeBillReady() {
                 sortable: false,
                 dataIndex: 'corrections',
                 width: 45,
-            },{
-                header: 'Total Error',
-                sortable: false,
-                dataIndex: 'total_error',
-                width: 45,
+            //},{
+                //header: 'Total Error',
+                //sortable: false,
+                //dataIndex: 'total_error',
+                //width: 45,
             },{
                 header: 'Start Date',
                 sortable: true,
@@ -761,30 +761,30 @@ function reeBillReady() {
                 dataIndex: 'ree_value',
                 width: 65,
                 align: 'right',
-            },{
-                header: 'Prior Balance',
-                sortable: false,
-                dataIndex: 'prior_balance',
-                width: 65,
-                align: 'right',
-            },{
-                header: 'Payment',
-                sortable: false,
-                dataIndex: 'payment_received',
-                width: 65,
-                align: 'right',
+            //},{
+                //header: 'Prior Balance',
+                //sortable: false,
+                //dataIndex: 'prior_balance',
+                //width: 65,
+                //align: 'right',
+            //},{
+                //header: 'Payment',
+                //sortable: false,
+                //dataIndex: 'payment_received',
+                //width: 65,
+                //align: 'right',
             },{
                 header: 'Adjustment',
                 sortable: false,
                 dataIndex: 'total_adjustment',
                 width: 65,
                 align: 'right',
-            },{
-                header: 'Balance Fwd',
-                sortable: false,
-                dataIndex: 'balance_forward',
-                width: 65,
-                align: 'right',
+            //},{
+                //header: 'Balance Fwd',
+                //sortable: false,
+                //dataIndex: 'balance_forward',
+                //width: 65,
+                //align: 'right',
             },{
                 header: 'RE&E Charges',
                 sortable: false,
