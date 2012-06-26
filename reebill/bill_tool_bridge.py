@@ -673,7 +673,7 @@ class BillToolBridge:
         sequence = int(sequence)
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
-        if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
+        print self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
             fbd.fetch_oltp_data(self.splinter,
                     self.nexus_util.olap_id(account), reebill)
         self.reebill_dao.save_reebill(reebill)
@@ -757,6 +757,7 @@ class BillToolBridge:
             mongo_predecessor = self.reebill_dao.load_reebill(account,
                     sequence - 1)
             self.process.sum_bill(session, mongo_predecessor, mongo_reebill)
+            self.reebill_dao.save_reebill(mongo_reebill)
             return self.dumps({'success': True})
 
     @cherrypy.expose
