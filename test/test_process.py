@@ -152,7 +152,7 @@ port = 27017
                 date(2012,2,2)))
  
             # issue bill 1, so a later bill can have a late charge based on the
-            # customer's failure to pay bill1 by its due date. i.e. 30 days
+            # customer's failure to pay bill1 by its due date, i.e. 30 days
             # after issue date. (it must be saved in both mongo and mysql to be
             # issued.)
             self.reebill_dao.save_reebill(bill1)
@@ -166,9 +166,11 @@ port = 27017
  
             # after bill1 is created, it must be "summed" to get it into a
             # usable state (in particular, it needs a late charge). that
-            # requires a sequence 0 template bill. put one into mongo and then
-            # sum bill1.
+            # requires a sequence 0 template bill and rate structures.
             bill0 = example_data.get_reebill('99999', 0)
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
             self.process.sum_bill(session, bill0, bill1)
  
             # but sum_bill() destroys bill1's balance_due, so reset it to
@@ -203,8 +205,9 @@ port = 27017
                 date(2013,1,1)))
  
             # in order to get late charge of a 3rd bill, bill2 must be put into
-            # mysql and "summed"
+            # mysql and "summed" (requires a rate structure)
             self.state_db.new_rebill(session, bill2.account, bill2.sequence)
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 2))
             self.process.sum_bill(session, bill1, bill2)
  
             # create a 3rd bill without issuing bill2. bill3 should have None
