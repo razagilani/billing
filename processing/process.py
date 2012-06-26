@@ -9,7 +9,6 @@ import copy
 import datetime
 from datetime import date
 import calendar
-import pprint
 from optparse import OptionParser
 from decimal import *
 #
@@ -26,6 +25,12 @@ from billing import nexus_util
 from billing import dateutils
 from billing.dateutils import estimate_month, month_offset, month_difference
 from billing.monthmath import Month, approximate_month
+from billing.dictutils import deep_map
+from billing.mongo import float_to_decimal
+
+import pprint
+pp = pprint.PrettyPrinter(indent=1)
+sys.stdout = sys.stderr
 
 class IssuedBillError(Exception):
     '''Exception for trying to modify a bill that has been issued. Use this in
@@ -140,10 +145,7 @@ class Process(object):
         self.set_reebill_period(present_reebill)
 
         ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
-        self.reebill_dao.save_reebill(present_reebill)
-        present_reebill = self.reebill_dao.load_reebill(
-                present_reebill.account, present_reebill.sequence,
-                present_reebill.version)
+        present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
 
         #try:
         self.bind_rate_structure(present_reebill)
@@ -153,18 +155,9 @@ class Process(object):
         self.pay_bill(session, present_reebill)
 
         ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
-        self.reebill_dao.save_reebill(present_reebill)
-        present_reebill = self.reebill_dao.load_reebill(
-                present_reebill.account, present_reebill.sequence,
-                present_reebill.version)
+        present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
 
         # get discount rate
-        # TODO: 26500689 discount rate in the reebill structure must be relied on
-        # versus fetch the instantaneous one - what if a historical bill is being
-        # summed?  The discount rate in the reebill would have to be relied on.
-        #discount_rate = Decimal(str(self.state_db.discount_rate(session,
-        #    present_reebill.account)))
-
         discount_rate = present_reebill.discount_rate
         if not discount_rate:
             raise Exception("%s-%s-%s has no discount rate" % (present_reebill.account, 
@@ -194,7 +187,6 @@ class Process(object):
                 for charge in charges:
                     actual_subtotal += charge["total"]
                     actual_total += charge["total"]
-                #TODO: subtotals for chargegroups?
 
             for chargegroup, charges in present_reebill.\
                     hypothetical_chargegroups_for_service(service).items():
@@ -202,7 +194,6 @@ class Process(object):
                 for charge in charges:
                     hypothetical_subtotal += charge["total"]
                     hypothetical_total += charge["total"]
-                #TODO: subtotals for chargegroups?
 
             # calculate utilbill level numbers
             present_reebill.set_actual_total_for_service(service, actual_total)
@@ -235,7 +226,6 @@ class Process(object):
 
         # now grab the prior bill and pull values forward
         present_reebill.prior_balance = prior_reebill.balance_due
-        # TODO total_adjustment
         present_reebill.balance_forward = present_reebill.prior_balance - \
                 present_reebill.payment_received + \
                 present_reebill.total_adjustment
@@ -253,10 +243,7 @@ class Process(object):
                     present_reebill.ree_charges
 
         ## TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
-        self.reebill_dao.save_reebill(present_reebill)
-        present_reebill = self.reebill_dao.load_reebill(
-                present_reebill.account, present_reebill.sequence,
-                present_reebill.version)
+        present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
         
         self.calculate_statistics(prior_reebill, present_reebill)
 
@@ -390,10 +377,11 @@ class Process(object):
                 version=0)
 
         self.sum_bill(session, predecessor, reebill)
+
         # load reebill from mongo again to get its updated charges (yes, this
         # design sucks)
-        reebill = self.reebill_dao.load_reebill(reebill.account,
-                reebill.sequence, reebill.version)
+        #reebill = self.reebill_dao.load_reebill(reebill.account,
+                #reebill.sequence, reebill.version)
 
         # save in mongo
         self.reebill_dao.save_reebill(reebill)

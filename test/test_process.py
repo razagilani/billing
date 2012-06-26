@@ -855,5 +855,5 @@ port = 27017
             session.commit()
 
 if __name__ == '__main__':
-    unittest.main(failfast=True)
-    #unittest.main()
+    #unittest.main(failfast=True)
+    unittest.main()
