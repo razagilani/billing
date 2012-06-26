@@ -839,6 +839,8 @@ port = 27017
 
             # create a new verison and delete it, returning to just version 0
             # (versioning requires a cprs)
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account,
                     1))
             self.process.new_version(session, account, 1)
