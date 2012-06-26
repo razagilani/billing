@@ -136,6 +136,28 @@ class Process(object):
         '''Compute everything about the bill that can be continuously
         recomputed. This should be called immediately after roll_bill()
         whenever roll_bill() is called.'''
+
+        self.set_reebill_period(present_reebill)
+
+        ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
+        self.reebill_dao.save_reebill(present_reebill)
+        present_reebill = self.reebill_dao.load_reebill(
+                present_reebill.account, present_reebill.sequence,
+                present_reebill.version)
+
+        #try:
+        self.bind_rate_structure(present_reebill)
+        #except Exception as e:
+            #print "Could not load ratestructure for reebill, skipping calculating charge details"
+
+        self.pay_bill(session, present_reebill)
+
+        ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
+        self.reebill_dao.save_reebill(present_reebill)
+        present_reebill = self.reebill_dao.load_reebill(
+                present_reebill.account, present_reebill.sequence,
+                present_reebill.version)
+
         # get discount rate
         # TODO: 26500689 discount rate in the reebill structure must be relied on
         # versus fetch the instantaneous one - what if a historical bill is being
@@ -230,6 +252,13 @@ class Process(object):
             present_reebill.balance_due = present_reebill.balance_forward + \
                     present_reebill.ree_charges
 
+        ## TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
+        self.reebill_dao.save_reebill(present_reebill)
+        present_reebill = self.reebill_dao.load_reebill(
+                present_reebill.account, present_reebill.sequence,
+                present_reebill.version)
+        
+        self.calculate_statistics(prior_reebill, present_reebill)
 
 
     def copy_actual_charges(self, reebill):

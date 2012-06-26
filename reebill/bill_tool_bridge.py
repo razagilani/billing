@@ -724,39 +724,39 @@ class BillToolBridge:
     # https://www.pivotaltracker.com/story/show/31404685
     def bindrs(self, account, sequence, **args):
         '''Handler for the front end's "Compute Bill" operation.'''
+        if not account or not sequence:
+            raise ValueError("Bad Parameter Value")
+        sequence = int(sequence)
         with DBSession(self.state_db) as session:
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
 
-            reebill = self.state_db.get_reebill(session, account, sequence)
-            descendent_reebills = [reebill]
-            for reebill in descendent_reebills:
-                mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
-                prior_mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, int(reebill.sequence)-1)
+            #reebill = self.state_db.get_reebill(session, account, sequence)
+            #descendent_reebills = [reebill]
+            #for reebill in descendent_reebills:
+                #mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
+                #prior_mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, int(reebill.sequence)-1)
+                #self.process.set_reebill_period(mongo_reebill)
 
-                self.process.set_reebill_period(mongo_reebill)
+                ## recalculate the bill's 'payment_received'
+                #self.process.pay_bill(session, mongo_reebill)
 
-                try:
-                    self.process.bind_rate_structure(mongo_reebill)
-                except Exception as e:
-                    print "Could not load ratestructure for reebill, skipping calculating charge details"
+                ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
+                #self.reebill_dao.save_reebill(mongo_reebill)
+                #mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
 
-                # recalculate the bill's 'payment_received'
-                self.process.pay_bill(session, mongo_reebill)
+                #self.process.sum_bill(session, prior_mongo_reebill, mongo_reebill)
 
-                # TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
-                self.reebill_dao.save_reebill(mongo_reebill)
-                mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
+                ## TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
+                #self.reebill_dao.save_reebill(mongo_reebill)
+                #mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
+                #self.process.calculate_statistics(prior_mongo_reebill, mongo_reebill)
 
-                self.process.sum_bill(session, prior_mongo_reebill, mongo_reebill)
+                #self.reebill_dao.save_reebill(mongo_reebill)
 
-                # TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
-                self.reebill_dao.save_reebill(mongo_reebill)
-                mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
-                self.process.calculate_statistics(prior_mongo_reebill, mongo_reebill)
-
-                self.reebill_dao.save_reebill(mongo_reebill)
-
+            mongo_reebill = self.reebill_dao.load_reebill(account, sequence,
+                    version='max')
+            mongo_predecessor = self.reebill_dao.load_reebill(account,
+                    sequence - 1)
+            self.process.sum_bill(session, mongo_predecessor, mongo_reebill)
             return self.dumps({'success': True})
 
     @cherrypy.expose
