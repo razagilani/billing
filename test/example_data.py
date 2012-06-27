@@ -272,7 +272,7 @@ example_utilbill = {
 example_reebill = {
 	"_id" : {
 		"account" : "10003",
-		"branch" : 0,
+		"version" : 0,
 		"sequence" : 17
 	},
 	"ree_charges" : 118.42,
@@ -283,7 +283,7 @@ example_reebill = {
 	"issue_date" : null,
 	"utilbills" : [ example_utilbill ],
 	"payment_received" : 0,
-	"branch" : 0,
+	"version" : 0,
 	"period_end" : ISODate("2011-12-14T00:00:00Z"),
 	"actual_total" : 743.49,
 	"due_date" : null,
@@ -343,7 +343,9 @@ example_urs = {
 	"_id" : {
 		"type" : "URS",
 		"rate_structure_name" : "DC Non Residential Non Heat",
-		"utility_name" : "washgas"
+		"utility_name" : "washgas",
+        "effective": datetime(2000, 1, 1),
+        "expires": datetime(2020, 12, 31)
 	},
 	"registers" : [
 		{
@@ -385,9 +387,11 @@ example_urs = {
 # made this, we have no nonempty URPSs.
 example_uprs = {
 	"_id" : {
-		"type" : "URS",
+		"type" : "UPRS",
 		"rate_structure_name" : "DC Non Residential Non Heat",
-		"utility_name" : "washgas"
+		"utility_name" : "washgas",
+        "effective": datetime(2000, 1, 1),
+        "expires": datetime(2020, 12, 31)
 	},
 	"rates" : [
 		{
@@ -414,7 +418,7 @@ example_cprs = {
 		"sequence" : 17,
 		"utility_name" : "washgas",
 		"rate_structure_name" : "DC Non Residential Non Heat",
-		"branch" : 0,
+		"version" : 0,
 		"type" : "CPRS"
 	},
 	"rates" : [
@@ -483,11 +487,12 @@ example_cprs = {
 	]
 }
 
-def get_reebill(account, sequence):
+def get_reebill(account, sequence, version=0):
     '''Returns an example reebill with the given account and sequence.'''
     reebill_dict = copy.deepcopy(example_reebill)
     reebill_dict['_id']['account'] = account
     reebill_dict['_id']['sequence'] = sequence
+    reebill_dict['_id']['version'] = version
     return MongoReebill(deep_map(float_to_decimal, reebill_dict))
 
 def get_utilbill_dict():
@@ -505,12 +510,13 @@ def get_uprs_dict():
     uprs_dict = copy.deepcopy(example_uprs)
     return uprs_dict
 
-def get_cprs_dict(account, sequence):
+def get_cprs_dict(account, sequence, version=0):
     '''Returns an example utility customer periodic rate structure document
     with the given account and sequence.'''
     cprs_dict = copy.deepcopy(example_cprs)
     cprs_dict['_id']['account'] = account
     cprs_dict['_id']['sequence'] = sequence
+    cprs_dict['_id']['version'] = version
     #return RateStructure(cprs_dict)
     return cprs_dict
 

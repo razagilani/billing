@@ -31,14 +31,14 @@ class NoRateError(Exception):
 
 class EstimatedRevenue(object):
 
-    def __init__(self, state_db, reebill_dao, ratestructure_dao, splinter):
+    def __init__(self, state_db, reebill_dao, ratestructure_dao, billupload, nexus_util, splinter):
         self.state_db = state_db
         self.reebill_dao = reebill_dao
         self.splinter = splinter
         self.monguru = splinter.get_monguru()
         self.ratestructure_dao = ratestructure_dao
-        self.process = Process(None, self.state_db, self.reebill_dao, None,
-                self.splinter, self.monguru)
+        self.process = Process(state_db, reebill_dao, ratestructure_dao,
+                billupload, nexus_util, splinter)
 
         # pre-load all the olap ids of accounts for speed (each one requires an
         # HTTP request)
