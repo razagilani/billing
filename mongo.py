@@ -17,6 +17,7 @@ from billing.dictutils import deep_map
 from billing.dateutils import date_to_datetime
 from billing.session_contextmanager import DBSession
 import pprint
+from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1)
 sys.stdout = sys.stderr
 
@@ -1172,12 +1173,18 @@ class ReebillDAO:
             mongo_doc = self.collection.find_one(query)
         elif version == 'max':
             # get max version from MySQL, since that's the definitive source of
-            # information on what officially exists
-            with DBSession(self.state_db) as session:
-                max_version = self.state_db.max_version(session, account, sequence)
-                session.commit()
-            query.update({'_id.version': max_version})
-            mongo_doc = self.collection.find_one(query)
+            # information on what officially exists (but version 0 reebill
+            # documents are templates that do not go in MySQL)
+            try:
+                if sequence != 0:
+                    with DBSession(self.state_db) as session:
+                        max_version = self.state_db.max_version(session, account,
+                                sequence)
+                    query.update({'_id.version': max_version})
+                mongo_doc = self.collection.find_one(query)
+            except NoResultFound:
+                # customer not found in MySQL
+                mongo_doc = None
         elif isinstance(version, date):
             version_dt = date_to_datetime(version)
             docs = self.collection.find(query, sort=[('_id.version',
