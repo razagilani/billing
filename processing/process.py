@@ -9,7 +9,6 @@ import copy
 import datetime
 from datetime import date
 import calendar
-import pprint
 from optparse import OptionParser
 from decimal import *
 #
@@ -26,6 +25,17 @@ from billing import nexus_util
 from billing import dateutils
 from billing.dateutils import estimate_month, month_offset, month_difference
 from billing.monthmath import Month, approximate_month
+from billing.dictutils import deep_map
+from billing.mongo import float_to_decimal
+
+import pprint
+pp = pprint.PrettyPrinter(indent=1)
+sys.stdout = sys.stderr
+
+class IssuedBillError(Exception):
+    '''Exception for trying to modify a bill that has been issued. Use this in
+    all those situations.'''
+    pass
 
 sys.stdout = sys.stderr
 class Process(object):
@@ -131,13 +141,23 @@ class Process(object):
         '''Compute everything about the bill that can be continuously
         recomputed. This should be called immediately after roll_bill()
         whenever roll_bill() is called.'''
-        # get discount rate
-        # TODO: 26500689 discount rate in the reebill structure must be relied on
-        # versus fetch the instantaneous one - what if a historical bill is being
-        # summed?  The discount rate in the reebill would have to be relied on.
-        #discount_rate = Decimal(str(self.state_db.discount_rate(session,
-        #    present_reebill.account)))
 
+        self.set_reebill_period(present_reebill)
+
+        ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
+        present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
+
+        #try:
+        self.bind_rate_structure(present_reebill)
+        #except Exception as e:
+            #print "Could not load ratestructure for reebill, skipping calculating charge details"
+
+        self.pay_bill(session, present_reebill)
+
+        ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
+        present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
+
+        # get discount rate
         discount_rate = present_reebill.discount_rate
         if not discount_rate:
             raise Exception("%s-%s-%s has no discount rate" % (present_reebill.account, 
@@ -167,7 +187,6 @@ class Process(object):
                 for charge in charges:
                     actual_subtotal += charge["total"]
                     actual_total += charge["total"]
-                #TODO: subtotals for chargegroups?
 
             for chargegroup, charges in present_reebill.\
                     hypothetical_chargegroups_for_service(service).items():
@@ -175,7 +194,6 @@ class Process(object):
                 for charge in charges:
                     hypothetical_subtotal += charge["total"]
                     hypothetical_total += charge["total"]
-                #TODO: subtotals for chargegroups?
 
             # calculate utilbill level numbers
             present_reebill.set_actual_total_for_service(service, actual_total)
@@ -208,7 +226,6 @@ class Process(object):
 
         # now grab the prior bill and pull values forward
         present_reebill.prior_balance = prior_reebill.balance_due
-        # TODO total_adjustment
         present_reebill.balance_forward = present_reebill.prior_balance - \
                 present_reebill.payment_received + \
                 present_reebill.total_adjustment
@@ -225,6 +242,10 @@ class Process(object):
             present_reebill.balance_due = present_reebill.balance_forward + \
                     present_reebill.ree_charges
 
+        ## TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
+        present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
+        
+        self.calculate_statistics(prior_reebill, present_reebill)
 
 
     def copy_actual_charges(self, reebill):
@@ -344,19 +365,23 @@ class Process(object):
         reebill.version = max_version + 1
         reebill.issue_date = None
 
-        # get sequence predecessor, to compute balance forward and prior
-        # balance. this is always version 0, because we want those values to be
-        # the same as they were on version 0 of this bill--we don't care about
-        # any corrections that might have been made to that bill later.
-        predecessor = self.reebill_dao.load_reebill(account, sequence-1,
-                version=0)
-
         # re-bind
         fetch_bill_data.fetch_oltp_data(self.splinter,
                 self.nexus_util.olap_id(account), reebill)
 
-        # recompute
+        # recompute, using sequence predecessor to compute balance forward and
+        # prior balance. this is always version 0, because we want those values
+        # to be the same as they were on version 0 of this bill--we don't care
+        # about any corrections that might have been made to that bill later.
+        predecessor = self.reebill_dao.load_reebill(account, sequence-1,
+                version=0)
+
         self.sum_bill(session, predecessor, reebill)
+
+        # load reebill from mongo again to get its updated charges (yes, this
+        # design sucks)
+        #reebill = self.reebill_dao.load_reebill(reebill.account,
+                #reebill.sequence, reebill.version)
 
         # save in mongo
         self.reebill_dao.save_reebill(reebill)
@@ -425,6 +450,14 @@ class Process(object):
         self.sum_bill(session, target_reebill_predecessor, target_reebill)
         self.reebill_dao.save_reebill(target_reebill)
 
+    def get_total_error(self, session, account, sequence):
+        '''Returns the net difference between the ree_charges of the latest
+        version (issued or not) and version 0 of the reebill given by account,
+        sequence.'''
+        earliest = self.reebill_dao.load_reebill(account, sequence, version=0)
+        latest = self.reebill_dao.load_reebill(account, sequence, 'max')
+        return latest.ree_charges - earliest.ree_charges
+
     def get_late_charge(self, session, reebill, day=date.today()):
         '''Returns the late charge for the given reebill on 'day', which is the
         present by default. ('day' will only affect the result for a bill that
@@ -491,7 +524,7 @@ class Process(object):
         deleted (the highest ersion before deletion).'''
         # don't delete an issued reebill
         if self.state_db.is_issued(session, account, sequence):
-            raise Exception("Can't delete an issued reebill.")
+            raise IssuedBillError("Can't delete an issued reebill.")
 
         # delete reebill state data from MySQL and dissociate utilbills from it
         # (save max version first because row may be deleted)
@@ -815,8 +848,9 @@ class Process(object):
              
 
 
-    def calculate_reperiod(self, reebill):
-        """ Set the Renewable Energy bill Period """
+    def set_reebill_period(self, reebill):
+        '''Sets the period dates of 'reebill' to the earliest utility bill
+        start date and latest utility bill end date.'''
         #reebill = self.reebill_dao.load_reebill(account, sequence)
         
         utilbill_period_beginnings = []
@@ -849,7 +883,8 @@ class Process(object):
         '''Sets the issue date of the reebill given by account, sequence to
         'issue_date' (or today by default) and the due date to 30 days from the
         issue date. The reebill's late charge is set to its permanent value in
-        mongo, and the reebill is marked as issued in the state database.'''
+        mongo, and the reebill is marked as issued in the state database.
+        Does not attach utililty bills.'''
         # set issue date and due date in mongo
         reebill = self.reebill_dao.load_reebill(account, sequence)
         reebill.issue_date = issue_date

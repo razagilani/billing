@@ -14,7 +14,7 @@ from billing import dateutils, mongo
 from billing.session_contextmanager import DBSession
 from billing.dateutils import estimate_month, month_offset
 from billing.processing import rate_structure
-from billing.processing.process import Process
+from billing.processing.process import Process, IssuedBillError
 from billing.processing.state import StateDB
 from billing.processing.db_objects import ReeBill, Customer, UtilBill
 from billing.processing.billupload import BillUpload
@@ -152,7 +152,7 @@ port = 27017
                 date(2012,2,2)))
  
             # issue bill 1, so a later bill can have a late charge based on the
-            # customer's failure to pay bill1 by its due date. i.e. 30 days
+            # customer's failure to pay bill1 by its due date, i.e. 30 days
             # after issue date. (it must be saved in both mongo and mysql to be
             # issued.)
             self.reebill_dao.save_reebill(bill1)
@@ -166,9 +166,11 @@ port = 27017
  
             # after bill1 is created, it must be "summed" to get it into a
             # usable state (in particular, it needs a late charge). that
-            # requires a sequence 0 template bill. put one into mongo and then
-            # sum bill1.
+            # requires a sequence 0 template bill and rate structures.
             bill0 = example_data.get_reebill('99999', 0)
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
             self.process.sum_bill(session, bill0, bill1)
  
             # but sum_bill() destroys bill1's balance_due, so reset it to
@@ -203,8 +205,9 @@ port = 27017
                 date(2013,1,1)))
  
             # in order to get late charge of a 3rd bill, bill2 must be put into
-            # mysql and "summed"
+            # mysql and "summed" (requires a rate structure)
             self.state_db.new_rebill(session, bill2.account, bill2.sequence)
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 2))
             self.process.sum_bill(session, bill1, bill2)
  
             # create a 3rd bill without issuing bill2. bill3 should have None
@@ -792,12 +795,17 @@ port = 27017
     def test_delete_reebill(self):
         account = '99999'
         with DBSession(self.state_db) as session:
-            # create sequence 1 version 0, not issued
+            # create sequence 0 template in mongo (will be needed below)
+            self.reebill_dao.save_reebill(example_data.get_reebill(account, 0))
+
+            # create sequence 1 version 0, for January 2012, not issued
             self.state_db.new_rebill(session, account, 1)
-            self.reebill_dao.save_reebill(example_data.get_reebill(account,
-                1, version=0))
-            assert self.state_db.listSequences(session, account) == [1]
-            self.reebill_dao.load_reebill(account, 1, version=0)
+            b = example_data.get_reebill(account, 1, version=0)
+            b.set_utilbill_period_for_service('gas', (date(2012,1,1),
+                    date(2012,2,1)))
+            b.period_begin = date(2012,1,1) # must set reebill period separately from utilbill period
+            b.period_end = date(2012,2,1)
+            self.reebill_dao.save_reebill(b)
 
             # delete it
             self.process.delete_reebill(session, account, 1)
@@ -805,16 +813,52 @@ port = 27017
             self.assertRaises(NoSuchReeBillException, self.reebill_dao.load_reebill,
                     account, 1, version=0)
 
-            # re-create it and issue: can't be deleted
+            # re-create it, attach it to a utility bill, and issue: can't be
+            # deleted
             self.state_db.new_rebill(session, account, 1)
-            self.reebill_dao.save_reebill(example_data.get_reebill(account,
-                1, version=0))
+            b = example_data.get_reebill(account, 1, version=0)
+            b.set_utilbill_period_for_service('gas', (date(2012,1,1),
+                    date(2012,2,1)))
+            b.period_begin = date(2012,1,1) # must set reebill period separately from utilbill period
+            b.period_end = date(2012,2,1)
+            self.reebill_dao.save_reebill(b)
             assert self.state_db.listSequences(session, account) == [1]
+            self.process.upload_utility_bill(session, account, 'gas', date(2012,1,1),
+                    date(2012,1,1), StringIO(), 'utilbill.pdf')
+            #self.state_db.record_utilbill_in_database(session, account, 'gas',
+                    #date(2012,1,1), date(2012,2,1), datetime.utcnow().date())
+            self.process.attach_utilbills(session, account, 1)
+            self.process.issue(session, account, 1)
+            utilbills = self.state_db.utilbills_for_reebill(session, account, 1)
+            print utilbills
+            assert len(utilbills) == 1; u = utilbills[0]
+            assert (u.customer.account, u.reebill.sequence) == (account, 1)
             self.reebill_dao.load_reebill(account, 1, version=0)
-            self.assertRaises(Exception, self.process.delete_reebill, account, 1)
+            self.assertRaises(IssuedBillError, self.process.delete_reebill,
+                    session, account, 1)
+
+            # create a new verison and delete it, returning to just version 0
+            # (versioning requires a cprs)
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account,
+                    1))
+            self.process.new_version(session, account, 1)
+            assert self.state_db.max_version(session, account, 1) == 1
+            assert not self.state_db.is_issued(session, account, 1)
+            self.process.delete_reebill(session, account, 1)
+            assert self.state_db.max_version(session, account, 1) == 0
+            assert self.state_db.is_issued(session, account, 1)
+
+            # original version should still be attached to utility bill
+            # FIXME: delete_reebill() removes utility bill association
+            utilbills = self.state_db.list_utilbills(session, account)[0].all()
+            assert len(utilbills) == 1; u = utilbills[0]
+            self.assertEquals(account, u.reebill.customer.account)
+            self.assertEquals(1, u.reebill.sequence)
 
             session.commit()
 
 if __name__ == '__main__':
-    unittest.main(failfast=True)
-    #unittest.main()
+    #unittest.main(failfast=True)
+    unittest.main()

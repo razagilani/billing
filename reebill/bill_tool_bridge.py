@@ -433,7 +433,8 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             spreadsheet_name =  'estimated_revenue.xls'
             er = EstimatedRevenue(self.state_db, self.reebill_dao,
-                    self.ratestructure_dao, self.splinter)
+                    self.ratestructure_dao, self.billUpload, self.nexus_util,
+                    self.splinter)
             buf = StringIO()
             er.write_report_xls(session, buf)
 
@@ -719,41 +720,44 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
+    # TODO clean this up and move it out of BillToolBridge
+    # https://www.pivotaltracker.com/story/show/31404685
     def bindrs(self, account, sequence, **args):
         '''Handler for the front end's "Compute Bill" operation.'''
+        if not account or not sequence:
+            raise ValueError("Bad Parameter Value")
+        sequence = int(sequence)
         with DBSession(self.state_db) as session:
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
 
-            reebill = self.state_db.get_reebill(session, account, sequence)
-            descendent_reebills = [reebill]
-            for reebill in descendent_reebills:
-                mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
-                prior_mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, int(reebill.sequence)-1)
+            #reebill = self.state_db.get_reebill(session, account, sequence)
+            #descendent_reebills = [reebill]
+            #for reebill in descendent_reebills:
+                #mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
+                #prior_mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, int(reebill.sequence)-1)
+                #self.process.set_reebill_period(mongo_reebill)
 
-                self.process.calculate_reperiod(mongo_reebill)
+                ## recalculate the bill's 'payment_received'
+                #self.process.pay_bill(session, mongo_reebill)
 
-                try:
-                    self.process.bind_rate_structure(mongo_reebill)
-                except Exception as e:
-                    print "Could not load ratestructure for reebill, skipping calculating charge details"
+                ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
+                #self.reebill_dao.save_reebill(mongo_reebill)
+                #mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
 
-                # recalculate the bill's 'payment_received'
-                self.process.pay_bill(session, mongo_reebill)
+                #self.process.sum_bill(session, prior_mongo_reebill, mongo_reebill)
 
-                # TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
-                self.reebill_dao.save_reebill(mongo_reebill)
-                mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
+                ## TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
+                #self.reebill_dao.save_reebill(mongo_reebill)
+                #mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
+                #self.process.calculate_statistics(prior_mongo_reebill, mongo_reebill)
 
-                self.process.sum_bill(session, prior_mongo_reebill, mongo_reebill)
+                #self.reebill_dao.save_reebill(mongo_reebill)
 
-                # TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
-                self.reebill_dao.save_reebill(mongo_reebill)
-                mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
-                self.process.calculate_statistics(prior_mongo_reebill, mongo_reebill)
-
-                self.reebill_dao.save_reebill(mongo_reebill)
-
+            mongo_reebill = self.reebill_dao.load_reebill(account, sequence,
+                    version='max')
+            mongo_predecessor = self.reebill_dao.load_reebill(account,
+                    sequence - 1)
+            self.process.sum_bill(session, mongo_predecessor, mongo_reebill)
+            self.reebill_dao.save_reebill(mongo_reebill)
             return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -814,30 +818,28 @@ class BillToolBridge:
 
     def issue_reebills(self, session, account, sequences,
             apply_corrections=True):
-        # TODO replace unissued_sequences with sequences
-        # get unissued subset of 'sequences'
-        unissued_sequences = sorted([s for s in sequences if not
-                self.state_db.is_issued(session, account, s)])
-
+        '''Issues all unissued bills given by account and sequences. These must
+        be version 0, not corrections. If apply_corrections is True, all
+        unissued corrections will be applied to the earliest unissued bill in
+        sequences.'''
         # attach utility bills to all unissued bills
-        for unissued_sequence in unissued_sequences:
+        for unissued_sequence in sequences:
             self.attach_utility_bills(session, account, unissued_sequence)
 
         if apply_corrections:
             # get unissued corrections for this account
-            unissued_correction_sequences = self\
-                    .process.get_unissued_correction_sequences(session, account)
+            unissued_correction_sequences = self.process\
+                    .get_unissued_correction_sequences(session, account)
 
             # apply all corrections to earliest un-issued bill, then issue
             # that and all other un-issued bills
-            self.process.apply_corrections(session, account,
-                    unissued_sequences[0])
+            self.process.apply_corrections(session, account, sequences[0])
         # issue all unissued reebills
-        for unissued_sequence in unissued_sequences:
+        for unissued_sequence in sequences:
             self.process.issue(session, account, unissued_sequence)
 
         # journal attaching of utility bills
-        for unissued_sequence in unissued_sequences:
+        for unissued_sequence in sequences:
             journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
                     account, unissued_sequence, self.state_db.max_version(session,
                     account, unissued_sequence))
@@ -847,12 +849,12 @@ class BillToolBridge:
             for correction_sequence in unissued_correction_sequences:
                 journal.ReeBillIssuedEvent.save_instance(
                         cherrypy.session['user'],
-                        account, unissued_sequences[0],
+                        account, sequences[0],
                         self.state_db.max_version(session, account,
                         correction_sequence),
-                        applied_sequence=unissued_sequences[0])
+                        applied_sequence=sequences[0])
         # journal issuing of all unissued bills
-        for unissued_sequence in unissued_sequences:
+        for unissued_sequence in sequences:
             journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
                     account, unissued_sequence, 0)
 
@@ -866,7 +868,7 @@ class BillToolBridge:
         # sequences will come in as a string if there is one element in post data. 
         # If there are more, it will come in as a list of strings
         if type(sequences) is list:
-            sequences = map(int, sequnces)
+            sequences = map(int, sequences)
         else:
             sequences = [int(sequences)]
 
@@ -881,28 +883,34 @@ class BillToolBridge:
 
         # 1st transaction: issue
         with DBSession(self.state_db) as session:
-            # get unissued subset of 'sequences'
-            unissued_sequences = sorted([s for s in sequences if not
-                    self.state_db.is_issued(session, account, s)])
+            # don't issue anything unless at least one of the unissued bills is
+            # not a correction (because corrections must be applied to a bill
+            # that isn't a correction)
+            if any(self.state_db.max_version(session, account, s) == 0 and not
+                    self.state_db.is_issued(session, account, s) for s in
+                    sequences):
+                # get unissued subset of 'sequences'
+                unissued_sequences = sorted([s for s in sequences if not
+                        self.state_db.is_issued(session, account, s)])
 
-            # if this account has unissued corrections and there is at least
-            # one unissued bill (about to be issued) and the client didn't
-            # specify corrections to apply, complain (client will show
-            # confirmation message)
-            unissued_corrections = self.process.get_unissued_correction_sequences(
-                    session, account)
-            if len(unissued_corrections) > 0 and len(unissued_sequences) > 0 \
-                    and 'corrections' not in kwargs:
-                return self.dumps({'success': False,
-                        'corrections': unissued_corrections})
-            if 'corrections_to_apply' in locals():
-                # make sure corrections_to_apply is all of them (currently,
-                # client code guarantees this)
-                if not sorted(corrections_to_apply) == sorted(
-                        unissued_corrections):
-                    raise ValueError('All corrections must be issued.')
-            self.issue_reebills(session, account, unissued_sequences,
-                    apply_corrections=('corrections_to_apply' in locals()))
+                # if this account has unissued corrections and there is at least
+                # one unissued bill (about to be issued) and the client didn't
+                # specify corrections to apply, complain (client will show
+                # confirmation message)
+                unissued_corrections = self.process.get_unissued_correction_sequences(
+                        session, account)
+                if len(unissued_corrections) > 0 and len(unissued_sequences) > 0 \
+                        and 'corrections' not in kwargs:
+                    return self.dumps({'success': False,
+                            'corrections': unissued_corrections})
+                if 'corrections_to_apply' in locals():
+                    # make sure corrections_to_apply is all of them (currently,
+                    # client code guarantees this)
+                    if not sorted(corrections_to_apply) == sorted(
+                            unissued_corrections):
+                        raise ValueError('All corrections must be issued.')
+                self.issue_reebills(session, account, unissued_sequences,
+                        apply_corrections=('corrections_to_apply' in locals()))
 
 
         # 2nd transaction: mail
@@ -1768,6 +1776,10 @@ class BillToolBridge:
                     row_dict = {}
                     mongo_reebill = self.reebill_dao.load_reebill(account, reebill.sequence)
 
+                    # TODO: clean up. if a reebill lacks any of these keys,
+                    # that's an error we do not want to bury. and there would
+                    # be nothing wrong with putting a nice to_dict() method
+                    # inside MongoReebill.
                     row_dict['id'] = reebill.sequence
                     row_dict['sequence'] = reebill.sequence
                     try: row_dict['issue_date'] = mongo_reebill.issue_date 
@@ -1801,6 +1813,9 @@ class BillToolBridge:
                         row_dict['corrections'] = str(version) + ('' if issued else ' (not issued)')
                     else:
                         row_dict['corrections'] = '-' if issued else '(not issued)'
+
+                    row_dict['total_error'] = self.process.get_total_error(
+                            session, account, reebill.sequence)
 
                     rows.append(row_dict)
                 return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
