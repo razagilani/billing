@@ -5379,13 +5379,13 @@ function reeBillReady() {
             reeBillPanel,
             ubBillPeriodsPanel,
             ubMeasuredUsagesPanel,
-            //rateStructurePanel,
-            //chargeItemsPanel,
-            //journalPanel,
-            //mailPanel,
-            //reportPanel,
-            //preferencesPanel,
-            //aboutPanel,
+            rateStructurePanel,
+            chargeItemsPanel,
+            journalPanel,
+            mailPanel,
+            reportPanel,
+            preferencesPanel,
+            aboutPanel,
         ]
     });
 
