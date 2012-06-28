@@ -33,6 +33,7 @@ ssh -i /home/randrews/Dropbox/Skyline-IT/ec2keys/reebill-atsite.pem ec2-user@ec2
 Create user for running and deploying ReeBill
 
     sudo useradd -s /bin/bash --create-home reebill
+
     sudo passwd reebill [passwd] 
     set passwd, storing it in keepass (necessary? do we ever log-in as the application user?)
 
