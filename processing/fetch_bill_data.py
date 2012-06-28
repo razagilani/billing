@@ -21,6 +21,8 @@ from billing.dictutils import dict_merge
 from billing import dateutils, holidays
 from decimal import Decimal
 
+VERBOSE = True
+
 def fetch_oltp_data(splinter, olap_id, reebill):
     '''Update quantities of shadow registers in reebill with Skyline-generated
     energy from OLTP.'''
@@ -243,7 +245,6 @@ def usage_data_to_virtual_register(reebill, energy_function,
 
             energy_today = None
             for hourrange in hour_ranges:
-                print >> sys.stderr, day, hourrange
                 # 5 digits after the decimal points is an arbitrary decision
                 # TODO decide what our precision actually is: see
                 # https://www.pivotaltracker.com/story/show/24088787
@@ -263,9 +264,11 @@ def usage_data_to_virtual_register(reebill, energy_function,
                     raise Exception('unknown energy unit %s' %
                             register['quantity_units'])
 
-                print 'register %s accumulating energy %s %s' % (
-                        register['identifier'], energy_today,
-                        register['quantity_units'])
+                if VERBOSE:
+                    print 'register %s accumulating energy %s %s for %s %s' % (
+                            register['identifier'], energy_today,
+                            register['quantity_units'],
+                            day, hourrange)
                 # TODO 28304031 : register wants a float
                 register['quantity'] += float(energy_today)
 
