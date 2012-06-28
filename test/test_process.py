@@ -85,7 +85,7 @@ port = 27017
             'password': 'dev'
         }
 
-        ## clear out tables in mysql test database (not relying on StateDB)
+        # clear out tables in mysql test database (not relying on StateDB)
         mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
         c = mysql_connection.cursor()
         c.execute("delete from payment")

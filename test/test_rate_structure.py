@@ -2,10 +2,14 @@
 '''Tests for rate_structure.py'''
 import unittest
 import pymongo
+import MySQLdb
 from billing.processing import rate_structure
+from billing.processing.db_objects import Customer
+from billing.processing.state import StateDB
 from billing import mongo
 from billing.test import example_data
 from billing.dictutils import deep_map, subdict
+from billing.session_contextmanager import DBSession
 
 def compare_rsis(rsi1, rsi2):
     '''Compares two Rate Structure Item dictionaries, ignoring differences
@@ -34,8 +38,32 @@ class RateStructureTest(unittest.TestCase):
             'port': 27017
         }
         self.rate_structure_dao = rate_structure.RateStructureDAO(
-                self.rs_db_config)
-        self.reebill_dao = mongo.ReebillDAO(self.billdb_config)
+                **self.rs_db_config)
+        self.state_db = StateDB(**{
+            'host': 'localhost',
+            'database': 'test',
+            'user': 'dev',
+            'password': 'dev'
+        })
+        self.reebill_dao = mongo.ReebillDAO(self.state_db, **self.billdb_config)
+
+        # clear out tables in mysql test database (not relying on StateDB)
+        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
+        c = mysql_connection.cursor()
+        c.execute("delete from payment")
+        c.execute("delete from utilbill")
+        c.execute("delete from rebill")
+        c.execute("delete from customer")
+        # (note that status_days_since, status_unbilled are views and you
+        # neither can nor need to delete from them)
+        mysql_connection.commit()
+
+        # insert one customer
+        session = self.state_db.session()
+        # name, account, discount rate, late charge rate
+        customer = Customer('Test Customer', '99999', .12, .34)
+        session.add(customer)
+        session.commit()
 
     def tearDown(self):
         # drop test database(s)
@@ -66,6 +94,10 @@ class RateStructureTest(unittest.TestCase):
         # get reebill doc and put it in mongo, load it back out to get a
         # MongoReebill object
         self.reebill_dao.save_reebill(example_data.get_reebill(account, sequence))
+        # save reebill in in mysql; reebill_dao needs that to get max_version
+        # for loading
+        with DBSession(self.state_db) as session:
+            self.state_db.new_rebill(session, account, sequence)
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # load probable rate structure
