@@ -3,9 +3,9 @@ import MySQLdb
 
 statedb_config = {
     'host': 'localhost',
-    'password': 'dev',
+    'password': 'reebill-dev',
     'database': 'skyline_dev',
-    'user': 'dev'
+    'user': 'reebill-dev'
 }
 
 conn = MySQLdb.connect(host='localhost', db=statedb_config['database'],
