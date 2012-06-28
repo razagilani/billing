@@ -9,6 +9,7 @@ from billing.processing.db_objects import ReeBill, Customer, UtilBill
 import MySQLdb
 from billing.test import example_data
 from billing.mongo import NoSuchReeBillException
+from billing.session_contextmanager import DBSession
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -94,6 +95,11 @@ class ReebillDAOTest(unittest.TestCase):
         self.reebill_dao.save_reebill(b2)
         self.reebill_dao.save_reebill(b3)
         self.reebill_dao.save_reebill(b3_1)
+        # create rows in MySQL with max version of each bill
+        with DBSession(self.state_db) as session:
+            self.state_db.new_rebill(session, '99999', 1, max_version=2)
+            self.state_db.new_rebill(session, '99999', 2, max_version=0)
+            self.state_db.new_rebill(session, '99999', 3, max_version=1)
 
         # with no extra args to load_reebill(), maximum version should come out
         b0_max = self.reebill_dao.load_reebill('99999', 0)
