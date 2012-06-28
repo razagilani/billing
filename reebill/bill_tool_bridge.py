@@ -1376,7 +1376,7 @@ class BillToolBridge:
             self.ratestructure_dao.save_cprs(
                 reebill.account, 
                 reebill.sequence, 
-                reebill.branch,
+                reebill.version,
                 reebill.utility_name_for_service(service),
                 reebill.rate_structure_name_for_service(service),
                 rate_structure
@@ -1400,7 +1400,7 @@ class BillToolBridge:
             self.ratestructure_dao.save_cprs(
                 reebill.account, 
                 reebill.sequence, 
-                reebill.branch,
+                reebill.version,
                 reebill.utility_name_for_service(service),
                 reebill.rate_structure_name_for_service(service),
                 rate_structure
@@ -1435,7 +1435,7 @@ class BillToolBridge:
             self.ratestructure_dao.save_cprs(
                 reebill.account, 
                 reebill.sequence, 
-                reebill.branch,
+                reebill.version,
                 reebill.utility_name_for_service(service),
                 reebill.rate_structure_name_for_service(service),
                 rate_structure
