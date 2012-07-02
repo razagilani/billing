@@ -68,7 +68,7 @@ class Event(mongoengine.Document):
 
     # fields in all journal entries and their types
     date = mongoengine.DateTimeField(required=True,
-            default=datetime.datetime.utcnow())
+            default=datetime.datetime.utcnow)
     # eventually replace with ReferenceField to user document?
     user = mongoengine.StringField(required=False,
             # some old documents lack a "user" key
