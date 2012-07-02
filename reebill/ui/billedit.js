@@ -655,7 +655,7 @@ function reeBillReady() {
     });
 
     reeBillStore.on('beforesave', function(store, data) {
-        console.log("reeBillStore beforesave");
+        console.log("reeBillStore beforesave ");
         reeBillGrid.setDisabled(true);
     });
 
@@ -665,7 +665,7 @@ function reeBillReady() {
             var result = Ext.Msg.confirm('Confirm deletion',
                 'Are you sure you want to delete the latest version of reebill '
                 + selected_account + '-' + selected_sequence + '?', function(answer) {
-                });
+            });
             if (result == true) {
                 return false;
             }
