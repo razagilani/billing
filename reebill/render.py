@@ -155,6 +155,7 @@ class ReebillRenderer:
         create_directory_if_necessary(self.temp_directory, self.logger)
 
 
+    # TODO 32204509 Why don't we just pass in a ReeBill(s) here?  Preferable to passing account/sequence/version around?
     def render(self, session, account, sequence, outputdir, outputfile,
             backgrounds, verbose):
         # render each version
@@ -169,7 +170,7 @@ class ReebillRenderer:
                 for v in range(max_version + 1)]
         output_path = os.path.join(outputdir, outputfile)
         command = ['pdftk'] + input_paths + ['cat', 'output', output_path]
-        print command
+        #print command
         result = subprocess.Popen(command, stderr=subprocess.PIPE)
         result.wait()
         if result.returncode != 0:
@@ -178,6 +179,11 @@ class ReebillRenderer:
         # delete version pdfs, leaving only the combined version
         for input_path in input_paths:
             os.remove(input_path)
+ 
+    def render_max_version(self, session, account, sequence, outputdir, outputfile, backgrounds, verbose):
+        max_version = self.state_db.max_version(session, account, sequence)
+        reebill = self.reebill_dao.load_reebill(account, sequence, version=max_version)
+        self.render_version(reebill, outputdir, outputfile, backgrounds, verbose)
 
     def render_version(self, reebill, outputdir, outputfile, backgrounds, verbose):
         styles = getSampleStyleSheet()
