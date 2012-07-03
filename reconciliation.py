@@ -45,8 +45,8 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
     will be valid if the program is interrupted while generating the report (at
     least if the interruption does not occur while writing a single line).'''
     # objects for database access
-    reebill_dao = mongo.ReebillDAO(billdb_config)
     state_db = state.StateDB(**statedb_config)
+    reebill_dao = mongo.ReebillDAO(state_db, billdb_config['host'], billdb_config['port'], billdb_config['database'])
     session = state_db.session()
     splinter = Splinter(splinter_config['url'], splinter_config['host'],
             splinter_config['db'])
@@ -185,7 +185,6 @@ def main():
     # set up config dicionaries for data access objects used in generate_report
     billdb_config = {
         'database': args.billdb,
-        'collection': 'reebills',
         'host': args.host,
         'port': '27017'
     }
