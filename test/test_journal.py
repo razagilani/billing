@@ -2,6 +2,7 @@ import unittest
 import pymongo
 import mongoengine
 from datetime import date, datetime, timedelta
+from time import sleep
 from billing.reebill import journal
 from billing.dateutils import ISO_8601_DATE
 from billing.test import utils
@@ -237,6 +238,22 @@ class JournalTest(utils.TestCase):
         self.assertEqual('Reebill 90001-1 rolled on ' + datetime.utcnow().date()
                 .strftime(ISO_8601_DATE), description)
         
+    def test_dates(self):
+        '''Catches a bug where successive events have the same date:
+        https://www.pivotaltracker.com/story/show/32141609.'''
+        # 2 notes created about 5 seconds apart
+        journal.Note.save_instance(self.user, '90001', 'first event')
+        sleep(5)
+        journal.Note.save_instance(self.user, '90001', '5 seconds later')
+        events = journal.Event.objects
+        assert len(events) == 2
+
+        # their dates should be about 5 seconds apart
+        # (assertDatetimesClose is not very precise, but the test will fail if
+        # they have have the exact same date)
+        self.assertDatetimesClose(events[0].date + timedelta(seconds=5),
+                events[1].date, seconds=1)
+
 if __name__ == '__main__':
     #unittest.main(failfast=True)
     unittest.main()

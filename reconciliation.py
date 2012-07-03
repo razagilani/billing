@@ -185,7 +185,6 @@ def main():
     # set up config dicionaries for data access objects used in generate_report
     billdb_config = {
         'database': args.billdb,
-        'collection': 'reebills',
         'host': args.host,
         'port': '27017'
     }
