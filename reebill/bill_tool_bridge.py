@@ -865,6 +865,7 @@ class BillToolBridge:
     def mail(self, account, sequences, recipients, **kwargs):
         if not account or not sequences or not recipients:
             raise ValueError("Bad Parameter Value")
+
         # sequences will come in as a string if there is one element in post data. 
         # If there are more, it will come in as a list of strings
         if type(sequences) is list:
@@ -875,6 +876,7 @@ class BillToolBridge:
         # if there are multiple corrections, cherrypy actually parses the JSON,
         # so "corrections" is a list! but it doesn't turn the contents of the
         # list into integers
+        # TODO: 32210533 Isn't just easier to make corrections a list? Like above? There should be a consistent pattern or a param_listify() function
         if 'corrections' in kwargs:
             if isinstance(kwargs['corrections'], basestring):
                 corrections_to_apply = map(int, kwargs['corrections'].split(','))
