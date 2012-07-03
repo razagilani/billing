@@ -417,7 +417,7 @@ class BillToolBridge:
                         }
                     })
                 rows.append(row)
-                print rows
+                #print rows
             return self.dumps({
                 'success': True,
                 'rows': rows
@@ -913,6 +913,7 @@ class BillToolBridge:
                         apply_corrections=('corrections_to_apply' in locals()))
 
 
+        # TODO 32204105: Issue and mail - since mail can fail, shouldn't it be first? Or, shouldn't both be in the same transaction?
         # 2nd transaction: mail
         with DBSession(self.state_db) as session:
             all_bills = [self.reebill_dao.load_reebill(account, sequence) for
@@ -922,10 +923,10 @@ class BillToolBridge:
             # TODO 25560415 this fails if reebill rendering is turned
             # off--there should be a better error message
             for reebill in all_bills:
-                self.renderer.render(session, account, sequence, 
+                self.renderer.render_max_version(session, account, sequence, 
                     self.config.get("billdb", "billpath")+ "%s" % reebill.account, 
                     "%.4d.pdf" % int(reebill.sequence),
-                    "EmeraldCity-FullBleed-1.png,EmeraldCity-FullBleed-2.png",
+                    "EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
                     True
                 )
 
@@ -1960,10 +1961,10 @@ class BillToolBridge:
             if kwargs.get('%s_suspended' % service, '') == 'on' or kwargs \
                     .get('%s_suspended' % service.lower(), '') == 'on':
                 reebill.suspend_service(service.lower())
-                print service, 'suspended'
+                #print service, 'suspended'
             elif kwargs.get('%s_suspended' % service, '') == 'off' or kwargs \
                     .get('%s_suspended' % service.lower(), '') == 'off':
-                print service, 'resumed'
+                #print service, 'resumed'
                 reebill.resume_service(service.lower())
 
         self.reebill_dao.save_reebill(reebill)
