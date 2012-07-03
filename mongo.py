@@ -1214,7 +1214,7 @@ class ReebillDAO:
         if not account: return None
 
         with DBSession(self.state_db) as session:
-            sequences = self.state_db.listaccount, Sequences(session, account)
+            sequences = self.state_db.listSequences(session, account)
         return [self.load_reebill(account, sequence) for sequence in sequences]
     
     def load_reebills_in_period(self, account, version=0, start_date=None,
