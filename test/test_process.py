@@ -851,7 +851,8 @@ port = 27017
             assert self.state_db.is_issued(session, account, 1)
 
             # original version should still be attached to utility bill
-            # FIXME: delete_reebill() removes utility bill association
+            # TODO this will have to change. see
+            # https://www.pivotaltracker.com/story/show/31629749
             utilbills = self.state_db.list_utilbills(session, account)[0].all()
             assert len(utilbills) == 1; u = utilbills[0]
             self.assertEquals(account, u.reebill.customer.account)

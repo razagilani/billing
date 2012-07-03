@@ -655,10 +655,23 @@ function reeBillReady() {
     });
 
     reeBillStore.on('beforesave', function(store, data) {
-        console.log("reeBillStore beforesave");
+        console.log("reeBillStore beforesave ");
         reeBillGrid.setDisabled(true);
     });
 
+    reeBillStore.on('beforewrite', function(store, action, record, options, arg) {
+        if (action == 'destroy') {
+            // TODO say what the actual version is (and don't mention version if it's 0)
+            var result = Ext.Msg.confirm('Confirm deletion',
+                'Are you sure you want to delete the latest version of reebill '
+                + selected_account + '-' + selected_sequence + '?', function(answer) {
+            });
+            if (result == true) {
+                return false;
+            }
+        }
+        return true;
+    });
     reeBillStore.on('update', function(){
     });
 
