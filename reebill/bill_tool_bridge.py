@@ -877,6 +877,7 @@ class BillToolBridge:
         # so "corrections" is a list! but it doesn't turn the contents of the
         # list into integers
         # TODO: 32210533 Isn't just easier to make corrections a list? Like above? There should be a consistent pattern or a param_listify() function
+        # Rich really hates using locals() to test for variables.  Is it really necessary?
         if 'corrections' in kwargs:
             if isinstance(kwargs['corrections'], basestring):
                 corrections_to_apply = map(int, kwargs['corrections'].split(','))
