@@ -397,13 +397,13 @@ class Process(object):
         result = []
         for seq, max_version in self.state_db.get_unissued_corrections(session,
                 account):
-            # balance adjustment is difference between latest version's
-            # balance_due and the previous version's
+            # adjustment is difference between latest version's
+            # charges and the previous version's
             latest_version = self.reebill_dao.load_reebill(account, seq,
                     version=max_version)
             prev_version = self.reebill_dao.load_reebill(account, seq,
                     max_version-1)
-            adjustment = latest_version.balance_due - prev_version.balance_due
+            adjustment = latest_version.ree_charges - prev_version.ree_charges
             result.append((seq, max_version, adjustment))
         return result
 
