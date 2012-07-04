@@ -926,7 +926,7 @@ class BillToolBridge:
             # TODO 25560415 this fails if reebill rendering is turned
             # off--there should be a better error message
             for reebill in all_bills:
-                self.renderer.render_max_version(session, account, sequence, 
+                self.renderer.render_max_version(session, reebill.account, reebill.sequence, 
                     self.config.get("billdb", "billpath")+ "%s" % reebill.account, 
                     "%.4d.pdf" % int(reebill.sequence),
                     "EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
