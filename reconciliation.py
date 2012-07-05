@@ -174,8 +174,8 @@ def main():
             help='username for state database (default: dev)')
     parser.add_argument('--statepw', default='dev',
             help='name of state database (default: dev)')
-    parser.add_argument('--billdb', default='skyline_dev',
-            help='name of bill database (default: skyline_dev)')
+    parser.add_argument('--billdb', default='skyline',
+            help='name of bill database (default: skyline)')
     parser.add_argument('--olapdb',  default='dev',
             help='name of OLAP database (default: dev)')
     parser.add_argument('--skip-oltp',  action='store_true',
