@@ -26,6 +26,8 @@ from billing.test import example_data
 from billing.test.fake_skyliner import FakeSplinter, FakeMonguru
 from billing.nexus_util import NexusUtil
 from billing.mongo import NoSuchReeBillException
+from billing.processing import fetch_bill_data as fbd
+from billing.nexus_util import NexusUtil
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -68,7 +70,7 @@ port = 27017
             'host': 'localhost',
             'port': 27017
         })
-        self.splinter = FakeSplinter()
+        self.splinter = FakeSplinter(random=False)
         
         # temporary hack to get a bill that's always the same
         # this bill came straight out of mongo (except for .date() applied to
@@ -815,9 +817,16 @@ port = 27017
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 2))
 
-            # if given a late_charge_rate > 0, 2nd reebill should have a late charge
+            # bind & compute 2nd reebill
+            # (it needs energy data only so its 2nd version will have the same
+            # energy in it; only the late charge will differ)
             two = self.reebill_dao.load_reebill(acc, 2)
             two.late_charge_rate = .5
+            fbd.fetch_oltp_data(self.splinter,
+                    NexusUtil().olap_id(acc), two)
+            self.process.sum_bill(session, one, two)
+
+            # if given a late_charge_rate > 0, 2nd reebill should have a late charge
             self.process.sum_bill(session, one, two)
             self.assertEqual(50, two.late_charges)
 
@@ -835,6 +844,11 @@ port = 27017
             self.process.new_version(session, acc, 2)
             two = self.reebill_dao.load_reebill(acc, 2)
             self.assertEqual(10, two.late_charges)
+
+            # that difference should show up as an error
+            corrections = self.process.get_unissued_corrections(session, acc)
+            assert len(corrections) == 1
+            self.assertEquals((2, 1, -40), corrections[0])
 
 
     def test_delete_reebill(self):
