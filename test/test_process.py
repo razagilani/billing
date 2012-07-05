@@ -792,6 +792,51 @@ port = 27017
 
             session.commit()
 
+    def test_late_charge_correction(self):
+        acc = '99999'
+        with DBSession(self.state_db) as session:
+            # 2 reebills, 1 issued 40 days ago and unpaid (so it's 10 days late)
+            zero = example_data.get_reebill(acc, 0)
+            one = example_data.get_reebill(acc, 1)
+            two = example_data.get_reebill(acc, 2)
+            one.balance_due = 100
+            two.balance_due = 100
+            self.reebill_dao.save_reebill(zero)
+            self.reebill_dao.save_reebill(one)
+            self.reebill_dao.save_reebill(two)
+            self.state_db.new_rebill(session, acc, 1)
+            self.state_db.new_rebill(session, acc, 2)
+            self.process.issue(session, acc, 1,
+                    issue_date=datetime.utcnow().date() - timedelta(40))
+
+            # rate structures
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 2))
+
+            # if given a late_charge_rate > 0, 2nd reebill should have a late charge
+            two = self.reebill_dao.load_reebill(acc, 2)
+            two.late_charge_rate = .5
+            self.process.sum_bill(session, one, two)
+            self.assertEqual(50, two.late_charges)
+
+            # save and issue 2nd reebill so a new version can be created
+            self.reebill_dao.save_reebill(two)
+            self.process.issue(session, acc, two.sequence)
+
+            # add a payment of $80 30 days ago (10 days after 1st reebill was
+            # issued). the late fee above is now wrong; it should be 50% of $20
+            # instead of 50% of the entire $100.
+            self.state_db.create_payment(session, acc, datetime.utcnow().date()
+                    - timedelta(30), 'backdated payment', 80)
+
+            # now a new version of the 2nd reebill should have a different late charge
+            self.process.new_version(session, acc, 2)
+            two = self.reebill_dao.load_reebill(acc, 2)
+            self.assertEqual(10, two.late_charges)
+
+
     def test_delete_reebill(self):
         account = '99999'
         with DBSession(self.state_db) as session:
