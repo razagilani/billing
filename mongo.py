@@ -402,8 +402,21 @@ class MongoReebill(object):
         self.reebill_dict['discount_rate'] = value
 
     @property
+    def total(self):
+        '''The sum of all charges on this bill that do not come from other
+        bills. (This includes the late charge, which depends on another bill
+        for its value but belongs to the bill on which it appears.) This total
+        is what should be used to calculate the adjustment produced by the
+        difference between two versions of a bill.'''
+        # if/when more charges are added (e.g. "value-added charges") they
+        # should be included here
+        return self.ree_charges + self.late_charges
+
+    @property
     def balance_due(self):
-        '''Returns a Decimal.'''
+        '''Overall balance of the customer's account at the time this bill was
+        issued, including unpaid charges from previous bills. Returns a
+        Decimal.'''
         return self.reebill_dict['balance_due']
     @balance_due.setter
     def balance_due(self, value):
