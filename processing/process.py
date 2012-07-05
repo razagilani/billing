@@ -403,7 +403,7 @@ class Process(object):
                     version=max_version)
             prev_version = self.reebill_dao.load_reebill(account, seq,
                     max_version-1)
-            adjustment = latest_version.ree_charges - prev_version.ree_charges
+            adjustment = latest_version.total - prev_version.total
             result.append((seq, max_version, adjustment))
         return result
 
@@ -451,12 +451,12 @@ class Process(object):
         self.reebill_dao.save_reebill(target_reebill)
 
     def get_total_error(self, session, account, sequence):
-        '''Returns the net difference between the ree_charges of the latest
+        '''Returns the net difference between the total of the latest
         version (issued or not) and version 0 of the reebill given by account,
         sequence.'''
         earliest = self.reebill_dao.load_reebill(account, sequence, version=0)
         latest = self.reebill_dao.load_reebill(account, sequence, 'max')
-        return latest.ree_charges - earliest.ree_charges
+        return latest.total - earliest.total
 
     def get_late_charge(self, session, reebill, day=date.today()):
         '''Returns the late charge for the given reebill on 'day', which is the
