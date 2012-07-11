@@ -1835,15 +1835,36 @@ class BillToolBridge:
                 return self.dumps({'success':False})
 
             elif xaction == "destroy":
-                sequences = json.loads(kwargs["rows"])
-                # single edit comes in not in a list
-                if type(sequences) is int: sequences = [sequences]
-                for sequence in sequences:
-                    deleted_version = self.process.delete_reebill(session,
-                            account, sequence)
-                    journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
-                            account, sequence, deleted_version)
-                return self.dumps({'success': True})
+                raise ValueError("Use delete_reebill instead!")
+                #sequences = json.loads(kwargs["rows"])
+                ## single edit comes in not in a list
+                #if type(sequences) is int: sequences = [sequences]
+                #for sequence in sequences:
+                    #deleted_version = self.process.delete_reebill(session,
+                            #account, sequence)
+                    #journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
+                            #account, sequence, deleted_version)
+                #return self.dumps({'success': True})
+
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def delete_reebill(self, account, sequences, **kwargs):
+        '''Delete the unissued version of each reebill given, assuming that one
+        exists.'''
+        if type(sequences) is list:
+            sequences = map(int, sequences)
+        else:
+            sequences = [int(sequences)]
+        with DBSession(self.state_db) as session:
+            for sequence in sequences:
+                deleted_version = self.process.delete_reebill(session,
+                        account, sequence)
+                journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
+                        account, sequence, deleted_version)
+        return self.dumps({'success': True})
 
     @cherrypy.expose
     @random_wait
