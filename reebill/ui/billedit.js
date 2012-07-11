@@ -547,15 +547,40 @@ function reeBillReady() {
         })
     });
 
+    function deleteReebills(sequences) {
+        /* instead of using reebillStore.remove(), which (temporarily) deletes
+         * the row from the grid whether or not the record was really supposed
+         * to go away, just tell the server to do the right thing, then reload
+         * the store to get the latest data from the server. */
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/reebill/delete_reebill',
+            params: { account: selected_account, sequences: sequences },
+            success: function(result, request) {
+                var jsonData = Ext.util.JSON.decode(result.responseText);
+                Ext.Msg.hide();
+                if (jsonData.success == true) {
+                    reeBillStore.reload();
+                } else {
+                    Ext.MessageBox.alert("Error", jsonData.errors.reason +
+                        "\n" + jsonData.errors.details);
+                }
+            },
+            failure: function() {
+                Ext.MessageBox.alert('Ajax failure', 'delete_reebill request failed');
+            },
+        });
+    }
+
     var deleteButton = new Ext.Button({
         text: 'Delete selected reebill',
         iconCls: 'icon-delete',
         disabled: true,
         handler: function() {
-            var s = reeBillGrid.getSelectionModel().getSelections();
-            for(var i = 0, r; r = s[i]; i++) {
-                reeBillStore.remove(r);
-            }
+            var selectedRecords = reeBillGrid.getSelectionModel().getSelections();
+            var sequences = selectedRecords.map(function(rec) {
+                return rec.data.sequence;
+            });
+            deleteReebills(sequences);
             reeBillStore.save();
         }
     })
