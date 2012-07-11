@@ -752,12 +752,16 @@ class BillToolBridge:
 
                 #self.reebill_dao.save_reebill(mongo_reebill)
 
-            mongo_reebill = self.reebill_dao.load_reebill(account, sequence,
-                    version='max')
-            mongo_predecessor = self.reebill_dao.load_reebill(account,
-                    sequence - 1)
-            self.process.sum_bill(session, mongo_predecessor, mongo_reebill)
-            self.reebill_dao.save_reebill(mongo_reebill)
+            for sequence in range(sequence, self.state_db.last_sequence(session,
+                    account) + 1):
+                # use version 0 of the predecessor to show the real account
+                # history (prior balance, payment received, balance forward)
+                mongo_reebill = self.reebill_dao.load_reebill(account,
+                        sequence, version='max')
+                mongo_predecessor = self.reebill_dao.load_reebill(account,
+                        sequence - 1, version=0)
+                self.process.sum_bill(session, mongo_predecessor, mongo_reebill)
+                self.reebill_dao.save_reebill(mongo_reebill)
             return self.dumps({'success': True})
 
     @cherrypy.expose
