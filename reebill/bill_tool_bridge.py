@@ -1846,13 +1846,15 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def new_reebill_version(self, account, sequence, **args):
-        '''Creates a new version of the given reebill, if it's not issued.'''
+        '''Creates a new version of the given reebill and all its successors,
+        if it's not issued.'''
         sequence = int(sequence)
         with DBSession(self.state_db) as session:
             # Process will complain if new version is not issued
-            new_reebill = self.process.new_version(session, account, sequence)
-            journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
-                    account, sequence, new_reebill.version)
+            new_reebills = self.process.new_versions(session, account, sequence)
+            for new_reebill in new_reebills:
+                journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
+                        account, sequence, new_reebill.version)
             session.commit()
         return self.dumps({'success': True, 'new_version':
             new_reebill.version})
