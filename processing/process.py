@@ -329,6 +329,13 @@ class Process(object):
         return new_reebill
 
 
+    def new_versions(self, session, account, sequence):
+        '''Creates new versions of all reebills for 'account' starting at
+        'sequence'. Returns a list of the new reebill objects.'''
+        sequences = range(sequence, self.state_db.last_sequence(session,
+                account) + 1)
+        return [self.new_version(session, account, seq) for seq in sequences]
+
     def new_version(self, session, account, sequence):
         '''Creates a new version of the given reebill: duplicates the Mongo
         document, re-computes the bill, saves it, and increments the
