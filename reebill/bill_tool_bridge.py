@@ -1835,16 +1835,11 @@ class BillToolBridge:
                 return self.dumps({'success':False})
 
             elif xaction == "destroy":
+                # we do not delete reebills through reebillStore's remove()
+                # method, because Ext believes in a 1-1 mapping between grid
+                # rows and things, but "deleting" a reebill does not
+                # necessarily mean that a row disappears from the grid.
                 raise ValueError("Use delete_reebill instead!")
-                #sequences = json.loads(kwargs["rows"])
-                ## single edit comes in not in a list
-                #if type(sequences) is int: sequences = [sequences]
-                #for sequence in sequences:
-                    #deleted_version = self.process.delete_reebill(session,
-                            #account, sequence)
-                    #journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
-                            #account, sequence, deleted_version)
-                #return self.dumps({'success': True})
 
 
     @cherrypy.expose
@@ -1860,8 +1855,17 @@ class BillToolBridge:
             sequences = [int(sequences)]
         with DBSession(self.state_db) as session:
             for sequence in sequences:
+                # forbid deletion if predecessor has an unissued version (note
+                # that client is allowed to delete a range of bills at once, as
+                # long as they're in sequence order)
+                if not self.state_db.is_issued(session, account, sequence - 1):
+                    raise ValueError(("Can't delete a reebill version whose "
+                            "predecessor is unissued"))
                 deleted_version = self.process.delete_reebill(session,
                         account, sequence)
+            
+            # deletions must all have succeeded, so journal them
+            for sequence in sequences:
                 journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
                         account, sequence, deleted_version)
         return self.dumps({'success': True})
