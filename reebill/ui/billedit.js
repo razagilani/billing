@@ -580,8 +580,16 @@ function reeBillReady() {
             var sequences = selectedRecords.map(function(rec) {
                 return rec.data.sequence;
             });
-            deleteReebills(sequences);
-            reeBillStore.save();
+
+            Ext.Msg.confirm('Confirm deletion',
+                'Are you sure you want to delete the latest version of reebill '
+                + selected_account + '-' + sequences + '?', function(answer) {
+                    if (answer == 'yes') {
+                        deleteReebills(sequences);
+                    }
+            });
+
+            reeBillStore.reload();
         }
     })
 
