@@ -1858,9 +1858,11 @@ class BillToolBridge:
                 # forbid deletion if predecessor has an unissued version (note
                 # that client is allowed to delete a range of bills at once, as
                 # long as they're in sequence order)
-                if not self.state_db.is_issued(session, account, sequence - 1):
+                if sequence != 1 and not self.state_db.is_issued(session,
+                        account, sequence - 1):
                     raise ValueError(("Can't delete a reebill version whose "
-                            "predecessor is unissued"))
+                            "predecessor is unissued. Delete a series of "
+                            "unissued bills in sequence order."))
                 deleted_version = self.process.delete_reebill(session,
                         account, sequence)
             
