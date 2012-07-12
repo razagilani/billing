@@ -598,7 +598,7 @@ function reeBillReady() {
         iconCls: 'icon-add',
         disabled: true,
         handler: function() {
-            Ext.Msg.show({title: "Please wait while new version is created", closable: false});
+            Ext.Msg.show({title: "Please wait while new versions are created", closable: false});
             Ext.Ajax.request({
                 url: 'http://'+location.host+'/reebill/new_reebill_version',
                 params: { account: selected_account, sequence: selected_sequence },
