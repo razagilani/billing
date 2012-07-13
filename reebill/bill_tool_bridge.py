@@ -645,22 +645,6 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def pay(self, account, sequence, **args):
-        with DBSession(self.state_db) as session:
-            # why is session initialized and reassigned within context manager?
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-
-            self.process.pay_bill(session, reebill)
-            self.reebill_dao.save_reebill(reebill)
-            return self.dumps({'success': True})
-
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
     def bindree(self, account, sequence, **args):
         '''Puts energy from Skyline OLTP into shadow registers of the reebill
         given by account, sequence.'''
