@@ -712,7 +712,7 @@ port = 27017
                     self.rate_structure_dao.load_rate_structure(new_bill, s))
 
     def test_correction_issuing(self):
-        '''Tests get_unissued_corrections() and apply_corrections().'''
+        '''Tests get_unissued_corrections() and issue_corrections().'''
         acc = '99999'
         with DBSession(self.state_db) as session:
             # reebills 1-4, 1-3 issued
@@ -752,7 +752,7 @@ port = 27017
                     self.process.get_unissued_corrections(session, acc))
 
             # try to apply nonexistent corrections
-            self.assertRaises(ValueError, self.process.apply_corrections,
+            self.assertRaises(ValueError, self.process.issue_corrections,
                     session, acc, 4)
 
             # make corrections on 1 and 3
@@ -770,10 +770,10 @@ port = 27017
                     self.process.get_unissued_corrections(session, acc))
 
             # try to apply corrections to an issued bill
-            self.assertRaises(ValueError, self.process.apply_corrections,
+            self.assertRaises(ValueError, self.process.issue_corrections,
                     session, acc, 2)
             # try to apply corrections to a correction
-            self.assertRaises(ValueError, self.process.apply_corrections,
+            self.assertRaises(ValueError, self.process.issue_corrections,
                     session, acc, 3)
 
             # get original balance of reebill 4 before applying corrections
@@ -783,7 +783,7 @@ port = 27017
 
             # apply corrections to un-issued reebill 4. reebill 4 should be
             # updated, and the corrections (1 & 3) should be issued
-            self.process.apply_corrections(session, acc, 4)
+            self.process.issue_corrections(session, acc, 4)
             four = self.reebill_dao.load_reebill(acc, 4)
             self.assertEqual(15, four.total_adjustment)
             self.assertEqual(four_original_balance + 15, four.balance_due)

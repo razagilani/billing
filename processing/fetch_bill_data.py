@@ -21,7 +21,8 @@ from billing.dictutils import dict_merge
 from billing import dateutils, holidays
 from decimal import Decimal
 
-VERBOSE = True
+# print to stderr while gathering OLAP data
+VERBOSE = False
 
 def fetch_oltp_data(splinter, olap_id, reebill):
     '''Update quantities of shadow registers in reebill with Skyline-generated

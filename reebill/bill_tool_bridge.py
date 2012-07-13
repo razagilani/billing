@@ -837,7 +837,8 @@ class BillToolBridge:
 
             # apply all corrections to earliest un-issued bill, then issue
             # that and all other un-issued bills
-            self.process.apply_corrections(session, account, sequences[0])
+            self.process.issue_corrections(session, account, sequences[0])
+
         # issue all unissued reebills
         for unissued_sequence in sequences:
             self.process.issue(session, account, unissued_sequence)
