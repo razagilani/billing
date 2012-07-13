@@ -142,6 +142,7 @@ class Process(object):
         '''Compute everything about the bill that can be continuously
         recomputed. This should be called immediately after roll_bill()
         whenever roll_bill() is called.'''
+        acc = present_reebill.account
 
         self.set_reebill_period(present_reebill)
 
@@ -154,19 +155,25 @@ class Process(object):
         # predecessor's version 0 and issue date of current reebill's version 0
         # (if current reebill is unissued, its version 0 has None as its
         # issue_date, meaning the payment period lasts up until the present)
-        if self.state_db.is_issued(session, present_reebill.account,
+        if self.state_db.is_issued(session, acc,
                 prior_reebill.sequence, allow_nonexistent=True):
             # if predecessor's version 0 is issued, gather all payments from
             # its issue date until version 0 issue date of current bill, or
             # today if this bill has never been issued
-            if self.state_db.is_issued(session, present_reebill.account,
-                    present_reebill.sequence, version=0):
-                present_reebill.payment_received = self.state_db.get_total_payment_since(
-                        session, present_reebill.account, prior_reebill.issue_date,
-                        end=present_reebill.issue_date)
+            if self.state_db.is_issued(session, acc, present_reebill.sequence,
+                    version=0):
+                prior_v0_issue_date = self.reebill_dao.load_reebill(acc,
+                        prior_reebill.sequence, version=0).issue_date
+                present_v0_issue_date = self.reebill_dao.load_reebill(acc,
+                        present_reebill.sequence, version=0).issue_date
+                present_reebill.payment_received = self.state_db.\
+                        get_total_payment_since(session, acc,
+                        prior_v0_issue_date,
+                        end=present_v0_issue_date)
             else:
-                present_reebill.payment_received = self.state_db.get_total_payment_since(
-                        session, present_reebill.account, prior_reebill.issue_date)
+                present_reebill.payment_received = self.state_db.\
+                        get_total_payment_since(session, acc,
+                        prior_reebill.issue_date)
         else:
             # if predecessor is not issued, there's no way to tell what
             # payments will go in this bill instead of a previous bill, so
@@ -180,7 +187,7 @@ class Process(object):
         # get discount rate
         discount_rate = present_reebill.discount_rate
         if not discount_rate:
-            raise Exception("%s-%s-%s has no discount rate" % (present_reebill.account, 
+            raise Exception("%s-%s-%s has no discount rate" % (acc,
                 present_reebill.sequence, present_reebill.version))
 
         # reset ree_charges, ree_value, ree_savings so we can accumulate across
