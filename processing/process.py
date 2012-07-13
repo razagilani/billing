@@ -147,10 +147,7 @@ class Process(object):
         ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
 
-        #try:
         self.bind_rate_structure(present_reebill)
-        #except Exception as e:
-            #print "Could not load ratestructure for reebill, skipping calculating charge details"
 
         self.pay_bill(session, present_reebill)
 
@@ -241,6 +238,11 @@ class Process(object):
             # ignore late charge
             present_reebill.balance_due = present_reebill.balance_forward + \
                     present_reebill.ree_charges
+
+        # compute adjustment (sum of changes in totals of all unissued
+        # corrections)
+        present_reebill.total_adjustment = self.get_total_adjustment(session,
+                present_reebill.account)
 
         ## TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
@@ -419,11 +421,10 @@ class Process(object):
     def get_unissued_correction_sequences(self, session, account):
         return [c[0] for c in self.get_unissued_corrections(session, account)]
 
-    def apply_corrections(self, session, account, target_sequence):
+    def issue_corrections(self, session, account, target_sequence):
         '''Applies adjustments from all unissued corrections for 'account' to
-        the reebill given by 'target_sequence' for the given account. The
-        unissued corrections are marked as issued.'''
-
+        the reebill given by 'target_sequence', and marks the corrections as
+        issued.'''
         # corrections can only be applied to an un-issued reebill whose version
         # is 0
         target_max_version = self.state_db.max_version(session, account,
@@ -445,19 +446,21 @@ class Process(object):
         target_reebill_predecessor = self.reebill_dao.load_reebill(account,
                 target_sequence - 1, version=0)
 
-        # sum of all balance adjustments from corrections applied to target
-        total_adjustment = 0
-
-        # for each correction: add its adjustment total_adjustment and issue it
-        for correction in all_unissued_corrections:
-            correction_sequence, _, adjustment = correction
-            total_adjustment += adjustment
-            self.issue(session, account, correction_sequence)
-
-        # set total adjustment in the target reebill, recompute, and save
-        target_reebill.total_adjustment = total_adjustment
+        # recompute target reebill (this sets total adjustment) and save it
         self.sum_bill(session, target_reebill_predecessor, target_reebill)
         self.reebill_dao.save_reebill(target_reebill)
+
+        # issue each correction
+        for correction in all_unissued_corrections:
+            self.issue(session, account, correction_sequence)
+
+    def get_total_adjustment(self, session, account):
+        '''Returns total adjustment that should be applied to the next issued
+        reebill for 'account' (i.e. the earliest unissued version-0 reebill).
+        This adjustment is the sum of differences in totals between each
+        unissued correction and the previous version it corrects.'''
+        return sum(adjustment for (sequence, version, adjustment) in
+                self.get_unissued_corrections(session, account))
 
     def get_total_error(self, session, account, sequence):
         '''Returns the net difference between the total of the latest
