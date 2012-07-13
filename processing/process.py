@@ -221,12 +221,17 @@ class Process(object):
         # not been issued, 0 before the previous bill's due date, and non-0
         # after that)
 
+        # compute adjustment (sum of changes in totals of all unissued
+        # corrections)
+        present_reebill.total_adjustment = self.get_total_adjustment(session,
+                present_reebill.account)
+
         # now grab the prior bill and pull values forward
+        # TODO balance_forward currently contains adjustment, but it should not
         present_reebill.prior_balance = prior_reebill.balance_due
         present_reebill.balance_forward = present_reebill.prior_balance - \
                 present_reebill.payment_received + \
                 present_reebill.total_adjustment
-
 
         lc = self.get_late_charge(session, present_reebill)
         if lc is not None:
@@ -238,11 +243,6 @@ class Process(object):
             # ignore late charge
             present_reebill.balance_due = present_reebill.balance_forward + \
                     present_reebill.ree_charges
-
-        # compute adjustment (sum of changes in totals of all unissued
-        # corrections)
-        present_reebill.total_adjustment = self.get_total_adjustment(session,
-                present_reebill.account)
 
         ## TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
@@ -452,6 +452,7 @@ class Process(object):
 
         # issue each correction
         for correction in all_unissued_corrections:
+            correction_sequence, _, _ = correction
             self.issue(session, account, correction_sequence)
 
     def get_total_adjustment(self, session, account):
