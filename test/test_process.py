@@ -177,9 +177,9 @@ port = 27017
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
-            self.process.sum_bill(session, bill0, bill1)
+            self.process.compute_bill(session, bill0, bill1)
  
-            # but sum_bill() destroys bill1's balance_due, so reset it to
+            # but compute_bill() destroys bill1's balance_due, so reset it to
             # the right value, and save it in mongo
             bill1.balance_due = Decimal('100.')
             self.reebill_dao.save_reebill(bill1, force=True)
@@ -214,7 +214,7 @@ port = 27017
             # mysql and "summed" (requires a rate structure)
             self.state_db.new_rebill(session, bill2.account, bill2.sequence)
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 2))
-            self.process.sum_bill(session, bill1, bill2)
+            self.process.compute_bill(session, bill1, bill2)
  
             # create a 3rd bill without issuing bill2. bill3 should have None
             # as its late charge for all dates
@@ -817,14 +817,14 @@ port = 27017
 
             # get original balance of reebill 4 before applying corrections
             four = self.reebill_dao.load_reebill(acc, 4)
-            self.process.sum_bill(session, three, four)
+            self.process.compute_bill(session, three, four)
             four_original_balance = four.balance_due
 
             # apply corrections to un-issued reebill 4. reebill 4 should be
             # updated, and the corrections (1 & 3) should be issued
             self.process.issue_corrections(session, acc, 4)
             four = self.reebill_dao.load_reebill(acc, 4)
-            self.process.sum_bill(session, three, four)
+            self.process.compute_bill(session, three, four)
             # for some reason, adjustment is part of "balance forward"
             # https://www.pivotaltracker.com/story/show/32754231
             self.assertEqual(four.prior_balance - four.payment_received +
@@ -867,10 +867,10 @@ port = 27017
             two.late_charge_rate = .5
             fbd.fetch_oltp_data(self.splinter,
                     NexusUtil().olap_id(acc), two)
-            self.process.sum_bill(session, one, two)
+            self.process.compute_bill(session, one, two)
 
             # if given a late_charge_rate > 0, 2nd reebill should have a late charge
-            self.process.sum_bill(session, one, two)
+            self.process.compute_bill(session, one, two)
             self.assertEqual(50, two.late_charges)
 
             # save and issue 2nd reebill so a new version can be created

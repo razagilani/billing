@@ -138,7 +138,7 @@ class Process(object):
 
         return new_path
 
-    def sum_bill(self, session, prior_reebill, present_reebill):
+    def compute_bill(self, session, prior_reebill, present_reebill):
         '''Compute everything about the bill that can be continuously
         recomputed. This should be called immediately after roll_bill()
         whenever roll_bill() is called.'''
@@ -290,8 +290,8 @@ class Process(object):
         the next period. 'reebill' must be its customer's last bill before
         roll_bill is called. This method does not save the reebill in Mongo,
         but it DOES create new CPRS documents in Mongo (by copying the ones
-        originally attached to the reebill). sum_bill() should always be called
-        immediately after this one so the bill is updated to its current
+        originally attached to the reebill). compute_bill() should always be
+        called immediately after this one so the bill is updated to its current
         state.'''
 
         # obtain the last Reebill sequence from the state database
@@ -393,7 +393,7 @@ class Process(object):
         predecessor = self.reebill_dao.load_reebill(account, sequence-1,
                 version=0)
 
-        self.sum_bill(session, predecessor, reebill)
+        self.compute_bill(session, predecessor, reebill)
 
         # load reebill from mongo again to get its updated charges (yes, this
         # design sucks)
@@ -457,7 +457,7 @@ class Process(object):
                 target_sequence - 1, version=0)
 
         # recompute target reebill (this sets total adjustment) and save it
-        self.sum_bill(session, target_reebill_predecessor, target_reebill)
+        self.compute_bill(session, target_reebill_predecessor, target_reebill)
         self.reebill_dao.save_reebill(target_reebill)
 
         # issue each correction
@@ -924,8 +924,8 @@ class Process(object):
 
         # set late charge to its final value (payments after this have no
         # effect on late fee)
-        # TODO: should this be replaced with a call to sum_bill() to just make
-        # sure everything is up-to-date before issuing?
+        # TODO: should this be replaced with a call to compute_bill() to just
+        # make sure everything is up-to-date before issuing?
         lc = self.get_late_charge(session, reebill)
         if lc is not None:
             reebill.late_charges = lc
