@@ -11,6 +11,7 @@ from datetime import date
 import calendar
 from optparse import OptionParser
 from decimal import *
+import operator
 #
 # uuid collides with locals so both the locals and package are renamed
 import uuid as UUID
@@ -481,6 +482,8 @@ class Process(object):
         issued; None is returned if the predecessor has not been issued. (The
         first bill and the sequence 0 template bill always have a late charge
         of 0.)'''
+        acc, seq = reebill.account, reebill.sequence
+
         if reebill.sequence <= 1:
             return Decimal(0)
 
@@ -491,19 +494,37 @@ class Process(object):
         except KeyError:
             return None
 
-        if not self.state_db.is_issued(session, reebill.account,
-                reebill.sequence - 1):
+        # unissued bill has no late charge
+        if not self.state_db.is_issued(session, acc, seq - 1):
             return None
 
-        # late fee is 0 if previous bill is not overdue
-        predecessor = self.reebill_dao.load_reebill(reebill.account,
-                reebill.sequence - 1)
-        if day <= predecessor.due_date:
+        # late charge is 0 if version 0 of the previous bill is not overdue
+        predecessor0 = self.reebill_dao.load_reebill(acc, seq - 1, version=0)
+        if day <= predecessor0.due_date:
             return Decimal(0)
 
-        outstanding_balance = self.get_outstanding_balance(session,
-                reebill.account, reebill.sequence - 1)
-        return (reebill.late_charge_rate) * outstanding_balance
+        # the balance on which a late charge is based is not necessarily the
+        # current bill's balance_forward or the "outstanding balance": it's the
+        # least balance_due of any issued version of the predecessor (as if it
+        # had been charged on version 0's issue date, even if the version
+        # chosen is not 0).
+        max_predecessor_version = self.state_db.max_version(session, acc,
+                seq - 1)
+        min_balance_due = min((self.reebill_dao.load_reebill(acc, seq - 1,
+                version=v) for v in range(max_predecessor_version + 1)),
+                key=operator.attrgetter('balance_due')).balance_due
+        source_balance = min_balance_due - self.get_payments_since(session,
+                acc, predecessor0.issue_date)
+        return (reebill.late_charge_rate) * source_balance
+
+    def get_payments_since(self, session, account, day):
+        '''Returns sum of all account's payments on or after 'day'.'''
+        customer = session.query(Customer).filter(Customer.account==account)\
+                .one()
+        payments = session.query(Payment).filter(Payment.customer==customer)\
+                .filter(Payment.date_applied >= day)
+        payment_total = sum(payment.credit for payment in payments.all())
+        return payment_total
 
     def get_outstanding_balance(self, session, account, sequence=None):
         '''Returns the balance due of the reebill given by account and sequence
@@ -521,14 +542,9 @@ class Process(object):
         if reebill.issue_date == None:
             return Decimal(0)
 
-        # get sum of all payments since the last bill was issued
-        customer = session.query(Customer).filter(Customer.account==account).one()
-        payments = session.query(Payment).filter(Payment.customer==customer)\
-                .filter(Payment.date_applied >= reebill.issue_date)
-        payment_total = sum(payment.credit for payment in payments.all())
-
         # result cannot be negative
-        return max(Decimal(0), reebill.balance_due - payment_total)
+        return max(Decimal(0), reebill.balance_due -
+                self.get_payments_since(reebill.issue_date))
 
     def delete_reebill(self, session, account, sequence):
         '''Deletes the latest version of the reebill given by 'account' and
