@@ -331,10 +331,12 @@ class Process(object):
 
     def new_versions(self, session, account, sequence):
         '''Creates new versions of all reebills for 'account' starting at
-        'sequence'. Returns a list of the new reebill objects.'''
+        'sequence'. Any reebills that already have an unissued version are
+        skipped. Returns a list of the new reebill objects.'''
         sequences = range(sequence, self.state_db.last_sequence(session,
                 account) + 1)
-        return [self.new_version(session, account, seq) for seq in sequences]
+        return [self.new_version(session, account, s) for s in sequences if 
+                self.state_db.is_issued(session, account, s)]
 
     def new_version(self, session, account, sequence):
         '''Creates a new version of the given reebill: duplicates the Mongo
