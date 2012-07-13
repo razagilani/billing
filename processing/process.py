@@ -461,8 +461,8 @@ class Process(object):
         reebill for 'account' (i.e. the earliest unissued version-0 reebill).
         This adjustment is the sum of differences in totals between each
         unissued correction and the previous version it corrects.'''
-        return sum(adjustment for (sequence, version, adjustment) in
-                self.get_unissued_corrections(session, account))
+        return Decimal(sum(adjustment for (sequence, version, adjustment) in
+                self.get_unissued_corrections(session, account)))
 
     def get_total_error(self, session, account, sequence):
         '''Returns the net difference between the total of the latest
