@@ -248,6 +248,15 @@ port = 27017
                     self.process.get_late_charge(session, bill2,
                     date(2013,1,1)))
 
+            # add a payment between 2012-01-01 (when bill1 version 0 was
+            # issued) and 2013-01-01 (the present), to make sure that payment
+            # is deducted from the balance on which the late charge is based
+            self.state_db.create_payment(session, acc, date(2012,6,5),
+                    'a $10 payment in june', 10)
+            self.assertEqual((50 - 10) * bill2.late_charge_rate,
+                    self.process.get_late_charge(session, bill2,
+                    date(2013,1,1)))
+
     @unittest.skip('''Creating a second StateDB object, even if it's for
             another database, fails with a SQLAlchemy error about multiple
             mappers. SQLAlchemy does provide a way to get around this.''')
@@ -757,9 +766,9 @@ port = 27017
             self.state_db.new_rebill(session, acc, 2)
             self.state_db.new_rebill(session, acc, 3)
             self.state_db.new_rebill(session, acc, 4)
-            self.state_db.issue(session, acc, 1)
-            self.state_db.issue(session, acc, 2)
-            self.state_db.issue(session, acc, 3)
+            self.process.issue(session, acc, 1)
+            self.process.issue(session, acc, 2)
+            self.process.issue(session, acc, 3)
 
             # rate structures
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
