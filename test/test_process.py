@@ -772,6 +772,8 @@ port = 27017
             # no unissued corrections yet
             self.assertEquals([],
                     self.process.get_unissued_corrections(session, acc))
+            self.assertIs(Decimal,
+                    type(self.process.get_total_adjustment(session, acc)))
             self.assertEquals(0, self.process.get_total_adjustment(session, acc))
 
             # try to issue nonexistent corrections
@@ -793,6 +795,8 @@ port = 27017
             # there should be 2 adjustments: +$20 for 1-1, and -$5 for 3-1
             self.assertEqual([(1, 1, 20), (3, 1, -5)],
                     self.process.get_unissued_corrections(session, acc))
+            self.assertIs(Decimal,
+                    type(self.process.get_total_adjustment(session, acc)))
             self.assertEqual(15, self.process.get_total_adjustment(session, acc))
 
             # try to apply corrections to an issued bill
