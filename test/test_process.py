@@ -712,7 +712,8 @@ port = 27017
                     self.rate_structure_dao.load_rate_structure(new_bill, s))
 
     def test_correction_issuing(self):
-        '''Tests get_unissued_corrections() and issue_corrections().'''
+        '''Tests get_unissued_corrections(), get_total_adjustment(), and
+        issue_corrections().'''
         acc = '99999'
         with DBSession(self.state_db) as session:
             # reebills 1-4, 1-3 issued
@@ -721,11 +722,11 @@ port = 27017
             two = example_data.get_reebill(acc, 2)
             three = example_data.get_reebill(acc, 3)
             four = example_data.get_reebill(acc, 4)
-            zero.balance_due = 100
-            one.balance_due = 100
-            two.balance_due = 100
-            three.balance_due = 100
-            four.balance_due = 100
+            zero.ree_charges = 100
+            one.ree_charges = 100
+            two.ree_charges = 100
+            three.ree_charges = 100
+            four.ree_charges = 100
             self.reebill_dao.save_reebill(zero)
             self.reebill_dao.save_reebill(one)
             self.reebill_dao.save_reebill(two)
@@ -750,24 +751,28 @@ port = 27017
             # no unissued corrections yet
             self.assertEquals([],
                     self.process.get_unissued_corrections(session, acc))
+            self.assertEquals(0, self.process.get_total_adjustment(session, acc))
 
-            # try to apply nonexistent corrections
+            # try to issue nonexistent corrections
             self.assertRaises(ValueError, self.process.issue_corrections,
                     session, acc, 4)
 
             # make corrections on 1 and 3
+            # (new_version() changes the REE, but setting ree_charges,
+            # explicitly overrides that)
             self.process.new_version(session, acc, 1)
             self.process.new_version(session, acc, 3)
             one_1 = self.reebill_dao.load_reebill(acc, 1, version=1)
             three_1 = self.reebill_dao.load_reebill(acc, 3, version=1)
-            one_1.balance_due = 120
-            three_1.balance_due = 95
+            one_1.ree_charges = 120
+            three_1.ree_charges = 95
             self.reebill_dao.save_reebill(one_1)
             self.reebill_dao.save_reebill(three_1)
 
             # there should be 2 adjustments: +$20 for 1-1, and -$5 for 3-1
             self.assertEqual([(1, 1, 20), (3, 1, -5)],
                     self.process.get_unissued_corrections(session, acc))
+            self.assertEqual(15, self.process.get_total_adjustment(session, acc))
 
             # try to apply corrections to an issued bill
             self.assertRaises(ValueError, self.process.issue_corrections,
@@ -785,8 +790,13 @@ port = 27017
             # updated, and the corrections (1 & 3) should be issued
             self.process.issue_corrections(session, acc, 4)
             four = self.reebill_dao.load_reebill(acc, 4)
-            self.assertEqual(15, four.total_adjustment)
-            self.assertEqual(four_original_balance + 15, four.balance_due)
+            self.process.sum_bill(session, three, four)
+            # for some reason, adjustment is part of "balance forward"
+            # https://www.pivotaltracker.com/story/show/32754231
+            import ipdb; ipdb.set_trace()
+            self.assertEqual(four.prior_balance - four.payment_received +
+                    four.total_adjustment, four.balance_forward)
+            self.assertEquals(four.balance_forward + four.total, four.balance_due)
             self.assertTrue(self.state_db.is_issued(session, acc, 1))
             self.assertTrue(self.state_db.is_issued(session, acc, 3))
             self.assertEqual([], self.process.get_unissued_corrections(session,
