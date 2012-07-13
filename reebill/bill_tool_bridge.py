@@ -720,7 +720,7 @@ class BillToolBridge:
                         sequence, version='max')
                 mongo_predecessor = self.reebill_dao.load_reebill(account,
                         sequence - 1, version=0)
-                self.process.sum_bill(session, mongo_predecessor, mongo_reebill)
+                self.process.compute_bill(session, mongo_predecessor, mongo_reebill)
                 self.reebill_dao.save_reebill(mongo_reebill)
             return self.dumps({'success': True})
 
