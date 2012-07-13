@@ -540,7 +540,7 @@ function reeBillReady() {
                 // these items will render as dropdown menu items when the arrow is clicked:
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
-                {text: 'Compute Bill', handler: bindRSOperation},
+                {text: 'Compute Bill', handler: computeBillOperation},
                 {text: 'Attach Utility Bills to Reebill', handler: attachOperation},
                 {text: 'Render', handler: renderOperation},
             ]
@@ -1349,18 +1349,18 @@ function reeBillReady() {
         Ext.Msg.alert('Notice', "One of the operations on this menu must be selected");
     }
 
-    var bindRSOperationConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/bindrs',
+    var computeBillOperationConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/compute_bill',
         disableCaching: true,
     });
-    bindRSOperationConn.autoAbort = true;
-    function bindRSOperation()
+    computeBillOperationConn.autoAbort = true;
+    function computeBillOperation()
     {
 
-        //Ext.Msg.show({title: "Please Wait while RS is bound", closable: false});
+        //Ext.Msg.show({title: "Please Wait while bill is recomputed", closable: false});
         tabPanel.setDisabled(true);
 
-        bindRSOperationConn.request({
+        computeBillOperationConn.request({
             params: {account: selected_account, sequence: selected_sequence},
             success: function(result, request) {
                 var jsonData = null;

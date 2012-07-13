@@ -706,36 +706,12 @@ class BillToolBridge:
     @json_exception
     # TODO clean this up and move it out of BillToolBridge
     # https://www.pivotaltracker.com/story/show/31404685
-    def bindrs(self, account, sequence, **args):
+    def compute_bill(self, account, sequence, **args):
         '''Handler for the front end's "Compute Bill" operation.'''
         if not account or not sequence:
             raise ValueError("Bad Parameter Value")
         sequence = int(sequence)
         with DBSession(self.state_db) as session:
-
-            #reebill = self.state_db.get_reebill(session, account, sequence)
-            #descendent_reebills = [reebill]
-            #for reebill in descendent_reebills:
-                #mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
-                #prior_mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, int(reebill.sequence)-1)
-                #self.process.set_reebill_period(mongo_reebill)
-
-                ## recalculate the bill's 'payment_received'
-                #self.process.pay_bill(session, mongo_reebill)
-
-                ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
-                #self.reebill_dao.save_reebill(mongo_reebill)
-                #mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
-
-                #self.process.sum_bill(session, prior_mongo_reebill, mongo_reebill)
-
-                ## TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
-                #self.reebill_dao.save_reebill(mongo_reebill)
-                #mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
-                #self.process.calculate_statistics(prior_mongo_reebill, mongo_reebill)
-
-                #self.reebill_dao.save_reebill(mongo_reebill)
-
             for sequence in range(sequence, self.state_db.last_sequence(session,
                     account) + 1):
                 # use version 0 of the predecessor to show the real account
