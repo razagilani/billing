@@ -2,6 +2,7 @@
 import sys
 import os
 import unittest
+import operator
 from StringIO import StringIO
 import ConfigParser
 import logging
@@ -137,10 +138,13 @@ port = 27017
     def test_get_late_charge(self):
         print 'test_get_late_charge'
         '''Tests computation of late charges (without rolling bills).'''
-        try:
-            session = self.state_db.session()
- 
-            bill1 = example_data.get_reebill('99999', 1)
+        acc = '99999'
+        with DBSession(self.state_db) as session:
+            # sequence 0 template
+            self.reebill_dao.save_reebill(example_data.get_reebill(acc, 0))
+
+            # bill 1
+            bill1 = example_data.get_reebill(acc, 1)
             bill1.balance_forward = Decimal('100.')
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
                 date(2011,12,31)))
@@ -166,13 +170,13 @@ port = 27017
             bill1 = self.reebill_dao.load_reebill(bill1.account, bill1.sequence)
             assert bill1.due_date == date(2012,1,31)
  
-            # after bill1 is created, it must be "summed" to get it into a
+            # after bill1 is created, it must be computed to get it into a
             # usable state (in particular, it needs a late charge). that
             # requires a sequence 0 template bill and rate structures.
-            bill0 = example_data.get_reebill('99999', 0)
+            bill0 = example_data.get_reebill(acc, 0)
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
             self.process.sum_bill(session, bill0, bill1)
  
             # but sum_bill() destroys bill1's balance_due, so reset it to
@@ -184,7 +188,7 @@ port = 27017
             # is currently a huge untested mess, and get_late_charge() should
             # be tested in isolation). note that bill1's late charge is set in
             # mongo by process.issue().
-            bill2 = example_data.get_reebill('99999', 2)
+            bill2 = example_data.get_reebill(acc, 2)
             bill2.balance_due = Decimal('200.')
             # bill2's late_charge_rate is copied from MySQL during rolling, but
             # since bill2 is not created by rolling, it must be set explicitly.
@@ -194,38 +198,55 @@ port = 27017
             # after the due date, it's balance * late charge rate, i.e.
             # 100 * .34
             self.assertEqual(0, self.process.get_late_charge(session, bill2,
-                date(2011,12,31)))
+                    date(2011,12,31)))
             self.assertEqual(0, self.process.get_late_charge(session, bill2,
-                date(2012,1,2)))
+                    date(2012,1,2)))
             self.assertEqual(0, self.process.get_late_charge(session, bill2,
-                date(2012,1,31)))
+                    date(2012,1,31)))
             self.assertEqual(34, self.process.get_late_charge(session, bill2,
-                date(2012,2,1)))
+                    date(2012,2,1)))
             self.assertEqual(34, self.process.get_late_charge(session, bill2,
-                date(2012,2,2)))
+                    date(2012,2,2)))
             self.assertEqual(34, self.process.get_late_charge(session, bill2,
-                date(2013,1,1)))
+                    date(2013,1,1)))
  
             # in order to get late charge of a 3rd bill, bill2 must be put into
             # mysql and "summed" (requires a rate structure)
             self.state_db.new_rebill(session, bill2.account, bill2.sequence)
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 2))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 2))
             self.process.sum_bill(session, bill1, bill2)
  
             # create a 3rd bill without issuing bill2. bill3 should have None
             # as its late charge for all dates
-            bill3 = example_data.get_reebill('99999', 3)
+            bill3 = example_data.get_reebill(acc, 3)
             bill3.balance_due = Decimal('300.')
             self.assertEqual(None, self.process.get_late_charge(session, bill3,
-                date(2011,12,31)))
+                    date(2011,12,31)))
             self.assertEqual(None, self.process.get_late_charge(session, bill3,
-                date(2013,1,1)))
- 
-            session.commit()
-        except:
-            if 'session' in locals():
-                session.rollback()
-            raise
+                    date(2013,1,1)))
+
+
+            # late charge should be based on the version with the least total
+            # of the bill from which it derives. on 2013-01-15, make a version
+            # 1 of bill 1 with a lower total, and then on 2013-03-15, a version
+            # 2 with a higher total, and check that the late charge comes from
+            # version 1. 
+            self.process.new_version(session, acc, 1)
+            bill1_1 = self.reebill_dao.load_reebill(acc, 1, version=1)
+            bill1_1.balance_due = 50
+            self.reebill_dao.save_reebill(bill1_1)
+            self.process.issue(session, acc, 1, issue_date=date(2013,1,15))
+            self.process.new_version(session, acc, 1)
+            bill1_2 = self.reebill_dao.load_reebill(acc, 1, version=2)
+            bill1_2.balance_due = 300
+            self.reebill_dao.save_reebill(bill1_2)
+            self.process.issue(session, acc, 1, issue_date=date(2013,3,15))
+            # note that the issue date on which the late charge in bill2 is
+            # based is the issue date of version 0--it doesn't matter when the
+            # corrections were issued.
+            self.assertEqual(50 * bill2.late_charge_rate,
+                    self.process.get_late_charge(session, bill2,
+                    date(2013,1,1)))
 
     @unittest.skip('''Creating a second StateDB object, even if it's for
             another database, fails with a SQLAlchemy error about multiple
@@ -793,7 +814,6 @@ port = 27017
             self.process.sum_bill(session, three, four)
             # for some reason, adjustment is part of "balance forward"
             # https://www.pivotaltracker.com/story/show/32754231
-            import ipdb; ipdb.set_trace()
             self.assertEqual(four.prior_balance - four.payment_received +
                     four.total_adjustment, four.balance_forward)
             self.assertEquals(four.balance_forward + four.total, four.balance_due)
@@ -850,7 +870,8 @@ port = 27017
             self.state_db.create_payment(session, acc, datetime.utcnow().date()
                     - timedelta(30), 'backdated payment', 80)
 
-            # now a new version of the 2nd reebill should have a different late charge
+            # now a new version of the 2nd reebill should have a different late
+            # charge
             self.process.new_version(session, acc, 2)
             two = self.reebill_dao.load_reebill(acc, 2)
             self.assertEqual(10, two.late_charges)
@@ -859,7 +880,6 @@ port = 27017
             corrections = self.process.get_unissued_corrections(session, acc)
             assert len(corrections) == 1
             self.assertEquals((2, 1, -40), corrections[0])
-
 
     def test_delete_reebill(self):
         account = '99999'
