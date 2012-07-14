@@ -684,6 +684,7 @@ function reeBillReady() {
             {name: 'ree_charges'},
             {name: 'balance_due'},
             {name: 'total_error'},
+            {name: 'issued'},
         ],
     });
 
@@ -5633,8 +5634,23 @@ function reeBillReady() {
 
     function loadReeBillUIForSequence(account, sequence) {
         /* null argument means no sequence is selected */
-        deleteButton.setDisabled(sequence == null);
-        versionButton.setDisabled(sequence == null)
+
+        // get selected reebill's record and the predecessor's record
+        var record = reeBillGrid.getSelectionModel().getSelected();
+        var prevRecord = reeBillStore.queryBy(function(record, id) {
+            return record.data.sequence == sequence - 1;
+        }).first();
+        if (prevRecord == undefined) prevRecord = null;
+        if (prevRecord != null) {
+            console.log('got prevRecord: ' + prevRecord.data.sequence); 
+            console.log(prevRecord); 
+        }
+
+        // delete button requires selected unissued reebill whose predecessor
+        // is issued
+        deleteButton.setDisabled(sequence == null || (record.data.issued == false && (prevRecord == null || prevRecord.issued == true)));
+        // new version button requires selected issued reebill
+        versionButton.setDisabled(sequence == null || record.data.issued == false);
 
         /* the rest of this applies only for a valid sequence */
         if (sequence == null) {
