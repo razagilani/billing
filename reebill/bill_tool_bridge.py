@@ -1783,8 +1783,11 @@ class BillToolBridge:
                     else:
                         row_dict['corrections'] = '-' if issued else '(not issued)'
 
+                    # invisible columns
                     row_dict['total_error'] = self.process.get_total_error(
                             session, account, reebill.sequence)
+                    row_dict['issued'] = self.state_db.is_issued(session,
+                            account, reebill.sequence)
 
                     rows.append(row_dict)
                 return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
