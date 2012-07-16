@@ -634,6 +634,7 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
             new_reebill = self.process.roll_bill(session, reebill)
+            print '******', new_reebill.sequence
             self.reebill_dao.save_reebill(new_reebill)
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
                     account, sequence)
@@ -863,17 +864,20 @@ class BillToolBridge:
                 # one unissued bill (about to be issued) and the client didn't
                 # specify corrections to apply, complain (client will show
                 # confirmation message)
-                unissued_corrections = self.process.get_unissued_correction_sequences(
+                unissued_corrections = self.process.get_unissued_corrections(
                         session, account)
+                unissued_correction_sequences = [c[0] for c in unissued_corrections]
+                unissued_correction_adjustment = sum(c[2] for c in unissued_corrections)
                 if len(unissued_corrections) > 0 and len(unissued_sequences) > 0 \
                         and 'corrections' not in kwargs:
                     return self.dumps({'success': False,
-                            'corrections': unissued_corrections})
+                        'corrections': unissued_correction_sequences,
+                        'adjustment': unissued_correction_adjustment })
                 if 'corrections_to_apply' in locals():
                     # make sure corrections_to_apply is all of them (currently,
                     # client code guarantees this)
                     if not sorted(corrections_to_apply) == sorted(
-                            unissued_corrections):
+                            unissued_correction_sequences):
                         raise ValueError('All corrections must be issued.')
                 self.issue_reebills(session, account, unissued_sequences,
                         apply_corrections=('corrections_to_apply' in locals()))

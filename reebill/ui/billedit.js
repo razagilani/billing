@@ -1560,8 +1560,9 @@ function reeBillReady() {
                             Ext.Msg.alert('Success', "mail successfully sent");
                         } else if (o.success !== true && o['corrections'] != undefined) {
                             var result = Ext.Msg.confirm('Corrections must be applied',
-                                'Corrections from the following reebills will be applied to this bill: '
-                                + o.corrections + '. Are you sure you want to issue it?', function(answer) {
+                                'Corrections from reebills ' + o.corrections +
+                                ' will be applied to this bill as an adjusment of $'
+                                + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
                                     if (answer == 'yes') {
                                         mailDataConn.request({
                                             params: { account: selected_account, recipients: recipients, sequences: sequences, corrections: o.corrections},
