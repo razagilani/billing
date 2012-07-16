@@ -5640,15 +5640,13 @@ function reeBillReady() {
         var prevRecord = reeBillStore.queryBy(function(record, id) {
             return record.data.sequence == sequence - 1;
         }).first();
-        if (prevRecord == undefined) prevRecord = null;
-        if (prevRecord != null) {
-            console.log('got prevRecord: ' + prevRecord.data.sequence); 
-            console.log(prevRecord); 
-        }
+        if (prevRecord == undefined)
+            prevRecord = null;
 
         // delete button requires selected unissued reebill whose predecessor
         // is issued
-        deleteButton.setDisabled(sequence == null || (record.data.issued == false && (prevRecord == null || prevRecord.issued == true)));
+        deleteButton.setDisabled(sequence == null || record.data.issued == true
+                || prevRecord.data.issued == false);
         // new version button requires selected issued reebill
         versionButton.setDisabled(sequence == null || record.data.issued == false);
 
