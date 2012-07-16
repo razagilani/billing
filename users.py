@@ -51,17 +51,10 @@ class UserDAO:
         }
     })
 
-    def __init__(self, config):
-        self.config = config
-        connection = None
-
-        try:
-            connection = pymongo.Connection(self.config['host'], int(self.config['port'])) 
-        except Exception as e: 
-            print >> sys.stderr, "Exception when connecting to Mongo:" + str(e)
-            raise
-            
-        self.collection = connection[self.config['database']]['users']
+    def __init__(self, database, host='localhost', port=27017, **kwargs):
+        port = int(port)
+        connection = pymongo.Connection(host, port)
+        self.collection = connection[database]['users']
     
     def create_user(self, identifier, password, name=None):
         '''Creates a new user with the given identifier and password and saves
@@ -149,13 +142,11 @@ if __name__ == '__main__':
     #parser = argparse.ArgumentParser(description='Create and authenticate user accounts')
     #parser.add_argument('create', dest=username)
     from sys import argv
-    dao = UserDAO({
+    dao = UserDAO(**{
         'host': 'localhost',
         'port': 27017,
         'database': 'skyline',
         'collection': 'users',
-        'user': 'dev',
-        'password': 'dev',
     })
     command = argv[1]
     identifier = argv[2]
