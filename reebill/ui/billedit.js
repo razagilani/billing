@@ -4689,6 +4689,7 @@ function reeBillReady() {
                                     Ext.Msg.alert('Success', "New account created");
                                     // update next account number shown in field
                                     newAccountField.setValue(nextAccount);
+                                    reeBillStore.load();
                                 }
                             } catch (err) {
                                 Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
