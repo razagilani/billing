@@ -1849,7 +1849,7 @@ class BillToolBridge:
             new_reebills = self.process.new_versions(session, account, sequence)
             for new_reebill in new_reebills:
                 journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
-                        account, sequence, new_reebill.version)
+                        account, new_reebill.sequence, new_reebill.version)
             session.commit()
         # client doesn't do anything with the result (yet)
         return self.dumps({'success': True, 'sequences': [r.sequence for r in
