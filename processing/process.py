@@ -28,15 +28,11 @@ from billing.dateutils import estimate_month, month_offset, month_difference
 from billing.monthmath import Month, approximate_month
 from billing.dictutils import deep_map
 from billing.mongo import float_to_decimal
+from billing.exceptions import IssuedBillError
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1)
 sys.stdout = sys.stderr
-
-class IssuedBillError(Exception):
-    '''Exception for trying to modify a bill that has been issued. Use this in
-    all those situations.'''
-    pass
 
 sys.stdout = sys.stderr
 class Process(object):

@@ -16,6 +16,7 @@ from billing.mongo_utils import bson_convert, python_convert
 from billing.dictutils import deep_map
 from billing.dateutils import date_to_datetime
 from billing.session_contextmanager import DBSession
+from billing.exceptions import NoSuchReeBillException, NoRateStructureError, NoUtilityNameError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1)
@@ -1132,9 +1133,6 @@ class MongoReebill(object):
                 ub[chargegroups] = new_chargegroups
 
 
-class NoSuchReeBillException(Exception):
-    pass
-
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
@@ -1335,7 +1333,3 @@ class ReebillDAO:
             return 0
         return MongoReebill(result).sequence
 
-class NoRateStructureError(Exception):
-    pass
-class NoUtilityNameError(Exception):
-    pass
