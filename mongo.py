@@ -62,6 +62,7 @@ def check_issued(method):
     '''Decorator to evaluate the issued state.'''
     @functools.wraps(method)
     def wrapper(instance, *args, **kwargs):
+        # BTW this is not the right way to check if a bill is issued
         if 'issue_date' in instance.reebill_dict and instance.reebill_dict['issue_date'] is not None:
             raise Exception("ReeBill cannot be modified once isssued.")
         return method(instance, *args, **kwargs)
@@ -131,9 +132,6 @@ class MongoReebill(object):
             # copy the dict passed because we set it here as instance data and start
             # operating on that data. This destroys the reebill from whence it came
             self.reebill_dict = copy.copy(reebill.reebill_dict)
-
-            # increment sequence
-            self.sequence = reebill.sequence + 1
 
             # set start date of each utility bill in this reebill to the end date
             # of the previous utility bill for that service
@@ -453,7 +451,6 @@ class MongoReebill(object):
         '''Returns a dict.'''
         return self.reebill_dict['billing_address']
     @billing_address.setter
-    @check_issued
     def billing_address(self, value):
         self.reebill_dict['billing_address'] = value
 

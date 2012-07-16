@@ -283,12 +283,12 @@ class Process(object):
 
     def roll_bill(self, session, reebill):
         '''Modifies 'reebill' to convert it into a template for the reebill of
-        the next period. 'reebill' must be its customer's last bill before
-        roll_bill is called. This method does not save the reebill in Mongo,
-        but it DOES create new CPRS documents in Mongo (by copying the ones
-        originally attached to the reebill). compute_bill() should always be
-        called immediately after this one so the bill is updated to its current
-        state.'''
+        the next period (including incrementing the sequence). 'reebill' must
+        be its customer's last bill before roll_bill is called. This method
+        does not save the reebill in Mongo, but it DOES create new CPRS
+        documents in Mongo (by copying the ones originally attached to the
+        reebill). compute_bill() should always be called immediately after this
+        one so the bill is updated to its current state.'''
 
         # obtain the last Reebill sequence from the state database
         if reebill.sequence < self.state_db.last_sequence(session,
@@ -330,6 +330,8 @@ class Process(object):
                 reebill.account)
 
         # NOTE suspended_services list is carried over automatically
+
+        new_reebill.sequence += 1
 
         # create reebill row in state database
         self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
@@ -409,8 +411,8 @@ class Process(object):
         return reebill
 
     def get_unissued_corrections(self, session, account):
-        '''Returns (sequence, max_version, balance adjustment) of all un-issued
-        versions of reebills > 0 for the given account.'''
+        '''Returns [(sequence, max_version, balance adjustment)] of all
+        un-issued versions of reebills > 0 for the given account.'''
         result = []
         for seq, max_version in self.state_db.get_unissued_corrections(session,
                 account):
@@ -574,11 +576,13 @@ class Process(object):
         #TODO 22598787 use the active version of the template_account
         reebill = self.reebill_dao.load_reebill(template_account, template_last_sequence, 0)
 
-        # reset this bill to the new account
+        # reebill constructor clears out fields in the dictionary it is given
+        reebill = MongoReebill(reebill.reebill_dict)
+
+        # fields that need to be set explicitly
         reebill.account = account
         reebill.sequence = 0
         reebill.version = 0
-        reebill.reset()
 
         reebill.billing_address = {}
         reebill.service_address = {}
