@@ -38,6 +38,7 @@ from billing.users import UserDAO, User
 from billing import calendar_reports
 from billing.estimated_revenue import EstimatedRevenue
 from billing.session_contextmanager import DBSession
+from billing.exceptions import Unauthenticated
 
 # collection names: all collections are now hard-coded. maybe this should go in
 # some kind of documentation when we have documentation...
@@ -80,9 +81,6 @@ def random_wait(target):
         time.sleep(t)
         return target(*args, **kwargs)
     return random_wait_wrapper
-
-class Unauthenticated(Exception):
-    pass
 
 def authenticate_ajax(method):
     '''Wrapper for AJAX-request-handling methods that require a user to be
