@@ -222,7 +222,6 @@ class RateStructureDAO(object):
         }
         cprs = self.collection.find_one(query)
         if cprs is None:
-            import ipdb; ipdb.set_trace()
             raise ValueError('Could not find CPRS: query was %s' % query)
         return cprs
 
