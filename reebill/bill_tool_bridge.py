@@ -1850,10 +1850,9 @@ class BillToolBridge:
             for new_reebill in new_reebills:
                 journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
                         account, new_reebill.sequence, new_reebill.version)
-            session.commit()
-        # client doesn't do anything with the result (yet)
-        return self.dumps({'success': True, 'sequences': [r.sequence for r in
-                new_reebills]})
+            # client doesn't do anything with the result (yet)
+            return self.dumps({'success': True, 'sequences': [r.sequence for r in
+                    new_reebills]})
 
     ################
     # Handle addresses
