@@ -283,7 +283,7 @@ class BillToolBridge:
         self.nexus_util = NexusUtil()
 
         # load users database
-        self.user_dao = UserDAO(dict(self.config.items('usersdb')))
+        self.user_dao = UserDAO(**dict(self.config.items('usersdb')))
 
         # create an instance representing the database
         self.statedb_config = dict(self.config.items("statedb"))
