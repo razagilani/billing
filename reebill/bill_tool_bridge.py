@@ -1778,9 +1778,12 @@ class BillToolBridge:
                     version = self.state_db.max_version(session, account, reebill.sequence)
                     issued = self.state_db.is_issued(session, account, reebill.sequence)
                     if version > 0:
-                        row_dict['corrections'] = str(version) + ('' if issued else ' (not issued)')
+                        if issued:
+                            row_dict['corrections'] = str(version)
+                        else:
+                            row_dict['corrections'] = '#%s not issued' % version
                     else:
-                        row_dict['corrections'] = '-' if issued else '(not issued)'
+                        row_dict['corrections'] = '-' if issued else '(never issued)'
 
                     # version as machine-readable invisible column
                     row_dict['max_version'] = version
