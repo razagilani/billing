@@ -672,7 +672,8 @@ function reeBillReady() {
             {name: 'sequence'},
             {name: 'period_start'},
             {name: 'period_end'},
-            {name: 'corrections'},
+            {name: 'corrections'}, // human-readable (could replace with a nice renderer function for max_version)
+            {name: 'max_version'}, // machine-readable
             {name: 'hypothetical_total'},
             {name: 'actual_total'},
             {name: 'ree_value'},
@@ -899,12 +900,10 @@ function reeBillReady() {
                 /* rowdeselect is always called before rowselect when the selection changes. */
                 rowdeselect: function(selModel, index, record) {
                      loadReeBillUIForSequence(selected_account, null);
-                     console.log('deselect');
                 },
                 rowselect: function (selModel, index, record) {
                     // TODO: have other widgets pull when this selection is made
                     loadReeBillUIForSequence(selected_account, record.data.sequence);
-                    console.log('select: ' + selected_account + ', ' + record.data.sequence);
                 },
             }
         }),
@@ -5643,10 +5642,15 @@ function reeBillReady() {
         if (prevRecord == undefined)
             prevRecord = null;
 
+        var isLastSequence = reeBillStore.queryBy(function(record, id) {
+                return record.data.sequence == sequence + 1; }).first() ==
+                undefined;
+
         // delete button requires selected unissued reebill whose predecessor
-        // is issued
-        deleteButton.setDisabled(sequence == null || record.data.issued == true
-                || prevRecord.data.issued == false);
+        // is issued, or whose sequence is the last one
+        deleteButton.setDisabled(sequence == null || ! (isLastSequence &&
+                record.data.max_version == 0) && (record.data.issued == true ||
+                prevRecord.data.issued == false));
         // new version button requires selected issued reebill
         versionButton.setDisabled(sequence == null || record.data.issued == false);
 
@@ -5685,7 +5689,6 @@ function reeBillReady() {
         } else {
             resolution = DEFAULT_RESOLUTION;
         }
-
 
         // while waiting for the next ajax request to finish, show a loading message
         // in the utilbill image box

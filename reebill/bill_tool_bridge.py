@@ -1774,6 +1774,7 @@ class BillToolBridge:
                     try: row_dict['balance_due'] = mongo_reebill.balance_due
                     except: pass
 
+                    # human-readable description of correction state
                     version = self.state_db.max_version(session, account, reebill.sequence)
                     issued = self.state_db.is_issued(session, account, reebill.sequence)
                     if version > 0:
@@ -1781,7 +1782,10 @@ class BillToolBridge:
                     else:
                         row_dict['corrections'] = '-' if issued else '(not issued)'
 
-                    # invisible columns
+                    # version as machine-readable invisible column
+                    row_dict['max_version'] = version
+
+                    # other invisible columns
                     row_dict['total_error'] = self.process.get_total_error(
                             session, account, reebill.sequence)
                     row_dict['issued'] = self.state_db.is_issued(session,
@@ -1816,15 +1820,19 @@ class BillToolBridge:
         else:
             sequences = [int(sequences)]
         with DBSession(self.state_db) as session:
+            last_sequence = self.state_db.last_sequence(session, account)
             for sequence in sequences:
                 # forbid deletion if predecessor has an unissued version (note
                 # that client is allowed to delete a range of bills at once, as
                 # long as they're in sequence order)
-                if sequence != 1 and not self.state_db.is_issued(session,
-                        account, sequence - 1):
+                max_version = self.state_db.max_version(session, account, sequence)
+                issued = self.state_db.is_issued(session, account, sequence - 1)
+                if sequence != 1 and not (sequence == last_sequence and
+                        max_version == 0) and not issued:
                     raise ValueError(("Can't delete a reebill version whose "
-                            "predecessor is unissued. Delete a series of "
-                            "unissued bills in sequence order."))
+                            "predecessor is unissued, unless its version is 0 "
+                            "and its sequence is the last one. Delete a "
+                            "series of unissued bills in sequence order."))
                 deleted_version = self.process.delete_reebill(session,
                         account, sequence)
             
