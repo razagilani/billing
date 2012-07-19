@@ -762,6 +762,21 @@ function reeBillReady() {
         }
     });
 
+    function reeBillGridRenderer(value, metaData, record, rowIndex, colIndex,
+            store) {
+        if (record.data.issued) {
+            // issued bill
+            metaData.css = 'reebill-grid-issued';
+        } else if (record.data.max_version == 0) {
+            // unissued version-0 bill
+            metaData.css = 'reebill-grid-unissued';
+        } else {
+            // unissued correction
+            metaData.css = 'reebill-grid-unissued-correction';
+        }
+        return value;
+    }
+
     var reeBillColModel = new Ext.grid.ColumnModel(
     {
         columns: [
@@ -771,80 +786,94 @@ function reeBillReady() {
                 dataIndex: 'sequence',
                 //editor: new Ext.form.TextField({allowBlank: true})
                 width: 40,
+                renderer: reeBillGridRenderer,
             },{
                 header: 'Corrections',
                 sortable: false,
                 dataIndex: 'corrections',
                 width: 60,
+                renderer: reeBillGridRenderer,
             //},{
                 //header: 'Total Error',
                 //sortable: false,
                 //dataIndex: 'total_error',
                 //width: 45,
+                //renderer: reeBillGridRenderer,
             },{
                 header: 'Start Date',
                 sortable: true,
                 dataIndex: 'period_start',
                 width: 70,
+                renderer: reeBillGridRenderer,
             },{
                 header: 'End Date',
                 sortable: true,
                 dataIndex: 'period_end',
                 width: 70,
+                renderer: reeBillGridRenderer,
             },{
                 header: 'Hypo',
                 sortable: false,
                 dataIndex: 'hypothetical_total',
                 width: 65,
                 align: 'right',
+                renderer: reeBillGridRenderer,
             },{
                 header: 'Actual',
                 sortable: false,
                 dataIndex: 'actual_total',
                 width: 65,
                 align: 'right',
+                renderer: reeBillGridRenderer,
             },{
                 header: 'RE&E Value',
                 sortable: false,
                 dataIndex: 'ree_value',
                 width: 65,
                 align: 'right',
+                renderer: reeBillGridRenderer,
             //},{
                 //header: 'Prior Balance',
                 //sortable: false,
                 //dataIndex: 'prior_balance',
                 //width: 65,
                 //align: 'right',
+                //renderer: reeBillGridRenderer,
             //},{
                 //header: 'Payment',
                 //sortable: false,
                 //dataIndex: 'payment_received',
                 //width: 65,
                 //align: 'right',
+                //renderer: reeBillGridRenderer,
             //},{
                 //header: 'Adjustment',
                 //sortable: false,
                 //dataIndex: 'total_adjustment',
                 //width: 65,
                 //align: 'right',
+                //renderer: reeBillGridRenderer,
             //},{
                 //header: 'Balance Fwd',
                 //sortable: false,
                 //dataIndex: 'balance_forward',
                 //width: 65,
                 //align: 'right',
+                //renderer: reeBillGridRenderer,
             },{
                 header: 'RE&E Charges',
                 sortable: false,
                 dataIndex: 'ree_charges',
                 width: 65,
                 align: 'right',
+                renderer: reeBillGridRenderer,
             //},{
                 //header: 'Balance Due',
                 //sortable: false,
                 //dataIndex: 'balance_due',
                 //width: 65,
                 //align: 'right',
+                //renderer: reeBillGridRenderer,
             },
         ]
     });
