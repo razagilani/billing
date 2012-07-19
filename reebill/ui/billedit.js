@@ -775,7 +775,7 @@ function reeBillReady() {
                 header: 'Corrections',
                 sortable: false,
                 dataIndex: 'corrections',
-                width: 45,
+                width: 60,
             //},{
                 //header: 'Total Error',
                 //sortable: false,
@@ -821,12 +821,12 @@ function reeBillReady() {
                 //dataIndex: 'payment_received',
                 //width: 65,
                 //align: 'right',
-            },{
-                header: 'Adjustment',
-                sortable: false,
-                dataIndex: 'total_adjustment',
-                width: 65,
-                align: 'right',
+            //},{
+                //header: 'Adjustment',
+                //sortable: false,
+                //dataIndex: 'total_adjustment',
+                //width: 65,
+                //align: 'right',
             //},{
                 //header: 'Balance Fwd',
                 //sortable: false,
@@ -839,12 +839,12 @@ function reeBillReady() {
                 dataIndex: 'ree_charges',
                 width: 65,
                 align: 'right',
-            },{
-                header: 'Balance Due',
-                sortable: false,
-                dataIndex: 'balance_due',
-                width: 65,
-                align: 'right',
+            //},{
+                //header: 'Balance Due',
+                //sortable: false,
+                //dataIndex: 'balance_due',
+                //width: 65,
+                //align: 'right',
             },
         ]
     });
