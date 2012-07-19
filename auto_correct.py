@@ -79,8 +79,11 @@ class AutoCorrector(object):
                         copy = deepcopy(original)
 
                         # re-bind & recompute the copy
-                        fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account), copy, verbose=True)
-                        predecessor = self.reebill_dao.load_reebill(account, sequence - 1, version=0)
+                        fbd.fetch_oltp_data(self.splinter,
+                                self.nexus_util.olap_id(account), copy,
+                                verbose=True)
+                        predecessor = self.reebill_dao.load_reebill(account,
+                                sequence - 1, version=0)
                         self.process.compute_bill(session, predecessor, copy)
 
                         # compare copy to original
