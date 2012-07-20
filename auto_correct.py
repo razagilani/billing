@@ -105,6 +105,12 @@ class AutoCorrector(object):
                             NewReebillVersionEvent.save_instance(user=self.user,
                                     account=account, sequence=sequence,
                                     version=new_reebill.version)
+
+                            # log it
+                            logger.warning('%s-%s wrong: REE charge corrected
+                                    from %s to %s' % (account, sequence,
+                                    original.ree_charges,
+                                    new_reebill.ree_charges)
                     except Exception as e:
                         print >> sys.stderr, '%s-%s ERROR: %s' % (account, sequence, e)
                         print >> sys.stderr, traceback.format_exc()
@@ -127,30 +133,29 @@ def main():
     journal_config = dict(config.items('journaldb'))
 
     ## set up logger: writes to the reebill log
-    #log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-            #'reebill', 'reebill.log')
-    #try:
-        #os.remove(log_file_path)
-    #except OSError as oserr:
-        #if oserr.errno != errno.ENOENT:
-            #raise
-    #logger = logging.getLogger('reebill')
-    #formatter = logging.Formatter(LOG_FORMAT)
-    #handler = logging.FileHandler(log_file_path)
-    #handler.setFormatter(formatter)
-    #logger.addHandler(handler) 
-    #logger.setLevel(logging.DEBUG)
+    log_file_path = '/tmp/autocorrect.log'
+    try:
+        os.remove(log_file_path)
+    except OSError as oserr:
+        if oserr.errno != errno.ENOENT:
+            raise
+    logger = logging.getLogger('reebill-autocorrect')
+    formatter = logging.Formatter(LOG_FORMAT)
+    handler = logging.FileHandler(log_file_path)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler) 
+    logger.setLevel(logging.DEBUG)
 
     try:
-        #logger.info('Starting automatic bill correction')
+        logger.info('Starting automatic bill correction')
         corrector = AutoCorrector(billdb_config, statedb_config,
                 usersdb_config, journal_config, ratestructure_config,
                 splinter_config, splinter_config)
         corrector.go()
     except Exception as e:
         print >> sys.stderr, '%s\n%s' % (e, traceback.format_exc())
-        #logger.critical("Error during automatic bill correction: %s\n%s"
-                #% (e, traceback.format_exc()))
+        logger.critical("Error during automatic bill correction: %s\n%s"
+                % (e, traceback.format_exc()))
 
 if __name__ == '__main__':
     main()
