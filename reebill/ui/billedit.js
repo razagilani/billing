@@ -4718,7 +4718,15 @@ function reeBillReady() {
                                     Ext.Msg.alert('Success', "New account created");
                                     // update next account number shown in field
                                     newAccountField.setValue(nextAccount);
-                                    reeBillStore.load();
+
+                                    // reload grid to show new account
+                                    // TODO "load" gets no records, "reload" gets records, but neither one causes the grid to update
+                                    reeBillStore.reload({
+                                        //callback: function(records, options, success) {
+                                                      //alert('loaded!');
+                                                      //console.log(records);
+                                        //}
+                                    });
                                 }
                             } catch (err) {
                                 Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
