@@ -438,7 +438,6 @@ class MongoReebill(object):
         '''Returns a dict.'''
         return self.reebill_dict['billing_address']
     @billing_address.setter
-    @check_issued
     def billing_address(self, value):
         self.reebill_dict['billing_address'] = value
 
