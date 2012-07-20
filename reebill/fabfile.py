@@ -10,20 +10,31 @@ from fabric.colors import red, green
 import os
 
 #fabapi.env.hosts = ['tyrell', 'ec2-107-21-175-174.compute-1.amazonaws.com']
-fabapi.env.roledefs = {'atsite': ['ec2-user@ec2-50-16-73-74.compute-1.amazonaws.com'], 'skyline': ['tyrell']}
+
+
+# these 'roles' are specified on the fab command line using '-R'
+fabapi.env.roledefs = {
+    'atsite': ['ec2-user@ec2-50-16-73-74.compute-1.amazonaws.com'], 
+    'skyline': ['tyrell'],
+    'amazon':['ec2-user@ec2-23-21-137-54.compute-1.amazonaws.com'],
+    }
 
 # how do keys get mapped to hosts? Works like magic.
-#fabapi.env.key_filename = ['/home/randrews/Dropbox/Skyline-IT/ec2keys/reebill-atsite.pem']
+fabapi.env.key_filename = ['~/ec2keys/reebill-atsite.pem','~/ec2keys/tyrell-prod.pem']
 
 root_dir = os.path.dirname(os.path.abspath(__file__))
 exclude_from = 'fabexcludes.txt'
 
 
+# specify the name of the process serving web requests
+# configurations that are global to a host
 host_configurations = {
     "tyrell": {"httpd":"apache2"},
     "ec2-50-16-73-74.compute-1.amazonaws.com": {"httpd":"httpd"},
+    "ec2-23-21-137-54.compute-1.amazonaws.com": {"httpd":"httpd"},
 }
 
+# configurations that are global to an instance of the app
 env_configurations = {
     "dev": {
         "project":"reebill-dev", 
@@ -31,7 +42,6 @@ env_configurations = {
         "group":"reebill-dev", 
         "config":"reebill-dev-template.cfg",
         "dir":"lib/python2.6/site-packages",
-        "httpd":"Apache2"
     },
     "stage": {
         "project":"reebill-stage", 
@@ -39,7 +49,6 @@ env_configurations = {
         "group":"reebill-stage",
         "config":"reebill-stage-template.cfg",
         "dir":"lib/python2.6/site-packages",
-        "httpd":"Apache2"
     },
     "prod": {
         "project":"reebill-prod", 
@@ -47,7 +56,13 @@ env_configurations = {
         "group":"reebill-prod", 
         "config":"reebill-prod-template.cfg",
         "dir":"lib/python2.6/site-packages",
-        "httpd":"Apache2"
+    },
+    "prod27": {
+        "project":"reebill-prod", 
+        "user":"reebill-prod", 
+        "group":"reebill-prod", 
+        "config":"reebill-prod-template.cfg",
+        "dir":"lib/python2.7/site-packages",
     },
     "dedicated": {
         "project":"reebill", 
@@ -55,7 +70,6 @@ env_configurations = {
         "group":"reebill", 
         "config":"reebill-dedicated-template.cfg",
         "dir":"",
-        "httpd":"httpd"
     }
 }
 
@@ -169,7 +183,7 @@ def deploy():
 
 
     environment = fabops.prompt("Environment?", default="stage")
-    if environment == "prod":
+    if environment[0:4] == "prod":
         clobber = fabops.prompt(red("Clobber production?"), default="No")
         if clobber.lower() != "yes":
             fabutils.abort(green("Not clobbering production"))
