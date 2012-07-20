@@ -547,11 +547,13 @@ class Process(object):
         #TODO 22598787 use the active version of the template_account
         reebill = self.reebill_dao.load_reebill(template_account, template_last_sequence, 0)
 
+        # reebill constructor clears out fields in the dictionary it is given
+        reebill = MongoReebill(reebill.reebill_dict)
+
         # reset this bill to the new account
         reebill.account = account
         reebill.sequence = 0
         reebill.version = 0
-        reebill.reset()
 
         reebill.billing_address = {}
         reebill.service_address = {}
