@@ -5,7 +5,7 @@ import os
 import sys
 import errno
 import traceback
-import datetime
+from datetime import datetime
 import argparse
 import logging
 from copy import deepcopy
@@ -16,6 +16,7 @@ from billing.reebill import render
 from billing.processing import state
 from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
+from skyliner.sky_paths import BufferingTLSSMTPHandler
 from billing.nexus_util import NexusUtil
 from billing.session_contextmanager import DBSession
 from billing.processing import fetch_bill_data as fbd
@@ -36,6 +37,14 @@ USER_ID = 'jwatson'
 USER_PW = 'solarbeetu'
 
 LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
+
+# email reporting parameters
+EMAIL_HOST_TUPLE = ('smtp.gmail.com', 587)
+EMAIL_FROM_ADDR = 'reports@skylineinnovations.com'
+EMAIL_TO_ADDR = 'dklothe@skylineinnovations.com'
+EMAIL_SUBJECT = 'Automatic Bill Correction Log %s' % datetime.now().isoformat()
+EMAIL_CAPACITY = 5000
+EMAIL_CREDENTIALS = ('reports@skylineinnovations.com', 'electricsh33p')
 
 class AutoCorrector(object):
     def __init__(self, billdb_config, statedb_config, usersdb_config,
@@ -139,12 +148,20 @@ def main():
     except OSError as oserr:
         if oserr.errno != errno.ENOENT:
             raise
-    logger = logging.getLogger('reebill-autocorrect')
+    logger = logging.getLogger('reebill-corrector')
     formatter = logging.Formatter(LOG_FORMAT)
     handler = logging.FileHandler(log_file_path)
     handler.setFormatter(formatter)
     logger.addHandler(handler) 
     logger.setLevel(logging.DEBUG)
+
+    # logging handler to send emails
+    email_handler = BufferingTLSSMTPHandler(EMAIL_HOST_TUPLE, EMAIL_FROM_ADDR,
+            EMAIL_TO_ADDR, EMAIL_SUBJECT, EMAIL_CAPACITY,
+            credentials=EMAIL_CREDENTIALS, secure=())
+    email_handler.setLevel(logging.DEBUG)
+    email_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+    logger.addHandler(email_handler)
 
     try:
         logger.info('Starting automatic bill correction')
