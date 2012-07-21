@@ -35,12 +35,12 @@ CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
 USER_ID = 'jwatson'
 USER_PW = 'solarbeetu'
 
-#LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
+LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
 class AutoCorrector(object):
     def __init__(self, billdb_config, statedb_config, usersdb_config,
             journal_config, ratestructure_config, splinter_config,
-            output_file):
+            logger):
         # data accesss objects
         self.state_db = state.StateDB(**statedb_config)
         self.reebill_dao = mongo.ReebillDAO(self.state_db,
@@ -65,6 +65,8 @@ class AutoCorrector(object):
                 host=journal_config['host'], port=int(journal_config['port']),
                 alias='journal')
 
+        self.logger = logger
+
     def go(self):
         with DBSession(self.state_db) as session:
             for account in sorted(self.state_db.listAccounts(session)):
@@ -88,11 +90,8 @@ class AutoCorrector(object):
 
                         # compare copy to original
                         if copy.ree_charges == original.ree_charges:
-                            print '%s-%s OK' % (account, sequence)
+                            self.logger.info('%s-%s OK' % (account, sequence))
                         else:
-                            print '%s-%s wrong: %s, %s' % (account, sequence,
-                                    copy.ree_charges, original.ree_charges)
-
                             # make the correction
                             # TODO this duplicates the bind & compute process
                             # above, but avoids code duplication; new_version()
@@ -107,13 +106,13 @@ class AutoCorrector(object):
                                     version=new_reebill.version)
 
                             # log it
-                            logger.warning('%s-%s wrong: REE charge corrected
-                                    from %s to %s' % (account, sequence,
+                            self.logger.warning(('%s-%s wrong: REE charge corrected'
+                                    ' from %s to %s') % (account, sequence,
                                     original.ree_charges,
-                                    new_reebill.ree_charges)
+                                    new_reebill.ree_charges))
                     except Exception as e:
-                        print >> sys.stderr, '%s-%s ERROR: %s' % (account, sequence, e)
-                        print >> sys.stderr, traceback.format_exc()
+                        self.logger.error('%s-%s ERROR: %s' % (account, sequence, e))
+                        self.logger.error(traceback.format_exc())
 
 def main():
     # load config dictionaries from the main reebill config file
@@ -133,6 +132,7 @@ def main():
     journal_config = dict(config.items('journaldb'))
 
     ## set up logger: writes to the reebill log
+    # TODO add handler TLSSMTPHandler from skyliner/sky_paths.py to send emails
     log_file_path = '/tmp/autocorrect.log'
     try:
         os.remove(log_file_path)
@@ -150,7 +150,7 @@ def main():
         logger.info('Starting automatic bill correction')
         corrector = AutoCorrector(billdb_config, statedb_config,
                 usersdb_config, journal_config, ratestructure_config,
-                splinter_config, splinter_config)
+                splinter_config, logger)
         corrector.go()
     except Exception as e:
         print >> sys.stderr, '%s\n%s' % (e, traceback.format_exc())
