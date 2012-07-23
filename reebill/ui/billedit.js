@@ -142,14 +142,14 @@ function reeBillReady() {
         width: 50,
     })
     // date fields
-    var upload_begin_date = new Ext.form.DateField({
+    var uploadStartDateField = new Ext.form.DateField({
         fieldLabel: 'Begin Date',
             name: 'begin_date',
             width: 90,
             allowBlank: false,
             format: 'Y-m-d'
     });
-    var upload_end_date = new Ext.form.DateField({
+    var uploadEndDateField = new Ext.form.DateField({
         fieldLabel: 'End Date',
             name: 'end_date',
             width: 90,
@@ -164,7 +164,12 @@ function reeBillReady() {
     });
     var upload_submit_button = new Ext.Button({
         text: 'Submit',
-        handler: saveForm
+        handler: saveForm,
+        /* TODO: update field values after upload: https://www.pivotaltracker.com/story/show/33241007 */
+        //handler: function() {
+            //saveForm();
+            //uploadStartDateField.setValue(uploadEndDateField.getValue());
+        //}
     });
 
     var upload_form_panel = new Ext.form.FormPanel({
@@ -182,9 +187,8 @@ function reeBillReady() {
         items: [
             upload_account,
             upload_service,
-            upload_begin_date,
-            upload_end_date,
-            //file_chooser - defined in FileUploadField.js
+            uploadStartDateField,
+            uploadEndDateField,
             {
                 xtype: 'fileuploadfield',
                 id: 'form-file',
@@ -1549,14 +1553,10 @@ function reeBillReady() {
     // Generic form save handler
     // 
     // TODO: 20496293 accept functions to callback on form post success
-    function saveForm() 
-    {
-
+    function saveForm() {
         //http://www.sencha.com/forum/showthread.php?127087-Getting-the-right-scope-in-button-handler
         var formPanel = this.findParentByType(Ext.form.FormPanel);
-
         if (formPanel.getForm().isValid()) {
-
             formPanel.getForm().submit({
                 params:{
                     // see baseParams
@@ -1582,7 +1582,6 @@ function reeBillReady() {
                     utilbillGrid.getBottomToolbar().doRefresh();
                 }
             })
-
         }else{
             Ext.MessageBox.alert('Errors', 'Please fix form errors noted.');
         }
@@ -5510,12 +5509,12 @@ function reeBillReady() {
                         // server returns null for the date if there is no utilbill
                         if (jsonData['date'] == null) {
                             // clear out date that was there before, if any
-                            upload_begin_date.setValue('');
+                            uploadStartDateField.setValue('');
                         } else {
                             var lastUtilbillDate = new Date(jsonData['date']);
                             // field automatically converts Date into a string
                             // according to its 'format' property
-                            upload_begin_date.setValue(lastUtilbillDate);
+                            uploadStartDateField.setValue(lastUtilbillDate);
                         }
                     } 
                 } catch (err) {
