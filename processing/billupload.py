@@ -8,7 +8,7 @@ import datetime
 from uuid import uuid1
 import re
 import subprocess
-import glob
+from glob import glob
 import shutil
 import ConfigParser
 from db_objects import Customer, UtilBill
@@ -29,7 +29,8 @@ OUTPUT_DATE_FORMAT = '%Y%m%d'
 SEQUENCE_NUMBER_REGEX = '[0-9]+'
 
 # extensions of utility bill formats we know we can convert into an image
-UTILBILL_EXTENSIONS = ['pdf', 'html', 'htm', 'tif', 'tiff']
+# (order here determines order of preference for utility bill file lookup)
+UTILBILL_EXTENSIONS = ['.pdf', '.html', '.htm', '.tif', '.tiff']
 
 # extension of reebills (there probably won't be more than one format)
 REEBILL_EXTENSION = 'pdf'
@@ -123,9 +124,11 @@ class BillUpload(object):
         given account and dates.
         If 'extension' is given, the path to a hypothetical file is constructed
         and returned whether or not the file with that name exists.
-        If 'extension' is not given, at least one bill file is assumed to exist and the
-        one with the first extension found in 'UTILBILL_EXTENSIONS' is chosen.
-        (An exception will be raised if the file does not exist.)'''
+        If 'extension' is not given, at least one bill file is assumed to exist
+        and the one with the first extension found is chosen (extensions in
+        'UTILBILL_EXTENSIONS' are chosen first, in order of their appearance
+        there).
+        An exception will be raised if the file does not exist.'''
         # convert dates into the proper format, & report error if that fails
         formatted_begin_date = datetime.datetime.strftime(begin_date, OUTPUT_DATE_FORMAT)
         formatted_end_date = datetime.datetime.strftime(end_date, OUTPUT_DATE_FORMAT)
@@ -148,19 +151,25 @@ class BillUpload(object):
             # UTILBILL_EXTENSIONS, if there is one. if not, it's an error
             i = 0
             for ext in UTILBILL_EXTENSIONS:
-                if os.access(path_without_extension+'.'+ext, os.R_OK):
+                if os.access(path_without_extension + ext, os.R_OK):
                     extension = ext
                     break
                 i += 1
             if i == len(UTILBILL_EXTENSIONS):
-                error_text = 'Could not find a readable bill file whose path \
-                        (without extension) is "%s"' \
-                        % path_without_extension
-                raise IOError(error_text)
+                # pick the first file found with any extension that starts with
+                # 'path_without_extension', if any
+                choices = glob(path_without_extension + '*')
+                if len(choices) > 0:
+                    extension = os.path.splitext(choices[0])[1]
+                else:
+                    # no files match
+                    raise IOError(('Could not find a readable bill file '
+                            'whose path (without extension) is "%s"') %
+                            path_without_extension)
 
         # if extension is provided, this is the path of a file that may not
         # (yet) exist
-        return path_without_extension + '.' + extension
+        return path_without_extension + extension
 
     def move_utilbill_file(self, account, old_period_start, old_period_end,
             new_period_start, new_period_end):
@@ -176,7 +185,7 @@ class BillUpload(object):
                 old_period_end)
 
         # get new path (this must not be a file that exists)
-        extension = os.path.splitext(old_path)[1][1:] # splitext includes the '.'!
+        extension = os.path.splitext(old_path)[1] # note that splitext includes the '.'
         new_path = self.get_utilbill_file_path(account, new_period_start,
                 new_period_end, extension=extension)
 
@@ -350,7 +359,7 @@ class BillUpload(object):
         # TODO: possible bug: if there are leftover files whose names happen to
         # start with bill_image_path_without_extension, they'll be included
         # even if they shouldn't
-        bill_image_names = sorted(glob.glob(bill_image_path_without_extension \
+        bill_image_names = sorted(glob(bill_image_path_without_extension \
                 + '-*.' + IMAGE_EXTENSION))
 
         # always use ImageMagick's 'montage' command to join them
