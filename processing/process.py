@@ -7,10 +7,11 @@ import sys
 import os  
 import copy
 import datetime
-from datetime import date
+from datetime import date, datetime, timedelta
 import calendar
 from optparse import OptionParser
 from decimal import *
+import operator
 #
 # uuid collides with locals so both the locals and package are renamed
 import uuid as UUID
@@ -27,15 +28,11 @@ from billing.dateutils import estimate_month, month_offset, month_difference
 from billing.monthmath import Month, approximate_month
 from billing.dictutils import deep_map
 from billing.mongo import float_to_decimal
+from billing.exceptions import IssuedBillError
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1)
 sys.stdout = sys.stderr
-
-class IssuedBillError(Exception):
-    '''Exception for trying to modify a bill that has been issued. Use this in
-    all those situations.'''
-    pass
 
 sys.stdout = sys.stderr
 class Process(object):
@@ -82,7 +79,7 @@ class Process(object):
             # record it in the database with that state, but don't upload
             # anything
             self.state_db.record_utilbill_in_database(session, account,
-                    service, begin_date, end_date, datetime.datetime.utcnow(),
+                    service, begin_date, end_date, datetime.utcnow(),
                     state=UtilBill.SkylineEstimated)
         else:
             # if there is a file, get the Python file object and name
@@ -93,7 +90,7 @@ class Process(object):
             if upload_result is True:
                 self.state_db.record_utilbill_in_database(session, account,
                         service, begin_date, end_date,
-                        datetime.datetime.utcnow())
+                        datetime.utcnow())
             else:
                 raise IOError('File upload failed: %s %s %s' % (file_name,
                     begin_date, end_date))
@@ -142,22 +139,48 @@ class Process(object):
 
         return new_path
 
-    def sum_bill(self, session, prior_reebill, present_reebill):
+    def compute_bill(self, session, prior_reebill, present_reebill):
         '''Compute everything about the bill that can be continuously
         recomputed. This should be called immediately after roll_bill()
         whenever roll_bill() is called.'''
+        acc = present_reebill.account
 
         self.set_reebill_period(present_reebill)
 
         ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
 
-        #try:
         self.bind_rate_structure(present_reebill)
-        #except Exception as e:
-            #print "Could not load ratestructure for reebill, skipping calculating charge details"
 
-        self.pay_bill(session, present_reebill)
+        # get payment_received: all payments between issue date of
+        # predecessor's version 0 and issue date of current reebill's version 0
+        # (if current reebill is unissued, its version 0 has None as its
+        # issue_date, meaning the payment period lasts up until the present)
+        if self.state_db.is_issued(session, acc,
+                prior_reebill.sequence, allow_nonexistent=True):
+            # if predecessor's version 0 is issued, gather all payments from
+            # its issue date until version 0 issue date of current bill, or
+            # today if this bill has never been issued
+            if self.state_db.is_issued(session, acc, present_reebill.sequence,
+                    version=0):
+                prior_v0_issue_date = self.reebill_dao.load_reebill(acc,
+                        prior_reebill.sequence, version=0).issue_date
+                present_v0_issue_date = self.reebill_dao.load_reebill(acc,
+                        present_reebill.sequence, version=0).issue_date
+                present_reebill.payment_received = self.state_db.\
+                        get_total_payment_since(session, acc,
+                        prior_v0_issue_date,
+                        end=present_v0_issue_date)
+            else:
+                present_reebill.payment_received = self.state_db.\
+                        get_total_payment_since(session, acc,
+                        prior_reebill.issue_date)
+        else:
+            # if predecessor is not issued, there's no way to tell what
+            # payments will go in this bill instead of a previous bill, so
+            # assume there are none (all payments since last issue date go in
+            # the account's first unissued bill)
+            present_reebill.payment_received = Decimal(0)
 
         ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
@@ -165,7 +188,7 @@ class Process(object):
         # get discount rate
         discount_rate = present_reebill.discount_rate
         if not discount_rate:
-            raise Exception("%s-%s-%s has no discount rate" % (present_reebill.account, 
+            raise Exception("%s-%s-%s has no discount rate" % (acc,
                 present_reebill.sequence, present_reebill.version))
 
         # reset ree_charges, ree_value, ree_savings so we can accumulate across
@@ -229,12 +252,17 @@ class Process(object):
         # not been issued, 0 before the previous bill's due date, and non-0
         # after that)
 
+        # compute adjustment (sum of changes in totals of all unissued
+        # corrections)
+        present_reebill.total_adjustment = self.get_total_adjustment(session,
+                present_reebill.account)
+
         # now grab the prior bill and pull values forward
+        # TODO balance_forward currently contains adjustment, but it should not
         present_reebill.prior_balance = prior_reebill.balance_due
         present_reebill.balance_forward = present_reebill.prior_balance - \
                 present_reebill.payment_received + \
                 present_reebill.total_adjustment
-
 
         lc = self.get_late_charge(session, present_reebill)
         if lc is not None:
@@ -258,34 +286,14 @@ class Process(object):
             actual_chargegroups = reebill.actual_chargegroups_for_service(service)
             reebill.set_hypothetical_chargegroups_for_service(service, actual_chargegroups)
 
-    def pay_bill(self, session, reebill):
-        '''Sets the 'payment_received' in 'reebill' to the sum of all payments
-        that occurred within the first utility bill's period.'''
-        # depend on first ub period to be the date range for which a payment is seeked.
-        # this is a wrong design because there may be more than one ub period
-        # in the case of multiple services with staggered periods.
-        # can't use reeperiod because it overlaps.
-        # TODO: determine the date range for which a payment is applied
-        # see bug 16622833 and feature 16622489
-
-        # get a service from the bill
-        for service in reebill.services:
-            pass
-
-        all_service_periods = reebill.utilbill_periods
-        period = all_service_periods[service]
-        payments = self.state_db.find_payment(session, reebill.account, period[0], period[1])
-        # sum() of [] is int zero, so always wrap payments in a Decimal
-        reebill.payment_received = Decimal(sum([payment.credit for payment in payments]))
-
     def roll_bill(self, session, reebill):
         '''Modifies 'reebill' to convert it into a template for the reebill of
-        the next period. 'reebill' must be its customer's last bill before
-        roll_bill is called. This method does not save the reebill in Mongo,
-        but it DOES create new CPRS documents in Mongo (by copying the ones
-        originally attached to the reebill). sum_bill() should always be called
-        immediately after this one so the bill is updated to its current
-        state.'''
+        the next period (including incrementing the sequence). 'reebill' must
+        be its customer's last bill before roll_bill is called. This method
+        does not save the reebill in Mongo, but it DOES create new CPRS
+        documents in Mongo (by copying the ones originally attached to the
+        reebill). compute_bill() should always be called immediately after this
+        one so the bill is updated to its current state.'''
 
         # obtain the last Reebill sequence from the state database
         if reebill.sequence < self.state_db.last_sequence(session,
@@ -328,11 +336,22 @@ class Process(object):
 
         # NOTE suspended_services list is carried over automatically
 
+        new_reebill.sequence += 1
+
         # create reebill row in state database
         self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
 
         return new_reebill
 
+
+    def new_versions(self, session, account, sequence):
+        '''Creates new versions of all reebills for 'account' starting at
+        'sequence'. Any reebills that already have an unissued version are
+        skipped. Returns a list of the new reebill objects.'''
+        sequences = range(sequence, self.state_db.last_sequence(session,
+                account) + 1)
+        return [self.new_version(session, account, s) for s in sequences if 
+                self.state_db.is_issued(session, account, s)]
 
     def new_version(self, session, account, sequence):
         '''Creates a new version of the given reebill: duplicates the Mongo
@@ -366,10 +385,6 @@ class Process(object):
             self.rate_structure_dao.save_cprs(account, sequence, max_version +
                     1, utility_name, rs_name, cprs)
 
-        # increment version, and make un-issued
-        reebill.version = max_version + 1
-        reebill.issue_date = None
-
         # re-bind
         fetch_bill_data.fetch_oltp_data(self.splinter,
                 self.nexus_util.olap_id(account), reebill)
@@ -381,12 +396,16 @@ class Process(object):
         predecessor = self.reebill_dao.load_reebill(account, sequence-1,
                 version=0)
 
-        self.sum_bill(session, predecessor, reebill)
+        self.compute_bill(session, predecessor, reebill)
 
         # load reebill from mongo again to get its updated charges (yes, this
         # design sucks)
         #reebill = self.reebill_dao.load_reebill(reebill.account,
                 #reebill.sequence, reebill.version)
+
+        # increment version, and make un-issued
+        reebill.version = max_version + 1
+        reebill.issue_date = None
 
         # save in mongo
         self.reebill_dao.save_reebill(reebill)
@@ -397,8 +416,8 @@ class Process(object):
         return reebill
 
     def get_unissued_corrections(self, session, account):
-        '''Returns (sequence, max_version, balance adjustment) of all un-issued
-        versions of reebills > 0 for the given account.'''
+        '''Returns [(sequence, max_version, balance adjustment)] of all
+        un-issued versions of reebills > 0 for the given account.'''
         result = []
         for seq, max_version in self.state_db.get_unissued_corrections(session,
                 account):
@@ -408,18 +427,17 @@ class Process(object):
                     version=max_version)
             prev_version = self.reebill_dao.load_reebill(account, seq,
                     max_version-1)
-            adjustment = latest_version.ree_charges - prev_version.ree_charges
+            adjustment = latest_version.total - prev_version.total
             result.append((seq, max_version, adjustment))
         return result
 
     def get_unissued_correction_sequences(self, session, account):
         return [c[0] for c in self.get_unissued_corrections(session, account)]
 
-    def apply_corrections(self, session, account, target_sequence):
+    def issue_corrections(self, session, account, target_sequence):
         '''Applies adjustments from all unissued corrections for 'account' to
-        the reebill given by 'target_sequence' for the given account. The
-        unissued corrections are marked as issued.'''
-
+        the reebill given by 'target_sequence', and marks the corrections as
+        issued.'''
         # corrections can only be applied to an un-issued reebill whose version
         # is 0
         target_max_version = self.state_db.max_version(session, account,
@@ -441,29 +459,33 @@ class Process(object):
         target_reebill_predecessor = self.reebill_dao.load_reebill(account,
                 target_sequence - 1, version=0)
 
-        # sum of all balance adjustments from corrections applied to target
-        total_adjustment = 0
-
-        # for each correction: add its adjustment total_adjustment and issue it
-        for correction in all_unissued_corrections:
-            correction_sequence, _, adjustment = correction
-            total_adjustment += adjustment
-            self.issue(session, account, correction_sequence)
-
-        # set total adjustment in the target reebill, recompute, and save
-        target_reebill.total_adjustment = total_adjustment
-        self.sum_bill(session, target_reebill_predecessor, target_reebill)
+        # recompute target reebill (this sets total adjustment) and save it
+        self.compute_bill(session, target_reebill_predecessor, target_reebill)
         self.reebill_dao.save_reebill(target_reebill)
 
+        # issue each correction
+        for correction in all_unissued_corrections:
+            correction_sequence, _, _ = correction
+            self.issue(session, account, correction_sequence)
+
+    def get_total_adjustment(self, session, account):
+        '''Returns total adjustment that should be applied to the next issued
+        reebill for 'account' (i.e. the earliest unissued version-0 reebill).
+        This adjustment is the sum of differences in totals between each
+        unissued correction and the previous version it corrects.'''
+        return Decimal(sum(adjustment for (sequence, version, adjustment) in
+                self.get_unissued_corrections(session, account)))
+
     def get_total_error(self, session, account, sequence):
-        '''Returns the net difference between the ree_charges of the latest
+        '''Returns the net difference between the total of the latest
         version (issued or not) and version 0 of the reebill given by account,
         sequence.'''
         earliest = self.reebill_dao.load_reebill(account, sequence, version=0)
         latest = self.reebill_dao.load_reebill(account, sequence, 'max')
-        return latest.ree_charges - earliest.ree_charges
+        return latest.total - earliest.total
 
-    def get_late_charge(self, session, reebill, day=date.today()):
+    def get_late_charge(self, session, reebill,
+            day=datetime.utcnow().date()):
         '''Returns the late charge for the given reebill on 'day', which is the
         present by default. ('day' will only affect the result for a bill that
         hasn't been issued yet: there is a late fee applied to the balance of
@@ -472,6 +494,8 @@ class Process(object):
         issued; None is returned if the predecessor has not been issued. (The
         first bill and the sequence 0 template bill always have a late charge
         of 0.)'''
+        acc, seq = reebill.account, reebill.sequence
+
         if reebill.sequence <= 1:
             return Decimal(0)
 
@@ -482,19 +506,29 @@ class Process(object):
         except KeyError:
             return None
 
-        if not self.state_db.is_issued(session, reebill.account,
-                reebill.sequence - 1):
+        # unissued bill has no late charge
+        if not self.state_db.is_issued(session, acc, seq - 1):
             return None
 
-        # late fee is 0 if previous bill is not overdue
-        predecessor = self.reebill_dao.load_reebill(reebill.account,
-                reebill.sequence - 1)
-        if day <= predecessor.due_date:
+        # late charge is 0 if version 0 of the previous bill is not overdue
+        predecessor0 = self.reebill_dao.load_reebill(acc, seq - 1, version=0)
+        if day <= predecessor0.due_date:
             return Decimal(0)
 
-        outstanding_balance = self.get_outstanding_balance(session,
-                reebill.account, reebill.sequence - 1)
-        return (reebill.late_charge_rate) * outstanding_balance
+        # the balance on which a late charge is based is not necessarily the
+        # current bill's balance_forward or the "outstanding balance": it's the
+        # least balance_due of any issued version of the predecessor (as if it
+        # had been charged on version 0's issue date, even if the version
+        # chosen is not 0).
+        max_predecessor_version = self.state_db.max_version(session, acc,
+                seq - 1)
+        min_balance_due = min((self.reebill_dao.load_reebill(acc, seq - 1,
+                version=v) for v in range(max_predecessor_version + 1)),
+                key=operator.attrgetter('balance_due')).balance_due
+        source_balance = min_balance_due - \
+                self.state_db.get_total_payment_since(session, acc,
+                predecessor0.issue_date)
+        return (reebill.late_charge_rate) * source_balance
 
     def get_outstanding_balance(self, session, account, sequence=None):
         '''Returns the balance due of the reebill given by account and sequence
@@ -512,14 +546,9 @@ class Process(object):
         if reebill.issue_date == None:
             return Decimal(0)
 
-        # get sum of all payments since the last bill was issued
-        customer = session.query(Customer).filter(Customer.account==account).one()
-        payments = session.query(Payment).filter(Payment.customer==customer)\
-                .filter(Payment.date_applied >= reebill.issue_date)
-        payment_total = sum(payment.credit for payment in payments.all())
-
         # result cannot be negative
-        return max(Decimal(0), reebill.balance_due - payment_total)
+        return max(Decimal(0), reebill.balance_due -
+                self.state_db.get_total_payment_since(reebill.issue_date))
 
     def delete_reebill(self, session, account, sequence):
         '''Deletes the latest version of the reebill given by 'account' and
@@ -555,7 +584,7 @@ class Process(object):
         # reebill constructor clears out fields in the dictionary it is given
         reebill = MongoReebill(reebill.reebill_dict)
 
-        # reset this bill to the new account
+        # fields that need to be set explicitly
         reebill.account = account
         reebill.sequence = 0
         reebill.version = 0
@@ -866,18 +895,18 @@ class Process(object):
             utilbill_period_beginnings.append(period[0])
             utilbill_period_ends.append(period[1])
 
-        rebill_periodbegindate = datetime.datetime.max
+        rebill_periodbegindate = datetime.max
         for beginning in utilbill_period_beginnings:
-            candidate_date = datetime.datetime(beginning.year, beginning.month,
+            candidate_date = datetime(beginning.year, beginning.month,
                     beginning.day, 0, 0, 0)
             # find minimum date
             if (candidate_date < rebill_periodbegindate):
                 rebill_periodbegindate = candidate_date
 
-        rebill_periodenddate = datetime.datetime.min 
+        rebill_periodenddate = datetime.min 
         for end in utilbill_period_ends:
             # find maximum date
-            candidate_date = datetime.datetime(end.year, end.month, end.day, 0,
+            candidate_date = datetime(end.year, end.month, end.day, 0,
                     0, 0)
             if (candidate_date > rebill_periodenddate):
                 rebill_periodenddate = candidate_date
@@ -886,7 +915,7 @@ class Process(object):
         reebill.period_end = rebill_periodenddate
 
     def issue(self, session, account, sequence,
-            issue_date=datetime.date.today()):
+            issue_date=datetime.utcnow().date()):
         '''Sets the issue date of the reebill given by account, sequence to
         'issue_date' (or today by default) and the due date to 30 days from the
         issue date. The reebill's late charge is set to its permanent value in
@@ -896,12 +925,12 @@ class Process(object):
         reebill = self.reebill_dao.load_reebill(account, sequence)
         reebill.issue_date = issue_date
         # TODO: parameterize for dependence on customer 
-        reebill.due_date = issue_date + datetime.timedelta(days=30)
+        reebill.due_date = issue_date + timedelta(days=30)
 
         # set late charge to its final value (payments after this have no
         # effect on late fee)
-        # TODO: should this be replaced with a call to sum_bill() to just make
-        # sure everything is up-to-date before issuing?
+        # TODO: should this be replaced with a call to compute_bill() to just
+        # make sure everything is up-to-date before issuing?
         lc = self.get_late_charge(session, reebill)
         if lc is not None:
             reebill.late_charges = lc

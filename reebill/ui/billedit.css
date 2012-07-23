@@ -139,3 +139,16 @@ pre.code{
 .revenue-grid-normal {
     color: black;
 }
+
+/* styles for reebill grid rows */
+.reebill-grid-issued {
+    color: black;
+}
+.reebill-grid-unissued {
+    font-style: italic; /* this does nothing--same for font-weight: bold */
+    color: blue;
+}
+.reebill-grid-unissued-correction {
+    font-style: italic;
+    color: red;
+}
