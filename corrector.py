@@ -12,6 +12,9 @@ from copy import deepcopy
 import mongoengine
 import tablib
 import ConfigParser
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from billing import mongo
 from billing.reebill import render
 from billing.processing import state
@@ -37,15 +40,22 @@ CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
 USER_ID = 'jwatson'
 USER_PW = 'solarbeetu'
 
-LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
+# general email parameters
+MAIL_FROM = 'reports@skylineinnovations.com'
+MAIL_CREDENTIALS = ('reports@skylineinnovations.com', 'electricsh33p')
+MAIL_HOST = 'smtp.gmail.com'
+MAIL_PORT = 587
 
-# email reporting parameters
-EMAIL_HOST_TUPLE = ('smtp.gmail.com', 587)
-EMAIL_FROM_ADDR = 'reports@skylineinnovations.com'
-EMAIL_TO_ADDR = 'dklothe@skylineinnovations.com'
-EMAIL_SUBJECT = 'Bill Correction Log %s' % datetime.now().strftime('%Y-%m-%d')
-EMAIL_CAPACITY = 5000
-EMAIL_CREDENTIALS = ('reports@skylineinnovations.com', 'electricsh33p')
+# email parameters for report
+REPORT_MAIL_TO = 'dklothe@skylineinnovations.com'
+REPORT_MAIL_SUBJECT = 'Automatic Bill Corrections %s' % datetime.now().strftime('%Y-%m-%d')
+
+# email parameters for log
+LOG_MAIL_TO = 'dklothe@skylineinnovations.com'
+LOG_MAIL_SUBJECT = 'Bill Correction Log %s' % datetime.now().strftime('%Y-%m-%d')
+LOG_MAIL_CAPACITY = 5000
+
+LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
 class BillCorrector(object):
     def __init__(self, billdb_config, statedb_config, usersdb_config,
@@ -83,16 +93,15 @@ class BillCorrector(object):
                 'Original Total', 'New Total'])
 
         with DBSession(self.state_db) as session:
-            #for account in sorted(self.state_db.listAccounts(session)):
-            for account in ['10001']:
+            #for account in ['10001']:
+            for account in sorted(self.state_db.listAccounts(session)):
                 # check most recent bills first: more likely to have errors
                 sequences = [s for s in
                         self.state_db.listSequences(session, account) if
                         self.state_db.is_issued(session, account, s)]
-                #for sequence in reversed(sequences):
-                for sequence in [31]:
+                #for sequence in [31]:
+                for sequence in reversed(sequences):
                     try:
-                        raise Exception('here is an error');
                         # load reebill and duplicate it
                         original = self.reebill_dao.load_reebill(account, sequence)
                         copy = deepcopy(original)
@@ -135,12 +144,37 @@ class BillCorrector(object):
                                 (account, sequence, traceback.format_exc()))
                         self.report.append((account, sequence, 'Error (could not check)', ''))
 
-        self.send_report()
+        try:
+            self.send_report()
+        except smtplib.SMTPException as e:
+            self.logger.error('SMTP Error when emailing report: %s' % traceback.format_exc())
 
     def send_report(self):
-        # TODO send email with this table in it
-        # (from reports@skylineinnovations.com)
-        print self.report.html
+        # if nothing got corrected, don't send an email
+        if self.report.height == 0:
+            return
+
+        # construct the email text
+        report_mail_text = 'Bill Corrections:\n' + self.report.html # TODO change
+
+        # build multipart mime structure
+        msg = MIMEMultipart('alternative')
+        msg['From'] = MAIL_FROM
+        msg['To'] = REPORT_MAIL_TO
+        msg['Subject'] = REPORT_MAIL_SUBJECT
+        #plain_part = MIMEText('TODO put in plain text', 'text')
+        html_part = MIMEText(report_mail_text, 'html')
+        #msg.attach(plain_part)
+        msg.attach(html_part)
+
+        # send the email
+        smtp = smtplib.SMTP(MAIL_HOST, MAIL_PORT)
+        smtp.ehlo()
+        smtp.starttls()
+        smtp.ehlo()
+        smtp.login(*MAIL_CREDENTIALS)
+        smtp.sendmail(MAIL_FROM, REPORT_MAIL_TO, msg.as_string())
+        smtp.quit()
 
 def main():
     # load config dictionaries from the main reebill config file
@@ -175,9 +209,9 @@ def main():
     logger.setLevel(logging.INFO)
 
     # logging handler to send emails
-    email_handler = BufferingTLSSMTPHandler(EMAIL_HOST_TUPLE, EMAIL_FROM_ADDR,
-            EMAIL_TO_ADDR, EMAIL_SUBJECT, EMAIL_CAPACITY,
-            credentials=EMAIL_CREDENTIALS, secure=())
+    email_handler = BufferingTLSSMTPHandler((MAIL_HOST, MAIL_PORT), MAIL_FROM,
+            LOG_MAIL_TO, LOG_MAIL_SUBJECT, LOG_MAIL_CAPACITY,
+            credentials=MAIL_CREDENTIALS, secure=())
     email_handler.setLevel(logging.DEBUG)
     email_handler.setFormatter(logging.Formatter(LOG_FORMAT))
     logger.addHandler(email_handler)
