@@ -672,6 +672,13 @@ port = 27017
                     session, utilbill_id)
             session.commit()
 
+            # test deletion of a Skyline-estimated utility bill (no file)
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2013,1,1), date(2013,2,1), None, 'no file name')
+            self.process.delete_utility_bill(session,
+                    self.state_db.get_utilbill(session, account, 'gas',
+                    date(2013,1,1), date(2013,2,1)).id)
+
     def test_new_version(self):
         # put reebill documents for sequence 0 and 1 in mongo (0 is needed to
         # recompute 1), and rate structures for 1
