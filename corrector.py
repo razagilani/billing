@@ -37,8 +37,8 @@ CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
 # identifier of the user who makes bill corrections
 # (this must exist in the database given by the "usersdb" part of the config
 # file above)
-USER_ID = 'jwatson'
-USER_PW = 'solarbeetu'
+USER_ID = 'dev' # TODO change
+USER_PW = 'dev'
 
 # general email parameters
 MAIL_FROM = 'reports@skylineinnovations.com'
@@ -47,20 +47,21 @@ MAIL_HOST = 'smtp.gmail.com'
 MAIL_PORT = 587
 
 # email parameters for report
-REPORT_MAIL_TO = 'dklothe@skylineinnovations.com'
+DEFAULT_REPORT_RECIPIENT = 'dklothe@skylineinnovations.com'
 REPORT_MAIL_SUBJECT = 'Automatic Bill Corrections %s' % datetime.now().strftime('%Y-%m-%d')
 
 # email parameters for log
-LOG_MAIL_TO = 'dklothe@skylineinnovations.com'
+DEFAULT_LOG_RECIPIENT = 'dklothe@skylineinnovations.com'
 LOG_MAIL_SUBJECT = 'Bill Correction Log %s' % datetime.now().strftime('%Y-%m-%d')
 LOG_MAIL_CAPACITY = 5000
 
 LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
+
 class BillCorrector(object):
     def __init__(self, billdb_config, statedb_config, usersdb_config,
             journal_config, ratestructure_config, splinter_config,
-            logger):
+            logger, report_recipient, log_recipient):
         # data accesss objects
         self.state_db = state.StateDB(**statedb_config)
         self.reebill_dao = mongo.ReebillDAO(self.state_db,
@@ -72,6 +73,8 @@ class BillCorrector(object):
         self.rate_structure_dao = RateStructureDAO(**ratestructure_config)
         self.process = Process(self.state_db, self.reebill_dao,
                 self.rate_structure_dao, None, self.nexus_util, self.splinter)
+        self.report_recipient = report_recipient
+        self.log_recipient = log_recipient
 
         # get user that will correct the bills
         user_dao = UserDAO(**usersdb_config)
@@ -88,18 +91,19 @@ class BillCorrector(object):
         self.logger = logger
 
     def go(self):
+        '''Checks all bills and makes corrections.'''
         # record what happened in a tabular report
         self.report = tablib.Dataset(headers=['Account', 'Sequence',
                 'Original Total', 'New Total'])
 
         with DBSession(self.state_db) as session:
-            #for account in ['10001']:
+            # for account in ['10001']:
             for account in sorted(self.state_db.listAccounts(session)):
                 # check most recent bills first: more likely to have errors
                 sequences = [s for s in
                         self.state_db.listSequences(session, account) if
                         self.state_db.is_issued(session, account, s)]
-                #for sequence in [31]:
+                # for sequence in [31]:
                 for sequence in reversed(sequences):
                     try:
                         # load reebill and duplicate it
@@ -160,7 +164,7 @@ class BillCorrector(object):
         # build multipart mime structure
         msg = MIMEMultipart('alternative')
         msg['From'] = MAIL_FROM
-        msg['To'] = REPORT_MAIL_TO
+        msg['To'] = self.report_recipient
         msg['Subject'] = REPORT_MAIL_SUBJECT
         #plain_part = MIMEText('TODO put in plain text', 'text')
         html_part = MIMEText(report_mail_text, 'html')
@@ -173,10 +177,22 @@ class BillCorrector(object):
         smtp.starttls()
         smtp.ehlo()
         smtp.login(*MAIL_CREDENTIALS)
-        smtp.sendmail(MAIL_FROM, REPORT_MAIL_TO, msg.as_string())
+        smtp.sendmail(MAIL_FROM, self.report_recipient, msg.as_string())
         smtp.quit()
 
 def main():
+    # command-line arguments
+    parser = argparse.ArgumentParser(description=('Re-check bills and make '
+            'corrections when energy sold has changed.'))
+    parser.add_argument('--report-to',  default=DEFAULT_REPORT_RECIPIENT,
+            help='recipient(s) of report email (default: %s)' %
+            DEFAULT_REPORT_RECIPIENT)
+    parser.add_argument('--log-to',  default=DEFAULT_LOG_RECIPIENT,
+            help='recipient(s) of log email (default: %s)' %
+            DEFAULT_LOG_RECIPIENT)
+    args = parser.parse_args()
+
+
     # load config dictionaries from the main reebill config file
     config = ConfigParser.RawConfigParser()
     config.read(CONFIG_FILE_PATH)
@@ -210,7 +226,7 @@ def main():
 
     # logging handler to send emails
     email_handler = BufferingTLSSMTPHandler((MAIL_HOST, MAIL_PORT), MAIL_FROM,
-            LOG_MAIL_TO, LOG_MAIL_SUBJECT, LOG_MAIL_CAPACITY,
+            args.log_to, LOG_MAIL_SUBJECT, LOG_MAIL_CAPACITY,
             credentials=MAIL_CREDENTIALS, secure=())
     email_handler.setLevel(logging.DEBUG)
     email_handler.setFormatter(logging.Formatter(LOG_FORMAT))
@@ -220,7 +236,7 @@ def main():
         logger.info('Starting automatic bill correction')
         corrector = BillCorrector(billdb_config, statedb_config,
                 usersdb_config, journal_config, ratestructure_config,
-                splinter_config, logger)
+                splinter_config, logger, args.report_to, args.log_to)
         corrector.go()
     except Exception as e:
         print >> sys.stderr, '%s\n%s' % (e, traceback.format_exc())
