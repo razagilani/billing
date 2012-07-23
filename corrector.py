@@ -10,6 +10,7 @@ import argparse
 import logging
 from copy import deepcopy
 import mongoengine
+import tablib
 import ConfigParser
 from billing import mongo
 from billing.reebill import render
@@ -26,7 +27,7 @@ from billing.reebill.journal import NewReebillVersionEvent
 from billing.users import UserDAO
 from billing.test.fake_skyliner import FakeSplinter
 
-# config file containing database connection info etc.
+# config file containing database connection info etc. 
 CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
         'reebill', 'reebill.cfg')
 
@@ -42,11 +43,11 @@ LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 EMAIL_HOST_TUPLE = ('smtp.gmail.com', 587)
 EMAIL_FROM_ADDR = 'reports@skylineinnovations.com'
 EMAIL_TO_ADDR = 'dklothe@skylineinnovations.com'
-EMAIL_SUBJECT = 'Automatic Bill Correction Log %s' % datetime.now().isoformat()
+EMAIL_SUBJECT = 'Bill Correction Log %s' % datetime.now().strftime('%Y-%m-%d')
 EMAIL_CAPACITY = 5000
 EMAIL_CREDENTIALS = ('reports@skylineinnovations.com', 'electricsh33p')
 
-class AutoCorrector(object):
+class BillCorrector(object):
     def __init__(self, billdb_config, statedb_config, usersdb_config,
             journal_config, ratestructure_config, splinter_config,
             logger):
@@ -77,14 +78,21 @@ class AutoCorrector(object):
         self.logger = logger
 
     def go(self):
+        # record what happened in a tabular report
+        self.report = tablib.Dataset(headers=['Account', 'Sequence',
+                'Original Total', 'New Total'])
+
         with DBSession(self.state_db) as session:
-            for account in sorted(self.state_db.listAccounts(session)):
+            #for account in sorted(self.state_db.listAccounts(session)):
+            for account in ['10001']:
                 # check most recent bills first: more likely to have errors
                 sequences = [s for s in
                         self.state_db.listSequences(session, account) if
                         self.state_db.is_issued(session, account, s)]
-                for sequence in reversed(sequences):
+                #for sequence in reversed(sequences):
+                for sequence in [31]:
                     try:
+                        raise Exception('here is an error');
                         # load reebill and duplicate it
                         original = self.reebill_dao.load_reebill(account, sequence)
                         copy = deepcopy(original)
@@ -98,7 +106,7 @@ class AutoCorrector(object):
                         self.process.compute_bill(session, predecessor, copy)
 
                         # compare copy to original
-                        if copy.ree_charges == original.ree_charges:
+                        if copy.total == original.total:
                             self.logger.info('%s-%s OK' % (account, sequence))
                         else:
                             # make the correction
@@ -115,13 +123,24 @@ class AutoCorrector(object):
                                     version=new_reebill.version)
 
                             # log it
-                            self.logger.warning(('%s-%s wrong: REE charge corrected'
+                            self.logger.warning(('%s-%s wrong: total corrected'
                                     ' from %s to %s') % (account, sequence,
-                                    original.ree_charges,
-                                    new_reebill.ree_charges))
+                                    original.total, new_reebill.total))
+
+                            # add to report
+                            self.report.append((account, sequence, original.total,
+                                new.total))
                     except Exception as e:
-                        self.logger.error('%s-%s ERROR: %s' % (account, sequence, e))
-                        self.logger.error(traceback.format_exc())
+                        self.logger.error('Could not check %s-%s: %s' %
+                                (account, sequence, traceback.format_exc()))
+                        self.report.append((account, sequence, 'Error (could not check)', ''))
+
+        self.send_report()
+
+    def send_report(self):
+        # TODO send email with this table in it
+        # (from reports@skylineinnovations.com)
+        print self.report.html
 
 def main():
     # load config dictionaries from the main reebill config file
@@ -140,9 +159,9 @@ def main():
     usersdb_config = dict(config.items('usersdb'))
     journal_config = dict(config.items('journaldb'))
 
-    ## set up logger: writes to the reebill log
-    # TODO add handler TLSSMTPHandler from skyliner/sky_paths.py to send emails
-    log_file_path = '/tmp/autocorrect.log'
+    # set up logger. log is not the same as report: log is detailed and
+    # contains technical info, but report just says which bills got corrected.
+    log_file_path = 'reebill_corrector.log'
     try:
         os.remove(log_file_path)
     except OSError as oserr:
@@ -153,7 +172,7 @@ def main():
     handler = logging.FileHandler(log_file_path)
     handler.setFormatter(formatter)
     logger.addHandler(handler) 
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     # logging handler to send emails
     email_handler = BufferingTLSSMTPHandler(EMAIL_HOST_TUPLE, EMAIL_FROM_ADDR,
@@ -165,7 +184,7 @@ def main():
 
     try:
         logger.info('Starting automatic bill correction')
-        corrector = AutoCorrector(billdb_config, statedb_config,
+        corrector = BillCorrector(billdb_config, statedb_config,
                 usersdb_config, journal_config, ratestructure_config,
                 splinter_config, logger)
         corrector.go()
