@@ -50,10 +50,14 @@ port = 27017
     def test_move_utilbill_file(self):
         account = '99999'
 
-        # 3 utility bills with different dates & extensions
-        for extension, start, end in [('.pdf', date(2012,1,1), date(2012,2,1)),
-                ('.abcdef', date(2012,2,1), date(2012,3,1)),
-                ('', date(2012,3,1), date(2012,4,1))]:
+        # 3 utility bills with different dates, extensions, and states
+        situations = [
+            ('.pdf', date(2012,1,1), date(2012,2,1)),
+            ('.abcdef', date(2012,2,1), date(2012,3,1)),
+            ('', date(2012,3,1), date(2012,4,1))
+        ]
+
+        for extension, start, end in situations:
             # bill dates will be moved forward 1 day
             new_start, new_end = start + timedelta(1), end + timedelta(1)
 
