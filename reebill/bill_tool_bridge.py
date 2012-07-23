@@ -2616,7 +2616,8 @@ class BillToolBridge:
                     start, end = utilbill.period_start, utilbill.period_end
                     service = utilbill.service
 
-                    # delete it & get new path
+                    # delete it & get new path (will be None if there was never
+                    # a utility bill file or the file could not be found)
                     deleted_path = self.process.delete_utility_bill(session,
                             utilbill_id)
 

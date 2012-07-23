@@ -1118,7 +1118,8 @@ class MongoReebill(object):
                 # They post sorted, but that is no guarantee...
 
                 new_chargegroups = {}
-                for cg, charges in it.groupby(flat_charges, key=lambda charge:charge['chargegroup']):
+                for cg, charges in it.groupby(sorted(flat_charges, key=lambda
+                                        charge:charge['chargegroup']), key=lambda charge:charge['chargegroup']):
                     new_chargegroups[cg] = []
                     for charge in charges:
                         del charge['chargegroup']
