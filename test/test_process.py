@@ -711,6 +711,30 @@ port = 27017
                     self.state_db.get_utilbill(session, account, 'gas',
                     date(2013,1,1), date(2013,2,1)).id)
 
+            # test deletion of utility bill with non-standard file extension
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2013,2,1), date(2013,3,1), StringIO("a bill"),
+                    'billfile.abcdef')
+            the_path = self.billupload.get_utilbill_file_path(account,
+                    date(2013,2,1), date(2013,3,1))
+            assert os.access(the_path, os.F_OK)
+            self.process.delete_utility_bill(session,
+                    self.state_db.get_utilbill(session, account, 'gas',
+                    date(2013,2,1), date(2013,3,1)).id)
+            self.assertFalse(os.access(os.path.splitext(the_path)[0] + 'abcdef', os.F_OK))
+
+            # test deletion of utility bill with no file extension
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2013,2,1), date(2013,3,1), StringIO("a bill"),
+                    'billwithnoextension')
+            the_path = self.billupload.get_utilbill_file_path(account,
+                    date(2013,2,1), date(2013,3,1))
+            assert os.access(the_path, os.F_OK)
+            self.process.delete_utility_bill(session,
+                    self.state_db.get_utilbill(session, account, 'gas',
+                    date(2013,2,1), date(2013,3,1)).id)
+            self.assertFalse(os.access(the_path, os.F_OK))
+
     def test_new_version(self):
         # put reebill documents for sequence 0 and 1 in mongo (0 is needed to
         # recompute 1), and rate structures for 1
