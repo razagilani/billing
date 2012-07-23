@@ -2561,14 +2561,15 @@ class BillToolBridge:
                 if utilbill.has_reebill:
                     raise Exception("Can't edit utility bills that have already been attached to a reebill.")
 
-                # move the file
-                self.billUpload.move_utilbill_file(customer.account,
-                        # don't trust the client to say what the original dates were
-                        # TODO don't pass dates into BillUpload as strings
-                        # https://www.pivotaltracker.com/story/show/24869817
-                        utilbill.period_start,
-                        utilbill.period_end,
-                        new_period_start, new_period_end)
+                # move the file (Skyline-estimated bills don't have one)
+                if utilbill.state != db_objects.UtilBill.SkylineEstimated:
+                    self.billUpload.move_utilbill_file(customer.account,
+                            # don't trust the client to say what the original dates were
+                            # TODO don't pass dates into BillUpload as strings
+                            # https://www.pivotaltracker.com/story/show/24869817
+                            utilbill.period_start,
+                            utilbill.period_end,
+                            new_period_start, new_period_end)
 
                 # change dates in MySQL
                 utilbill = session.query(db_objects.UtilBill)\
