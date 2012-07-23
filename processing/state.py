@@ -178,6 +178,15 @@ class StateDB:
         last_account = max(map(int, self.listAccounts(session)))
         return last_account + 1
 
+    def get_utilbill(self, session, account, service, start, end):
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        return session.query(UtilBill)\
+                .filter(UtilBill.customer_id==customer.id)\
+                .filter(UtilBill.service==service)\
+                .filter(UtilBill.period_start==start)\
+                .filter(UtilBill.period_end==end).one()
+
     # TODO move to process.py?
     def attach_utilbills(self, session, account, sequence, start, end,
             suspended_services=[]):

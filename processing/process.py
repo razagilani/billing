@@ -104,7 +104,8 @@ class Process(object):
     def delete_utility_bill(self, session, utilbill_id):
         '''Deletes the utility bill given by utilbill_id (if it's not
         associated or attached to a reebill) and returns the path where the
-        file was moved (it never really gets deleted). Raises a ValueError if
+        file was moved (it never really gets deleted). This path will be None
+        if there was no file or it could not be found. Raises a ValueError if
         the utility bill cannot be deleted.'''
         utilbill = session.query(UtilBill)\
                 .filter(UtilBill.id==utilbill_id).one()
@@ -125,9 +126,13 @@ class Process(object):
 
         # OK to delete now.
         # first try to delete the file on disk
-        new_path = self.billupload.delete_utilbill_file(
-                utilbill.customer.account, utilbill.period_start,
-                utilbill.period_end)
+        try:
+            new_path = self.billupload.delete_utilbill_file(
+                    utilbill.customer.account, utilbill.period_start,
+                    utilbill.period_end)
+        except IOError:
+            # file never existed or could not be found
+            new_path = None
 
         # TODO move to StateDB?
         session.delete(utilbill)
