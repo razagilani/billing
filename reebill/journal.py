@@ -170,10 +170,14 @@ class UtilBillDeletedEvent(Event):
         return '%s %s utility bill deleted' % (self.account, self.service)
 
     def description(self):
-        return ('%s utility bill for service "%s" from %s to %s deleted, '
-                'moved to %s') % (self.account, self.service,
-                self.start_date.date(), self.end_date.date(),
-                self.deleted_path)
+        result = ('%s utility bill for service "%s" from %s to %s deleted') % (
+                self.account, self.service, self.start_date.date(),
+                self.end_date.date())
+        # not every deletion has a backup path (e.g. because there was never a
+        # file or it could not be found when it was supposed to be deleted)
+        if self.deleted_path is not None:
+            result += ', backed up at %s' % self.deleted_path
+        return result
 
     def name(self):
         return 'Utility bill deleted'
