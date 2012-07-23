@@ -52,9 +52,9 @@ port = 27017
         start, end = date(2012,1,1), date(2012,2,1)
         new_start, new_end = date(2012,1,2), date(2012,2,2)
         path = self.billupload.get_utilbill_file_path(account, start, end,
-                extension='pdf')
+                extension='.pdf')
         new_path = self.billupload.get_utilbill_file_path(account, new_start,
-                new_end, extension='pdf')
+                new_end, extension='.pdf')
 
         # neither old path nor new path should exist yet
         assert not any([os.access(path, os.F_OK), os.access(new_path, os.F_OK)])
@@ -79,13 +79,13 @@ port = 27017
                 new_end))
         self.assertEqual(new_path,
                 self.billupload.get_utilbill_file_path(account, new_start,
-                new_end, extension='pdf'))
+                new_end, extension='.pdf'))
 
     def test_delete_utilbill_file(self):
         account = '99999'
         start, end = date(2012,1,1), date(2012,2,1)
         path = self.billupload.get_utilbill_file_path(account, start, end,
-                extension='pdf')
+                extension='.pdf')
 
         # path should not exist yet, and the trash directory should be empty
         assert not os.access(path, os.F_OK)
