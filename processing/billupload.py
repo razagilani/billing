@@ -128,7 +128,7 @@ class BillUpload(object):
         and the one with the first extension found is chosen (extensions in
         'UTILBILL_EXTENSIONS' are chosen first, in order of their appearance
         there).
-        An exception will be raised if the file does not exist.'''
+        An IOError will be raised if the file does not exist.'''
         # convert dates into the proper format, & report error if that fails
         formatted_begin_date = datetime.datetime.strftime(begin_date, OUTPUT_DATE_FORMAT)
         formatted_end_date = datetime.datetime.strftime(end_date, OUTPUT_DATE_FORMAT)
@@ -175,7 +175,8 @@ class BillUpload(object):
             new_period_start, new_period_end):
         '''Moves the utility bill file identified by 'account',
         'old_period_start', and 'old_period_end' to a new file name identified
-        by 'new_period_start, new_period_end.'''
+        by 'new_period_start, new_period_end. This method assumes that the file
+        exists and raises an IOError if it doesn't.'''
         # TODO this only works when there's one file with the given account and
         # dates: see
         # https://www.pivotaltracker.com/story/show/24866603
