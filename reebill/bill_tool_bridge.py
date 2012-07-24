@@ -2548,7 +2548,7 @@ class BillToolBridge:
                 # TODO move out of BillToolBridge, make into its own function
                 # so it's testable
 
-                # only the start and end dates can be updated.
+                # only the dates and service can be updated.
                 # parse data from the client: for some reason it returns single
                 # utility bill row in a json string called "rows"
                 rows = ju.loads(kwargs['rows'])
@@ -2557,6 +2557,7 @@ class BillToolBridge:
                         dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
                 new_period_end = datetime.strptime(rows['period_end'],
                         dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
+                new_service = rows['service']
 
                 # check that new dates are reasonable
                 self.validate_utilbill_period(new_period_start, new_period_end)
@@ -2592,6 +2593,9 @@ class BillToolBridge:
                 # cover gaps that no longer exist
                 self.process.state_db.trim_hypothetical_utilbills(session,
                         customer.account, utilbill.service)
+
+                # update service in MySQL
+                utilbill.service = service
 
                 return self.dumps({'success': True})
             elif xaction == 'create':
