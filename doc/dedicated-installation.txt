@@ -68,6 +68,7 @@ Install the following packages with sudo pip install [package]
     pyyaml (unused?)
     ordereddict (for 2.6 installs only)
     mongoengine
+    pyPdf
 
 For Rendering Images
     sudo yum install ImageMagick
