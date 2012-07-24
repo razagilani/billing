@@ -334,6 +334,7 @@ function reeBillReady() {
                 id: 'service',
                 header: 'Service',
                 dataIndex: 'service',
+                editable: true,
                 width: 50,
             },
             new Ext.grid.DateColumn({
