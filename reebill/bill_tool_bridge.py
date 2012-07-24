@@ -27,7 +27,7 @@ import mongoengine
 from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
 from billing.test import fake_skyliner
-from billing import bill, json_util as ju, mongo, dateutils, monthmath, excel_export, nexus_util as nu
+from billing import json_util as ju, mongo, dateutils, monthmath, excel_export, nexus_util as nu
 from billing.nexus_util import NexusUtil
 from billing.dictutils import deep_map
 from billing.processing import billupload
@@ -2571,14 +2571,16 @@ class BillToolBridge:
                 if utilbill.has_reebill:
                     raise Exception("Can't edit utility bills that have already been attached to a reebill.")
 
-                # move the file
-                self.billUpload.move_utilbill_file(customer.account,
-                        # don't trust the client to say what the original dates were
-                        # TODO don't pass dates into BillUpload as strings
-                        # https://www.pivotaltracker.com/story/show/24869817
-                        utilbill.period_start,
-                        utilbill.period_end,
-                        new_period_start, new_period_end)
+                # move the file, if there is one (Skyline-estimated and hypothetical utility
+                # bills don't have one)
+                if utilbill.state < db_objects.UtilBill.SkylineEstimated:
+                    self.billUpload.move_utilbill_file(customer.account,
+                            # don't trust the client to say what the original dates were
+                            # TODO don't pass dates into BillUpload as strings
+                            # https://www.pivotaltracker.com/story/show/24869817
+                            utilbill.period_start,
+                            utilbill.period_end,
+                            new_period_start, new_period_end)
 
                 # change dates in MySQL
                 utilbill = session.query(db_objects.UtilBill)\

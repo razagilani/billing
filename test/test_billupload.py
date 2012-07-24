@@ -49,43 +49,57 @@ port = 27017
 
     def test_move_utilbill_file(self):
         account = '99999'
-        start, end = date(2012,1,1), date(2012,2,1)
-        new_start, new_end = date(2012,1,2), date(2012,2,2)
-        path = self.billupload.get_utilbill_file_path(account, start, end,
-                extension='pdf')
-        new_path = self.billupload.get_utilbill_file_path(account, new_start,
-                new_end, extension='pdf')
 
-        # neither old path nor new path should exist yet
-        assert not any([os.access(path, os.F_OK), os.access(new_path, os.F_OK)])
+        # 3 utility bills with different dates, extensions, and states
+        situations = [
+            ('.pdf', date(2012,1,1), date(2012,2,1)),
+            ('.abcdef', date(2012,2,1), date(2012,3,1)),
+            ('', date(2012,3,1), date(2012,4,1))
+        ]
 
-        # create parent directories of bill file, then create bill file itself
-        # with some text in it
-        os.makedirs(os.path.split(path)[0])
-        with open(path, 'w') as bill_file:
-            bill_file.write('this is a test')
+        for extension, start, end in situations:
+            # bill dates will be moved forward 1 day
+            new_start, new_end = start + timedelta(1), end + timedelta(1)
 
-        # move the file
-        self.billupload.move_utilbill_file(account, start, end, new_start,
-                new_end)
+            path = self.billupload.get_utilbill_file_path(account, start, end,
+                    extension=extension)
+            new_path = self.billupload.get_utilbill_file_path(account, new_start,
+                    new_end, extension=extension)
 
-        # new file should exist and be readable and old should not
-        self.assertTrue(os.access(new_path, os.R_OK))
-        self.assertFalse(os.access(path, os.F_OK))
+            # neither old path nor new path should exist yet
+            assert not any([os.access(path, os.F_OK), os.access(new_path, os.F_OK)])
 
-        # new file should also be findable with extension and without
-        self.assertEqual(new_path,
-                self.billupload.get_utilbill_file_path(account, new_start,
-                new_end))
-        self.assertEqual(new_path,
-                self.billupload.get_utilbill_file_path(account, new_start,
-                new_end, extension='pdf'))
+            # ensure that parent directories of bill file exist, then create
+            # bill file itself with some text in it
+            try:
+                os.makedirs(os.path.split(path)[0])
+            except OSError as e:
+                if e.errno == errno.EEXIST:
+                    pass
+            with open(path, 'w') as bill_file:
+                bill_file.write('this is a test')
+
+            # move the file
+            self.billupload.move_utilbill_file(account, start, end, new_start,
+                    new_end)
+
+            # new file should exist and be readable and old should not
+            self.assertTrue(os.access(new_path, os.R_OK))
+            self.assertFalse(os.access(path, os.F_OK))
+
+            # new file should also be findable with extension and without
+            self.assertEqual(new_path,
+                    self.billupload.get_utilbill_file_path(account, new_start,
+                    new_end))
+            self.assertEqual(new_path,
+                    self.billupload.get_utilbill_file_path(account, new_start,
+                    new_end, extension=extension))
 
     def test_delete_utilbill_file(self):
         account = '99999'
         start, end = date(2012,1,1), date(2012,2,1)
         path = self.billupload.get_utilbill_file_path(account, start, end,
-                extension='pdf')
+                extension='.pdf')
 
         # path should not exist yet, and the trash directory should be empty
         assert not os.access(path, os.F_OK)
