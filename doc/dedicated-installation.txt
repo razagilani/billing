@@ -69,12 +69,15 @@ Install the following packages with sudo pip install [package]
     ordereddict (for 2.6 installs only)
     mongoengine
     pyPdf
+    PIL
+       libjpeg-dev
+       libfreetype6
 
 For Rendering Images
     sudo yum install ImageMagick
     sudo yum install html2ps
     sudo yum install poppler-utils (for pdftoppm)
-    sudo yum install pdftk (not found for linux aws ami)
+    sudo yum install pdftk (not found for linux aws ami) (rendered obsolete by pyPdf)
     
 
 Chart Director 'pychartdir'
