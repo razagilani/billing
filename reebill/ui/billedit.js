@@ -540,23 +540,56 @@ function reeBillReady() {
                 // these items will render as dropdown menu items when the arrow is clicked:
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
-                {text: 'Compute Bill', handler: bindRSOperation},
+                {text: 'Compute Bill', handler: computeBillOperation},
                 {text: 'Attach Utility Bills to Reebill', handler: attachOperation},
                 {text: 'Render', handler: renderOperation},
             ]
         })
     });
 
+    function deleteReebills(sequences) {
+        /* instead of using reebillStore.remove(), which (temporarily) deletes
+         * the row from the grid whether or not the record was really supposed
+         * to go away, just tell the server to do the right thing, then reload
+         * the store to get the latest data from the server. */
+        Ext.Ajax.request({
+            url: 'http://'+location.host+'/reebill/delete_reebill',
+            params: { account: selected_account, sequences: sequences },
+            success: function(result, request) {
+                var jsonData = Ext.util.JSON.decode(result.responseText);
+                Ext.Msg.hide();
+                if (jsonData.success == true) {
+                    reeBillStore.reload();
+                } else {
+                    Ext.MessageBox.alert("Error", jsonData.errors.reason +
+                        "\n" + jsonData.errors.details);
+                }
+            },
+            failure: function() {
+                Ext.MessageBox.alert('Ajax failure', 'delete_reebill request failed');
+            },
+        });
+    }
+
     var deleteButton = new Ext.Button({
         text: 'Delete selected reebill',
         iconCls: 'icon-delete',
         disabled: true,
         handler: function() {
-            var s = reeBillGrid.getSelectionModel().getSelections();
-            for(var i = 0, r; r = s[i]; i++) {
-                reeBillStore.remove(r);
-            }
-            reeBillStore.save();
+            var selectedRecords = reeBillGrid.getSelectionModel().getSelections();
+            var sequences = selectedRecords.map(function(rec) {
+                return rec.data.sequence;
+            });
+
+            Ext.Msg.confirm('Confirm deletion',
+                'Are you sure you want to delete the latest version of reebill '
+                + selected_account + '-' + sequences + '?', function(answer) {
+                    if (answer == 'yes') {
+                        deleteReebills(sequences);
+                    }
+            });
+
+            reeBillStore.reload();
         }
     })
 
@@ -565,7 +598,7 @@ function reeBillReady() {
         iconCls: 'icon-add',
         disabled: true,
         handler: function() {
-            Ext.Msg.show({title: "Please wait while new version is created", closable: false});
+            Ext.Msg.show({title: "Please wait while new versions are created", closable: false});
             Ext.Ajax.request({
                 url: 'http://'+location.host+'/reebill/new_reebill_version',
                 params: { account: selected_account, sequence: selected_sequence },
@@ -639,7 +672,8 @@ function reeBillReady() {
             {name: 'sequence'},
             {name: 'period_start'},
             {name: 'period_end'},
-            {name: 'corrections'},
+            {name: 'corrections'}, // human-readable (could replace with a nice renderer function for max_version)
+            {name: 'max_version'}, // machine-readable
             {name: 'hypothetical_total'},
             {name: 'actual_total'},
             {name: 'ree_value'},
@@ -651,14 +685,28 @@ function reeBillReady() {
             {name: 'ree_charges'},
             {name: 'balance_due'},
             {name: 'total_error'},
+            {name: 'issued'},
         ],
     });
 
     reeBillStore.on('beforesave', function(store, data) {
-        console.log("reeBillStore beforesave");
+        console.log("reeBillStore beforesave ");
         reeBillGrid.setDisabled(true);
     });
 
+    reeBillStore.on('beforewrite', function(store, action, record, options, arg) {
+        if (action == 'destroy') {
+            // TODO say what the actual version is (and don't mention version if it's 0)
+            var result = Ext.Msg.confirm('Confirm deletion',
+                'Are you sure you want to delete the latest version of reebill '
+                + selected_account + '-' + selected_sequence + '?', function(answer) {
+            });
+            if (result == true) {
+                return false;
+            }
+        }
+        return true;
+    });
     reeBillStore.on('update', function(){
     });
 
@@ -714,6 +762,21 @@ function reeBillReady() {
         }
     });
 
+    function reeBillGridRenderer(value, metaData, record, rowIndex, colIndex,
+            store) {
+        if (record.data.issued) {
+            // issued bill
+            metaData.css = 'reebill-grid-issued';
+        } else if (record.data.max_version == 0) {
+            // unissued version-0 bill
+            metaData.css = 'reebill-grid-unissued';
+        } else {
+            // unissued correction
+            metaData.css = 'reebill-grid-unissued-correction';
+        }
+        return value;
+    }
+
     var reeBillColModel = new Ext.grid.ColumnModel(
     {
         columns: [
@@ -723,80 +786,94 @@ function reeBillReady() {
                 dataIndex: 'sequence',
                 //editor: new Ext.form.TextField({allowBlank: true})
                 width: 40,
+                renderer: reeBillGridRenderer,
             },{
                 header: 'Corrections',
                 sortable: false,
                 dataIndex: 'corrections',
-                width: 45,
+                width: 60,
+                renderer: reeBillGridRenderer,
             //},{
                 //header: 'Total Error',
                 //sortable: false,
                 //dataIndex: 'total_error',
                 //width: 45,
+                //renderer: reeBillGridRenderer,
             },{
                 header: 'Start Date',
                 sortable: true,
                 dataIndex: 'period_start',
                 width: 70,
+                renderer: reeBillGridRenderer,
             },{
                 header: 'End Date',
                 sortable: true,
                 dataIndex: 'period_end',
                 width: 70,
+                renderer: reeBillGridRenderer,
             },{
                 header: 'Hypo',
                 sortable: false,
                 dataIndex: 'hypothetical_total',
                 width: 65,
                 align: 'right',
+                renderer: reeBillGridRenderer,
             },{
                 header: 'Actual',
                 sortable: false,
                 dataIndex: 'actual_total',
                 width: 65,
                 align: 'right',
+                renderer: reeBillGridRenderer,
             },{
                 header: 'RE&E Value',
                 sortable: false,
                 dataIndex: 'ree_value',
                 width: 65,
                 align: 'right',
+                renderer: reeBillGridRenderer,
             //},{
                 //header: 'Prior Balance',
                 //sortable: false,
                 //dataIndex: 'prior_balance',
                 //width: 65,
                 //align: 'right',
+                //renderer: reeBillGridRenderer,
             //},{
                 //header: 'Payment',
                 //sortable: false,
                 //dataIndex: 'payment_received',
                 //width: 65,
                 //align: 'right',
-            },{
-                header: 'Adjustment',
-                sortable: false,
-                dataIndex: 'total_adjustment',
-                width: 65,
-                align: 'right',
+                //renderer: reeBillGridRenderer,
+            //},{
+                //header: 'Adjustment',
+                //sortable: false,
+                //dataIndex: 'total_adjustment',
+                //width: 65,
+                //align: 'right',
+                //renderer: reeBillGridRenderer,
             //},{
                 //header: 'Balance Fwd',
                 //sortable: false,
                 //dataIndex: 'balance_forward',
                 //width: 65,
                 //align: 'right',
+                //renderer: reeBillGridRenderer,
             },{
                 header: 'RE&E Charges',
                 sortable: false,
                 dataIndex: 'ree_charges',
                 width: 65,
                 align: 'right',
-            },{
-                header: 'Balance Due',
-                sortable: false,
-                dataIndex: 'balance_due',
-                width: 65,
-                align: 'right',
+                renderer: reeBillGridRenderer,
+            //},{
+                //header: 'Balance Due',
+                //sortable: false,
+                //dataIndex: 'balance_due',
+                //width: 65,
+                //align: 'right',
+                //renderer: reeBillGridRenderer,
             },
         ]
     });
@@ -852,12 +929,10 @@ function reeBillReady() {
                 /* rowdeselect is always called before rowselect when the selection changes. */
                 rowdeselect: function(selModel, index, record) {
                      loadReeBillUIForSequence(selected_account, null);
-                     console.log('deselect');
                 },
                 rowselect: function (selModel, index, record) {
                     // TODO: have other widgets pull when this selection is made
                     loadReeBillUIForSequence(selected_account, record.data.sequence);
-                    console.log('select: ' + selected_account + ', ' + record.data.sequence);
                 },
             }
         }),
@@ -1303,18 +1378,18 @@ function reeBillReady() {
         Ext.Msg.alert('Notice', "One of the operations on this menu must be selected");
     }
 
-    var bindRSOperationConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/bindrs',
+    var computeBillOperationConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/compute_bill',
         disableCaching: true,
     });
-    bindRSOperationConn.autoAbort = true;
-    function bindRSOperation()
+    computeBillOperationConn.autoAbort = true;
+    function computeBillOperation()
     {
 
-        //Ext.Msg.show({title: "Please Wait while RS is bound", closable: false});
+        //Ext.Msg.show({title: "Please Wait while bill is recomputed", closable: false});
         tabPanel.setDisabled(true);
 
-        bindRSOperationConn.request({
+        computeBillOperationConn.request({
             params: {account: selected_account, sequence: selected_sequence},
             success: function(result, request) {
                 var jsonData = null;
@@ -1514,8 +1589,9 @@ function reeBillReady() {
                             Ext.Msg.alert('Success', "mail successfully sent");
                         } else if (o.success !== true && o['corrections'] != undefined) {
                             var result = Ext.Msg.confirm('Corrections must be applied',
-                                'Corrections from the following reebills will be applied to this bill: '
-                                + o.corrections + '. Are you sure you want to issue it?', function(answer) {
+                                'Corrections from reebills ' + o.corrections +
+                                ' will be applied to this bill as an adjusment of $'
+                                + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
                                     if (answer == 'yes') {
                                         mailDataConn.request({
                                             params: { account: selected_account, recipients: recipients, sequences: sequences, corrections: o.corrections},
@@ -4642,6 +4718,15 @@ function reeBillReady() {
                                     Ext.Msg.alert('Success', "New account created");
                                     // update next account number shown in field
                                     newAccountField.setValue(nextAccount);
+
+                                    // reload grid to show new account
+                                    // TODO "load" gets no records, "reload" gets records, but neither one causes the grid to update
+                                    reeBillStore.reload({
+                                        //callback: function(records, options, success) {
+                                                      //alert('loaded!');
+                                                      //console.log(records);
+                                        //}
+                                    });
                                 }
                             } catch (err) {
                                 Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
@@ -5587,8 +5672,26 @@ function reeBillReady() {
 
     function loadReeBillUIForSequence(account, sequence) {
         /* null argument means no sequence is selected */
-        deleteButton.setDisabled(sequence == null);
-        versionButton.setDisabled(sequence == null)
+
+        // get selected reebill's record and the predecessor's record
+        var record = reeBillGrid.getSelectionModel().getSelected();
+        var prevRecord = reeBillStore.queryBy(function(record, id) {
+            return record.data.sequence == sequence - 1;
+        }).first();
+        if (prevRecord == undefined)
+            prevRecord = null;
+
+        var isLastSequence = reeBillStore.queryBy(function(record, id) {
+                return record.data.sequence == sequence + 1; }).first() ==
+                undefined;
+
+        // delete button requires selected unissued reebill whose predecessor
+        // is issued, or whose sequence is the last one
+        deleteButton.setDisabled(sequence == null || ! (isLastSequence &&
+                record.data.max_version == 0) && (record.data.issued == true ||
+                prevRecord.data.issued == false));
+        // new version button requires selected issued reebill
+        versionButton.setDisabled(sequence == null || record.data.issued == false);
 
         /* the rest of this applies only for a valid sequence */
         if (sequence == null) {
@@ -5625,7 +5728,6 @@ function reeBillReady() {
         } else {
             resolution = DEFAULT_RESOLUTION;
         }
-
 
         // while waiting for the next ajax request to finish, show a loading message
         // in the utilbill image box
