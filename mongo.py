@@ -637,9 +637,9 @@ class MongoReebill(object):
         service is 'service_name'. There's not supposed to be more than one
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
-        chargegroup_lists = [ub['actual_chargegroups']
-                for ub in self.reebill_dict['utilbills']
-                if ub['service'] == service_name]
+        chargegroup_lists = [ub['chargegroups']
+                for ub in self._utilbills
+                if ub['_id']['service'] == service_name]
         if chargegroup_lists == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
         if len(chargegroup_lists) > 1:
@@ -650,9 +650,9 @@ class MongoReebill(object):
         '''Set hypothetical chargegroups, based on actual chargegroups.  This is used
         because it is customary to define the actual charges and base the hypothetical
         charges on them.'''
-        for ub in self.utilbills:
-            if ub['service'] == service_name:
-                ub['actual_chargegroups'] = new_chargegroups
+        for ub in self._utilbills:
+            if ub['_id']['service'] == service_name:
+                ub['chargegroups'] = new_chargegroups
 
     def chargegroups_model_for_service(self, service_name):
         '''Returns a shallow list of chargegroups for the utilbill whose
@@ -714,8 +714,8 @@ class MongoReebill(object):
         no utilbill for that service).'''
         date_string_pairs = [
             (
-                u['period_begin'] if 'period_begin' in u else None,
-                u['period_end'] if 'period_end' in u else None
+                u.get('start', None),
+                u.get('end', None),
             )  for u in self.reebill_dict['utilbills'] if u['service'] == service_name
         ]
         if date_string_pairs == []:
@@ -954,10 +954,10 @@ class MongoReebill(object):
 
     def shadow_registers(self, service):
         result = []
-        for utilbill in self.reebill_dict['utilbills']:
-            for meter in utilbill['meters']:
-                for register in meter['registers']:
-                    result.append(register)
+        for u in self.reebill_dict['utilbills']:
+            if u['service'] == service:
+                for sr in u['shadow_registers']:
+                    result.append(sr)
         return result
 
     def set_shadow_register_quantity(self, identifier, quantity):
@@ -980,7 +980,7 @@ class MongoReebill(object):
 
     def rate_structure_name_for_service(self, service_name):
         for u in self._utilbills:
-            if u['service'] == service_name:
+            if u['_id']['service'] == service_name:
                 return u['rate_structure_binding']
         raise Exception('No rate structure binding found for service "%s"' %
                 service_name)
@@ -1095,7 +1095,7 @@ class ReebillDAO:
             # TODO when to disconnect from the database?
             pass
         
-        self.collection = self.connection[database]['reebills']
+        self.reebills_collection = self.connection[database]['reebills']
         self.utilbills_collection = self.connection[database]['utilbills']
 
     def _get_version_query(self, account, sequence, specifier):
@@ -1126,26 +1126,30 @@ class ReebillDAO:
 
     def load_utilbill(self, account, service, utility, start, end):
         query = {
-            'account': account,
-            'utility': utility,
-            'service': service,
-            'start': start,
-            'end': end,
+            '_id.account': account,
+            '_id.utility': utility,
+            '_id.service': service,
+            '_id.start': date_to_datetime(start),
+            '_id.end': date_to_datetime(end),
         }
         doc = self.utilbills_collection.find_one(query)
         if doc is None:
+            import ipdb; ipdb.set_trace()
             raise NoSuchReeBillException(("No utilbill found in %s: query was %s")
                     % (self.utilbills_collection, query))
         return doc
 
     def _load_all_utillbills_for_reebill(self, reebill_doc):
-        return [self.load_utilbill(
+        utilbills = deep_map(float_to_decimal, [self.load_utilbill(
             reebill_doc['account'],
             utilbill_reference['service'],
             utilbill_reference['utility'],
             utilbill_reference['start'],
             utilbill_reference['end']
-        ) for utilbill_reference in reebill_doc['utilbills']]
+        ) for utilbill_reference in reebill_doc['utilbills']])
+        # must be an assignment because it copies
+        utilbills = convert_datetimes(utilbills)
+        return utilbills
 
     def load_reebill(self, account, sequence, version='max'):
         '''Returns the reebill with the given account and sequence, and the a
@@ -1168,7 +1172,7 @@ class ReebillDAO:
         # "where" clause
         if isinstance(version, int):
             query.update({'_id.version': version})
-            mongo_doc = self.collection.find_one(query)
+            mongo_doc = self.reebills_collection.find_one(query)
         elif version == 'max':
             # get max version from MySQL, since that's the definitive source of
             # information on what officially exists (but version 0 reebill
@@ -1179,13 +1183,13 @@ class ReebillDAO:
                         max_version = self.state_db.max_version(session, account,
                                 sequence)
                     query.update({'_id.version': max_version})
-                mongo_doc = self.collection.find_one(query)
+                mongo_doc = self.reebills_collection.find_one(query)
             except NoResultFound:
                 # customer not found in MySQL
                 mongo_doc = None
         elif isinstance(version, date):
             version_dt = date_to_datetime(version)
-            docs = self.collection.find(query, sort=[('_id.version',
+            docs = self.reebills_collection.find(query, sort=[('_id.version',
                     pymongo.ASCENDING)])
             earliest_issue_date = docs[0]['issue_date']
             if earliest_issue_date is not None and earliest_issue_date < version_dt:
@@ -1198,7 +1202,7 @@ class ReebillDAO:
 
         if mongo_doc is None:
             raise NoSuchReeBillException(("No reebill found in %s: query was %s")
-                    % (self.collection, query))
+                    % (self.reebills_collection, query))
 
         mongo_doc = deep_map(float_to_decimal, mongo_doc)
         mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
@@ -1250,8 +1254,8 @@ class ReebillDAO:
                     end_date.day)
             query['period_begin'] = {'$lte': end_datetime}
         result = []
-        docs = self.collection.find(query).sort('sequence')
-        for mongo_doc in self.collection.find(query):
+        docs = self.reebills_collection.find(query).sort('sequence')
+        for mongo_doc in self.reebills_collection.find(query):
             mongo_doc = convert_datetimes(mongo_doc)
             mongo_doc = deep_map(float_to_decimal, mongo_doc)
             utilbill_docs = self._load_all_utillbills_for_reebill(mongo_doc)
@@ -1274,11 +1278,14 @@ class ReebillDAO:
                     raise Exception("Can't modify an issued reebill.")
                 session.commit()
         
-        mongo_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
-        self.collection.save(mongo_doc)
+        reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
+        utilbill_docs = [bson_convert(copy.deepcopy(u)) for u in reebill._utilbills]
+        for utilbill_doc in utilbill_docs:
+            self.utilbills_collection.save(utilbill_doc)
+        self.reebills_collection.save(reebill_doc)
 
     def delete_reebill(self, account, sequence, version):
-        self.collection.remove({
+        self.reebills_collection.remove({
             '_id.account': account,
             '_id.sequence': sequence,
             '_id.version': version,
@@ -1291,7 +1298,7 @@ class ReebillDAO:
             '_id.account': account,
             '_id.sequence': 1,
         }
-        result = self.collection.find_one(query)
+        result = self.reebills_collection.find_one(query)
         if result == None:
             return None
         return MongoReebill(result).period_begin
@@ -1303,7 +1310,7 @@ class ReebillDAO:
             '_id.account': account,
             '_id.sequence': 1,
         }
-        result = self.collection.find_one(query)
+        result = self.reebills_collection.find_one(query)
         if result == None:
             return None
         return MongoReebill(result).issue_date
@@ -1313,7 +1320,7 @@ class ReebillDAO:
         if no reebills were found. This is different from
         StateDB.last_sequence() because it uses Mongo; there may be un-issued
         reebills in Mongo that are not in MySQL.'''
-        result = self.collection.find_one({
+        result = self.reebills_collection.find_one({
             '_id.account': account
             }, sort=[('sequence', pymongo.DESCENDING)])
         if result == None:
