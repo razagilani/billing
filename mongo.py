@@ -970,45 +970,20 @@ class MongoReebill(object):
                     if register['identifier'] == identifier:
                         register['quantity'] = quantity
 
-##################################################################
-##################################################################
     def utility_name_for_service(self, service_name):
-        try:
-            utility_names = [
-                ub['utility_name'] 
-                for ub in self.reebill_dict['utilbills']
-                # case-insensitive comparison
-                if ub['service'].lower() == service_name.lower()
-            ]
-        except KeyError:
-            # mongo reebills that came from xml reebills lacking "rsbinding" at
-            # the utilbill root will lack a "utility_name" key
-            raise NoUtilityNameError('this reebill lacks a utility name (from '
-                    '"rsbinding" attribute at at bill/utilbill in xml).')
-
+        for u in self.reebill_dict['utilbills']:
+            if u['service'] == service_name:
+                return u['utility']
         if utility_names == []:
-            raise Exception('No utility name found for service "%s"' % service_name)
-        if len(utility_names) > 1:
-            raise Exception('Multiple utility names for service "%s"' % service_name)
-        return utility_names[0]
+            raise Exception('No utility name found for service "%s"' %
+                    service_name)
 
     def rate_structure_name_for_service(self, service_name):
-        try:
-            rs_bindings = [
-                ub['rate_structure_binding'] 
-                for ub in self.reebill_dict['utilbills']
-                if ub['service'] == service_name
-            ]
-        except KeyError:
-            # mongo reebills that came from xml reebills lacking "rsbinding" at
-            # the utilbill root will lack a "rate_structure_binding" key
-            raise NoRateStructureError('this reebill lacks a rate structure')
-
-        if rs_bindings == []:
-            raise Exception('No rate structure binding found for service "%s"' % service_name)
-        if len(rs_bindings) > 1:
-            raise Exception('Multiple rate structure bindings found for service "%s"' % service_name)
-        return rs_bindings[0]
+        for u in self._utilbills:
+            if u['service'] == service_name:
+                return u['rate_structure_binding']
+        raise Exception('No rate structure binding found for service "%s"' %
+                service_name)
 
     @property
     def savings(self):
@@ -1030,26 +1005,25 @@ class MongoReebill(object):
         for utilbill in self.reebill_dict['utilbills']:
             for meter in utilbill['meters']:
                 for register in meter['registers']:
-                    if register['shadow'] == True:
-                        quantity = register['quantity']
-                        unit = register['quantity_units'].lower()
-                        if unit == 'therms':
-                            total_therms += quantity
-                        elif unit == 'btu':
-                            total_therms += quantity / Decimal("100000.0")
-                        elif unit == 'kwh':
-                            total_therms += quantity / Decimal(".0341214163")
-                        elif unit == 'ccf':
-                            if ccf_conversion_factor is not None:
-                                total_therms += quantity * ccf_conversion_factor
-                            else:
-                                # TODO: 28825375 - need the conversion factor for this
-                                raise Exception(("Register contains gas measured "
-                                    "in ccf: can't convert that into energy "
-                                    "without the multiplier."))
+                    quantity = register['quantity']
+                    unit = register['quantity_units'].lower()
+                    if unit == 'therms':
+                        total_therms += quantity
+                    elif unit == 'btu':
+                        total_therms += quantity / Decimal("100000.0")
+                    elif unit == 'kwh':
+                        total_therms += quantity / Decimal(".0341214163")
+                    elif unit == 'ccf':
+                        if ccf_conversion_factor is not None:
+                            total_therms += quantity * ccf_conversion_factor
                         else:
-                            raise Exception('Unknown energy unit: "%s"' % \
-                                    register['quantity_units'])
+                            # TODO: 28825375 - need the conversion factor for this
+                            raise Exception(("Register contains gas measured "
+                                "in ccf: can't convert that into energy "
+                                "without the multiplier."))
+                    else:
+                        raise Exception('Unknown energy unit: "%s"' % \
+                                register['quantity_units'])
         return total_therms
 
     #
