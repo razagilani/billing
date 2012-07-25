@@ -345,7 +345,7 @@ port = 27017
 
             # make it have 2 services, 1 suspended
             # (create electric bill by duplicating gas bill)
-            electric_bill = example_data.get_utilbill_dict()
+            electric_bill = example_data.get_utilbill_dict('99999')
             electric_bill['service'] = 'electric'
             # TODO it's bad to directly modify reebill_dict
             bill1.reebill_dict['utilbills'].append(electric_bill)
@@ -790,6 +790,7 @@ port = 27017
             four.ree_charges = 100
             self.reebill_dao.save_reebill(zero)
             self.reebill_dao.save_reebill(one)
+            import ipdb; ipdb.set_trace()
             self.reebill_dao.save_reebill(two)
             self.reebill_dao.save_reebill(three)
             self.reebill_dao.save_reebill(four)

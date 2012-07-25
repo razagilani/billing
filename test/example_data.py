@@ -13,10 +13,11 @@ null = None
 
 example_utilbill = {
     '_id': {
+        "account": "10003",
         "service" : "gas",
         "utility" : "washgas",
-        "start" : ISODate("2011-12-14T00:00:00Z"),
-        "end" : ISODate("2011-11-12T00:00:00Z"),
+        "start" : ISODate("2011-11-12T00:00:00Z"),
+        "end" : ISODate("2011-12-14T00:00:00Z"),
     },
     "chargegroups" : {
         "All Charges" : [
@@ -171,21 +172,21 @@ example_reebill = {
         {
             "service" : "gas",
             "utility" : "washgas",
-            "start" : ISODate("2011-12-14T00:00:00Z"),
-            "end" : ISODate("2011-11-12T00:00:00Z"),
+            "start" : ISODate("2011-11-12T00:00:00Z"),
+            "end" : ISODate("2011-12-14T00:00:00Z"),
             
             "ree_charges" : 118.42,
             "ree_savings" : 118.42,
             "ree_value" : 236.84,
 
-            'shadow_registers': {
+            'shadow_registers': [{
                 "quantity_units" : "therms",
                 "quantity" : 188.20197727,
                 "register_binding" : "REG_TOTAL",
                 "identifier" : "M60324",
                 "type" : "total",
                 "description" : "Therms"
-            },
+            }],
 
             "hypothetical_total" : 980.33,
             "hypothetical_chargegroups" : {
@@ -504,11 +505,12 @@ def get_reebill(account, sequence, version=0):
     reebill_dict['_id']['sequence'] = sequence
     reebill_dict['_id']['version'] = version
     return MongoReebill(deep_map(float_to_decimal, reebill_dict),
-            copy.deepcopy(example_utilbill))
+            [copy.deepcopy(deep_map(float_to_decimal, example_utilbill))])
 
-def get_utilbill_dict():
+def get_utilbill_dict(account):
     '''Returns an example utility bill dictionary.'''
     utilbill_dict = copy.deepcopy(example_utilbill)
+    utilbill_dict['_id']['account'] = account
     return utilbill_dict
 
 def get_urs_dict():
