@@ -1096,6 +1096,7 @@ class ReebillDAO:
             pass
         
         self.collection = self.connection[database]['reebills']
+        self.utilbills_collection = self.connection[database]['utilbills']
 
     def _get_version_query(self, account, sequence, specifier):
         '''Returns the version part of a Mongo query for a reebill based on the
@@ -1120,10 +1121,10 @@ class ReebillDAO:
             query.update({'start': start})
         if end is not None:
             query.update({'end': end})
-        docs = utilbills_collection.find(query)
+        docs = self.utilbills_collection.find(query)
         return docs
 
-    def load_utilbill(account, service, utility, start, end):
+    def load_utilbill(self, account, service, utility, start, end):
         query = {
             'account': account,
             'utility': utility,
@@ -1131,19 +1132,20 @@ class ReebillDAO:
             'start': start,
             'end': end,
         }
-        doc = utilbills_collection.find_one(query)
+        doc = self.utilbills_collection.find_one(query)
         if doc is None:
             raise NoSuchReeBillException(("No utilbill found in %s: query was %s")
                     % (self.utilbills_collection, query))
         return doc
 
-    def _load_all_utillbills_for_reebill(reebill_doc):
-        return [self.load_utilbill(account=account,
-            service=utilbill_reference['service'],
-            utility=utilbill_reference['utility'],
-            start=utilbill_reference['start'],
-            end=utilbill_reference['end']
-        ) for utilbill_reference in mongo_doc['utilbills']]
+    def _load_all_utillbills_for_reebill(self, reebill_doc):
+        return [self.load_utilbill(
+            reebill_doc['account'],
+            utilbill_reference['service'],
+            utilbill_reference['utility'],
+            utilbill_reference['start'],
+            utilbill_reference['end']
+        ) for utilbill_reference in reebill_doc['utilbills']]
 
     def load_reebill(self, account, sequence, version='max'):
         '''Returns the reebill with the given account and sequence, and the a
