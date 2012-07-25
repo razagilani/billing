@@ -359,12 +359,12 @@ port = 27017
             # save utilbills in MySQL
             self.state_db.record_utilbill_in_database(session, bill1.account,
                     bill1.reebill_dict['utilbills'][0]['service'],
-                    bill1.reebill_dict['utilbills'][0]['period_begin'],
-                    bill1.reebill_dict['utilbills'][0]['period_end'], date.today())
+                    bill1.reebill_dict['utilbills'][0]['_id']['start'],
+                    bill1.reebill_dict['utilbills'][0]['_id']['end'], date.today())
             self.state_db.record_utilbill_in_database(session, bill1.account,
                     bill1.reebill_dict['utilbills'][1]['service'],
-                    bill1.reebill_dict['utilbills'][1]['period_begin'],
-                    bill1.reebill_dict['utilbills'][1]['period_end'], date.today())
+                    bill1.reebill_dict['utilbills'][1]['_id']['start'],
+                    bill1.reebill_dict['utilbills'][1]['_id']['end'], date.today())
 
             self.process.attach_utilbills(session, bill1.account, bill1.sequence)
 
