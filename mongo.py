@@ -1137,6 +1137,14 @@ class ReebillDAO:
                     % (self.utilbills_collection, query))
         return doc
 
+    def _load_all_utillbills_for_reebill(reebill_doc):
+        return [self.load_utilbill(account=account,
+            service=utilbill_reference['service'],
+            utility=utilbill_reference['utility'],
+            start=utilbill_reference['start'],
+            end=utilbill_reference['end']
+        ) for utilbill_reference in mongo_doc['utilbills']]
+
     def load_reebill(self, account, sequence, version='max'):
         '''Returns the reebill with the given account and sequence, and the a
         version: a specific version number, an issue date (before which the
@@ -1192,8 +1200,9 @@ class ReebillDAO:
 
         mongo_doc = deep_map(float_to_decimal, mongo_doc)
         mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
-        mongo_reebill = MongoReebill(mongo_doc)
 
+        utilbill_docs = self._load_all_utillbills_for_reebill(mongo_doc)
+        mongo_reebill = MongoReebill(mongo_doc, utilbill_docs)
         return mongo_reebill
 
     def load_reebills_for(self, account, version='max'):
@@ -1243,7 +1252,8 @@ class ReebillDAO:
         for mongo_doc in self.collection.find(query):
             mongo_doc = convert_datetimes(mongo_doc)
             mongo_doc = deep_map(float_to_decimal, mongo_doc)
-            result.append(MongoReebill(mongo_doc))
+            utilbill_docs = self._load_all_utillbills_for_reebill(mongo_doc)
+            result.append(MongoReebill(mongo_doc, utilbill_docs))
         return result
         
     def save_reebill(self, reebill, force=False):
