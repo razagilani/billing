@@ -778,7 +778,7 @@ class MongoReebill(object):
         # document structure
         shadow_registers = self.reebill_dict['shadow_registers']
         for sr in shadow_registers:
-            matching_meter = [m in meters if m['identifier'] ==
+            matching_meter = [m for m in meters if m['identifier'] ==
                     sr['identifier']]
             matching_meter['registers'].append(sr)
         return meters
@@ -938,7 +938,7 @@ class MongoReebill(object):
         Registers have rate structure bindings that are used to make the actual
         registers available to rate structure items.'''
         result = []
-        for utilbill in in self._utilbills:
+        for utilbill in self._utilbills:
             for meter in utilbill['meters']:
                 result.extend(meter['registers'])
         return result
@@ -956,7 +956,7 @@ class MongoReebill(object):
         result = []
         for utilbill in self.reebill_dict['utilbills']:
             for meter in utilbill['meters']:
-                for register in meter['registers']
+                for register in meter['registers']:
                     result.append(register)
         return result
 
@@ -966,7 +966,7 @@ class MongoReebill(object):
         register with that identified is found.'''
         for utilbill in self.reebill_dict['utilbills']:
             for meter in utilbill['meters']:
-                for register in meter['registers']
+                for register in meter['registers']:
                     if register['identifier'] == identifier:
                         register['quantity'] = quantity
 
@@ -1037,7 +1037,7 @@ class MongoReebill(object):
                 self.reebill_dict['hypothetical_chargegroups'])
 
     def actual_chargegroups_flattened(self, service):
-        utilbill = [u in self._utilbills if u['service'] == service][0]
+        utilbill = next(u for u in self._utilbills if u['service'] == service)
         return flatten_chargegroups_dict(utilbill['chargegroups'])
 
     #def chargegroups_flattened(self, service, chargegroups):
@@ -1111,15 +1111,15 @@ class ReebillDAO:
             end=None):
         query = {}
         if account is not None:
-            query.update({'account': account)
+            query.update({'account': account})
         if utility is not None:
-            query.update({'utility': utility)
+            query.update({'utility': utility})
         if service is not None:
-            query.update({'service': service)
+            query.update({'service': service})
         if start is not None:
-            query.update({'start': start)
+            query.update({'start': start})
         if end is not None:
-            query.update({'end': end)
+            query.update({'end': end})
         docs = utilbills_collection.find(query)
         return docs
 
@@ -1263,7 +1263,6 @@ class ReebillDAO:
                 session.commit()
         
         mongo_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
-
         self.collection.save(mongo_doc)
 
     def delete_reebill(self, account, sequence, version):
