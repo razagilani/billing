@@ -141,7 +141,7 @@ class MongoReebill(object):
         # the bill is being instantiated from Mongo 
         if type(reebill_data) is dict:
             self.reebill_dict = reebill_data
-            self._utilbills =  utilbill_dicts
+            self._utilbills = utilbill_dicts
             return
 
         # the bill is being instantiated from an existing instance
@@ -749,12 +749,12 @@ class MongoReebill(object):
                 external_utilbill['_id']['start'] = period[0]
                 external_utilbill['_id']['end'] = period[1]
 
-    #@property
-    #def utilbill_periods(self):
-        #'''Return a dictionary whose keys are service and values are the
-        #utilbill period.'''
-        #return dict([(service, self.utilbill_period_for_service(service)) for
-            #service in self.services])
+    @property
+    def utilbill_periods(self):
+        '''Return a dictionary whose keys are service and values are the
+        utilbill period.'''
+        return dict([(service, self.utilbill_period_for_service(service)) for
+            service in self.services])
     #@utilbill_periods.setter
     #def utilbill_periods(self, value):
         #'''Set the utilbill periods based on a dictionary whose keys are service and values utilbill periods.'''
