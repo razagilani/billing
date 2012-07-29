@@ -779,8 +779,8 @@ class MongoReebill(object):
         # document structure
         shadow_registers = self.shadow_registers(service_name)
         for sr in shadow_registers:
-            matching_meter = [m for m in meters if m['identifier'] ==
-                    sr['identifier']]
+            matching_meter = next(m for m in meters if m['identifier'] ==
+                    sr['identifier'])
             matching_meter['registers'].append(sr)
         return meters
 
