@@ -361,7 +361,6 @@ port = 27017
             # save reebill in MySQL and Mongo
             self.state_db.new_rebill(session, bill1.account, bill1.sequence)
             self.reebill_dao.save_reebill(bill1)
-            import ipdb; ipdb.set_trace()
 
             # save utilbills in MySQL
             self.state_db.record_utilbill_in_database(session, bill1.account,
