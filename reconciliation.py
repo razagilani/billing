@@ -57,7 +57,7 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
     # the list of accounts gets long
     accounts = sorted(state_db.listAccounts(session))
     for account in accounts:
-        install = splinter.get_install_obj_for(NexusUtil().olap_id(account))
+        install = splinter.get_install_obj_for(NexusUtil('nexus').olap_id(account))
         sequences = state_db.listSequences(session, account)
         for sequence in sequences:
             reebill = reebill_dao.load_reebill(account, sequence)

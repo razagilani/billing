@@ -42,7 +42,7 @@ class EstimatedRevenue(object):
 
         # pre-load all the olap ids of accounts for speed (each one requires an
         # HTTP request)
-        nexus_util = NexusUtil()
+        nexus_util = NexusUtil('nexus')
         session = self.state_db.session()
         self.olap_ids = dict([
             (account, nexus_util.olap_id(account)) for account in

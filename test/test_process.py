@@ -28,7 +28,6 @@ from billing.test.fake_skyliner import FakeSplinter, FakeMonguru
 from billing.nexus_util import NexusUtil
 from billing.mongo import NoSuchReeBillException
 from billing.processing import fetch_bill_data as fbd
-from billing.nexus_util import NexusUtil
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -117,7 +116,7 @@ port = 27017
         })
 
         self.process = Process(self.state_db, self.reebill_dao,
-                self.rate_structure_dao, self.billupload, NexusUtil(),
+                self.rate_structure_dao, self.billupload, NexusUtil('nexus'),
                 self.splinter)
 
     def tearDown(self):
@@ -905,7 +904,7 @@ port = 27017
             two = self.reebill_dao.load_reebill(acc, 2)
             two.late_charge_rate = .5
             fbd.fetch_oltp_data(self.splinter,
-                    NexusUtil().olap_id(acc), two)
+                    NexusUtil('nexus').olap_id(acc), two)
             self.process.compute_bill(session, one, two)
 
             # if given a late_charge_rate > 0, 2nd reebill should have a late charge
