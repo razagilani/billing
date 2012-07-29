@@ -173,11 +173,13 @@ class BillToolBridge:
             print >> sys.stderr, 'Config file "%s" not found; creating it with default values'
             self.config.add_section('runtime')
             self.config.set('runtime', 'integrate_skyline_backend', 'true')
-            self.config.set('runtime', 'nexus', 'true')
+            self.config.set('runtime', 'integrate_nexus', 'true')
+            self.config.set('runtime', 'mock_skyliner', 'false')
             self.config.add_section('skyline_backend')
             self.config.set('skyline_backend', 'oltp_url', 'http://duino-drop.appspot.com/')
             self.config.set('skyline_backend', 'olap_host', 'tyrell')
             self.config.set('skyline_backend', 'olap_database', 'dev')
+            self.config.set('skyline_backend', 'nexus_host', '[specify nexus host]')
             self.config.add_section('journaldb')
             self.config.set('journaldb', 'host', 'localhost')
             self.config.set('journaldb', 'port', '27017')
@@ -186,7 +188,6 @@ class BillToolBridge:
             self.config.set('http', 'socket_port', '8185')
             self.config.set('http', 'socket_host', '10.0.0.250')
             self.config.add_section('rsdb')
-            #self.config.set('rsdb', 'rspath', '[root]db/skyline/ratestructure/')
             self.config.set('rsdb', 'host', 'localhost')
             self.config.set('rsdb', 'port', '27017')
             self.config.set('rsdb', 'database', 'skyline')
@@ -196,6 +197,7 @@ class BillToolBridge:
             self.config.set('billdb', 'host', 'localhost')
             self.config.set('billdb', 'port', '27017')
             self.config.set('billdb', 'database', 'skyline')
+            self.config.set('billdb', 'utility_bill_trash_directory', '[root]db/skyline/utilitybills-deleted')
             self.config.add_section('statedb')
             self.config.set('statedb', 'host', 'localhost')
             self.config.set('statedb', 'database', 'skyline')
@@ -205,6 +207,7 @@ class BillToolBridge:
             self.config.set('usersdb', 'host', 'localhost')
             self.config.set('usersdb', 'database', 'skyline')
             self.config.set('usersdb', 'user', 'dev')
+            self.config.set('usersdb', 'port', '27017')
             self.config.set('usersdb', 'password', 'dev')
             self.config.add_section('mailer')
             self.config.set('mailer', 'smtp_host', 'smtp.gmail.com')
@@ -237,6 +240,7 @@ class BillToolBridge:
             # bill image rendering
             self.config.add_section('billimages')
             self.config.set('billimages', 'bill_image_directory', DEFAULT_BILL_IMAGE_DIRECTORY)
+            self.config.set('billimages', 'show_reebill_images', 'true')
 
             # reebill pdf rendering
             self.config.add_section('reebillrendering')
@@ -278,7 +282,7 @@ class BillToolBridge:
         self.logger.setLevel(logging.DEBUG)
 
         # create a NexusUtil
-        self.nexus_util = NexusUtil()
+        self.nexus_util = NexusUtil(self.config.get('skyline_backend', 'nexus_host'))
 
         # load users database
         self.user_dao = UserDAO(**dict(self.config.items('usersdb')))
@@ -309,7 +313,7 @@ class BillToolBridge:
         self.journal_dao = journal.JournalDAO()
 
         # create a Splinter
-        if self.config.getboolean('skyline_backend', 'mock_skyliner'):
+        if self.config.getboolean('runtime', 'mock_skyliner'):
             self.splinter = fake_skyliner.FakeSplinter()
         else:
             self.splinter = Splinter(self.config.get('skyline_backend',
