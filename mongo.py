@@ -54,7 +54,8 @@ def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
         return dict((key, convert_datetimes(value, datetime_keys, key))
             for key, value in x.iteritems())
     if type(x) is list:
-        return [convert_datetimes(element, datetime_keys, ancestor_key) for element in x]
+        return [convert_datetimes(element, datetime_keys, ancestor_key) for
+                element in x]
     return x
 
 
@@ -766,8 +767,8 @@ class MongoReebill(object):
         service is 'service_name'. There's not supposed to be more than one
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
-        meters_lists = [ub['meters'] for ub in self._utilbills if ub['service']
-                == service_name]
+        meters_lists = [ub['meters'] for ub in self._utilbills if
+                ub['_id']['service'] == service_name]
         if meters_lists == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
         if len(meters_lists) > 1:
@@ -1134,21 +1135,20 @@ class ReebillDAO:
         }
         doc = self.utilbills_collection.find_one(query)
         if doc is None:
-            import ipdb; ipdb.set_trace()
             raise NoSuchReeBillException(("No utilbill found in %s: query was %s")
                     % (self.utilbills_collection, query))
         return doc
 
     def _load_all_utillbills_for_reebill(self, reebill_doc):
         utilbills = deep_map(float_to_decimal, [self.load_utilbill(
-            reebill_doc['account'],
+            reebill_doc['_id']['account'],
             utilbill_reference['service'],
             utilbill_reference['utility'],
             utilbill_reference['start'],
             utilbill_reference['end']
         ) for utilbill_reference in reebill_doc['utilbills']])
         # must be an assignment because it copies
-        utilbills = convert_datetimes(utilbills)
+        utilbills = [convert_datetimes(u) for u in utilbills]
         return utilbills
 
     def load_reebill(self, account, sequence, version='max'):
@@ -1279,10 +1279,16 @@ class ReebillDAO:
                 session.commit()
         
         reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
-        utilbill_docs = [bson_convert(copy.deepcopy(u)) for u in reebill._utilbills]
-        for utilbill_doc in utilbill_docs:
-            self.utilbills_collection.save(utilbill_doc)
+        #utilbill_docs = [bson_convert(copy.deepcopy(u)) for u in reebill._utilbills]
+        #for utilbill_doc in utilbill_docs:
+            #self.utilbills_collection.save(utilbill_doc)
+        for utilbill_doc in reebill._utilbills:
+            self._save_utilbill(utilbill_doc)
         self.reebills_collection.save(reebill_doc)
+
+    def _save_utilbill(self, utilbill_doc):
+        utilbill_doc = bson_convert(copy.deepcopy(utilbill_doc))
+        self.utilbills_collection.save(utilbill_doc)
 
     def delete_reebill(self, account, sequence, version):
         self.reebills_collection.remove({

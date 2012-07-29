@@ -346,25 +346,33 @@ port = 27017
             # make it have 2 services, 1 suspended
             # (create electric bill by duplicating gas bill)
             electric_bill = example_data.get_utilbill_dict('99999')
-            electric_bill['service'] = 'electric'
+            electric_bill['_id']['service'] = 'electric'
+            self.reebill_dao._save_utilbill(electric_bill)
             # TODO it's bad to directly modify reebill_dict
-            bill1.reebill_dict['utilbills'].append(electric_bill)
+            bill1.reebill_dict['utilbills'].append({
+                'service': 'electric',
+                'utility': electric_bill['_id']['utility'],
+                'start': electric_bill['_id']['start'],
+                'end': electric_bill['_id']['end'],
+            })
+            bill1._utilbills.append(electric_bill)
             bill1.suspend_service('electric')
             self.assertEquals(['electric'], bill1.suspended_services)
 
             # save reebill in MySQL and Mongo
             self.state_db.new_rebill(session, bill1.account, bill1.sequence)
             self.reebill_dao.save_reebill(bill1)
+            import ipdb; ipdb.set_trace()
 
             # save utilbills in MySQL
             self.state_db.record_utilbill_in_database(session, bill1.account,
-                    bill1.reebill_dict['utilbills'][0]['service'],
-                    bill1.reebill_dict['utilbills'][0]['_id']['start'],
-                    bill1.reebill_dict['utilbills'][0]['_id']['end'], date.today())
+                    bill1._utilbills[0]['_id']['service'],
+                    bill1._utilbills[0]['_id']['start'],
+                    bill1._utilbills[0]['_id']['end'], date.today())
             self.state_db.record_utilbill_in_database(session, bill1.account,
-                    bill1.reebill_dict['utilbills'][1]['service'],
-                    bill1.reebill_dict['utilbills'][1]['_id']['start'],
-                    bill1.reebill_dict['utilbills'][1]['_id']['end'], date.today())
+                    bill1._utilbills[1]['_id']['service'],
+                    bill1._utilbills[1]['_id']['start'],
+                    bill1._utilbills[1]['_id']['end'], date.today())
 
             self.process.attach_utilbills(session, bill1.account, bill1.sequence)
 
@@ -790,7 +798,6 @@ port = 27017
             four.ree_charges = 100
             self.reebill_dao.save_reebill(zero)
             self.reebill_dao.save_reebill(one)
-            import ipdb; ipdb.set_trace()
             self.reebill_dao.save_reebill(two)
             self.reebill_dao.save_reebill(three)
             self.reebill_dao.save_reebill(four)
