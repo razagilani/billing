@@ -506,7 +506,10 @@ def get_reebill(account, sequence, version=0):
     reebill_dict['_id']['version'] = version
     u = get_utilbill_dict('account')
     u['_id']['account'] = account
-    reebill_dict['utilbills'] = [u['_id']]
+    # force reebill's utilbill section to match the utilbill document
+    for ub_reference in reebill_dict['utilbills']:
+        ub_reference.update(subdict(u['_id'], ['service',
+            'utility', 'start', 'end']))
     return MongoReebill(deep_map(float_to_decimal, reebill_dict),
             [copy.deepcopy(deep_map(float_to_decimal, u))])
 

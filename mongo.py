@@ -777,7 +777,7 @@ class MongoReebill(object):
 
         # merge "shadow registers" into the meters to replicate the old reebill
         # document structure
-        shadow_registers = self.reebill_dict['shadow_registers']
+        shadow_registers = self.shadow_registers(service_name)
         for sr in shadow_registers:
             matching_meter = [m for m in meters if m['identifier'] ==
                     sr['identifier']]
