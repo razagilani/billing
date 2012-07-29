@@ -682,7 +682,6 @@ class Process(object):
             # can tell this line of code has no effect)
             reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
 
-
             # hypothetical charges
 
             # "re-load rate structure" (doesn't this clear out all the changes above?)
