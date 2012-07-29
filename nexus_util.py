@@ -7,7 +7,7 @@ import dictutils
 
 class NexusUtil(object):
 
-    def __init__(self, host = "nexus"):
+    def __init__(self, host):
         super(NexusUtil,self).__init__()
         self.host = host
 
