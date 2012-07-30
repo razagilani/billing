@@ -54,23 +54,6 @@ def make_atsite_test_csv(start_date, end_date, csv_file):
 
 class FetchTest(unittest.TestCase):
     def setUp(self):
-        ## clear out database
-        #mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        #c = mysql_connection.cursor()
-        #c.execute("delete from payment")
-        #c.execute("delete from utilbill")
-        #c.execute("delete from rebill")
-        #c.execute("delete from customer")
-        #mysql_connection.commit()
-
-        ## insert one customer (not relying on StateDB)
-        #c = mysql_connection.cursor()
-        #c.execute('''insert into customer
-                #(name, account, discountrate, latechargerate) values
-                #('Test Customer', 99999, .12, .34)''')
-        #mysql_connection.commit()
-
-        # NOTE real (dev) databases, not test database
         sqlalchemy.orm.clear_mappers()
         self.state_db = state.StateDB(**{
             'user': 'dev',
