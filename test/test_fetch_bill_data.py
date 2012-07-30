@@ -5,9 +5,11 @@ import unittest
 import csv
 from datetime import date
 from StringIO import StringIO
-import billing.processing.fetch_bill_data as fbd
 from datetime import date, datetime, timedelta
+import sqlalchemy
+import billing.processing.fetch_bill_data as fbd
 from billing import dateutils, mongo
+from billing.processing import state
 from decimal import Decimal
 import pprint
 pp = pprint.PrettyPrinter().pprint
@@ -49,7 +51,14 @@ def make_atsite_test_csv(start_date, end_date, csv_file):
 
 class FetchTest(unittest.TestCase):
     def setUp(self):
-        self.reebill_dao = mongo.ReebillDAO({
+        sqlalchemy.orm.clear_mappers()
+        state_db = state.StateDB(**{
+            'host': 'localhost',
+            'database': 'skyline_dev',
+            'user': 'dev',
+            'password': 'dev',
+        })
+        self.reebill_dao = mongo.ReebillDAO(state_db, **{
             'billpath': '/db-dev/skyline/bills/',
             'database': 'skyline',
             'utilitybillpath': '/db-dev/skyline/utilitybills/',
@@ -154,8 +163,8 @@ class FetchTest(unittest.TestCase):
         reebill = self.reebill_dao.load_reebill('10002', 21)
 
         # these are the dates i expect that bill to have
-        assert reebill.period_begin == date(2011,11,10)
-        assert reebill.period_end == date(2011,12,12)
+        assert reebill.period_begin == date(2011,10,13)
+        assert reebill.period_end == date(2011,11,10)
 
         # generate example csv file whose time range exactly matches the bill
         # period
