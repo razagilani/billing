@@ -35,7 +35,7 @@ def get_external_utilbills(reebill):
             'meters': [
                 dict_merge(meter, {
                     'registers': [subdict(r, ['shadow'], invert=True) for r
-                            in meter['registers'] if r['shadow']]
+                            in meter['registers'] if not r['shadow']]
                 }, overwrite=True)
             for meter in utilbill['meters']],
         }
@@ -60,7 +60,7 @@ def get_internal_utilbills(reebill):
             # all shadow registers in a flat list, not in a meter
             'shadow_registers': reduce(operator.add,
                 [[subdict(r, ['shadow'], invert=True) for r in
-                        meter['registers'] if not r['shadow']]
+                        meter['registers'] if r['shadow']]
                 for meter in utilbill['meters']]
             ),
         }
