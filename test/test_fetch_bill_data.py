@@ -192,17 +192,19 @@ class FetchTest(unittest.TestCase):
 
 
     def test_fetch_interval_meter_data_with_meter(self):
-        # test with a specific meter. here's a bill with 2 meters, 1 of which
-        # contains shadow registers and the other of which does not. (currently
-        # all customers have exactly 1 shadowed meter). putting energy into the
-        # shadow registers of that specific meter is the same as putting it
-        # into all shadowed meters.
+        # test with a specific meter. here's a bill with 2 meters, only 1 of
+        # which contains shadow registers. (currently all customers have
+        # exactly 1 shadowed meter.) putting energy into the shadow registers
+        # of that specific meter is the same as putting it into all shadowed
+        # meters.
         reebill = self.reebill_dao.load_reebill('10004', 15)
         assert reebill.period_begin == date(2011,6,6)
         assert reebill.period_end == date(2011,7,6)
-        meters = reduce(lambda x,y:x+y, [reebill.meters_for_service(s) for s in reebill.services], [])
+        # get all meters for all services in the reebill
+        meters = reduce(lambda x,y:x+y, [reebill.meters_for_service(s) for s in
+                reebill.services], [])
 
-        # should have 2 meters with the identifiers shown
+        # there should be 2 meters with the identifiers shown
         assert len(meters) == 2
         assert len([m for m in meters if m['identifier'] == '028702956']) == 1
         assert len([m for m in meters if m['identifier'] == '027870434']) == 1
@@ -210,8 +212,8 @@ class FetchTest(unittest.TestCase):
         meter2 = [m for m in meters if m['identifier'] == '027870434'][0]
 
         # only the second contains shadow registers
-        shadow_registers = [r for r in meter1['registers'] +
-                meter2['registers'] if r['shadow'] is True]
+        shadow_registers = reduce(lambda x,y:x+y, [reebill.shadow_registers(s)
+                for s in reebill.services], [])
         assert len(shadow_registers) == 1
         assert [r for r in shadow_registers if r['identifier'] == '028702956'] == []
         assert [r for r in shadow_registers if r['identifier'] == '027870434'] != []

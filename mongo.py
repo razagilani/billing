@@ -752,6 +752,41 @@ class MongoReebill(object):
                 external_utilbill['_id']['start'] = period[0]
                 external_utilbill['_id']['end'] = period[1]
 
+    def meter_read_dates_for_service(self, service):
+        '''Returns (prior_read_date, present_read_date) of the shadowed meter
+        in the first utility bill found whose service is 'service_name'. (There
+        should only be one utility bill for the given service, and only one
+        register in one meter that has a corresponding shadow register in the
+        reebill.)'''
+        internal_utilbill = next(u for u in self.reebill_dict['utilbills'] if
+                u['service'] == service)
+        external_utilbill = next(u for u in self._utilbills if
+                u['_id']['service'] == service)
+        for shadow_register in internal_utilbill['shadow_registers']:
+            for meter in external_utilbill['meters']:
+                for actual_register in meter['registers']:
+                    if actual_register['identifier'] == shadow_register['identifier']:
+                        return meter['prior_read_date'], meter['present_read_date']
+        raise Exception(('Utility bill for service "%s" has no meter '
+                'containing a register whose identifier matches that of '
+                'a shadow register') % service)
+
+
+        return utilbill['prior_read_date']
+        date_string_pairs = [
+            (
+                u.get('start', None),
+                u.get('end', None),
+            )  for u in self.reebill_dict['utilbills'] if u['service'] == service_name
+        ]
+        if date_string_pairs == []:
+            raise Exception('No utilbills for service "%s"' % service_name)
+        if len(date_string_pairs) > 1:
+            raise Exception('Multiple utilbills for service "%s"' % service_name)
+        start, end = date_string_pairs[0]
+
+        # remember, mongo stores datetimes, but we only wish to treat dates here
+        return (start, end)
     @property
     def utilbill_periods(self):
         '''Return a dictionary whose keys are service and values are the
@@ -965,14 +1000,29 @@ class MongoReebill(object):
         return result
 
     def set_shadow_register_quantity(self, identifier, quantity):
-        '''Sets the value 'quantity' in the first register subdictionary whose
-        identifier is 'identifier' to 'quantity'. Raises an exception if no
-        register with that identified is found.'''
+        '''Sets the value for the key "quantity" in the first shadow register
+        found whose identifier is 'identifier' to 'quantity' (assumed to be in
+        BTU). Raises an exception if no register with that identifier is
+        found.'''
+        # find the register and set its quanitity
         for utilbill in self.reebill_dict['utilbills']:
-            for meter in utilbill['meters']:
-                for register in meter['registers']:
-                    if register['identifier'] == identifier:
-                        register['quantity'] = quantity
+            for register in utilbill['shadow_registers']:
+                if register['identifier'] == identifier:
+                    # convert units
+                    if register['quantity_units'].lower() == 'kwh':
+                        quantity /= Decimal('3412.14')
+                    elif register['quantity_units'].lower() == 'therms':
+                        quantity /= Decimal('100000.0')
+                    elif register['quantity_units'].lower() == 'ccf':
+                        # TODO 28247371: this is an unfair conversion
+                        quantity /= Decimal('100000.0')
+                    else:
+                        raise Exception('unknown energy unit %s' %
+                                register['quantity_units'])
+                    # set the quantity
+                    register['quantity'] = quantity
+                    return
+        raise Exception('No register found with identifier "%s"' % quantity)
 
     def utility_name_for_service(self, service_name):
         for u in self.reebill_dict['utilbills']:
