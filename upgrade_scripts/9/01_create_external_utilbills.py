@@ -3,6 +3,7 @@ import pprint
 from billing.dictutils import dict_merge, subdict
 import sys
 import operator
+import traceback
 
 pp = pprint.PrettyPrinter().pprint
 
@@ -76,9 +77,12 @@ for reebill in reebills_col.find():#{'_id.account':'10023', '_id.sequence':5}):
         # replace utilbills list in reebill with list of internal ones
         reebill['utilbills'] = get_internal_utilbills(reebill)
         reebills_col.save(reebill)
+    except KeyError as e:
+        print >> sys.stderr, reebill['_id']['account'], \
+                reebill['_id']['sequence'], reebill['_id']['version'], 'missing key:', e
     except Exception as e:
         print >> sys.stderr, reebill['_id']['account'], \
-                reebill['_id']['sequence'], reebill['_id']['version'], 'ERROR:', e
+                reebill['_id']['sequence'], reebill['_id']['version'], 'ERROR:', traceback.format_exc()
     else:
         print reebill['_id']['account'], reebill['_id']['sequence'], \
                 reebill['_id']['version']
