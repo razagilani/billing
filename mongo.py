@@ -544,7 +544,7 @@ class MongoReebill(object):
         service is 'service_name'. There's not supposed to be more than one
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
-        totals = [ub['total'] for ub in self._utilbills if ub['service'] ==
+        totals = [ub['total'] for ub in self._utilbills if ub['_id']['service'] ==
                 service_name]
         if totals == []:
             raise Exception('No utilbills found for service "%s"' %
@@ -556,8 +556,8 @@ class MongoReebill(object):
 
     def set_actual_total_for_service(self, service_name, new_total):
         for ub in self._utilbills:
-            if ub['service'] == service_name:
-                ub['actual_total'] = new_total
+            if ub['_id']['service'] == service_name:
+                ub['total'] = new_total
 
     def ree_value_for_service(self, service_name):
         '''Returns the total of 'ree_value' (renewable energy value offsetting
@@ -745,8 +745,8 @@ class MongoReebill(object):
                         #u['_id']['end'] == period[1])
 
                 # update reference to utilbill document
-                internal_utilbill['period_begin'] = period[0]
-                internal_utilbill['period_end'] = period[1]
+                internal_utilbill['start'] = period[0]
+                internal_utilbill['end'] = period[1]
 
                 # update utilbill document itself
                 external_utilbill['_id']['start'] = period[0]
