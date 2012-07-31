@@ -728,18 +728,21 @@ class MongoReebill(object):
         # remember, mongo stores datetimes, but we only wish to treat dates here
         return (start, end)
 
-    def set_utilbill_period_for_service(self, service_name, period):
-        if service_name not in self.services:
-            raise Exception('No such service "%s"' % service_name)
+    def set_utilbill_period_for_service(self, service, period):
+        '''Changes the period dates of the first utility bill associated with
+        this reebill whose service is 'service'.'''
+        if service not in self.services:
+            raise Exception('No such service "%s"' % service)
 
         if len(period) != 2:
             raise Exception('Utilbill period malformed "%s"' % period)
         
         for internal_utilbill in self.reebill_dict['utilbills']:
-            if internal_utilbill['service'] == service_name:
-                external_utilbill = [u for u in self._utilbills if u['service']
-                        == service and u['start'] == period[0] and u['end'] ==
-                        period[1]][0]
+            if internal_utilbill['service'] == service:
+                external_utilbill = next(u for u in self._utilbills if
+                        u['_id']['service'] == service)
+                        #u['_id']['start'] == period[0] and
+                        #u['_id']['end'] == period[1])
 
                 # update reference to utilbill document
                 internal_utilbill['period_begin'] = period[0]
