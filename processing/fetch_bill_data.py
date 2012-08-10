@@ -26,20 +26,23 @@ def fetch_oltp_data(splinter, olap_id, reebill, verbose=False):
     '''Update quantities of shadow registers in reebill with Skyline-generated
     energy from OLTP.'''
     inst_obj = splinter.get_install_obj_for(olap_id)
+    # get hourly time-series of energy-sold values during the reebill's meter
+    # read period (NOT the same as utililty bill period or reebill period,
+    # though they almost always coincide)
+    # TODO support multi-service customers
+    start, end = reebill.meter_read_period(reebill.services[0])
     print "*************** entering skyliner code"
     timeseries = inst_obj.get_billable_energy_timeseries(
-            date_to_datetime(reebill.period_begin),
-            date_to_datetime(reebill.period_end))
+            date_to_datetime(start), date_to_datetime(end))
     print "*************** got hourly time series: %s hours starting at %s, ending at %s" % (len(timeseries), timeseries[0][0], timeseries[-1][0])
     def energy_function(day, hourrange):
         # indices of relevant hours in 'timeseries' are number of hours since
         # timeseries start for each hour in 'hourrange' on 'day' (hourrange is
         # a pair of inclusive hour numbers in [0,23])
-        indices = [timedelta_in_hours(date_to_datetime(day) -
-                timeseries[0][0]) + hour for hour in range(hourrange[0],
-                hourrange[1]+1)]
-        [timeseries[i] for i in indices]
-        return 0
+        first_idx = timedelta_in_hours((date_to_datetime(day) +
+                timedelta(hours=hourrange[0])) - timeseries[0][0])
+        last_idx = first_idx + hourrange[1] - hourrange[0]
+        return sum(timeseries[i][1] for i in range(first_idx, last_idx + 1))
     usage_data_to_virtual_register(reebill, energy_function)
     print "*************** bind REE done"
 
