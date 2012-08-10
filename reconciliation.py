@@ -24,6 +24,7 @@ from skyliner import sky_handlers
 from billing.nexus_util import NexusUtil
 from billing import json_util
 from billing import dateutils
+from billing.dateutils import date_to_datetime
 
 OUTPUT_FILE_NAME = 'reconciliation_report.json'
 LOG_FILE_NAME = 'reconciliation.log'
@@ -48,8 +49,7 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
     state_db = state.StateDB(**statedb_config)
     reebill_dao = mongo.ReebillDAO(state_db, billdb_config['host'], billdb_config['port'], billdb_config['database'])
     session = state_db.session()
-    splinter = Splinter(splinter_config['url'], splinter_config['host'],
-            splinter_config['db'])
+    splinter = Splinter(splinter_config['url'], **splinter_config)
     monguru = Monguru(monguru_config['host'], monguru_config['db'])
 
     # get account numbers of all customers in sorted order
@@ -102,8 +102,9 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
             if not skip_oltp:
                 try:
                     olap_btu = sum(sample[1] for sample in
-                            install.get_billable_energy_timeseries(start_date,
-                            reebill.period_end))
+                            install.get_billable_energy_timeseries(
+                            date_to_datetime(start_date),
+                            date_to_datetime(reebill.period_end)))
                     oltp_therms = oltp_btu / 100000
                     
                 except Exception as e:
@@ -196,8 +197,10 @@ def main():
     }
     splinter_config = {
         'url': 'http://duino-drop.appspot.com/',
-        'host': args.host,
-        'db': args.olapdb
+        'skykit_host': args.host,
+        'skykit_db': args.olapdb,
+        'olap_cache_host': args.host,
+        'olap_cache_db': args.olapdb,
     }
     monguru_config = {
         'host': args.host,
