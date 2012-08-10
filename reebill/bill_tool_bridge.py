@@ -38,6 +38,7 @@ from billing.users import UserDAO, User
 from billing import calendar_reports
 from billing.estimated_revenue import EstimatedRevenue
 from billing.session_contextmanager import DBSession
+from billing.exceptions import Unauthenticated
 
 # collection names: all collections are now hard-coded. maybe this should go in
 # some kind of documentation when we have documentation...
@@ -80,9 +81,6 @@ def random_wait(target):
         time.sleep(t)
         return target(*args, **kwargs)
     return random_wait_wrapper
-
-class Unauthenticated(Exception):
-    pass
 
 def authenticate_ajax(method):
     '''Wrapper for AJAX-request-handling methods that require a user to be
@@ -283,7 +281,7 @@ class BillToolBridge:
         self.nexus_util = NexusUtil()
 
         # load users database
-        self.user_dao = UserDAO(dict(self.config.items('usersdb')))
+        self.user_dao = UserDAO(**dict(self.config.items('usersdb')))
 
         # create an instance representing the database
         self.statedb_config = dict(self.config.items("statedb"))
@@ -640,26 +638,11 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
             new_reebill = self.process.roll_bill(session, reebill)
+            print '******', new_reebill.sequence
             self.reebill_dao.save_reebill(new_reebill)
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
                     account, sequence)
             return self.dumps({'success': True})
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def pay(self, account, sequence, **args):
-        with DBSession(self.state_db) as session:
-            # why is session initialized and reassigned within context manager?
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-
-            self.process.pay_bill(session, reebill)
-            self.reebill_dao.save_reebill(reebill)
-            return self.dumps({'success': True})
-
 
     @cherrypy.expose
     @random_wait
@@ -726,42 +709,22 @@ class BillToolBridge:
     @json_exception
     # TODO clean this up and move it out of BillToolBridge
     # https://www.pivotaltracker.com/story/show/31404685
-    def bindrs(self, account, sequence, **args):
+    def compute_bill(self, account, sequence, **args):
         '''Handler for the front end's "Compute Bill" operation.'''
         if not account or not sequence:
             raise ValueError("Bad Parameter Value")
         sequence = int(sequence)
         with DBSession(self.state_db) as session:
-
-            #reebill = self.state_db.get_reebill(session, account, sequence)
-            #descendent_reebills = [reebill]
-            #for reebill in descendent_reebills:
-                #mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
-                #prior_mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, int(reebill.sequence)-1)
-                #self.process.set_reebill_period(mongo_reebill)
-
-                ## recalculate the bill's 'payment_received'
-                #self.process.pay_bill(session, mongo_reebill)
-
-                ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
-                #self.reebill_dao.save_reebill(mongo_reebill)
-                #mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
-
-                #self.process.sum_bill(session, prior_mongo_reebill, mongo_reebill)
-
-                ## TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
-                #self.reebill_dao.save_reebill(mongo_reebill)
-                #mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
-                #self.process.calculate_statistics(prior_mongo_reebill, mongo_reebill)
-
-                #self.reebill_dao.save_reebill(mongo_reebill)
-
-            mongo_reebill = self.reebill_dao.load_reebill(account, sequence,
-                    version='max')
-            mongo_predecessor = self.reebill_dao.load_reebill(account,
-                    sequence - 1)
-            self.process.sum_bill(session, mongo_predecessor, mongo_reebill)
-            self.reebill_dao.save_reebill(mongo_reebill)
+            for sequence in range(sequence, self.state_db.last_sequence(session,
+                    account) + 1):
+                # use version 0 of the predecessor to show the real account
+                # history (prior balance, payment received, balance forward)
+                mongo_reebill = self.reebill_dao.load_reebill(account,
+                        sequence, version='max')
+                mongo_predecessor = self.reebill_dao.load_reebill(account,
+                        sequence - 1, version=0)
+                self.process.compute_bill(session, mongo_predecessor, mongo_reebill)
+                self.reebill_dao.save_reebill(mongo_reebill)
             return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -837,7 +800,8 @@ class BillToolBridge:
 
             # apply all corrections to earliest un-issued bill, then issue
             # that and all other un-issued bills
-            self.process.apply_corrections(session, account, sequences[0])
+            self.process.issue_corrections(session, account, sequences[0])
+
         # issue all unissued reebills
         for unissued_sequence in sequences:
             self.process.issue(session, account, unissued_sequence)
@@ -904,17 +868,20 @@ class BillToolBridge:
                 # one unissued bill (about to be issued) and the client didn't
                 # specify corrections to apply, complain (client will show
                 # confirmation message)
-                unissued_corrections = self.process.get_unissued_correction_sequences(
+                unissued_corrections = self.process.get_unissued_corrections(
                         session, account)
+                unissued_correction_sequences = [c[0] for c in unissued_corrections]
+                unissued_correction_adjustment = sum(c[2] for c in unissued_corrections)
                 if len(unissued_corrections) > 0 and len(unissued_sequences) > 0 \
                         and 'corrections' not in kwargs:
                     return self.dumps({'success': False,
-                            'corrections': unissued_corrections})
+                        'corrections': unissued_correction_sequences,
+                        'adjustment': unissued_correction_adjustment })
                 if 'corrections_to_apply' in locals():
                     # make sure corrections_to_apply is all of them (currently,
                     # client code guarantees this)
                     if not sorted(corrections_to_apply) == sorted(
-                            unissued_corrections):
+                            unissued_correction_sequences):
                         raise ValueError('All corrections must be issued.')
                 self.issue_reebills(session, account, unissued_sequences,
                         apply_corrections=('corrections_to_apply' in locals()))
@@ -1815,15 +1782,25 @@ class BillToolBridge:
                     try: row_dict['balance_due'] = mongo_reebill.balance_due
                     except: pass
 
+                    # human-readable description of correction state
                     version = self.state_db.max_version(session, account, reebill.sequence)
                     issued = self.state_db.is_issued(session, account, reebill.sequence)
                     if version > 0:
-                        row_dict['corrections'] = str(version) + ('' if issued else ' (not issued)')
+                        if issued:
+                            row_dict['corrections'] = str(version)
+                        else:
+                            row_dict['corrections'] = '#%s not issued' % version
                     else:
-                        row_dict['corrections'] = '-' if issued else '(not issued)'
+                        row_dict['corrections'] = '-' if issued else '(never issued)'
 
+                    # version as machine-readable invisible column
+                    row_dict['max_version'] = version
+
+                    # other invisible columns
                     row_dict['total_error'] = self.process.get_total_error(
                             session, account, reebill.sequence)
+                    row_dict['issued'] = self.state_db.is_issued(session,
+                            account, reebill.sequence)
 
                     rows.append(row_dict)
                 return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
@@ -1835,31 +1812,64 @@ class BillToolBridge:
                 return self.dumps({'success':False})
 
             elif xaction == "destroy":
-                sequences = json.loads(kwargs["rows"])
-                # single edit comes in not in a list
-                if type(sequences) is int: sequences = [sequences]
-                for sequence in sequences:
-                    deleted_version = self.process.delete_reebill(session,
-                            account, sequence)
-                    journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
-                            account, sequence, deleted_version)
-                return self.dumps({'success': True})
+                # we do not delete reebills through reebillStore's remove()
+                # method, because Ext believes in a 1-1 mapping between grid
+                # rows and things, but "deleting" a reebill does not
+                # necessarily mean that a row disappears from the grid.
+                raise ValueError("Use delete_reebill instead!")
+
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def delete_reebill(self, account, sequences, **kwargs):
+        '''Delete the unissued version of each reebill given, assuming that one
+        exists.'''
+        if type(sequences) is list:
+            sequences = map(int, sequences)
+        else:
+            sequences = [int(sequences)]
+        with DBSession(self.state_db) as session:
+            last_sequence = self.state_db.last_sequence(session, account)
+            for sequence in sequences:
+                # forbid deletion if predecessor has an unissued version (note
+                # that client is allowed to delete a range of bills at once, as
+                # long as they're in sequence order)
+                max_version = self.state_db.max_version(session, account, sequence)
+                issued = self.state_db.is_issued(session, account, sequence - 1)
+                if sequence != 1 and not (sequence == last_sequence and
+                        max_version == 0) and not issued:
+                    raise ValueError(("Can't delete a reebill version whose "
+                            "predecessor is unissued, unless its version is 0 "
+                            "and its sequence is the last one. Delete a "
+                            "series of unissued bills in sequence order."))
+                deleted_version = self.process.delete_reebill(session,
+                        account, sequence)
+            
+            # deletions must all have succeeded, so journal them
+            for sequence in sequences:
+                journal.ReeBillDeletedEvent.save_instance(cherrypy.session['user'],
+                        account, sequence, deleted_version)
+        return self.dumps({'success': True})
 
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
     @json_exception
     def new_reebill_version(self, account, sequence, **args):
-        '''Creates a new version of the given reebill, if it's not issued.'''
+        '''Creates a new version of the given reebill and all its successors,
+        if it's not issued.'''
         sequence = int(sequence)
         with DBSession(self.state_db) as session:
             # Process will complain if new version is not issued
-            new_reebill = self.process.new_version(session, account, sequence)
-            journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
-                    account, sequence, new_reebill.version)
-            session.commit()
-        return self.dumps({'success': True, 'new_version':
-            new_reebill.version})
+            new_reebills = self.process.new_versions(session, account, sequence)
+            for new_reebill in new_reebills:
+                journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
+                        account, new_reebill.sequence, new_reebill.version)
+            # client doesn't do anything with the result (yet)
+            return self.dumps({'success': True, 'sequences': [r.sequence for r in
+                    new_reebills]})
 
     ################
     # Handle addresses
@@ -2542,7 +2552,7 @@ class BillToolBridge:
                 # TODO move out of BillToolBridge, make into its own function
                 # so it's testable
 
-                # only the start and end dates can be updated.
+                # only the dates and service can be updated.
                 # parse data from the client: for some reason it returns single
                 # utility bill row in a json string called "rows"
                 rows = ju.loads(kwargs['rows'])
@@ -2551,6 +2561,7 @@ class BillToolBridge:
                         dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
                 new_period_end = datetime.strptime(rows['period_end'],
                         dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
+                new_service = rows['service']
 
                 # check that new dates are reasonable
                 self.validate_utilbill_period(new_period_start, new_period_end)
@@ -2588,6 +2599,9 @@ class BillToolBridge:
                 # cover gaps that no longer exist
                 self.process.state_db.trim_hypothetical_utilbills(session,
                         customer.account, utilbill.service)
+
+                # update service in MySQL
+                utilbill.service = service
 
                 return self.dumps({'success': True})
             elif xaction == 'create':

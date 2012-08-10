@@ -1,20 +1,18 @@
 #!/usr/bin/python
-import sys
-import yaml
+from datetime import datetime
+from decimal import Decimal
+import copy
+import inspect
 import jinja2
 import os
-from decimal import Decimal
-import traceback
-import inspect
-import copy
-
 import pymongo
+import sys
+import traceback
 import uuid
-
-from billing.mongo_utils import bson_convert, python_convert
 import yaml
-
-from datetime import datetime
+import yaml
+from billing.mongo_utils import bson_convert, python_convert
+from billing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1)
@@ -222,7 +220,6 @@ class RateStructureDAO(object):
         }
         cprs = self.collection.find_one(query)
         if cprs is None:
-            import ipdb; ipdb.set_trace()
             raise ValueError('Could not find CPRS: query was %s' % query)
         return cprs
 
@@ -713,24 +710,3 @@ class RateStructureItem(object):
             s += '\n'
         return s
 
-class RSIError(Exception):
-    """Base class for exceptions in this module."""
-    def __init__(self, descriptor, msg):
-        self.descriptor = descriptor
-        self.msg = msg
-    def __str__(self):
-        return "%s %s" % (self.descriptor, self.msg)
-
-# errors that occur during evaluation of rate structure "quantity" expressions
-
-class RecursionError(RSIError):
-    pass
-
-class NoPropertyError(RSIError):
-    pass
-
-class NoSuchRSIError(RSIError):
-    pass
-
-class BadExpressionError(RSIError):
-    pass
