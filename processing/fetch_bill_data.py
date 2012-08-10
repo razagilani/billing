@@ -42,8 +42,8 @@ def fetch_oltp_data(splinter, olap_id, reebill, verbose=False):
         first_idx = timedelta_in_hours((date_to_datetime(day) +
                 timedelta(hours=hourrange[0])) - timeseries[0][0])
         last_idx = first_idx + hourrange[1] - hourrange[0]
-        return Decimal(sum(timeseries[i][1]
-                for i in range(first_idx, last_idx + 1)))
+        return Decimal(str(sum(timeseries[i][1]
+                for i in range(first_idx, last_idx + 1))))
     usage_data_to_virtual_register(reebill, energy_function)
     print "*************** bind REE done"
 
