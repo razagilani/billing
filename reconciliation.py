@@ -101,8 +101,8 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
             # error-prone than OLAP)
             if not skip_oltp:
                 try:
-                    oltp_btu = sum(install.get_billable_energy(day, [0,23]) for
-                            day in dateutils.date_generator(start_date,
+                    olap_btu = sum(sample[1] for sample in
+                            install.get_billable_energy_timeseries(start_date,
                             reebill.period_end))
                     oltp_therms = oltp_btu / 100000
                     
