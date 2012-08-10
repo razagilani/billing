@@ -46,6 +46,7 @@ The AWS Linux AMI is based on Fedora and uses yum.
 Update the host
     sudo yum update
 Obtain pip
+    activate virtualenv
     sudo easy_install pip
 Install gcc and python heads so packages like pymongo and numpy can compile C extensions
     sudo yum install python-devel gcc
@@ -54,9 +55,8 @@ Install the following packages with sudo pip install [package]
     cherrypy
     jinja2
     pymongo
-    mongokit
-    fabulous
-    code
+    fabulous (unused?)
+    code (pip could not find it)
     sqlalchemy
     py-bcrypt
     argparse
@@ -65,15 +65,15 @@ Install the following packages with sudo pip install [package]
     simplejson
     MySQL-Python
     xlwt
-    pyyaml
-    ordereddict
+    pyyaml (unused?)
+    ordereddict (for 2.6 installs only)
     mongoengine
 
 For Rendering Images
     sudo yum install ImageMagick
     sudo yum install html2ps
     sudo yum install poppler-utils (for pdftoppm)
-    sudo yum install pdftk
+    sudo yum install pdftk (not found for linux aws ami)
     
 
 Chart Director 'pychartdir'
@@ -81,31 +81,121 @@ Chart Director 'pychartdir'
         tar xvf chartdir_python_linux.tar
         mv ChartDirector /usr/lib/python2.6/site-packages
         Then add python path to WSGIDaemonProcess directive in Apache2 /usr/lib/python2.6/site-packages/ChartDirector/lib
+    Fonts have to be copied?
+
 
 MySQL
 
-    See /docs/host-setup.txt for details on installing MySQL
 
-    grant all on skyline.* to 'root'@'%.local' identified by '[password]';
+    If pip install MySQL-Python fails with the following error, mysql_config is not available.
+    Install it by: sudo apt-get install libmysqlclient-dev
 
-    create database skyline_[env]
-    use skyline_[env]
+            $ pip install MySQL-Python
+            Downloading/unpacking MySQL-Python
+              Downloading MySQL-python-1.2.3.tar.gz (70Kb): 70Kb downloaded
+              Running setup.py egg_info for package MySQL-Python
+                sh: mysql_config: not found
+                Traceback (most recent call last):
+                  File "<string>", line 14, in <module>
+                  File "/home/randrews/.virtualenvs/reebill/build/MySQL-Python/setup.py", line 15, in <module>
+                    metadata, options = get_config()
+                  File "setup_posix.py", line 43, in get_config
+                    libs = mysql_config("libs_r")
+                  File "setup_posix.py", line 24, in mysql_config
+                    raise EnvironmentError("%s not found" % (mysql_config.path,))
+                EnvironmentError: mysql_config not found
+                Complete output from command python setup.py egg_info:
+                sh: mysql_config: not found
 
-    create user 'reebill'@'%' identified by '[password]'
-    # needs to be done to allow connections from localhost
-    create user 'reebill'@'localhost' identified by '[password]';
-    # for connecting from anywhere
-    #grant all on skyline.* to 'reebill'@'%' identified by '[password]';
-    # for connecting from localhost
-    grant all on skyline.* to 'reebill'@'localhost' identified by '[password]';
+            Traceback (most recent call last):
+
+              File "<string>", line 14, in <module>
+
+              File "/home/randrews/.virtualenvs/reebill/build/MySQL-Python/setup.py", line 15, in <module>
+
+                metadata, options = get_config()
+
+              File "setup_posix.py", line 43, in get_config
+
+                libs = mysql_config("libs_r")
+
+              File "setup_posix.py", line 24, in mysql_config
+
+                raise EnvironmentError("%s not found" % (mysql_config.path,))
+
+            EnvironmentError: mysql_config not found
+
+            ----------------------------------------
+            Command python setup.py egg_info failed with error code 1 in /home/randrews/.virtualenvs/reebill/build/MySQL-Python
+            Storing complete log in /home/randrews/.pip/pip.log
+
+    Configure MySQL Database for bill processing 
+
+        Set up a local instance of MySQL-Server and configure local accounts following host-setup.txt
+
+        So that an administrative user can run connect remotely - do this only for dev/stage
+        grant all on skyline.* to 'root'@'%.local' identified by '[password]';
+
+
+        Log in as database root user
+        mysql -uroot -p
+
+
+        create database skyline_[env]
+        use skyline_[env]
+
+
+        create user 'reebill-[env]'@'%' identified by '[password]'
+        (does this mean reebill-prod can connect from any host?
+        grant all on skyline_[env].* to 'reebill-[env]'@'%' identified by '[password]';
+
+        This worked on linux AMI version of MySQL
+        create user 'reebill-[env]'@'localhost' identified by '[password]'
+        grant all on skyline_[env].* to 'reebill-[env]'@'localhost' identified by '[password]';
+
+        Loading the database:
+
+        mysql -ureebill-[env] -p[password] -Dskyline-[env] < [workspace]/billing/db/processing/billdb.sql
+        - or -
+        restore from backup (must  be done as root for some reason)
+        mysql --verbose -uroot -p -Dskyline-[env] < ~/[date]billing_mysql.dmp
+
+        scp -i ~/Dropbox/Skyline-IT/ec2keys/tyrell-prod.pem /tmp/20120704reebill-prod.tar.z ec2-user@tyrell-prod.skylineinnovations.net:/tmp
+
+        For Development:
+
+        Install MySQL WorkBench
+            http://dev.mysql.com/downloads/workbench/5.2.html (deb available)
+            http://www.mysql.com/downloads/workbench/#downloads
+
+        How to create a development database
+            create user 'dev'@'10.0.0.%' identified by 'dev'
+            create database skyline_stage
+            grant all on skyline_dev.* to 'dev'@'10.0.0.%' identified by 'dev';
+            mysql --verbose -uroot -p -D skyline_dev < ~/20110606billing_mysql.dmp
+
+        See /docs/host-setup.txt for details on installing MySQL
+
+        grant all on skyline.* to 'root'@'%.local' identified by '[password]';
+
+        create database skyline_[env]
+        use skyline_[env]
+
+        create user 'reebill'@'%' identified by '[password]'
+        # needs to be done to allow connections from localhost
+        create user 'reebill'@'localhost' identified by '[password]';
+        # for connecting from anywhere
+        #grant all on skyline.* to 'reebill'@'%' identified by '[password]';
+        # for connecting from localhost
+        grant all on skyline.* to 'reebill'@'localhost' identified by '[password]';
 
 
 
-    Loading the database
-    --------------------
+        Loading the database
+        --------------------
 
-        # root has to create the schema because full privileged users do not have all the privileges to do so
-        mysql -uroot -p[password] -Dskyline < /var/local/reebill/billing/db/processing/billdb.sql
+            # root has to create the schema because full privileged users do not have all the privileges to do so
+            mysql -uroot -p[password] -Dskyline < /var/local/reebill/billing/db/processing/billdb.sql
 
 
 
