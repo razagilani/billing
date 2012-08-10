@@ -6,9 +6,12 @@ import copy
 import operator
 import pymongo
 import mongoengine
+import ConfigParser
+import os
+from operator import attrgetter
 from billing.dateutils import ISO_8601_DATE
-
-sys.stdout = sys.stderr
+from billing.processing.state import StateDB
+from billing.session_contextmanager import DBSession
 
 # list of event types proposed but not used yet:
 # ReeBillUsagePeriodUpdated
@@ -167,10 +170,14 @@ class UtilBillDeletedEvent(Event):
         return '%s %s utility bill deleted' % (self.account, self.service)
 
     def description(self):
-        return ('%s utility bill for service "%s" from %s to %s deleted, '
-                'moved to %s') % (self.account, self.service,
-                self.start_date.date(), self.end_date.date(),
-                self.deleted_path)
+        result = ('%s utility bill for service "%s" from %s to %s deleted') % (
+                self.account, self.service, self.start_date.date(),
+                self.end_date.date())
+        # not every deletion has a backup path (e.g. because there was never a
+        # file or it could not be found when it was supposed to be deleted)
+        if self.deleted_path is not None:
+            result += ', backed up at %s' % self.deleted_path
+        return result
 
     def name(self):
         return 'Utility bill deleted'
@@ -353,3 +360,26 @@ class NewReebillVersionEvent(VersionEvent):
     def name(self):
         return 'New version'
 
+def main():
+    config = ConfigParser.RawConfigParser()
+    config.read(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'reebill.cfg'))
+
+    journal_config = dict(config.items('journaldb'))
+    mongoengine.connect(journal_config['database'],
+            host=journal_config['host'], port=int(journal_config['port']),
+            alias='journal')
+    dao = JournalDAO()
+
+    #statedb_config = dict(config.items('statedb'))
+    #state_db = StateDB(**statedb_config)
+
+    #with DBSession(state_db) as session:
+        #for account in state_db.listAccounts(session):
+            #for entry in dao.load_entries(account):
+                #print str(entry)
+
+    for entry in sorted(Event.objects, key=attrgetter('date'), reverse=True):
+        print '%s %10s    %s' % (entry.date.strftime('%Y-%m-%d %I:%M:%S %p'), entry.user, entry)
+
+if __name__ == '__main__':
+    main()

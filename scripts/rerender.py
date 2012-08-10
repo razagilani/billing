@@ -5,6 +5,7 @@ import traceback
 from billing import mongo
 from billing.reebill import render
 from billing.processing import state
+from billing.session_contextmanager import DBSession
 
 billdb_config = {
     'billpath': '/db-dev/skyline/bills/',
@@ -24,25 +25,29 @@ renderer_config = {
     'temp_directory': '/tmp/reebill_rendering_files'
 }
 
-reebill_dao = mongo.ReebillDAO(billdb_config)
 state_db = state.StateDB(**statedb_config)
-renderer = render.ReebillRenderer(renderer_config, None)
+reebill_dao = mongo.ReebillDAO(state_db, **billdb_config)
 
-session = state_db.session()
-accounts = state_db.listAccounts(session)
+with DBSession(state_db) as session:
+    renderer = render.ReebillRenderer(renderer_config, state_db, reebill_dao,
+            None)
 
-for account in accounts:
-    sequences = state_db.listSequences(session, account)
-    for sequence in sequences:
-        print '%s-%s' % (account, sequence)
-        try:
-            reebill = reebill_dao.load_reebill(account, sequence)
-            renderer.render(
-                reebill, 
-                billdb_config["billpath"] + account,
-                "%.4d.pdf" % int(sequence),
-                "EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
-                False
-            )
-        except Exception as e:
-            print e, traceback.format_exc()
+    accounts = state_db.listAccounts(session)
+
+    for account in accounts:
+        sequences = state_db.listSequences(session, account)
+        for sequence in sequences:
+            print '%s-%s' % (account, sequence)
+            try:
+                reebill = reebill_dao.load_reebill(account, sequence)
+                renderer.render(
+                    session,
+                    reebill.account, 
+                    reebill.sequence,
+                    billdb_config["billpath"] + account,
+                    "%.4d.pdf" % int(sequence),
+                    "EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
+                    False
+                )
+            except Exception as e:
+                print e, traceback.format_exc()

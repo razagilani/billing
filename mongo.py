@@ -16,6 +16,7 @@ from billing.mongo_utils import bson_convert, python_convert
 from billing.dictutils import deep_map
 from billing.dateutils import date_to_datetime
 from billing.session_contextmanager import DBSession
+from billing.exceptions import NoSuchReeBillException, NoRateStructureError, NoUtilityNameError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1)
@@ -61,6 +62,7 @@ def check_issued(method):
     '''Decorator to evaluate the issued state.'''
     @functools.wraps(method)
     def wrapper(instance, *args, **kwargs):
+        # BTW this is not the right way to check if a bill is issued
         if 'issue_date' in instance.reebill_dict and instance.reebill_dict['issue_date'] is not None:
             raise Exception("ReeBill cannot be modified once isssued.")
         return method(instance, *args, **kwargs)
@@ -130,9 +132,6 @@ class MongoReebill(object):
             # copy the dict passed because we set it here as instance data and start
             # operating on that data. This destroys the reebill from whence it came
             self.reebill_dict = copy.copy(reebill.reebill_dict)
-
-            # increment sequence
-            self.sequence = reebill.sequence + 1
 
             # set start date of each utility bill in this reebill to the end date
             # of the previous utility bill for that service
@@ -402,8 +401,22 @@ class MongoReebill(object):
         self.reebill_dict['discount_rate'] = value
 
     @property
+    def total(self):
+        '''The sum of all charges on this bill that do not come from other
+        bills. (This includes the late charge, which depends on another bill
+        for its value but belongs to the bill on which it appears.) This total
+        is what should be used to calculate the adjustment produced by the
+        difference between two versions of a bill.'''
+        # if/when more charges are added (e.g. "value-added charges") they
+        # should be included here
+        return self.ree_charges + (self.late_charges if 'late_charges' in
+                self.reebill_dict else 0)
+
+    @property
     def balance_due(self):
-        '''Returns a Decimal.'''
+        '''Overall balance of the customer's account at the time this bill was
+        issued, including unpaid charges from previous bills. Returns a
+        Decimal.'''
         return self.reebill_dict['balance_due']
     @balance_due.setter
     def balance_due(self, value):
@@ -1118,9 +1131,6 @@ class MongoReebill(object):
                 ub[chargegroups] = new_chargegroups
 
 
-class NoSuchReeBillException(Exception):
-    pass
-
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
@@ -1199,8 +1209,8 @@ class ReebillDAO:
             raise ValueError('Unknown version specifier "%s"' % version)
 
         if mongo_doc is None:
-            raise NoSuchReeBillException(("No ReeBill found: query was %s")
-                    % (query))
+            raise NoSuchReeBillException(("No reebill found in %s: query was %s")
+                    % (self.collection, query))
 
         mongo_doc = deep_map(float_to_decimal, mongo_doc)
         mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
@@ -1321,7 +1331,3 @@ class ReebillDAO:
             return 0
         return MongoReebill(result).sequence
 
-class NoRateStructureError(Exception):
-    pass
-class NoUtilityNameError(Exception):
-    pass

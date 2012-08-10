@@ -5,9 +5,9 @@ from datetime import date, datetime, timedelta
 class TestCase(unittest.TestCase):
     '''Extra assert methods.'''
 
-    def assertDatetimesClose(self, d1, d2):
-        '''Asserts that datetimes d1 and d2 differ by less than 2 seconds.'''
-        self.assertLess(abs(d1 - d2), timedelta(seconds=10))
+    def assertDatetimesClose(self, d1, d2, seconds=10):
+        '''Asserts that datetimes d1 and d2 differ by less than 'seconds' seconds.'''
+        self.assertLess(abs(d1 - d2), timedelta(seconds=seconds))
 
     def assertDictMatch(self, d1, d2):
         '''Asserts that the two dictionaries are the same, up to str/unicode
