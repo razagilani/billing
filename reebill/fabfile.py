@@ -20,7 +20,7 @@ fabapi.env.roledefs = {
     }
 
 # how do keys get mapped to hosts? Works like magic.
-fabapi.env.key_filename = ['~/ec2keys/reebill-atsite.pem','~/ec2keys/tyrell-prod.pem']
+#fabapi.env.key_filename = ['~/ec2keys/reebill-atsite.pem','~/ec2keys/tyrell-prod.pem']
 
 root_dir = os.path.dirname(os.path.abspath(__file__))
 exclude_from = 'fabexcludes.txt'
