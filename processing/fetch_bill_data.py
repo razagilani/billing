@@ -25,8 +25,11 @@ def fetch_oltp_data(splinter, olap_id, reebill, verbose=False):
     '''Update quantities of shadow registers in reebill with Skyline-generated
     energy from OLTP.'''
     inst_obj = splinter.get_install_obj_for(olap_id)
-    energy_function = lambda day, hourrange: inst_obj.get_billable_energy(day,
-            hourrange, places=5)
+    timeseries = inst_obj.get_billable_energy_timeseries(reebill.period_begin,
+            reebill.period_end)
+    def energy_function(day, hourrange):
+        return [Decimal(timeseries[datetime(day.year, day.month, day.day,
+                hour)]) for hour in hourrange]
     usage_data_to_virtual_register(reebill, energy_function)
 
 def fetch_interval_meter_data(reebill, csv_file, meter_identifier=None,
