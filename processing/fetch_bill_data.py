@@ -21,14 +21,15 @@ from billing.dictutils import dict_merge
 from billing import dateutils, holidays
 from decimal import Decimal
 
-VERBOSE = True
-
-def fetch_oltp_data(splinter, olap_id, reebill):
+def fetch_oltp_data(splinter, olap_id, reebill, verbose=False):
     '''Update quantities of shadow registers in reebill with Skyline-generated
     energy from OLTP.'''
     inst_obj = splinter.get_install_obj_for(olap_id)
-    energy_function = lambda day, hourrange: inst_obj.get_billable_energy(day,
-            hourrange, places=5)
+    timeseries = inst_obj.get_billable_energy_timeseries(reebill.period_begin,
+            reebill.period_end)
+    def energy_function(day, hourrange):
+        return [Decimal(timeseries[datetime(day.year, day.month, day.day,
+                hour)]) for hour in hourrange]
     usage_data_to_virtual_register(reebill, energy_function)
 
 def fetch_interval_meter_data(reebill, csv_file, meter_identifier=None,
@@ -191,7 +192,7 @@ def get_shadow_register_data(reebill, meter_identifier=None):
 
 
 def usage_data_to_virtual_register(reebill, energy_function,
-        meter_identifier=None):
+        meter_identifier=None, verbose=False):
     '''Gets energy quantities from 'energy_function' and puts them in the total
     fields of the appropriate shadow registers in the MongoReebill object
     reebill. 'energy_function' should be a function mapping a date and an hour
@@ -264,7 +265,7 @@ def usage_data_to_virtual_register(reebill, energy_function,
                     raise Exception('unknown energy unit %s' %
                             register['quantity_units'])
 
-                if VERBOSE:
+                if verbose:
                     print 'register %s accumulating energy %s %s for %s %s' % (
                             register['identifier'], energy_today,
                             register['quantity_units'],
