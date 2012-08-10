@@ -24,6 +24,7 @@ from skyliner import sky_handlers
 from billing.nexus_util import NexusUtil
 from billing import json_util
 from billing import dateutils
+from billing.dateutils import date_to_datetime
 
 OUTPUT_FILE_NAME = 'reconciliation_report.json'
 LOG_FILE_NAME = 'reconciliation.log'
@@ -48,8 +49,7 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
     state_db = state.StateDB(**statedb_config)
     reebill_dao = mongo.ReebillDAO(state_db, billdb_config['host'], billdb_config['port'], billdb_config['database'])
     session = state_db.session()
-    splinter = Splinter(splinter_config['url'], splinter_config['host'],
-            splinter_config['db'])
+    splinter = Splinter(splinter_config['url'], **splinter_config)
     monguru = Monguru(monguru_config['host'], monguru_config['db'])
 
     # get account numbers of all customers in sorted order
@@ -101,9 +101,10 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
             # error-prone than OLAP)
             if not skip_oltp:
                 try:
-                    oltp_btu = sum(install.get_billable_energy(day, [0,23]) for
-                            day in dateutils.date_generator(start_date,
-                            reebill.period_end))
+                    oltp_btu = sum(sample[1] for sample in
+                            install.get_billable_energy_timeseries(
+                            date_to_datetime(start_date),
+                            date_to_datetime(reebill.period_end)))
                     oltp_therms = oltp_btu / 100000
                     
                 except Exception as e:
@@ -174,8 +175,8 @@ def main():
             help='username for state database (default: dev)')
     parser.add_argument('--statepw', default='dev',
             help='name of state database (default: dev)')
-    parser.add_argument('--billdb', default='skyline_dev',
-            help='name of bill database (default: skyline_dev)')
+    parser.add_argument('--billdb', default='skyline',
+            help='name of bill database (default: skyline)')
     parser.add_argument('--olapdb',  default='dev',
             help='name of OLAP database (default: dev)')
     parser.add_argument('--skip-oltp',  action='store_true',
@@ -185,7 +186,6 @@ def main():
     # set up config dicionaries for data access objects used in generate_report
     billdb_config = {
         'database': args.billdb,
-        'collection': 'reebills',
         'host': args.host,
         'port': '27017'
     }
@@ -197,8 +197,10 @@ def main():
     }
     splinter_config = {
         'url': 'http://duino-drop.appspot.com/',
-        'host': args.host,
-        'db': args.olapdb
+        'skykit_host': args.host,
+        'skykit_db': args.olapdb,
+        'olap_cache_host': args.host,
+        'olap_cache_db': args.olapdb,
     }
     monguru_config = {
         'host': args.host,

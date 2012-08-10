@@ -19,17 +19,33 @@ from skyliner.sky_errors import DataHandlerError
 from billing import mongo
 from billing.dictutils import dict_merge
 from billing import dateutils, holidays
+from billing.dateutils import date_to_datetime, timedelta_in_hours
 from decimal import Decimal
 
-VERBOSE = True
-
-def fetch_oltp_data(splinter, olap_id, reebill):
+def fetch_oltp_data(splinter, olap_id, reebill, verbose=False):
     '''Update quantities of shadow registers in reebill with Skyline-generated
     energy from OLTP.'''
     inst_obj = splinter.get_install_obj_for(olap_id)
-    energy_function = lambda day, hourrange: inst_obj.get_billable_energy(day,
-            hourrange, places=5)
+    # get hourly time-series of energy-sold values during the reebill's meter
+    # read period (NOT the same as utililty bill period or reebill period,
+    # though they almost always coincide)
+    # TODO support multi-service customers
+    start, end = reebill.meter_read_period(reebill.services[0])
+    print "*************** entering skyliner code"
+    timeseries = inst_obj.get_billable_energy_timeseries(
+            date_to_datetime(start), date_to_datetime(end))
+    print "*************** got hourly time series: %s hours starting at %s, ending at %s" % (len(timeseries), timeseries[0][0], timeseries[-1][0])
+    def energy_function(day, hourrange):
+        # indices of relevant hours in 'timeseries' are number of hours since
+        # timeseries start for each hour in 'hourrange' on 'day' (hourrange is
+        # a pair of inclusive hour numbers in [0,23])
+        first_idx = timedelta_in_hours((date_to_datetime(day) +
+                timedelta(hours=hourrange[0])) - timeseries[0][0])
+        last_idx = first_idx + hourrange[1] - hourrange[0]
+        return Decimal(str(sum(timeseries[i][1]
+                for i in range(first_idx, last_idx + 1))))
     usage_data_to_virtual_register(reebill, energy_function)
+    print "*************** bind REE done"
 
 def fetch_interval_meter_data(reebill, csv_file, meter_identifier=None,
         timestamp_column=0, energy_column=1, energy_unit='btu',
@@ -191,11 +207,11 @@ def get_shadow_register_data(reebill, meter_identifier=None):
 
 
 def usage_data_to_virtual_register(reebill, energy_function,
-        meter_identifier=None):
+        meter_identifier=None, verbose=False):
     '''Gets energy quantities from 'energy_function' and puts them in the total
     fields of the appropriate shadow registers in the MongoReebill object
     reebill. 'energy_function' should be a function mapping a date and an hour
-    range (2-tuple of integers in [0,23]) to a Decimal representing energy used
+    range (pair of integers in [0,23]) to a Decimal representing energy used
     during that time. (Energy is measured in therms, even if it's gas.) If
     meter_identifier is given, accumulate energy only into the shadow registers
     of meters with that identifier.'''
@@ -264,7 +280,7 @@ def usage_data_to_virtual_register(reebill, energy_function,
                     raise Exception('unknown energy unit %s' %
                             register['quantity_units'])
 
-                if VERBOSE:
+                if verbose:
                     print 'register %s accumulating energy %s %s for %s %s' % (
                             register['identifier'], energy_today,
                             register['quantity_units'],

@@ -1,14 +1,19 @@
 #!/usr/bin/python
-import sys
-import random
-import unittest
-import csv
-from datetime import date
 from StringIO import StringIO
-import billing.processing.fetch_bill_data as fbd
-from datetime import date, datetime, timedelta
-from billing import dateutils, mongo
+from datetime import date
 from decimal import Decimal
+import MySQLdb
+import csv
+import random
+import sqlalchemy
+import sys
+import unittest
+from billing import dateutils, mongo
+from billing.processing import state
+from billing.test import example_data
+from datetime import date, datetime, timedelta
+import billing.processing.fetch_bill_data as fbd
+
 import pprint
 pp = pprint.PrettyPrinter().pprint
 
@@ -49,7 +54,14 @@ def make_atsite_test_csv(start_date, end_date, csv_file):
 
 class FetchTest(unittest.TestCase):
     def setUp(self):
-        self.reebill_dao = mongo.ReebillDAO({
+        sqlalchemy.orm.clear_mappers()
+        self.state_db = state.StateDB(**{
+            'user': 'dev',
+            'password': 'dev',
+            'host': 'localhost',
+            'database': 'skyline_dev'
+        })
+        self.reebill_dao = mongo.ReebillDAO(self.state_db, **{
             'billpath': '/db-dev/skyline/bills/',
             'database': 'skyline',
             'utilitybillpath': '/db-dev/skyline/utilitybills/',
@@ -149,13 +161,7 @@ class FetchTest(unittest.TestCase):
     def test_fetch_interval_meter_data(self):
         '''Realistic test of loading interval meter data with an entire utility
         bill date range. Tests lack of errors but not correctness.'''
-        # TODO use a fake reebill for testing. here i just count on this
-        # reebill existing and then modify it but don't save it.
-        reebill = self.reebill_dao.load_reebill('10002', 21)
-
-        # these are the dates i expect that bill to have
-        assert reebill.period_begin == date(2011,11,10)
-        assert reebill.period_end == date(2011,12,12)
+        reebill = example_data.get_reebill('10002', 21)
 
         # generate example csv file whose time range exactly matches the bill
         # period
