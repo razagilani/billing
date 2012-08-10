@@ -68,12 +68,14 @@ Install the following packages with sudo pip install [package]
     pyyaml (unused?)
     ordereddict (for 2.6 installs only)
     mongoengine
+    pypdf
+    requests
+    gevent
 
 For Rendering Images
     sudo yum install ImageMagick
     sudo yum install html2ps
     sudo yum install poppler-utils (for pdftoppm)
-    sudo yum install pdftk (not found for linux aws ami)
     
 
 Chart Director 'pychartdir'
@@ -242,45 +244,47 @@ Configure Apache2
 
     Example virtual host config directive
     -------------------------------------
-        <VirtualHost *:80>
-                ServerName atsite.skylineinnovations.net
+<VirtualHost *:80>
+        ServerName reebill-prod
+        ServerAlias reebill
+        serverAlias reebill.skylineinnovations.net
+        serverAlias reebill-prod.skylineinnovations.net
 
-                ServerAdmin admin@skylineinnovations.com
+        ServerAdmin webmaster@localhost
 
-                DocumentRoot /var/local/reebill/billing/reebill/ui
-                <Directory /var/local/reebill/billing/reebill/ui>
-                        DirectoryIndex /reebill
-                        Options FollowSymLinks
-                        AllowOverride None
-                </Directory>
-                # directory where utility bill images are saved
-                Alias /utilitybillimages /tmp/billimages
-                #<Directory /tmp/billimages-prod>
-                    #Order deny,allow
-                    #Allow from all
-                    #Options Indexes FollowSymLinks MultiViews
-                    #AllowOverride None
-                #</Directory>
-
-
-                ErrorLog /var/log/httpd/reebill-error.log
-
-                # Possible values include: debug, info, notice, warn, error, crit,
-                # alert, emerg.
-                LogLevel error
-
-                CustomLog /var/log/httpd/reebill-access.log combined
-
-                WSGIScriptAlias /reebill /var/local/reebill/billing/reebill/bill_tool_bridge.py
-
-                #WSGIDaemonProcess reebill user=reebill group=reebill processes=1 threads=10 python-path=/var/local/reebill/lib/python2.6/site-packages/ChartDirector/lib/:/var/local/reebill-prod/lib/python2.6/site-packages
-                # dedicated host, shared python environment
-                WSGIDaemonProcess reebill user=reebill group=reebill processes=1 threads=10 python-path=/var/local/reebill/:/usr/lib/python2.6/site-packages/ChartDirector/lib
-
-                WSGIProcessGroup reebill
+        DocumentRoot /var/local/reebill-prod/lib/python2.7/site-packages/billing/reebill/ui
+        <Directory /var/local/reebill-prod/lib/python2.7/site-packages/billing/reebill/ui>
+                DirectoryIndex /reebill 
+                Options FollowSymLinks
+                AllowOverride None
+        </Directory>
+        # directory where utility bill images are saved
+        Alias /utilitybillimages /tmp/billimages-prod
+        <Directory /tmp/billimages>
+            #Order deny,allow
+            #Allow from all
+            Options Indexes FollowSymLinks MultiViews
+            #AllowOverride None
+        </Directory>
 
 
-        </VirtualHost>
+        ErrorLog /var/log/httpd/reebill-prod_error.log
+
+        # Possible values include: debug, info, notice, warn, error, crit,
+        # alert, emerg.
+        LogLevel debug
+
+        CustomLog /var/log/httpd/reebill-prod_access.log combined
+
+        WSGIScriptAlias /reebill /var/local/reebill-prod/lib/python2.7/site-packages/billing/reebill/bill_tool_bridge.py
+
+        WSGIDaemonProcess reebill-prod user=reebill-prod group=reebill-prod processes=1 threads=1 python-path=/var/local/reebill-prod/lib/python2.7/site-packages/ChartDirector/lib/:/var/local/reebill-prod/lib/python2.7/site-packages
+        WSGIApplicationGroup %{GLOBAL}
+
+        WSGIProcessGroup reebill-prod
+
+</VirtualHost>
+
 
 
 
