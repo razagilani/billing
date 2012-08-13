@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import pymongo
 import pprint
 from billing.dictutils import dict_merge, subdict
@@ -70,6 +71,7 @@ def get_internal_utilbills(reebill):
 
 for reebill in reebills_col.find():#{'_id.account':'10023', '_id.sequence':5}):
     try:
+        print "processin reebill"
         # create external utilbills
         for ub in get_external_utilbills(reebill):
             utilbills_col.save(ub)
