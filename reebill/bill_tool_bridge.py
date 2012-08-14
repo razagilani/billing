@@ -1504,7 +1504,7 @@ class BillToolBridge:
             )
 
             # 23417235 temporary hack
-            self.bindrs(account, sequence)
+            self.compute_bill(account, sequence)
             return self.dumps({'success':True})
 
         elif xaction == "create":
