@@ -12,7 +12,6 @@ import calendar
 import random
 import csv
 from bisect import bisect_left
-import operator
 from optparse import OptionParser
 from skyliner import sky_install
 from skyliner import sky_objects
@@ -20,15 +19,33 @@ from skyliner.sky_errors import DataHandlerError
 from billing import mongo
 from billing.dictutils import dict_merge
 from billing import dateutils, holidays
+from billing.dateutils import date_to_datetime, timedelta_in_hours
 from decimal import Decimal
 
 def fetch_oltp_data(splinter, olap_id, reebill, verbose=False):
     '''Update quantities of shadow registers in reebill with Skyline-generated
     energy from OLTP.'''
     inst_obj = splinter.get_install_obj_for(olap_id)
-    energy_function = lambda day, hourrange: inst_obj.get_billable_energy(day,
-            hourrange, places=5)
+    # get hourly time-series of energy-sold values during the reebill's meter
+    # read period (NOT the same as utililty bill period or reebill period,
+    # though they almost always coincide)
+    # TODO support multi-service customers
+    start, end = reebill.meter_read_period(reebill.services[0])
+    print "*************** entering skyliner code"
+    timeseries = inst_obj.get_billable_energy_timeseries(
+            date_to_datetime(start), date_to_datetime(end))
+    print "*************** got hourly time series: %s hours starting at %s, ending at %s" % (len(timeseries), timeseries[0][0], timeseries[-1][0])
+    def energy_function(day, hourrange):
+        # indices of relevant hours in 'timeseries' are number of hours since
+        # timeseries start for each hour in 'hourrange' on 'day' (hourrange is
+        # a pair of inclusive hour numbers in [0,23])
+        first_idx = timedelta_in_hours((date_to_datetime(day) +
+                timedelta(hours=hourrange[0])) - timeseries[0][0])
+        last_idx = first_idx + hourrange[1] - hourrange[0]
+        return Decimal(str(sum(timeseries[i][1]
+                for i in range(first_idx, last_idx + 1))))
     usage_data_to_virtual_register(reebill, energy_function)
+    print "*************** bind REE done"
 
 def fetch_interval_meter_data(reebill, csv_file, meter_identifier=None,
         timestamp_column=0, energy_column=1, energy_unit='btu',
@@ -215,45 +232,88 @@ def aggregate_tou(day_type, hour_range, energy_function, start, end, verbose=Fal
 
 def usage_data_to_virtual_register(reebill, energy_function,
         meter_identifier=None, verbose=False):
-    '''Gets energy quantities from 'energy_function' and puts them in the
-    quantity fields of the appropriate shadow registers in the MongoReebill
-    'reebill'.  If meter_identifier is given, only puts energy in the registers
-    of meters with the given identifier.'''
-    # NOTE we have no way to determine what service we are offsetting (i.e. of
-    # choosing a particular utility bill such that we put renewable energy only
-    # in a shadow register corresponding to a register of that utility bill).
-    # but we need a service to determine the meter whose read dates we're
-    # using, which determine the date range for REE data. so just pick any
-    # service.
-    service = reebill.services[0]
-
-    registers  = [r for r in reebill.shadow_registers(service) if
-            meter_identifier is None or r['identifier'] == meter_identifier]
-
+    '''Gets energy quantities from 'energy_function' and puts them in the total
+    fields of the appropriate shadow registers in the MongoReebill object
+    reebill. 'energy_function' should be a function mapping a date and an hour
+    range (pair of integers in [0,23]) to a Decimal representing energy used
+    during that time. (Energy is measured in therms, even if it's gas.) If
+    meter_identifier is given, accumulate energy only into the shadow registers
+    of meters with that identifier.'''
+    # get all shadow registers in reebill from mongo
+    registers = get_shadow_register_data(reebill, meter_identifier)
+    
     if registers == []:
         raise Exception(('Meter "%s" doesn\'t exist or contains no shadow'
             ' registers') % meter_identifier)
 
+    # accumulate energy into the shadow registers for the specified date range
     for register in registers:
-        # using the service, go find the utility bill for that service, then
-        # the shadow register in the reebill that corresponds to a register in
-        # one of that utility bill's meters (there should be only one), then
-        # get the dates of that meter.
-        start, end = reebill.meter_read_dates_for_service(service)
+        # service date range
+        begin_date = register['prior_read_date'] # inclusive
+        end_date = register['present_read_date'] # exclusive
 
-        if 'active_periods_weekday' in register:
-            # this is a TOU register: gets energy during certain parts of the
-            # day, and those parts depend on what kind of day it is
-            total_energy = Decimal(0)
-            for day_type in ['weekday', 'weekend', 'holiday']:
-                for hour_range in map(tuple, register['active_periods_' +
-                        day_type]):
-                    total_energy += aggregate_tou(day_type, hour_range,
-                            energy_function, start, end, verbose=verbose)
-            reebill.set_shadow_register_quantity(register['identifier'],
-                    total_energy)
-        else:
-            reebill.set_shadow_register_quantity(register['identifier'],
-                    aggregate_total(energy_function, start, end,
-                    verbose=verbose))
+        # get service type of this register (gas or electric)
+        # TODO replace this ugly hack with something better
+        # (and probably make it a method of MongoReebill)
+        service_of_this_register = None
+        for service in reebill.services:
+            for register_dict in reebill.shadow_registers(service):
+                if register_dict['identifier'] == register['identifier']:
+                    service_of_this_register = service
+                    break
+        assert service_of_this_register is not None
+        
+        # reset register in case energy was previously accumulated
+        # TODO 28245047: use set_shadow_register_quantity function in reebill
+        register['quantity'] = 0.0
+
+        for day in dateutils.date_generator(begin_date, end_date):
+            # the hour ranges during which we want to accumulate energy in this
+            # shadow register is the entire day for normal registers, or
+            # periods given by 'active_periods_weekday/weekend/holiday' for
+            # time-of-use registers
+            # TODO make this a method of MongoReebill
+            hour_ranges = None
+            if 'active_periods_weekday' in register:
+                # a tou register should have all 3 active_periods_... keys
+                assert 'active_periods_weekend' in register
+                assert 'active_periods_holiday' in register
+                hour_ranges = map(tuple,
+                        register['active_periods_' + holidays.get_day_type(day)]) 
+            else:
+                hour_ranges = [(0,23)]
+
+            energy_today = None
+            for hourrange in hour_ranges:
+                # 5 digits after the decimal points is an arbitrary decision
+                # TODO decide what our precision actually is: see
+                # https://www.pivotaltracker.com/story/show/24088787
+                energy_today = energy_function(day, hourrange)
+                
+                # convert units from BTU to kWh (for electric) or therms (for gas)
+                # TODO 28245047: use set_shadow_register_quantity function in reebill
+
+                if register['quantity_units'].lower() == 'kwh':
+                    energy_today /= Decimal('3412.14')
+                elif register['quantity_units'].lower() == 'therms':
+                    energy_today /= Decimal('100000.0')
+                elif register['quantity_units'].lower() == 'ccf':
+                    # TODO 28247371: this is an unfair conversion
+                    energy_today /= Decimal('100000.0')
+                else:
+                    raise Exception('unknown energy unit %s' %
+                            register['quantity_units'])
+
+                if verbose:
+                    print 'register %s accumulating energy %s %s for %s %s' % (
+                            register['identifier'], energy_today,
+                            register['quantity_units'],
+                            day, hourrange)
+                # TODO 28304031 : register wants a float
+                register['quantity'] += float(energy_today)
+
+        # update the reebill: put the total skyline energy in the shadow register
+        reebill.set_shadow_register_quantity(register['identifier'],
+                register['quantity'])
+
 

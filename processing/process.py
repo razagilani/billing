@@ -252,10 +252,16 @@ class Process(object):
         # not been issued, 0 before the previous bill's due date, and non-0
         # after that)
 
-        # compute adjustment (sum of changes in totals of all unissued
-        # corrections)
-        present_reebill.total_adjustment = self.get_total_adjustment(session,
-                present_reebill.account)
+        # compute adjustment: if this is the earliest unissued version-0 bill,
+        # adjustment is sum of changes in totals of all unissued corrections.
+        # otherwise it's 0.
+        if present_reebill.version == 0 and prior_reebill.sequence > 0 \
+                and not self.state_db.is_issued(session, prior_reebill.account,
+                prior_reebill.sequence):
+            present_reebill.total_adjustment = self.get_total_adjustment(
+                    session, present_reebill.account)
+        else:
+            present_reebill.total_adjustment = Decimal(0)
 
         # now grab the prior bill and pull values forward
         # TODO balance_forward currently contains adjustment, but it should not

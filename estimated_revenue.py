@@ -423,7 +423,13 @@ if __name__ == '__main__':
         'database': 'skyline',
         'collection': 'ratestructure',
     })
-    splinter = Splinter('http://duino-drop.appspot.com/', 'tyrell', 'dev')
+    splinter = Splinter('http://duino-drop.appspot.com/', **{
+        'skykit_host': args.host,
+        'skykit_db': args.olapdb,
+        'olap_cache_host': args.host,
+        'olap_cache_db': args.olapdb,
+    })
+
     session = state_db.session()
     er = EstimatedRevenue(state_db, reebill_dao, ratestructure_dao,
             splinter)

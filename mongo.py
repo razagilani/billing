@@ -885,6 +885,12 @@ class MongoReebill(object):
 
         
     
+#    def meter_read_period(self, service):
+#        '''Returns tuple of period dates for first meter found with the given
+#        service.'''
+#        meter = self.meters_for_service(service)[0]
+#        return meter['prior_read_date'], meter['present_read_date']
+
 
     def set_meter_read_date(self, service, identifier, present_read_date, prior_read_date):
         ''' Set the read date for a specified meter.'''
@@ -908,6 +914,8 @@ class MongoReebill(object):
     def set_meter_identifier(self, service, old_identifier, new_identifier):
         if old_identifier == new_identifier:
             return
+
+        # TODO: 23251399 - probably need a better strategy to enforce uniqueness
 
         utilbill = next(u for u in self._utilbills if u['service'] == service)
 
