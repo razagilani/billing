@@ -1171,6 +1171,8 @@ class ReebillDAO:
 
     def load_utilbills(account=None, service=None, utility=None, start=None,
             end=None):
+        '''Loads 0 or more utility bill documents from Mongo, returns a list of
+        the raw dictionaries.'''
         query = {}
         if account is not None:
             query.update({'account': account})
@@ -1186,6 +1188,8 @@ class ReebillDAO:
         return docs
 
     def load_utilbill(self, account, service, utility, start, end):
+        '''Loads one utility bill document from Mongo, returns the raw
+        dictionary.'''
         query = {
             '_id.account': account,
             '_id.utility': utility,
@@ -1200,6 +1204,9 @@ class ReebillDAO:
         return doc
 
     def _load_all_utillbills_for_reebill(self, reebill_doc):
+        '''Loads all utility bill documents from Mongo that match the ones in
+        the 'utilbills' list in the given reebill. Returns list of dictionaries
+        with converted types.'''
         utilbills = deep_map(float_to_decimal, [self.load_utilbill(
             reebill_doc['_id']['account'],
             utilbill_reference['service'],
