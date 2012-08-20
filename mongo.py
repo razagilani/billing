@@ -819,12 +819,18 @@ class MongoReebill(object):
             raise Exception('Multiple utilbills found for service "%s"' % service_name)
         meters = meters_lists[0]
 
+        # put shadow: False in all the non-shadow registers
+        for m in meters:
+            for register in m['registers']:
+                register['shadow'] = False
+
         # merge "shadow registers" into the meters to replicate the old reebill
         # document structure
         shadow_registers = self.shadow_registers(service_name)
         for sr in shadow_registers:
             matching_meter = next(m for m in meters if m['identifier'] ==
                     sr['identifier'])
+            sr['shadow'] = True
             matching_meter['registers'].append(sr)
         return meters
 
@@ -962,7 +968,8 @@ class MongoReebill(object):
     def meters(self):
         # TODO rename to something like meters_dict
         '''Returns a dictionary mapping service names to lists of meters.'''
-        return dict([(service, self.meters_for_service(service)) for service in self.services])
+        result = dict([(service, self.meters_for_service(service)) for service in self.services])
+        return result
 
 
     def actual_register(self, service, identifier):
@@ -999,11 +1006,13 @@ class MongoReebill(object):
         meter['quantity'] == quantity
 
     def shadow_registers(self, service):
+        '''Returns copy of shadow register dictionary for first utilbill found
+        with given service.'''
         result = []
         for u in self.reebill_dict['utilbills']:
             if u['service'] == service:
                 for sr in u['shadow_registers']:
-                    result.append(sr)
+                    result.append(copy.deepcopy(sr))
         return result
 
     def set_shadow_register_quantity(self, identifier, quantity):
