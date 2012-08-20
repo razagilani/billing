@@ -752,6 +752,12 @@ class MongoReebill(object):
                 external_utilbill['_id']['start'] = period[0]
                 external_utilbill['_id']['end'] = period[1]
 
+    def meter_read_period(self, service):
+        '''Returns tuple of period dates for first meter found with the given
+        service.'''
+        meter = self.meters_for_service(service)[0]
+        return meter['prior_read_date'], meter['present_read_date']
+
     def meter_read_dates_for_service(self, service):
         '''Returns (prior_read_date, present_read_date) of the shadowed meter
         in the first utility bill found whose service is 'service_name'. (There
@@ -885,13 +891,6 @@ class MongoReebill(object):
 
         
     
-#    def meter_read_period(self, service):
-#        '''Returns tuple of period dates for first meter found with the given
-#        service.'''
-#        meter = self.meters_for_service(service)[0]
-#        return meter['prior_read_date'], meter['present_read_date']
-
-
     def set_meter_read_date(self, service, identifier, present_read_date, prior_read_date):
         ''' Set the read date for a specified meter.'''
         utilbill = next(u for u in self._utilbills if u['service'] == service)
