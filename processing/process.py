@@ -149,6 +149,8 @@ class Process(object):
 
         ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
+        present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
+                present_reebill._utilbills]
 
         self.bind_rate_structure(present_reebill)
 
@@ -184,6 +186,8 @@ class Process(object):
 
         ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
+        present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
+                present_reebill._utilbills]
 
         # get discount rate
         discount_rate = present_reebill.discount_rate
@@ -283,6 +287,8 @@ class Process(object):
 
         ## TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
+        present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
+                present_reebill._utilbills]
         
         self.calculate_statistics(prior_reebill, present_reebill)
 
