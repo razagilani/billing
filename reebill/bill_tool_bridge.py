@@ -316,9 +316,13 @@ class BillToolBridge:
         if self.config.getboolean('runtime', 'mock_skyliner'):
             self.splinter = fake_skyliner.FakeSplinter()
         else:
-            self.splinter = Splinter(self.config.get('skyline_backend',
-                'oltp_url'), self.config.get('skyline_backend', 'olap_host'),
-                self.config.get('skyline_backend', 'olap_database'))
+            self.splinter = Splinter(
+                self.config.get('skyline_backend', 'oltp_url'),
+                skykit_host=self.config.get('skyline_backend', 'olap_host'),
+                skykit_db=self.config.get('skyline_backend', 'olap_database'),
+                olap_cache_host=self.config.get('skyline_backend', 'olap_host'),
+                olap_cache_db=self.config.get('skyline_backend', 'olap_database')
+            )
 
         # create one Process object to use for all related bill processing
         # TODO it's theoretically bad to hard-code these, but all skyliner
@@ -1500,7 +1504,7 @@ class BillToolBridge:
             )
 
             # 23417235 temporary hack
-            self.bindrs(account, sequence)
+            self.compute_bill(account, sequence)
             return self.dumps({'success':True})
 
         elif xaction == "create":
