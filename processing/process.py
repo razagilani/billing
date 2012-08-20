@@ -744,11 +744,10 @@ class Process(object):
 
 
     def calculate_statistics(self, prior_reebill, reebill):
-        """ Period Statistics for the input bill period are determined here from the total energy usage """
-        """ contained in the registers. Cumulative statistics are determined by adding period statistics """
-        """ to the past cumulative statistics """ 
-
-
+        """ Period Statistics for the input bill period are determined here
+        from the total energy usage contained in the registers. Cumulative
+        statistics are determined by adding period statistics to the past
+        cumulative statistics """ 
         # the trailing bill where totals are obtained
         #prev_bill = self.reebill_dao.load_reebill(prior_reebill.account, int(prior_reebill.sequence)-1)
         prev_bill = prior_reebill
