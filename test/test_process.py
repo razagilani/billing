@@ -682,7 +682,7 @@ port = 27017
             mongo_reebill.period_begin = start
             mongo_reebill.period_end = end
             self.reebill_dao.save_reebill(mongo_reebill)
-            import ipdb; ipdb.set_trace()
+            #import ipdb; ipdb.set_trace()
             self.assertRaises(ValueError, self.process.delete_utility_bill,
                     session, utilbill_id)
 
@@ -1001,5 +1001,5 @@ port = 27017
             session.commit()
 
 if __name__ == '__main__':
-    unittest.main(failfast=True)
-    #unittest.main()
+    #unittest.main(failfast=True)
+    unittest.main()
