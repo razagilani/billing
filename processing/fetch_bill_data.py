@@ -257,8 +257,8 @@ def usage_data_to_virtual_register(reebill, energy_function,
                 ' registers') % meter_identifier)
         # find utilbill containing the meter containing the register and get
         # the meter read dates from there
-        # TODO rethink how this works--should we really be offsetting a
-        # particular meter? (bad code below should be temporary)
+        # TODO 34685823: rethink how this works--should we really be offsetting
+        # a particular meter? (bad code below should be temporary)
         stop = False
         for u in reebill._utilbills:
             for m in u['meters']:
