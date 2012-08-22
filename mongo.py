@@ -1212,9 +1212,9 @@ class ReebillDAO:
             '_id.service': service,
             # querying for None datetimes should work
             '_id.start': date_to_datetime(start) \
-                    if isinstance(start, datetime) else None,
+                    if isinstance(start, date) else None,
             '_id.end': date_to_datetime(end) \
-                    if isinstance(end, datetime) else None,
+                    if isinstance(end, date) else None,
         }
         doc = self.utilbills_collection.find_one(query)
         if doc is None:
