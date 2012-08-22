@@ -5,12 +5,15 @@ from billing.dictutils import dict_merge, subdict
 import sys
 import operator
 import traceback
-
-# config
-host = 'localhost'
-db = 'skyline'
-
 pp = pprint.PrettyPrinter().pprint
+
+# config:
+host = 'localhost'
+db = 'skyline' # mongo
+statedb = 'skyline_dev' # mysql
+user = 'dev'
+password = 'dev'
+
 
 con = pymongo.Connection(host, 27017)
 reebills_col = con[db]['reebills']
@@ -98,10 +101,10 @@ from billing.processing.state import StateDB
 from billing.mongo import ReebillDAO
 from billing.session_contextmanager import DBSession
 sdb = StateDB(**{
-    'host': 'localhost',
-    'password': 'dev',
-    'database': 'skyline_dev',
-    'user': 'dev'
+    'host': host,
+    'database': statedb,
+    'password': password,
+    'user': user,
 })
 dao = ReebillDAO(sdb, **{
     'host': host,
@@ -116,3 +119,4 @@ with DBSession(sdb) as session:
                     dao.load_reebill(acc, seq)
                 except:
                     import ipdb; ipdb.set_trace()
+                    dao.load_reebill(acc, seq)
