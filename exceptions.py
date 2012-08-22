@@ -3,7 +3,7 @@ class Unauthenticated(Exception):
 
 
 # TODO rename to NoSuchBillException
-class NoSuchReeBillException(Exception):
+class NoSuchBillException(Exception):
     pass
 
 class NoRateStructureError(Exception):
