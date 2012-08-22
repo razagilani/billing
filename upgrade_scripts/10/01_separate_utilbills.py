@@ -6,11 +6,15 @@ import sys
 import operator
 import traceback
 
+# config
+host = 'localhost'
+db = 'skyline'
+
 pp = pprint.PrettyPrinter().pprint
 
-con = pymongo.Connection('localhost', 27017)
-reebills_col = con['skyline']['reebills']
-utilbills_col = con['skyline']['utilbills']
+con = pymongo.Connection(host, 27017)
+reebills_col = con[db]['reebills']
+utilbills_col = con[db]['utilbills']
 
 def get_external_utilbills(reebill):
     utilbills = []
@@ -71,7 +75,6 @@ def get_internal_utilbills(reebill):
 
 for reebill in reebills_col.find():#{'_id.account':'10023', '_id.sequence':5}):
     try:
-        print "processing reebill"
         # create external utilbills
         for ub in get_external_utilbills(reebill):
             utilbills_col.save(ub)
@@ -88,3 +91,28 @@ for reebill in reebills_col.find():#{'_id.account':'10023', '_id.sequence':5}):
     else:
         print reebill['_id']['account'], reebill['_id']['sequence'], \
                 reebill['_id']['version']
+
+
+# check that all utility bills can be loaded for each reebill
+from billing.processing.state import StateDB
+from billing.mongo import ReebillDAO
+from billing.session_contextmanager import DBSession
+sdb = StateDB(**{
+    'host': 'localhost',
+    'password': 'dev',
+    'database': 'skyline_dev',
+    'user': 'dev'
+})
+dao = ReebillDAO(sdb, **{
+    'host': host,
+    'database': db,
+    'port': 27017,
+})
+with DBSession(sdb) as session:
+    for acc in sdb.listAccounts(session):
+        for seq in sdb.listSequences(session, acc):
+            for version in range(sdb.max_version(session, acc, seq)):
+                try:
+                    dao.load_reebill(acc, seq)
+                except:
+                    import ipdb; ipdb.set_trace()

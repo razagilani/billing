@@ -1203,13 +1203,18 @@ class ReebillDAO:
 
     def load_utilbill(self, account, service, utility, start, end):
         '''Loads one utility bill document from Mongo, returns the raw
-        dictionary.'''
+        dictionary. 'start' and 'end' may be None because there are some
+        reebills that have Nones (when the dates have not yet been filled in by
+        the user).'''
         query = {
             '_id.account': account,
             '_id.utility': utility,
             '_id.service': service,
-            '_id.start': date_to_datetime(start),
-            '_id.end': date_to_datetime(end),
+            # querying for None datetimes should work
+            '_id.start': date_to_datetime(start) \
+                    if isinstance(start, datetime) else None,
+            '_id.end': date_to_datetime(end) \
+                    if isinstance(end, datetime) else None,
         }
         doc = self.utilbills_collection.find_one(query)
         if doc is None:
@@ -1288,6 +1293,7 @@ class ReebillDAO:
         mongo_doc = deep_map(float_to_decimal, mongo_doc)
         mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
 
+        #pp.pprint( mongo_doc['utilbills'])
         utilbill_docs = self._load_all_utillbills_for_reebill(mongo_doc)
         mongo_reebill = MongoReebill(mongo_doc, utilbill_docs)
         return mongo_reebill
