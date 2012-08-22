@@ -160,9 +160,10 @@ class Exporter(object):
                             else:
                                 row[col_idx] = ('ERROR: duplicate charge name'
                                         '"%s"') % name
-                        ## write cell in existing column
-                        #except IndexError as index_error:
+                        # write cell in existing column
+                        except IndexError as index_error:
                             #import ipdb; ipdb.set_trace()
+                            raise
                     else:
                         # add new column: first add all-blank column to
                         # existing dataset, then put total in a new cell at the
