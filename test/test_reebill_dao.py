@@ -8,7 +8,7 @@ from billing.processing.state import StateDB
 from billing.processing.db_objects import ReeBill, Customer, UtilBill
 import MySQLdb
 from billing.test import example_data
-from billing.mongo import NoSuchReeBillException
+from billing.mongo import NoSuchBillException
 from billing.session_contextmanager import DBSession
 
 import pprint
@@ -163,16 +163,16 @@ class ReebillDAOTest(unittest.TestCase):
             version=date(2012,4,1)).version)
 
         # error when reebill is not found
-        self.assertRaises(NoSuchReeBillException,
+        self.assertRaises(NoSuchBillException,
                 self.reebill_dao.load_reebill, '10003', 1)
-        self.assertRaises(NoSuchReeBillException,
+        self.assertRaises(NoSuchBillException,
                 self.reebill_dao.load_reebill, '99999', 10)
-        self.assertRaises(NoSuchReeBillException,
+        self.assertRaises(NoSuchBillException,
                 self.reebill_dao.load_reebill, '99999', 1, version=5)
 
     def test_load_utilbill(self):
         # nothing to load
-        self.assertRaises(NoSuchReeBillException,
+        self.assertRaises(NoSuchBillException,
                 self.reebill_dao.load_utilbill, '99999', 'gas', 'washgas',
                 date(2012,11,12), date(2012,12,14))
 

@@ -17,7 +17,7 @@ from billing.mongo_utils import bson_convert, python_convert
 from billing.dictutils import deep_map
 from billing.dateutils import date_to_datetime
 from billing.session_contextmanager import DBSession
-from billing.exceptions import NoSuchReeBillException, NoRateStructureError, NoUtilityNameError
+from billing.exceptions import NoSuchBillException, NoRateStructureError, NoUtilityNameError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1)
@@ -1213,7 +1213,7 @@ class ReebillDAO:
         }
         doc = self.utilbills_collection.find_one(query)
         if doc is None:
-            raise NoSuchReeBillException(("No utilbill found in %s: query was %s")
+            raise NoSuchBillException(("No utilbill found in %s: query was %s")
                     % (self.utilbills_collection, query))
         return doc
 
@@ -1282,7 +1282,7 @@ class ReebillDAO:
             raise ValueError('Unknown version specifier "%s"' % version)
 
         if mongo_doc is None:
-            raise NoSuchReeBillException(("No reebill found in %s: query was %s")
+            raise NoSuchBillException(("No reebill found in %s: query was %s")
                     % (self.reebills_collection, query))
 
         mongo_doc = deep_map(float_to_decimal, mongo_doc)
