@@ -45,7 +45,8 @@ def get_external_utilbills(reebill):
     return utilbills
 
 def get_internal_utilbills(reebill):
-    utilbills = [] for utilbill in reebill['utilbills']:
+    utilbills = []
+    for utilbill in reebill['utilbills']:
         new_utilbill = {
             'utility': utilbill['utility_name'],
             'service': utilbill['service'],
