@@ -879,7 +879,7 @@ port = 27017
         acc = '99999'
         with DBSession(self.state_db) as session:
             # 2 reebills, 1 issued 40 days ago and unpaid (so it's 10 days late)
-            zero = example_data.get_reebill(acc, 0)
+            zero = example_data.get_reebill(acc, 0) # template
             one = example_data.get_reebill(acc, 1)
             two = example_data.get_reebill(acc, 2)
             one.balance_due = 100
@@ -892,14 +892,14 @@ port = 27017
             self.process.issue(session, acc, 1,
                     issue_date=datetime.utcnow().date() - timedelta(40))
 
-            # rate structures
+            # save rate structures for the bills
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 2))
 
             # bind & compute 2nd reebill
-            # (it needs energy data only so its 2nd version will have the same
+            # (it needs energy data only so its correction will have the same
             # energy in it; only the late charge will differ)
             two = self.reebill_dao.load_reebill(acc, 2)
             two.late_charge_rate = .5
@@ -922,7 +922,7 @@ port = 27017
                     - timedelta(30), 'backdated payment', 80)
 
             # now a new version of the 2nd reebill should have a different late
-            # charge
+            # charge: $10 instead of $50.
             self.process.new_version(session, acc, 2)
             two = self.reebill_dao.load_reebill(acc, 2)
             self.assertEqual(10, two.late_charges)
@@ -931,6 +931,7 @@ port = 27017
             corrections = self.process.get_unissued_corrections(session, acc)
             assert len(corrections) == 1
             self.assertEquals((2, 1, -40), corrections[0])
+
 
     def test_delete_reebill(self):
         account = '99999'
