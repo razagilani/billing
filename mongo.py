@@ -1182,23 +1182,24 @@ class ReebillDAO:
 
         raise ValueError('Unknown version specifier "%s"' % specifier)
 
-    def load_utilbills(account=None, service=None, utility=None, start=None,
-            end=None):
+    def load_utilbills(self, account=None, service=None, utility=None,
+            start=None, end=None):
         '''Loads 0 or more utility bill documents from Mongo, returns a list of
-        the raw dictionaries.'''
+        the raw dictionaries ordered by start date.'''
         query = {}
         if account is not None:
-            query.update({'account': account})
+            query.update({'_id.account': account})
         if utility is not None:
-            query.update({'utility': utility})
+            query.update({'_id.utility': utility})
         if service is not None:
-            query.update({'service': service})
+            query.update({'_id.service': service})
         if start is not None:
-            query.update({'start': start})
+            query.update({'_id.start': date_to_datetime(start)})
         if end is not None:
-            query.update({'end': end})
-        docs = self.utilbills_collection.find(query)
-        return docs
+            query.update({'_id.end': date_to_datetime(end)})
+        cursor = self.utilbills_collection.find(query, sort=[('_id.start',
+                pymongo.ASCENDING)])
+        return list(cursor)
 
     def load_utilbill(self, account, service, utility, start, end):
         '''Loads one utility bill document from Mongo, returns the raw
