@@ -209,7 +209,6 @@ class Process(object):
         # sum up chargegroups into total per utility bill and accumulate
         # reebill values
         for service in present_reebill.services:
-
             actual_total = Decimal("0")
             hypothetical_total = Decimal("0")
 

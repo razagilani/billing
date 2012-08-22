@@ -12,6 +12,7 @@ import base64
 import itertools as it
 import copy
 import uuid as UUID
+import operator
 from billing.mongo_utils import bson_convert, python_convert
 from billing.dictutils import deep_map
 from billing.dateutils import date_to_datetime
@@ -379,10 +380,11 @@ class MongoReebill(object):
     @property
     def total(self):
         '''The sum of all charges on this bill that do not come from other
-        bills. (This includes the late charge, which depends on another bill
-        for its value but belongs to the bill on which it appears.) This total
-        is what should be used to calculate the adjustment produced by the
-        difference between two versions of a bill.'''
+        bills, i.e. charges that are being charged to the customer's account on
+        this bill's issue date. (This includes the late charge, which depends
+        on another bill for its value but belongs to the bill on which it
+        appears.) This total is what should be used to calculate the adjustment
+        produced by the difference between two versions of a bill.'''
         # if/when more charges are added (e.g. "value-added charges") they
         # should be included here
         return self.ree_charges + (self.late_charges if 'late_charges' in
@@ -1005,9 +1007,13 @@ class MongoReebill(object):
                 meter_identifier)
         meter['quantity'] == quantity
 
+    def all_shadow_registers(self):
+        return reduce(operator.add, [self.shadow_registers(s) for s in
+                self.services], [])
+
     def shadow_registers(self, service):
-        '''Returns copy of shadow register dictionary for first utilbill found
-        with given service.'''
+        '''Returns list of copies of shadow register dictionaries for first
+        utilbill found with given service.'''
         result = []
         for u in self.reebill_dict['utilbills']:
             if u['service'] == service:
@@ -1072,28 +1078,26 @@ class MongoReebill(object):
         # conversion factors.
         # https://www.pivotaltracker.com/story/show/22171391
         total_therms = Decimal(0)
-        for utilbill in self.reebill_dict['utilbills']:
-            for meter in utilbill['meters']:
-                for register in meter['registers']:
-                    quantity = register['quantity']
-                    unit = register['quantity_units'].lower()
-                    if unit == 'therms':
-                        total_therms += quantity
-                    elif unit == 'btu':
-                        total_therms += quantity / Decimal("100000.0")
-                    elif unit == 'kwh':
-                        total_therms += quantity / Decimal(".0341214163")
-                    elif unit == 'ccf':
-                        if ccf_conversion_factor is not None:
-                            total_therms += quantity * ccf_conversion_factor
-                        else:
-                            # TODO: 28825375 - need the conversion factor for this
-                            raise Exception(("Register contains gas measured "
-                                "in ccf: can't convert that into energy "
-                                "without the multiplier."))
-                    else:
-                        raise Exception('Unknown energy unit: "%s"' % \
-                                register['quantity_units'])
+        for register in self.all_shadow_registers():
+            quantity = register['quantity']
+            unit = register['quantity_units'].lower()
+            if unit == 'therms':
+                total_therms += quantity
+            elif unit == 'btu':
+                total_therms += quantity / Decimal("100000.0")
+            elif unit == 'kwh':
+                total_therms += quantity / Decimal(".0341214163")
+            elif unit == 'ccf':
+                if ccf_conversion_factor is not None:
+                    total_therms += quantity * ccf_conversion_factor
+                else:
+                    # TODO: 28825375 - need the conversion factor for this
+                    raise Exception(("Register contains gas measured "
+                        "in ccf: can't convert that into energy "
+                        "without the multiplier."))
+            else:
+                raise Exception('Unknown energy unit: "%s"' % \
+                        register['quantity_units'])
         return total_therms
 
     #
