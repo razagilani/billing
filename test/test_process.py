@@ -26,7 +26,7 @@ from billing.mongo_utils import python_convert
 from billing.test import example_data
 from billing.test.fake_skyliner import FakeSplinter, FakeMonguru
 from billing.nexus_util import NexusUtil
-from billing.mongo import NoSuchReeBillException
+from billing.mongo import NoSuchBillException
 from billing.processing import fetch_bill_data as fbd
 
 import pprint
@@ -950,7 +950,7 @@ port = 27017
             # delete it
             self.process.delete_reebill(session, account, 1)
             self.assertEqual([], self.state_db.listSequences(session, account))
-            self.assertRaises(NoSuchReeBillException, self.reebill_dao.load_reebill,
+            self.assertRaises(NoSuchBillException, self.reebill_dao.load_reebill,
                     account, 1, version=0)
 
             # re-create it, attach it to a utility bill, and issue: can't be
