@@ -45,8 +45,7 @@ def get_external_utilbills(reebill):
     return utilbills
 
 def get_internal_utilbills(reebill):
-    utilbills = []
-    for utilbill in reebill['utilbills']:
+    utilbills = [] for utilbill in reebill['utilbills']:
         new_utilbill = {
             'utility': utilbill['utility_name'],
             'service': utilbill['service'],
@@ -71,7 +70,7 @@ def get_internal_utilbills(reebill):
 
 for reebill in reebills_col.find():#{'_id.account':'10023', '_id.sequence':5}):
     try:
-        print "processin reebill"
+        print "processing reebill"
         # create external utilbills
         for ub in get_external_utilbills(reebill):
             utilbills_col.save(ub)
