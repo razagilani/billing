@@ -932,7 +932,6 @@ port = 27017
             assert len(corrections) == 1
             self.assertEquals((2, 1, -40), corrections[0])
 
-
     def test_delete_reebill(self):
         account = '99999'
         with DBSession(self.state_db) as session:
