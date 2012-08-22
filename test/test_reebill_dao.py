@@ -170,6 +170,20 @@ class ReebillDAOTest(unittest.TestCase):
         self.assertRaises(NoSuchReeBillException,
                 self.reebill_dao.load_reebill, '99999', 1, version=5)
 
+    def test_load_utilbill(self):
+        # nothing to load
+        self.assertRaises(NoSuchReeBillException,
+                self.reebill_dao.load_utilbill, '99999', 'gas', 'washgas',
+                date(2012,11,12), date(2012,12,14))
+
+        # save a utilbill
+        ub = example_data.get_utilbill_dict('99999')
+        self.reebill_dao._save_utilbill(ub)
+
+        # load it
+        self.assertEqual(ub, self.reebill_dao.load_utilbill('99999', 'gas',
+                'washgas', date(2011,11,12), date(2011,12,14)))
+
     def test_load_utilbills(self):
         # no utility bills
         self.assertEqual([], self.reebill_dao.load_utilbills())

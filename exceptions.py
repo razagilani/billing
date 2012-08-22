@@ -2,6 +2,7 @@ class Unauthenticated(Exception):
     pass
 
 
+# TODO rename to NoSuchBillException
 class NoSuchReeBillException(Exception):
     pass
 
