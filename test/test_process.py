@@ -932,6 +932,16 @@ port = 27017
             assert len(corrections) == 1
             self.assertEquals((2, 1, -40), corrections[0])
 
+    def test_roll(self):
+        '''Tests Process.roll_bill, which modifies a MongoReebill to convert it
+        into its sequence successor, and copies the CPRS in Mongo. (The bill
+        itself is not saved in any database.)'''
+        account = '99999'
+        with DBSession(self.state_db) as session:
+            b1 = example_data.get_reebill(account, 1)
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 1))
+            b2 = self.process.roll_bill(session, b1)
+
     def test_delete_reebill(self):
         account = '99999'
         with DBSession(self.state_db) as session:
