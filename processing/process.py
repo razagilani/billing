@@ -329,7 +329,8 @@ class Process(object):
 
         # construct a new reebill from an old one. the new one's version is
         # always 0 even if it was created from a non-0 version of the old one.
-        new_reebill = MongoReebill(reebill)
+        # TODO don't use private '_utilbills' here
+        new_reebill = MongoReebill(reebill, reebill._utilbills)
         new_reebill.version = 0
 
         new_period_end, utilbills = state.guess_utilbills_and_end_date(session,
