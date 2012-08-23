@@ -260,14 +260,14 @@ class MongoReebill(object):
                 "ba_street1": None,
                 "ba_city": None,
                 "ba_state": None,
-                "ba_postalcode": None
+                "ba_postalcode": None,
             }
             self.service_address = {
-                "sa_addressee": None
-                "sa_street1": None
-                "sa_city": None
-                "sa_state": None
-                "sa_postalcode": None
+                "sa_addressee": None,
+                "sa_street1": None,
+                "sa_city": None,
+                "sa_state": None,
+                "sa_postalcode": None,
             }
             self.ree_charges = Decimal("0.00")
             self.ree_savings = Decimal("0.00")
@@ -915,8 +915,6 @@ class MongoReebill(object):
                 service)
         meter = next(m for m in utilbill['meters'] if m['identifier'] ==
                 meter_identifier)
-        meter['present_read_date'] = present_read_date
-        meter['prior_read_date'] = prior_read_date
         for register in meter['registers']:
             if register['identifier'] == register_identifier:
                 register['quantity'] = quantity
