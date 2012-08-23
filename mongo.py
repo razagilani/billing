@@ -147,8 +147,8 @@ class MongoReebill(object):
 
         # the bill is being instantiated from an existing instance
         elif type(reebill_data) is MongoReebill:
-
             reebill = reebill_data
+            self._utilbills = utilbill_dicts
 
             # copy the dict passed because we set it here as instance data and start
             # operating on that data. This destroys the reebill from whence it came
@@ -219,9 +219,9 @@ class MongoReebill(object):
                     for meter in self.meters_for_service(service):
                         self.set_meter_read_date(service, meter['identifier'], None, meter['present_read_date'])
                     for actual_register in self.actual_registers(service):
-                        self.set_actual_register_quantity(actual_register['identifier'], 0.0)
+                        self.set_actual_register_quantity(actual_register['identifier'], Decimal(0.0))
                     for shadow_register in self.shadow_registers(service):
-                        self.set_shadow_register_quantity(shadow_register['identifier'], 0.0)
+                        self.set_shadow_register_quantity(shadow_register['identifier'], Decimal(0.0))
 
 
                 # zero out statistics section
@@ -663,7 +663,7 @@ class MongoReebill(object):
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
         chargegroup_lists = [ub['actual_chargegroups'].keys() for ub in
-                self._utilbills if ub['service'] == service_name]
+                self._utilbills if ub['_id']['service'] == service_name]
         if chargegroup_lists == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
         if len(chargegroup_lists) > 1:
@@ -844,7 +844,7 @@ class MongoReebill(object):
 
     def delete_meter(self, service, identifier):
         for ub in self._utilbills['utilbills']:
-            if ub['service'] == service:
+            if ub['_id']['service'] == service:
                 for meter in ub['meters']:
                     del meter
 
@@ -883,7 +883,7 @@ class MongoReebill(object):
         }
 
         # put actual register in meter in utilbill document
-        utilbill = next(u for u in self._utilbills if u['service'] == service)
+        utilbill = next(u for u in self._utilbills if u['_id']['service'] == service)
         meter = next(m for m in utilbill['meters'] if m['identifier'] ==
                 meter_identifier)
         meter['registers'].append(new_actual_register)
@@ -901,7 +901,8 @@ class MongoReebill(object):
     
     def set_meter_read_date(self, service, identifier, present_read_date, prior_read_date):
         ''' Set the read date for a specified meter.'''
-        utilbill = next(u for u in self._utilbills if u['service'] == service)
+        utilbill = next(u for u in self._utilbills if u['_id']['service'] ==
+                service)
         meter = next(m for m in utilbill['meters'] if m['identifier'] ==
                 identifier)
         meter['present_read_date'] = present_read_date
@@ -909,7 +910,8 @@ class MongoReebill(object):
 
     def set_meter_actual_register(self, service, meter_identifier, register_identifier, quantity):
         ''' Set the total for a specified meter register.'''
-        utilbill = next(u for u in self._utilbills if u['service'] == service)
+        utilbill = next(u for u in self._utilbills if u['_id']['service'] ==
+                service)
         meter = next(m for m in utilbill['meters'] if m['identifier'] ==
                 meter_identifier)
         meter['present_read_date'] = present_read_date
@@ -924,7 +926,8 @@ class MongoReebill(object):
 
         # TODO: 23251399 - probably need a better strategy to enforce uniqueness
 
-        utilbill = next(u for u in self._utilbills if u['service'] == service)
+        utilbill = next(u for u in self._utilbills if u['_id']['service'] ==
+                service)
 
         # complain if any existing meter has the same identifier
         for meter in utilbill['meters']:
@@ -939,7 +942,8 @@ class MongoReebill(object):
         if old_identifier == new_identifier:
             return
 
-        utilbill = next(u for u in self._utilbills if u['service'] == service)
+        utilbill = next(u for u in self._utilbills if u['_id']['service'] ==
+                service)
 
         # complain if any register in any existing meter has the same
         # identifier
@@ -1002,10 +1006,12 @@ class MongoReebill(object):
         '''Sets the value 'quantity' in the first register subdictionary whose
         identifier is 'identifier' to 'quantity'. Raises an exception if no
         register with that identified is found.'''
-        utilbill = next(u for u in self._utilbills if u['service'] == service)
-        meter = next(m for m in utilbill['meters'] if m['identifier'] ==
-                meter_identifier)
-        meter['quantity'] == quantity
+        for u in self._utilbills:
+            for m in u['meters']:
+                for r in m['registers']:
+                    if r['identifier'] == identifier:
+                        r['quantity'] = quantity
+                        return
 
     def all_shadow_registers(self):
         return reduce(operator.add, [self.shadow_registers(s) for s in
@@ -1111,7 +1117,8 @@ class MongoReebill(object):
                 self.reebill_dict['hypothetical_chargegroups'])
 
     def actual_chargegroups_flattened(self, service):
-        utilbill = next(u for u in self._utilbills if u['service'] == service)
+        utilbill = next(u for u in self._utilbills if u['_id']['service'] ==
+                service)
         return flatten_chargegroups_dict(utilbill['chargegroups'])
 
     #def chargegroups_flattened(self, service, chargegroups):
@@ -1136,7 +1143,8 @@ class MongoReebill(object):
                 flat_charges)
 
     def set_actual_chargegroups_flattened(self, service, flat_charges):
-        utilbill = [u for u in self._utilbills if u['service'] == service]
+        utilbill = [u for u in self._utilbills if u['_id']['service'] ==
+                service]
         utilbill['chargegroups'] == unflatten_chargegroups_list(flat_charges)
 
     #def set_chargegroups_flattened(self, service, flat_charges, chargegroups):
