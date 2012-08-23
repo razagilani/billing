@@ -240,6 +240,7 @@ class MongoReebill(object):
         # return a new empty instance
         elif type(reebill_data) is None:
             self.reebill_dict = {}
+            self._utilbills = []
 
             # initialize the reebill_dict through the MongoReeBill interface
             self.account = ""
