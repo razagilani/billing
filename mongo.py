@@ -211,10 +211,8 @@ class MongoReebill(object):
                         if 'total' in charge: del charge['total']
                         
                 self.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
-
            
                 # reset measured usage
-
                 for service in self.services:
                     for meter in self.meters_for_service(service):
                         self.set_meter_read_date(service, meter['identifier'], None, meter['present_read_date'])
@@ -223,24 +221,21 @@ class MongoReebill(object):
                     for shadow_register in self.shadow_registers(service):
                         self.set_shadow_register_quantity(shadow_register['identifier'], Decimal(0.0))
 
-
                 # zero out statistics section
-                statistics = self.statistics
-
-                statistics["conventional_consumed"] = 0
-                statistics["renewable_consumed"] = 0
-                statistics["renewable_utilization"] = 0
-                statistics["conventional_utilization"] = 0
-                statistics["renewable_produced"] = 0
-                statistics["co2_offset"] = 0
-                statistics["total_savings"] = Decimal("0.00")
-                statistics["total_renewable_consumed"] = 0
-                statistics["total_renewable_produced"] = 0
-                statistics["total_trees"] = 0
-                statistics["total_co2_offset"] = 0
-                statistics["consumption_trend"] = []
-
-                self.statistics = statistics
+                statistics = {
+                    "conventional_consumed": 0,
+                    "renewable_consumed": 0,
+                    "renewable_utilization": 0,
+                    "conventional_utilization": 0,
+                    "renewable_produced": 0,
+                    "co2_offset": 0,
+                    "total_savings": Decimal("0.00"),
+                    "total_renewable_consumed": 0,
+                    "total_renewable_produced": 0,
+                    "total_trees": 0,
+                    "total_co2_offset": 0,
+                    "consumption_trend": [],
+                }
 
         # return a new empty instance
         elif type(reebill_data) is None:
@@ -259,20 +254,25 @@ class MongoReebill(object):
             self.payment_received = Decimal("0.00")
 
             # consider a reset addr function
-            self.billing_address = {"ba_addressee": None, "ba_street1": None, "ba_city": None, "ba_state": None, "ba_postalcode": None}
-            self.service_address = {"sa_addressee": None, "sa_street1": None, "sa_city": None, "sa_state": None, "sa_postalcode": None}
+            self.billing_address = {
+                "ba_addressee": None,
+                "ba_street1": None,
+                "ba_city": None,
+                "ba_state": None,
+                "ba_postalcode": None
+            }
+            self.service_address = {
+                "sa_addressee": None
+                "sa_street1": None
+                "sa_city": None
+                "sa_state": None
+                "sa_postalcode": None
+            }
             self.ree_charges = Decimal("0.00")
             self.ree_savings = Decimal("0.00")
             self.total_adjustment = Decimal("0.00")
             self.balance_forward = Decimal("0.00")
             self.motd = "New customer template"
-
-            #initialize first utilbill here.
-            #need to choose a default service
-            #once the utilbill is initially created, we leave it to other processes to add services, etc..
-            #utilbill section:
-            #    "hypothetical_chargegroups" : {
-            #        "All Charges" : [
 
             #consider a reset statistics function
             self.statistics = {
