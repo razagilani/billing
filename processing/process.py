@@ -560,7 +560,8 @@ class Process(object):
 
         # result cannot be negative
         return max(Decimal(0), reebill.balance_due -
-                self.state_db.get_total_payment_since(reebill.issue_date))
+                self.state_db.get_total_payment_since(session, account,
+                reebill.issue_date))
 
     def delete_reebill(self, session, account, sequence):
         '''Deletes the latest version of the reebill given by 'account' and
