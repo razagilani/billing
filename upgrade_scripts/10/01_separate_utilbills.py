@@ -87,10 +87,14 @@ for reebill in reebills_col.find():#{'_id.account':'10023', '_id.sequence':5}):
         reebills_col.save(reebill)
     except KeyError as e:
         print >> sys.stderr, reebill['_id']['account'], \
-                reebill['_id']['sequence'], reebill['_id']['version'], 'missing key:', e
+                reebill['_id']['sequence'], reebill['_id']['version'], \
+                'missing key:', e
+        reebills_col.remove(reebill)
     except Exception as e:
         print >> sys.stderr, reebill['_id']['account'], \
-                reebill['_id']['sequence'], reebill['_id']['version'], 'ERROR:', traceback.format_exc()
+                reebill['_id']['sequence'], reebill['_id']['version'], \
+                'ERROR:', traceback.format_exc()
+        reebills_col.remove(reebill)
     else:
         print reebill['_id']['account'], reebill['_id']['sequence'], \
                 reebill['_id']['version']

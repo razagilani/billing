@@ -1233,13 +1233,17 @@ class ReebillDAO:
         '''Loads all utility bill documents from Mongo that match the ones in
         the 'utilbills' list in the given reebill. Returns list of dictionaries
         with converted types.'''
-        utilbills = deep_map(float_to_decimal, [self.load_utilbill(
-            reebill_doc['_id']['account'],
-            utilbill_reference['service'],
-            utilbill_reference['utility'],
-            utilbill_reference['start'],
-            utilbill_reference['end']
-        ) for utilbill_reference in reebill_doc['utilbills']])
+        try:
+            utilbills = deep_map(float_to_decimal, [self.load_utilbill(
+                reebill_doc['_id']['account'],
+                utilbill_reference['service'],
+                utilbill_reference['utility'],
+                utilbill_reference['start'],
+                utilbill_reference['end']
+            ) for utilbill_reference in reebill_doc['utilbills']])
+        except KeyError:
+            print pp.pformat(utilbill_reference)
+            raise
         # must be an assignment because it copies
         utilbills = [convert_datetimes(u) for u in utilbills]
         return utilbills
