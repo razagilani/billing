@@ -3,6 +3,7 @@
 import unittest
 import pymongo
 import MySQLdb
+import sqlalchemy
 from billing.processing import rate_structure
 from billing.processing.db_objects import Customer
 from billing.processing.state import StateDB
@@ -39,6 +40,7 @@ class RateStructureTest(unittest.TestCase):
         }
         self.rate_structure_dao = rate_structure.RateStructureDAO(
                 **self.rs_db_config)
+        sqlalchemy.orm.clear_mappers()
         self.state_db = StateDB(**{
             'host': 'localhost',
             'database': 'test',
