@@ -115,8 +115,9 @@ port = 27017
             'port': 27017
         })
 
+        self.nexus_util = NexusUtil('nexus')
         self.process = Process(self.state_db, self.reebill_dao,
-                self.rate_structure_dao, self.billupload, NexusUtil('nexus'),
+                self.rate_structure_dao, self.billupload, self.nexus_util,
                 self.splinter)
 
     def tearDown(self):
@@ -903,8 +904,8 @@ port = 27017
             # energy in it; only the late charge will differ)
             two = self.reebill_dao.load_reebill(acc, 2)
             two.late_charge_rate = .5
-            fbd.fetch_oltp_data(self.splinter,
-                    NexusUtil('nexus').olap_id(acc), two)
+            fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(acc),
+                    two)
             self.process.compute_bill(session, one, two)
 
             # if given a late_charge_rate > 0, 2nd reebill should have a late charge
@@ -1008,7 +1009,44 @@ port = 27017
             self.assertEquals(account, u.reebill.customer.account)
             self.assertEquals(1, u.reebill.sequence)
 
-            session.commit()
+        def test_bind_and_compute_consistency(self):
+            '''Tests that repeated binding and computing of a reebill do not
+            cause it to change (a bug we have seen).'''
+            acc = '99999'
+            self.reebill_dao.save_reebill(example_data.get_reebill(account, 0))
+            self.state_db.new_rebill(session, account, 1)
+            b = example_data.get_reebill(account, 1, version=0)
+            self.reebill_dao.save_reebill(b)
+
+            # more fields could be added here
+            hypo = b.hypothetical_total
+            actual = b.actual_total
+            ree = b.total_renewable_energy
+            ree_value = b.ree_value
+            ree_charges = b.ree_charges
+            def check():
+                self.assertEqual(hypo, b.hypothetical_total)
+                self.assertEqual(actual, b.hypothetical_total)
+                self.assertEqual(ree, b.total_renewable_energy)
+                self.assertEqual(ree_value, b.ree_value)
+                self.assertEqual(ree_charges, b.ree_charges)
+
+            olap_id = 'FakeSplinter ignores olap id'
+            fbd.fetch_oltp_data(self.splinter, olap_id, b)
+            self.process.compute_bill(b)
+            check()
+            self.process.compute_bill(b)
+            check()
+            fbd.fetch_oltp_data(self.splinter, olap_id, b)
+            fbd.fetch_oltp_data(self.splinter, olap_id, b)
+            fbd.fetch_oltp_data(self.splinter, olap_id, b)
+            check()
+            self.process.compute_bill(b)
+            check()
+            fbd.fetch_oltp_data(self.splinter, olap_id, b)
+            check()
+            self.process.compute_bill(b)
+            check()
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
