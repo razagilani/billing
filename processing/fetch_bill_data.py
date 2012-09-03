@@ -11,41 +11,69 @@ from datetime import date, datetime,timedelta, time
 import calendar
 import random
 import csv
+import operator
 from bisect import bisect_left
 from optparse import OptionParser
 from skyliner import sky_install
 from skyliner import sky_objects
 from skyliner.sky_errors import DataHandlerError
+from skyliner.sky_handlers import cross_range
 from billing import mongo
 from billing.dictutils import dict_merge
 from billing import dateutils, holidays
 from billing.dateutils import date_to_datetime, timedelta_in_hours
 from decimal import Decimal
 
-def fetch_oltp_data(splinter, olap_id, reebill, verbose=False):
+def get_billable_energy_timeseries(splinter, install, start, end):
+    '''Returns a list of hourly billable-energy values during the datetime
+    range [start, end) (endpoints must whole hours). Values during
+    unbillable annotations are removed.''' 
+    unbillable_annotations = [a for a in install.get_annotations() if
+            a.unbillable]
+    result = []
+    for hour in cross_range(start, end):
+        if any([a.contains(hour) for a in unbillable_annotations]):
+            result.append(Decimal(0))
+        else:
+            try:
+                energy_sold = splinter._guru.get_data_for_hour(install,
+                        date(hour.year, hour.month, hour.day),
+                        hour.hour).energy_sold
+                print 'OLAP energy_sold for %s: %s' % (hour, energy_sold)
+            except ValueError:
+                result.append(Decimal(0))
+            else:
+                result.append(Decimal(energy_sold))
+    return result
+
+# TODO 35345191 rename this function
+def fetch_oltp_data(splinter, olap_id, reebill, verbose=True):
     '''Update quantities of shadow registers in reebill with Skyline-generated
     energy from OLTP.'''
-    inst_obj = splinter.get_install_obj_for(olap_id)
-    # get hourly time-series of energy-sold values during the reebill's meter
-    # read period (NOT the same as utililty bill period or reebill period,
-    # though they almost always coincide)
+    install_obj = splinter.get_install_obj_for(olap_id)
+    # period for renewable energy is the reebill's meter read period (NOT the
+    # same as utililty bill period or reebill period, though they almost always
+    # coincide)
     # TODO support multi-service customers
     start, end = reebill.meter_read_period(reebill.services[0])
-    print "*************** entering skyliner code"
-    timeseries = inst_obj.get_billable_energy_timeseries(
+
+    # get hourly "energy sold" values during this period
+    olap_timeseries = get_billable_energy_timeseries(splinter, install_obj,
             date_to_datetime(start), date_to_datetime(end))
-    print "*************** got hourly time series: %s hours starting at %s, ending at %s" % (len(timeseries), timeseries[0][0], timeseries[-1][0])
+
+    # uncomment this to compare OLAP values to OLTP
+    #oltp_timeseries = [Decimal(pair[1]) for pair in install_obj.get_billable_energy_timeseries(
+            #date_to_datetime(start), date_to_datetime(end))]
+    #pprint('***** OLAP vs OLTP')
+    #pprint(zip(olap_timeseries, oltp_timeseries))
+
     def energy_function(day, hourrange):
-        # indices of relevant hours in 'timeseries' are number of hours since
-        # timeseries start for each hour in 'hourrange' on 'day' (hourrange is
-        # a pair of inclusive hour numbers in [0,23])
-        first_idx = timedelta_in_hours((date_to_datetime(day) +
-                timedelta(hours=hourrange[0])) - timeseries[0][0])
-        last_idx = first_idx + hourrange[1] - hourrange[0]
-        return Decimal(str(sum(timeseries[i][1]
-                for i in range(first_idx, last_idx + 1))))
+        for hour in range(hourrange[0], hourrange[1] + 1):
+            index = timedelta_in_hours(date_to_datetime(day) + timedelta(hour)
+                    - date_to_datetime(start))
+            return olap_timeseries[index]
+
     usage_data_to_virtual_register(reebill, energy_function)
-    print "*************** bind REE done"
 
 def fetch_interval_meter_data(reebill, csv_file, meter_identifier=None,
         timestamp_column=0, energy_column=1, energy_unit='btu',
@@ -185,24 +213,24 @@ def get_interval_meter_data_source(csv_file, timestamp_column=0,
     return get_energy_for_hour_range
 
 
-def get_shadow_register_data(reebill, meter_identifier=None):
-    # TODO duplicate of mongo.shadow_registers? move this to mongo.py to
-    # replace that function
-    '''Returns a list of shadow registers in all meters of the given
-    MongoReebill, or if meter_identifier is given, only meters with that
-    identifier. The returned dictionaries are the same as register subdocuments
-    in mongo plus read dates of their containing meters.'''
-    result = []
-    service_meters_dict = reebill.meters # poorly-named attribute
-    for service, meters in service_meters_dict.iteritems():
-        for meter in meters:
-            if meter_identifier == None or meter['identifier'] == meter_identifier:
-                for register in meter['registers']:
-                    if register['shadow'] == True:
-                        result.append(dict_merge(register.copy(), {
-                            'prior_read_date': meter['prior_read_date'],
-                            'present_read_date': meter['present_read_date']
-                        }))
+#def get_shadow_register_data(reebill, meter_identifier=None):
+    ## TODO duplicate of mongo.shadow_registers? move this to mongo.py to
+    ## replace that function
+    #'''Returns a list of shadow registers in all meters of the given
+    #MongoReebill, or if meter_identifier is given, only meters with that
+    #identifier. The returned dictionaries are the same as register subdocuments
+    #in mongo plus read dates of their containing meters.'''
+    #result = []
+    #service_meters_dict = reebill.meters # poorly-named attribute
+    #for service, meters in service_meters_dict.iteritems():
+        #for meter in meters:
+            #if meter_identifier == None or meter['identifier'] == meter_identifier:
+                #for register in meter['registers']:
+                    #if register['shadow'] == True:
+                        #result.append(dict_merge(register.copy(), {
+                            #'prior_read_date': meter['prior_read_date'],
+                            #'present_read_date': meter['present_read_date']
+                        #}))
     return result
 
 
