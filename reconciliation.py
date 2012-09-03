@@ -38,8 +38,8 @@ def close_enough(x,y):
         return abs(x) < .001
     return abs(x - y) / y < .001
 
-def generate_report(logger, billdb_config, statedb_config, splinter_config,
-        monguru_config, output_file, skip_oltp=False):
+def generate_report(logger, billdb_config, statedb_config, oltp_url,
+        splinter_config, output_file, skip_oltp=False):
     '''Saves JSON data for reconciliation report in the file 'output_file'.
     Each line of the file is a JSON dictionary. The entire file is meant to be
     read as a JSON list, but it is not written with []s and ,s so that the file
@@ -49,15 +49,15 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
     state_db = state.StateDB(**statedb_config)
     reebill_dao = mongo.ReebillDAO(state_db, billdb_config['host'], billdb_config['port'], billdb_config['database'])
     session = state_db.session()
-    splinter = Splinter(splinter_config['url'], **splinter_config)
-    monguru = Monguru(monguru_config['host'], monguru_config['db'])
+    splinter = Splinter(oltp_url, **splinter_config)
+    monguru = splinter._guru
 
     # get account numbers of all customers in sorted order
     # TODO: it would be faster to do this sorting in MySQL instead of Python when
     # the list of accounts gets long
     accounts = sorted(state_db.listAccounts(session))
     for account in accounts:
-        install = splinter.get_install_obj_for(NexusUtil().olap_id(account))
+        install = splinter.get_install_obj_for(NexusUtil('nexus').olap_id(account))
         sequences = state_db.listSequences(session, account)
         for sequence in sequences:
             reebill = reebill_dao.load_reebill(account, sequence)
@@ -195,16 +195,32 @@ def main():
         'database': args.statedb,
         'user': args.stateuser
     }
+    oltp_url = 'http://duino-drop.appspot.com/'
     splinter_config = {
-        'url': 'http://duino-drop.appspot.com/',
         'skykit_host': args.host,
         'skykit_db': args.olapdb,
         'olap_cache_host': args.host,
         'olap_cache_db': args.olapdb,
-    }
-    monguru_config = {
-        'host': args.host,
-        'db': args.olapdb
+        'monguru_options': {
+            'olap_cache_host': args.host,
+            'olap_cache_db': args.olapdb,
+            'cartographer_options': {
+                'olap_cache_host': args.host,
+                'olap_cache_db': args.olapdb,
+                'measure_collection': 'skymap',
+                'install_collection': 'skykit_installs',
+                'nexus_db': 'nexus',
+                'nexus_collection': 'skyline',
+            },
+        },
+        'cartographer_options': {
+            'olap_cache_host': args.host,
+            'olap_cache_db': args.olapdb,
+            'measure_collection': 'skymap',
+            'install_collection': 'skykit_installs',
+            'nexus_db': 'nexus',
+            'nexus_collection': 'skyline',
+        },
     }
 
     # log file goes in billing/reebill (where reebill.log also goes)
@@ -223,7 +239,7 @@ def main():
     handler.setFormatter(formatter)
     logger.addHandler(handler) 
     logger.setLevel(logging.DEBUG)
-
+    
     try:
         # write the json string to a file: it goes in billing/reebill
         output_file_path = os.path.join(os.path.dirname(
@@ -232,9 +248,8 @@ def main():
                 'reebill', output_file_path), 'w') as output_file:
             logger.info('Generating reconciliation report at %s' %
                     output_file_path)
-            generate_report(logger, billdb_config, statedb_config,
-                    splinter_config, monguru_config, output_file,
-                    skip_oltp=args.skip_oltp)
+            generate_report(logger, billdb_config, statedb_config, oltp_url,
+                    splinter_config, output_file, skip_oltp=args.skip_oltp)
     except Exception as e:
         print >> sys.stderr, '%s\n%s' % (e, traceback.format_exc())
         logger.critical("Couldn't generate reconciliation report: %s\n%s"
