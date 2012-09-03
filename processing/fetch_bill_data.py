@@ -51,23 +51,28 @@ def fetch_oltp_data(splinter, olap_id, reebill, verbose=True):
     '''Update quantities of shadow registers in reebill with Skyline-generated
     energy from OLTP.'''
     install_obj = splinter.get_install_obj_for(olap_id)
-    # get hourly time-series of energy-sold values during the reebill's meter
-    # read period (NOT the same as utililty bill period or reebill period,
-    # though they almost always coincide)
+    # period for renewable energy is the reebill's meter read period (NOT the
+    # same as utililty bill period or reebill period, though they almost always
+    # coincide)
     # TODO support multi-service customers
     start, end = reebill.meter_read_period(reebill.services[0])
+
+    # get hourly "energy sold" values during this period
     olap_timeseries = get_billable_energy_timeseries(splinter, install_obj,
             date_to_datetime(start), date_to_datetime(end))
-    oltp_timeseries = [Decimal(pair[1]) for pair in install_obj.get_billable_energy_timeseries(
-            date_to_datetime(start), date_to_datetime(end))]
-    pprint('***** OLAP vs OLTP')
-    pprint(zip(olap_timeseries, oltp_timeseries))
-    timeseries = olap_timeseries
+
+    # uncomment this to compare OLAP values to OLTP
+    #oltp_timeseries = [Decimal(pair[1]) for pair in install_obj.get_billable_energy_timeseries(
+            #date_to_datetime(start), date_to_datetime(end))]
+    #pprint('***** OLAP vs OLTP')
+    #pprint(zip(olap_timeseries, oltp_timeseries))
+
     def energy_function(day, hourrange):
         for hour in range(hourrange[0], hourrange[1] + 1):
             index = timedelta_in_hours(date_to_datetime(day) + timedelta(hour)
                     - date_to_datetime(start))
-            return timeseries[index]
+            return olap_timeseries[index]
+
     usage_data_to_virtual_register(reebill, energy_function)
 
 def fetch_interval_meter_data(reebill, csv_file, meter_identifier=None,
