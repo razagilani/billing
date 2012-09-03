@@ -321,7 +321,27 @@ class BillToolBridge:
                 skykit_host=self.config.get('skyline_backend', 'olap_host'),
                 skykit_db=self.config.get('skyline_backend', 'olap_database'),
                 olap_cache_host=self.config.get('skyline_backend', 'olap_host'),
-                olap_cache_db=self.config.get('skyline_backend', 'olap_database')
+                olap_cache_db=self.config.get('skyline_backend', 'olap_database'),
+                monguru_options={
+                    'olap_cache_host': self.config.get('skyline_backend', 'olap_host'),
+                    'olap_cache_db': self.config.get('skyline_backend', 'olap_database'),
+                    'cartographer_options': {
+                        'olap_cache_host': self.config.get('skyline_backend', 'olap_host'),
+                        'olap_cache_db': self.config.get('skyline_backend', 'olap_database'),
+                        'measure_collection': 'skymap',
+                        'install_collection': 'skyit_installs',
+                        'nexus_db': 'nexus',
+                        'nexus_collection': 'skyline',
+                    },
+                },
+                cartographer_options={
+                    'olap_cache_host': self.config.get('skyline_backend', 'olap_host'),
+                    'olap_cache_db': self.config.get('skyline_backend', 'olap_database'),
+                    'measure_collection': 'skymap',
+                    'install_collection': 'skyit_installs',
+                    'nexus_db': 'nexus',
+                    'nexus_collection': 'skyline',
+                },
             )
 
         # create one Process object to use for all related bill processing
