@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 '''Script to generate a "reconciliation report" comparing energy quantities in
 reebills to the same quantities in OLAP.
 
@@ -39,7 +39,7 @@ def close_enough(x,y):
     return abs(x - y) / y < .001
 
 def generate_report(logger, billdb_config, statedb_config, splinter_config,
-        monguru_config, output_file, skip_oltp=False):
+        monguru_config, output_file, nexushost, skip_oltp=False):
     '''Saves JSON data for reconciliation report in the file 'output_file'.
     Each line of the file is a JSON dictionary. The entire file is meant to be
     read as a JSON list, but it is not written with []s and ,s so that the file
@@ -57,7 +57,7 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
     # the list of accounts gets long
     accounts = sorted(state_db.listAccounts(session))
     for account in accounts:
-        install = splinter.get_install_obj_for(NexusUtil('nexus').olap_id(account))
+        install = splinter.get_install_obj_for(NexusUtil(nexushost).olap_id(account))
         sequences = state_db.listSequences(session, account)
         for sequence in sequences:
             reebill = reebill_dao.load_reebill(account, sequence)
@@ -181,6 +181,8 @@ def main():
             help='name of OLAP database (default: dev)')
     parser.add_argument('--skip-oltp',  action='store_true',
             help="Don't include OLTP data (much faster)")
+    parser.add_argument('--nexushost', default='localhost',
+            help="Name of nexus host")
     args = parser.parse_args()
 
     # set up config dicionaries for data access objects used in generate_report
@@ -233,7 +235,7 @@ def main():
             logger.info('Generating reconciliation report at %s' %
                     output_file_path)
             generate_report(logger, billdb_config, statedb_config,
-                    splinter_config, monguru_config, output_file,
+                    splinter_config, monguru_config, output_file, args.nexushost,
                     skip_oltp=args.skip_oltp)
     except Exception as e:
         print >> sys.stderr, '%s\n%s' % (e, traceback.format_exc())

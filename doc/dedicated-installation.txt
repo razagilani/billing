@@ -54,7 +54,7 @@ Install gcc and python heads so packages like pymongo and numpy can compile C ex
 Install the following packages with sudo pip install [package]
     cherrypy
     jinja2
-    pymongo
+    pymongo==2.2.1
     fabulous (unused?)
     code (pip could not find it)
     sqlalchemy
@@ -68,10 +68,7 @@ Install the following packages with sudo pip install [package]
     pyyaml (unused?)
     ordereddict (for 2.6 installs only)
     mongoengine
-    pyPdf
-    PIL
-       libjpeg-dev
-       libfreetype6
+    pypdf
     requests
     gevent
 
@@ -351,6 +348,7 @@ for staging env:
 0 3 * * * /var/local/reebill-stage/lib/python2.6/site-packages/billing/reconciliation.py --statedb skyline_stage  --stateuser stage --statepw stage --billdb skyline-stage --olapdb dev --skip-oltp
 
 
+
 for prod env:
 
 SHELL=/bin/bash
@@ -362,4 +360,7 @@ PYTHONPATH=/var/local/reebill-prod/lib/python2.6/site-packages:/var/local/reebil
 0 3 * * * /var/local/reebill-prod/lib/python2.6/site-packages/billing/reconciliation.py --statedb skyline_prod  --stateuser root --statepw vLGhTZu9eq4ULvbbKzlE --billdb skyline-prod --olapdb dev --skip-oltp
 
 
+0 1 * * * /var/local/reebill-prod/lib/python2.6/site-packages/billing/reebill/admin/backup_prod.bash
+#0 3 * * * /var/local/reebill-prod/lib/python2.6/site-packages/billing/reconciliation.py --statedb skyline_prod  --stateuser root --statepw vLGhTZu9eq4ULvbbKzlE --billdb skyline-prod --olapdb dev --skip-oltp
+41 4 * * * /var/local/reebill-prod/lib/python2.6/site-packages/billing/reconciliation.py --statedb skyline_prod  --stateuser root --statepw vLGhTZu9eq4ULvbbKzlE --billdb skyline-prod --olapdb dev
 
