@@ -39,7 +39,7 @@ def get_billable_energy_timeseries(splinter, install, start, end):
                 energy_sold = splinter._guru.get_data_for_hour(install,
                         date(hour.year, hour.month, hour.day),
                         hour.hour).energy_sold
-                print 'energy_sold for %s: %s' % (hour, energy_sold)
+                print 'OLAP energy_sold for %s: %s' % (hour, energy_sold)
             except ValueError:
                 result.append(Decimal(0))
             else:
@@ -56,8 +56,13 @@ def fetch_oltp_data(splinter, olap_id, reebill, verbose=True):
     # though they almost always coincide)
     # TODO support multi-service customers
     start, end = reebill.meter_read_period(reebill.services[0])
-    timeseries = get_billable_energy_timeseries(splinter, install_obj,
+    olap_timeseries = get_billable_energy_timeseries(splinter, install_obj,
             date_to_datetime(start), date_to_datetime(end))
+    oltp_timeseries = [Decimal(pair[1]) for pair in install_obj.get_billable_energy_timeseries(
+            date_to_datetime(start), date_to_datetime(end))]
+    pprint('***** OLAP vs OLTP')
+    pprint(zip(olap_timeseries, oltp_timeseries))
+    timeseries = olap_timeseries
     def energy_function(day, hourrange):
         for hour in range(hourrange[0], hourrange[1] + 1):
             index = timedelta_in_hours(date_to_datetime(day) + timedelta(hour)
