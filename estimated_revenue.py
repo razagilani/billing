@@ -42,7 +42,6 @@ class EstimatedRevenue(object):
 
         # pre-load all the olap ids of accounts for speed (each one requires an
         # HTTP request)
-        nexus_util = NexusUtil()
         session = self.state_db.session()
         self.olap_ids = dict([
             (account, nexus_util.olap_id(account)) for account in
@@ -428,6 +427,26 @@ if __name__ == '__main__':
         'skykit_db': args.olapdb,
         'olap_cache_host': args.host,
         'olap_cache_db': args.olapdb,
+        'monguru_options': {
+            'olap_cache_host': args.host,
+            'olap_cache_db': args.olapdb,
+            'cartographer_options': {
+                'olap_cache_host': args.host,
+                'olap_cache_db': args.olapdb,
+                'measure_collection': 'skymap',
+                'install_collection': 'skyit_installs',
+                'nexus_db': 'nexus',
+                'nexus_collection': 'skyline',
+            },
+        },
+        'cartographer_options': {
+            'olap_cache_host': args.host,
+            'olap_cache_db': args.olapdb,
+            'measure_collection': 'skymap',
+            'install_collection': 'skyit_installs',
+            'nexus_db': 'nexus',
+            'nexus_collection': 'skyline',
+        },
     })
 
     session = state_db.session()
