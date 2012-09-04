@@ -9,7 +9,7 @@ pp = pprint.PrettyPrinter().pprint
 
 # config:
 host = 'localhost'
-db = 'skyline' # mongo
+db = 'skyline-dev' # mongo
 statedb = 'skyline_dev' # mysql
 user = 'dev'
 password = 'dev'
