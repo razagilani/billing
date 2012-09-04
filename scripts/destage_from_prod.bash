@@ -1,8 +1,9 @@
 #!/bin/bash
 
 USAGE="
-Usage: $0 PRODHOST TOENV
+Usage: $0 MYSQLPASSWORD PRODHOST TOENV
      De-stages production ReeBill data to the specified environment.
+     MYSQLPASSWORD -- mysql admin password
      PRODHOST -- parameter specifying the hostname containing production data (e.g. tyrell-prod).
      TOENV -- parameter specifying the environment to be targeted by the de-stage (e.g. stage, dev).
      "
@@ -12,12 +13,14 @@ Usage: $0 PRODHOST TOENV
 
 : ${1?"$USAGE"} 
 
-if [ $# -ne 2 ]; then
+if [ $# -ne 3 ]; then
     echo "Specify args."
     exit 1
 fi
-PRODHOST=$1 
-TOENV=$2
+
+MYSQLPASSWORD=$1
+PRODHOST=$2 
+TOENV=$3
 
 # Script to restore development MySQL, Mongo collections, and filesystem from
 # backups on tyrell-prod. Based on billing/reebill/admin/destage.bash.
@@ -37,7 +40,7 @@ else
 fi
 # apparently only root can restore the database?
 # "Access denied; you need the SUPER privilege for this operation"
-mysql -uroot -proot -D skyline_$TOENV < ${now}billing_mysql.dmp
+mysql -uroot -p$MYSQLPASSWORD -D skyline_$TOENV < ${now}billing_mysql.dmp
 
 # restore
 mongorestore --drop --db skyline-$TOENV --collection ratestructure ${now}ratestructure_mongo/skyline-prod/ratestructure.bson
