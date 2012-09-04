@@ -245,5 +245,9 @@ def deploy():
         with fabcontext.cd('/var/local/%s/%s/' % (project, directory)):
             fabops.sudo('tar xvzf /tmp/%s_deploy/skyliner.tar.z' % (project), user='root')
 
+
+    # clean up remote deployment files so there are no permission collisions
+    fabops.sudo('rm -rf /tmp/%s_deploy/' % (project)) 
+
     fabops.sudo('chown -R %s:%s /var/local/%s' % (user, group, project), user='root')
     fabops.sudo('service %s restart' % (httpd))
