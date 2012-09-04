@@ -181,7 +181,7 @@ def main():
             help='name of OLAP database (default: dev)')
     parser.add_argument('--skip-oltp',  action='store_true',
             help="Don't include OLTP data (much faster)")
-    parser.add_argument('--nexushost', default='localhost',
+    parser.add_argument('--nexushost', default='nexus',
             help="Name of nexus host")
     args = parser.parse_args()
 
@@ -251,7 +251,7 @@ def main():
             logger.info('Generating reconciliation report at %s' %
                     output_file_path)
             generate_report(logger, billdb_config, statedb_config, oltp_url,
-                    args.nexushost, splinter_config, output_file,
+                    splinter_config, output_file, args.nexushost,
                     skip_oltp=args.skip_oltp)
     except Exception as e:
         print >> sys.stderr, '%s\n%s' % (e, traceback.format_exc())
