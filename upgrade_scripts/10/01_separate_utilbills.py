@@ -14,6 +14,12 @@ statedb = 'skyline_dev' # mysql
 user = 'dev'
 password = 'dev'
 
+#host = 'localhost'
+#db = 'skyline-stage' # mongo
+#statedb = 'skyline_stage' # mysql
+#user = 'stage'
+#password = 'stage'
+
 
 con = pymongo.Connection(host, 27017)
 reebills_col = con[db]['reebills']
