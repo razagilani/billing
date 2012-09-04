@@ -453,11 +453,13 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 PYTHONPATH=/var/local/reebill-stage/lib/python2.6/site-packages:/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib
 
 for staging env:
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+PYTHONPATH=/var/local/reebill-stage/lib/python2.6/site-packages:/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib
 
 # m h  dom mon dow   command
-0 2 * * * /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/admin/destage.bash
+0 2 * * * /var/local/reebill-stage/lib/python2.6/site-packages/billing/scripts/destage_from_prod.bash tyrell-prod stage
 0 3 * * * /var/local/reebill-stage/lib/python2.6/site-packages/billing/reconciliation.py --statedb skyline_stage  --stateuser stage --statepw stage --billdb skyline-stage --olapdb dev --skip-oltp
-
 
 
 For a production environment
