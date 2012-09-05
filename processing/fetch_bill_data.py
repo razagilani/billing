@@ -21,6 +21,7 @@ from billing import mongo
 from billing.dictutils import dict_merge
 from billing import dateutils, holidays
 from billing.dateutils import date_to_datetime, timedelta_in_hours
+from billing.exceptions import MissingDataError
 from decimal import Decimal
 
 def get_billable_energy_timeseries(splinter, install, start, end):
@@ -38,10 +39,16 @@ def get_billable_energy_timeseries(splinter, install, start, end):
                 energy_sold = splinter._guru.get_data_for_hour(install,
                         date(hour.year, hour.month, hour.day),
                         hour.hour).energy_sold
-                print 'OLAP energy_sold for %s: %s' % (hour, energy_sold)
+                print >> sys.stderr, "%s's OLAP energy_sold for %s: %s" % (
+                        install.name, hour, energy_sold)
             except ValueError:
-                # OLAP hourly document is missing
-                result.append(Decimal(0))
+                raise MissingDataError(("Couldn't get renewable energy data for %s: "
+                        "OLAP documents missing starting at %s") % (
+                        install.name, hour))
+            except AttributeError:
+                raise MissingDataError(("Couldn't get renewable energy data for %s: "
+                    "OLAP documents lack energy_sold measure starting at "
+                    "%s") % (install.name, hour))
             else:
                 result.append(Decimal(energy_sold))
     return result
@@ -66,7 +73,7 @@ def fetch_oltp_data(splinter, olap_id, reebill, use_olap=True, verbose=True):
         # NOTE if install_obj.get_billable_energy_timeseries() uses
         # die_fast=False, this timeseries may be shorter than anticipated and
         # energy_function below will fail.
-        # TODO support die_fast=False
+        # TODO support die_fast=False: 35547299
         timeseries = [Decimal(pair[1]) for pair in
                 install_obj.get_billable_energy_timeseries(
                 date_to_datetime(start), date_to_datetime(end))]
