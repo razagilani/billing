@@ -1431,7 +1431,7 @@ function reeBillReady() {
     bindREEOperationConn.autoAbort = true;
     function bindREEOperation()
     {
-        Ext.Msg.show({title: "Please wait while data is fetched", closable: false});
+        Ext.Msg.show({title: "Please Wait while OLTP data is fetched", closable: false});
 
         bindREEOperationConn.request({
             params: {account: selected_account, sequence: selected_sequence},
