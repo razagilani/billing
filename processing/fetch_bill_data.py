@@ -30,27 +30,29 @@ def get_billable_energy_timeseries(splinter, install, start, end):
     unbillable annotations are removed.''' 
     unbillable_annotations = [a for a in install.get_annotations() if
             a.unbillable]
+    monguru = splinter._guru
     result = []
     for hour in cross_range(start, end):
         if any([a.contains(hour) for a in unbillable_annotations]):
             result.append(Decimal(0))
         else:
+            day = date(hour.year, hour.month, hour.day)
+            hour_number = hour.hour
             try:
-                energy_sold = splinter._guru.get_data_for_hour(install,
-                        date(hour.year, hour.month, hour.day),
-                        hour.hour).energy_sold
-                print >> sys.stderr, "%s's OLAP energy_sold for %s: %s" % (
-                        install.name, hour, energy_sold)
+                cube_doc = monguru.get_data_for_hour(install, day, hour_number)
             except ValueError:
-                raise MissingDataError(("Couldn't get renewable energy data for %s: "
-                        "OLAP documents missing starting at %s") % (
+                raise MissingDataError(("Couldn't get renewable energy data "
+                        "for %s: OLAP documents missing starting at %s") % (
                         install.name, hour))
+            try:
+                energy_sold = cube_doc.energy_sold
             except AttributeError:
                 raise MissingDataError(("Couldn't get renewable energy data for %s: "
-                    "OLAP documents lack energy_sold measure starting at "
-                    "%s") % (install.name, hour))
-            else:
-                result.append(Decimal(energy_sold))
+                        "OLAP documents lack energy_sold measure starting at "
+                        "%s") % (install.name, hour))
+            print >> sys.stderr, "%s's OLAP energy_sold for %s: %s" % (
+                    install.name, hour, energy_sold)
+            result.append(Decimal(energy_sold))
     return result
 
 # TODO 35345191 rename this function
