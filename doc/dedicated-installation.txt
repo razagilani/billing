@@ -360,3 +360,180 @@ PYTHONPATH=/var/local/reebill-prod/lib/python2.6/site-packages:/var/local/reebil
 
 
 
+
+Older apache conf info
+
+ReeBill Apache Configuration Details
+====================================
+
+
+    Configure hostname
+
+        Requires entry in /etc/hosts such that reebill-dev points to local apache
+        May require a network name to be established
+
+    Apache Configurations specific to ReeBill explained:
+
+        Alias for the utilitybillimages - must point to what is in the application configuration file
+
+    Staging example Configuration
+
+
+        <VirtualHost *:80>
+            ServerName reebill-stage
+
+            ServerAdmin webmaster@localhost
+
+                DocumentRoot /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/ui
+                <Directory /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/ui>
+                DirectoryIndex /reebill/
+                        Options FollowSymLinks
+                        AllowOverride None
+                </Directory>
+            # directory where utility bill images are saved
+            Alias /utilitybillimages /tmp/billimages-stage
+            <Directory /tmp/billimages>
+                #Order deny,allow
+                #Allow from all
+                Options Indexes FollowSymLinks MultiViews
+                #AllowOverride None
+            </Directory>
+
+            ErrorLog ${APACHE_LOG_DIR}/reebill-stage_error.log
+
+            # Possible values include: debug, info, notice, warn, error, crit,
+            # alert, emerg.
+            LogLevel debug
+
+            CustomLog ${APACHE_LOG_DIR}/reebill-stage_access.log combined
+
+                WSGIScriptAlias /reebill /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/bill_tool_bridge.py
+
+                WSGIDaemonProcess reebill-stage user=reebill-stage group=reebill-stage processes=1 threads=10 python-path=/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib/:/var/local/reebill-stage/lib/python2.6/site-packages
+
+            WSGIProcessGroup reebill-stage
+
+        </VirtualHost>
+
+    Development:
+
+            <VirtualHost *:80>
+                ServerAdmin webmaster@localhost
+                ServerName reebill-dev
+
+                DocumentRoot /home/randrews/workspace-skyline/billing/reebill/ui/
+                <Directory /home/randrews/workspace-skyline/billing/reebill/ui/>
+                    DirectoryIndex billentry.html
+                    Options Indexes FollowSymLinks MultiViews
+                    AllowOverride None
+                    Order allow,deny
+                    allow from all
+                </Directory>
+
+                ErrorLog /var/log/apache2/reebill-error.log
+
+                # Possible values include: debug, info, notice, warn, error, crit,
+                # alert, emerg.
+                LogLevel debug
+
+                CustomLog /var/log/apache2/reebill-access.log combined
+
+                ProxyRequests Off
+                <Proxy *>
+                    Order deny,allow
+                    Allow from all
+                </Proxy>
+
+                WSGIScriptAlias /billtool /home/randrews/workspace-skyline/billing/reebill/bill_tool_bridge.py
+                WSGIDaemonProcess billtool user=randrews group=randrews processes=1 threads=10 python-path=/home/randrews/workspace-skyline:/usr/lib/python2.6/dist-packages/ChartDirector/lib
+                WSGIProcessGroup billtool
+
+            </VirtualHost>
+
+--
+
+    
+    If deploying in a remote virtual env environment, ensure user and virtualenv is set up according to virtualenv section.
+
+    Configure Virtual Host according to sample configuration file above and place it in Apache2 sites-available.
+
+    Enable Apache2 virtual site
+        add to sites-enabled via a2ensite
+
+    Ensure that ReeBill dependencies are installed
+
+    Deploy application
+        fabric -f fabfile.py deploy
+
+ReeBill Cron Jobs
+=================
+
+reebill-prod backs up data daily, every friday backup is stored in ~/reebill-prod
+* 1 * * * /var/local/reebill-prod/lib/python2.6/site-packages/billing/reebill/admin/backup.sh
+
+reebill-stage destages prod data daily
+* 2 * * * /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/admin/destage.bash
+
+
+
+
+
+Bill Tool (Code now runs out of reebill - is this whole section obsolete?)
+=========
+
+    For bill tool bridge
+
+    Install packages, Amara & MySQL need -E to be passed into pip. E.g.
+        pip install -E /var/local/reebill/ http://files.akara.info/00-amara-latest.tar.bz2
+    NB: if using a version of pip higher than 1.0, -E has been deprecated in favor of -t; for example, `pip install -E /path/to/virtualenv package` has become `pip install -t /path/to/virtualenv/lib/pythonX.X/site-packages/ package`
+
+    SqlAlchemy must be installed into virtualenv
+        pip install -E /var/local/reebill/ SqlAlchemy
+    NB: if using a version of pip higher than 1.0, -E has been deprecated in favor of -t; for example, `pip install -E /path/to/virtualenv package` has become `pip install -t /path/to/virtualenv/lib/pythonX.X/site-packages/ package`
+
+
+    Reportlab is done with easy_install (see reportlab directions above)
+
+    Chart Director is installed in virtualenv by:
+        tar xvf chartdir_python_linux_64.tar 
+        mv ChartDirector /var/local/billtool/lib/python2.6/site-packages
+        The add python path to WSGI Daemon Process
+
+    Create user billtool for wsgi
+    Configure python virtual env '/var/local/billtool'
+
+    Must be able to write into samba share /db directory
+
+    Configure virtual host 'billtool'
+
+
+    Add to apache sites enabled
+
+    Ensure bill_tool_bridge.py is pointing to the eXist XML database
+
+    Deploy application
+        fabric -f fabfile.py deploy
+
+    Ensure that the bill_tool_bridge config file is created as /var/local/billtool/bill_tool_bridge.cfg
+
+    [xmldb]
+    destination_prefix = http://tyrell:8080/exist/rest/db/skyline/bills/
+    source_prefix = http://tyrell:8080/exist/rest/db/skyline/bills/
+    user = prod
+    password = sME5ayMbmKuwy7mM99Kq
+
+    [http]
+    socket_port = 8181
+    socket_host = 127.0.0.1 
+
+    [billdb]
+    billpath = /db/
+    rspath = /db/skyline/ratestructure/
+
+    [statedb]
+    host = localhost
+    db = skyline
+    user = prod
+    password = JCnvgUOTxHzEasKUBNv3
+
+
