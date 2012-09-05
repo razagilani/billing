@@ -10,13 +10,14 @@ def one_hour_of_energy():
 class FakeSplinter(object):
     def __init__(self, random=True):
         self.random = random
-        self.monguru = FakeMonguru()
+        self._guru = FakeMonguru()
 
     def get_install_obj_for(self, olap_id):
         return FakeSkyInstall(random=self.random)
 
     def get_monguru(self):
-        return self.monguru
+        return self._guru
+    guru = property(get_monguru)
 
 class FakeSkyInstall(object):
     def __init__(self, random=True, *args, **kwargs):
