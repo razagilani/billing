@@ -1,12 +1,7 @@
 
 
-Older, original doc for configuring ReeBill
-
-
 Dependencies necessary for ReeBill 
 ==================================
-
-Specific, current documentation is found in the Billing/docs/ Directory
 
 Ensure a user and virtualenv have been set up if desired.
 Ensure that an apache virtual host has been set up.
@@ -14,98 +9,10 @@ Ensure that the /db utility bill directory exists as specified in the reebill.cf
 Ensure that Mongo is available
 Ensure that MySQL Server is available
 
-
-This dependency has to be included to make the v1 to v2 convert script work
-        ordereddict (backport of ordereddict to r2.x)
-
 Realize that pip and easy_install may need to have the virtualenv specified.
     pip install -E
     NB: if using a version of pip higher than 1.0, -E has been deprecated in favor of -t; for example, `pip install -E /path/to/virtualenv package` has become `pip install -t /path/to/virtualenv/lib/pythonX.X/site-packages/ package`
 
-
-Install ExtJS: Deprecated - Ext is in the reebill/ui directory and is automatically deployed
-
-    http://www.sencha.com/products/extjs/download/ext-js-3.3.1/186
-    Extract into the root web directory so that the Ext Framework can be served
-
-
-Install ChartDirector:
-
-    http://www.advsofteng.com/download.html
-    http://download2.advsofteng.com/chartdir_python_linux.tar.gz
-    http://download2.advsofteng.com/chartdir_python_linux_64.tar.gz
-
-    The files for the ChartDirector for Python module are in "ChartDirector/lib". Copy *everything* in "ChartDirector/lib" (including the fonts subdirectory in Linux, FreeBSD and Solaris versions) to a directory in your Python module search path.  This path may have to be set in the WSGI configuration if used by a WSGI app.
-    There is no setup.py, so manually copy to site or dist-packages (may be site-packages under windows)
-        For example, 
-            mkdir /var/local/reebill-[env]/lib/python2.6/site-packages/ChartDirector
-            mkdir /var/local/reebill-[env]/lib/python2.6/site-packages/ChartDirector/lib
-            cp ChartDirector/lib/* /var/local/reebill-[env]/lib/python2.6/site-packages/ChartDirector/lib
-    (ToDo: figure out if there is anything wrong with manually copying to dist-packages as well as how to get python to find it without having to set the path manually)
-    PYTHONPATH must point to .../ChartDirector/lib or the location to where it was copied
-    This is accomplished by adding python path to WSGIDaemonProcess directive in Apache2 .../ChartDirector/lib
-    For example:
-        WSGIDaemonProcess reebill-prod user=reebill-prod group=reebill-prod processes=1 threads=10 python-path=/var/local/reebill-prod/lib/python2.7/site-packages/ChartDirector/lib/:/var/local/reebill-prod/lib/python2.7/site-packages
-
-    Ensure ReeBill fonts are included for Chart Director:
-        Manually add third party fonts to the ChartDirector font directory /usr/lib/python2.6/dist-packages/ChartDirector/lib/fonts
-        For example, sudo cp billing/presentation/fonts/* /usr/lib/python2.6/dist-packages/ChartDirector/lib/fonts/
-        For example, as the application user: cp /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/fonts/* /var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib/fonts/
-
-
-
-see dedicated-installation.txt for details on configurations below
-
-
-
-Install Mongo driver:
-
-    enable virtualenv
-    pip install pymongo
-
-Install SQLAlchemy:
-
-    enable virtualenv
-    pip install sqlalchemy
-
-Install ReportLab 2.5: deprecated (see dedicated install)
-
-    easy install is used, but the virtualenv has to be specified:
-
-     export PYTHONPATH=/var/local/reebill-[env name]/lib/python2.6/site-packages
-     easy_install -d /var/local/reebill-[env name]/lib/python2.6/site-packages reportlab
-
-     See easy_install --help
-
-    Old Method:
-        http://www.reportlab.com/software/downloads/
-        wget http://www.reportlab.com/ftp/reportlab-2.5.tar.gz
-        Install: sudo python setup.py install
-        Ensure that the correct fonts are available:
-        sudo cp -r ReportLab_2_4/src/reportlab/fonts/ /usr/lib/python2.6/dist-packages/reportlab/
-
-    Investigate:
-    # installing without freetype no ttf, sorry!
-    # You need to install a static library version of the freetype2 software
-    # If you need truetype support in renderPM
-    # You may need to edit setup.cfg (win32)
-    # or edit this file to access the library if it is installed
-
-Install PIL:
-
-    enable virtualenv
-    pip install pil
-
-    pil needs to be installed for <img> markup to work in RL.  "'NoneType' object has no attribute 'Image'" is the clear error message...
-
-Install xlwt:
-
-    pip install xlwt
-
-Install dependencies for bill image rendering (global across virtualenv's!):
-    sudo apt-get install imagemagick
-    sudo apt-get install html2ps
-    sudo apt-get install poppler-utils (for pdftoppm)
 
 
 
@@ -183,34 +90,34 @@ Global system requirements
 
 Install the following packages with sudo pip install [package]
 
-CherryPy==3.2.2
-Jinja2==2.6
-MySQL-python==1.2.3
-PIL==1.1.7
-PyYAML==3.10
-SQLAlchemy==0.7.8
-argparse==1.2.1
-certifi==0.0.8
-chardet==1.1
-fabulous==0.1.5
-gevent==0.13.7
-grapefruit==0.1a3
-greenlet==0.4.0
-mongoengine==0.6.13
-mongokit==0.8
-numpy==1.6.2
-ordereddict==1.1
-py-bcrypt==0.2
-pyPdf==1.13
-pymongo==2.2.1
-python-dateutil==2.1
-reportlab==2.5
-requests==0.10.8
-simplejson==2.6.0
-six==1.1.0
-tablib==0.9.11
-wsgiref==0.1.2
-xlwt==0.7.4
+    CherryPy==3.2.2
+    Jinja2==2.6
+    MySQL-python==1.2.3
+    PIL==1.1.7
+    PyYAML==3.10
+    SQLAlchemy==0.7.8
+    argparse==1.2.1
+    certifi==0.0.8
+    chardet==1.1
+    fabulous==0.1.5
+    gevent==0.13.7
+    grapefruit==0.1a3
+    greenlet==0.4.0
+    mongoengine==0.6.13
+    mongokit==0.8
+    numpy==1.6.2
+    ordereddict==1.1
+    py-bcrypt==0.2
+    pyPdf==1.13
+    pymongo==2.2.1
+    python-dateutil==2.1
+    reportlab==2.5
+    requests==0.10.8
+    simplejson==2.6.0
+    six==1.1.0
+    tablib==0.9.11
+    wsgiref==0.1.2
+    xlwt==0.7.4
 
 pip install -r [above file]
 
@@ -222,6 +129,29 @@ Chart Director 'pychartdir'
         mv ChartDirector /usr/lib/python2.6/site-packages
         Then add python path to WSGIDaemonProcess directive in Apache2 /usr/lib/python2.6/site-packages/ChartDirector/lib
     Fonts have to be copied?
+
+Install ChartDirector:
+
+    http://www.advsofteng.com/download.html
+    http://download2.advsofteng.com/chartdir_python_linux.tar.gz
+    http://download2.advsofteng.com/chartdir_python_linux_64.tar.gz
+
+    The files for the ChartDirector for Python module are in "ChartDirector/lib". Copy *everything* in "ChartDirector/lib" (including the fonts subdirectory in Linux, FreeBSD and Solaris versions) to a directory in your Python module search path.  This path may have to be set in the WSGI configuration if used by a WSGI app.
+    There is no setup.py, so manually copy to site or dist-packages (may be site-packages under windows)
+        For example, 
+            mkdir /var/local/reebill-[env]/lib/python2.6/site-packages/ChartDirector
+            mkdir /var/local/reebill-[env]/lib/python2.6/site-packages/ChartDirector/lib
+            cp ChartDirector/lib/* /var/local/reebill-[env]/lib/python2.6/site-packages/ChartDirector/lib
+    (ToDo: figure out if there is anything wrong with manually copying to dist-packages as well as how to get python to find it without having to set the path manually)
+    PYTHONPATH must point to .../ChartDirector/lib or the location to where it was copied
+    This is accomplished by adding python path to WSGIDaemonProcess directive in Apache2 .../ChartDirector/lib
+    For example:
+        WSGIDaemonProcess reebill-prod user=reebill-prod group=reebill-prod processes=1 threads=10 python-path=/var/local/reebill-prod/lib/python2.7/site-packages/ChartDirector/lib/:/var/local/reebill-prod/lib/python2.7/site-packages
+
+    Ensure ReeBill fonts are included for Chart Director:
+        Manually add third party fonts to the ChartDirector font directory /usr/lib/python2.6/dist-packages/ChartDirector/lib/fonts
+        For example, sudo cp billing/presentation/fonts/* /usr/lib/python2.6/dist-packages/ChartDirector/lib/fonts/
+        For example, as the application user: cp /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/fonts/* /var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib/fonts/
 
 
 MySQL
@@ -331,16 +261,26 @@ MySQL
         grant all on skyline.* to 'reebill'@'localhost' identified by '[password]';
 
 
+        An example of creating staging on tyrell-prod
+            mysql> create database skyline_stage;
+            Query OK, 1 row affected (0.00 sec)
+
+            mysql> use skyline_stage;
+            Database changed
+            mysql> create user 'reebill-stage'@'localhost' identified by 'KdvDzFZeawPy';
+            Query OK, 0 rows affected (0.00 sec)
+
+            mysql> grant all on skyline_stage.* to 'reebill-stage'@'localhost' identified by 'KdvDzFZeawPy';
+            Query OK, 0 rows affected (0.00 sec)
+
+
+
 
         Loading the database
         --------------------
 
             # root has to create the schema because full privileged users do not have all the privileges to do so
             mysql -uroot -p[password] -Dskyline < /var/local/reebill/billing/db/processing/billdb.sql
-
-
-
-
 
 
 Configure Apache2 
@@ -463,7 +403,7 @@ fabexcludes no longer excludes them
 MISC
 ====
 
-The WSGI user must own the /db directory
+The WSGI user must own the /db-[env] directory. e.g.  sudo chown -R reebill-stage:reebill-stage /db-stage/
 
 
 CRON
