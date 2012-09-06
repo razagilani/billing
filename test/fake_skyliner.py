@@ -1,44 +1,45 @@
-from random import random
+from random import Random, gauss
+from math import ceil, log
+from operator import add
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from skyliner.sky_handlers import cross_range
+from billing.monthmath import Month
 
-def random_hour_of_energy():
-    '''In BTU.'''
-    return 50000 * (1 + random())
+def hour_of_energy(hour, deterministic=True):
+    '''Returns a made-up energy value in BTU for the given hour (datetime). If
+    'deterministic' is True, the value is always the same for a given hour.'''
+    if deterministic:
+        # use random number generator with fixed seed
+        r = Random(hour.year + hour.month + hour.day + hour.hour)
+        return min(0, r.gauss(3000, 1000))
+    # use time-seeded random number generator in the 'random' module (different
+    # every time)
+    return min(0, gauss(3000, 1000))
 
 class FakeSplinter(object):
-    def __init__(self, random=True):
-        self.random = random
-        self._guru = FakeMonguru(random)
+    def __init__(self, deterministic=True):
+        self.deterministic = deterministic
+        self._guru = FakeMonguru(deterministic=deterministic)
 
     def get_install_obj_for(self, olap_id):
-        return FakeSkyInstall(random=self.random)
+        return FakeSkyInstall(deterministic=self.deterministic)
 
     def get_monguru(self):
         return self._guru
     guru = property(get_monguru)
 
 class FakeSkyInstall(object):
-    def __init__(self, random=True, *args, **kwargs):
-        self.random = random
+    def __init__(self, deterministic=True, *args, **kwargs):
+        self.deterministic = deterministic
         self.name = 'Fake SkyInstall'
 
-    #def get_billable_energy(self, day, hour_range=(0,24), places=5):
-        #hours = hour_range[1] - hour_range[0]
-        #if self.random:
-            ## NOTE you can't pass a float into Decimal() in 2.6, only 2.7
-            #energy = Decimal(str(random_hour_of_energy())) * hours
-        #else:
-            #energy = Decimal('100000') * hours
-        #return energy.quantize(Decimal('1.'+'0'*places))
-
     def get_billable_energy_timeseries(self, start, end, places=None):
-        if self.random:
-            # NOTE you can't pass a float into Decimal() in 2.6, only 2.7
-            return [(hour, Decimal(str(random_hour_of_energy()))) for hour in cross_range(start, end)]
-        return [(hour, 100000) for hour in cross_range(start, end)]
-            
+        # NOTE you can't pass a float into Decimal() in 2.6, only 2.7
+        return [(hour, Decimal(str(hour_of_energy(hour,
+                deterministic=self.deterministic))))
+                for hour in cross_range(start, end)]
+
     @property
     def install_commissioned(self):
         return date(2000, 1, 1)
@@ -52,30 +53,25 @@ class FakeCubeDocument(object):
         self.energy_sold = energy_sold
 
 class FakeMonguru(object):
-    def __init__(self, random=True):
-        self.random = random
+    def __init__(self, deterministic=True):
+        self.deterministic = deterministic
 
     def get_data_for_hour(self, install, day, hour):
-        if self.random:
-            energy = random_hour_of_energy()
-        else:
-            energy = 100000
-        return FakeCubeDocument(energy)
+        hour = datetime(day.year, day.month, day.day, hour)
+        return FakeCubeDocument(hour_of_energy(hour,
+                deterministic=self.deterministic))
 
     def get_data_for_day(self, install, day):
-        if self.random:
-            energy = random_hour_of_energy() * 24
-        else:
-            energy = 100000 * 24
-        return FakeCubeDocument(energy * 24)
+        hours = [datetime(day.year, day.month, day.day, day.hour)
+                for hour in range(24)]
+        return FakeCubeDocument(sum(hour_of_energy(hour,
+                deterministic=self.deterministic) for hour in hours))
 
     def get_data_for_week(self, install, year, week):
         raise NotImplementedError()
 
     def get_data_for_month(self, install, year, month):
-        if self.random:
-            energy = random_hour_of_energy() * 24
-        else:
-            energy = 100000 * 24
-        return FakeCubeDocument(energy * 24 * 30)
-
+        hours = reduce(add, [[datetime(day.year, day.month, day.day, day.hour)
+                for hour in range(24)] for day in Month(year, month)])
+        return FakeCubeDocument(sum(hour_of_energy(hour,
+                deterministic=self.deterministic) for hour in hours))
