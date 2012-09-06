@@ -80,12 +80,17 @@ def fetch_oltp_data(splinter, olap_id, reebill, use_olap=True, verbose=True):
                 install_obj.get_billable_energy_timeseries(
                 date_to_datetime(start), date_to_datetime(end))]
 
+    print "total REE should be: ", sum(timeseries), "BTU"
+
     # this function takes an hour and returns energy sold during that hour
     def energy_function(day, hourrange):
+        total = 0
         for hour in range(hourrange[0], hourrange[1] + 1):
-            index = timedelta_in_hours(date_to_datetime(day) + timedelta(hour)
+            index = timedelta_in_hours(date_to_datetime(day) +
+                    timedelta(hours=hour)
                     - date_to_datetime(start))
-            return timeseries[index]
+            total += timeseries[index]
+        return total
 
     usage_data_to_virtual_register(reebill, energy_function)
 
@@ -249,7 +254,7 @@ def get_shadow_register_data(reebill, meter_identifier=None):
 
 
 def usage_data_to_virtual_register(reebill, energy_function,
-        meter_identifier=None, verbose=False):
+        meter_identifier=None, verbose=True):
     '''Gets energy quantities from 'energy_function' and puts them in the total
     fields of the appropriate shadow registers in the MongoReebill object
     reebill. 'energy_function' should be a function mapping a date and an hour
