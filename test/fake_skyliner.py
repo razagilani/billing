@@ -62,7 +62,7 @@ class FakeMonguru(object):
                 deterministic=self.deterministic))
 
     def get_data_for_day(self, install, day):
-        hours = [datetime(day.year, day.month, day.day, day.hour)
+        hours = [datetime(day.year, day.month, day.day, hour)
                 for hour in range(24)]
         return FakeCubeDocument(sum(hour_of_energy(hour,
                 deterministic=self.deterministic) for hour in hours))
@@ -71,7 +71,7 @@ class FakeMonguru(object):
         raise NotImplementedError()
 
     def get_data_for_month(self, install, year, month):
-        hours = reduce(add, [[datetime(day.year, day.month, day.day, day.hour)
+        hours = reduce(add, [[datetime(day.year, day.month, day.day, hour)
                 for hour in range(24)] for day in Month(year, month)])
         return FakeCubeDocument(sum(hour_of_energy(hour,
                 deterministic=self.deterministic) for hour in hours))
