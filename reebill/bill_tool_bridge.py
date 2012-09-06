@@ -537,7 +537,7 @@ class BillToolBridge:
             # don't treat cherrypy redirect as an error
             raise
         elif type(e) is Unauthenticated:
-            return self.dumps({'success': false, 'errors':{ 'reason': str(e),
+            return self.dumps({'success': False, 'errors':{ 'reason': str(e),
                     'details': ('if you are reading this message a client'
                     ' request did not properly handle an invalid session'
                     ' response.')}})
