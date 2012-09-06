@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 '''Script to generate a "reconciliation report" comparing energy quantities in
 reebills to the same quantities in OLAP.
 
@@ -38,8 +38,8 @@ def close_enough(x,y):
         return abs(x) < .001
     return abs(x - y) / y < .001
 
-def generate_report(logger, billdb_config, statedb_config, splinter_config,
-        monguru_config, output_file, nexushost, skip_oltp=False):
+def generate_report(logger, billdb_config, statedb_config, oltp_url,
+        splinter_config, output_file, nexushost, skip_oltp=False):
     '''Saves JSON data for reconciliation report in the file 'output_file'.
     Each line of the file is a JSON dictionary. The entire file is meant to be
     read as a JSON list, but it is not written with []s and ,s so that the file
@@ -49,8 +49,8 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
     state_db = state.StateDB(**statedb_config)
     reebill_dao = mongo.ReebillDAO(state_db, billdb_config['host'], billdb_config['port'], billdb_config['database'])
     session = state_db.session()
-    splinter = splinter(splinter_config['url'], **splinter_config)
-    monguru = monguru(monguru_config['host'], monguru_config['db'])
+    splinter = Splinter(oltp_url, **splinter_config)
+    monguru = splinter._guru
 
     # get account numbers of all customers in sorted order
     # TODO: it would be faster to do this sorting in MySQL instead of Python when

@@ -443,7 +443,8 @@ class StateDB:
 
     def listReebills(self, session, start, limit, account):
 
-        query = session.query(ReeBill).join(Customer).filter(Customer.account==account)
+        query = session.query(ReeBill).join(Customer).filter(Customer.account==account) \
+            .order_by(desc(ReeBill.sequence))
 
         slice = query[start:start + limit]
         count = query.count()
@@ -479,7 +480,7 @@ class StateDB:
         # SQLAlchemy query to get account & dates for all utilbills
         query = session.query(UtilBill).with_lockmode('read').join(Customer)\
                 .filter(Customer.account==account)\
-                .order_by(Customer.account, UtilBill.period_start)
+                .order_by(Customer.account, asc(UtilBill.period_start))
 
         if start is None:
             return query, query.count()
@@ -494,10 +495,6 @@ class StateDB:
         been uploaded. The bill is Complete by default but can can have other
         states (see comment in db_objects.UtilBill for explanation of utility
         bill states). The bill is initially marked as un-processed.'''
-
-        print >> sys.stderr, 'incoming utility bill: state %s, service %s' % (
-                state, service)
-
         # get customer id from account number
         customer = session.query(Customer).filter(Customer.account==account) \
                 .one()

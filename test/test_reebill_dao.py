@@ -8,7 +8,7 @@ from billing.processing.state import StateDB
 from billing.processing.db_objects import ReeBill, Customer, UtilBill
 import MySQLdb
 from billing.test import example_data
-from billing.mongo import NoSuchReeBillException
+from billing.mongo import NoSuchBillException
 from billing.session_contextmanager import DBSession
 
 import pprint
@@ -135,26 +135,105 @@ class ReebillDAOTest(unittest.TestCase):
 
         # get versions by issue date:
         # when date precedes all bills, version should always be max
-        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 0, version=date(2011,1,1)).version)
-        self.assertEqual(2, self.reebill_dao.load_reebill('99999', 1, version=date(2011,1,1)).version)
-        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 2, version=date(2011,1,1)).version)
-        self.assertEqual(1, self.reebill_dao.load_reebill('99999', 3, version=date(2011,1,1)).version)
+        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 0,
+            version=date(2011,1,1)).version)
+        self.assertEqual(2, self.reebill_dao.load_reebill('99999', 1,
+            version=date(2011,1,1)).version)
+        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 2,
+            version=date(2011,1,1)).version)
+        self.assertEqual(1, self.reebill_dao.load_reebill('99999', 3,
+            version=date(2011,1,1)).version)
         # when date follows all bills, version should always be max
-        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 0, version=date(2013,1,1)).version)
-        self.assertEqual(2, self.reebill_dao.load_reebill('99999', 1, version=date(2013,1,1)).version)
-        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 2, version=date(2013,1,1)).version)
-        self.assertEqual(1, self.reebill_dao.load_reebill('99999', 3, version=date(2013,1,1)).version)
+        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 0,
+            version=date(2013,1,1)).version)
+        self.assertEqual(2, self.reebill_dao.load_reebill('99999', 1,
+            version=date(2013,1,1)).version)
+        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 2,
+            version=date(2013,1,1)).version)
+        self.assertEqual(1, self.reebill_dao.load_reebill('99999', 3,
+            version=date(2013,1,1)).version)
         # date between issue dates of 1-0 and 1-1
-        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 1, version=date(2012,1,15)).version)
+        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 1,
+            version=date(2012,1,15)).version)
         # date between issue dates of 1-1 and 1-2
-        self.assertEqual(1, self.reebill_dao.load_reebill('99999', 1, version=date(2012,3,1)).version)
+        self.assertEqual(1, self.reebill_dao.load_reebill('99999', 1,
+            version=date(2012,3,1)).version)
         # date between issue dates of 3-0 and 3-1
-        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 3, version=date(2012,4,1)).version)
+        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 3,
+            version=date(2012,4,1)).version)
 
         # error when reebill is not found
-        self.assertRaises(NoSuchReeBillException, self.reebill_dao.load_reebill, '10003', 1)
-        self.assertRaises(NoSuchReeBillException, self.reebill_dao.load_reebill, '99999', 10)
-        self.assertRaises(NoSuchReeBillException, self.reebill_dao.load_reebill, '99999', 1, version=5)
+        self.assertRaises(NoSuchBillException,
+                self.reebill_dao.load_reebill, '10003', 1)
+        self.assertRaises(NoSuchBillException,
+                self.reebill_dao.load_reebill, '99999', 10)
+        self.assertRaises(NoSuchBillException,
+                self.reebill_dao.load_reebill, '99999', 1, version=5)
+
+    def test_load_utilbill(self):
+        # nothing to load
+        self.assertRaises(NoSuchBillException,
+                self.reebill_dao.load_utilbill, '99999', 'gas', 'washgas',
+                date(2012,11,12), date(2012,12,14))
+
+        # save a utilbill
+        ub = example_data.get_utilbill_dict('99999')
+        self.reebill_dao._save_utilbill(ub)
+
+        # load it
+        self.assertEqual(ub, self.reebill_dao.load_utilbill('99999', 'gas',
+                'washgas', date(2011,11,12), date(2011,12,14)))
+
+    def test_load_utilbills(self):
+        # no utility bills
+        self.assertEqual([], self.reebill_dao.load_utilbills())
+
+        # 1 utility bill
+        self.reebill_dao._save_utilbill(example_data.get_utilbill_dict('99999'))
+        self.assertEquals(1, len(self.reebill_dao.load_utilbills()))
+
+        # query by each _id field
+        self.assertEquals(1, len(self.reebill_dao.load_utilbills(
+                account='99999')))
+        self.assertEquals(1, len(self.reebill_dao.load_utilbills(
+                service='gas')))
+        self.assertEquals(1, len(self.reebill_dao.load_utilbills(
+                utility='washgas')))
+        self.assertEquals(1, len(self.reebill_dao.load_utilbills(
+                start=date(2011,11,12))))
+        self.assertEquals(1, len(self.reebill_dao.load_utilbills(
+                end=date(2011,12,14))))
+
+        # query by everything together
+        self.assertEquals(1, len(self.reebill_dao.load_utilbills(
+                account='99999', service='gas', utility='washgas',
+                start=date(2011,11,12), end=date(2011,12,14))))
+
+        # a 2nd utility bill
+        ub2 = example_data.get_utilbill_dict('99999')
+        ub2['_id']['service'] = 'electric'
+        ub2['_id']['utility'] = 'washgas'
+        ub2['_id']['start'] = datetime(2012,7,22)
+        ub2['_id']['end'] = datetime(2012,8,22)
+        self.reebill_dao._save_utilbill(ub2)
+        bills = self.reebill_dao.load_utilbills()
+        self.assertEquals(2, len(bills))
+        self.assertEquals(example_data.get_utilbill_dict('99999'), bills[0])
+        self.assertEquals(ub2, bills[1])
+
+        # some queries for one bill, both, none
+        self.assertEquals(2, len(self.reebill_dao.load_utilbills(
+                account='99999')))
+        self.assertEquals(1, len(self.reebill_dao.load_utilbills(
+                account='99999', service='gas')))
+        self.assertEquals(1, len(self.reebill_dao.load_utilbills(
+                service='electric')))
+        self.assertEquals(1, len(self.reebill_dao.load_utilbills(
+                start=datetime(2012,7,22), end=datetime(2012,8,22))))
+        self.assertEquals(1, len(self.reebill_dao.load_utilbills(
+                end=datetime(2011,12,14))))
+        self.assertEquals([], self.reebill_dao.load_utilbills(
+                service='cold fusion'))
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
