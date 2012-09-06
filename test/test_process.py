@@ -70,7 +70,7 @@ port = 27017
             'host': 'localhost',
             'port': 27017
         })
-        self.splinter = FakeSplinter(random=False)
+        self.splinter = FakeSplinter(deterministic=True)
         
         # temporary hack to get a bill that's always the same
         # this bill came straight out of mongo (except for .date() applied to
