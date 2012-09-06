@@ -22,6 +22,7 @@ from billing import mongo
 from billing.dictutils import dict_merge
 from billing import dateutils, holidays
 from billing.dateutils import date_to_datetime, timedelta_in_hours
+from billing.exceptions import MissingDataError
 from decimal import Decimal
 
 def get_billable_energy_timeseries(splinter, install, start, end):
@@ -30,48 +31,67 @@ def get_billable_energy_timeseries(splinter, install, start, end):
     unbillable annotations are removed.''' 
     unbillable_annotations = [a for a in install.get_annotations() if
             a.unbillable]
+    monguru = splinter._guru
     result = []
     for hour in cross_range(start, end):
         if any([a.contains(hour) for a in unbillable_annotations]):
             result.append(Decimal(0))
         else:
+            day = date(hour.year, hour.month, hour.day)
+            hour_number = hour.hour
             try:
-                energy_sold = splinter._guru.get_data_for_hour(install,
-                        date(hour.year, hour.month, hour.day),
-                        hour.hour).energy_sold
-                print 'OLAP energy_sold for %s: %s' % (hour, energy_sold)
+                cube_doc = monguru.get_data_for_hour(install, day, hour_number)
             except ValueError:
-                result.append(Decimal(0))
-            else:
-                result.append(Decimal(energy_sold))
+                raise MissingDataError(("Couldn't get renewable energy data "
+                        "for %s: OLAP documents missing starting at %s") % (
+                        install.name, hour))
+            try:
+                energy_sold = cube_doc.energy_sold
+            except AttributeError:
+                raise MissingDataError(("Couldn't get renewable energy data for %s: "
+                        "OLAP documents lack energy_sold measure starting at "
+                        "%s") % (install.name, hour))
+            print >> sys.stderr, "%s's OLAP energy_sold for %s: %s" % (
+                    install.name, hour, energy_sold)
+            result.append(Decimal(energy_sold))
     return result
 
 # TODO 35345191 rename this function
-def fetch_oltp_data(splinter, olap_id, reebill, verbose=True):
+def fetch_oltp_data(splinter, olap_id, reebill, use_olap=True, verbose=True):
     '''Update quantities of shadow registers in reebill with Skyline-generated
-    energy from OLTP.'''
+    energy. The OLAP database is the default source of energy-sold values; use
+    use_olap=False to get them directly from OLTP.'''
     install_obj = splinter.get_install_obj_for(olap_id)
     # period for renewable energy is the reebill's meter read period (NOT the
     # same as utililty bill period or reebill period, though they almost always
     # coincide)
-    # TODO support multi-service customers
+    # TODO support multi-service customers; don't just rely on the first service
     start, end = reebill.meter_read_period(reebill.services[0])
 
     # get hourly "energy sold" values during this period
-    olap_timeseries = get_billable_energy_timeseries(splinter, install_obj,
-            date_to_datetime(start), date_to_datetime(end))
+    if use_olap:
+        timeseries = get_billable_energy_timeseries(splinter, install_obj,
+                date_to_datetime(start), date_to_datetime(end))
+    else:
+        # NOTE if install_obj.get_billable_energy_timeseries() uses
+        # die_fast=False, this timeseries may be shorter than anticipated and
+        # energy_function below will fail.
+        # TODO support die_fast=False: 35547299
+        timeseries = [Decimal(pair[1]) for pair in
+                install_obj.get_billable_energy_timeseries(
+                date_to_datetime(start), date_to_datetime(end))]
 
-    # uncomment this to compare OLAP values to OLTP
-    #oltp_timeseries = [Decimal(pair[1]) for pair in install_obj.get_billable_energy_timeseries(
-            #date_to_datetime(start), date_to_datetime(end))]
-    #pprint('***** OLAP vs OLTP')
-    #pprint(zip(olap_timeseries, oltp_timeseries))
+    print "total REE should be: ", sum(timeseries), "BTU"
 
+    # this function takes an hour and returns energy sold during that hour
     def energy_function(day, hourrange):
+        total = 0
         for hour in range(hourrange[0], hourrange[1] + 1):
-            index = timedelta_in_hours(date_to_datetime(day) + timedelta(hour)
+            index = timedelta_in_hours(date_to_datetime(day) +
+                    timedelta(hours=hour)
                     - date_to_datetime(start))
-            return olap_timeseries[index]
+            total += timeseries[index]
+        return total
 
     usage_data_to_virtual_register(reebill, energy_function)
 

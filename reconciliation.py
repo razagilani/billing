@@ -181,7 +181,7 @@ def main():
             help='name of OLAP database (default: dev)')
     parser.add_argument('--skip-oltp',  action='store_true',
             help="Don't include OLTP data (much faster)")
-    parser.add_argument('--nexushost', default='nexus',
+    parser.add_argument('--nexushost', default='localhost',
             help="Name of nexus host")
     args = parser.parse_args()
 

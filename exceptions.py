@@ -1,6 +1,10 @@
 class Unauthenticated(Exception):
     pass
 
+class MissingDataError(Exception):
+    '''Data from an external source (e.g. Skyline OLAP or OLTP) were expected
+    but not found.'''
+    pass
 
 # TODO rename to NoSuchBillException
 class NoSuchBillException(Exception):
@@ -8,11 +12,12 @@ class NoSuchBillException(Exception):
 
 class NoRateStructureError(Exception):
     pass
+
 class NoUtilityNameError(Exception):
     pass
+
 class IssuedBillError(Exception):
-    '''Exception for trying to modify a bill that has been issued. Use this in
-    all those situations.'''
+    '''Exception for trying to modify a bill that has been issued.'''
     pass
 
 class RSIError(Exception):
