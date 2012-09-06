@@ -494,10 +494,6 @@ class StateDB:
         been uploaded. The bill is Complete by default but can can have other
         states (see comment in db_objects.UtilBill for explanation of utility
         bill states). The bill is initially marked as un-processed.'''
-
-        print >> sys.stderr, 'incoming utility bill: state %s, service %s' % (
-                state, service)
-
         # get customer id from account number
         customer = session.query(Customer).filter(Customer.account==account) \
                 .one()
