@@ -5,7 +5,6 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from skyliner.sky_handlers import cross_range
 from billing.monthmath import Month
-from sys import stderr
 
 def hour_of_energy(hour, deterministic=True):
     '''Returns a made-up energy value in BTU for the given hour (datetime). If
@@ -76,3 +75,21 @@ class FakeMonguru(object):
                 for hour in range(24)] for day in Month(year, month)])
         return FakeCubeDocument(sum(hour_of_energy(hour,
                 deterministic=self.deterministic) for hour in hours))
+
+if __name__ == '__main__':
+    '''Print out 2 deterministic and 2 random values for each hour in January
+    1-2, 2012.'''
+    m1 = FakeMonguru(deterministic=True)
+    m2 = FakeMonguru(deterministic=False)
+    print '%19s %16s %16s %16s %16s' % ('hour', 'deterministic 1',
+            'deterministic 2', 'random 1', 'random 2')
+    for hour in cross_range(datetime(2012,1,1), datetime(2012,1,3)):
+        day = date(hour.year, hour.month, hour.day)
+        print '%19s: %16s %16s %16s %16s' % (hour,
+            # these 2 are always the same
+            m1.get_data_for_hour('name', day, hour.hour).energy_sold,
+            m1.get_data_for_hour('name', day, hour.hour).energy_sold,
+            # these 2 are different
+            m2.get_data_for_hour('name', day, hour.hour).energy_sold,
+            m2.get_data_for_hour('name', day, hour.hour).energy_sold
+        )
