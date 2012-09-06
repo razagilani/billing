@@ -25,7 +25,8 @@ from billing.dateutils import date_to_datetime, timedelta_in_hours
 from billing.exceptions import MissingDataError
 from decimal import Decimal
 
-def get_billable_energy_timeseries(splinter, install, start, end):
+def get_billable_energy_timeseries(splinter, install, start, end,
+        verbose=False):
     '''Returns a list of hourly billable-energy values during the datetime
     range [start, end) (endpoints must whole hours). Values during
     unbillable annotations are removed.''' 
@@ -51,13 +52,14 @@ def get_billable_energy_timeseries(splinter, install, start, end):
                 raise MissingDataError(("Couldn't get renewable energy data for %s: "
                         "OLAP documents lack energy_sold measure starting at "
                         "%s") % (install.name, hour))
-            print >> sys.stderr, "%s's OLAP energy_sold for %s: %s" % (
-                    install.name, hour, energy_sold)
+            if verbose:
+                print >> sys.stderr, "%s's OLAP energy_sold for %s: %s" % (
+                        install.name, hour, energy_sold)
             result.append(Decimal(energy_sold))
     return result
 
 # TODO 35345191 rename this function
-def fetch_oltp_data(splinter, olap_id, reebill, use_olap=True, verbose=True):
+def fetch_oltp_data(splinter, olap_id, reebill, use_olap=True, verbose=False):
     '''Update quantities of shadow registers in reebill with Skyline-generated
     energy. The OLAP database is the default source of energy-sold values; use
     use_olap=False to get them directly from OLTP.'''
@@ -71,7 +73,8 @@ def fetch_oltp_data(splinter, olap_id, reebill, use_olap=True, verbose=True):
     # get hourly "energy sold" values during this period
     if use_olap:
         timeseries = get_billable_energy_timeseries(splinter, install_obj,
-                date_to_datetime(start), date_to_datetime(end))
+                date_to_datetime(start), date_to_datetime(end),
+                verbose=verbose)
     else:
         # NOTE if install_obj.get_billable_energy_timeseries() uses
         # die_fast=False, this timeseries may be shorter than anticipated and
@@ -80,8 +83,6 @@ def fetch_oltp_data(splinter, olap_id, reebill, use_olap=True, verbose=True):
         timeseries = [Decimal(pair[1]) for pair in
                 install_obj.get_billable_energy_timeseries(
                 date_to_datetime(start), date_to_datetime(end))]
-
-    print "total REE should be: ", sum(timeseries), "BTU"
 
     # this function takes an hour and returns energy sold during that hour
     def energy_function(day, hourrange):
