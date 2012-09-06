@@ -119,6 +119,8 @@ DNS
 
 [customer].skylineinnovations.net must point to an AWS dynamic name or an Elastic IP
 
+This name is used to point to an Apache virtual host
+
 
 
 SSL
@@ -149,44 +151,69 @@ Create user for running and deploying ReeBill
     set passwd, storing it in keepass (necessary? do we ever log-in as the application user?)
 
 
+Predicates
+==========
+
+See /docs/environmentsetup.txt
+- General guidlines for configuring Apache2 
+- Configuring Application Specific Python Virtualenv for WSGI Application
+
+
 Install Packages
 ================
 
 The AWS Linux AMI is based on Fedora and uses yum.
 
-Update the host
-    sudo yum update
-Obtain pip
-    activate virtualenv
-    sudo easy_install pip
-Install gcc and python heads so packages like pymongo and numpy can compile C extensions
-    sudo yum install python-devel gcc
+Global system requirements
+
+    Update the host
+        sudo yum update
+
+    Obtain pip
+        activate virtualenv
+        sudo easy_install pip
+
+    Install gcc and python heads so packages like pymongo and numpy can compile C extensions
+        sudo yum install python-devel gcc
+
+    For Rendering Images
+        sudo yum install ImageMagick
+        sudo yum install html2ps
+        sudo yum install poppler-utils (for pdftoppm)
 
 Install the following packages with sudo pip install [package]
-    cherrypy
-    jinja2
-    pymongo==2.2.1
-    fabulous (unused?)
-    code (pip could not find it)
-    sqlalchemy
-    py-bcrypt
-    argparse
-    numpy
-    reportlab
-    simplejson
-    MySQL-Python
-    xlwt
-    pyyaml (unused?)
-    ordereddict (for 2.6 installs only)
-    mongoengine
-    pypdf
-    requests
-    gevent
 
-For Rendering Images
-    sudo yum install ImageMagick
-    sudo yum install html2ps
-    sudo yum install poppler-utils (for pdftoppm)
+CherryPy==3.2.2
+Jinja2==2.6
+MySQL-python==1.2.3
+PIL==1.1.7
+PyYAML==3.10
+SQLAlchemy==0.7.8
+argparse==1.2.1
+certifi==0.0.8
+chardet==1.1
+fabulous==0.1.5
+gevent==0.13.7
+grapefruit==0.1a3
+greenlet==0.4.0
+mongoengine==0.6.13
+mongokit==0.8
+numpy==1.6.2
+ordereddict==1.1
+py-bcrypt==0.2
+pyPdf==1.13
+pymongo==2.2.1
+python-dateutil==2.1
+reportlab==2.5
+requests==0.10.8
+simplejson==2.6.0
+six==1.1.0
+tablib==0.9.11
+wsgiref==0.1.2
+xlwt==0.7.4
+
+pip install -r [above file]
+
     
 
 Chart Director 'pychartdir'
@@ -198,7 +225,6 @@ Chart Director 'pychartdir'
 
 
 MySQL
-
 
     If pip install MySQL-Python fails with the following error, mysql_config is not available.
     Install it by: sudo apt-get install libmysqlclient-dev
@@ -243,6 +269,8 @@ MySQL
             Storing complete log in /home/randrews/.pip/pip.log
 
     Configure MySQL Database for bill processing 
+
+        The best thing to do is to execute the destage scripts.
 
         Set up a local instance of MySQL-Server and configure local accounts following host-setup.txt
 
@@ -408,9 +436,10 @@ Configure Apache2
 
 
 
-Creating Initial User
-=====================
+Creating Initial Application User
+=================================
 
+    (this is deprecated - use users.py CLI tool)
     [ec2-user@domU-12-31-39-07-5C-C2 billing]$ mongo
     MongoDB shell version: 2.0.2
     connecting to: test
@@ -446,20 +475,10 @@ The python path for cron jobs should be .:/var/local/reebill-stage/lib/python2.6
 
 python/var/local/reebill-prod/lib/python2.6/site-packages/billing/reconciliation.py --statedb skyline_prod --stateuser prod --statepw AXUPU4XGMSN --billdb skyline-prod
 
-
-
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 PYTHONPATH=/var/local/reebill-stage/lib/python2.6/site-packages:/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib
 
-for staging env:
-SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-PYTHONPATH=/var/local/reebill-stage/lib/python2.6/site-packages:/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib
-
-# m h  dom mon dow   command
-0 2 * * * /var/local/reebill-stage/lib/python2.6/site-packages/billing/scripts/destage_from_prod.bash tyrell-prod stage
-0 3 * * * /var/local/reebill-stage/lib/python2.6/site-packages/billing/reconciliation.py --statedb skyline_stage  --stateuser stage --statepw stage --billdb skyline-stage --olapdb dev --skip-oltp
 
 
 For a production environment
@@ -477,6 +496,22 @@ MAILTO=randrews@skylineinnovations.com
 0 7 * * * source /var/local/reebill-prod/bin/activate && /var/local/reebill-prod/lib/python2.7/site-packages/billing/reconciliation.py --host localhost --statedb skyline_prod  --stateuser root --statepw P4IMvFI9DRTd --billdb skyline-prod --olapdb prod --skip-oltp --nexushost nexus.skylineinnovations.net
 Older apache conf info
 
+
+For a staging environment
+-------------------------
+
+It is important that the staging environment de-stages production data.
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+PYTHONPATH=/var/local/reebill-stage/lib/python2.6/site-packages:/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib
+
+# m h  dom mon dow   command
+0 2 * * * /var/local/reebill-stage/lib/python2.6/site-packages/billing/scripts/destage_from_prod.bash tyrell-prod stage
+0 3 * * * /var/local/reebill-stage/lib/python2.6/site-packages/billing/reconciliation.py --statedb skyline_stage  --stateuser stage --statepw stage --billdb skyline-stage --olapdb dev --skip-oltp
+
+
+
 ReeBill Apache Configuration Details
 ====================================
 
@@ -491,7 +526,6 @@ ReeBill Apache Configuration Details
         Alias for the utilitybillimages - must point to what is in the application configuration file
 
     Staging example Configuration
-
 
         <VirtualHost *:80>
             ServerName reebill-stage
