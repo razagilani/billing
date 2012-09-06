@@ -880,11 +880,12 @@ class Process(object):
                     # house (10019) starting in october 2011 but its first
                     # monthly olap doc is in november.)
                     try:
-                        renewable_energy_btus = self.monguru.get_data_for_month(
-                                install, year, month).energy_sold
-                    except Exception as e:
+                        renewable_energy_btus = self.monguru.get_data_for_month(install, year,
+                                month).energy_sold
+                    except (ValueError, AttributeError) as e:
                         print >> sys.stderr, ('Missing olap document for %s, '
-                                '%s-%s: skipped, but the graph will be wrong')
+                                '%s-%s: skipped, but the graph will be wrong') % (
+                                install.name, year, month)
                         renewable_energy_btus = 0
 
                 therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
