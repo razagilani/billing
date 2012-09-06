@@ -875,12 +875,12 @@ port = 27017
             # 2 reebills, 1 issued 40 days ago and unpaid (so it's 10 days late)
             zero = example_data.get_reebill(acc, 0)
             one = example_data.get_reebill(acc, 1)
-            two = example_data.get_reebill(acc, 2)
+            two0 = example_data.get_reebill(acc, 2)
             one.balance_due = 100
-            two.balance_due = 100
+            two0.balance_due = 100
             self.reebill_dao.save_reebill(zero)
             self.reebill_dao.save_reebill(one)
-            self.reebill_dao.save_reebill(two)
+            self.reebill_dao.save_reebill(two0)
             self.state_db.new_rebill(session, acc, 1)
             self.state_db.new_rebill(session, acc, 2)
             self.process.issue(session, acc, 1,
@@ -895,19 +895,19 @@ port = 27017
             # bind & compute 2nd reebill
             # (it needs energy data only so its 2nd version will have the same
             # energy in it; only the late charge will differ)
-            two = self.reebill_dao.load_reebill(acc, 2)
-            two.late_charge_rate = .5
+            two0 = self.reebill_dao.load_reebill(acc, 2)
+            two0.late_charge_rate = .5
             fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(acc),
-                    two)
-            self.process.compute_bill(session, one, two)
+                    two0)
+            self.process.compute_bill(session, one, two0)
 
             # if given a late_charge_rate > 0, 2nd reebill should have a late charge
-            self.process.compute_bill(session, one, two)
-            self.assertEqual(50, two.late_charges)
+            self.process.compute_bill(session, one, two0)
+            self.assertEqual(50, two0.late_charges)
 
             # save and issue 2nd reebill so a new version can be created
-            self.reebill_dao.save_reebill(two)
-            self.process.issue(session, acc, two.sequence)
+            self.reebill_dao.save_reebill(two0)
+            self.process.issue(session, acc, two0.sequence)
 
             # add a payment of $80 30 days ago (10 days after 1st reebill was
             # issued). the late fee above is now wrong; it should be 50% of $20
@@ -918,8 +918,8 @@ port = 27017
             # now a new version of the 2nd reebill should have a different late
             # charge
             self.process.new_version(session, acc, 2)
-            two = self.reebill_dao.load_reebill(acc, 2)
-            self.assertEqual(10, two.late_charges)
+            two1 = self.reebill_dao.load_reebill(acc, 2)
+            self.assertEqual(10, two1.late_charges)
 
             # that difference should show up as an error
             corrections = self.process.get_unissued_corrections(session, acc)
