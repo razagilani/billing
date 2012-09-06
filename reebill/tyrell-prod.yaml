@@ -1,0 +1,23 @@
+---
+#required k:v pairs
+raw_cache_path: 'cache/'
+use_async: True
+use_proxy: False
+
+log:
+  path: 'logs/'
+  format : '%(funcName)18s : %(levelname)-8s %(message)s'
+  default_name : skyliner.log 
+#optional k:v pairs
+#
+raw_data_url: http://duino-drop.appspot.com/
+site_conf_url: http://duino-drop.appspot.com/
+skykit_host: localhost
+skykit_db: prod
+olap_cache_host: localhost
+olap_cache_db: prod
+nexus_host: localhost
+nexus_db: nexus
+nexus_collection: skyline
+measure_collection: skymap
+install_collection: installs
