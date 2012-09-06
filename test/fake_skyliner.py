@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from skyliner.sky_handlers import cross_range
 from billing.monthmath import Month
+from sys import stderr
 
 def hour_of_energy(hour, deterministic=True):
     '''Returns a made-up energy value in BTU for the given hour (datetime). If
@@ -12,10 +13,10 @@ def hour_of_energy(hour, deterministic=True):
     if deterministic:
         # use random number generator with fixed seed
         r = Random(hour.year + hour.month + hour.day + hour.hour)
-        return min(0, r.gauss(3000, 1000))
+        return max(0, r.gauss(3000, 1000))
     # use time-seeded random number generator in the 'random' module (different
     # every time)
-    return min(0, gauss(3000, 1000))
+    return max(0, gauss(3000, 1000))
 
 class FakeSplinter(object):
     def __init__(self, deterministic=True):
