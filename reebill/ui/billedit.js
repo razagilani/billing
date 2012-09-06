@@ -1437,6 +1437,8 @@ function reeBillReady() {
                     jsonData = Ext.util.JSON.decode(result.responseText);
                     if (jsonData.success == false) {
                         Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                    } else {
+                        Ext.Msg.hide()
                     }
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
