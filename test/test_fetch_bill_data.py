@@ -279,8 +279,11 @@ class FetchTest(unittest.TestCase):
             total_btu += monguru.get_data_for_hour(install, day,
                     hour.hour).energy_sold
         
-        # compare 'total_btu' to reebill's total REE (converted from therms to BTU)
-        self.assertEqual(total_btu, reebill.total_renewable_energy() * 100000)
+        # compare 'total_btu' to reebill's total REE (converted from therms to
+        # BTU). use assertAlmostEqual to account for float vs. Decimal precision
+        # difference.
+        self.assertAlmostEqual(Decimal(total_btu),
+                reebill.total_renewable_energy() * 100000)
 
 
 if __name__ == '__main__':
