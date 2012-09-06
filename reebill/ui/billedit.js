@@ -1445,7 +1445,6 @@ function reeBillReady() {
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
                 } finally {
-                    Ext.Msg.hide();
                 }
             },
             failure: function(result, request) {
@@ -1454,7 +1453,6 @@ function reeBillReady() {
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
                 } finally {
-                    Ext.Msg.hide();
                 }
             },
         });
