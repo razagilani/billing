@@ -22,6 +22,7 @@ class FakeSplinter(object):
 class FakeSkyInstall(object):
     def __init__(self, random=True, *args, **kwargs):
         self.random = random
+        self.name = 'Fake SkyInstall'
 
     #def get_billable_energy(self, day, hour_range=(0,24), places=5):
         #hours = hour_range[1] - hour_range[0]
