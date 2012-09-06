@@ -1388,10 +1388,7 @@ function reeBillReady() {
         disableCaching: true,
     });
     computeBillOperationConn.autoAbort = true;
-    function computeBillOperation()
-    {
-
-        //Ext.Msg.show({title: "Please Wait while bill is recomputed", closable: false});
+    function computeBillOperation() {
         tabPanel.setDisabled(true);
 
         computeBillOperationConn.request({
@@ -1429,9 +1426,8 @@ function reeBillReady() {
         timeout: 960000,
     });
     bindREEOperationConn.autoAbort = true;
-    function bindREEOperation()
-    {
-        Ext.Msg.show({title: "Please Wait while OLTP data is fetched", closable: false});
+    function bindREEOperation() {
+        Ext.Msg.show({title: "Gathering data; please wait", closable: false});
 
         bindREEOperationConn.request({
             params: {account: selected_account, sequence: selected_sequence},
