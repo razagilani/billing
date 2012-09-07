@@ -34,7 +34,6 @@ def get_billable_energy_timeseries(splinter, install, start, end,
     monguru = splinter._guru
     result = []
     for hour in cross_range(start, end):
-        print >> sys.stderr, 'verbose is', verbose
         if any([a.contains(hour) for a in unbillable_annotations]):
             result.append(Decimal(0))
             if verbose:
