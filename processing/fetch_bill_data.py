@@ -49,13 +49,13 @@ def get_billable_energy_timeseries(splinter, install, start, end,
                     cube_doc = monguru.get_data_for_hour(install, day, hour_number)
                 except ValueError:
                     raise MissingDataError(("Couldn't get renewable energy data "
-                            "for %s: OLAP documents missing at %s") % (
+                            "for %s: OLAP document missing at %s") % (
                             install.name, hour))
                 try:
                     energy_sold = cube_doc.energy_sold
                 except AttributeError:
                     raise MissingDataError(("Couldn't get renewable energy "
-                        "data for %s: OLAP documents lack energy_sold "
+                        "data for %s: OLAP document lacks energy_sold "
                         "measure at %s") % (install.name, hour))
             except MissingDataError as e:
                 if ignore_missing:
