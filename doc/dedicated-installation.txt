@@ -431,12 +431,11 @@ It is important that the staging environment de-stages production data.
 
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-PYTHONPATH=/var/local/reebill-stage/lib/python2.6/site-packages:/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib
+PYTHONPATH=/var/local/reebill-stage/lib/python2.7/site-packages:/var/local/reebill-stage/lib/python2.7/site-packages/ChartDirector/lib
 
 # m h  dom mon dow   command
-0 2 * * * /var/local/reebill-stage/lib/python2.6/site-packages/billing/scripts/destage_from_prod.bash tyrell-prod stage
-0 3 * * * /var/local/reebill-stage/lib/python2.6/site-packages/billing/reconciliation.py --statedb skyline_stage  --stateuser stage --statepw stage --billdb skyline-stage --olapdb dev --skip-oltp
-
+0 2 * * * /var/local/reebill-stage/lib/python2.7/site-packages/billing/scripts/destage_from_prod.bash KdvDzFZeawPy tyrell-prod stage
+0 3 * * * source /var/local/reebill-stage/bin/activate && /var/local/reebill-stage/lib/python2.7/site-packages/billing/reconciliation.py --statedb skyline_stage  --stateuser reebill-stage --statepw KdvDzFZeawPy --billdb skyline-stage --olapdb stage --skip-oltp
 
 
 ReeBill Apache Configuration Details
