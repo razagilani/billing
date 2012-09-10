@@ -158,7 +158,7 @@ def prepare_deploy(project, environment):
     # TODO: use context, and suppress output of tar
 
     # grab skyline framework
-    fabops.local('tar czvf /tmp/skyliner.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../../skyliner' % (exclude_from))
+    fabops.local('tar czvf /tmp/skyliner.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../skyliner' % (exclude_from))
 
     # grab the ui and application code
     fabops.local('tar czvf /tmp/%s.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../reebill' % (project, exclude_from))
