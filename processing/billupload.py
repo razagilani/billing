@@ -253,12 +253,10 @@ class BillUpload(object):
         # create bill image directory if it doesn't exist already
         create_directory_if_necessary(self.bill_image_directory, self.logger)
 
-        # render the image, saving it to bill_image_path
-        self.renderBillImage(bill_file_path, bill_image_path_without_extension,
+        # render the image
+        output_file = self.renderBillImage(bill_file_path, bill_image_path_without_extension,
                 extension, resolution)
         
-        # return name of image file (the caller should know where to find the
-        # image file)
         return bill_image_name_without_extension + '.' + IMAGE_EXTENSION
         
 
@@ -299,8 +297,8 @@ class BillUpload(object):
         # create bill image directory if it doesn't exist already
         create_directory_if_necessary(self.bill_image_directory, self.logger)
         
-        # render the image, saving it to bill_image_path
-        self.renderBillImage(reebill_file_path, 
+        # render the image
+        output_file = self.renderBillImage(reebill_file_path, 
                 bill_image_path_without_extension, REEBILL_EXTENSION,
                 resolution)
 
@@ -312,7 +310,7 @@ class BillUpload(object):
     def renderBillImage(self, bill_file_path, \
             bill_image_path_without_extension, extension, density):
         '''Converts the file at [bill_file_path_without_extension].[extension]
-        to an image and saves it at bill_image_path. Types are determined by
+        to an image. Types are determined by
         extensions. For non-raster input formats like PDF, the resolution of
         the output image is determined by 'density' (in pixels per inch?).
         (This requires the 'convert' command from ImageMagick, which itself
@@ -323,11 +321,12 @@ class BillUpload(object):
         # TODO: this needs to be reimplemented so as to be command line command
         # oriented It is not possible to make a generic function for N command
         # line programs
+        output_path_without_extension = bill_image_path_without_extension + '-output'
 
         if extension == "pdf".lower():
             convert_command = ['pdftoppm', '-png', '-rx', \
                     str(density), '-ry', str(density), bill_file_path, \
-                    bill_image_path_without_extension]
+                    output_path_without_extension]
         else:
             # use the command-line version of ImageMagick to convert the file.
             # ('-quiet' suppresses warning messages. formats are determined by
@@ -337,7 +336,7 @@ class BillUpload(object):
             # truncating." when converting pdfs
             convert_command = ['convert', '-quiet', '-density', \
                     str(density), bill_file_path, \
-                    bill_image_path_without_extension + '.' + IMAGE_EXTENSION]
+                    output_path_without_extension + '.' + IMAGE_EXTENSION]
 
         convert_result = subprocess.Popen(convert_command, \
                 stderr=subprocess.PIPE)
@@ -351,16 +350,12 @@ class BillUpload(object):
             error_text = convert_result.communicate()[1]
             raise Exception('"%s" failed: %s' % (' '.join(convert_command), \
                     error_text))
-        
+
         # if the original was a multi-page PDF, 'convert' may have produced
-        # multiple images named bill_image_path-0.png, bill_image_path-1.png,
-        # etc. get names of those
+        # multiple images named output_path_without_extension-0,1,2, etc, get names of those
         # sorted() is necessary because glob doesn't guarantee order
-        # TODO: possible bug: if there are leftover files whose names happen to
-        # start with bill_image_path_without_extension, they'll be included
-        # even if they shouldn't
-        bill_image_names = sorted(glob(bill_image_path_without_extension \
-                + '-*.' + IMAGE_EXTENSION))
+        bill_image_names = sorted(glob(output_path_without_extension \
+                + '*.' + IMAGE_EXTENSION))
 
         # always use ImageMagick's 'montage' command to join them
         # since pdftoppm always outputs a '-1' even if there is only one page
@@ -391,7 +386,6 @@ class BillUpload(object):
                 # this is not critical, so if it fails, just log the error
                 self.logger.warning((('couldn\'t remove bill image file '
                         '"%s": ') % bill_image_name) + str(e))
-        
 
 def create_directory_if_necessary(path, logger):
     '''Creates the directory at 'path' if it does not exist and can be

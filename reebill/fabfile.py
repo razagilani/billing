@@ -53,6 +53,13 @@ env_configurations = {
         "config":"reebill-stage-template.cfg",
         "dir":"lib/python2.6/site-packages",
     },
+    "stage27": {
+        "project":"reebill-stage", 
+        "user":"reebill-stage", 
+        "group":"reebill-stage",
+        "config":"reebill-stage-template.cfg",
+        "dir":"lib/python2.7/site-packages",
+    },
     "prod": {
         "project":"reebill-prod", 
         "user":"reebill-prod", 
