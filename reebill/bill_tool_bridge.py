@@ -2626,7 +2626,7 @@ class BillToolBridge:
                         customer.account, utilbill.service)
 
                 # update service in MySQL
-                utilbill.service = service
+                utilbill.service = new_service
 
                 return self.dumps({'success': True})
             elif xaction == 'create':
