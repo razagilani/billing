@@ -1598,7 +1598,7 @@ function reeBillReady() {
                                             params: { account: selected_account, recipients: recipients, sequences: sequences, corrections: o.corrections},
                                             success: function(response, options) {
                                                 var o2 = Ext.decode(response.responseText);
-                                                if (o.success == true)
+                                                if (o2.success == true)
                                                     Ext.Msg.alert('Success', "mail successfully sent");
                                                 else
                                                     Ext.Msg.alert('Error', o2.errors.reason + o2.errors.details);
