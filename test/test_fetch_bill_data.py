@@ -8,9 +8,11 @@ import random
 import sqlalchemy
 import sys
 import unittest
+from skyliner.sky_handlers import cross_range
 from billing import dateutils, mongo
 from billing.processing import state
 from billing.test import example_data
+from billing.test.fake_skyliner import FakeSplinter
 from datetime import date, datetime, timedelta
 import billing.processing.fetch_bill_data as fbd
 
@@ -175,17 +177,19 @@ class FetchTest(unittest.TestCase):
 
 
     def test_fetch_interval_meter_data_with_meter(self):
-        # test with a specific meter. here's a bill with 2 meters, 1 of which
-        # contains shadow registers and the other of which does not. (currently
-        # all customers have exactly 1 shadowed meter). putting energy into the
-        # shadow registers of that specific meter is the same as putting it
-        # into all shadowed meters.
+        # test with a specific meter. here's a bill with 2 meters, only 1 of
+        # which contains shadow registers. (currently all customers have
+        # exactly 1 shadowed meter.) putting energy into the shadow registers
+        # of that specific meter is the same as putting it into all shadowed
+        # meters.
         reebill = self.reebill_dao.load_reebill('10004', 15)
         assert reebill.period_begin == date(2011,6,6)
         assert reebill.period_end == date(2011,7,6)
-        meters = reduce(lambda x,y:x+y, [reebill.meters_for_service(s) for s in reebill.services], [])
+        # get all meters for all services in the reebill
+        meters = reduce(lambda x,y:x+y, [reebill.meters_for_service(s) for s in
+                reebill.services], [])
 
-        # should have 2 meters with the identifiers shown
+        # there should be 2 meters with the identifiers shown
         assert len(meters) == 2
         assert len([m for m in meters if m['identifier'] == '028702956']) == 1
         assert len([m for m in meters if m['identifier'] == '027870434']) == 1
@@ -193,8 +197,8 @@ class FetchTest(unittest.TestCase):
         meter2 = [m for m in meters if m['identifier'] == '027870434'][0]
 
         # only the second contains shadow registers
-        shadow_registers = [r for r in meter1['registers'] +
-                meter2['registers'] if r['shadow'] is True]
+        shadow_registers = reduce(lambda x,y:x+y, [reebill.shadow_registers(s)
+                for s in reebill.services], [])
         assert len(shadow_registers) == 1
         assert [r for r in shadow_registers if r['identifier'] == '028702956'] == []
         assert [r for r in shadow_registers if r['identifier'] == '027870434'] != []
@@ -253,6 +257,34 @@ class FetchTest(unittest.TestCase):
         #assert reebill.period_end == date(2011,10,4)
 
         #fbd.fetch_interval_meter_data(reebill, atsite_csv, meter_identifier='027870434')
+
+    def test_fetch_oltp_data(self):
+        '''Put energy in a bill with a simple "total" register, and make sure the
+        register contains the right amount of energy.'''
+        reebill = example_data.get_reebill('99999', 1)
+
+        # create mock skyliner objects
+        splinter = FakeSplinter(deterministic=True)
+        monguru = splinter.get_monguru()
+        install = splinter.get_install_obj_for('99999')
+
+        # gather REE data into the reebill
+        fbd.fetch_oltp_data(splinter, install.name, reebill)
+
+        # get total REE for all hours in the reebill's meter read period,
+        # according to 'monguru'
+        total_btu = 0
+        for hour in cross_range(*reebill.meter_read_period('gas')):
+            day = date(hour.year, hour.month, hour.day)
+            total_btu += monguru.get_data_for_hour(install, day,
+                    hour.hour).energy_sold
+        
+        # compare 'total_btu' to reebill's total REE (converted from therms to
+        # BTU). use assertAlmostEqual to account for float vs. Decimal precision
+        # difference.
+        self.assertAlmostEqual(Decimal(total_btu),
+                reebill.total_renewable_energy() * 100000)
+
 
 if __name__ == '__main__':
     unittest.main()

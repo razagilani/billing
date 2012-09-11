@@ -3501,9 +3501,13 @@ function reeBillReady() {
 
         URSRSIGrid.setDisabled(true);
 
-        options.params.account = selected_account;
-        options.params.sequence = selected_sequence;
-        options.params.service = Ext.getCmp('service_for_charges').getValue();
+        //options.params.account = selected_account;
+        //options.params.sequence = selected_sequence;
+        //options.params.service = Ext.getCmp('service_for_charges').getValue();
+        URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+        URSRSIStore.setBaseParam("account", selected_account);
+        URSRSIStore.setBaseParam("sequence", selected_sequence);
+
     });
 
     // fired when the datastore has completed loading
@@ -5685,7 +5689,8 @@ function reeBillReady() {
         // is issued, or whose sequence is the last one
         deleteButton.setDisabled(sequence == null || ! (isLastSequence &&
                 record.data.max_version == 0) && (record.data.issued == true ||
-                prevRecord.data.issued == false));
+                (prevRecord != null && prevRecord.data.issued == false)));
+
         // new version button requires selected issued reebill
         versionButton.setDisabled(sequence == null || record.data.issued == false);
 
