@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 '''Script to generate a "reconciliation report" comparing energy quantities in
 reebills to the same quantities in OLAP.
 
