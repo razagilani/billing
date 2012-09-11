@@ -2601,8 +2601,9 @@ class BillToolBridge:
                 if utilbill.has_reebill:
                     raise Exception("Can't edit utility bills that have already been attached to a reebill.")
 
-                # move the file, if there is one (Skyline-estimated and hypothetical utility
-                # bills don't have one)
+                # move the file, if there is one. (only utility bills that are
+                # Complete (0) or UtilityEstimated (1) have files;
+                # SkylineEstimated (2) and Hypothetical (3) ones don't.)
                 if utilbill.state < db_objects.UtilBill.SkylineEstimated:
                     self.billUpload.move_utilbill_file(customer.account,
                             # don't trust the client to say what the original dates were
