@@ -53,6 +53,11 @@ def get_billable_energy_timeseries(splinter, install, start, end,
                             install.name, hour))
                 try:
                     energy_sold = cube_doc.energy_sold
+                    # NOTE CubeDocument returns None if the measure doesn't
+                    # exist, but this should be changed:
+                    # https://www.pivotaltracker.com/story/show/35857625
+                    if energy_sold == None:
+                        raise AttributeError('energy_sold')
                 except AttributeError:
                     raise MissingDataError(("Couldn't get renewable energy "
                         "data for %s: OLAP document lacks energy_sold "
