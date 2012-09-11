@@ -26,10 +26,12 @@ from billing.exceptions import MissingDataError
 from decimal import Decimal
 
 def get_billable_energy_timeseries(splinter, install, start, end,
-        verbose=False):
-    '''Returns a list of hourly billable-energy values during the datetime
-    range [start, end) (endpoints must whole hours). Values during
-    unbillable annotations are removed.''' 
+        ignore_missing=True, verbose=False):
+    '''Returns a list of hourly billable-energy values from OLAP during the
+    datetime range [start, end) (endpoints must whole hours). Values during
+    unbillable annotations are removed. If 'skip_missing' is True, missing OLAP
+    documents or documents without the "energy_sold" measure are treated as
+    0s.'''
     unbillable_annotations = [a for a in install.get_annotations() if
             a.unbillable]
     monguru = splinter._guru
@@ -37,25 +39,41 @@ def get_billable_energy_timeseries(splinter, install, start, end,
     for hour in cross_range(start, end):
         if any([a.contains(hour) for a in unbillable_annotations]):
             result.append(Decimal(0))
+            if verbose:
+                print >> sys.stderr, "skipping %s's %s: unbillable" % (
+                        install.name, hour)
         else:
             day = date(hour.year, hour.month, hour.day)
             hour_number = hour.hour
             try:
-                cube_doc = monguru.get_data_for_hour(install, day, hour_number)
-            except ValueError:
-                raise MissingDataError(("Couldn't get renewable energy data "
-                        "for %s: OLAP documents missing starting at %s") % (
-                        install.name, hour))
-            try:
-                energy_sold = cube_doc.energy_sold
-            except AttributeError:
-                raise MissingDataError(("Couldn't get renewable energy data for %s: "
-                        "OLAP documents lack energy_sold measure starting at "
-                        "%s") % (install.name, hour))
-            if verbose:
-                print >> sys.stderr, "%s's OLAP energy_sold for %s: %s" % (
-                        install.name, hour, energy_sold)
-            result.append(Decimal(energy_sold))
+                try:
+                    cube_doc = monguru.get_data_for_hour(install, day, hour_number)
+                except ValueError:
+                    raise MissingDataError(("Couldn't get renewable energy data "
+                            "for %s: OLAP document missing at %s") % (
+                            install.name, hour))
+                try:
+                    energy_sold = cube_doc.energy_sold
+                    # NOTE CubeDocument returns None if the measure doesn't
+                    # exist, but this should be changed:
+                    # https://www.pivotaltracker.com/story/show/35857625
+                    if energy_sold == None:
+                        raise AttributeError('energy_sold')
+                except AttributeError:
+                    raise MissingDataError(("Couldn't get renewable energy "
+                        "data for %s: OLAP document lacks energy_sold "
+                        "measure at %s") % (install.name, hour))
+            except MissingDataError as e:
+                if ignore_missing:
+                    print >> sys.stderr, 'WARNING: ignoring missing data: %s' % e
+                    result.append(Decimal(0))
+                else:
+                    raise
+            else:
+                if verbose:
+                    print >> sys.stderr, "%s's OLAP energy_sold for %s: %s" % (
+                            install.name, hour, energy_sold)
+                result.append(Decimal(energy_sold))
     return result
 
 # TODO 35345191 rename this function

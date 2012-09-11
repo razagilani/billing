@@ -1388,10 +1388,7 @@ function reeBillReady() {
         disableCaching: true,
     });
     computeBillOperationConn.autoAbort = true;
-    function computeBillOperation()
-    {
-
-        //Ext.Msg.show({title: "Please Wait while bill is recomputed", closable: false});
+    function computeBillOperation() {
         tabPanel.setDisabled(true);
 
         computeBillOperationConn.request({
@@ -1429,9 +1426,8 @@ function reeBillReady() {
         timeout: 960000,
     });
     bindREEOperationConn.autoAbort = true;
-    function bindREEOperation()
-    {
-        Ext.Msg.show({title: "Please wait while data is fetched", closable: false});
+    function bindREEOperation() {
+        Ext.Msg.show({title: "Gathering data; please wait", closable: false});
 
         bindREEOperationConn.request({
             params: {account: selected_account, sequence: selected_sequence},
@@ -1441,6 +1437,8 @@ function reeBillReady() {
                     jsonData = Ext.util.JSON.decode(result.responseText);
                     if (jsonData.success == false) {
                         Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                    } else {
+                        Ext.Msg.hide()
                     }
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
@@ -1600,7 +1598,7 @@ function reeBillReady() {
                                             params: { account: selected_account, recipients: recipients, sequences: sequences, corrections: o.corrections},
                                             success: function(response, options) {
                                                 var o2 = Ext.decode(response.responseText);
-                                                if (o.success == true)
+                                                if (o2.success == true)
                                                     Ext.Msg.alert('Success', "mail successfully sent");
                                                 else
                                                     Ext.Msg.alert('Error', o2.errors.reason + o2.errors.details);
