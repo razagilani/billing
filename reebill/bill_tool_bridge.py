@@ -1384,7 +1384,7 @@ class BillToolBridge:
 
 
             # 23417235 temporary hack
-            result = self.bindrs(account, sequence)
+            result = self.compute_bill(account, sequence)
             return self.dumps({'success':True})
 
         elif xaction == "create":
@@ -1407,7 +1407,7 @@ class BillToolBridge:
             )
 
             # 23417235 temporary hack
-            self.bindrs(account, sequence)
+            self.compute_bill(account, sequence)
             return self.dumps({'success':True, 'rows':new_rate})
 
         elif xaction == "destroy":
@@ -1442,7 +1442,7 @@ class BillToolBridge:
             )
 
             # 23417235 temporary hack
-            self.bindrs(account, sequence)
+            self.compute_bill(account, sequence)
             return self.dumps({'success':True})
 
     @cherrypy.expose
@@ -1546,7 +1546,7 @@ class BillToolBridge:
             )
 
             # 23417235 temporary hack
-            self.bindrs(account, sequence)
+            self.compute_bill(account, sequence)
             return self.dumps({'success':True, 'rows':new_rate})
 
         elif xaction == "destroy":
@@ -1580,7 +1580,7 @@ class BillToolBridge:
             )
 
             # 23417235 temporary hack
-            self.bindrs(account, sequence)
+            self.compute_bill(account, sequence)
             return self.dumps({'success':True})
 
     @cherrypy.expose
@@ -1659,7 +1659,7 @@ class BillToolBridge:
             )
 
             # 23417235 temporary hack
-            self.bindrs(account, sequence)
+            self.compute_bill(account, sequence)
             return self.dumps({'success':True})
 
         elif xaction == "create":
@@ -1680,7 +1680,7 @@ class BillToolBridge:
             )
 
             # 23417235 temporary hack
-            self.bindrs(account, sequence)
+            self.compute_bill(account, sequence)
             return self.dumps({'success':True, 'rows':new_rate})
 
         elif xaction == "destroy":
@@ -1714,7 +1714,7 @@ class BillToolBridge:
             )
 
             # 23417235 temporary hack
-            self.bindrs(account, sequence)
+            self.compute_bill(account, sequence)
             return self.dumps({'success':True})
 
     @cherrypy.expose
