@@ -32,13 +32,10 @@ class DBSession(object):
             session = self.state_db.session()
             session.commit()
         else:
-            # an exception happened: roll back the session, print the error to
-            # stderr, and also log it if there's a logger
+            # an exception happened: roll back the session, and log it if
+            # there's a logger
             session = self.state_db.session()
             session.rollback()
-            print >> stderr, ('DBSession exception in thread %s: '
-                    'type={exc_type}, value="%{value}", traceback=%{traceback}'
-                    ).format(thread.get_ident(), **vars())
             if self.logger is not None:
                 # 'value' is the exception
                 self.logger.error('%s:\n%s' % (value, traceback))
