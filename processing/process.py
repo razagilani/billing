@@ -882,6 +882,8 @@ class Process(object):
                     try:
                         renewable_energy_btus = self.monguru.get_data_for_month(install, year,
                                 month).energy_sold
+                        if (renewable_energy_btus is None):
+                            renewable_energy_btus = 0
                     except (ValueError, AttributeError) as e:
                         print >> sys.stderr, ('Missing olap document for %s, '
                                 '%s-%s: skipped, but the graph will be wrong') % (
