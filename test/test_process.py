@@ -1015,8 +1015,6 @@ port = 27017
             acc = '99999'
             self.reebill_dao.save_reebill(example_data.get_reebill(account, 0))
             self.state_db.new_rebill(session, account, 1)
-            b = example_data.get_reebill(account, 1, version=0)
-            self.reebill_dao.save_reebill(b)
 
             # more fields could be added here
             hypo = b.hypothetical_total
@@ -1024,29 +1022,37 @@ port = 27017
             ree = b.total_renewable_energy
             ree_value = b.ree_value
             ree_charges = b.ree_charges
+            total = b.total
+            balance_due = b.balance_due
             def check():
                 self.assertEqual(hypo, b.hypothetical_total)
                 self.assertEqual(actual, b.hypothetical_total)
                 self.assertEqual(ree, b.total_renewable_energy)
                 self.assertEqual(ree_value, b.ree_value)
                 self.assertEqual(ree_charges, b.ree_charges)
+                self.assertEqual(total, b.total)
+                self.assertEqual(balance_due, b.balance_due)
 
-            olap_id = 'FakeSplinter ignores olap id'
-            fbd.fetch_oltp_data(self.splinter, olap_id, b)
-            self.process.compute_bill(b)
-            check()
-            self.process.compute_bill(b)
-            check()
-            fbd.fetch_oltp_data(self.splinter, olap_id, b)
-            fbd.fetch_oltp_data(self.splinter, olap_id, b)
-            fbd.fetch_oltp_data(self.splinter, olap_id, b)
-            check()
-            self.process.compute_bill(b)
-            check()
-            fbd.fetch_oltp_data(self.splinter, olap_id, b)
-            check()
-            self.process.compute_bill(b)
-            check()
+            for use_olap in (True, False):
+                b = example_data.get_reebill(account, 1, version=0)
+                self.reebill_dao.save_reebill(b)
+                olap_id = 'FakeSplinter ignores olap id'
+
+                fbd.fetch_oltp_data(self.splinter, olap_id, b)
+                self.process.compute_bill(b)
+                check()
+                self.process.compute_bill(b)
+                check()
+                fbd.fetch_oltp_data(self.splinter, olap_id, b)
+                fbd.fetch_oltp_data(self.splinter, olap_id, b)
+                fbd.fetch_oltp_data(self.splinter, olap_id, b)
+                check()
+                self.process.compute_bill(b)
+                check()
+                fbd.fetch_oltp_data(self.splinter, olap_id, b)
+                check()
+                self.process.compute_bill(b)
+                check()
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
