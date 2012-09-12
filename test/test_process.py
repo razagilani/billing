@@ -906,7 +906,6 @@ port = 27017
             two0.late_charge_rate = .5
             fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(acc),
                     two0)
-            self.process.compute_bill(session, one, two0)
 
             # if given a late_charge_rate > 0, 2nd reebill should have a late charge
             self.process.compute_bill(session, one, two0)
