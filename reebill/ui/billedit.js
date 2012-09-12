@@ -3507,7 +3507,6 @@ function reeBillReady() {
         URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
         URSRSIStore.setBaseParam("account", selected_account);
         URSRSIStore.setBaseParam("sequence", selected_sequence);
-
     });
 
     // fired when the datastore has completed loading
@@ -5690,7 +5689,6 @@ function reeBillReady() {
         deleteButton.setDisabled(sequence == null || ! (isLastSequence &&
                 record.data.max_version == 0) && (record.data.issued == true ||
                 (prevRecord != null && prevRecord.data.issued == false)));
-
         // new version button requires selected issued reebill
         versionButton.setDisabled(sequence == null || record.data.issued == false);
 
