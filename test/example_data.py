@@ -163,7 +163,6 @@ example_reebill = {
 		"sequence" : 17
 	},
 	"ree_charges" : 118.42,
-	"sequence" : 17,
 	"ree_value" : 236.84,
 	"discount_rate" : 0.5,
 	"message" : null,
