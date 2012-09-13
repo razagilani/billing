@@ -3501,9 +3501,12 @@ function reeBillReady() {
 
         URSRSIGrid.setDisabled(true);
 
-        options.params.account = selected_account;
-        options.params.sequence = selected_sequence;
-        options.params.service = Ext.getCmp('service_for_charges').getValue();
+        //options.params.account = selected_account;
+        //options.params.sequence = selected_sequence;
+        //options.params.service = Ext.getCmp('service_for_charges').getValue();
+        URSRSIStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
+        URSRSIStore.setBaseParam("account", selected_account);
+        URSRSIStore.setBaseParam("sequence", selected_sequence);
     });
 
     // fired when the datastore has completed loading

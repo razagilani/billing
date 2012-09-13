@@ -6,7 +6,8 @@ class MissingDataError(Exception):
     but not found.'''
     pass
 
-class NoSuchReeBillException(Exception):
+# TODO rename to NoSuchBillException
+class NoSuchBillException(Exception):
     pass
 
 class NoRateStructureError(Exception):
