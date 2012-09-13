@@ -395,12 +395,15 @@ class StateDB:
                 return False
             raise
         if version == 'max':
-            return reebill.issued == 1
+            # NOTE: reebill.issued is an int, and it converts the entire
+            # expression to an int unless explicitly cast! see
+            # https://www.pivotaltracker.com/story/show/35965271
+            return bool(reebill.issued == 1)
         elif isinstance(version, int):
             # any version prior to the latest is assumed to be issued, since
             # otherwise the latest version could not have been created
-            return (version < reebill.max_version) \
-                    or (version == reebill.max_version and reebill.issued)
+            return bool((version < reebill.max_version) \
+                    or (version == reebill.max_version and reebill.issued))
         else:
             raise ValueError('Unknown version specifier "%s"' % version)
 
