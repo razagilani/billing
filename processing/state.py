@@ -395,12 +395,15 @@ class StateDB:
                 return False
             raise
         if version == 'max':
-            return reebill.issued == 1
+            # NOTE: reebill.issued is an int, and it converts the entire
+            # expression to an int unless explicitly cast! see
+            # https://www.pivotaltracker.com/story/show/35965271
+            return bool(reebill.issued == 1)
         elif isinstance(version, int):
             # any version prior to the latest is assumed to be issued, since
             # otherwise the latest version could not have been created
-            return (version < reebill.max_version) \
-                    or (version == reebill.max_version and reebill.issued)
+            return bool((version < reebill.max_version) \
+                    or (version == reebill.max_version and reebill.issued))
         else:
             raise ValueError('Unknown version specifier "%s"' % version)
 
@@ -443,7 +446,8 @@ class StateDB:
 
     def listReebills(self, session, start, limit, account):
 
-        query = session.query(ReeBill).join(Customer).filter(Customer.account==account)
+        query = session.query(ReeBill).join(Customer).filter(Customer.account==account) \
+            .order_by(desc(ReeBill.sequence))
 
         slice = query[start:start + limit]
         count = query.count()
@@ -479,7 +483,7 @@ class StateDB:
         # SQLAlchemy query to get account & dates for all utilbills
         query = session.query(UtilBill).with_lockmode('read').join(Customer)\
                 .filter(Customer.account==account)\
-                .order_by(Customer.account, UtilBill.period_start)
+                .order_by(Customer.account, asc(UtilBill.period_start))
 
         if start is None:
             return query, query.count()

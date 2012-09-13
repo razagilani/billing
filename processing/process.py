@@ -149,6 +149,8 @@ class Process(object):
 
         ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
+        present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
+                present_reebill._utilbills]
 
         self.bind_rate_structure(present_reebill)
 
@@ -184,6 +186,8 @@ class Process(object):
 
         ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
+        present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
+                present_reebill._utilbills]
 
         # get discount rate
         discount_rate = present_reebill.discount_rate
@@ -205,7 +209,6 @@ class Process(object):
         # sum up chargegroups into total per utility bill and accumulate
         # reebill values
         for service in present_reebill.services:
-
             actual_total = Decimal("0")
             hypothetical_total = Decimal("0")
 
@@ -283,6 +286,8 @@ class Process(object):
 
         ## TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
+        present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
+                present_reebill._utilbills]
         
         self.calculate_statistics(prior_reebill, present_reebill)
 
@@ -324,7 +329,8 @@ class Process(object):
 
         # construct a new reebill from an old one. the new one's version is
         # always 0 even if it was created from a non-0 version of the old one.
-        new_reebill = MongoReebill(reebill)
+        # TODO don't use private '_utilbills' here
+        new_reebill = MongoReebill(reebill, reebill._utilbills)
         new_reebill.version = 0
 
         new_period_end, utilbills = state.guess_utilbills_and_end_date(session,
@@ -633,6 +639,10 @@ class Process(object):
         periods are within the reebill's period and whose services are not
         suspended. The utility bills are marked as processed.'''
         reebill = self.reebill_dao.load_reebill(account, sequence)
+
+        # save in mongo, with frozen copies of the associated utility bill
+        self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
+
         self.state_db.attach_utilbills(session, account, sequence,
                 reebill.period_begin, reebill.period_end,
                 suspended_services=reebill.suspended_services)
@@ -689,7 +699,6 @@ class Process(object):
             # can tell this line of code has no effect)
             reebill.set_actual_chargegroups_for_service(service, actual_chargegroups)
 
-
             # hypothetical charges
 
             # "re-load rate structure" (doesn't this clear out all the changes above?)
@@ -740,11 +749,10 @@ class Process(object):
 
 
     def calculate_statistics(self, prior_reebill, reebill):
-        """ Period Statistics for the input bill period are determined here from the total energy usage """
-        """ contained in the registers. Cumulative statistics are determined by adding period statistics """
-        """ to the past cumulative statistics """ 
-
-
+        """ Period Statistics for the input bill period are determined here
+        from the total energy usage contained in the registers. Cumulative
+        statistics are determined by adding period statistics to the past
+        cumulative statistics """ 
         # the trailing bill where totals are obtained
         #prev_bill = self.reebill_dao.load_reebill(prior_reebill.account, int(prior_reebill.sequence)-1)
         prev_bill = prior_reebill
@@ -876,13 +884,14 @@ class Process(object):
                     # house (10019) starting in october 2011 but its first
                     # monthly olap doc is in november.)
                     try:
-                        renewable_energy_btus = self.monguru.get_data_for_month(
-                                install, year, month).energy_sold
+                        renewable_energy_btus = self.monguru.get_data_for_month(install, year,
+                                month).energy_sold
                         if (renewable_energy_btus is None):
                             renewable_energy_btus = 0
-                    except Exception as e:
+                    except (ValueError, AttributeError) as e:
                         print >> sys.stderr, ('Missing olap document for %s, '
-                                '%s-%s: skipped, but the graph will be wrong')
+                                '%s-%s: skipped, but the graph will be wrong') % (
+                                install.name, year, month)
                         renewable_energy_btus = 0
 
                 therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
@@ -933,6 +942,7 @@ class Process(object):
         # set issue date and due date in mongo
         reebill = self.reebill_dao.load_reebill(account, sequence)
         reebill.issue_date = issue_date
+
         # TODO: parameterize for dependence on customer 
         reebill.due_date = issue_date + timedelta(days=30)
 
@@ -944,8 +954,11 @@ class Process(object):
         if lc is not None:
             reebill.late_charges = lc
 
-        # save in mongo
-        self.reebill_dao.save_reebill(reebill)
+        # make permanent copies of the utility bills associated with this
+        # reebill
+
+        # save in mongo, with frozen copies of the associated utility bill
+        self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
 
         # mark as issued in mysql
         self.state_db.issue(session, account, sequence)
