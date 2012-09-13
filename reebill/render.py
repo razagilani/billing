@@ -384,7 +384,7 @@ class ReebillRenderer:
         sa = stringify(reebill.service_address)
         Elements.append(Paragraph(sa.get('sa_addressee', ""), styles['BillField']))
         Elements.append(Paragraph(sa.get('sa_street1',""), styles['BillField']))
-        Elements.append(Paragraph(" ".join((sa.get('sa_city', ""), sa.get('sa_state', ""), sa.get('sa_postalcode', ""))), styles['BillField']))
+        Elements.append(Paragraph(" ".join((sa.get('sa_city', ""), sa.get('sa_state', ""), sa.get('sa_postal_code', ""))), styles['BillField']))
         Elements.append(UseUpSpace())
 
         # populate special instructions
@@ -396,7 +396,7 @@ class ReebillRenderer:
         ba = stringify(reebill.billing_address)
         Elements.append(Paragraph(ba.get('ba_addressee', ""), styles['BillFieldLg']))
         Elements.append(Paragraph(ba.get('ba_street1', ""), styles['BillFieldLg']))
-        Elements.append(Paragraph(" ".join((ba.get('ba_city', ""), ba.get('ba_state', ""), ba.get('ba_postalcode',""))), styles['BillFieldLg']))
+        Elements.append(Paragraph(" ".join((ba.get('ba_city', ""), ba.get('ba_state', ""), ba.get('ba_postal_code',""))), styles['BillFieldLg']))
         Elements.append(UseUpSpace())
 
 

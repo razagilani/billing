@@ -55,6 +55,23 @@ Create user for running and deploying ReeBill
     set passwd, storing it in keepass (necessary? do we ever log-in as the application user?)
 
 
+.bash_profile/login shell
+=========================
+
+staging user
+
+source /var/local/reebill-stage/bin/activate
+export PYTHONPATH=/var/local/reebill-stage/lib/python2.7/site-packages:/var/local/reebill-stage/lib/python2.7/site-packages/ChartDirector/lib
+cd /var/local/reebill-stage
+
+production user
+
+source /var/local/reebill-prod/bin/activate
+export PYTHONPATH=/var/local/reebill-prod/lib/python2.7/site-packages:/var/local/reebill-prod/lib/python2.7/site-packages/ChartDirector/lib
+cd /var/local/reebill-prod
+
+
+
 Install Packages
 ================
 
