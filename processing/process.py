@@ -639,6 +639,10 @@ class Process(object):
         periods are within the reebill's period and whose services are not
         suspended. The utility bills are marked as processed.'''
         reebill = self.reebill_dao.load_reebill(account, sequence)
+
+        # save in mongo, with frozen copies of the associated utility bill
+        self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
+
         self.state_db.attach_utilbills(session, account, sequence,
                 reebill.period_begin, reebill.period_end,
                 suspended_services=reebill.suspended_services)
@@ -936,6 +940,7 @@ class Process(object):
         # set issue date and due date in mongo
         reebill = self.reebill_dao.load_reebill(account, sequence)
         reebill.issue_date = issue_date
+
         # TODO: parameterize for dependence on customer 
         reebill.due_date = issue_date + timedelta(days=30)
 
@@ -947,8 +952,11 @@ class Process(object):
         if lc is not None:
             reebill.late_charges = lc
 
-        # save in mongo
-        self.reebill_dao.save_reebill(reebill)
+        # make permanent copies of the utility bills associated with this
+        # reebill
+
+        # save in mongo, with frozen copies of the associated utility bill
+        self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
 
         # mark as issued in mysql
         self.state_db.issue(session, account, sequence)
