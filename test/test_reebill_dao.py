@@ -72,103 +72,106 @@ class ReebillDAOTest(unittest.TestCase):
         mysql_connection.commit()
 
     def test_load_reebill(self):
-        # put some reebills in, including non-0 versions
-        b0 = example_data.get_reebill('99999', 0, version=0)
-        b1 = example_data.get_reebill('99999', 1, version=0)
-        b1_1 = example_data.get_reebill('99999', 1, version=1)
-        b1_2 = example_data.get_reebill('99999', 1, version=2)
-        b2 = example_data.get_reebill('99999', 2, version=0)
-        b3 = example_data.get_reebill('99999', 3, version=0)
-        b3_1 = example_data.get_reebill('99999', 3, version=1)
-
-        b1.issue_date = date(2012,1,1)
-        b1_1.issue_date = date(2012,2,15)
-        b1_2.issue_date = date(2012,3,15)
-        b2.issue_date = date(2012,2,1)
-        b3.issue_date = date(2012,3,1)
-        b3_1.issue_date = date(2012,4,15)
-
-        self.reebill_dao.save_reebill(b0)
-        self.reebill_dao.save_reebill(b1)
-        self.reebill_dao.save_reebill(b1_1)
-        self.reebill_dao.save_reebill(b1_2)
-        self.reebill_dao.save_reebill(b2)
-        self.reebill_dao.save_reebill(b3)
-        self.reebill_dao.save_reebill(b3_1)
-        # create rows in MySQL with max version of each bill
         with DBSession(self.state_db) as session:
+            # put some reebills in Mongo, including non-0 versions
+            b0 = example_data.get_reebill('99999', 0, version=0)
+            b1 = example_data.get_reebill('99999', 1, version=0)
+            b1_1 = example_data.get_reebill('99999', 1, version=1)
+            b1_2 = example_data.get_reebill('99999', 1, version=2)
+            b2 = example_data.get_reebill('99999', 2, version=0)
+            b3 = example_data.get_reebill('99999', 3, version=0)
+            b3_1 = example_data.get_reebill('99999', 3, version=1)
+
+            b1.issue_date = date(2012,1,1)
+            b1_1.issue_date = date(2012,2,15)
+            b1_2.issue_date = date(2012,3,15)
+            b2.issue_date = date(2012,2,1)
+            b3.issue_date = date(2012,3,1)
+            b3_1.issue_date = date(2012,4,15)
+
+            # save reebill docs in Mongo, and add rows in MySQL with max
+            # version of each bill. issued reebills need their own frozen
+            # utilbills in Mongo, which are created by saving with
+            # freeze_utilbills=True.
+            self.reebill_dao.save_reebill(b0)
+            self.reebill_dao.save_reebill(b1, freeze_utilbills=True)
+            self.reebill_dao.save_reebill(b1_1, freeze_utilbills=True)
+            self.reebill_dao.save_reebill(b1_2)
+            self.reebill_dao.save_reebill(b2)
+            self.reebill_dao.save_reebill(b3, freeze_utilbills=True)
+            self.reebill_dao.save_reebill(b3_1)
             self.state_db.new_rebill(session, '99999', 1, max_version=2)
             self.state_db.new_rebill(session, '99999', 2, max_version=0)
             self.state_db.new_rebill(session, '99999', 3, max_version=1)
 
-        # with no extra args to load_reebill(), maximum version should come out
-        b0_max = self.reebill_dao.load_reebill('99999', 0)
-        b1_max = self.reebill_dao.load_reebill('99999', 1)
-        b2_max = self.reebill_dao.load_reebill('99999', 2)
-        b3_max = self.reebill_dao.load_reebill('99999', 3)
-        self.assertEqual(0, b0_max.sequence)
-        self.assertEqual(0, b0_max.version)
-        self.assertEqual(1, b1_max.sequence)
-        self.assertEqual(2, b1_max.version)
-        self.assertEqual(2, b2_max.sequence)
-        self.assertEqual(0, b2_max.version)
-        self.assertEqual(3, b3_max.sequence)
-        self.assertEqual(1, b3_max.version)
+            # with no extra args to load_reebill(), maximum version should come out
+            b0_max = self.reebill_dao.load_reebill('99999', 0)
+            b1_max = self.reebill_dao.load_reebill('99999', 1)
+            b2_max = self.reebill_dao.load_reebill('99999', 2)
+            b3_max = self.reebill_dao.load_reebill('99999', 3)
+            self.assertEqual(0, b0_max.sequence)
+            self.assertEqual(0, b0_max.version)
+            self.assertEqual(1, b1_max.sequence)
+            self.assertEqual(2, b1_max.version)
+            self.assertEqual(2, b2_max.sequence)
+            self.assertEqual(0, b2_max.version)
+            self.assertEqual(3, b3_max.sequence)
+            self.assertEqual(1, b3_max.version)
 
-        # try getting specific versions
-        b1_1 = self.reebill_dao.load_reebill('99999', 1, version=1)
-        b1_2 = self.reebill_dao.load_reebill('99999', 1, version=2)
-        b3_1 = self.reebill_dao.load_reebill('99999', 3, version=1)
-        self.assertEqual(1, b1_1.sequence)
-        self.assertEqual(1, b1_1.version)
-        self.assertEqual(1, b1_2.sequence)
-        self.assertEqual(2, b1_2.version)
-        self.assertEqual(1, b3_1.version)
-        b0_max = self.reebill_dao.load_reebill('99999', 0, version='max')
-        b1_max = self.reebill_dao.load_reebill('99999', 1, version='max')
-        b2_max = self.reebill_dao.load_reebill('99999', 2, version='max')
-        b3_max = self.reebill_dao.load_reebill('99999', 3, version='max')
-        self.assertEqual(0, b0_max.version)
-        self.assertEqual(2, b1_max.version)
-        self.assertEqual(0, b2_max.version)
-        self.assertEqual(1, b3_max.version)
+            # try getting specific versions
+            b1_1 = self.reebill_dao.load_reebill('99999', 1, version=1)
+            b1_2 = self.reebill_dao.load_reebill('99999', 1, version=2)
+            b3_1 = self.reebill_dao.load_reebill('99999', 3, version=1)
+            self.assertEqual(1, b1_1.sequence)
+            self.assertEqual(1, b1_1.version)
+            self.assertEqual(1, b1_2.sequence)
+            self.assertEqual(2, b1_2.version)
+            self.assertEqual(1, b3_1.version)
+            b0_max = self.reebill_dao.load_reebill('99999', 0, version='max')
+            b1_max = self.reebill_dao.load_reebill('99999', 1, version='max')
+            b2_max = self.reebill_dao.load_reebill('99999', 2, version='max')
+            b3_max = self.reebill_dao.load_reebill('99999', 3, version='max')
+            self.assertEqual(0, b0_max.version)
+            self.assertEqual(2, b1_max.version)
+            self.assertEqual(0, b2_max.version)
+            self.assertEqual(1, b3_max.version)
 
-        # get versions by issue date:
-        # when date precedes all bills, version should always be max
-        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 0,
-            version=date(2011,1,1)).version)
-        self.assertEqual(2, self.reebill_dao.load_reebill('99999', 1,
-            version=date(2011,1,1)).version)
-        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 2,
-            version=date(2011,1,1)).version)
-        self.assertEqual(1, self.reebill_dao.load_reebill('99999', 3,
-            version=date(2011,1,1)).version)
-        # when date follows all bills, version should always be max
-        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 0,
-            version=date(2013,1,1)).version)
-        self.assertEqual(2, self.reebill_dao.load_reebill('99999', 1,
-            version=date(2013,1,1)).version)
-        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 2,
-            version=date(2013,1,1)).version)
-        self.assertEqual(1, self.reebill_dao.load_reebill('99999', 3,
-            version=date(2013,1,1)).version)
-        # date between issue dates of 1-0 and 1-1
-        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 1,
-            version=date(2012,1,15)).version)
-        # date between issue dates of 1-1 and 1-2
-        self.assertEqual(1, self.reebill_dao.load_reebill('99999', 1,
-            version=date(2012,3,1)).version)
-        # date between issue dates of 3-0 and 3-1
-        self.assertEqual(0, self.reebill_dao.load_reebill('99999', 3,
-            version=date(2012,4,1)).version)
+            # get versions by issue date:
+            # when date precedes all bills, version should always be max
+            self.assertEqual(0, self.reebill_dao.load_reebill('99999', 0,
+                version=date(2011,1,1)).version)
+            self.assertEqual(2, self.reebill_dao.load_reebill('99999', 1,
+                version=date(2011,1,1)).version)
+            self.assertEqual(0, self.reebill_dao.load_reebill('99999', 2,
+                version=date(2011,1,1)).version)
+            self.assertEqual(1, self.reebill_dao.load_reebill('99999', 3,
+                version=date(2011,1,1)).version)
+            # when date follows all bills, version should always be max
+            self.assertEqual(0, self.reebill_dao.load_reebill('99999', 0,
+                version=date(2013,1,1)).version)
+            self.assertEqual(2, self.reebill_dao.load_reebill('99999', 1,
+                version=date(2013,1,1)).version)
+            self.assertEqual(0, self.reebill_dao.load_reebill('99999', 2,
+                version=date(2013,1,1)).version)
+            self.assertEqual(1, self.reebill_dao.load_reebill('99999', 3,
+                version=date(2013,1,1)).version)
+            # date between issue dates of 1-0 and 1-1
+            self.assertEqual(0, self.reebill_dao.load_reebill('99999', 1,
+                version=date(2012,1,15)).version)
+            # date between issue dates of 1-1 and 1-2
+            self.assertEqual(1, self.reebill_dao.load_reebill('99999', 1,
+                version=date(2012,3,1)).version)
+            # date between issue dates of 3-0 and 3-1
+            self.assertEqual(0, self.reebill_dao.load_reebill('99999', 3,
+                version=date(2012,4,1)).version)
 
-        # error when reebill is not found
-        self.assertRaises(NoSuchBillException,
-                self.reebill_dao.load_reebill, '10003', 1)
-        self.assertRaises(NoSuchBillException,
-                self.reebill_dao.load_reebill, '99999', 10)
-        self.assertRaises(NoSuchBillException,
-                self.reebill_dao.load_reebill, '99999', 1, version=5)
+            # error when reebill is not found
+            self.assertRaises(NoSuchBillException,
+                    self.reebill_dao.load_reebill, '10003', 1)
+            self.assertRaises(NoSuchBillException,
+                    self.reebill_dao.load_reebill, '99999', 10)
+            self.assertRaises(NoSuchBillException,
+                    self.reebill_dao.load_reebill, '99999', 1, version=5)
 
     def test_load_utilbill(self):
         # nothing to load
