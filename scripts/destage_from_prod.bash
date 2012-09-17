@@ -6,7 +6,7 @@ set -e
 USAGE="
 Usage: $0 MYSQLPASSWORD PRODHOST TOENV
      De-stages production ReeBill data to the specified environment.
-     MYSQLPASSWORD -- mysql admin password
+     MYSQLPASSWORD -- local mysql admin password
      PRODHOST -- parameter specifying the hostname containing production data (e.g. tyrell-prod).
      TOENV -- parameter specifying the environment to be targeted by the de-stage (e.g. stage, dev).
      "
@@ -36,16 +36,19 @@ cd /tmp
 
 if [ -f $tarball ]
 then
+    # TODO don't rely on presence of the tarball to determine whether the mongodump
+    # directiories below also exist; they may not
     echo "Using previously downloaded $tarball"
 else
     scp -i $ssh_key ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$tarball .
     tar xzf $tarball
 fi
+
 # apparently only root can restore the database?
 # "Access denied; you need the SUPER privilege for this operation"
 mysql -uroot -p$MYSQLPASSWORD -D skyline_$TOENV < ${now}billing_mysql.dmp
 
-# restore
+# restore mongo collections
 mongorestore --drop --db skyline-$TOENV --collection ratestructure ${now}ratestructure_mongo/skyline-prod/ratestructure.bson
 mongorestore --drop --db skyline-$TOENV --collection reebills ${now}reebills_mongo/skyline-prod/reebills.bson
 mongorestore --drop --db skyline-$TOENV --collection utilbills ${now}utilbills_mongo/skyline-prod/utilbills.bson
