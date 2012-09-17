@@ -914,7 +914,6 @@ port = 27017
             # save and issue 2nd reebill so a new version can be created
             self.reebill_dao.save_reebill(two0)
             self.process.issue(session, acc, two0.sequence)
-            import ipdb; ipdb.set_trace()
 
             # add a payment of $80 30 days ago (10 days after 1st reebill was
             # issued). the late fee above is now wrong; it should be 50% of $20
