@@ -950,12 +950,10 @@ class Process(object):
         # effect on late fee)
         # TODO: should this be replaced with a call to compute_bill() to just
         # make sure everything is up-to-date before issuing?
+        # https://www.pivotaltracker.com/story/show/36197985
         lc = self.get_late_charge(session, reebill)
         if lc is not None:
             reebill.late_charges = lc
-
-        # make permanent copies of the utility bills associated with this
-        # reebill
 
         # save in mongo, with frozen copies of the associated utility bill
         self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
