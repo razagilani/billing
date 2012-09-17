@@ -55,6 +55,16 @@ def get_external_utilbills(reebill):
             for meter in utilbill['meters']],
         }
         utilbills.append(new_utilbill)
+
+        # issued reebills also have frozen copy of each utility bill with a
+        # "sequence" and "version" in it
+        if 'issue_date' in reebill:
+            new_utilbill['_id'].update({
+                'sequence': reebill['_id']['sequence'],
+                'version': reebill['_id']['version']
+            })
+            utilbills.append(new_utilbill)
+
     return utilbills
 
 def get_internal_utilbills(reebill):
@@ -79,6 +89,7 @@ def get_internal_utilbills(reebill):
                 for meter in utilbill['meters']]
             ),
         }
+
         utilbills.append(new_utilbill)
     return utilbills
 
