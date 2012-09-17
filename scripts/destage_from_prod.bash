@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# exit immediately if anything failed
+set -e
+
 USAGE="
 Usage: $0 MYSQLPASSWORD PRODHOST TOENV
      De-stages production ReeBill data to the specified environment.
