@@ -827,8 +827,12 @@ class BillToolBridge:
             # that and all other un-issued bills
             self.process.issue_corrections(session, account, sequences[0])
 
-        # issue all unissued reebills
+        # compute and issue all unissued reebills
         for unissued_sequence in sequences:
+            predecessor = self.reebill_dao.load_reebill(account, sequence - 1,
+                    version=0)
+            reebill = self.reebill_dao.load_reebill(account, sequence)
+            self.process.compute_bill(session, predecessor, reebill)
             self.process.issue(session, account, unissued_sequence)
 
         # journal attaching of utility bills
