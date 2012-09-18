@@ -97,6 +97,10 @@ for reebill in reebills_col.find():#{'_id.account':'10023', '_id.sequence':5}):
     try:
         # create external utilbills
         for ub in get_external_utilbills(reebill):
+            ## add MongoEngine type fields
+            #ub['_cls'] = 'UtilBill'
+            #ub['_types'] = ['UtilBill']
+
             utilbills_col.save(ub)
 
         # replace utilbills list in reebill with list of internal ones
