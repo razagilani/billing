@@ -143,9 +143,8 @@ port = 27017
             # sequence 0 template
             self.reebill_dao.save_reebill(example_data.get_reebill(acc, 0))
 
-            # bill 1
+            # bill 1: no late charge
             bill1 = example_data.get_reebill(acc, 1)
-            bill1.balance_forward = Decimal('100.')
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
                 date(2011,12,31)))
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
@@ -157,36 +156,39 @@ port = 27017
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
                 date(2012,2,2)))
  
+            # save bill1 in Mongo and MySQL, and its rate structure docs in
+            # Mongo
+            self.reebill_dao.save_reebill(bill1)
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
+            self.state_db.new_rebill(session, bill1.account, bill1.sequence)
+
             # issue bill 1, so a later bill can have a late charge based on the
             # customer's failure to pay bill1 by its due date, i.e. 30 days
-            # after issue date. (it must be saved in both mongo and mysql to be
-            # issued.)
-            self.reebill_dao.save_reebill(bill1)
-            self.state_db.new_rebill(session, bill1.account, bill1.sequence)
+            # after bill1's issue date.
             self.process.issue(session, bill1.account, bill1.sequence,
                     issue_date=date(2012,1,1))
             # since process.issue() only modifies databases, bill1 must be
             # re-loaded from mongo to reflect its new issue date
             bill1 = self.reebill_dao.load_reebill(bill1.account, bill1.sequence)
+            assert bill1.issue_date == date(2012,1,1)
             assert bill1.due_date == date(2012,1,31)
  
             # after bill1 is created, it must be computed to get it into a
             # usable state (in particular, it needs a late charge). that
-            # requires a sequence 0 template bill and rate structures.
+            # requires a sequence 0 template bill.
             bill0 = example_data.get_reebill(acc, 0)
-            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
             self.process.compute_bill(session, bill0, bill1)
  
             # but compute_bill() destroys bill1's balance_due, so reset it to
             # the right value, and save it in mongo
             bill1.balance_due = Decimal('100.')
             self.reebill_dao.save_reebill(bill1, force=True)
- 
+
             # create second bill (not by rolling, because process.roll_bill()
-            # is currently a huge untested mess, and get_late_charge() should
-            # be tested in isolation). note that bill1's late charge is set in
+            # is currently a huge mess, and get_late_charge() should be
+            # insulated from that). note that bill1's late charge is set in
             # mongo by process.issue().
             bill2 = example_data.get_reebill(acc, 2)
             bill2.balance_due = Decimal('200.')
@@ -211,7 +213,7 @@ port = 27017
                     date(2013,1,1)))
  
             # in order to get late charge of a 3rd bill, bill2 must be put into
-            # mysql and "summed" (requires a rate structure)
+            # mysql and computed (requires a rate structure)
             self.state_db.new_rebill(session, bill2.account, bill2.sequence)
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 2))
             self.process.compute_bill(session, bill1, bill2)
@@ -801,6 +803,12 @@ port = 27017
             self.reebill_dao.save_reebill(two)
             self.reebill_dao.save_reebill(three)
             self.reebill_dao.save_reebill(four)
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 2))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 3))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 4))
             self.state_db.new_rebill(session, acc, 1)
             self.state_db.new_rebill(session, acc, 2)
             self.state_db.new_rebill(session, acc, 3)
@@ -808,14 +816,6 @@ port = 27017
             self.process.issue(session, acc, 1)
             self.process.issue(session, acc, 2)
             self.process.issue(session, acc, 3)
-
-            # rate structures
-            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 2))
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 3))
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 4))
 
             # no unissued corrections yet
             self.assertEquals([],
