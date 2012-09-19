@@ -683,7 +683,6 @@ port = 27017
             mongo_reebill.period_begin = start
             mongo_reebill.period_end = end
             self.reebill_dao.save_reebill(mongo_reebill)
-            #import ipdb; ipdb.set_trace()
             self.assertRaises(ValueError, self.process.delete_utility_bill,
                     session, utilbill_id)
 
@@ -914,7 +913,6 @@ port = 27017
             # save and issue 2nd reebill so a new version can be created
             self.reebill_dao.save_reebill(two0)
             self.process.issue(session, acc, two0.sequence)
-            import ipdb; ipdb.set_trace()
 
             # add a payment of $80 30 days ago (10 days after 1st reebill was
             # issued). the late fee above is now wrong; it should be 50% of $20
@@ -1009,49 +1007,55 @@ port = 27017
             self.assertEquals(account, u.reebill.customer.account)
             self.assertEquals(1, u.reebill.sequence)
 
-        def test_bind_and_compute_consistency(self):
-            '''Tests that repeated binding and computing of a reebill do not
-            cause it to change (a bug we have seen).'''
-            acc = '99999'
-            self.reebill_dao.save_reebill(example_data.get_reebill(account, 0))
-            self.state_db.new_rebill(session, account, 1)
-
-            # more fields could be added here
-            hypo = b.hypothetical_total
-            actual = b.actual_total
-            ree = b.total_renewable_energy
-            ree_value = b.ree_value
-            ree_charges = b.ree_charges
-            total = b.total
-            balance_due = b.balance_due
-            def check():
-                self.assertEqual(hypo, b.hypothetical_total)
-                self.assertEqual(actual, b.hypothetical_total)
-                self.assertEqual(ree, b.total_renewable_energy)
-                self.assertEqual(ree_value, b.ree_value)
-                self.assertEqual(ree_charges, b.ree_charges)
-                self.assertEqual(total, b.total)
-                self.assertEqual(balance_due, b.balance_due)
+    def test_bind_and_compute_consistency(self):
+        '''Tests that repeated binding and computing of a reebill do not
+        cause it to change (a bug we have seen).'''
+        acc = '99999'
+        with DBSession(self.state_db) as session:
+            zero = example_data.get_reebill(acc, 0)
+            self.reebill_dao.save_reebill(zero)
+            self.state_db.new_rebill(session, acc, 1)
 
             for use_olap in (True, False):
-                b = example_data.get_reebill(account, 1, version=0)
+                b = example_data.get_reebill(acc, 1, version=0)
                 self.reebill_dao.save_reebill(b)
+                self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+                self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+                self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc,
+                    1))
                 olap_id = 'FakeSplinter ignores olap id'
 
+                # more fields could be added here
+                hypo = b.hypothetical_total
+                actual = b.actual_total
+                ree = b.total_renewable_energy
+                ree_value = b.ree_value
+                ree_charges = b.ree_charges
+                total = b.total
+                balance_due = b.balance_due
+                def check():
+                    self.assertEqual(hypo, b.hypothetical_total)
+                    self.assertEqual(actual, b.hypothetical_total)
+                    self.assertEqual(ree, b.total_renewable_energy)
+                    self.assertEqual(ree_value, b.ree_value)
+                    self.assertEqual(ree_charges, b.ree_charges)
+                    self.assertEqual(total, b.total)
+                    self.assertEqual(balance_due, b.balance_due)
+
                 fbd.fetch_oltp_data(self.splinter, olap_id, b)
-                self.process.compute_bill(b)
+                self.process.compute_bill(session, zero, b)
                 check()
-                self.process.compute_bill(b)
-                check()
-                fbd.fetch_oltp_data(self.splinter, olap_id, b)
-                fbd.fetch_oltp_data(self.splinter, olap_id, b)
-                fbd.fetch_oltp_data(self.splinter, olap_id, b)
-                check()
-                self.process.compute_bill(b)
+                self.process.compute_bill(session, zero, b)
                 check()
                 fbd.fetch_oltp_data(self.splinter, olap_id, b)
+                fbd.fetch_oltp_data(self.splinter, olap_id, b)
+                fbd.fetch_oltp_data(self.splinter, olap_id, b)
                 check()
-                self.process.compute_bill(b)
+                self.process.compute_bill(session, zero, b)
+                check()
+                fbd.fetch_oltp_data(self.splinter, olap_id, b)
+                check()
+                self.process.compute_bill(session, zero, b)
                 check()
 
 if __name__ == '__main__':
