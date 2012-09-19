@@ -258,8 +258,10 @@ class Process(object):
         # compute adjustment: if this is the earliest unissued version-0 bill,
         # adjustment is sum of changes in totals of all unissued corrections.
         # otherwise it's 0.
+        self.state_db.is_issued(session, prior_reebill.account,
+                prior_reebill.sequence, nonexistent=True)
         if present_reebill.version == 0 and prior_reebill.sequence > 0 \
-                and not self.state_db.is_issued(session, prior_reebill.account,
+                and self.state_db.is_issued(session, prior_reebill.account,
                 prior_reebill.sequence):
             present_reebill.total_adjustment = self.get_total_adjustment(
                     session, present_reebill.account)
