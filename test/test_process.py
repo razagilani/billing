@@ -1007,6 +1007,49 @@ port = 27017
             self.assertEquals(account, u.reebill.customer.account)
             self.assertEquals(1, u.reebill.sequence)
 
+    def test_adjustment(self):
+        '''Test that adjustment from a correction is applied to (only) the
+        earliest unissued bill.'''
+        acc = '99999'
+
+        with DBSession(self.state_db) as session:
+            # save reebills and rate structures in mongo
+            self.reebill_dao.save_reebill(example_data.get_reebill(acc, 0))
+            one = example_data.get_reebill(acc, 1)
+            self.reebill_dao.save_reebill(one)
+            self.reebill_dao.save_reebill(example_data.get_reebill(acc, 2))
+            self.reebill_dao.save_reebill(example_data.get_reebill(acc, 3))
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 2))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 3))
+
+            # save reebills in mysql
+            self.state_db.new_rebill(session, acc, 1)
+            self.state_db.new_rebill(session, acc, 2)
+            self.state_db.new_rebill(session, acc, 3)
+
+            # load out of mongo
+            one = self.reebill_dao.load_reebill(acc, 1)
+            two = self.reebill_dao.load_reebill(acc, 2)
+            three = self.reebill_dao.load_reebill(acc, 3)
+
+            # issue reebill #1 and correct it with an adjustment of 100
+            self.process.issue(session, acc, 1)
+            corrected_version = self.process.new_version(session, acc, 1)
+            corrected_version.ree_charges = one.ree_charges + 100
+
+            self.process.compute_bill(session, one, two)
+            self.process.compute_bill(session, two, three)
+
+            # TODO besides the fact that the adjustment is applied to both
+            # bills, process.get_total_adjustment() is returning 250.02 instead
+            # of 100, so the adjustment amount is wrong
+            self.assertEquals(100, two.total_adjustment)
+            self.assertEquals(0, three.total_adjustment)
+
+
     def test_bind_and_compute_consistency(self):
         '''Tests that repeated binding and computing of a reebill do not
         cause it to change (a bug we have seen).'''
