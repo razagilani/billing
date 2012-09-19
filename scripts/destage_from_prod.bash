@@ -54,7 +54,6 @@ mongorestore --drop --db skyline-$TOENV --collection reebills ${now}reebills_mon
 mongorestore --drop --db skyline-$TOENV --collection utilbills ${now}utilbills_mongo/skyline-prod/utilbills.bson
 mongorestore --drop --db skyline-$TOENV --collection journal ${now}journal_mongo/skyline-prod/journal.bson
 mongorestore --drop --db skyline-$TOENV --collection users ${now}users_mongo/skyline-prod/users.bson
-mongorestore --drop --db skyline-$TOENV --collection utilbills ${now}users_mongo/skyline-prod/utilbills.bson
 
 # delete local bill files and replace with destaged copy
 rm -fr /db-$TOENV/*
