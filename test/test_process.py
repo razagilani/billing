@@ -1040,6 +1040,7 @@ port = 27017
             corrected_version = self.process.new_version(session, acc, 1)
             corrected_version.ree_charges = one.ree_charges + 100
 
+            import ipdb; ipdb.set_trace()
             self.process.compute_bill(session, one, two)
             self.process.compute_bill(session, two, three)
 
