@@ -379,11 +379,12 @@ class StateDB:
         reeBill.issued = 1
 
     def is_issued(self, session, account, sequence, version='max',
-            allow_nonexistent=False):
+            nonexistent=None):
         '''Returns true if the reebill given by account, sequence, and version
         (latest version by default) has been issued, false otherwise. If
-        'allow_nonexistent' is True, a reebill not present in the state
-        database will be treated as un-issued.'''
+        'nonexistent' is given, that value will be returned if the reebill is
+        not present in the state database (e.g. False when you want
+        non-existent bills to be treated as unissued).'''
         try:
             customer = session.query(Customer)\
                     .filter(Customer.account==account).one()
@@ -391,8 +392,8 @@ class StateDB:
                     .filter(ReeBill.customer_id==customer.id) \
                     .filter(ReeBill.sequence==sequence).one()
         except NoResultFound:
-            if allow_nonexistent:
-                return False
+            if nonexistent is not None:
+                return nonexistent
             raise
         if version == 'max':
             # NOTE: reebill.issued is an int, and it converts the entire
