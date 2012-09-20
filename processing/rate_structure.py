@@ -573,7 +573,7 @@ class RateStructureItem(object):
 
         except RuntimeError as re:
             # TODO: set RSI state to track recursion.
-            raise RecursionError(self.descriptor, rsi_value)
+            raise RecursionError(self.rsi_binding, rsi_value)
 
         # RSIs raise this if the requested property does not exist in yaml
         except NoPropertyError as npe:
@@ -584,10 +584,10 @@ class RateStructureItem(object):
             raise re
 
         except NameError as ne:
-            raise NoSuchRSIError(self.descriptor, rsi_value)
+            raise NoSuchRSIError(self.rsi_binding, rsi_value)
 
         except SyntaxError as se:
-            raise BadExpressionError(self.descriptor, rsi_value)
+            raise BadExpressionError(self.rsi_binding, rsi_value)
 
         except Exception as e:
             print "Unexpected Exception %s %s" % (str(type(e)),str(e))
