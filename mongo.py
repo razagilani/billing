@@ -1411,7 +1411,7 @@ class ReebillDAO:
             with DBSession(self.state_db) as session:
                 if self.state_db.is_issued(session, reebill.account,
                         reebill.sequence, version=reebill.version,
-                        allow_nonexistent=True):
+                        nonexistent=False):
                     raise Exception("Can't modify an issued reebill.")
                 session.commit()
         

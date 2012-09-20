@@ -375,6 +375,7 @@ function reeBillReady() {
     // put this by the other dataconnection instantiations
     var utilbillImageDataConn = new Ext.data.Connection({
         url: 'http://' + location.host + '/reebill/getUtilBillImage',
+        timeout: 60000, // 1 minute
     });
     utilbillImageDataConn.autoAbort = true;
     utilbillImageDataConn.disableCaching = true;
