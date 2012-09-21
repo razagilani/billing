@@ -1040,13 +1040,13 @@ port = 27017
             corrected_version = self.process.new_version(session, acc, 1)
             corrected_version.ree_charges = one.ree_charges + 100
 
-            import ipdb; ipdb.set_trace()
             self.process.compute_bill(session, one, two)
             self.process.compute_bill(session, two, three)
 
             # TODO besides the fact that the adjustment is applied to both
             # bills, process.get_total_adjustment() is returning 250.02 instead
             # of 100, so the adjustment amount is wrong
+            self.assertEquals(0, one.total_adjustment)
             self.assertEquals(100, two.total_adjustment)
             self.assertEquals(0, three.total_adjustment)
 
