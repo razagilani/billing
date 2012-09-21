@@ -1044,13 +1044,12 @@ port = 27017
             # from Mongo and compares them to calculate the adjustment
             self.reebill_dao.save_reebill(one_corrected)
 
-            #import ipdb; ipdb.set_trace()
             self.process.compute_bill(session, one, two)
             self.process.compute_bill(session, two, three)
 
-            # TODO besides the fact that the adjustment is applied to both
-            # bills, process.get_total_adjustment() is returning 250.02 instead
-            # of 100, so the adjustment amount is wrong
+            # only 'two' should get an adjustment ('one' is a correction, so it
+            # can't have adjustments, and 'three' is not the earliest unissued
+            # bill)
             self.assertEquals(0, one.total_adjustment)
             self.assertEquals(100, two.total_adjustment)
             self.assertEquals(0, three.total_adjustment)
