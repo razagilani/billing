@@ -654,6 +654,7 @@ class Process(object):
             # process the actual charges across all services
             self.bindrs(reebill, self.rate_structure_dao)
 
+    # TODO remove (move to bind_rate_structure)
     def bindrs(self, reebill, ratestructure_db):
         """This function binds a rate structure against the actual and
         hypothetical charges found in a bill. If and RSI specifies information
