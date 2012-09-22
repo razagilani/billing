@@ -1060,20 +1060,26 @@ port = 27017
         cause it to change (a bug we have seen).'''
         acc = '99999'
         with DBSession(self.state_db) as session:
+            # setup: sequence-0 template, rate structure documents
             zero = example_data.get_reebill(acc, 0)
             self.reebill_dao.save_reebill(zero)
             self.state_db.new_rebill(session, acc, 1)
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
 
             for use_olap in (True, False):
                 b = example_data.get_reebill(acc, 1, version=0)
                 self.reebill_dao.save_reebill(b)
-                self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-                self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
-                self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc,
-                    1))
                 olap_id = 'FakeSplinter ignores olap id'
 
-                # more fields could be added here
+                # bind & compute once to start. this change should be
+                # idempotent.
+                fbd.fetch_oltp_data(self.splinter, olap_id, b)
+                self.process.compute_bill(session, zero, b)
+
+                # save original values
+                # (more fields could be added here)
                 hypo = b.hypothetical_total
                 actual = b.actual_total
                 ree = b.total_renewable_energy
@@ -1081,16 +1087,27 @@ port = 27017
                 ree_charges = b.ree_charges
                 total = b.total
                 balance_due = b.balance_due
+
+                # this function checks that current values match the orignals
                 def check():
-                    self.assertEqual(hypo, b.hypothetical_total)
-                    self.assertEqual(actual, b.hypothetical_total)
+                    # in approximate "causal" order
                     self.assertEqual(ree, b.total_renewable_energy)
+                    self.assertEqual(actual, b.actual_total)
+                    self.assertEqual(hypo, b.hypothetical_total)
                     self.assertEqual(ree_value, b.ree_value)
                     self.assertEqual(ree_charges, b.ree_charges)
                     self.assertEqual(total, b.total)
                     self.assertEqual(balance_due, b.balance_due)
 
+                # this better succeed, since nothing was done
+                check()
+
+                # bind and compute repeatedly
+                #import ipdb; ipdb.set_trace()
+                self.process.compute_bill(session, zero, b)
+                check()
                 fbd.fetch_oltp_data(self.splinter, olap_id, b)
+                check()
                 self.process.compute_bill(session, zero, b)
                 check()
                 self.process.compute_bill(session, zero, b)
