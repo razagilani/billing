@@ -394,6 +394,8 @@ class RateStructure(object):
 
 
 class Register(object):
+    '''Wrapper for a register dictionary/mongo document inside meter inside
+    utility bill document.'''
 
     def __init__(self, reg_data, prior_read_date, present_read_date):
         if 'quantity' not in reg_data:
