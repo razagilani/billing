@@ -5671,23 +5671,25 @@ function reeBillReady() {
 
         // get selected reebill's record and the predecessor's record
         var record = reeBillGrid.getSelectionModel().getSelected();
-        var prevRecord = reeBillStore.queryBy(function(record, id) {
-            return record.data.sequence == sequence - 1;
-        }).first();
-        if (prevRecord == undefined)
-            prevRecord = null;
+        if (record != null) {
+            var prevRecord = reeBillStore.queryBy(function(record, id) {
+                return record.data.sequence == sequence - 1;
+            }).first();
+            if (prevRecord == undefined)
+                prevRecord = null;
 
-        var isLastSequence = reeBillStore.queryBy(function(record, id) {
-                return record.data.sequence == sequence + 1; }).first() ==
-                undefined;
+            var isLastSequence = reeBillStore.queryBy(function(record, id) {
+                    return record.data.sequence == sequence + 1; }).first() ==
+                    undefined;
 
-        // delete button requires selected unissued reebill whose predecessor
-        // is issued, or whose sequence is the last one
-        deleteButton.setDisabled(sequence == null || ! (isLastSequence &&
-                record.data.max_version == 0) && (record.data.issued == true ||
-                (prevRecord != null && prevRecord.data.issued == false)));
-        // new version button requires selected issued reebill
-        versionButton.setDisabled(sequence == null || record.data.issued == false);
+            // delete button requires selected unissued reebill whose predecessor
+            // is issued, or whose sequence is the last one
+            deleteButton.setDisabled(sequence == null || ! (isLastSequence &&
+                    record.data.max_version == 0) && (record.data.issued == true ||
+                    (prevRecord != null && prevRecord.data.issued == false)));
+            // new version button requires selected issued reebill
+            versionButton.setDisabled(sequence == null || record.data.issued == false);
+        }
 
         /* the rest of this applies only for a valid sequence */
         if (sequence == null) {
