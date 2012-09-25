@@ -31,6 +31,7 @@ from billing.processing import fetch_bill_data as fbd
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
+pformat = pprint.PrettyPrinter(indent=1).pformat
 
 class ProcessTest(unittest.TestCase):
     # apparenty this is what you need to do if you override the __init__ method
@@ -1075,7 +1076,7 @@ port = 27017
 
                 # bind & compute once to start. this change should be
                 # idempotent.
-                fbd.fetch_oltp_data(self.splinter, olap_id, b)
+                fbd.fetch_oltp_data(self.splinter, olap_id, b, use_olap=use_olap)
                 self.process.compute_bill(session, zero, b)
 
                 # save original values
@@ -1103,7 +1104,6 @@ port = 27017
                 check()
 
                 # bind and compute repeatedly
-                #import ipdb; ipdb.set_trace()
                 self.process.compute_bill(session, zero, b)
                 check()
                 fbd.fetch_oltp_data(self.splinter, olap_id, b)
