@@ -31,14 +31,17 @@ def dict_merge(*dicts, **kwargs):
         result.update(d)
     return result
 
-def subdict(d, keys, ignore_missing=True):
+def subdict(d, keys, invert=False, ignore_missing=True):
     '''Returns the "sub-dictionary" of 'd' consisting only of items whose keys
-    are in 'keys'. If 'ignore_missing' is False, a KeyError will be raised if
-    'd' is missing any key in 'keys'; otherwise missing keys are just
-    ignored.'''
+    are in 'keys' (or not in 'keys', if 'invert'=True). If 'ignore_missing' is
+    False, a KeyError will be raised if 'd' is missing any key in 'keys';
+    otherwise missing keys are just ignored.'''
+    if invert:
+        return dict((key, d[key]) for key in d if key not in keys)
     return dict((key,d[key]) for key in keys if not ignore_missing or (key in d))
 
 def filter_dict(func, d):
     '''Returns a dictionary that contains a subset of the key-value pairs of d
     for which func(key, value) is True (like filter() for lists).'''
     return dict([(k,v) for k, v in d.iteritems() if func(k,v) == True])
+
