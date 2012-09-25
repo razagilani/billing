@@ -379,11 +379,12 @@ class StateDB:
         reeBill.issued = 1
 
     def is_issued(self, session, account, sequence, version='max',
-            allow_nonexistent=False):
+            nonexistent=None):
         '''Returns true if the reebill given by account, sequence, and version
         (latest version by default) has been issued, false otherwise. If
-        'allow_nonexistent' is True, a reebill not present in the state
-        database will be treated as un-issued.'''
+        'nonexistent' is given, that value will be returned if the reebill is
+        not present in the state database (e.g. False when you want
+        non-existent bills to be treated as unissued).'''
         try:
             customer = session.query(Customer)\
                     .filter(Customer.account==account).one()
@@ -391,16 +392,19 @@ class StateDB:
                     .filter(ReeBill.customer_id==customer.id) \
                     .filter(ReeBill.sequence==sequence).one()
         except NoResultFound:
-            if allow_nonexistent:
-                return False
+            if nonexistent is not None:
+                return nonexistent
             raise
         if version == 'max':
-            return reebill.issued == 1
+            # NOTE: reebill.issued is an int, and it converts the entire
+            # expression to an int unless explicitly cast! see
+            # https://www.pivotaltracker.com/story/show/35965271
+            return bool(reebill.issued == 1)
         elif isinstance(version, int):
             # any version prior to the latest is assumed to be issued, since
             # otherwise the latest version could not have been created
-            return (version < reebill.max_version) \
-                    or (version == reebill.max_version and reebill.issued)
+            return bool((version < reebill.max_version) \
+                    or (version == reebill.max_version and reebill.issued))
         else:
             raise ValueError('Unknown version specifier "%s"' % version)
 
@@ -443,7 +447,8 @@ class StateDB:
 
     def listReebills(self, session, start, limit, account):
 
-        query = session.query(ReeBill).join(Customer).filter(Customer.account==account)
+        query = session.query(ReeBill).join(Customer).filter(Customer.account==account) \
+            .order_by(desc(ReeBill.sequence))
 
         slice = query[start:start + limit]
         count = query.count()
@@ -479,7 +484,7 @@ class StateDB:
         # SQLAlchemy query to get account & dates for all utilbills
         query = session.query(UtilBill).with_lockmode('read').join(Customer)\
                 .filter(Customer.account==account)\
-                .order_by(Customer.account, UtilBill.period_start)
+                .order_by(Customer.account, asc(UtilBill.period_start))
 
         if start is None:
             return query, query.count()
