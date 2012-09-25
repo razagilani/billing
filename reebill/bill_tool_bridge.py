@@ -662,7 +662,6 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
             new_reebill = self.process.roll_bill(session, reebill)
-            print '******', new_reebill.sequence
             self.reebill_dao.save_reebill(new_reebill)
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
                     account, sequence)
@@ -1861,7 +1860,6 @@ class BillToolBridge:
             sequences = [int(sequences)]
         with DBSession(self.state_db) as session:
             last_sequence = self.state_db.last_sequence(session, account)
-            print >> sys.stderr, '****** BTB.delete_reebill: %s-%s' % (account, sequences)
             for sequence in sequences:
                 # forbid deletion if predecessor has an unissued version (note
                 # that client is allowed to delete a range of bills at once, as
