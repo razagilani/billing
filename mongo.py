@@ -664,7 +664,7 @@ class MongoReebill(object):
         service is 'service_name'. There's not supposed to be more than one
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
-        chargegroup_lists = [ub['actual_chargegroups'].keys() for ub in
+        chargegroup_lists = [ub['chargegroups'].keys() for ub in
                 self._utilbills if ub['_id']['service'] == service_name]
         if chargegroup_lists == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
@@ -818,21 +818,23 @@ class MongoReebill(object):
             raise Exception('Multiple utilbills found for service "%s"' % service_name)
         meters = meters_lists[0]
 
-        # put shadow: False in all the non-shadow registers
+        # gather shadow register dictionaries
+        shadow_registers = copy.deepcopy(self.shadow_registers(service_name))
+
+        # put shadow: False in all the non-shadow registers, and merge the
+        # shadow registers in with shadow: True to replicate the old reebill
+        # data structure
         for m in meters:
             for register in m['registers']:
+                if 'shadow' in register:
+                    continue
                 register['shadow'] = False
-
-        # merge "shadow registers" into the meters to replicate the old reebill
-        # document structure
-        shadow_registers = copy.deepcopy(self.shadow_registers(service_name))
-        for sr in shadow_registers:
-            matching_meter = next(m for m in meters if m['identifier'] ==
-                    sr['identifier'])
-            sr['shadow'] = True
-            matching_meter['registers'].append(sr)
+                for sr in shadow_registers:
+                    if sr['identifier'] == register['identifier']:
+                        sr['shadow'] = True
+                        m['registers'].append(sr)
+                        break
         return meters
-
 
     def meter(self, service, identifier):
         meter = next((meter for meter in self.meters_for_service(service) if
