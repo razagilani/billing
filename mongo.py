@@ -803,11 +803,6 @@ class MongoReebill(object):
         utilbill period.'''
         return dict([(service, self.utilbill_period_for_service(service)) for
             service in self.services])
-    #@utilbill_periods.setter
-    #def utilbill_periods(self, value):
-        #'''Set the utilbill periods based on a dictionary whose keys are service and values utilbill periods.'''
-        #for (service, period) in value.iteritems():
-            #self.set_utilbill_period_for_service(service, period)
 
     # TODO: consider calling this meter readings
     def meters_for_service(self, service_name):
