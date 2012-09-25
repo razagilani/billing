@@ -255,14 +255,15 @@ class Process(object):
         # not been issued, 0 before the previous bill's due date, and non-0
         # after that)
 
-        # compute adjustment: if this is the earliest unissued version-0 bill,
-        # adjustment is sum of changes in totals of all unissued corrections.
-        # otherwise it's 0.
-        self.state_db.is_issued(session, prior_reebill.account,
-                prior_reebill.sequence, nonexistent=True)
-        if present_reebill.version == 0 and prior_reebill.sequence > 0 \
-                and self.state_db.is_issued(session, prior_reebill.account,
-                prior_reebill.sequence):
+        # compute adjustment: this bill only gets an adjustment if it's the
+        # earliest unissued version-0 bill, i.e. it meets 2 criteria:
+        # (1) it's a version-0 bill, not a correction
+        # (2) at least the 0th version of its predecessor has been issued (it
+        #     may have an unissued correction; if so, that correction will
+        #     contribute to the adjustment on this bill)
+        if present_reebill.version == 0 and self.state_db.is_issued(session,
+                prior_reebill.account, prior_reebill.sequence, version=0,
+                nonexistent=False):
             present_reebill.total_adjustment = self.get_total_adjustment(
                     session, present_reebill.account)
         else:
@@ -653,6 +654,7 @@ class Process(object):
             # process the actual charges across all services
             self.bindrs(reebill, self.rate_structure_dao)
 
+    # TODO remove (move to bind_rate_structure)
     def bindrs(self, reebill, ratestructure_db):
         """This function binds a rate structure against the actual and
         hypothetical charges found in a bill. If and RSI specifies information
