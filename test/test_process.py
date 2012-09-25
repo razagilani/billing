@@ -28,6 +28,7 @@ from billing.test.fake_skyliner import FakeSplinter, FakeMonguru
 from billing.nexus_util import NexusUtil
 from billing.mongo import NoSuchBillException
 from billing.processing import fetch_bill_data as fbd
+from billing.exceptions import NotIssuable
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -941,6 +942,44 @@ port = 27017
             b1 = example_data.get_reebill(account, 1)
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 1))
             b2 = self.process.roll_bill(session, b1)
+
+    def test_issue(self):
+        acc = '99999'
+        with DBSession(self.state_db) as session:
+            # two bills
+            one = example_data.get_reebill(acc, 1)
+            two = example_data.get_reebill(acc, 2)
+            self.reebill_dao.save_reebill(one)
+            self.reebill_dao.save_reebill(two)
+            self.state_db.new_rebill(session, acc, 1)
+            self.state_db.new_rebill(session, acc, 2)
+
+            # neither should be issued yet
+            self.assertEquals(False, self.state_db.is_issued(session, acc, 1))
+            self.assertEquals(None, one.issue_date)
+            self.assertEquals(None, one.due_date)
+            self.assertEquals(False, self.state_db.is_issued(session, acc, 2))
+            self.assertEquals(None, two.issue_date)
+            self.assertEquals(None, two.due_date)
+
+            # two should not be issuable until one is issued
+            self.assertRaises(NotIssuable, self.process.issue, session, acc, 2)
+
+            # issue one
+            self.process.issue(session, acc, 1)
+            # re-load from mongo to see updated issue date and due date
+            one = self.reebill_dao.load_reebill(acc, 1)
+            self.assertEquals(True, self.state_db.is_issued(session, acc, 1))
+            self.assertEquals(datetime.utcnow().date(), one.issue_date)
+            self.assertEquals(one.issue_date + timedelta(30), one.due_date)
+
+            # issue two
+            self.process.issue(session, acc, 2)
+            # re-load from mongo to see updated issue date and due date
+            two = self.reebill_dao.load_reebill(acc, 2)
+            self.assertEquals(True, self.state_db.is_issued(session, acc, 2))
+            self.assertEquals(datetime.utcnow().date(), two.issue_date)
+            self.assertEquals(two.issue_date + timedelta(30), two.due_date)
 
     def test_delete_reebill(self):
         account = '99999'
