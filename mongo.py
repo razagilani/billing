@@ -502,6 +502,7 @@ class MongoReebill(object):
     def statistics(self, value):
         self.reebill_dict['statistics'].update(value)
 
+    # TODO this must die https://www.pivotaltracker.com/story/show/36492387
     @property
     def actual_total(self):
         return self.reebill_dict['actual_total']
@@ -810,12 +811,12 @@ class MongoReebill(object):
 
     # TODO: consider calling this meter readings
     def meters_for_service(self, service_name):
-        '''Returns the meters (a list of dictionaries) for the utilbill whose
-        service is 'service_name'. There's not supposed to be more than one
-        utilbill per service, so an exception is raised if that happens (or if
-        there's no utilbill for that service).'''
-        meters_lists = [ub['meters'] for ub in self._utilbills if
-                ub['_id']['service'] == service_name]
+        '''Returns a list of copies of meter dictionaries for the utilbill
+        whose service is 'service_name'. There's not supposed to be more than
+        one utilbill per service, so an exception is raised if that happens (or
+        if there's no utilbill for that service).'''
+        meters_lists = [copy.deepcopy(ub['meters']) for ub in self._utilbills
+                if ub['_id']['service'] == service_name]
         if meters_lists == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
         if len(meters_lists) > 1:
@@ -829,7 +830,7 @@ class MongoReebill(object):
 
         # merge "shadow registers" into the meters to replicate the old reebill
         # document structure
-        shadow_registers = self.shadow_registers(service_name)
+        shadow_registers = copy.deepcopy(self.shadow_registers(service_name))
         for sr in shadow_registers:
             matching_meter = next(m for m in meters if m['identifier'] ==
                     sr['identifier'])
