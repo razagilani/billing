@@ -572,6 +572,7 @@ class Process(object):
         MySQL, and actual bill data from Mongo. A reebill that has been issued
         can't be deleted. Returns the version of the reebill that was
         deleted (the highest ersion before deletion).'''
+        print >> sys.stderr, '****** delete_reebill: %s-%s' % (account, sequence)
         # don't delete an issued reebill
         if self.state_db.is_issued(session, account, sequence):
             raise IssuedBillError("Can't delete an issued reebill.")
