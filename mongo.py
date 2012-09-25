@@ -1402,6 +1402,8 @@ class ReebillDAO:
         the rule that all versions except the highest are issued) is forbidden
         unless 'force' is True (this should only be used for testing).'''
         if not force:
+            # TODO pass session into save_reebill instead of re-creating it
+            # https://www.pivotaltracker.com/story/show/36258193
             with DBSession(self.state_db) as session:
                 if self.state_db.is_issued(session, reebill.account,
                         reebill.sequence, version=reebill.version,

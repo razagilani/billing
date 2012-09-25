@@ -126,6 +126,10 @@ Install the following packages with sudo pip install [package]
     wsgiref==0.1.2
     xlwt==0.7.4
 
+    the following are also required for skyliner:
+    eventlet
+    google
+
 pip install -r [above file]
 
     
