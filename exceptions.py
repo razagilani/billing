@@ -20,6 +20,9 @@ class IssuedBillError(Exception):
     '''Exception for trying to modify a bill that has been issued.'''
     pass
 
+class NotIssuable(Exception):
+    '''Trying to issue a bill that is not issuable.'''
+
 class RSIError(Exception):
     """Base class for exceptions in this module."""
     def __init__(self, descriptor, msg):

@@ -28,7 +28,7 @@ from billing.dateutils import estimate_month, month_offset, month_difference
 from billing.monthmath import Month, approximate_month
 from billing.dictutils import deep_map
 from billing.mongo import float_to_decimal
-from billing.exceptions import IssuedBillError
+from billing.exceptions import IssuedBillError, NotIssuable
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1)
@@ -943,6 +943,13 @@ class Process(object):
         issue date. The reebill's late charge is set to its permanent value in
         mongo, and the reebill is marked as issued in the state database.
         Does not attach utililty bills.'''
+        # version 0 of predecessor must be issued before this bill can be
+        # issued:
+        if sequence > 1 and not self.state_db.is_issued(session, account,
+                sequence - 1, version=0):
+            raise NotIssuable(("Can't issue reebill %s-%s because its "
+                    "predecessor has not been issued.") % (account, sequence))
+
         # set issue date and due date in mongo
         reebill = self.reebill_dao.load_reebill(account, sequence)
         reebill.issue_date = issue_date
