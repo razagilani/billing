@@ -165,13 +165,13 @@ def prepare_deploy(project, environment):
     # TODO: use context, and suppress output of tar
 
     # grab skyline framework
-    fabops.local('tar czvf /tmp/skyliner.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../../skyliner' % (exclude_from))
+    fabops.local('tar czvf /tmp/skyliner.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../skyliner' % (exclude_from))
 
     # grab the ui and application code
     fabops.local('tar czvf /tmp/%s.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../reebill' % (project, exclude_from))
 
     # grab other billing code
-    fabops.local('tar czvf /tmp/bill_framework_code.tar.z ../*.py ../processing/*.py ../upgrade_scripts/ ../scripts ../test ../db/processing/billdb.sql')
+    fabops.local('tar czvf /tmp/bill_framework_code.tar.z ../*.py ../processing/*.py ../upgrade_scripts/ ../scripts ../test')
 
     # try and put back sane values since the software was likely deployed from a development environment
     fabops.local("sed -i 's/SKYLINE_VERSIONINFO=\".*\".*$/SKYLINE_VERSIONINFO=\"UNSPECIFIED\"/g' ui/billedit.js")
@@ -251,6 +251,10 @@ def deploy():
     with fabcontext.hide('stdout'):
         with fabcontext.cd('/var/local/%s/%s/' % (project, directory)):
             fabops.sudo('tar xvzf /tmp/%s_deploy/skyliner.tar.z' % (project), user='root')
+
+
+    # clean up remote deployment files so there are no permission collisions
+    fabops.sudo('rm -rf /tmp/%s_deploy/' % (project)) 
 
     fabops.sudo('chown -R %s:%s /var/local/%s' % (user, group, project), user='root')
     fabops.sudo('service %s restart' % (httpd))

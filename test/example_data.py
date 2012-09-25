@@ -4,7 +4,7 @@ from datetime import datetime
 from billing.mongo import MongoReebill, float_to_decimal
 from billing.processing.rate_structure import RateStructure
 from billing import dateutils
-from billing.dictutils import deep_map
+from billing.dictutils import deep_map, subdict
 
 # for converting Mongo's JSON directly to Python
 ISODate = lambda s: datetime.strptime(s, dateutils.ISO_8601_DATETIME)
@@ -12,7 +12,14 @@ true, false = True, False
 null = None
 
 example_utilbill = {
-    "actual_chargegroups" : {
+    '_id': {
+        "account": "10003",
+        "service" : "gas",
+        "utility" : "washgas",
+        "start" : ISODate("2011-11-12T00:00:00Z"),
+        "end" : ISODate("2011-12-14T00:00:00Z"),
+    },
+    "chargegroups" : {
         "All Charges" : [
             {
                 "rsi_binding" : "SYSTEM_CHARGE",
@@ -114,8 +121,6 @@ example_utilbill = {
             }
         ]
     },
-    "ree_charges" : 118.42,
-    "service" : "gas",
     "serviceaddress" : {
         "postalcode" : "20010",
         "city" : "Washington",
@@ -123,111 +128,6 @@ example_utilbill = {
         "addressee" : "Monroe Towers",
         "street" : "3501 13TH ST NW #WH"
     },
-    "utility_name" : "washgas",
-    "ree_savings" : 118.42,
-    "hypothetical_chargegroups" : {
-        "All Charges" : [
-            {
-                "rsi_binding" : "SYSTEM_CHARGE",
-                "description" : "System Charge",
-                "quantity" : 1,
-                "rate_units" : "dollars",
-                "processingnote" : "",
-                "rate" : 11.2,
-                "quantity_units" : "",
-                "total" : 11.2,
-                "uuid" : "c9733cca-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                "rsi_binding" : "DISTRIBUTION_CHARGE",
-                "description" : "Distribution charge for all therms",
-                "quantity" : 750.10197727,
-                "rate_units" : "dollars",
-                "processingnote" : "",
-                "rate" : 0.2935,
-                "quantity_units" : "therms",
-                "total" : 220.16,
-                "uuid" : "c9733ed2-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                "rsi_binding" : "PGC",
-                "description" : "Purchased Gas Charge",
-                "quantity" : 750.10197727,
-                "rate_units" : "dollars",
-                "processingnote" : "",
-                "rate" : 0.7653,
-                "quantity_units" : "therms",
-                "total" : 574.05,
-                "uuid" : "c97340da-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                "rsi_binding" : "PUC",
-                "quantity_units" : "kWh",
-                "quantity" : 1,
-                "description" : "Peak Usage Charge",
-                "rate_units" : "dollars",
-                "rate" : 23.14,
-                "total" : 23.14,
-                "uuid" : "c97342e2-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                "rsi_binding" : "RIGHT_OF_WAY",
-                "description" : "DC Rights-of-Way Fee",
-                "quantity" : 750.10197727,
-                "rate_units" : "dollars",
-                "processingnote" : "",
-                "rate" : 0.03059,
-                "quantity_units" : "therms",
-                "total" : 22.95,
-                "uuid" : "c97344f4-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                "rsi_binding" : "SETF",
-                "description" : "Sustainable Energy Trust Fund",
-                "quantity" : 750.10197727,
-                "rate_units" : "dollars",
-                "processingnote" : "",
-                "rate" : 0.01399,
-                "quantity_units" : "therms",
-                "total" : 10.5,
-                "uuid" : "c97346f2-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                "rsi_binding" : "EATF",
-                "description" : "DC Energy Assistance Trust Fund",
-                "quantity" : 750.10197727,
-                "rate_units" : "dollars",
-                "processingnote" : "",
-                "rate" : 0.006,
-                "quantity_units" : "therms",
-                "total" : 4.5,
-                "uuid" : "c9734af8-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                "rsi_binding" : "SALES_TAX",
-                "description" : "Sales tax",
-                "quantity" : 924.84,
-                "rate_units" : "dollars",
-                "processingnote" : "",
-                "rate" : 0.06,
-                "quantity_units" : "dollars",
-                "total" : 55.49,
-                "uuid" : "c9734f3a-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                "rsi_binding" : "DELIVERY_TAX",
-                "description" : "Delivery tax",
-                "quantity" : 750.10197727,
-                "rate_units" : "dollars",
-                "processingnote" : "",
-                "rate" : 0.07777,
-                "quantity_units" : "therms",
-                "total" : 58.34,
-                "uuid" : "c9735372-2c16-11e1-8c7f-002421e88ffb"
-            }
-        ]
-    },
-    "ree_value" : 236.84,
     "meters" : [
         {
             "present_read_date" : ISODate("2011-12-14T00:00:00Z"),
@@ -236,29 +136,16 @@ example_utilbill = {
                     "quantity_units" : "therms",
                     "quantity" : 561.9,
                     "register_binding" : "REG_TOTAL",
-                    "shadow" : false,
                     "identifier" : "M60324",
                     "type" : "total",
                     "description" : "Therms"
                 },
-                {
-                    "quantity_units" : "therms",
-                    "quantity" : 188.20197727,
-                    "register_binding" : "REG_TOTAL",
-                    "shadow" : true,
-                    "identifier" : "M60324",
-                    "type" : "total",
-                    "description" : "Therms"
-                }
             ],
             "prior_read_date" : ISODate("2011-11-12T00:00:00Z"),
             "identifier" : "M60324"
         }
     ],
-    "actual_total" : 743.49,
-    "period_end" : ISODate("2011-12-14T00:00:00Z"),
-    "period_begin" : ISODate("2011-11-12T00:00:00Z"),
-    "hypothetical_total" : 980.33,
+    "total" : 743.49,
     "rate_structure_binding" : "DC Non Residential Non Heat",
     "billingaddress" : {
         "postalcode" : "20910",
@@ -276,12 +163,135 @@ example_reebill = {
 		"sequence" : 17
 	},
 	"ree_charges" : 118.42,
-	"sequence" : 17,
 	"ree_value" : 236.84,
 	"discount_rate" : 0.5,
 	"message" : null,
 	"issue_date" : null,
-	"utilbills" : [ example_utilbill ],
+	"utilbills" : [
+        {
+            "service" : "gas",
+            "utility" : "washgas",
+            "start" : ISODate("2011-11-12T00:00:00Z"),
+            "end" : ISODate("2011-12-14T00:00:00Z"),
+            
+            "ree_charges" : 118.42,
+            "ree_savings" : 118.42,
+            "ree_value" : 236.84,
+
+            'shadow_registers': [{
+                "quantity_units" : "therms",
+                "quantity" : 188.20197727,
+                "register_binding" : "REG_TOTAL",
+                "identifier" : "M60324",
+                "type" : "total",
+                "description" : "Therms"
+            }],
+
+            "hypothetical_total" : 980.33,
+            "hypothetical_chargegroups" : {
+                "All Charges" : [
+                    {
+                        "rsi_binding" : "SYSTEM_CHARGE",
+                        "description" : "System Charge",
+                        "quantity" : 1,
+                        "rate_units" : "dollars",
+                        "processingnote" : "",
+                        "rate" : 11.2,
+                        "quantity_units" : "",
+                        "total" : 11.2,
+                        "uuid" : "c9733cca-2c16-11e1-8c7f-002421e88ffb"
+                    },
+                    {
+                        "rsi_binding" : "DISTRIBUTION_CHARGE",
+                        "description" : "Distribution charge for all therms",
+                        "quantity" : 750.10197727,
+                        "rate_units" : "dollars",
+                        "processingnote" : "",
+                        "rate" : 0.2935,
+                        "quantity_units" : "therms",
+                        "total" : 220.16,
+                        "uuid" : "c9733ed2-2c16-11e1-8c7f-002421e88ffb"
+                    },
+                    {
+                        "rsi_binding" : "PGC",
+                        "description" : "Purchased Gas Charge",
+                        "quantity" : 750.10197727,
+                        "rate_units" : "dollars",
+                        "processingnote" : "",
+                        "rate" : 0.7653,
+                        "quantity_units" : "therms",
+                        "total" : 574.05,
+                        "uuid" : "c97340da-2c16-11e1-8c7f-002421e88ffb"
+                    },
+                    {
+                        "rsi_binding" : "PUC",
+                        "quantity_units" : "kWh",
+                        "quantity" : 1,
+                        "description" : "Peak Usage Charge",
+                        "rate_units" : "dollars",
+                        "rate" : 23.14,
+                        "total" : 23.14,
+                        "uuid" : "c97342e2-2c16-11e1-8c7f-002421e88ffb"
+                    },
+                    {
+                        "rsi_binding" : "RIGHT_OF_WAY",
+                        "description" : "DC Rights-of-Way Fee",
+                        "quantity" : 750.10197727,
+                        "rate_units" : "dollars",
+                        "processingnote" : "",
+                        "rate" : 0.03059,
+                        "quantity_units" : "therms",
+                        "total" : 22.95,
+                        "uuid" : "c97344f4-2c16-11e1-8c7f-002421e88ffb"
+                    },
+                    {
+                        "rsi_binding" : "SETF",
+                        "description" : "Sustainable Energy Trust Fund",
+                        "quantity" : 750.10197727,
+                        "rate_units" : "dollars",
+                        "processingnote" : "",
+                        "rate" : 0.01399,
+                        "quantity_units" : "therms",
+                        "total" : 10.5,
+                        "uuid" : "c97346f2-2c16-11e1-8c7f-002421e88ffb"
+                    },
+                    {
+                        "rsi_binding" : "EATF",
+                        "description" : "DC Energy Assistance Trust Fund",
+                        "quantity" : 750.10197727,
+                        "rate_units" : "dollars",
+                        "processingnote" : "",
+                        "rate" : 0.006,
+                        "quantity_units" : "therms",
+                        "total" : 4.5,
+                        "uuid" : "c9734af8-2c16-11e1-8c7f-002421e88ffb"
+                    },
+                    {
+                        "rsi_binding" : "SALES_TAX",
+                        "description" : "Sales tax",
+                        "quantity" : 924.84,
+                        "rate_units" : "dollars",
+                        "processingnote" : "",
+                        "rate" : 0.06,
+                        "quantity_units" : "dollars",
+                        "total" : 55.49,
+                        "uuid" : "c9734f3a-2c16-11e1-8c7f-002421e88ffb"
+                    },
+                    {
+                        "rsi_binding" : "DELIVERY_TAX",
+                        "description" : "Delivery tax",
+                        "quantity" : 750.10197727,
+                        "rate_units" : "dollars",
+                        "processingnote" : "",
+                        "rate" : 0.07777,
+                        "quantity_units" : "therms",
+                        "total" : 58.34,
+                        "uuid" : "c9735372-2c16-11e1-8c7f-002421e88ffb"
+                    }
+                ]
+            },
+        }
+    ],
 	"payment_received" : 0,
 	"version" : 0,
 	"period_end" : ISODate("2011-12-14T00:00:00Z"),
@@ -325,7 +335,7 @@ example_reebill = {
 		"renewable_consumed" : 18820197.727
 	},
 	"balance_due" : 1146.21,
-	"account" : "10003",
+	#"account" : "10003", # i think this should not be here
 	"prior_balance" : 1027.79,
 	"hypothetical_total" : 980.33,
 	"balance_forward" : 1027.79,
@@ -493,11 +503,19 @@ def get_reebill(account, sequence, version=0):
     reebill_dict['_id']['account'] = account
     reebill_dict['_id']['sequence'] = sequence
     reebill_dict['_id']['version'] = version
-    return MongoReebill(deep_map(float_to_decimal, reebill_dict))
+    u = get_utilbill_dict('account')
+    u['_id']['account'] = account
+    # force reebill's utilbill section to match the utilbill document
+    for ub_reference in reebill_dict['utilbills']:
+        ub_reference.update(subdict(u['_id'], ['service',
+            'utility', 'start', 'end']))
+    return MongoReebill(deep_map(float_to_decimal, reebill_dict),
+            [copy.deepcopy(deep_map(float_to_decimal, u))])
 
-def get_utilbill_dict():
+def get_utilbill_dict(account):
     '''Returns an example utility bill dictionary.'''
     utilbill_dict = copy.deepcopy(example_utilbill)
+    utilbill_dict['_id']['account'] = account
     return utilbill_dict
 
 def get_urs_dict():

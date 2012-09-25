@@ -69,7 +69,7 @@ class BillCorrector(object):
                 billdb_config['database'])
         self.session = self.state_db.session()
         self.splinter = Splinter(**splinter_config)
-        self.nexus_util = NexusUtil()
+        self.nexus_util = NexusUtil('nexus')
         self.rate_structure_dao = RateStructureDAO(**ratestructure_config)
         self.process = Process(self.state_db, self.reebill_dao,
                 self.rate_structure_dao, None, self.nexus_util, self.splinter)
