@@ -1861,14 +1861,15 @@ class BillToolBridge:
             sequences = [int(sequences)]
         with DBSession(self.state_db) as session:
             last_sequence = self.state_db.last_sequence(session, account)
+            print >> sys.stderr, '****** BTB.delete_reebill: %s-%s' % (account, sequences)
             for sequence in sequences:
                 # forbid deletion if predecessor has an unissued version (note
                 # that client is allowed to delete a range of bills at once, as
                 # long as they're in sequence order)
                 max_version = self.state_db.max_version(session, account, sequence)
-                issued = self.state_db.is_issued(session, account, sequence - 1)
                 if sequence != 1 and not (sequence == last_sequence and
-                        max_version == 0) and not issued:
+                        max_version == 0) and not self.state_db.is_issued(
+                        session, account, sequence - 1):
                     raise ValueError(("Can't delete a reebill version whose "
                             "predecessor is unissued, unless its version is 0 "
                             "and its sequence is the last one. Delete a "

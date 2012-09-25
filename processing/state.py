@@ -388,6 +388,7 @@ class StateDB:
         try:
             customer = session.query(Customer)\
                     .filter(Customer.account==account).one()
+            print >> sys.stderr, '************ looking for sequence %s, got %s' % (sequence, session.query(ReeBill).filter(ReeBill.customer_id==customer.id).all())
             reebill = session.query(ReeBill) \
                     .filter(ReeBill.customer_id==customer.id) \
                     .filter(ReeBill.sequence==sequence).one()
