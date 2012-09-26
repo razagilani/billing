@@ -14,13 +14,6 @@ statedb = 'skyline_dev' # mysql
 user = 'dev'
 password = 'dev'
 
-#host = 'localhost'
-#db = 'skyline-stage' # mongo
-#statedb = 'skyline_stage' # mysql
-#user = 'stage'
-#password = 'stage'
-
-
 con = pymongo.Connection(host, 27017)
 reebills_col = con[db]['reebills']
 utilbills_col = con[db]['utilbills']
@@ -110,12 +103,14 @@ for reebill in reebills_col.find():#{'_id.account':'10023', '_id.sequence':5}):
         print >> sys.stderr, reebill['_id']['account'], \
                 reebill['_id']['sequence'], reebill['_id']['version'], \
                 'missing key:', e
-        reebills_col.remove(reebill)
+        remove_result = reebills_col.remove({'_id': reebill['_id']}, safe=True)
+        print >> sys.stderr, 'DELETED:', remove_result
     except Exception as e:
         print >> sys.stderr, reebill['_id']['account'], \
                 reebill['_id']['sequence'], reebill['_id']['version'], \
                 'ERROR:', traceback.format_exc()
-        reebills_col.remove(reebill)
+        remove_result = reebills_col.remove({'_id': reebill['_id']}, safe=True)
+        print >> sys.stderr, 'DELETED:', remove_result
     else:
         print reebill['_id']['account'], reebill['_id']['sequence'], \
                 reebill['_id']['version']
