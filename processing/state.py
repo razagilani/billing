@@ -53,7 +53,7 @@ def guess_utilbill_periods(start_date, end_date):
     return periods
 
 def guess_utilbills_and_end_date(session, account, start_date):
-    '''Returns a tuple ([utilbills], end_date): a list of utility bills that
+    '''Returns a tuple (end_date, [utilbills]): a list of utility bills that
     will probably be associated with a newly-created reebill for the customer
     given by 'account' starting on 'start_date', and a guess for the reebills'
     end date.'''
@@ -66,7 +66,7 @@ def guess_utilbills_and_end_date(session, account, start_date):
     # TODO remove this because it's a temporary workaround
     if start_date == None:
         print >> sys.stderr, 'guess_utilbills_and_end_date got start_date == None'
-        return ([],None) 
+        return (None, []) 
 
     # get length of last reebill (note that we don't store dates for reebills
     # in MySQL)
