@@ -333,7 +333,7 @@ class Process(object):
         # construct a new reebill from an old one. the new one's version is
         # always 0 even if it was created from a non-0 version of the old one.
         # TODO don't use private '_utilbills' here
-        new_reebill = MongoReebill(reebill, reebill._utilbills)
+        new_reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         new_reebill.version = 0
 
         new_period_end, utilbills = state.guess_utilbills_and_end_date(session,
@@ -589,6 +589,7 @@ class Process(object):
 
     def create_new_account(self, session, account, name, discount_rate,
             late_charge_rate, template_account):
+        '''Returns MySQL Customer object.'''
         result = self.state_db.account_exists(session, account)
         if result is True:
             raise Exception("Account exists")
@@ -597,20 +598,18 @@ class Process(object):
         #TODO 22598787 use the active version of the template_account
         reebill = self.reebill_dao.load_reebill(template_account, template_last_sequence, 0)
 
-        # reebill constructor clears out fields in the dictionary it is given
-        reebill = MongoReebill(reebill.reebill_dict)
-
-        # fields that need to be set explicitly
         reebill.account = account
         reebill.sequence = 0
         reebill.version = 0
+        for u in reebill._utilbills:
+            u['_id']['account'] = reebill.reebill_dict['_id']['account']
 
+        reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         reebill.billing_address = {}
         reebill.service_address = {}
 
         # create template reebill in mongo for this new account
         self.reebill_dao.save_reebill(reebill)
-
 
         # TODO: 22597151 refactor
         # for each service, duplicate the CPRS
