@@ -1225,7 +1225,7 @@ class BillToolBridge:
     @json_exception
     def all_ree_charges_csv_altitude(self, **args):
         with DBSession(self.state_db) as session:
-            rows, total_count = self.process.reebill_report(session)
+            rows, total_count = self.process.reebill_report_altitude(session)
 
             import csv
             import StringIO
