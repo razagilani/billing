@@ -663,6 +663,7 @@ class BillToolBridge:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             new_reebill = self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(new_reebill)
+            new_reeill = self.reebill_dao.load_reebill(account, sequence)
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
                     account, sequence)
             return self.dumps({'success': True})
