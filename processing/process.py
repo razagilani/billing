@@ -972,6 +972,60 @@ class Process(object):
         # mark as issued in mysql
         self.state_db.issue(session, account, sequence)
 
+    def reebill_report_altitude(self, session):
+        accounts = self.state_db.listAccounts(session)
+        rows = [] 
+        totalCount = 0
+        for account in accounts:
+            payments = self.state_db.payments(session, account)
+            for reebill in self.reebill_dao.load_reebills_for(account):
+                row = {}
+
+                row['account'] = account
+                row['sequence'] = reebill.sequence
+                row['billing_address'] = reebill.billing_address
+                row['service_address'] = reebill.service_address
+                row['issue_date'] = reebill.issue_date
+                row['period_begin'] = reebill.period_begin
+                row['period_end'] = reebill.period_end
+                row['actual_charges'] = reebill.actual_total.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['hypothetical_charges'] = reebill.hypothetical_total.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                total_ree = self.total_ree_in_reebill(reebill)\
+                        .quantize(Decimal(".0"), rounding=ROUND_HALF_EVEN)
+                row['total_ree'] = total_ree
+                if total_ree != Decimal(0):
+                    row['average_rate_unit_ree'] = ((reebill.hypothetical_total -
+                            reebill.actual_total)/total_ree)\
+                            .quantize(Decimal(".00"),
+                            rounding=ROUND_HALF_EVEN)
+                else:
+                    row['average_rate_unit_ree'] = 0
+                row['ree_value'] = reebill.ree_value.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['prior_balance'] = reebill.prior_balance.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['balance_forward'] = reebill.balance_forward.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                try:
+                    row['total_adjustment'] = reebill.total_adjustment.quantize(
+                            Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                except:
+                    row['total_adjustment'] = None
+                row['payment_applied'] = reebill.payment_received.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+
+                row['ree_charges'] = reebill.ree_charges.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['balance_due'] = reebill.balance_due.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+
+                rows.append(row)
+                totalCount += 1
+
+        return rows, totalCount
+
     def reebill_report(self, session):
         accounts = self.state_db.listAccounts(session)
         rows = [] 
