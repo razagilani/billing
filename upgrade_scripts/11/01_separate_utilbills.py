@@ -100,17 +100,13 @@ for reebill in reebills_col.find():#{'_id.account':'10023', '_id.sequence':5}):
         print >> sys.stderr, reebill['_id']['account'], \
                 reebill['_id']['sequence'], reebill['_id']['version'], \
                 'missing key:', e
-        remove_result = reebills_col.remove({'_id': reebill['_id']}, safe=True)
-        print >> sys.stderr, 'DELETED:', remove_result
     except Exception as e:
         print >> sys.stderr, reebill['_id']['account'], \
                 reebill['_id']['sequence'], reebill['_id']['version'], \
                 'ERROR:', traceback.format_exc()
-        remove_result = reebills_col.remove({'_id': reebill['_id']}, safe=True)
-        print >> sys.stderr, 'DELETED:', remove_result
     else:
-        print reebill['_id']['account'], reebill['_id']['sequence'], \
-                reebill['_id']['version']
+        # no news is good news
+        pass
 
 
 # check that all utility bills can be loaded for each reebill
