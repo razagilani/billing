@@ -970,13 +970,13 @@ class MongoReebill(object):
 
     def set_hypothetical_chargegroups_flattened(self, service, flat_charges):
         utilbill = [u for u in self.reebill_dict['utilbills'] if
-                u['service'] == service]
+                u['service'] == service][0]
         utilbill['hypothetical_chargegroups'] == unflatten_chargegroups_list(
                 flat_charges)
 
     def set_actual_chargegroups_flattened(self, service, flat_charges):
         utilbill = [u for u in self._utilbills if u['_id']['service'] ==
-                service]
+                service][0]
         utilbill['chargegroups'] == unflatten_chargegroups_list(flat_charges)
 
     #def set_chargegroups_flattened(self, service, flat_charges, chargegroups):
