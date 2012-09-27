@@ -1448,7 +1448,8 @@ class ReebillDAO:
         }
         result = self.reebills_collection.find_one(query)
         if result == None:
-            return None
+            raise NoSuchBillException('First reebill for account %s is missing'
+                    % account)
         # empty utilbills list because it doesn't matter
         return MongoReebill(result, []).period_begin
 
