@@ -308,7 +308,6 @@ class Process(object):
         documents in Mongo (by copying the ones originally attached to the
         reebill). compute_bill() should always be called immediately after this
         one so the bill is updated to its current state.'''
-
         # obtain the last Reebill sequence from the state database
         if reebill.sequence < self.state_db.last_sequence(session,
                 reebill.account):
@@ -335,6 +334,7 @@ class Process(object):
         # TODO don't use private '_utilbills' here
         new_reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         new_reebill.version = 0
+        new_reebill.clear()
 
         new_period_end, utilbills = state.guess_utilbills_and_end_date(session,
                 reebill.account, reebill.period_end)
@@ -355,7 +355,7 @@ class Process(object):
 
         # create reebill row in state database
         self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
-
+        
         return new_reebill
 
 
@@ -590,6 +590,7 @@ class Process(object):
     def create_new_account(self, session, account, name, discount_rate,
             late_charge_rate, template_account):
         '''Returns MySQL Customer object.'''
+        # TODO don't roll by copying https://www.pivotaltracker.com/story/show/36805917
         result = self.state_db.account_exists(session, account)
         if result is True:
             raise Exception("Account exists")
@@ -608,6 +609,7 @@ class Process(object):
         reebill.billing_address = {}
         reebill.service_address = {}
         reebill.prior_balance = Decimal('0')
+        reebill.clear()
 
         # create template reebill in mongo for this new account
         self.reebill_dao.save_reebill(reebill)
