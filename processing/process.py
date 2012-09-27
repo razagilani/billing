@@ -607,6 +607,7 @@ class Process(object):
         reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         reebill.billing_address = {}
         reebill.service_address = {}
+        reebill.prior_balance = Decimal('0')
 
         # create template reebill in mongo for this new account
         self.reebill_dao.save_reebill(reebill)
@@ -621,7 +622,6 @@ class Process(object):
             # TODO: 22598787
             cprs = self.rate_structure_dao.load_cprs(template_account, template_last_sequence,
                 0, utility_name, rate_structure_name)
-
             if cprs is None: raise Exception("No current CPRS")
 
             # save the CPRS for the new reebill
