@@ -17,7 +17,7 @@ from billing.mongo_utils import bson_convert, python_convert
 from billing.dictutils import deep_map
 from billing.dateutils import date_to_datetime
 from billing.session_contextmanager import DBSession
-from billing.exceptions import NoSuchBillException, NoRateStructureError, NoUtilityNameError
+from billing.exceptions import NoSuchBillException, NoRateStructureError, NoUtilityNameError, IssuedBillError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1)
@@ -1124,6 +1124,10 @@ class ReebillDAO:
             query.update({'_id.start': date_to_datetime(start)})
         if end is not None:
             query.update({'_id.end': date_to_datetime(end)})
+        if sequence is not None:
+            query.update({'_id.sequence': sequence})
+        if version is not None:
+            query.update({'_id.version': version})
         cursor = self.utilbills_collection.find(query, sort=[('_id.start',
                 pymongo.ASCENDING)])
         return list(cursor)
@@ -1131,11 +1135,16 @@ class ReebillDAO:
     def load_utilbill(self, account, service, utility, start, end,
             sequence=None, version=None):
         '''Loads one utility bill document from Mongo, returns the raw
-        dictionary. 'start' and 'end' may be None because there are some
-        reebills that have Nones (when the dates have not yet been filled in by
-        the user). 'sequence' and 'version' are optional because they only
-        apply to a frozen utility bill that belongs to a particular issued
-        reebill version.'''
+        dictionary.
+        
+        'start' and 'end' may be None because there are some reebills that have
+        None dates (when the dates have not yet been filled in by the user).
+        
+        'sequence' and 'version' are optional because they only apply to a
+        frozen utility bill that belongs to a particular issued reebill
+        version. A specific sequence or version may be given, or a boolean to
+        test for the existence of the 'sequence' or 'version' key.'''
+
         query = {
             '_id.account': account,
             '_id.utility': utility,
@@ -1146,17 +1155,35 @@ class ReebillDAO:
             '_id.end': date_to_datetime(end) \
                     if isinstance(end, date) else None,
         }
-        if sequence is not None:
+
+        # "sequence" and "version" may be int for specific sequence/version, or
+        # boolean to query for key existence
+        # NOTE bool must be checked first because bool is a subclass of
+        # int! http://www.python.org/dev/peps/pep-0285/
+        if isinstance(sequence, bool):
+            query['_id.sequence'] = {'$exists': sequence}
+        elif isinstance(sequence, int):
             query['_id.sequence'] = sequence
-        if sequence is not None:
+        elif sequence is not None:
+            raise ValueError("'sequence'=%s; must be int or boolean" % sequence)
+
+        if isinstance(version, bool):
+            query['_id.version'] = {'$exists': version}
+        elif isinstance(version, int):
             query['_id.version'] = version
+        elif version is not None:
+            raise ValueError("'version'=%s; must be int or boolean" % version)
 
-        doc = self.utilbills_collection.find_one(query)
+        docs = self.utilbills_collection.find(query)
 
-        if doc is None:
+        # make sure exactly one doc was found
+        if docs.count() == 0:
             raise NoSuchBillException(("No utilbill found in %s: query was %s")
                     % (self.utilbills_collection, pp.pformat(query)))
-        return doc
+        elif docs.count() > 1:
+            raise NoSuchBillException(("Multiple utilbills in %s satisfy query"
+                    " %s") % (self.utilbills_collection, pp.pformat(query)))
+        return docs[0]
 
     def _load_all_utillbills_for_reebill(self, session, reebill_doc):
         '''Loads all utility bill documents from Mongo that match the ones in
@@ -1183,15 +1210,16 @@ class ReebillDAO:
                 utilbill_handle['end']
             ]
 
-            # an issued reebill needs additional "sequence" and "version"
-            # params, to load a frozen copy of the utility bill that belongs to
-            # the specific reebill version
+            # if the reebill is issued, look up its utilbills with sequence and
+            # version; if not, "sequence" and "version" keys should not be in
+            # the _ids
             if issued:
                 utilbill_doc = self.load_utilbill(*lookup_params,
                         sequence=reebill_doc['_id']['sequence'],
                         version=reebill_doc['_id']['version'])
             else:
-                utilbill_doc = self.load_utilbill(*lookup_params)
+                utilbill_doc = self.load_utilbill(*lookup_params,
+                        sequence=False, version=False)
 
             # convert types
             utilbill_doc = deep_map(float_to_decimal, utilbill_doc)
@@ -1321,6 +1349,11 @@ class ReebillDAO:
         '''Saves the MongoReebill 'reebill' into the database. If a document
         with the same account, sequence, and version already exists, the existing
         document is replaced.
+
+        'freeze_utilbills' should be used when issuing a reebill for the first
+        time (an original or a correction). This creates immutable copies of
+        the utility bill documents with the reebill's sequence and version in
+        their _id.
         
         Replacing an already-issued reebill (as determined by StateDB, using
         the rule that all versions except the highest are issued) is forbidden
@@ -1332,7 +1365,7 @@ class ReebillDAO:
                 if self.state_db.is_issued(session, reebill.account,
                         reebill.sequence, version=reebill.version,
                         nonexistent=False):
-                    raise Exception("Can't modify an issued reebill.")
+                    raise IssuedBillError("Can't modify an issued reebill.")
                 session.commit()
         
         reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
