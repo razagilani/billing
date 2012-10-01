@@ -5,6 +5,7 @@ from billing.mongo import MongoReebill, float_to_decimal
 from billing.processing.rate_structure import RateStructure
 from billing import dateutils
 from billing.dictutils import deep_map, subdict
+from billing.dateutils import date_to_datetime
 
 # for converting Mongo's JSON directly to Python
 ISODate = lambda s: datetime.strptime(s, dateutils.ISO_8601_DATETIME)
@@ -516,6 +517,7 @@ def get_reebill(account, sequence, start=date(2011,11,12),
 
 def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14)):
     '''Returns an example utility bill dictionary.'''
+    start, end = date_to_datetime(start), date_to_datetime(end)
     utilbill_dict = copy.deepcopy(example_utilbill)
     utilbill_dict['_id'].update({
         'account': account,
