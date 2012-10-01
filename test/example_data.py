@@ -1,6 +1,6 @@
 '''Provides example data to be used in tests.'''
 import copy
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from billing.mongo import MongoReebill, float_to_decimal
 from billing.processing.rate_structure import RateStructure
 from billing import dateutils
@@ -497,14 +497,16 @@ example_cprs = {
 	]
 }
 
-def get_reebill(account, sequence, version=0):
+def get_reebill(account, sequence, start=date(2011,11,12),
+        end=date(2011,12,14), version=0):
     '''Returns an example reebill with the given account and sequence.'''
     reebill_dict = copy.deepcopy(example_reebill)
-    reebill_dict['_id']['account'] = account
-    reebill_dict['_id']['sequence'] = sequence
-    reebill_dict['_id']['version'] = version
-    u = get_utilbill_dict('account')
-    u['_id']['account'] = account
+    reebill_dict['_id'].update({
+        'account': account,
+        'sequence': sequence,
+        'version': version,
+    })
+    u = get_utilbill_dict(account, start=start, end=end)
     # force reebill's utilbill section to match the utilbill document
     for ub_reference in reebill_dict['utilbills']:
         ub_reference.update(subdict(u['_id'], ['service',
@@ -512,10 +514,17 @@ def get_reebill(account, sequence, version=0):
     return MongoReebill(deep_map(float_to_decimal, reebill_dict),
             [copy.deepcopy(deep_map(float_to_decimal, u))])
 
-def get_utilbill_dict(account):
+def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14)):
     '''Returns an example utility bill dictionary.'''
     utilbill_dict = copy.deepcopy(example_utilbill)
-    utilbill_dict['_id']['account'] = account
+    utilbill_dict['_id'].update({
+        'account': account,
+        'start': start,
+        'end': end,
+    })
+    for meter in utilbill_dict['meters']:
+        meter['prior_read_date'] = start
+        meter['present_read_date'] = end
     return utilbill_dict
 
 def get_urs_dict():
