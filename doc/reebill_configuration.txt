@@ -97,6 +97,9 @@ For example, on AWS:
 
 Install the following packages with sudo pip install [package]
 
+MySQL-Server Dev Headers so MySQL-python can compile
+Gevent requires libevent-dev to be installed
+
 
 This list is now maintained in the ./requirements.txt file
 
