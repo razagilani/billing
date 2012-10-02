@@ -599,14 +599,20 @@ function reeBillReady() {
         }
     })
 
+    var newVersionConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/new_reebill_version',
+        disableCaching: true,
+        timeout: 960000,
+    });
     var versionButton = new Ext.Button({
         text: 'Create new version',
         iconCls: 'icon-add',
         disabled: true,
         handler: function() {
             Ext.Msg.show({title: "Please wait while new versions are created", closable: false});
-            Ext.Ajax.request({
+            newVersionConn.request({
                 url: 'http://'+location.host+'/reebill/new_reebill_version',
+
                 params: { account: selected_account, sequence: selected_sequence },
                 success: function(result, request) {
                     var jsonData = Ext.util.JSON.decode(result.responseText);

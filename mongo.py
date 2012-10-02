@@ -137,175 +137,97 @@ class MongoReebill(object):
         - hide the underlying mongo document organization
         - return cross cutting sets of data (e.g. all registers when registers are grouped by meter)
     '''
-
     def __init__(self, reebill_data, utilbill_dicts):
-        # the bill is being instantiated from Mongo 
-        if type(reebill_data) is dict:
-            self.reebill_dict = reebill_data
-            self._utilbills = utilbill_dicts
-            return
+        assert isinstance(reebill_data, dict)
+        # defensively copy whatever is passed in; who knows where the caller got it from
+        self.reebill_dict = copy.deepcopy(reebill_data)
+        self._utilbills = copy.deepcopy(utilbill_dicts)
 
-        # the bill is being instantiated from an existing instance
-        elif type(reebill_data) is MongoReebill:
-            reebill = reebill_data
-            self._utilbills = utilbill_dicts
+    def clear(self):
+        '''Code for clearing out fields of newly-rolled rebill (moved from
+        __init__, called by Process.roll_bill). TODO remove this.'''
+        # set start date of each utility bill in this reebill to the end date
+        # of the previous utility bill for that service
+        for service in self.services:
+            prev_start, prev_end = self.utilbill_period_for_service(service)
+            self.set_utilbill_period_for_service(service, (prev_end, None))
 
-            # copy the dict passed because we set it here as instance data and start
-            # operating on that data. This destroys the reebill from whence it came
-            self.reebill_dict = copy.copy(reebill.reebill_dict)
+        # process rebill
+        self.period_begin = self.period_end
+        self.period_end = None
+        self.total_adjustment = Decimal("0.00")
+        self.hypothetical_total = Decimal("0.00")
+        self.actual_total = Decimal("0.00")
+        self.ree_value = Decimal("0.00")
+        self.ree_charges = Decimal("0.00")
+        self.ree_savings = Decimal("0.00")
+        self.due_date = None
+        self.issue_date = None
+        self.motd = None
 
-            # set start date of each utility bill in this reebill to the end date
-            # of the previous utility bill for that service
-            for service in reebill.services:
-                prev_start, prev_end = reebill.utilbill_period_for_service(service)
-                self.set_utilbill_period_for_service(service, (prev_end, None))
+        # this should always be set from the value in MySQL, which holds the
+        # "current" discount rate for each customer
+        self.discount_rate = Decimal("0.00")
 
-            # process rebill
-            self.period_begin = reebill.period_end
-            self.period_end = None
-            self.total_adjustment = Decimal("0.00")
-            self.hypothetical_total = Decimal("0.00")
-            self.actual_total = Decimal("0.00")
-            self.ree_value = Decimal("0.00")
-            self.ree_charges = Decimal("0.00")
-            self.ree_savings = Decimal("0.00")
-            self.due_date = None
-            self.issue_date = None
-            self.motd = None
+        self.prior_balance = Decimal("0.00")
+        self.total_due = Decimal("0.00")
+        self.balance_due = Decimal("0.00")
+        self.payment_received = Decimal("0.00")
+        self.balance_forward = Decimal("0.00")
 
-            # this should always be set from the value in MySQL, which holds the
-            # "current" discount rate for each customer
-            self.discount_rate = Decimal("0.00")
+        for service in self.services:
+            # get utilbill numbers and zero them out
+            self.set_actual_total_for_service(service, Decimal("0.00")) 
+            self.set_hypothetical_total_for_service(service, Decimal("0.00")) 
+            self.set_ree_value_for_service(service, Decimal("0.00")) 
+            self.set_ree_savings_for_service(service, Decimal("0.00")) 
+            self.set_ree_charges_for_service(service, Decimal("0.00")) 
 
-            self.prior_balance = Decimal("0.00")
-            self.total_due = Decimal("0.00")
-            self.balance_due = Decimal("0.00")
-            self.payment_received = Decimal("0.00")
-            self.balance_forward = Decimal("0.00")
+            # set new UUID's & clear out the last bound charges
+            actual_chargegroups = self.actual_chargegroups_for_service(service)
+            for (group, charges) in actual_chargegroups.items():
+                for charge in charges:
+                    charge['uuid'] = str(UUID.uuid1())
+                    if 'rate' in charge: del charge['rate']
+                    if 'quantity' in charge: del charge['quantity']
+                    if 'total' in charge: del charge['total']
+                    
+            self.set_actual_chargegroups_for_service(service, actual_chargegroups)
 
+            hypothetical_chargegroups = self.hypothetical_chargegroups_for_service(service)
+            for (group, charges) in hypothetical_chargegroups.items():
+                for charge in charges:
+                    charge['uuid'] = str(UUID.uuid1())
+                    if 'rate' in charge: del charge['rate']
+                    if 'quantity' in charge: del charge['quantity']
+                    if 'total' in charge: del charge['total']
+                    
+            self.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
+       
+            # reset measured usage
             for service in self.services:
-                # get utilbill numbers and zero them out
-                self.set_actual_total_for_service(service, Decimal("0.00")) 
-                self.set_hypothetical_total_for_service(service, Decimal("0.00")) 
-                self.set_ree_value_for_service(service, Decimal("0.00")) 
-                self.set_ree_savings_for_service(service, Decimal("0.00")) 
-                self.set_ree_charges_for_service(service, Decimal("0.00")) 
+                for meter in self.meters_for_service(service):
+                    self.set_meter_read_date(service, meter['identifier'], None, meter['present_read_date'])
+                for actual_register in self.actual_registers(service):
+                    self.set_actual_register_quantity(actual_register['identifier'], Decimal(0.0))
+                for shadow_register in self.shadow_registers(service):
+                    self.set_shadow_register_quantity(shadow_register['identifier'], Decimal(0.0))
 
-                # set new UUID's & clear out the last bound charges
-                actual_chargegroups = self.actual_chargegroups_for_service(service)
-                for (group, charges) in actual_chargegroups.items():
-                    for charge in charges:
-                        charge['uuid'] = str(UUID.uuid1())
-                        if 'rate' in charge: del charge['rate']
-                        if 'quantity' in charge: del charge['quantity']
-                        if 'total' in charge: del charge['total']
-                        
-                self.set_actual_chargegroups_for_service(service, actual_chargegroups)
-
-                hypothetical_chargegroups = self.hypothetical_chargegroups_for_service(service)
-                for (group, charges) in hypothetical_chargegroups.items():
-                    for charge in charges:
-                        charge['uuid'] = str(UUID.uuid1())
-                        if 'rate' in charge: del charge['rate']
-                        if 'quantity' in charge: del charge['quantity']
-                        if 'total' in charge: del charge['total']
-                        
-                self.set_hypothetical_chargegroups_for_service(service, hypothetical_chargegroups)
-           
-                # reset measured usage
-                for service in self.services:
-                    for meter in self.meters_for_service(service):
-                        self.set_meter_read_date(service, meter['identifier'], None, meter['present_read_date'])
-                    for actual_register in self.actual_registers(service):
-                        self.set_actual_register_quantity(actual_register['identifier'], Decimal(0.0))
-                    for shadow_register in self.shadow_registers(service):
-                        self.set_shadow_register_quantity(shadow_register['identifier'], Decimal(0.0))
-
-                # zero out statistics section
-                statistics = {
-                    "conventional_consumed": 0,
-                    "renewable_consumed": 0,
-                    "renewable_utilization": 0,
-                    "conventional_utilization": 0,
-                    "renewable_produced": 0,
-                    "co2_offset": 0,
-                    "total_savings": Decimal("0.00"),
-                    "total_renewable_consumed": 0,
-                    "total_renewable_produced": 0,
-                    "total_trees": 0,
-                    "total_co2_offset": 0,
-                    "consumption_trend": [],
-                }
-
-        # return a new empty instance
-        elif type(reebill_data) is None:
-            self.reebill_dict = {}
-            self._utilbills = []
-
-            # initialize the reebill_dict through the MongoReeBill interface
-            self.account = ""
-            self.sequence = 0 
-            self.branch = 0 
-            self.issue_date = None
-            self.due_date = None
-            self.period_begin = None
-            self.period_end = None
-            self.balance_due = Decimal("0.00") 
-            self.prior_balance = Decimal("0.00") 
-            self.payment_received = Decimal("0.00")
-
-            # consider a reset addr function
-            self.billing_address = {
-                "ba_addressee": None,
-                "ba_street1": None,
-                "ba_city": None,
-                "ba_state": None,
-                "ba_postalcode": None,
+            # zero out statistics section
+            self.reebill_dict['statistics'] = {
+                "conventional_consumed": 0,
+                "renewable_consumed": 0,
+                "renewable_utilization": 0,
+                "conventional_utilization": 0,
+                "renewable_produced": 0,
+                "co2_offset": 0,
+                "total_savings": Decimal("0.00"),
+                "total_renewable_consumed": 0,
+                "total_renewable_produced": 0,
+                "total_trees": 0,
+                "total_co2_offset": 0,
+                "consumption_trend": [],
             }
-            self.service_address = {
-                "sa_addressee": None,
-                "sa_street1": None,
-                "sa_city": None,
-                "sa_state": None,
-                "sa_postalcode": None,
-            }
-            self.ree_charges = Decimal("0.00")
-            self.ree_savings = Decimal("0.00")
-            self.total_adjustment = Decimal("0.00")
-            self.balance_forward = Decimal("0.00")
-            self.motd = "New customer template"
-
-            #consider a reset statistics function
-            self.statistics = {
-             "renewable_utilization" : None,
-              "total_co2_offset" : None,
-              "total_savings" : None,
-              "conventional_consumed" : None,
-              "conventional_utilization" : None,
-              "consumption_trend" : [
-                { "quantity" : None, "month" : "Nov" },
-                { "quantity" : None, "month" : "Dec" },
-                { "quantity" : None, "month" : "Jan" },
-                { "quantity" : None, "month" : "Feb" },
-                { "quantity" : None, "month" : "Mar" },
-                { "quantity" : None, "month" : "Apr" },
-                { "quantity" : None, "month" : "May" },
-                { "quantity" : None, "month" : "Jun" },
-                { "quantity" : None, "month" : "Jul" },
-                { "quantity" : None, "month" : "Aug" },
-                { "quantity" : None, "month" : "Sep" },
-                { "quantity" : None, "month" : "Oct" }
-              ],
-              "total_trees" : None,
-              "co2_offset" : None,
-              "total_renewable_consumed" : None,
-              "renewable_consumed" : None
-            }
-            self.actual_total = Decimal("0.00")
-            self.hypothetical_total = Decimal("0.00")
-        else:
-            raise ValueError("Bad Parameter Value")
-
 
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
@@ -664,7 +586,7 @@ class MongoReebill(object):
         service is 'service_name'. There's not supposed to be more than one
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
-        chargegroup_lists = [ub['actual_chargegroups'].keys() for ub in
+        chargegroup_lists = [ub['chargegroups'].keys() for ub in
                 self._utilbills if ub['_id']['service'] == service_name]
         if chargegroup_lists == []:
             raise Exception('No utilbills found for service "%s"' % service_name)
@@ -818,21 +740,23 @@ class MongoReebill(object):
             raise Exception('Multiple utilbills found for service "%s"' % service_name)
         meters = meters_lists[0]
 
-        # put shadow: False in all the non-shadow registers
+        # gather shadow register dictionaries
+        shadow_registers = copy.deepcopy(self.shadow_registers(service_name))
+
+        # put shadow: False in all the non-shadow registers, and merge the
+        # shadow registers in with shadow: True to replicate the old reebill
+        # data structure
         for m in meters:
             for register in m['registers']:
+                if 'shadow' in register:
+                    continue
                 register['shadow'] = False
-
-        # merge "shadow registers" into the meters to replicate the old reebill
-        # document structure
-        shadow_registers = copy.deepcopy(self.shadow_registers(service_name))
-        for sr in shadow_registers:
-            matching_meter = next(m for m in meters if m['identifier'] ==
-                    sr['identifier'])
-            sr['shadow'] = True
-            matching_meter['registers'].append(sr)
+                for sr in shadow_registers:
+                    if sr['identifier'] == register['identifier']:
+                        sr['shadow'] = True
+                        m['registers'].append(sr)
+                        break
         return meters
-
 
     def meter(self, service, identifier):
         meter = next((meter for meter in self.meters_for_service(service) if
@@ -1133,13 +1057,13 @@ class MongoReebill(object):
 
     def set_hypothetical_chargegroups_flattened(self, service, flat_charges):
         utilbill = [u for u in self.reebill_dict['utilbills'] if
-                u['service'] == service]
+                u['service'] == service][0]
         utilbill['hypothetical_chargegroups'] == unflatten_chargegroups_list(
                 flat_charges)
 
     def set_actual_chargegroups_flattened(self, service, flat_charges):
         utilbill = [u for u in self._utilbills if u['_id']['service'] ==
-                service]
+                service][0]
         utilbill['chargegroups'] == unflatten_chargegroups_list(flat_charges)
 
     #def set_chargegroups_flattened(self, service, flat_charges, chargegroups):
@@ -1446,7 +1370,8 @@ class ReebillDAO:
         }
         result = self.reebills_collection.find_one(query)
         if result == None:
-            return None
+            raise NoSuchBillException('First reebill for account %s is missing'
+                    % account)
         # empty utilbills list because it doesn't matter
         return MongoReebill(result, []).period_begin
 

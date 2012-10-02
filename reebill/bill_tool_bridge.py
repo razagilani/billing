@@ -662,8 +662,8 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
             new_reebill = self.process.roll_bill(session, reebill)
-            print '******', new_reebill.sequence
             self.reebill_dao.save_reebill(new_reebill)
+            new_reeill = self.reebill_dao.load_reebill(account, sequence)
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
                     account, sequence)
             return self.dumps({'success': True})
@@ -829,9 +829,9 @@ class BillToolBridge:
 
         # compute and issue all unissued reebills
         for unissued_sequence in sequences:
-            predecessor = self.reebill_dao.load_reebill(account, sequence - 1,
-                    version=0)
-            reebill = self.reebill_dao.load_reebill(account, sequence)
+            predecessor = self.reebill_dao.load_reebill(account,
+                    unissued_sequence - 1, version=0)
+            reebill = self.reebill_dao.load_reebill(account, unissued_sequence)
             self.process.compute_bill(session, predecessor, reebill)
             self.process.issue(session, account, unissued_sequence)
 
@@ -1226,7 +1226,7 @@ class BillToolBridge:
     @json_exception
     def all_ree_charges_csv_altitude(self, **args):
         with DBSession(self.state_db) as session:
-            rows, total_count = self.process.reebill_report(session)
+            rows, total_count = self.process.reebill_report_altitude(session)
 
             import csv
             import StringIO
@@ -1866,9 +1866,9 @@ class BillToolBridge:
                 # that client is allowed to delete a range of bills at once, as
                 # long as they're in sequence order)
                 max_version = self.state_db.max_version(session, account, sequence)
-                issued = self.state_db.is_issued(session, account, sequence - 1)
                 if sequence != 1 and not (sequence == last_sequence and
-                        max_version == 0) and not issued:
+                        max_version == 0) and not self.state_db.is_issued(
+                        session, account, sequence - 1):
                     raise ValueError(("Can't delete a reebill version whose "
                             "predecessor is unissued, unless its version is 0 "
                             "and its sequence is the last one. Delete a "
