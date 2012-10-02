@@ -97,6 +97,9 @@ For example, on AWS:
 
 Install the following packages with sudo pip install [package]
 
+
+This list is now maintained in the ./requirements.txt file
+
     CherryPy==3.2.2
     Jinja2==2.6
     MySQL-python==1.2.3
