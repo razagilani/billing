@@ -69,4 +69,6 @@ ext-3.3.1/examples/writer
 
 
 ../reebill/ui/ext-3.2.1/docs
-../../skyliner/cache
+
+skyliner/logs/*
+skyliner/cache/*
