@@ -14,13 +14,6 @@ statedb = 'skyline_dev' # mysql
 user = 'dev'
 password = 'dev'
 
-#host = 'localhost'
-#db = 'skyline-stage' # mongo
-#statedb = 'skyline_stage' # mysql
-#user = 'stage'
-#password = 'stage'
-
-
 con = pymongo.Connection(host, 27017)
 reebills_col = con[db]['reebills']
 utilbills_col = con[db]['utilbills']
@@ -32,16 +25,17 @@ def get_external_utilbills(reebill):
             '_id': {
                 'account': reebill['_id']['account'],
                 'utility': utilbill['utility_name'],
-                'service': utilbill['service'], # TODO maybe combine "service" (i.e. fuel type) and utility name?
+                'service': utilbill['service'],
                 'start': utilbill['period_begin'],
                 'end': utilbill['period_end'],
             },
 
+            # NOTE the key names that have changed
             'chargegroups': utilbill['actual_chargegroups'],
-            'total': utilbill['actual_total'], # NOTE key name has changed
+            'total': utilbill['actual_total'],
             'rate_structure_binding': utilbill['rate_structure_binding'],
-            'service_address': utilbill['serviceaddress'], # NOTE key name has changed
-            'billing_address': utilbill['billingaddress'], # NOTE key name has changed
+            'service_address': utilbill.get('serviceaddress', {}),
+            'billing_address': utilbill.get('billingaddress', {}),
 
             # meters['registers'] should contain only the non-shadow meters
             # of the internal utilbill (overwrite the 'registers' list of
@@ -97,10 +91,6 @@ for reebill in reebills_col.find():#{'_id.account':'10023', '_id.sequence':5}):
     try:
         # create external utilbills
         for ub in get_external_utilbills(reebill):
-            ## add MongoEngine type fields
-            #ub['_cls'] = 'UtilBill'
-            #ub['_types'] = ['UtilBill']
-
             utilbills_col.save(ub)
 
         # replace utilbills list in reebill with list of internal ones
@@ -110,15 +100,13 @@ for reebill in reebills_col.find():#{'_id.account':'10023', '_id.sequence':5}):
         print >> sys.stderr, reebill['_id']['account'], \
                 reebill['_id']['sequence'], reebill['_id']['version'], \
                 'missing key:', e
-        reebills_col.remove(reebill)
     except Exception as e:
         print >> sys.stderr, reebill['_id']['account'], \
                 reebill['_id']['sequence'], reebill['_id']['version'], \
                 'ERROR:', traceback.format_exc()
-        reebills_col.remove(reebill)
     else:
-        print reebill['_id']['account'], reebill['_id']['sequence'], \
-                reebill['_id']['version']
+        # no news is good news
+        pass
 
 
 # check that all utility bills can be loaded for each reebill

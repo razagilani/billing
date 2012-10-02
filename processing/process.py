@@ -28,7 +28,7 @@ from billing.dateutils import estimate_month, month_offset, month_difference
 from billing.monthmath import Month, approximate_month
 from billing.dictutils import deep_map
 from billing.mongo import float_to_decimal
-from billing.exceptions import IssuedBillError
+from billing.exceptions import IssuedBillError, NotIssuable
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1)
@@ -308,7 +308,6 @@ class Process(object):
         documents in Mongo (by copying the ones originally attached to the
         reebill). compute_bill() should always be called immediately after this
         one so the bill is updated to its current state.'''
-
         # obtain the last Reebill sequence from the state database
         if reebill.sequence < self.state_db.last_sequence(session,
                 reebill.account):
@@ -333,8 +332,9 @@ class Process(object):
         # construct a new reebill from an old one. the new one's version is
         # always 0 even if it was created from a non-0 version of the old one.
         # TODO don't use private '_utilbills' here
-        new_reebill = MongoReebill(reebill, reebill._utilbills)
+        new_reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         new_reebill.version = 0
+        new_reebill.clear()
 
         new_period_end, utilbills = state.guess_utilbills_and_end_date(session,
                 reebill.account, reebill.period_end)
@@ -355,7 +355,7 @@ class Process(object):
 
         # create reebill row in state database
         self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
-
+        
         return new_reebill
 
 
@@ -589,6 +589,8 @@ class Process(object):
 
     def create_new_account(self, session, account, name, discount_rate,
             late_charge_rate, template_account):
+        '''Returns MySQL Customer object.'''
+        # TODO don't roll by copying https://www.pivotaltracker.com/story/show/36805917
         result = self.state_db.account_exists(session, account)
         if result is True:
             raise Exception("Account exists")
@@ -597,20 +599,20 @@ class Process(object):
         #TODO 22598787 use the active version of the template_account
         reebill = self.reebill_dao.load_reebill(template_account, template_last_sequence, 0)
 
-        # reebill constructor clears out fields in the dictionary it is given
-        reebill = MongoReebill(reebill.reebill_dict)
-
-        # fields that need to be set explicitly
         reebill.account = account
         reebill.sequence = 0
         reebill.version = 0
+        for u in reebill._utilbills:
+            u['_id']['account'] = reebill.reebill_dict['_id']['account']
 
+        reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         reebill.billing_address = {}
         reebill.service_address = {}
+        reebill.prior_balance = Decimal('0')
+        reebill.clear()
 
         # create template reebill in mongo for this new account
         self.reebill_dao.save_reebill(reebill)
-
 
         # TODO: 22597151 refactor
         # for each service, duplicate the CPRS
@@ -622,7 +624,6 @@ class Process(object):
             # TODO: 22598787
             cprs = self.rate_structure_dao.load_cprs(template_account, template_last_sequence,
                 0, utility_name, rate_structure_name)
-
             if cprs is None: raise Exception("No current CPRS")
 
             # save the CPRS for the new reebill
@@ -943,6 +944,13 @@ class Process(object):
         issue date. The reebill's late charge is set to its permanent value in
         mongo, and the reebill is marked as issued in the state database.
         Does not attach utililty bills.'''
+        # version 0 of predecessor must be issued before this bill can be
+        # issued:
+        if sequence > 1 and not self.state_db.is_issued(session, account,
+                sequence - 1, version=0):
+            raise NotIssuable(("Can't issue reebill %s-%s because its "
+                    "predecessor has not been issued.") % (account, sequence))
+
         # set issue date and due date in mongo
         reebill = self.reebill_dao.load_reebill(account, sequence)
         reebill.issue_date = issue_date
@@ -964,6 +972,60 @@ class Process(object):
 
         # mark as issued in mysql
         self.state_db.issue(session, account, sequence)
+
+    def reebill_report_altitude(self, session):
+        accounts = self.state_db.listAccounts(session)
+        rows = [] 
+        totalCount = 0
+        for account in accounts:
+            payments = self.state_db.payments(session, account)
+            for reebill in self.reebill_dao.load_reebills_for(account):
+                row = {}
+
+                row['account'] = account
+                row['sequence'] = reebill.sequence
+                row['billing_address'] = reebill.billing_address
+                row['service_address'] = reebill.service_address
+                row['issue_date'] = reebill.issue_date
+                row['period_begin'] = reebill.period_begin
+                row['period_end'] = reebill.period_end
+                row['actual_charges'] = reebill.actual_total.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['hypothetical_charges'] = reebill.hypothetical_total.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                total_ree = self.total_ree_in_reebill(reebill)\
+                        .quantize(Decimal(".0"), rounding=ROUND_HALF_EVEN)
+                row['total_ree'] = total_ree
+                if total_ree != Decimal(0):
+                    row['average_rate_unit_ree'] = ((reebill.hypothetical_total -
+                            reebill.actual_total)/total_ree)\
+                            .quantize(Decimal(".00"),
+                            rounding=ROUND_HALF_EVEN)
+                else:
+                    row['average_rate_unit_ree'] = 0
+                row['ree_value'] = reebill.ree_value.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['prior_balance'] = reebill.prior_balance.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['balance_forward'] = reebill.balance_forward.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                try:
+                    row['total_adjustment'] = reebill.total_adjustment.quantize(
+                            Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                except:
+                    row['total_adjustment'] = None
+                row['payment_applied'] = reebill.payment_received.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+
+                row['ree_charges'] = reebill.ree_charges.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['balance_due'] = reebill.balance_due.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+
+                rows.append(row)
+                totalCount += 1
+
+        return rows, totalCount
 
     def reebill_report(self, session):
         accounts = self.state_db.listAccounts(session)
