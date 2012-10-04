@@ -64,12 +64,13 @@ def check_issued(method):
     '''Decorator to evaluate the issued state.'''
     @functools.wraps(method)
     def wrapper(instance, *args, **kwargs):
-        # BTW this is not the right way to check if a bill is issued
+        # BTW this is not the right way to check if a bill is issued. Issued status found in StateDB
         if 'issue_date' in instance.reebill_dict and instance.reebill_dict['issue_date'] is not None:
             raise Exception("ReeBill cannot be modified once isssued.")
         return method(instance, *args, **kwargs)
     return wrapper
 
+# TODO believed to be needed only by presentation code, so put it there.
 def flatten_chargegroups_dict(chargegroups):
     flat_charges = []
     for (chargegroup, charges) in chargegroups.items(): 
@@ -78,6 +79,7 @@ def flatten_chargegroups_dict(chargegroups):
             flat_charges.append(charge)
     return flat_charges
 
+# TODO believed to be needed only by presentation code, so put it there.
 def unflatten_chargegroups_list(flat_charges):
     new_chargegroups = {}
     for cg, charges in it.groupby(sorted(flat_charges, key=lambda
@@ -957,11 +959,14 @@ class MongoReebill(object):
                 if register['identifier'] == identifier:
                     # convert units
                     if register['quantity_units'].lower() == 'kwh':
+                        # TODO physical constants must be global
                         quantity /= Decimal('3412.14')
                     elif register['quantity_units'].lower() == 'therms':
+                        # TODO physical constants must be global
                         quantity /= Decimal('100000.0')
                     elif register['quantity_units'].lower() == 'ccf':
                         # TODO 28247371: this is an unfair conversion
+                        # TODO physical constants must be global
                         quantity /= Decimal('100000.0')
                     else:
                         raise Exception('unknown energy unit %s' %
@@ -1009,8 +1014,10 @@ class MongoReebill(object):
             if unit == 'therms':
                 total_therms += quantity
             elif unit == 'btu':
+                # TODO physical constants must be global
                 total_therms += quantity / Decimal("100000.0")
             elif unit == 'kwh':
+                # TODO physical constants must be global
                 total_therms += quantity / Decimal(".0341214163")
             elif unit == 'ccf':
                 if ccf_conversion_factor is not None:
@@ -1083,6 +1090,8 @@ class MongoReebill(object):
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
+    # TODO: hardcoded database name, and the wrong default name at that.
+    # TODO: hardcoded host name
     def __init__(self, state_db, host='localhost', port=27017,
             database='reebills', **kwargs):
         self.state_db = state_db
@@ -1093,7 +1102,7 @@ class ReebillDAO:
             print >> sys.stderr, "Exception Connecting to Mongo:" + str(e)
             raise e
         finally:
-            # TODO when to disconnect from the database?
+            # TODO disconnect from the database __del__
             pass
         
         self.reebills_collection = self.connection[database]['reebills']
