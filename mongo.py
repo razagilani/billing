@@ -1223,10 +1223,12 @@ class ReebillDAO:
             # version; if not, "sequence" and "version" keys should not be in
             # the _ids
             if issued:
+                print '****** loading utilbill for unissued reebill', reebill_doc['_id']['account'], reebill_doc['_id']['sequence'], reebill_doc['_id']['version']
                 utilbill_doc = self.load_utilbill(*lookup_params,
                         sequence=reebill_doc['_id']['sequence'],
                         version=reebill_doc['_id']['version'])
             else:
+                print '****** loading utilbill for unissued reebill', reebill_doc['_id']['account'], reebill_doc['_id']['sequence'], reebill_doc['_id']['version']
                 utilbill_doc = self.load_utilbill(*lookup_params,
                         sequence=False, version=False)
 
