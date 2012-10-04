@@ -1201,8 +1201,8 @@ class ReebillDAO:
         result = []
 
         # if this is a normal reebill, find out whether it's issued from MySQL.
-        # if it's a version-0 template, MySQL doesn't know about it.
-        if reebill_doc['_id']['version'] > 0:
+        # if it's a sequence-0 template, MySQL doesn't know about it.
+        if reebill_doc['_id']['sequence'] > 0:
             issued = self.state_db.is_issued(session, reebill_doc['_id']['account'],
                     reebill_doc['_id']['sequence'],
                     version=reebill_doc['_id']['version'])
