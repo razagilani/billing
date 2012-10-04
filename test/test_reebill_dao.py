@@ -2,6 +2,7 @@
 import unittest
 import pymongo
 import sqlalchemy
+import copy
 from datetime import date, datetime, timedelta
 from billing import dateutils, mongo
 from billing.processing.state import StateDB
@@ -225,16 +226,24 @@ class ReebillDAOTest(unittest.TestCase):
                     utility=u['_id']['utility'], service=u['_id']['service'],
                     start=u['_id']['start'], end=u['_id']['end'], sequence=1)
             
-            # issued reebill cannot be saved
+            # issued reebill cannot be saved, especially with frozen utilbills
+            #import ipdb; ipdb.set_trace()
             self.state_db.new_rebill(session, '99999', 1)
+            # trying to make SQLAlchemy flush its cache
+            #from billing.processing.db_objects import ReeBill
+            #session.query(ReeBill).all()
+            #sqlalchemy.flush()
             self.state_db.issue(session, '99999', 1)
-            self.assertRaises(IssuedBillError, self.reebill_dao.save_reebill, b)
+            # FIXME exception not raised because rebill does not exist in MySQL
+            self.assertRaises(IssuedBillError, self.reebill_dao.save_reebill,
+                    b)
+            self.assertRaises(IssuedBillError, self.reebill_dao.save_reebill,
+                    b, freeze_utilbills=True)
 
             # save_reebill(freeze_utilbills=True) fails if frozen utilbills already
             # exist
-            import ipdb; ipdb.set_trace()
-            self.reebill_dao.save_reebill( b, freeze_utilbills=True)
-            #self.assertRaises(IssuedBillError, self.reebill_dao.save_reebill, b, freeze_utilbills=False)
+            self.assertRaises(IssuedBillError, self.reebill_dao.save_reebill,
+                    b, freeze_utilbills=True)
 
     def test_load_utilbill(self):
         # nothing to load
@@ -302,6 +311,32 @@ class ReebillDAOTest(unittest.TestCase):
                 end=datetime(2011,12,14))))
         self.assertEquals([], self.reebill_dao.load_utilbills(
                 service='cold fusion'))
+
+    def test_save_utilbill(self):
+        # ensure that a utilbill with "sequence" or "version" keys in it can
+        # only be saved once
+        utilbill = example_data.get_utilbill_dict('99999')
+        self.reebill_dao._save_utilbill(utilbill)
+
+        # multiple saves are possible when the utilbill doesn't belong to a
+        # utilbill
+        self.reebill_dao._save_utilbill(utilbill)
+        
+        # put "sequence" and "version" keys in a copy of the utilbill, and save
+        attached_utilbill = copy.deepcopy(utilbill)
+        attached_utilbill['_id']['sequence'] = 1
+        attached_utilbill['_id']['version'] = 0
+        self.reebill_dao._save_utilbill(attached_utilbill)
+
+        # original utilbill (without "sequence" & "version") should still be
+        # saveable, but attached_utilbill should not
+        self.reebill_dao._save_utilbill(utilbill)
+        self.assertRaises(IssuedBillError, self.reebill_dao._save_utilbill,
+                attached_utilbill)
+        self.reebill_dao._save_utilbill(utilbill)
+        self.reebill_dao._save_utilbill(utilbill)
+        self.assertRaises(IssuedBillError, self.reebill_dao._save_utilbill,
+                attached_utilbill)
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
