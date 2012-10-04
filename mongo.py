@@ -1359,30 +1359,28 @@ class ReebillDAO:
         Replacing an already-issued reebill (as determined by StateDB, using
         the rule that all versions except the highest are issued) is forbidden
         unless 'force' is True (this should only be used for testing).'''
-        if not force:
-            # TODO pass session into save_reebill instead of re-creating it
-            # https://www.pivotaltracker.com/story/show/36258193
-            with DBSession(self.state_db) as session:
-                if self.state_db.is_issued(session, reebill.account,
-                        reebill.sequence, version=reebill.version,
-                        nonexistent=False):
-                    raise IssuedBillError("Can't modify an issued reebill.")
-                session.commit()
-        
-        reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
+        # TODO pass session into save_reebill instead of re-creating it
+        # https://www.pivotaltracker.com/story/show/36258193
+        with DBSession(self.state_db) as session:
+            issued = self.state_db.is_issued(session, reebill.account,
+                    reebill.sequence, version=reebill.version, nonexistent=False)
+            if issued and not force:
+                raise IssuedBillError("Can't modify an issued reebill.")
+            
+            reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
 
-        for utilbill_doc in reebill._utilbills:
-            if freeze_utilbills:
-                # this reebill is being issued: put "sequence" and "version"
-                # keys in the utility bill's _id, so it will be saved as a
-                # frozen copy associated with this particular reebill
-                utilbill_doc['_id'].update({
-                    'sequence': reebill.sequence,
-                    'version': reebill.version
-                })
-            self._save_utilbill(utilbill_doc)
+            for utilbill_doc in reebill._utilbills:
+                if freeze_utilbills:
+                    # this reebill is being issued: put "sequence" and "version"
+                    # keys in the utility bill's _id, so it will be saved as a
+                    # frozen copy associated with this particular reebill
+                    utilbill_doc['_id'].update({
+                        'sequence': reebill.sequence,
+                        'version': reebill.version
+                    })
+                self._save_utilbill(utilbill_doc)
 
-        self.reebills_collection.save(reebill_doc, safe=True)
+            self.reebills_collection.save(reebill_doc, safe=True)
 
     def _save_utilbill(self, utilbill_doc):
         '''Save raw utility bill dictionary in mongo.'''
