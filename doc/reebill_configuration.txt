@@ -335,6 +335,8 @@ Configure Apache2
         Declare the virtual host's name in the site configuration file
             ServerName [virtualhostname]
 
+        Ensure that the WSGI directives respect the desired virtualenv
+
         Restart Apache2
             sudo service httpd restart
 
