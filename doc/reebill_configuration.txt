@@ -97,6 +97,12 @@ For example, on AWS:
 
 Install the following packages with sudo pip install [package]
 
+MySQL-Server Dev Headers so MySQL-python can compile
+Gevent requires libevent-dev to be installed
+
+
+This list is now maintained in the ./requirements.txt file
+
     CherryPy==3.2.2
     Jinja2==2.6
     MySQL-python==1.2.3
@@ -329,6 +335,8 @@ Configure Apache2
         Declare the virtual host's name in the site configuration file
             ServerName [virtualhostname]
 
+        Ensure that the WSGI directives respect the desired virtualenv
+
         Restart Apache2
             sudo service httpd restart
 
@@ -542,6 +550,50 @@ ReeBill Apache Configuration Details
                 WSGIScriptAlias /billtool /home/randrews/workspace-skyline/billing/reebill/bill_tool_bridge.py
                 WSGIDaemonProcess billtool user=randrews group=randrews processes=1 threads=10 python-path=/home/randrews/workspace-skyline:/usr/lib/python2.6/dist-packages/ChartDirector/lib
                 WSGIProcessGroup billtool
+
+            </VirtualHost>
+
+            <VirtualHost *:80>
+                ServerAdmin webmaster@localhost
+                ServerName reebill-dev
+
+                DocumentRoot /home/randrews/workspace-skyline/billing/reebill/ui/
+                <Directory /home/randrews/workspace-skyline/billing/reebill/ui/>
+                    DirectoryIndex /reebill 
+                    Options Indexes FollowSymLinks MultiViews
+                    AllowOverride None
+                    Order allow,deny
+                    allow from all
+                </Directory>
+
+                # directory where utility bill images are saved
+                Alias /utilitybillimages /tmp/billimages
+                <Directory /tmp/billimages-dev>
+                    #Order deny,allow
+                    #Allow from all
+                    Options Indexes FollowSymLinks MultiViews
+                    #AllowOverride None
+                </Directory>
+
+
+                ErrorLog /var/log/apache2/reebill-error.log
+
+                # Possible values include: debug, info, notice, warn, error, crit,
+                # alert, emerg.
+                LogLevel debug
+
+                CustomLog /var/log/apache2/reebill-access.log combined
+
+                ProxyRequests Off
+                <Proxy *>
+                    Order deny,allow
+                    Allow from all
+                </Proxy>
+
+                WSGIScriptAlias /reebill /home/randrews/workspace-skyline/billing/reebill/bill_tool_bridge.py
+                WSGIDaemonProcess reebill user=randrews group=randrews processes=5 threads=1 python-path=/home/randrews/workspace-skyline/billing:/home/randrews/workspace-skyline/:/home/randrews/.virtualenvs/reebill/lib/python2.7/site-packages/ChartDirector/lib:/home/randrews/.virtualenvs/reebill/lib/python2.7/site-packages
+                WSGIProcessGroup reebill
+                WSGIApplicationGroup %{GLOBAL}
 
             </VirtualHost>
 

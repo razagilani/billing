@@ -1,4 +1,4 @@
-This directory is the top leverl directory for items related to energy revenue billing.  It contains CLI, web applications, frameworks and supporting items such as documentation.
+This directory is the top level directory for items related to energy revenue billing.  It contains CLI, web applications, frameworks and supporting items such as documentation.
 
 No code specific to any of these items should be located in this directory.
 
@@ -36,3 +36,4 @@ json_util - general lib - even necessary anymore?
 mongo_utils - general lib
 monthmath.py - probably still too close to reebill for general lib
 holidays.py - maybe all date stuff should go into datelib
+what should processing/ be renamed to?
