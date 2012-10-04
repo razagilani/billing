@@ -1366,6 +1366,10 @@ class ReebillDAO:
                     reebill.sequence, version=reebill.version, nonexistent=False)
             if issued and not force:
                 raise IssuedBillError("Can't modify an issued reebill.")
+            if issued and freeze_utilbills:
+                raise IssuedBillError("Can't freeze utility bills because this "
+                        "reebill is issued; frozen utility bills should "
+                        "already exist")
             
             reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
 
@@ -1383,7 +1387,15 @@ class ReebillDAO:
             self.reebills_collection.save(reebill_doc, safe=True)
 
     def _save_utilbill(self, utilbill_doc):
-        '''Save raw utility bill dictionary in mongo.'''
+        # utility bills that belong to a reebill cannot be saved
+        # TODO replace this check with a better design when switching to
+        # MongoEngine: https://www.pivotaltracker.com/story/show/37202081
+        if 'sequence' in utilbill_doc['_id'] or 'version' in utilbill_doc['_id']:
+            existing_docs = self.load_utilbills(**utilbill_doc['_id'])
+            if existing_docs != []:
+                raise IssuedBillError(("This utility bill can't be edited "
+                        "because it belongs to an issued reebill: %s-%s") % (
+                        utilbill_doc['_id'], utilbill_doc['sequence']))
         utilbill_doc = bson_convert(copy.deepcopy(utilbill_doc))
         self.utilbills_collection.save(utilbill_doc, safe=True)
 
