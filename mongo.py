@@ -1353,7 +1353,8 @@ class ReebillDAO:
         'freeze_utilbills' should be used when issuing a reebill for the first
         time (an original or a correction). This creates immutable copies of
         the utility bill documents with the reebill's sequence and version in
-        their _id.
+        their _id. Whenever the reebill is loaded, these copies will be loaded
+        with it.
         
         Replacing an already-issued reebill (as determined by StateDB, using
         the rule that all versions except the highest are issued) is forbidden
@@ -1384,6 +1385,7 @@ class ReebillDAO:
         self.reebills_collection.save(reebill_doc)
 
     def _save_utilbill(self, utilbill_doc):
+        '''Save raw utility bill dictionary in mongo.'''
         utilbill_doc = bson_convert(copy.deepcopy(utilbill_doc))
         self.utilbills_collection.save(utilbill_doc)
 
