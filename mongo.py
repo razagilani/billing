@@ -1382,12 +1382,12 @@ class ReebillDAO:
                 })
             self._save_utilbill(utilbill_doc)
 
-        self.reebills_collection.save(reebill_doc)
+        self.reebills_collection.save(reebill_doc, safe=True)
 
     def _save_utilbill(self, utilbill_doc):
         '''Save raw utility bill dictionary in mongo.'''
         utilbill_doc = bson_convert(copy.deepcopy(utilbill_doc))
-        self.utilbills_collection.save(utilbill_doc)
+        self.utilbills_collection.save(utilbill_doc, safe=True)
 
     def delete_reebill(self, account, sequence, version):
         self.reebills_collection.remove({
