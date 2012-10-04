@@ -1110,7 +1110,7 @@ class ReebillDAO:
         raise ValueError('Unknown version specifier "%s"' % specifier)
 
     def load_utilbills(self, account=None, service=None, utility=None,
-            start=None, end=None):
+            start=None, end=None, sequence=None, version=None):
         '''Loads 0 or more utility bill documents from Mongo, returns a list of
         the raw dictionaries ordered by start date.'''
         query = {}
