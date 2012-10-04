@@ -1395,7 +1395,7 @@ class ReebillDAO:
             if existing_docs != []:
                 raise IssuedBillError(("This utility bill can't be edited "
                         "because it belongs to an issued reebill: %s-%s") % (
-                        utilbill_doc['_id'], utilbill_doc['sequence']))
+                        utilbill_doc['_id']['account'], utilbill_doc['_id']['sequence']))
         utilbill_doc = bson_convert(copy.deepcopy(utilbill_doc))
         self.utilbills_collection.save(utilbill_doc, safe=True)
 
