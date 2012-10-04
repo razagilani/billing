@@ -1187,8 +1187,8 @@ class ReebillDAO:
 
     def _load_all_utillbills_for_reebill(self, session, reebill_doc):
         '''Loads all utility bill documents from Mongo that match the ones in
-        the 'utilbills' list in the given reebill. Returns list of dictionaries
-        with converted types.'''
+        the 'utilbills' list in the given reebill dictionary (NOT MongoReebill
+        object). Returns list of dictionaries with converted types.'''
         result = []
 
         # if this is a normal reebill, find out whether it's issued from MySQL.
