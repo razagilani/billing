@@ -1188,10 +1188,10 @@ class ReebillDAO:
         # make sure exactly one doc was found
         if docs.count() == 0:
             raise NoSuchBillException(("No utilbill found in %s: query was %s")
-                    % (self.utilbills_collection, pp.pformat(query)))
+                    % (self.utilbills_collection, query))
         elif docs.count() > 1:
             raise NoSuchBillException(("Multiple utilbills in %s satisfy query"
-                    " %s") % (self.utilbills_collection, pp.pformat(query)))
+                    " %s") % (self.utilbills_collection, query))
         return docs[0]
 
     def _load_all_utillbills_for_reebill(self, session, reebill_doc):
@@ -1290,7 +1290,7 @@ class ReebillDAO:
 
             if mongo_doc is None:
                 raise NoSuchBillException(("No reebill found in %s: query was %s")
-                        % (self.reebills_collection, pp.pformat(query)))
+                        % (self.reebills_collection, query))
 
             # convert types in reebill document
             mongo_doc = deep_map(float_to_decimal, mongo_doc)
