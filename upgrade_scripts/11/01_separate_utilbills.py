@@ -154,9 +154,5 @@ with DBSession(sdb) as session:
     for acc in sdb.listAccounts(session):
         for seq in sdb.listSequences(session, acc):
             for version in range(sdb.max_version(session, acc, seq) + 1):
-                try:
-                    print "loading", acc, seq, version
-                    dao.load_reebill(acc, seq, version)
-                except:
-                    import ipdb; ipdb.set_trace()
-                    dao.load_reebill(acc, seq, version)
+                print "loading", acc, seq, version
+                dao.load_reebill(acc, seq, version)
