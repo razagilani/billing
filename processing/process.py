@@ -332,6 +332,11 @@ class Process(object):
         # construct a new reebill from an old one. the new one's version is
         # always 0 even if it was created from a non-0 version of the old one.
         # TODO don't use private '_utilbills' here
+        # TODO don't edit mongo documents outside mongo.py
+        for u in reebill._utilbills:
+            u['_id']['account'] = reebill.reebill_dict['_id']['account']
+            del u['_id']['sequence']
+            del u['_id']['version']
         new_reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         new_reebill.version = 0
         new_reebill.clear()
