@@ -88,12 +88,26 @@ def get_internal_utilbills(reebill):
     return utilbills
 
 for reebill in reebills_col.find():#{'_id.account':'10023', '_id.sequence':5}):
-    # data fix; TODO remove
+    # data fixes; TODO remove
     if reebill['_id']['account'] == '10001' \
             and reebill['_id']['sequence'] == 25 \
             and reebill['_id']['version'] == 0:
         reebill['issue_date'] = datetime(2012,5,24)
         print '************** fixed 10001-25-0'
+    if reebill['_id']['account'] == '10017' \
+            and reebill['_id']['sequence'] == 2 \
+            and reebill['_id']['version'] == 0:
+        # this may not be the right fix, but unlike making the bill issued, it
+        # can be done in Mongo
+        reebill['issue_date'] = None
+        print '************** fixed 10017-2-0'
+    if reebill['_id']['account'] == '10025' \
+            and reebill['_id']['sequence'] == 1 \
+            and reebill['_id']['version'] == 0:
+        # this may not be the right fix, but unlike making the bill issued, it
+        # can be done in Mongo
+        reebill['issue_date'] = datetime(2012,5,22)
+        print '************** fixed 10025-1-0'
 
     try:
         # create external utilbills
@@ -140,9 +154,9 @@ with DBSession(sdb) as session:
     for acc in sdb.listAccounts(session):
         for seq in sdb.listSequences(session, acc):
             for version in range(sdb.max_version(session, acc, seq) + 1):
-                #try:
+                try:
                     print "loading", acc, seq, version
                     dao.load_reebill(acc, seq, version)
-                #except:
-                    #import ipdb; ipdb.set_trace()
-                    #dao.load_reebill(acc, seq)
+                except:
+                    import ipdb; ipdb.set_trace()
+                    dao.load_reebill(acc, seq, version)
