@@ -587,7 +587,7 @@ class Process(object):
         # TODO don't roll by copying https://www.pivotaltracker.com/story/show/36805917
         result = self.state_db.account_exists(session, account)
         if result is True:
-            raise Exception("Account exists")
+            raise ValueError("Account exists")
         template_last_sequence = self.state_db.last_sequence(session, template_account)
 
         #TODO 22598787 use the active version of the template_account
@@ -618,7 +618,8 @@ class Process(object):
             # TODO: 22598787
             cprs = self.rate_structure_dao.load_cprs(template_account, template_last_sequence,
                 0, utility_name, rate_structure_name)
-            if cprs is None: raise Exception("No current CPRS")
+            if cprs is None:
+                raise ValueError("No current CPRS")
 
             # save the CPRS for the new reebill
             self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence,

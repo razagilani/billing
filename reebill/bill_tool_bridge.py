@@ -647,7 +647,7 @@ class BillToolBridge:
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
                     customer.account, 0)
 
-            # get next next account number to send it back to the client so it
+            # get next account number to send it back to the client so it
             # can be shown in the account-creation form
             next_account = self.state_db.get_next_account_number(session)
             return self.dumps({'success': True, 'nextAccount': next_account})
