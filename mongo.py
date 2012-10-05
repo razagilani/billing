@@ -1382,8 +1382,9 @@ class ReebillDAO:
         with it.
         
         Replacing an already-issued reebill (as determined by StateDB, using
-        the rule that all versions except the highest are issued) is forbidden
-        unless 'force' is True (this should only be used for testing).'''
+        the rule that all versions except the highest are issued) or its
+        utility bills is forbidden unless 'force' is True (this should only be
+        used for testing).'''
         # TODO pass session into save_reebill instead of re-creating it
         # https://www.pivotaltracker.com/story/show/36258193
         with DBSession(self.state_db) as session:
@@ -1407,15 +1408,19 @@ class ReebillDAO:
                         'sequence': reebill.sequence,
                         'version': reebill.version
                     })
-                self._save_utilbill(utilbill_doc)
+                self._save_utilbill(utilbill_doc, force=force)
 
             self.reebills_collection.save(reebill_doc, safe=True)
 
-    def _save_utilbill(self, utilbill_doc):
+    def _save_utilbill(self, utilbill_doc, force=False):
+        '''Save raw utility bill dictionary. If this utility bill belongs to an
+        issued reebill (i.e. has sequence and version in it) it can't be
+        saved). force=True overrides this rule; only use it for testing.'''
         # utility bills that belong to a reebill cannot be saved
         # TODO replace this check with a better design when switching to
         # MongoEngine: https://www.pivotaltracker.com/story/show/37202081
-        if 'sequence' in utilbill_doc['_id'] or 'version' in utilbill_doc['_id']:
+        if not force and ('sequence' in utilbill_doc['_id'] \
+                or 'version' in utilbill_doc['_id']):
             existing_docs = self.load_utilbills(**utilbill_doc['_id'])
             if existing_docs != []:
                 raise IssuedBillError(("This utility bill can't be edited "
