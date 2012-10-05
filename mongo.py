@@ -1160,8 +1160,9 @@ class ReebillDAO:
 
     def load_utilbill(self, account, service, utility, start, end,
             sequence=None, version=None):
-        '''Loads one utility bill document from Mongo, returns the raw
-        dictionary.
+        '''Loads exactly one utility bill document from Mongo, returns the raw
+        dictionary. Raises a NoSuchBillException if zero or multiple utility
+        bills are found.
         
         'start' and 'end' may be None because there are some reebills that have
         None dates (when the dates have not yet been filled in by the user).
