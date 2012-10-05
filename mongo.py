@@ -1039,13 +1039,16 @@ class MongoReebill(object):
     # the following functions are all about flattening nested chargegroups for the UI grid
     def hypothetical_chargegroups_flattened(self, service,
             chargegroups='hypothetical_chargegroups'):
-        return flatten_chargegroups_dict(
-                self.reebill_dict['hypothetical_chargegroups'])
+        for u in self.reebill_dict['utilbills']:
+            if u['service'] == service:
+                return flatten_chargegroups_dict(copy.deepcopy(
+                        u['hypothetical_chargegroups']))
+        raise NoSuchBillException("No utility bill found for service %s" % service)
 
     def actual_chargegroups_flattened(self, service):
         utilbill = next(u for u in self._utilbills if u['_id']['service'] ==
                 service)
-        return flatten_chargegroups_dict(utilbill['chargegroups'])
+        return flatten_chargegroups_dict(copy.deepcopy(utilbill['chargegroups']))
 
     #def chargegroups_flattened(self, service, chargegroups):
         #if service not in self.services:
