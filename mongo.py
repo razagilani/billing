@@ -1118,6 +1118,20 @@ class ReebillDAO:
 
         raise ValueError('Unknown version specifier "%s"' % specifier)
 
+    def increment_reebill_version(self, session, reebill):
+        '''Converts the reebill into its version successor: increments
+        _id.version, sets issue_date to None, and reloads the utility bills
+        from Mongo (since the reebill is unissued, these will be the current
+        versionless ones, not the ones that belong to the previous old
+        version of this reebill).'''
+        # version must be incremented before utilbills are loaded so
+        # _load_all_utillbills_for_reebill() can find out whether this version
+        # is issued
+        reebill.version += 1
+        reebill._utilbills = self._load_all_utillbills_for_reebill(session,
+                reebill.reebill_dict)
+        reebill.issue_date = None
+
     def load_utilbills(self, account=None, service=None, utility=None,
             start=None, end=None, sequence=None, version=None):
         '''Loads 0 or more utility bill documents from Mongo, returns a list of
