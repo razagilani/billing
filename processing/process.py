@@ -411,22 +411,16 @@ class Process(object):
         predecessor = self.reebill_dao.load_reebill(account, sequence-1,
                 version=0)
 
+        # increment max version in mysql
+        self.state_db.increment_version(session, account, sequence)
+
+        # increment version, make un-issued, and replace utilbills with the current-truth ones
+        self.reebill_dao.increment_reebill_version(session, reebill)
+
         self.compute_bill(session, predecessor, reebill)
-
-        # load reebill from mongo again to get its updated charges (yes, this
-        # design sucks)
-        #reebill = self.reebill_dao.load_reebill(reebill.account,
-                #reebill.sequence, reebill.version)
-
-        # increment version, and make un-issued
-        reebill.version = max_version + 1
-        reebill.issue_date = None
 
         # save in mongo
         self.reebill_dao.save_reebill(reebill)
-
-        # increment max version in mysql
-        self.state_db.increment_version(session, account, sequence)
 
         return reebill
 
