@@ -1039,13 +1039,16 @@ class MongoReebill(object):
     # the following functions are all about flattening nested chargegroups for the UI grid
     def hypothetical_chargegroups_flattened(self, service,
             chargegroups='hypothetical_chargegroups'):
-        return flatten_chargegroups_dict(
-                self.reebill_dict['hypothetical_chargegroups'])
+        for u in self.reebill_dict['utilbills']:
+            if u['service'] == service:
+                return flatten_chargegroups_dict(copy.deepcopy(
+                        u['hypothetical_chargegroups']))
+        raise NoSuchBillException("No utility bill found for service %s" % service)
 
     def actual_chargegroups_flattened(self, service):
         utilbill = next(u for u in self._utilbills if u['_id']['service'] ==
                 service)
-        return flatten_chargegroups_dict(utilbill['chargegroups'])
+        return flatten_chargegroups_dict(copy.deepcopy(utilbill['chargegroups']))
 
     #def chargegroups_flattened(self, service, chargegroups):
         #if service not in self.services:
@@ -1065,13 +1068,13 @@ class MongoReebill(object):
     def set_hypothetical_chargegroups_flattened(self, service, flat_charges):
         utilbill = [u for u in self.reebill_dict['utilbills'] if
                 u['service'] == service][0]
-        utilbill['hypothetical_chargegroups'] == unflatten_chargegroups_list(
+        utilbill['hypothetical_chargegroups'] = unflatten_chargegroups_list(
                 flat_charges)
 
     def set_actual_chargegroups_flattened(self, service, flat_charges):
         utilbill = [u for u in self._utilbills if u['_id']['service'] ==
                 service][0]
-        utilbill['chargegroups'] == unflatten_chargegroups_list(flat_charges)
+        utilbill['chargegroups'] = unflatten_chargegroups_list(flat_charges)
 
     #def set_chargegroups_flattened(self, service, flat_charges, chargegroups):
         #for ub in self.reebill_dict['utilbills']:
@@ -1118,6 +1121,20 @@ class ReebillDAO:
 
         raise ValueError('Unknown version specifier "%s"' % specifier)
 
+    def increment_reebill_version(self, session, reebill):
+        '''Converts the reebill into its version successor: increments
+        _id.version, sets issue_date to None, and reloads the utility bills
+        from Mongo (since the reebill is unissued, these will be the current
+        versionless ones, not the ones that belong to the previous old
+        version of this reebill).'''
+        # version must be incremented before utilbills are loaded so
+        # _load_all_utillbills_for_reebill() can find out whether this version
+        # is issued
+        reebill.version += 1
+        reebill._utilbills = self._load_all_utillbills_for_reebill(session,
+                reebill.reebill_dict)
+        reebill.issue_date = None
+
     def load_utilbills(self, account=None, service=None, utility=None,
             start=None, end=None, sequence=None, version=None):
         '''Loads 0 or more utility bill documents from Mongo, returns a list of
@@ -1143,8 +1160,9 @@ class ReebillDAO:
 
     def load_utilbill(self, account, service, utility, start, end,
             sequence=None, version=None):
-        '''Loads one utility bill document from Mongo, returns the raw
-        dictionary.
+        '''Loads exactly one utility bill document from Mongo, returns the raw
+        dictionary. Raises a NoSuchBillException if zero or multiple utility
+        bills are found.
         
         'start' and 'end' may be None because there are some reebills that have
         None dates (when the dates have not yet been filled in by the user).
@@ -1223,10 +1241,12 @@ class ReebillDAO:
             # version; if not, "sequence" and "version" keys should not be in
             # the _ids
             if issued:
+                #print '****** loading utilbill for unissued reebill', reebill_doc['_id']['account'], reebill_doc['_id']['sequence'], reebill_doc['_id']['version']
                 utilbill_doc = self.load_utilbill(*lookup_params,
                         sequence=reebill_doc['_id']['sequence'],
                         version=reebill_doc['_id']['version'])
             else:
+                #print '****** loading utilbill for unissued reebill', reebill_doc['_id']['account'], reebill_doc['_id']['sequence'], reebill_doc['_id']['version']
                 utilbill_doc = self.load_utilbill(*lookup_params,
                         sequence=False, version=False)
 
@@ -1366,8 +1386,9 @@ class ReebillDAO:
         with it.
         
         Replacing an already-issued reebill (as determined by StateDB, using
-        the rule that all versions except the highest are issued) is forbidden
-        unless 'force' is True (this should only be used for testing).'''
+        the rule that all versions except the highest are issued) or its
+        utility bills is forbidden unless 'force' is True (this should only be
+        used for testing).'''
         # TODO pass session into save_reebill instead of re-creating it
         # https://www.pivotaltracker.com/story/show/36258193
         with DBSession(self.state_db) as session:
@@ -1391,15 +1412,19 @@ class ReebillDAO:
                         'sequence': reebill.sequence,
                         'version': reebill.version
                     })
-                self._save_utilbill(utilbill_doc)
+                self._save_utilbill(utilbill_doc, force=force)
 
             self.reebills_collection.save(reebill_doc, safe=True)
 
-    def _save_utilbill(self, utilbill_doc):
+    def _save_utilbill(self, utilbill_doc, force=False):
+        '''Save raw utility bill dictionary. If this utility bill belongs to an
+        issued reebill (i.e. has sequence and version in it) it can't be
+        saved). force=True overrides this rule; only use it for testing.'''
         # utility bills that belong to a reebill cannot be saved
         # TODO replace this check with a better design when switching to
         # MongoEngine: https://www.pivotaltracker.com/story/show/37202081
-        if 'sequence' in utilbill_doc['_id'] or 'version' in utilbill_doc['_id']:
+        if not force and ('sequence' in utilbill_doc['_id'] \
+                or 'version' in utilbill_doc['_id']):
             existing_docs = self.load_utilbills(**utilbill_doc['_id'])
             if existing_docs != []:
                 raise IssuedBillError(("This utility bill can't be edited "

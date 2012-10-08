@@ -332,6 +332,13 @@ class Process(object):
         # construct a new reebill from an old one. the new one's version is
         # always 0 even if it was created from a non-0 version of the old one.
         # TODO don't use private '_utilbills' here
+        # TODO don't edit mongo documents outside mongo.py
+        for u in reebill._utilbills:
+            u['_id']['account'] = reebill.reebill_dict['_id']['account']
+            if 'sequence' in u['_id']:
+                del u['_id']['sequence']
+            if 'version' in u['_id']:
+                del u['_id']['version']
         new_reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         new_reebill.version = 0
         new_reebill.clear()
@@ -411,22 +418,16 @@ class Process(object):
         predecessor = self.reebill_dao.load_reebill(account, sequence-1,
                 version=0)
 
+        # increment max version in mysql
+        self.state_db.increment_version(session, account, sequence)
+
+        # increment version, make un-issued, and replace utilbills with the current-truth ones
+        self.reebill_dao.increment_reebill_version(session, reebill)
+
         self.compute_bill(session, predecessor, reebill)
-
-        # load reebill from mongo again to get its updated charges (yes, this
-        # design sucks)
-        #reebill = self.reebill_dao.load_reebill(reebill.account,
-                #reebill.sequence, reebill.version)
-
-        # increment version, and make un-issued
-        reebill.version = max_version + 1
-        reebill.issue_date = None
 
         # save in mongo
         self.reebill_dao.save_reebill(reebill)
-
-        # increment max version in mysql
-        self.state_db.increment_version(session, account, sequence)
 
         return reebill
 
@@ -593,7 +594,7 @@ class Process(object):
         # TODO don't roll by copying https://www.pivotaltracker.com/story/show/36805917
         result = self.state_db.account_exists(session, account)
         if result is True:
-            raise Exception("Account exists")
+            raise ValueError("Account exists")
         template_last_sequence = self.state_db.last_sequence(session, template_account)
 
         #TODO 22598787 use the active version of the template_account
@@ -602,14 +603,19 @@ class Process(object):
         reebill.account = account
         reebill.sequence = 0
         reebill.version = 0
+        # TODO don't edit mongo documents outside mongo.py
         for u in reebill._utilbills:
             u['_id']['account'] = reebill.reebill_dict['_id']['account']
+            if 'sequence' in u['_id']:
+                del u['_id']['sequence']
+            if 'version' in u['_id']:
+                del u['_id']['version']
 
         reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         reebill.billing_address = {}
         reebill.service_address = {}
         reebill.prior_balance = Decimal('0')
-        reebill.clear()
+        # NOTE reebill.clear is not called here because roll_bill takes care of that
 
         # create template reebill in mongo for this new account
         self.reebill_dao.save_reebill(reebill)
@@ -624,7 +630,8 @@ class Process(object):
             # TODO: 22598787
             cprs = self.rate_structure_dao.load_cprs(template_account, template_last_sequence,
                 0, utility_name, rate_structure_name)
-            if cprs is None: raise Exception("No current CPRS")
+            if cprs is None:
+                raise ValueError("No current CPRS")
 
             # save the CPRS for the new reebill
             self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence,
