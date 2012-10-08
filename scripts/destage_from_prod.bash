@@ -41,8 +41,7 @@ else
     tar xzf $tarball
 fi
 
-# apparently only root can restore the database?
-# "Access denied; you need the SUPER privilege for this operation"
+# apparently only root can restore the database
 mysql -uroot -p$MYSQLPASSWORD -D skyline_$TOENV < ${now}billing_mysql.dmp
 
 # restore mongo collections
