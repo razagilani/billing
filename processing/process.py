@@ -335,8 +335,10 @@ class Process(object):
         # TODO don't edit mongo documents outside mongo.py
         for u in reebill._utilbills:
             u['_id']['account'] = reebill.reebill_dict['_id']['account']
-            del u['_id']['sequence']
-            del u['_id']['version']
+            if 'sequence' in u['_id']:
+                del u['_id']['sequence']
+            if 'version' in u['_id']:
+                del u['_id']['version']
         new_reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         new_reebill.version = 0
         new_reebill.clear()
@@ -604,8 +606,10 @@ class Process(object):
         # TODO don't edit mongo documents outside mongo.py
         for u in reebill._utilbills:
             u['_id']['account'] = reebill.reebill_dict['_id']['account']
-            del u['_id']['sequence']
-            del u['_id']['version']
+            if 'sequence' in u['_id']:
+                del u['_id']['sequence']
+            if 'version' in u['_id']:
+                del u['_id']['version']
 
         reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         reebill.billing_address = {}
