@@ -639,15 +639,15 @@ class BillToolBridge:
             # (no sequence associated with this)
             journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
                     customer.account)
-            self.process.roll_bill(session, reebill)
-            self.reebill_dao.save_reebill(reebill)
+            new_reebill = self.process.roll_bill(session, reebill)
+            self.reebill_dao.save_reebill(new_reebill)
 
             # record reebill roll separately ("so that performance can be
             # measured": 25282041)
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
                     customer.account, 0)
 
-            # get next next account number to send it back to the client so it
+            # get next account number to send it back to the client so it
             # can be shown in the account-creation form
             next_account = self.state_db.get_next_account_number(session)
             return self.dumps({'success': True, 'nextAccount': next_account})
