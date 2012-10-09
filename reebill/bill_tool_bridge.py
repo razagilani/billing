@@ -231,6 +231,7 @@ class BillToolBridge:
 
             # directory to store temporary files for pdf rendering
             DEFAULT_RENDERING_TEMP_DIRECTORY = '/tmp'
+            DEFAULT_BACKGROUNDS = 'EmeraldCity-FullBleed-1v3.png EmeraldCity-FullBleed-2v3.png'
 
             # log file info
             self.config.add_section('log')
@@ -245,6 +246,9 @@ class BillToolBridge:
             # reebill pdf rendering
             self.config.add_section('reebillrendering')
             self.config.set('reebillrendering', 'temp_directory', DEFAULT_RENDERING_TEMP_DIRECTORY)
+            self.config.set('reebillrendering', 'default_backgrounds', DEFAULT_BACKGROUNDS)
+            self.config.set('reebillrendering', 'teva_backgrounds', '')
+            self.config.set('reebillrendering', 'teva_accounts', '')
 
             # TODO default config file is incomplete
 
@@ -773,7 +777,7 @@ class BillToolBridge:
                 sequence,
                 self.config.get("billdb", "billpath")+ "%s" % account, 
                 "%.4d.pdf" % int(sequence),
-                "EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
+                #"EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
                 False
             )
             return self.dumps({'success': True})
@@ -929,7 +933,7 @@ class BillToolBridge:
                 self.renderer.render_max_version(session, reebill.account, reebill.sequence, 
                     self.config.get("billdb", "billpath")+ "%s" % reebill.account, 
                     "%.4d.pdf" % int(reebill.sequence),
-                    "EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
+                    #"EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
                     True
                 )
 
