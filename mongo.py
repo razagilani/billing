@@ -20,7 +20,7 @@ from billing.session_contextmanager import DBSession
 from billing.exceptions import NoSuchBillException, NoRateStructureError, NoUtilityNameError, IssuedBillError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
-pp = pprint.PrettyPrinter(indent=1)
+pp = pprint.PrettyPrinter(indent=1).pprint
 sys.stdout = sys.stderr
 
 
@@ -1408,19 +1408,25 @@ class ReebillDAO:
                     # this reebill is being issued: put "sequence" and "version"
                     # keys in the utility bill's _id, so it will be saved as a
                     # frozen copy associated with this particular reebill
-                    utilbill_doc['_id'].update({
-                        'sequence': reebill.sequence,
-                        'version': reebill.version
-                    })
-                self._save_utilbill(utilbill_doc, force=force)
+                    self._save_utilbill(utilbill_doc, force=force,
+                            sequence_and_version=(reebill.sequence,
+                            reebill.version))
+                else:
+                    self._save_utilbill(utilbill_doc, force=force)
 
             self.reebills_collection.save(reebill_doc, safe=True)
 
-    def _save_utilbill(self, utilbill_doc, force=False):
+    def _save_utilbill(self, utilbill_doc, sequence_and_version=None, force=False):
         '''Save raw utility bill dictionary. If this utility bill belongs to an
         issued reebill (i.e. has sequence and version in it) it can't be
-        saved). force=True overrides this rule; only use it for testing.'''
-        # utility bills that belong to a reebill cannot be saved
+        saved). force=True overrides this rule; only use it for testing.
+
+        'sequence_and_version' should a (sequence, version) tuple, to be used
+        when (and only when) issuing the containing reebill for the first time
+        (calling save_reebill(freeze_utilbills=True). This puts sequence and
+        version keys into the utility bill's _id.'''
+        # utility bills that belong to a reebill (i.e. already have "sequence"
+        # and "version" keys) cannot be saved
         # TODO replace this check with a better design when switching to
         # MongoEngine: https://www.pivotaltracker.com/story/show/37202081
         if not force and ('sequence' in utilbill_doc['_id'] \
@@ -1430,6 +1436,13 @@ class ReebillDAO:
                 raise IssuedBillError(("This utility bill can't be edited "
                         "because it belongs to an issued reebill: %s-%s") % (
                         utilbill_doc['_id']['account'], utilbill_doc['_id']['sequence']))
+
+        if sequence_and_version is not None:
+            utilbill_doc['_id'].update({
+                'sequence': sequence_and_version[0],
+                'version': sequence_and_version[1],
+            })
+
         utilbill_doc = bson_convert(copy.deepcopy(utilbill_doc))
         self.utilbills_collection.save(utilbill_doc, safe=True)
 
