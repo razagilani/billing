@@ -4198,9 +4198,8 @@ function reeBillReady() {
         root: 'rows',
         totalProperty: 'results',
         remoteSort: true,
-        pageSize: 25,
         paramNames: {start: 'start', limit: 'limit'},
-        autoLoad: {params:{start: 0, limit: 25}},
+        autoLoad: {params:{start: 0, limit: 30}},
         reader: accountReader,
         fields: [
             {name: 'account'},
