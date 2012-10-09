@@ -10,6 +10,9 @@ class MissingDataError(Exception):
 class NoSuchBillException(Exception):
     pass
 
+class NotUniqueException(Exception):
+    pass
+
 class NoRateStructureError(Exception):
     pass
 
