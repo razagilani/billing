@@ -17,7 +17,7 @@ from billing.mongo_utils import bson_convert, python_convert
 from billing.dictutils import deep_map
 from billing.dateutils import date_to_datetime
 from billing.session_contextmanager import DBSession
-from billing.exceptions import NoSuchBillException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
+from billing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -1141,20 +1141,20 @@ class ReebillDAO:
         the raw dictionaries ordered by start date.'''
         query = {}
         if account is not None:
-            query.update({'_id.account': account})
+            query.update({'account': account})
         if utility is not None:
-            query.update({'_id.utility': utility})
+            query.update({'utility': utility})
         if service is not None:
-            query.update({'_id.service': service})
+            query.update({'service': service})
         if start is not None:
-            query.update({'_id.start': date_to_datetime(start)})
+            query.update({'start': date_to_datetime(start)})
         if end is not None:
-            query.update({'_id.end': date_to_datetime(end)})
+            query.update({'end': date_to_datetime(end)})
         if sequence is not None:
-            query.update({'_id.sequence': sequence})
+            query.update({'sequence': sequence})
         if version is not None:
-            query.update({'_id.version': version})
-        cursor = self.utilbills_collection.find(query, sort=[('_id.start',
+            query.update({'version': version})
+        cursor = self.utilbills_collection.find(query, sort=[('start',
                 pymongo.ASCENDING)])
         return list(cursor)
 
@@ -1173,13 +1173,13 @@ class ReebillDAO:
         test for the existence of the 'sequence' or 'version' key.'''
 
         query = {
-            '_id.account': account,
-            '_id.utility': utility,
-            '_id.service': service,
+            'account': account,
+            'utility': utility,
+            'service': service,
             # querying for None datetimes should work
-            '_id.start': date_to_datetime(start) \
+            'start': date_to_datetime(start) \
                     if isinstance(start, date) else None,
-            '_id.end': date_to_datetime(end) \
+            'end': date_to_datetime(end) \
                     if isinstance(end, date) else None,
         }
 
@@ -1188,16 +1188,16 @@ class ReebillDAO:
         # NOTE bool must be checked first because bool is a subclass of
         # int! http://www.python.org/dev/peps/pep-0285/
         if isinstance(sequence, bool):
-            query['_id.sequence'] = {'$exists': sequence}
+            query['sequence'] = {'$exists': sequence}
         elif isinstance(sequence, int):
-            query['_id.sequence'] = sequence
+            query['sequence'] = sequence
         elif sequence is not None:
             raise ValueError("'sequence'=%s; must be int or boolean" % sequence)
 
         if isinstance(version, bool):
-            query['_id.version'] = {'$exists': version}
+            query['version'] = {'$exists': version}
         elif isinstance(version, int):
-            query['_id.version'] = version
+            query['version'] = version
         elif version is not None:
             raise ValueError("'version'=%s; must be int or boolean" % version)
 
@@ -1208,9 +1208,10 @@ class ReebillDAO:
             raise NoSuchBillException(("No utilbill found in %s: query was %s")
                     % (self.utilbills_collection, query))
         elif docs.count() > 1:
-            raise NoSuchBillException(("Multiple utilbills in %s satisfy query"
+            raise NotUniqueException(("Multiple utilbills in %s satisfy query"
                     " %s") % (self.utilbills_collection, query))
         return docs[0]
+
 
     def _load_all_utillbills_for_reebill(self, session, reebill_doc):
         '''Loads all utility bill documents from Mongo that match the ones in
@@ -1218,35 +1219,9 @@ class ReebillDAO:
         object). Returns list of dictionaries with converted types.'''
         result = []
 
-        # if this is a normal reebill, find out whether it's issued from MySQL.
-        # if it's a sequence-0 template, MySQL doesn't know about it.
-        if reebill_doc['_id']['sequence'] > 0:
-            issued = self.state_db.is_issued(session, reebill_doc['_id']['account'],
-                    reebill_doc['_id']['sequence'],
-                    version=reebill_doc['_id']['version'])
-        else:
-            issued = False
-
         for utilbill_handle in reebill_doc['utilbills']:
-            # parameters needed to look up the utilbill
-            lookup_params = [
-                reebill_doc['_id']['account'],
-                utilbill_handle['service'],
-                utilbill_handle['utility'],
-                utilbill_handle['start'],
-                utilbill_handle['end']
-            ]
-
-            # if the reebill is issued, look up its utilbills with sequence and
-            # version; if not, "sequence" and "version" keys should not be in
-            # the _ids
-            if issued:
-                utilbill_doc = self.load_utilbill(*lookup_params,
-                        sequence=reebill_doc['_id']['sequence'],
-                        version=reebill_doc['_id']['version'])
-            else:
-                utilbill_doc = self.load_utilbill(*lookup_params,
-                        sequence=False, version=False)
+            utilbill_doc = self.utilbills_collection.find_one({'_id':
+                    utilbill_handle['id']})
 
             # convert types
             utilbill_doc = deep_map(float_to_decimal, utilbill_doc)
