@@ -2079,6 +2079,8 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
+    # TODO get rid of it! Also this is no the utility bill period; it's the
+    # reebill period, which the UI calls "Bill Periods"
     def setUBPeriod(self, account, sequence, service, begin, end, **args):
         """ 
         Utilbill period forms are dynamically created in browser, and post back to here individual periods.

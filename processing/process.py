@@ -31,7 +31,7 @@ from billing.mongo import float_to_decimal
 from billing.exceptions import IssuedBillError, NotIssuable
 
 import pprint
-pp = pprint.PrettyPrinter(indent=1)
+pp = pprint.PrettyPrinter(indent=1).pprint
 sys.stdout = sys.stderr
 
 sys.stdout = sys.stderr
