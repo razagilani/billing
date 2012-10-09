@@ -44,3 +44,12 @@ class NoSuchRSIError(RSIError):
 
 class BadExpressionError(RSIError):
     pass
+
+class MongoError(Exception):
+    '''MongoDB write error: encapsulates the dictionary returned by PyMongo
+    collection save/remove (when using "safe mode," which we should always be
+    using).'''
+    def __init__(self, err_dict):
+        self.err_dict = err_dict
+    def __str__(self):
+        return str(self.err_dict)
