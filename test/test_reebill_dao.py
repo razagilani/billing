@@ -338,6 +338,34 @@ class ReebillDAOTest(unittest.TestCase):
         self.assertRaises(IssuedBillError, self.reebill_dao._save_utilbill,
                 attached_utilbill)
 
+    def test_delete_reebill(self):
+        with DBSession(self.state_db) as session:
+            # save reebill (with utility bills)
+            b = example_data.get_reebill('99999', 1)
+            self.reebill_dao.save_reebill(b)
+            self.state_db.new_rebill(session, '99999', 1)
+
+            # reebill and utility bills should be in mongo
+            all_reebills = self.reebill_dao.load_reebills_in_period('99999', version=0)
+            all_utilbill_docs = self.reebill_dao.load_utilbills('99999')
+            #import ipdb; ipdb.set_trace()
+            self.assertEquals(1, len(all_reebills))
+            self.assertEquals(1, len(all_utilbill_docs))
+
+            # delete
+            self.reebill_dao.delete_reebill('99999', 1, 0)
+
+            # both reebill and utilbills should be gone
+            all_reebills = self.reebill_dao.load_reebills_in_period('99999', version=0)
+            all_utilbill_docs = self.reebill_dao.load_utilbills('99999')
+            self.assertEquals(0, len(all_reebills))
+            self.assertEquals(0, len(all_utilbill_docs))
+
+            # save reebill (with utility bills)
+            b = example_data.get_reebill('99999', 1)
+            self.reebill_dao.save_reebill(b)
+            self.state_db.new_rebill(session, '99999', 1)
+
 if __name__ == '__main__':
     #unittest.main(failfast=True)
     unittest.main()
