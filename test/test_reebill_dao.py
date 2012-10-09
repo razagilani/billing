@@ -227,7 +227,6 @@ class ReebillDAOTest(unittest.TestCase):
                     start=u['_id']['start'], end=u['_id']['end'], sequence=1)
             
             # issued reebill cannot be saved, especially with frozen utilbills
-            #import ipdb; ipdb.set_trace()
             self.state_db.new_rebill(session, '99999', 1)
             # trying to make SQLAlchemy flush its cache
             #from billing.processing.db_objects import ReeBill
@@ -348,7 +347,6 @@ class ReebillDAOTest(unittest.TestCase):
             # reebill and utility bills should be in mongo
             all_reebills = self.reebill_dao.load_reebills_in_period('99999', version=0)
             all_utilbill_docs = self.reebill_dao.load_utilbills('99999')
-            #import ipdb; ipdb.set_trace()
             self.assertEquals(1, len(all_reebills))
             self.assertEquals(1, len(all_utilbill_docs))
 

@@ -17,7 +17,7 @@ from billing.mongo_utils import bson_convert, python_convert
 from billing.dictutils import deep_map
 from billing.dateutils import date_to_datetime
 from billing.session_contextmanager import DBSession
-from billing.exceptions import NoSuchBillException, NoRateStructureError, NoUtilityNameError, IssuedBillError
+from billing.exceptions import NoSuchBillException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -1410,6 +1410,7 @@ class ReebillDAO:
                     self._save_utilbill(utilbill_doc, force=force)
 
             self.reebills_collection.save(reebill_doc, safe=True)
+            # TODO catch mongo's return value and raise MongoError
 
     def _save_utilbill(self, utilbill_doc, sequence_and_version=None, force=False):
         '''Save raw utility bill dictionary. If this utility bill belongs to an
@@ -1440,13 +1441,34 @@ class ReebillDAO:
 
         utilbill_doc = bson_convert(copy.deepcopy(utilbill_doc))
         self.utilbills_collection.save(utilbill_doc, safe=True)
+        # TODO catch mongo's return value and raise MongoError
 
     def delete_reebill(self, account, sequence, version):
-        self.reebills_collection.remove({
+        # load reebill in order to find utility bills
+        reebill = self.load_reebill(account, sequence, version)
+
+        # first ensure that each utility bill can be found and the reebill can
+        # be found (to help keep this operation atomic)
+        for u in reebill._utilbills:
+            self.utilbills_collection.find({'_id': bson_convert(u['_id'])})
+        self.reebills_collection.find({
+            '_id.account': account,
+            '_id.sequence': sequence,
+            '_id.version': version,
+        })
+
+        # remove each utility bill, then the reebill
+        for u in reebill._utilbills:
+            result = self.utilbills_collection.remove({'_id': bson_convert(u['_id'])}, safe=True)
+            if result['err'] is not None or result['n'] == 0:
+                raise MongoError(result)
+        result = self.reebills_collection.remove({
             '_id.account': account,
             '_id.sequence': sequence,
             '_id.version': version,
         }, safe=True)
+        if result['err'] is not None or result['n'] == 0:
+            raise MongoError(result)
 
     def get_first_bill_date_for_account(self, account):
         '''Returns the start date of the account's earliest reebill, or None if
