@@ -219,12 +219,12 @@ class ReebillDAOTest(unittest.TestCase):
             self.reebill_dao.save_reebill(b, freeze_utilbills=True)
             u = b._utilbills[0]
             utilbills = self.reebill_dao.load_utilbills(account='99999',
-                    utility=u['_id']['utility'], service=u['_id']['service'],
-                    start=u['_id']['start'], end=u['_id']['end'])
+                    utility=u['utility'], service=u['service'],
+                    start=u['start'], end=u['end'])
             self.assertEquals(2, len(utilbills))
             utilbills = self.reebill_dao.load_utilbills(account='99999',
-                    utility=u['_id']['utility'], service=u['_id']['service'],
-                    start=u['_id']['start'], end=u['_id']['end'], sequence=1)
+                    utility=u['utility'], service=u['service'],
+                    start=u['start'], end=u['end'], sequence=1)
             
             # issued reebill cannot be saved, especially with frozen utilbills
             self.state_db.new_rebill(session, '99999', 1)
@@ -287,10 +287,10 @@ class ReebillDAOTest(unittest.TestCase):
 
         # a 2nd utility bill
         ub2 = example_data.get_utilbill_dict('99999')
-        ub2['_id']['service'] = 'electric'
-        ub2['_id']['utility'] = 'washgas'
-        ub2['_id']['start'] = datetime(2012,7,22)
-        ub2['_id']['end'] = datetime(2012,8,22)
+        ub2['service'] = 'electric'
+        ub2['utility'] = 'washgas'
+        ub2['start'] = datetime(2012,7,22)
+        ub2['end'] = datetime(2012,8,22)
         self.reebill_dao._save_utilbill(ub2)
         bills = self.reebill_dao.load_utilbills()
         self.assertEquals(2, len(bills))
@@ -323,8 +323,8 @@ class ReebillDAOTest(unittest.TestCase):
         
         # put "sequence" and "version" keys in a copy of the utilbill, and save
         attached_utilbill = copy.deepcopy(utilbill)
-        attached_utilbill['_id']['sequence'] = 1
-        attached_utilbill['_id']['version'] = 0
+        attached_utilbill['sequence'] = 1
+        attached_utilbill['version'] = 0
         self.reebill_dao._save_utilbill(attached_utilbill)
 
         # original utilbill (without "sequence" & "version") should still be

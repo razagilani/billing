@@ -1,6 +1,7 @@
 '''Provides example data to be used in tests.'''
 import copy
 from datetime import date, datetime, timedelta
+from bson.objectid import ObjectId
 from billing.mongo import MongoReebill, float_to_decimal
 from billing.processing.rate_structure import RateStructure
 from billing import dateutils
@@ -12,14 +13,16 @@ ISODate = lambda s: datetime.strptime(s, dateutils.ISO_8601_DATETIME)
 true, false = True, False
 null = None
 
+# editable utility bill (does not contain sequence, version of reebill)
 example_utilbill = {
-    '_id': {
-        "account": "10003",
-        "service" : "gas",
-        "utility" : "washgas",
-        "start" : ISODate("2011-11-12T00:00:00Z"),
-        "end" : ISODate("2011-12-14T00:00:00Z"),
-    },
+    '_id': ObjectId('5074c295ba19a04d00000000'),
+
+    "account": "10003",
+    "service" : "gas",
+    "utility" : "washgas",
+    "start" : ISODate("2011-11-12T00:00:00Z"),
+    "end" : ISODate("2011-12-14T00:00:00Z"),
+
     "chargegroups" : {
         "All Charges" : [
             {
@@ -170,11 +173,8 @@ example_reebill = {
 	"issue_date" : null,
 	"utilbills" : [
         {
-            "service" : "gas",
-            "utility" : "washgas",
-            "start" : ISODate("2011-11-12T00:00:00Z"),
-            "end" : ISODate("2011-12-14T00:00:00Z"),
-            
+            'id': ObjectId('5074c295ba19a04d00000000'),
+
             "ree_charges" : 118.42,
             "ree_savings" : 118.42,
             "ree_value" : 236.84,
@@ -507,11 +507,16 @@ def get_reebill(account, sequence, start=date(2011,11,12),
         'sequence': sequence,
         'version': version,
     })
+
     u = get_utilbill_dict(account, start=start, end=end)
-    # force reebill's utilbill section to match the utilbill document
-    for ub_reference in reebill_dict['utilbills']:
-        ub_reference.update(subdict(u['_id'], ['service',
-            'utility', 'start', 'end']))
+
+    # force utilbill to match the utilbill document
+    u.update({
+        'account': account,
+        'start': start,
+        'end': end
+    })
+
     return MongoReebill(deep_map(float_to_decimal, reebill_dict),
             [copy.deepcopy(deep_map(float_to_decimal, u))])
 
@@ -519,10 +524,10 @@ def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14)):
     '''Returns an example utility bill dictionary.'''
     start, end = date_to_datetime(start), date_to_datetime(end)
     utilbill_dict = copy.deepcopy(example_utilbill)
-    utilbill_dict['_id'].update({
+    utilbill_dict.update({
         'account': account,
         'start': start,
-        'end': end,
+        'end': end
     })
     for meter in utilbill_dict['meters']:
         meter['prior_read_date'] = start
