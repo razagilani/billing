@@ -1276,10 +1276,10 @@ class ReebillDAO:
                 utilbill_doc = [u for u in reebill._utilbills if u['_id'] ==
                         utilbill_handle['id']][0]
                 if freeze_utilbills:
-                    # this reebill is being issued: convert the utility bills
-                    # into frozen copies by putting "sequence" and "version"
-                    # keys in the utility bill, and changing its _id to a new
-                    # one
+                    # this reebill is being attached (usually right before
+                    # issuing): convert the utility bills into frozen copies by
+                    # putting "sequence" and "version" keys in the utility
+                    # bill, and changing its _id to a new one
                     new_id = bson.objectid.ObjectId()
                     utilbill_handle['id'] = utilbill_doc['_id'] = new_id
                     self._save_utilbill(utilbill_doc, force=force,
@@ -1301,7 +1301,8 @@ class ReebillDAO:
         'sequence_and_version' should a (sequence, version) tuple, to be used
         when (and only when) issuing the containing reebill for the first time
         (i.e. calling save_reebill(freeze_utilbills=True). This puts sequence
-        and version keys into the utility bill.'''
+        and version keys into the utility bill. (If those keys are already in
+        the utility bill, you won't be able to save it.)'''
 
         # utility bills that belong to a reebill (i.e. already have "sequence"
         # and "version" keys) cannot be saved
@@ -1309,13 +1310,8 @@ class ReebillDAO:
         # MongoEngine: https://www.pivotaltracker.com/story/show/37202081
         if not force and ('sequence' in utilbill_doc or 'version' in
                 utilbill_doc):
-            #existing_docs = self.load_utilbills(**utilbill_doc['_id'])
-            #if existing_docs != []:
-                #raise IssuedBillError(("This utility bill can't be edited "
-                        #"because it belongs to an issued reebill: %s-%s") % (
-                        #utilbill_doc['_id']['account'], utilbill_doc['_id']['sequence']))
-            raise IssuedBillError(("This utility bill can't be edited "
-                    "because it belongs to an issued reebill: %s-%s") % (
+            raise IssuedBillError(("Changes to this utility bill can't be "
+                    "saved because it is attached to a reebill: %s-%s") % (
                     utilbill_doc['account'], utilbill_doc['sequence']))
 
         # check for uniqueness of {account, service, utility, start, end}
