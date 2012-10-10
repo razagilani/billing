@@ -23,7 +23,12 @@ class IssuedBillError(Exception):
     '''Exception for trying to modify a bill that has been issued.'''
     pass
 
-class NotIssuable(Exception):
+class BillStateError(Exception):
+    '''A bill was in a state in which some operation is not allowed.'''
+    pass
+
+class NotIssuable(BillStateError):
+    # TODO maybe remove; BillStateError is specific enough
     '''Trying to issue a bill that is not issuable.'''
 
 class RSIError(Exception):
