@@ -884,9 +884,12 @@ port = 27017
         acc = '99999'
         with DBSession(self.state_db) as session:
             # 2 reebills, 1 issued 40 days ago and unpaid (so it's 10 days late)
-            zero = example_data.get_reebill(acc, 0) # template
-            one = example_data.get_reebill(acc, 1)
-            two0 = example_data.get_reebill(acc, 2)
+            zero = example_data.get_reebill(acc, 0, start=date(2011,12,31),
+                    end=date(2012,1,1)) # template
+            one = example_data.get_reebill(acc, 1, start=date(2012,1,1),
+                    end=date(2012,2,1))
+            two0 = example_data.get_reebill(acc, 2, start=date(2012,2,1),
+                    end=date(2012,3,1))
             one.balance_due = 100
             two0.balance_due = 100
             self.reebill_dao.save_reebill(zero)
