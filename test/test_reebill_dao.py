@@ -265,7 +265,8 @@ class ReebillDAOTest(unittest.TestCase):
         self.assertEqual([], self.reebill_dao.load_utilbills())
 
         # 1 utility bill
-        self.reebill_dao._save_utilbill(example_data.get_utilbill_dict('99999'))
+        first = example_data.get_utilbill_dict('99999')
+        self.reebill_dao._save_utilbill(first)
         self.assertEquals(1, len(self.reebill_dao.load_utilbills()))
 
         # query by each _id field
@@ -285,17 +286,22 @@ class ReebillDAOTest(unittest.TestCase):
                 account='99999', service='gas', utility='washgas',
                 start=date(2011,11,12), end=date(2011,12,14))))
 
+        # everything together + nonexistence of "sequence", "version"
+        # (load_utilbill insists on getting exactly 1 result)
+        self.reebill_dao.load_utilbill(account='99999', service='gas',
+                utility='washgas', start=date(2011,11,12),
+                end=date(2011,12,14), sequence=False, version=False)
+
         # a 2nd utility bill
-        ub2 = example_data.get_utilbill_dict('99999')
-        ub2['service'] = 'electric'
-        ub2['utility'] = 'washgas'
-        ub2['start'] = datetime(2012,7,22)
-        ub2['end'] = datetime(2012,8,22)
-        self.reebill_dao._save_utilbill(ub2)
+        second = example_data.get_utilbill_dict('99999', start=date(2012,7,22),
+                end=date(2012,8,22))
+        second['service'] = 'electric'
+        second['utility'] = 'washgas'
+        self.reebill_dao._save_utilbill(second)
         bills = self.reebill_dao.load_utilbills()
         self.assertEquals(2, len(bills))
-        self.assertEquals(example_data.get_utilbill_dict('99999'), bills[0])
-        self.assertEquals(ub2, bills[1])
+        self.assertEquals(first, bills[0])
+        self.assertEquals(second, bills[1])
 
         # some queries for one bill, both, none
         self.assertEquals(2, len(self.reebill_dao.load_utilbills(
@@ -323,9 +329,8 @@ class ReebillDAOTest(unittest.TestCase):
         
         # put "sequence" and "version" keys in a copy of the utilbill, and save
         attached_utilbill = copy.deepcopy(utilbill)
-        attached_utilbill['sequence'] = 1
-        attached_utilbill['version'] = 0
-        self.reebill_dao._save_utilbill(attached_utilbill)
+        self.reebill_dao._save_utilbill(attached_utilbill,
+                sequence_and_version=(1, 0))
 
         # original utilbill (without "sequence" & "version") should still be
         # saveable, but attached_utilbill should not
