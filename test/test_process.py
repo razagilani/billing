@@ -789,11 +789,11 @@ port = 27017
         acc = '99999'
         with DBSession(self.state_db) as session:
             # reebills 1-4, 1-3 issued
-            zero = example_data.get_reebill(acc, 0)
-            one = example_data.get_reebill(acc, 1)
-            two = example_data.get_reebill(acc, 2)
-            three = example_data.get_reebill(acc, 3)
-            four = example_data.get_reebill(acc, 4)
+            zero = example_data.get_reebill(acc, 0, start=date(2011,12,1), end=date(2012,1,1))
+            one = example_data.get_reebill(acc, 1, start=date(2012,1,1), end=date(2012,2,1))
+            two = example_data.get_reebill(acc, 2, start=date(2012,2,1), end=date(2012,3,1))
+            three = example_data.get_reebill(acc, 3, start=date(2012,3,1), end=date(2012,4,1))
+            four = example_data.get_reebill(acc, 4, start=date(2012,4,1), end=date(2012,5,1))
             zero.ree_charges = 100
             one.ree_charges = 100
             two.ree_charges = 100
