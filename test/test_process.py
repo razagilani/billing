@@ -343,21 +343,22 @@ port = 27017
             session = self.state_db.session()
 
             # generic reebill
-            bill1 = example_data.get_reebill('99999', 1)
-            bill1.account = '99999'
-            bill1.sequence = 1
+            bill1 = example_data.get_reebill('99999', 1, start=date(2012,1,1),
+                    end=date(2012,2,1))
 
             # make it have 2 services, 1 suspended
             # (create electric bill by duplicating gas bill)
-            electric_bill = example_data.get_utilbill_dict('99999')
+            electric_bill = example_data.get_utilbill_dict('99999',
+                    start=date(2012,1,1), end=date(2012,2,1))
             electric_bill['service'] = 'electric'
-            self.reebill_dao._save_utilbill(electric_bill)
+            #self.reebill_dao._save_utilbill(electric_bill)
             # TODO it's bad to directly modify reebill_dict
             bill1.reebill_dict['utilbills'].append({
+                'id': electric_bill['_id'],
                 'service': 'electric',
-                'utility': electric_bill['_id']['utility'],
-                'start': electric_bill['_id']['start'],
-                'end': electric_bill['_id']['end'],
+                'utility': electric_bill['utility'],
+                'start': electric_bill['start'],
+                'end': electric_bill['end'],
             })
             bill1._utilbills.append(electric_bill)
             bill1.suspend_service('electric')
@@ -369,13 +370,13 @@ port = 27017
 
             # save utilbills in MySQL
             self.state_db.record_utilbill_in_database(session, bill1.account,
-                    bill1._utilbills[0]['_id']['service'],
-                    bill1._utilbills[0]['_id']['start'],
-                    bill1._utilbills[0]['_id']['end'], date.today())
+                    bill1._utilbills[0]['service'],
+                    bill1._utilbills[0]['start'],
+                    bill1._utilbills[0]['end'], date.today())
             self.state_db.record_utilbill_in_database(session, bill1.account,
-                    bill1._utilbills[1]['_id']['service'],
-                    bill1._utilbills[1]['_id']['start'],
-                    bill1._utilbills[1]['_id']['end'], date.today())
+                    bill1._utilbills[1]['service'],
+                    bill1._utilbills[1]['start'],
+                    bill1._utilbills[1]['end'], date.today())
 
             self.process.attach_utilbills(session, bill1.account, bill1.sequence)
 
