@@ -577,6 +577,7 @@ port = 27017
                     date(2012,2,1), date(2012,3,1), file2, 'february.pdf')
             bills = self.state_db.list_utilbills(session,
                     account)[0].filter(UtilBill.service==service).all()
+            bills = [a for a in reversed(bills)]
             self.assertEqual(2, len(bills))
             self.assertEqual(UtilBill.Complete, bills[0].state)
             self.assertEqual(date(2012,1,1), bills[0].period_start)
@@ -590,6 +591,7 @@ port = 27017
                     date(2012,3,1), date(2012,4,1), None, None)
             bills = self.state_db.list_utilbills(session,
                     account)[0].filter(UtilBill.service==service).all()
+            bills = [a for a in reversed(bills)]
             self.assertEqual(3, len(bills))
             self.assertEqual(UtilBill.Complete, bills[0].state)
             self.assertEqual(date(2012,1,1), bills[0].period_start)
@@ -608,6 +610,7 @@ port = 27017
                     date(2012,7,1), date(2012,8,1), file4, 'july.pdf')
             bills = self.state_db.list_utilbills(session,
                     account)[0].filter(UtilBill.service==service).all()
+            bills = [a for a in reversed(bills)]
             self.assertEqual(UtilBill.Complete, bills[0].state)
             self.assertEqual(date(2012,1,1), bills[0].period_start)
             self.assertEqual(date(2012,2,1), bills[0].period_end)
