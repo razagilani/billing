@@ -749,8 +749,8 @@ port = 27017
     def test_new_version(self):
         # put reebill documents for sequence 0 and 1 in mongo (0 is needed to
         # recompute 1), and rate structures for 1
-        zero = example_data.get_reebill('99999', 0, version=0)
-        one = example_data.get_reebill('99999', 1, version=0)
+        zero = example_data.get_reebill('99999', 0, version=0, start=date(2011,12,1), end=date(2012,1,1))
+        one = example_data.get_reebill('99999', 1, version=0, start=date(2012,1,1), end=date(2012,2,1))
         self.reebill_dao.save_reebill(zero)
         self.reebill_dao.save_reebill(one)
         self.rate_structure_dao.save_rs(example_data.get_urs_dict())
@@ -762,7 +762,7 @@ port = 27017
         # issue reebill 1
         with DBSession(self.state_db) as session:
             self.state_db.new_rebill(session, '99999', 1)
-            self.process.issue(session, '99999', 1, issue_date=date(2012,1,1))
+            self.process.issue(session, '99999', 1, issue_date=date(2012,1,15))
             session.commit()
 
         # create new version of 1
