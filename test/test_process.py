@@ -1054,11 +1054,14 @@ port = 27017
 
         with DBSession(self.state_db) as session:
             # save reebills and rate structures in mongo
-            self.reebill_dao.save_reebill(example_data.get_reebill(acc, 0))
-            one = example_data.get_reebill(acc, 1)
+            self.reebill_dao.save_reebill(example_data.get_reebill(acc, 0,
+                    start=date(2012,1,1), end=date(2012,2,1)))
+            one = example_data.get_reebill(acc, 1, start=date(2012,2,1), end=date(2012,3,1))
             self.reebill_dao.save_reebill(one)
-            self.reebill_dao.save_reebill(example_data.get_reebill(acc, 2))
-            self.reebill_dao.save_reebill(example_data.get_reebill(acc, 3))
+            self.reebill_dao.save_reebill(example_data.get_reebill(acc, 2,
+                    start=date(2012,3,1), end=date(2012,4,1)))
+            self.reebill_dao.save_reebill(example_data.get_reebill(acc, 3,
+                    start=date(2012,4,1), end=date(2012,5,1)))
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))

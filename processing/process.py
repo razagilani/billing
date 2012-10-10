@@ -386,11 +386,10 @@ class Process(object):
         if not self.state_db.is_issued(session, account, sequence):
             raise ValueError("Can't create new version of an un-issued bill.")
 
-        # get current max version from MySQL
+        # get current max version from MySQL, and load that version's document
+        # from Mongo (even if higher version exists in Mongo, it doesn't count
+        # unless MySQL knows about it)
         max_version = self.state_db.max_version(session, account, sequence)
-
-        # load that version's document from Mongo (even if higher version
-        # exists in Mongo, it doesn't count unless MySQL knows about it)
         reebill = self.reebill_dao.load_reebill(account, sequence,
                 version=max_version)
 
@@ -400,10 +399,6 @@ class Process(object):
             rs_name = reebill.rate_structure_name_for_service(service)
             cprs = self.rate_structure_dao.load_cprs(reebill.account,
                     reebill.sequence, reebill.version, utility_name, rs_name)
-            if cprs is None:
-                raise Exception('No CPRS found for %s-%s-%s, %s, %s' %
-                        (account, sequence, reebill.version, utility_name,
-                        rs_name))
             self.rate_structure_dao.save_cprs(account, sequence, max_version +
                     1, utility_name, rs_name, cprs)
 
@@ -421,7 +416,8 @@ class Process(object):
         # increment max version in mysql
         self.state_db.increment_version(session, account, sequence)
 
-        # increment version, make un-issued, and replace utilbills with the current-truth ones
+        # increment version, make un-issued, and replace utilbills with the
+        # current-truth ones
         self.reebill_dao.increment_reebill_version(session, reebill)
 
         self.compute_bill(session, predecessor, reebill)

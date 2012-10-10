@@ -474,6 +474,17 @@ class MongoReebill(object):
                     'for service "%s"' % service))
         return handles[0]
 
+    def _get_utilbill_for_handle(self, utilbill_handle):
+        '''Returns the utility bill dictionary whose _id correspinds to the
+        "id" in the given internal utilbill dictionary.'''
+        id = utilbill_handle['id']
+        matching_utilbills = [u for u in self._utilbills if u['_id'] == id]
+        if len(matching_utilbills) < 0:
+            raise ValueError('No utilbill found for id "%s"' % id)
+        if len(matching_utilbills) > 1:
+            raise ValueError('Multiple utilbills found for id "%s"' % id)
+        return matching_utilbills[0]
+
     def hypothetical_total_for_service(self, service_name):
         '''Returns the total of hypothetical charges for the utilbill whose
         service is 'service_name'. There's not supposed to be more than one
@@ -855,7 +866,7 @@ class MongoReebill(object):
         raise Exception('No register found with identifier "%s"' % quantity)
 
     def utility_name_for_service(self, service_name):
-        return self._get_utilbill_for_service(service_name)['service']
+        return self._get_utilbill_for_service(service_name)['utility']
 
     def rate_structure_name_for_service(self, service_name):
         return self._get_utilbill_for_service(service_name)\
@@ -993,13 +1004,35 @@ class ReebillDAO:
         from Mongo (since the reebill is unissued, these will be the current
         versionless ones, not the ones that belong to the previous old
         version of this reebill).'''
-        # version must be incremented before utilbills are loaded so
-        # _load_all_utillbills_for_reebill() can find out whether this version
-        # is issued
-        reebill.version += 1
-        reebill._utilbills = self._load_all_utillbills_for_reebill(session,
-                reebill.reebill_dict)
         reebill.issue_date = None
+        reebill.version += 1
+
+        # replace the reebill's utility bill dictionaries with new ones loaded
+        # from mongo. which ones? the un-frozen/editable/"current truth"
+        # versions of the frozen ones currently in the reebill. how do you find
+        # them? i think the only way is by {account, service, utility, start
+        # date, end date}.
+        # TODO reconsider: https://www.pivotaltracker.com/story/show/37521779
+        all_new_utilbills = []
+        for utilbill_handle in reebill.reebill_dict['utilbills']:
+            # load new utility bill
+            old_utilbill = reebill._get_utilbill_for_handle(utilbill_handle)
+            new_utilbill = self.load_utilbill(account=reebill.account,
+                    utility=old_utilbill['utility'],
+                    service=old_utilbill['service'],
+                    start=old_utilbill['start'], end=old_utilbill['end'],
+                    # must not contain "sequence" or "version" keys
+                    sequence=False, version=False)
+
+            # convert types
+            new_utilbill = deep_map(float_to_decimal, new_utilbill)
+            new_utilbill = convert_datetimes(new_utilbill)
+
+            all_new_utilbills.append(new_utilbill)
+
+        # replace utilbills with new ones loaded above
+        reebill._utilbills = all_new_utilbills
+
 
     def load_utilbills(self, account=None, service=None, utility=None,
             start=None, end=None, sequence=None, version=None):
@@ -1248,7 +1281,7 @@ class ReebillDAO:
                     # keys in the utility bill, and changing its _id to a new
                     # one
                     new_id = bson.objectid.ObjectId()
-                    utilbill_handle['id'] = utilbill_doc['id'] = new_id
+                    utilbill_handle['id'] = utilbill_doc['_id'] = new_id
                     self._save_utilbill(utilbill_doc, force=force,
                             sequence_and_version=(reebill.sequence,
                             reebill.version))
