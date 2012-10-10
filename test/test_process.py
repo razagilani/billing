@@ -27,8 +27,8 @@ from billing.test import example_data
 from billing.test.fake_skyliner import FakeSplinter, FakeMonguru
 from billing.nexus_util import NexusUtil
 from billing.mongo import NoSuchBillException
+from billing.exceptions import BillStateError
 from billing.processing import fetch_bill_data as fbd
-from billing.exceptions import NotIssuable
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -978,20 +978,21 @@ port = 27017
             self.assertEquals(None, two.due_date)
 
             # two should not be attachable or issuable until one is issued
-            #self.assertRaises(NotIssuable, self.process.attach_utilbills, session, acc, 2)
-            import ipdb; ipdb.set_trace()
-            self.process.attach_utilbills(session, acc, 2)
-            self.assertRaises(NotIssuable, self.process.issue, session, acc, 2)
+            self.assertRaises(BillStateError, self.process.attach_utilbills, session, acc, 2)
+            self.assertRaises(BillStateError, self.process.issue, session, acc, 2)
 
-            # issue one
+            # attach & issue one
+            self.process.attach_utilbills(session, one.account, one.sequence)
             self.process.issue(session, acc, 1)
+
             # re-load from mongo to see updated issue date and due date
             one = self.reebill_dao.load_reebill(acc, 1)
             self.assertEquals(True, self.state_db.is_issued(session, acc, 1))
             self.assertEquals(datetime.utcnow().date(), one.issue_date)
             self.assertEquals(one.issue_date + timedelta(30), one.due_date)
 
-            # issue two
+            # attach & issue two
+            self.process.attach_utilbills(session, two.account, two.sequence)
             self.process.issue(session, acc, 2)
             # re-load from mongo to see updated issue date and due date
             two = self.reebill_dao.load_reebill(acc, 2)

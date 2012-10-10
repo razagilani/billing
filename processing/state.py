@@ -220,6 +220,16 @@ class StateDB:
             utilbill.reebill = reebill
             utilbill.processed = True
 
+    def is_attached(self, session, account, sequence):
+        '''Returns True iff the given reebill has utility bills attached to it
+        in MySQL.'''
+        customer = self.get_customer(session, account)
+        reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
+                .filter(ReeBill.sequence==sequence).one()
+        num_utilbills = session.query(UtilBill)\
+                .filter(UtilBill.reebill==reebill).count()
+        return num_utilbills >= 1
+
     def utilbills_for_reebill(self, session, account, sequence):
         '''Returns all utility bills for the reebill given by account,
         sequence.'''
