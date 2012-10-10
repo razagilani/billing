@@ -4,6 +4,7 @@ from decimal import Decimal
 from billing.mutable_named_tuple import MutableNamedTuple
 from bson.objectid import ObjectId
 from billing.dictutils import deep_map
+from billing.dateutils import date_to_datetime, ISO_8601_DATETIME_WITHOUT_ZONE
 
 def python_convert(x):
     '''Strip out the MutableNamedTuples since they are no longer 
@@ -64,5 +65,21 @@ def format_query(query_dict):
         if type(x) is unicode:
             return str(x)
         return x
-    # TODO also convert dates/datetimes to Mongo "ISODate"
-    return deep_map(unicode_to_ascii, query_dict)
+
+    class ISODate(object):
+        def __init__(self, d):
+            if isinstance(d, date):
+                d = date_to_datetime(d)
+            self.dt = d
+        def __repr__(self):
+            return 'ISODate("%s")' % self.dt.strftime(ISO_8601_DATETIME_WITHOUT_ZONE)
+        def __str__(self):
+            return repr(self)
+
+    def datetime_to_isodate(x):
+        if isinstance(x, datetime): # dates don't belong in Mongo queries anyway
+            return ISODate(x)
+        return x
+
+    #return deep_map(date_to_isodate, deep_map(unicode_to_ascii, query_dict))
+    return deep_map(unicode_to_ascii, deep_map(datetime_to_isodate, query_dict))
