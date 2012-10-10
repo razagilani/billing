@@ -1030,7 +1030,10 @@ class ReebillDAO:
 
             all_new_utilbills.append(new_utilbill)
 
-        # replace utilbills with new ones loaded above
+            # utilbill_handle's _id should match the new utility bill
+            utilbill_handle['id'] = new_utilbill['_id']
+
+        # replace utilbills with new ones loaded above (all at once)
         reebill._utilbills = all_new_utilbills
 
 
@@ -1250,9 +1253,8 @@ class ReebillDAO:
 
         'freeze_utilbills' should be used when issuing a reebill for the first
         time (an original or a correction). This creates immutable copies of
-        the utility bill documents with the reebill's sequence and version in
-        their _id. Whenever the reebill is loaded, these copies will be loaded
-        with it.
+        the utility bill documents with new _ids and puts the reebill's
+        sequence and version in them.
         
         Replacing an already-issued reebill (as determined by StateDB, using
         the rule that all versions except the highest are issued) or its
@@ -1318,16 +1320,23 @@ class ReebillDAO:
 
         # check for uniqueness of {account, service, utility, start, end}
         # (Mongo won't enforce this for us)
-        unique_fields = subdict(utilbill_doc, ['account', 'service', 'utility',
-                'start', 'end'])
-        if sequence_and_version is not None:
-            unique_fields.update({'sequence': sequence_and_version[0],
-                    'version': sequence_and_version[1]})
-        if self.load_utilbills(**unique_fields) != []:
-            raise NotUniqueException(("There's already a utility bill with "
-                    "account=%{account}, service={service}, "
-                    "utility={utility}, start={start}, end={end}")
-                    .format(**utilbill_doc))
+        unique_fields = {
+            'account': utilbill_doc['account'],
+            'service': utilbill_doc['service'],
+            'utility': utilbill_doc['utility'],
+            'start': utilbill_doc['start'],
+            'end': utilbill_doc['end'],
+            'sequence': False if sequence_and_version is None
+                    else sequence_and_version[0],
+            'version': False if sequence_and_version is None
+                    else sequence_and_version[1],
+        }
+        for duplicate in self.load_utilbills(**unique_fields):
+            if duplicate['_id'] != utilbill_doc['_id']:
+                raise NotUniqueException(("There's already a utility bill with "
+                        "account=%{account}, service={service}, "
+                        "utility={utility}, start={start}, end={end}")
+                        .format(**utilbill_doc))
 
         if sequence_and_version is not None:
             utilbill_doc.update({
