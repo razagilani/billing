@@ -620,3 +620,23 @@ reebill-prod backs up data daily, every friday backup is stored in ~/reebill-pro
 
 reebill-stage destages prod data daily
 * 2 * * * /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/admin/destage.bash
+
+
+Running ReeBill Unit Tests
+==========================
+
+General pattern:
+
+nosetests [-x --pdb] modulepath:ClassName.test_method
+
+(-x means stop after the first failure; --pdb brings you into pdb when you get an error.)
+
+For example, to run all tests in the file billing/test/test_process.py:
+
+nosetests billing.test.test_process
+
+To run the specific method "test_adjustment" in the class ProcessTest in that file:
+
+nosetsts billing.test.test_process:ProcessTest.test_adjustment
+
+If want to run all the tests in just one file, you can skip nosetests and use "python filename.py"
