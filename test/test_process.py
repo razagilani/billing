@@ -143,10 +143,12 @@ port = 27017
         acc = '99999'
         with DBSession(self.state_db) as session:
             # sequence 0 template
-            self.reebill_dao.save_reebill(example_data.get_reebill(acc, 0))
+            self.reebill_dao.save_reebill(example_data.get_reebill(acc, 0,
+                    start=date(2011,12,31), end=date(2012,1,1)))
 
             # bill 1: no late charge
-            bill1 = example_data.get_reebill(acc, 1)
+            bill1 = example_data.get_reebill(acc, 1, start=date(2012,1,1),
+                    end=date(2012,2,1))
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
                 date(2011,12,31)))
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
