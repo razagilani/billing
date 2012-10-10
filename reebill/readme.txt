@@ -14,6 +14,7 @@ configuration files - configurations used to configure objects found here and in
 
 stuff to move around:
 ui/* moves to www
+ui/graphic files need to move to www/images
 WSGI code and other code remains in ./reebill
 bill_mailer.py - pull jinja template out and keep it here, make smtp mailer generic and move it to ../processing
 
