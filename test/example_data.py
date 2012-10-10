@@ -15,7 +15,8 @@ null = None
 
 # editable utility bill (does not contain sequence, version of reebill)
 example_utilbill = {
-    '_id': ObjectId('5074c295ba19a04d00000000'),
+    # NOTE: "_id" must be inserted at runtime in get_utilbill_dict() because it
+    # should be different for each instance
 
     "account": "10003",
     "service" : "gas",
@@ -173,7 +174,8 @@ example_reebill = {
 	"issue_date" : null,
 	"utilbills" : [
         {
-            'id': ObjectId('5074c295ba19a04d00000000'),
+            # NOTE: "id" must be inserted at runtime in get_utilbill_dict() because it
+            # should be different for each instance
 
             "ree_charges" : 118.42,
             "ree_savings" : 118.42,
@@ -508,10 +510,14 @@ def get_reebill(account, sequence, start=date(2011,11,12),
         'version': version,
     })
 
+    id = ObjectId()
+    reebill_dict['utilbills'][0]['id'] = id
+
     u = get_utilbill_dict(account, start=start, end=end)
 
     # force utilbill to match the utilbill document
     u.update({
+        '_id': id,
         'account': account,
         'start': start,
         'end': end
@@ -525,6 +531,7 @@ def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14)):
     start, end = date_to_datetime(start), date_to_datetime(end)
     utilbill_dict = copy.deepcopy(example_utilbill)
     utilbill_dict.update({
+        '_id': ObjectId(),
         'account': account,
         'start': start,
         'end': end
