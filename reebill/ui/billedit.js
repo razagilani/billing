@@ -4166,9 +4166,10 @@ function reeBillReady() {
 
     ///////////////////////////////////////
     // account status
-    function sortType(value){ 
-        return parseInt(value.match(/\d+$/),10);
-    }
+    // TODO keep this as an example
+    //function sortType(value){ 
+    //    return parseInt(value.match(/\d+$/),10);
+    //}
     var accountReader = new Ext.data.JsonReader({
         // metadata configuration options:
         // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
@@ -4181,7 +4182,7 @@ function reeBillReady() {
             // map Record's field to json object's key of same name
             {name: 'account', mapping: 'account'},
             {name: 'fullname', mapping: 'fullname'},
-            {name: 'dayssince', mapping: 'dayssince', type:sortType},
+            {name: 'dayssince', mapping: 'dayssince'/*, type:sortType*/},
             {name: 'lastevent'},
             {name: 'provisionable', mapping: 'provisionable'},
         ]
@@ -4210,6 +4211,11 @@ function reeBillReady() {
             {name: 'lastevent'},
             {name: 'provisionable'},
         ],
+        // looks to be initial order for load
+        sortInfo: {
+            field: 'dayssince',
+            direction: 'DESC'
+        },
     });
 
     /* This function controls the style of cells in the account grid. */
@@ -4255,7 +4261,7 @@ function reeBillReady() {
                 dataIndex: 'primusname',
                 renderer: accountGridColumnRenderer,
             },{
-                header: 'Days since last bill',
+                header: 'Days since last UtilBill',
                 sortable: true,
                 dataIndex: 'dayssince',
                 renderer: accountGridColumnRenderer,
