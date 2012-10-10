@@ -334,11 +334,11 @@ class Process(object):
         # TODO don't use private '_utilbills' here
         # TODO don't edit mongo documents outside mongo.py
         for u in reebill._utilbills:
-            u['_id']['account'] = reebill.reebill_dict['_id']['account']
-            if 'sequence' in u['_id']:
-                del u['_id']['sequence']
-            if 'version' in u['_id']:
-                del u['_id']['version']
+            u['account'] = reebill.reebill_dict['_id']['account']
+            if 'sequence' in u:
+                del u['sequence']
+            if 'version' in u:
+                del u['version']
         new_reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         new_reebill.version = 0
         new_reebill.clear()
