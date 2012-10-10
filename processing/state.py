@@ -484,7 +484,7 @@ class StateDB:
         # SQLAlchemy query to get account & dates for all utilbills
         query = session.query(UtilBill).with_lockmode('read').join(Customer)\
                 .filter(Customer.account==account)\
-                .order_by(Customer.account, asc(UtilBill.period_start))
+                .order_by(Customer.account, desc(UtilBill.period_start))
 
         if start is None:
             return query, query.count()
