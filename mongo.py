@@ -281,13 +281,13 @@ class MongoReebill(object):
     def due_date(self, value):
         self.reebill_dict['due_date'] = value
 
+    # TODO these must die
     @property
     def period_begin(self):
         return python_convert(self.reebill_dict['period_begin'])
     @period_begin.setter
     def period_begin(self, value):
         self.reebill_dict['period_begin'] = value
-
     @property
     def period_end(self):
         return python_convert(self.reebill_dict['period_end'])
