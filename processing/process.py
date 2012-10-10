@@ -971,6 +971,9 @@ class Process(object):
             reebill.late_charges = lc
 
         # save in mongo, with frozen copies of the associated utility bill
+        # TODO should freeze_utilbills happen here? i think not because it
+        # should be done in attach_utilbills(), which should always be called
+        # before issuing.
         self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
 
         # mark as issued in mysql
