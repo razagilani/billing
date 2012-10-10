@@ -4344,7 +4344,7 @@ function reeBillReady() {
         proxy: accountReeValueProxy,
         root: 'rows',
         totalProperty: 'results',
-        pageSize: 25,
+        //pageSize: 25,
         paramNames: {start: 'start', limit: 'limit'},
         autoLoad: {params:{start: 0, limit: 25}},
         reader: accountReeValueReader,
@@ -5183,11 +5183,12 @@ function reeBillReady() {
         proxy: reconciliationProxy,
         root: 'rows',
         totalProperty: 'results',
-        pageSize: 30,
         //baseParams: {},
         paramNames: {start: 'start', limit: 'limit'},
         // TODO enable autoload
         //autoLoad: {params:{start: 0, limit: 25}},
+        // toolbar loads grid, so pagesize  doesn't have to be set
+        //pageSize: 30,
 
         // default sort
         sortInfo: {field: 'sequence', direction: 'ASC'}, // descending is DESC
@@ -5291,11 +5292,11 @@ function reeBillReady() {
         proxy: revenueProxy,
         root: 'rows',
         totalProperty: 'results',
-        pageSize: 30,
         //baseParams: {},
         paramNames: {start: 'start', limit: 'limit'},
         // TODO enable autoload
         //autoLoad: {params:{start: 0, limit: 25}},
+        //pageSize: 30,
 
         // default sort
         sortInfo: {field: 'sequence', direction: 'ASC'}, // descending is DESC

@@ -418,10 +418,11 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def estimated_revenue_report(self, **kwargs):
+    def estimated_revenue_report(self, start, limit, **kwargs):
         '''Handles AJAX request for data to fill estimated revenue report
         grid.''' 
         with DBSession(self.state_db) as session:
+            start, limit = int(start), int(limit)
             er = EstimatedRevenue(self.state_db, self.reebill_dao,
                     self.ratestructure_dao, self.billUpload, self.nexus_util,
                     self.splinter)
@@ -450,7 +451,8 @@ class BillToolBridge:
                 #print rows
             return self.dumps({
                 'success': True,
-                'rows': rows
+                'rows': rows[start:start+limit],
+                'results': len(rows) 
             })
 
     @cherrypy.expose
