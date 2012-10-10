@@ -642,7 +642,8 @@ port = 27017
         start, end = date(2012,1,1), date(2012,2,1)
 
         with DBSession(self.state_db) as session:
-            # create utility bill, and make sure it exists in db and filesystem
+            # create utility bill in MySQL and filesystem (and make sure it
+            # exists in both places)
             self.process.upload_utility_bill(session, account, service, start, end,
                     StringIO("test"), 'january.pdf')
             assert self.state_db.list_utilbills(session, account)[1] == 1
@@ -656,13 +657,13 @@ port = 27017
                     .filter(UtilBill.period_start == start)\
                     .filter(UtilBill.period_end == end).one().id
 
-            # rate structures (needed to create new version)
+            # save rate structures (needed to create new version)
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999',
-                1))
+                    1))
 
-            # unassociated: deletion should succeed (row removed from database,
+            # unassociated: deletion should succeed (row removed from MySQL,
             # file moved to trash directory)
             new_path = self.process.delete_utility_bill(session, utilbill_id)
             self.assertEqual(0, self.state_db.list_utilbills(session, account)[1])
@@ -672,8 +673,8 @@ port = 27017
             self.assertTrue(os.access(new_path, os.F_OK))
 
             # re-upload the bill
-            self.process.upload_utility_bill(session, account, service, start, end,
-                    StringIO("test"), 'january.pdf')
+            self.process.upload_utility_bill(session, account, service, start,
+                    end, StringIO("test"), 'january.pdf')
             assert self.state_db.list_utilbills(session, account)[1] == 1
             bill_file_path = self.billupload.get_utilbill_file_path(account,
                     start, end)
@@ -683,18 +684,19 @@ port = 27017
                     .filter(UtilBill.period_start == start)\
                     .filter(UtilBill.period_end == end).one().id
 
-            # associated with reebill that has not been issued: should fail
-            # (association is currently done purely by date range)
-            mongo_reebill = example_data.get_reebill(account, 1)
-            mongo_reebill.set_utilbill_period_for_service(service, (start, end))
-            mongo_reebill.period_begin = start
-            mongo_reebill.period_end = end
+            # when utilbill is associated (in mongo) with reebill that has not
+            # been issued, deletion should fail (association is currently done
+            # purely by date range)
+            self.reebill_dao.save_reebill(example_data.get_reebill(account, 0))
+            mongo_reebill = example_data.get_reebill(account, 1, start=start,
+                    end=end)
             self.reebill_dao.save_reebill(mongo_reebill)
             self.assertRaises(ValueError, self.process.delete_utility_bill,
                     session, utilbill_id)
 
-            # attached to reebill: should fail (this reebill is not created by
-            # rolling, the way it's usually done, and only exists in MySQL)
+            # when utilbill is attached to reebill, deletion should also fail
+            # (this reebill is not created by rolling, the way it's usually
+            # done, and only exists in MySQL)
             reebill = self.state_db.new_rebill(session, account, 1)
             utilbill = self.state_db.list_utilbills(session, account)[0].one()
             self.process.attach_utilbills(session, account, 1)
@@ -703,9 +705,9 @@ port = 27017
                     session, utilbill_id)
 
             # deletion should fail if any version of a reebill has an
-            # association with the utility bill. create a new version of the
-            # reebill that does not have this utilbill.
-            self.reebill_dao.save_reebill(example_data.get_reebill(account, 0))
+            # association with the utility bill. issue the reebill and create a
+            # new version of the reebill that does not have this utilbill.
+            import ipdb; ipdb.set_trace()
             self.process.issue(session, account, 1)
             self.process.new_version(session, account, 1)
             mongo_reebill.version = 1
@@ -950,17 +952,24 @@ port = 27017
             b2 = self.process.roll_bill(session, b1)
 
     def test_issue(self):
+        '''Tests attach_utilbills and issue.'''
         acc = '99999'
         with DBSession(self.state_db) as session:
-            # two bills
-            one = example_data.get_reebill(acc, 1)
-            two = example_data.get_reebill(acc, 2)
+            # two reebills, with utilbills, in mongo & mysql
+            one = example_data.get_reebill(acc, 1, start=date(2012,1,1), end=date(2012,2,1))
+            two = example_data.get_reebill(acc, 2, start=date(2012,2,1), end=date(2012,3,1))
             self.reebill_dao.save_reebill(one)
             self.reebill_dao.save_reebill(two)
             self.state_db.new_rebill(session, acc, 1)
             self.state_db.new_rebill(session, acc, 2)
+            self.state_db.record_utilbill_in_database(session, acc,
+                    one.services[0], date(2012,1,1), date(2012,2,1),
+                    date.today())
+            self.state_db.record_utilbill_in_database(session, acc,
+                    two.services[0], date(2012,2,1), date(2012,3,1),
+                    date.today())
 
-            # neither should be issued yet
+            # neither reebill should be issued yet
             self.assertEquals(False, self.state_db.is_issued(session, acc, 1))
             self.assertEquals(None, one.issue_date)
             self.assertEquals(None, one.due_date)
@@ -968,7 +977,10 @@ port = 27017
             self.assertEquals(None, two.issue_date)
             self.assertEquals(None, two.due_date)
 
-            # two should not be issuable until one is issued
+            # two should not be attachable or issuable until one is issued
+            #self.assertRaises(NotIssuable, self.process.attach_utilbills, session, acc, 2)
+            import ipdb; ipdb.set_trace()
+            self.process.attach_utilbills(session, acc, 2)
             self.assertRaises(NotIssuable, self.process.issue, session, acc, 2)
 
             # issue one
