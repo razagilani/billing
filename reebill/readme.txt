@@ -1,12 +1,13 @@
 ReeBill web application directory
 
-art - original artwork directory, not deployed
+art - original artwork directory, not deployed, exports of these files usually go into www/images
 doc - specific to the application
 test - test harnesses, ui test, example programs, unit tests, etc.  still needs to evolve
 
 www/ - all web serveable/cacheable files
 www/images - image directory
 www/js - javacript directory
+www/js/[framework] - third party JS framework dirs
 
 src - all WSGI related files - things callable from the web, but not intended to be served via the webb
 configuration files - configurations used to configure objects found here and in ../processing

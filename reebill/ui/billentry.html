@@ -7,11 +7,6 @@
     <head profile="http://www.w3.org/2005/10/profile">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
 
-    <!--script type="text/javascript" src="jquery-1.4.2.js"></script-->
-
-
-    <!-- overrides to base library -->
-
     <!-- page specific -->
     <link rel="stylesheet" type="text/css" href="billedit.css" />
 
@@ -80,7 +75,6 @@
     <script type="text/javascript">
 
         /* Global variables for UI configuration */
-        var jsonData;
         var mailPanelDisabled;
         var preferencesPanelDisabled;
         var reportPanelDisabled;
@@ -96,6 +90,8 @@
         var paymentPanelDisabled;
 
         Ext.onReady(function() {
+
+          // TODO check auth session status first, and the go after configuration
 
           /* load ui configuration from server (which tabs to show/hide) */
           Ext.Ajax.request({
