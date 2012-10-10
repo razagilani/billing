@@ -75,11 +75,20 @@ def format_query(query_dict):
             return 'ISODate("%s")' % self.dt.strftime(ISO_8601_DATETIME_WITHOUT_ZONE)
         def __str__(self):
             return repr(self)
-
     def datetime_to_isodate(x):
         if isinstance(x, datetime): # dates don't belong in Mongo queries anyway
             return ISODate(x)
         return x
 
+    class MongoBoolean(object):
+        def __init__(self, value):
+            self.value = value
+        def __repr__(self):
+            return 'true' if self.value else 'false'
+    def boolean_to_mongoboolean(x):
+        if isinstance(x, bool):
+            return MongoBoolean(x)
+        return x
+
     #return deep_map(date_to_isodate, deep_map(unicode_to_ascii, query_dict))
-    return deep_map(unicode_to_ascii, deep_map(datetime_to_isodate, query_dict))
+    return deep_map(unicode_to_ascii, deep_map(datetime_to_isodate, deep_map(boolean_to_mongoboolean, query_dict)))
