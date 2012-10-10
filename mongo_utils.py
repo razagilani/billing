@@ -3,6 +3,7 @@ from datetime import date, time, datetime
 from decimal import Decimal
 from billing.mutable_named_tuple import MutableNamedTuple
 from bson.objectid import ObjectId
+from billing.dictutils import deep_map
 
 def python_convert(x):
     '''Strip out the MutableNamedTuples since they are no longer 
@@ -56,3 +57,12 @@ def bson_convert(x):
     raise ValueError("type(%s) is %s: can't convert that into bson" \
             % (x, type(x)))
 
+def format_query(query_dict):
+    '''Un-pythonifies the given query dictionary so it can be pasted directly
+    into the Mongo shell. (Good for error messages.)'''
+    def unicode_to_ascii(x):
+        if type(x) is unicode:
+            return str(x)
+        return x
+    # TODO also convert dates/datetimes to Mongo "ISODate"
+    return deep_map(unicode_to_ascii, query_dict)

@@ -14,7 +14,7 @@ import itertools as it
 import copy
 import uuid as UUID
 import operator
-from billing.mongo_utils import bson_convert, python_convert
+from billing.mongo_utils import bson_convert, python_convert, format_query
 from billing.dictutils import deep_map
 from billing.dateutils import date_to_datetime
 from billing.session_contextmanager import DBSession
@@ -1072,10 +1072,10 @@ class ReebillDAO:
         # make sure exactly one doc was found
         if docs.count() == 0:
             raise NoSuchBillException(("No utilbill found in %s: query was %s")
-                    % (self.utilbills_collection, query))
+                    % (self.utilbills_collection, format_query(query)))
         elif docs.count() > 1:
             raise NotUniqueException(("Multiple utilbills in %s satisfy query"
-                    " %s") % (self.utilbills_collection, query))
+                    " %s") % (self.utilbills_collection, format_query(query)))
         return docs[0]
 
 
@@ -1149,7 +1149,7 @@ class ReebillDAO:
 
             if mongo_doc is None:
                 raise NoSuchBillException(("No reebill found in %s: query was %s")
-                        % (self.reebills_collection, query))
+                        % (self.reebills_collection, format_query(query)))
 
             # convert types in reebill document
             mongo_doc = deep_map(float_to_decimal, mongo_doc)
