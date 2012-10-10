@@ -15,7 +15,7 @@ import copy
 import uuid as UUID
 import operator
 from billing.mongo_utils import bson_convert, python_convert, format_query
-from billing.dictutils import deep_map
+from billing.dictutils import deep_map, subdict
 from billing.dateutils import date_to_datetime
 from billing.session_contextmanager import DBSession
 from billing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
@@ -454,7 +454,7 @@ class MongoReebill(object):
         be exactly one.'''
         matching_utilbills = [u for u in self._utilbills if u['service'] ==
                 service]
-        if len(matching_utilbills) < 0:
+        if len(matching_utilbills) == 0:
             raise ValueError('No utilbill found for service "%s"' % service)
         if len(matching_utilbills) > 1:
             raise ValueError('Multiple utilbills found for service "%s"' % service)
@@ -466,7 +466,7 @@ class MongoReebill(object):
         u = self._get_utilbill_for_service(service)
         handles = [h for h in self.reebill_dict['utilbills'] if h['id'] ==
                 u['_id']]
-        if len(handles) < 0:
+        if len(handles) == 0:
             raise ValueError(('Reebill has no reference to utilbill for '
                     'service "%s"') % service)
         if len(handles) > 1:
@@ -1270,8 +1270,6 @@ class ReebillDAO:
                         "reebill is issued; frozen utility bills should "
                         "already exist")
             
-            reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
-
             for utilbill_handle in reebill.reebill_dict['utilbills']:
                 utilbill_doc = [u for u in reebill._utilbills if u['_id'] ==
                         utilbill_handle['id']][0]
@@ -1288,6 +1286,7 @@ class ReebillDAO:
                 else:
                     self._save_utilbill(utilbill_doc, force=force)
 
+            reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
             self.reebills_collection.save(reebill_doc, safe=True)
             # TODO catch mongo's return value and raise MongoError
 
@@ -1316,6 +1315,19 @@ class ReebillDAO:
             raise IssuedBillError(("This utility bill can't be edited "
                     "because it belongs to an issued reebill: %s-%s") % (
                     utilbill_doc['account'], utilbill_doc['sequence']))
+
+        # check for uniqueness of {account, service, utility, start, end}
+        # (Mongo won't enforce this for us)
+        unique_fields = subdict(utilbill_doc, ['account', 'service', 'utility',
+                'start', 'end'])
+        if sequence_and_version is not None:
+            unique_fields.update({'sequence': sequence_and_version[0],
+                    'version': sequence_and_version[1]})
+        if self.load_utilbills(**unique_fields) != []:
+            raise NotUniqueException(("There's already a utility bill with "
+                    "account=%{account}, service={service}, "
+                    "utility={utility}, start={start}, end={end}")
+                    .format(**utilbill_doc))
 
         if sequence_and_version is not None:
             utilbill_doc.update({
