@@ -1304,15 +1304,16 @@ class ReebillDAO:
         and version keys into the utility bill. (If those keys are already in
         the utility bill, you won't be able to save it.)'''
 
-        # utility bills that belong to a reebill (i.e. already have "sequence"
-        # and "version" keys) cannot be saved
-        # TODO replace this check with a better design when switching to
-        # MongoEngine: https://www.pivotaltracker.com/story/show/37202081
-        if not force and ('sequence' in utilbill_doc or 'version' in
-                utilbill_doc):
-            raise IssuedBillError(("Changes to this utility bill can't be "
-                    "saved because it is attached to a reebill: %s-%s") % (
-                    utilbill_doc['account'], utilbill_doc['sequence']))
+         # NOTE disabled according to https://www.pivotaltracker.com/story/show/37558863
+#        # utility bills that belong to a reebill (i.e. already have "sequence"
+#        # and "version" keys) cannot be saved
+#        # TODO replace this check with a better design when switching to
+#        # MongoEngine: https://www.pivotaltracker.com/story/show/37202081
+#        if not force and ('sequence' in utilbill_doc or 'version' in
+#                utilbill_doc):
+#            raise IssuedBillError(("Changes to this utility bill can't be "
+#                    "saved because it is attached to a reebill: %s-%s") % (
+#                    utilbill_doc['account'], utilbill_doc['sequence']))
 
         # check for uniqueness of {account, service, utility, start, end}
         # (Mongo won't enforce this for us)
