@@ -509,6 +509,8 @@ def get_reebill(account, sequence, start=date(2011,11,12),
         'sequence': sequence,
         'version': version,
     })
+    reebill_dict['period_begin'] = start
+    reebill_dict['period_end'] = end
 
     id = ObjectId()
     reebill_dict['utilbills'][0]['id'] = id
