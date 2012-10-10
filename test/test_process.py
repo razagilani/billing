@@ -707,7 +707,6 @@ port = 27017
             # deletion should fail if any version of a reebill has an
             # association with the utility bill. issue the reebill and create a
             # new version of the reebill that does not have this utilbill.
-            import ipdb; ipdb.set_trace()
             self.process.issue(session, account, 1)
             self.process.new_version(session, account, 1)
             mongo_reebill.version = 1
