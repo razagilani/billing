@@ -243,7 +243,9 @@ MySQL
 
         Loading the database:
 
-        mysql -ureebill-[env] -p[password] -Dskyline-[env] < [workspace]/billing/db/processing/billdb.sql
+	Use destage_from_prod.bash!
+
+        mysql -ureebill-[env] -p[password] -Dskyline_[env] < [workspace]/billing/db/processing/billdb.sql
         - or -
         restore from backup (must  be done as root for some reason)
         mysql --verbose -uroot -p -Dskyline-[env] < ~/[date]billing_mysql.dmp
