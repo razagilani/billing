@@ -164,12 +164,15 @@ function reeBillReady() {
     });
     var upload_submit_button = new Ext.Button({
         text: 'Submit',
-        handler: saveForm,
-        /* TODO: update field values after upload: https://www.pivotaltracker.com/story/show/33241007 */
-        //handler: function() {
-            //saveForm();
-            //uploadStartDateField.setValue(uploadEndDateField.getValue());
-        //}
+        handler: function() {
+            //You cannot simply call saveForm, because it needs to be able to find its parent.
+            //Using 'this' as the scope tells it that it is not just in an anonymus function.
+            saveForm.call(this, function() {
+                utilbillGrid.getBottomToolbar().doRefresh();
+                uploadStartDateField.setValue(uploadEndDateField.getValue());
+                uploadEndDateField.setValue("");
+            })
+        },
     });
 
     var upload_form_panel = new Ext.form.FormPanel({
@@ -1633,7 +1636,7 @@ function reeBillReady() {
     // Generic form save handler
     // 
     // TODO: 20496293 accept functions to callback on form post success
-    function saveForm() {
+    function saveForm(callback) {
         //http://www.sencha.com/forum/showthread.php?127087-Getting-the-right-scope-in-button-handler
         var formPanel = this.findParentByType(Ext.form.FormPanel);
         if (formPanel.getForm().isValid()) {
@@ -1658,8 +1661,10 @@ function reeBillReady() {
                     }
                 },
                 success: function(form, action) {
-                    // TODO: 20496293 pass this in as a callback
-                    utilbillGrid.getBottomToolbar().doRefresh();
+                    // If an argument is not passed into a function, it has type 'undefined'
+                    if (typeof callback !== 'undefined') {
+                        callback()
+                    }
                 }
             })
         }else{
