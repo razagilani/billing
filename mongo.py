@@ -232,6 +232,24 @@ class MongoReebill(object):
                 "consumption_trend": [],
             }
 
+    def convert_to_new_account(self, account):
+        # TODO: the existence of this function is a symptom of ugly design.
+        # figure out how to make it go away if possible.
+        # https://www.pivotaltracker.com/story/show/37798427
+        '''Sets the account of this reebill and all its utility bills to
+        'account', and creates new _ids in all utility bills and the reebill's
+        references to them. And converts frozen utility bills into editable
+        ones by removing the "sequence" and "version" keys, if present. Used
+        for converting an existing reebill and its utility bills into a
+        template for a new account.'''
+        self.account = account
+        for u in self._utilbills:
+            u['account'] = account
+            if 'sequence' in u:
+                del u['sequence']
+            if 'version' in u:
+                del u['version']
+
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
     # strings unless otherwise noted.
