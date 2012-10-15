@@ -1265,9 +1265,11 @@ class ReebillDAO:
         with DBSession(self.state_db) as session:
             issued = self.state_db.is_issued(session, reebill.account,
                     reebill.sequence, version=reebill.version, nonexistent=False)
+            attached = self.state_db.is_attached(session, reebill.account,
+                    reebill.sequence, nonexistent=False)
             if issued and not force:
                 raise IssuedBillError("Can't modify an issued reebill.")
-            if issued and freeze_utilbills:
+            if (issued or attached) and freeze_utilbills:
                 raise IssuedBillError("Can't freeze utility bills because this "
                         "reebill is issued; frozen utility bills should "
                         "already exist")

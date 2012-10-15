@@ -9,7 +9,7 @@ from billing.processing.state import StateDB
 from billing.processing.db_objects import ReeBill, Customer, UtilBill
 import MySQLdb
 from billing.test import example_data
-from billing.mongo import NoSuchBillException, IssuedBillError
+from billing.mongo import NoSuchBillException, IssuedBillError, NotUniqueException
 from billing.session_contextmanager import DBSession
 
 import pprint
@@ -214,8 +214,9 @@ class ReebillDAOTest(unittest.TestCase):
         with DBSession(self.state_db) as session:
             b = example_data.get_reebill('99999', 1)
             self.reebill_dao.save_reebill(b)
+            self.state_db.new_rebill(session, '99999', 1)
 
-            # save frozen utility bills (to prepare for issuing)
+            # save frozen utility bills
             self.reebill_dao.save_reebill(b, freeze_utilbills=True)
             u = b._utilbills[0]
             utilbills = self.reebill_dao.load_utilbills(account='99999',
@@ -226,23 +227,24 @@ class ReebillDAOTest(unittest.TestCase):
                     utility=u['utility'], service=u['service'],
                     start=u['start'], end=u['end'], sequence=1)
             
-            # issued reebill cannot be saved, especially with frozen utilbills
-            self.state_db.new_rebill(session, '99999', 1)
+            # reebill with frozen utility bills can still be saved, but it
+            # can't be saved again with freeze_utilbills=True
+            self.reebill_dao.save_reebill(b)
+            self.assertRaises(NotUniqueException,
+                    self.reebill_dao.save_reebill, b, freeze_utilbills=True)
+            self.reebill_dao.save_reebill(b)
+
             # trying to make SQLAlchemy flush its cache
             #from billing.processing.db_objects import ReeBill
             #session.query(ReeBill).all()
             #sqlalchemy.flush()
+
+            # issued reebill can't be saved at all
             self.state_db.issue(session, '99999', 1)
-            # FIXME exception not raised because rebill does not exist in MySQL
             self.assertRaises(IssuedBillError, self.reebill_dao.save_reebill,
                     b)
-            self.assertRaises(IssuedBillError, self.reebill_dao.save_reebill,
-                    b, freeze_utilbills=True)
-
-            # save_reebill(freeze_utilbills=True) fails if frozen utilbills already
-            # exist
-            self.assertRaises(IssuedBillError, self.reebill_dao.save_reebill,
-                    b, freeze_utilbills=True)
+            self.assertRaises(NotUniqueException,
+                    self.reebill_dao.save_reebill, b, freeze_utilbills=True)
 
     def test_load_utilbill(self):
         # nothing to load
@@ -332,15 +334,11 @@ class ReebillDAOTest(unittest.TestCase):
         self.reebill_dao._save_utilbill(attached_utilbill,
                 sequence_and_version=(1, 0))
 
-        # original utilbill (without "sequence" & "version") should still be
-        # saveable, but attached_utilbill should not
+        # NOTE attached_utilbill is still saveable
+        self.reebill_dao._save_utilbill(attached_utilbill)
+
+        # and so is the original utilbill
         self.reebill_dao._save_utilbill(utilbill)
-        self.assertRaises(IssuedBillError, self.reebill_dao._save_utilbill,
-                attached_utilbill)
-        self.reebill_dao._save_utilbill(utilbill)
-        self.reebill_dao._save_utilbill(utilbill)
-        self.assertRaises(IssuedBillError, self.reebill_dao._save_utilbill,
-                attached_utilbill)
 
     def test_delete_reebill(self):
         with DBSession(self.state_db) as session:
