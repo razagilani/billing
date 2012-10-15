@@ -10,6 +10,9 @@ class MissingDataError(Exception):
 class NoSuchBillException(Exception):
     pass
 
+class NotUniqueException(Exception):
+    pass
+
 class NoRateStructureError(Exception):
     pass
 
@@ -20,7 +23,12 @@ class IssuedBillError(Exception):
     '''Exception for trying to modify a bill that has been issued.'''
     pass
 
-class NotIssuable(Exception):
+class BillStateError(Exception):
+    '''A bill was in a state in which some operation is not allowed.'''
+    pass
+
+class NotIssuable(BillStateError):
+    # TODO maybe remove; BillStateError is specific enough
     '''Trying to issue a bill that is not issuable.'''
 
 class RSIError(Exception):
@@ -44,3 +52,12 @@ class NoSuchRSIError(RSIError):
 
 class BadExpressionError(RSIError):
     pass
+
+class MongoError(Exception):
+    '''MongoDB write error: encapsulates the dictionary returned by PyMongo
+    collection save/remove (when using "safe mode," which we should always be
+    using).'''
+    def __init__(self, err_dict):
+        self.err_dict = err_dict
+    def __str__(self):
+        return str(self.err_dict)
