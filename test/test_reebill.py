@@ -91,13 +91,8 @@ class ReebillTest(unittest.TestCase):
                 self.assertEquals(1, len(all_utilbills))
                 # all its _id fields dates should match the reebill's reference
                 # to it
-                self.assertEquals(reebill._utilbills[0]['_id'], {
-                    'account': reebill.account,
-                    'service': reebill.services[0],
-                    'utility': reebill.utility_name_for_service(reebill.services[0]),
-                    'start': reebill.reebill_dict['utilbills'][0]['start'],
-                    'end': reebill.reebill_dict['utilbills'][0]['end']
-                })
+                self.assertEquals(reebill._utilbills[0]['_id'],
+                        reebill.reebill_dict['utilbills'][0]['id'])
                 
             # this must work because nothing has been changed yet
             check()

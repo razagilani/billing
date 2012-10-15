@@ -28,7 +28,7 @@ from billing.dateutils import estimate_month, month_offset, month_difference
 from billing.monthmath import Month, approximate_month
 from billing.dictutils import deep_map
 from billing.mongo import float_to_decimal
-from billing.exceptions import IssuedBillError, NotIssuable
+from billing.exceptions import IssuedBillError, NotIssuable, BillStateError
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -334,11 +334,11 @@ class Process(object):
         # TODO don't use private '_utilbills' here
         # TODO don't edit mongo documents outside mongo.py
         for u in reebill._utilbills:
-            u['_id']['account'] = reebill.reebill_dict['_id']['account']
-            if 'sequence' in u['_id']:
-                del u['_id']['sequence']
-            if 'version' in u['_id']:
-                del u['_id']['version']
+            u['account'] = reebill.reebill_dict['_id']['account']
+            if 'sequence' in u:
+                del u['sequence']
+            if 'version' in u:
+                del u['version']
         new_reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         new_reebill.version = 0
         new_reebill.clear()
@@ -386,11 +386,10 @@ class Process(object):
         if not self.state_db.is_issued(session, account, sequence):
             raise ValueError("Can't create new version of an un-issued bill.")
 
-        # get current max version from MySQL
+        # get current max version from MySQL, and load that version's document
+        # from Mongo (even if higher version exists in Mongo, it doesn't count
+        # unless MySQL knows about it)
         max_version = self.state_db.max_version(session, account, sequence)
-
-        # load that version's document from Mongo (even if higher version
-        # exists in Mongo, it doesn't count unless MySQL knows about it)
         reebill = self.reebill_dao.load_reebill(account, sequence,
                 version=max_version)
 
@@ -400,10 +399,6 @@ class Process(object):
             rs_name = reebill.rate_structure_name_for_service(service)
             cprs = self.rate_structure_dao.load_cprs(reebill.account,
                     reebill.sequence, reebill.version, utility_name, rs_name)
-            if cprs is None:
-                raise Exception('No CPRS found for %s-%s-%s, %s, %s' %
-                        (account, sequence, reebill.version, utility_name,
-                        rs_name))
             self.rate_structure_dao.save_cprs(account, sequence, max_version +
                     1, utility_name, rs_name, cprs)
 
@@ -421,7 +416,8 @@ class Process(object):
         # increment max version in mysql
         self.state_db.increment_version(session, account, sequence)
 
-        # increment version, make un-issued, and replace utilbills with the current-truth ones
+        # increment version, make un-issued, and replace utilbills with the
+        # current-truth ones
         self.reebill_dao.increment_reebill_version(session, reebill)
 
         self.compute_bill(session, predecessor, reebill)
@@ -649,6 +645,10 @@ class Process(object):
         'sequence' and all utilbills belonging to that customer whose entire
         periods are within the reebill's period and whose services are not
         suspended. The utility bills are marked as processed.'''
+        if sequence > 1 and not self.state_db.is_attached(session, account,
+                sequence - 1):
+            raise BillStateError("Predecessor's utility bill(s) are not "
+                    "attached yet.")
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # save in mongo, with frozen copies of the associated utility bill
@@ -957,6 +957,8 @@ class Process(object):
                 sequence - 1, version=0):
             raise NotIssuable(("Can't issue reebill %s-%s because its "
                     "predecessor has not been issued.") % (account, sequence))
+        # TODO complain if utility bills have not been attached yet
+        # https://www.pivotaltracker.com/story/show/37560565
 
         # set issue date and due date in mongo
         reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -974,8 +976,10 @@ class Process(object):
         if lc is not None:
             reebill.late_charges = lc
 
-        # save in mongo, with frozen copies of the associated utility bill
-        self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
+        # save in mongo
+        # NOTE frozen utility bills should already exist (created by
+        # attach_utilbills)--so they're not being created here
+        self.reebill_dao.save_reebill(reebill)
 
         # mark as issued in mysql
         self.state_db.issue(session, account, sequence)

@@ -11,7 +11,7 @@ import traceback
 import uuid
 import yaml
 import yaml
-from billing.mongo_utils import bson_convert, python_convert
+from billing.mongo_utils import bson_convert, python_convert, format_query
 from billing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError
 
 import pprint
@@ -220,7 +220,7 @@ class RateStructureDAO(object):
         }
         cprs = self.collection.find_one(query)
         if cprs is None:
-            raise ValueError('Could not find CPRS: query was %s' % query)
+            raise ValueError('Could not find CPRS: query was %s' % format_query(query))
         return cprs
 
     def save_rs(self, rate_structure_data):
