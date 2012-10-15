@@ -119,15 +119,24 @@ def safe_save(doc, collection):
 
 with DBSession(sdb) as session:
     for acc in sdb.listAccounts(session):
-        for seq in sdb.listSequences(session, acc):
-            #if (acc, seq) == ('10001', 32): import ipdb; ipdb.set_trace()
-            max_version = sdb.max_version(session, acc, seq)
+        # get sequences from mysql AND mongo (just in case some bad code is
+        # depending on reebill docs that are only in mongo)
+        mysql_sequences = sdb.listSequences(session, acc)
+        mongo_sequences = [b['_id']['sequence'] for b in reebills_col.find({'_id.account': acc})]
+        for seq in range(min(mongo_sequences + mysql_sequences),
+                max(mongo_sequences + mysql_sequences) + 1):
+            # get max version from mongo: it's should always be >= the version
+            # from mysql, usually == (NOTE sequence 0 never exists in in MySQL)
+            mysql_max_version = 0 if seq == 0 else sdb.max_version(session, acc, seq)
+            mongo_max_version = max(b['_id']['version'] for b in reebills_col.find({'_id.account': acc, '_id.sequence': seq}))
+            assert mongo_max_version >= mysql_max_version
+            max_version = mongo_max_version
             for version in range(max_version + 1):
                 cursor = reebills_col.find({'_id.account': acc, '_id.sequence':seq, '_id.version': version})
                 assert cursor.count() == 1
                 reebill = cursor[0]
                 
-                issued = sdb.is_issued(session, acc, seq, version=version)
+                issued = sdb.is_issued(session, acc, seq, version=version, nonexistent=False)
 
                 try:
                     if version < max_version:
