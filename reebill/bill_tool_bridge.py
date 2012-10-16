@@ -664,12 +664,10 @@ class BillToolBridge:
     @json_exception
     def roll(self, account, sequence, **args):
         with DBSession(self.state_db) as session:
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
             new_reebill = self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(new_reebill)
-            new_reeill = self.reebill_dao.load_reebill(account, sequence)
+            new_reebill = self.reebill_dao.load_reebill(account, int(sequence) + 1)
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
                     account, sequence)
             return self.dumps({'success': True})
