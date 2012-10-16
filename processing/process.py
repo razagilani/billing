@@ -595,6 +595,7 @@ class Process(object):
         reebill.billing_address = {}
         reebill.service_address = {}
         reebill.prior_balance = Decimal('0')
+        reebill.late_charge_rate = late_charge_rate
         # NOTE reebill.clear is not called here because roll_bill takes care of that
 
         # create template reebill in mongo for this new account
