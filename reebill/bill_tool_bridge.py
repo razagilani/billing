@@ -788,6 +788,7 @@ class BillToolBridge:
         and marking the utility bills as processed. Utility bills for suspended
         services are skipped. Note that this does not issue the reebill or give
         it an issue date.'''
+        sequence = int(sequence)
         # finalize utility bill association
         self.process.attach_utilbills(session, account,
                 sequence)
