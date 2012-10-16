@@ -642,3 +642,19 @@ To run the specific method "test_adjustment" in the class ProcessTest in that fi
 nosetsts billing.test.test_process:ProcessTest.test_adjustment
 
 If want to run all the tests in just one file, you can skip nosetests and use "python filename.py"
+
+
+
+Working with PDF Files
+======================
+
+Splitting apart a PDF document example
+    pdftk scan0015.pdf burst output HACA1-%d.pdf
+
+Combining pages together
+    pdftk HACA1-2.pdf HACA2-8.pdf cat output HACA2.pdf
+
+
+
+
+
