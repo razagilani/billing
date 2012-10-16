@@ -633,6 +633,12 @@ class Process(object):
                 sequence - 1):
             raise BillStateError("Predecessor's utility bill(s) are not "
                     "attached yet.")
+
+        # if already attached, do nothing (otherwise trying to re-freeze
+        # utility bills below will cause an error)
+        if self.state_db.is_attached(session, account, sequence):
+            return
+
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # save in mongo, with frozen copies of the associated utility bill
