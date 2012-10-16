@@ -250,6 +250,20 @@ class MongoReebill(object):
             if 'version' in u:
                 del u['version']
 
+    def new_utilbill_ids(self):
+        '''Replaces _ids in utility bill documents and the reebill document's
+        references to them, and removed "sequence" and "version" keys if
+        present (to convert frozen utility bill into editable one). Used when
+        rolling to create copies of the utility bills.'''
+        for utilbill_handle in self.reebill_dict['utilbills']:
+            utilbill_doc = self._get_utilbill_for_handle(utilbill_handle)
+            new_id = bson.objectid.ObjectId()
+            utilbill_handle['id'] = utilbill_doc['_id'] = new_id
+            if 'sequence' in utilbill_doc:
+                del utilbill_doc['sequence']
+            if 'version' in utilbill_doc:
+                del utilbill_doc['version']
+
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
     # strings unless otherwise noted.
@@ -495,6 +509,10 @@ class MongoReebill(object):
     def _get_utilbill_for_handle(self, utilbill_handle):
         '''Returns the utility bill dictionary whose _id correspinds to the
         "id" in the given internal utilbill dictionary.'''
+        # i am calling each subdocument in the "utilbills" list (which contains
+        # the utility bill's _id and data related to that bill) a "handle"
+        # because it is what you use to grab a utility bill and it's kind of
+        # like a pointer.
         id = utilbill_handle['id']
         matching_utilbills = [u for u in self._utilbills if u['_id'] == id]
         if len(matching_utilbills) < 0:
@@ -1125,11 +1143,13 @@ class ReebillDAO:
 
         # make sure exactly one doc was found
         if docs.count() == 0:
-            raise NoSuchBillException(("No utilbill found in %s: query was %s")
-                    % (self.utilbills_collection, format_query(query)))
+            raise NoSuchBillException(("No utility bill found in %s: "
+                    "query was %s") % (self.utilbills_collection,
+                    format_query(query)))
         elif docs.count() > 1:
-            raise NotUniqueException(("Multiple utilbills in %s satisfy query"
-                    " %s") % (self.utilbills_collection, format_query(query)))
+            raise NotUniqueException(("Multiple utility bills in %s satisfy "
+                    "query %s") % (self.utilbills_collection,
+                    format_query(query)))
         return docs[0]
 
 
@@ -1140,8 +1160,13 @@ class ReebillDAO:
         result = []
 
         for utilbill_handle in reebill_doc['utilbills']:
-            utilbill_doc = self.utilbills_collection.find_one({'_id':
-                    utilbill_handle['id']})
+            query = {'_id': utilbill_handle['id']}
+            utilbill_doc = self.utilbills_collection.find_one(query)
+            if utilbill_doc == None:
+                raise NoSuchBillException(("No utility bill found for reebill "
+                        " %s-%s in %s: query was %s") % (
+                        reebill_doc['account'], reebill_doc['sequence'],
+                        self.utilbills_collection, format_query(query)))
 
             # convert types
             utilbill_doc = deep_map(float_to_decimal, utilbill_doc)
@@ -1202,7 +1227,7 @@ class ReebillDAO:
                 raise ValueError('Unknown version specifier "%s"' % version)
 
             if mongo_doc is None:
-                raise NoSuchBillException(("No reebill found in %s: query was %s")
+                raise NoSuchBillException(("no reebill found in %s: query was %s")
                         % (self.reebills_collection, format_query(query)))
 
             # convert types in reebill document

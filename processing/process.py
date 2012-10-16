@@ -331,32 +331,23 @@ class Process(object):
 
         # construct a new reebill from an old one. the new one's version is
         # always 0 even if it was created from a non-0 version of the old one.
-        # TODO don't use private '_utilbills' here
-        # TODO don't edit mongo documents outside mongo.py
-        for u in reebill._utilbills:
-            u['account'] = reebill.reebill_dict['_id']['account']
-            if 'sequence' in u:
-                del u['sequence']
-            if 'version' in u:
-                del u['version']
+        reebill.new_utilbill_ids()
         new_reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         new_reebill.version = 0
+        new_reebill.new_utilbill_ids()
         new_reebill.clear()
 
-        new_period_end, utilbills = state.guess_utilbills_and_end_date(session,
+        new_period_end, _ = state.guess_utilbills_and_end_date(session,
                 reebill.account, reebill.period_end)
 
         new_reebill.period_end = new_period_end
 
-        # set discount rate to the instananeous value from MySQL
+        # set discount rate & late charge rate to the instananeous value from MySQL
+        # NOTE suspended_services list is carried over automatically
         new_reebill.discount_rate = self.state_db.discount_rate(session,
                 reebill.account)
-
-        # set late charge rate to the instananeous value from MySQL
         new_reebill.late_charge_rate = self.state_db.late_charge_rate(session,
                 reebill.account)
-
-        # NOTE suspended_services list is carried over automatically
 
         new_reebill.sequence += 1
 
