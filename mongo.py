@@ -481,6 +481,12 @@ class MongoReebill(object):
     def ree_value(self, value):
         self.reebill_dict['ree_value'] = value
 
+    def _utilbill_ids(self):
+        '''Useful for debugging.'''
+        # note order is not guranteed so the result may look weird
+        return zip([h['id'] for h in self.reebill_dict['utilbills']],
+                [u['_id'] for u in self._utilbills])
+
     def _get_utilbill_for_service(self, service):
         '''Returns utility bill document having the given service. There must
         be exactly one.'''
@@ -520,6 +526,21 @@ class MongoReebill(object):
         if len(matching_utilbills) > 1:
             raise ValueError('Multiple utilbills found for id "%s"' % id)
         return matching_utilbills[0]
+
+    def _set_utilbill_for_id(self, id, new_utilbill_doc):
+        '''Used in save_reebill to replace an editable utility bill document
+        with a frozen one.'''
+        # find all utility bill documents with the given id, and make sure
+        # there's exactly 1
+        matching_indices = [index for (index, doc) in
+                enumerate(self._utilbills) if doc['_id'] == id]
+        if len(matching_indices) < 0:
+            raise ValueError('No utilbill found for id "%s"' % id)
+        if len(matching_indices) > 1:
+            raise ValueError('Multiple utilbills found for id "%s"' % id)
+
+        # replace that one with 'new_utilbill_doc'
+        self._utilbills[matching_indices[0]] = new_utilbill_doc
 
     def hypothetical_total_for_service(self, service_name):
         '''Returns the total of hypothetical charges for the utilbill whose
@@ -1325,11 +1346,20 @@ class ReebillDAO:
                     # issuing): convert the utility bills into frozen copies by
                     # putting "sequence" and "version" keys in the utility
                     # bill, and changing its _id to a new one
+                    old_id = utilbill_doc['_id']
                     new_id = bson.objectid.ObjectId()
-                    utilbill_handle['id'] = utilbill_doc['_id'] = new_id
+
+                    # copy utility bill doc so changes to it do not persist if
+                    # saving fails below
+                    utilbill_doc = copy.deepcopy(utilbill_doc)
+                    utilbill_doc['_id'] = new_id
                     self._save_utilbill(utilbill_doc, force=force,
                             sequence_and_version=(reebill.sequence,
                             reebill.version))
+                    # saving succeeded: set handle id to match the saved
+                    # utility bill and replace the old utility bill document with the new one
+                    utilbill_handle['id'] = new_id
+                    reebill._set_utilbill_for_id(old_id, utilbill_doc)
                 else:
                     self._save_utilbill(utilbill_doc, force=force)
 
@@ -1349,36 +1379,39 @@ class ReebillDAO:
         and version keys into the utility bill. (If those keys are already in
         the utility bill, you won't be able to save it.)'''
 
-         # NOTE disabled according to https://www.pivotaltracker.com/story/show/37558863
-#        # utility bills that belong to a reebill (i.e. already have "sequence"
-#        # and "version" keys) cannot be saved
-#        # TODO replace this check with a better design when switching to
-#        # MongoEngine: https://www.pivotaltracker.com/story/show/37202081
-#        if not force and ('sequence' in utilbill_doc or 'version' in
-#                utilbill_doc):
-#            raise IssuedBillError(("Changes to this utility bill can't be "
-#                    "saved because it is attached to a reebill: %s-%s") % (
-#                    utilbill_doc['account'], utilbill_doc['sequence']))
-
-        # check for uniqueness of {account, service, utility, start, end}
-        # (Mongo won't enforce this for us)
+        # check for uniqueness of {account, service, utility, start, end} (and
+        # sequence + version if appropriate). Mongo won't enforce this for us.
         unique_fields = {
             'account': utilbill_doc['account'],
             'service': utilbill_doc['service'],
             'utility': utilbill_doc['utility'],
             'start': utilbill_doc['start'],
             'end': utilbill_doc['end'],
-            'sequence': False if sequence_and_version is None
-                    else sequence_and_version[0],
-            'version': False if sequence_and_version is None
-                    else sequence_and_version[1],
         }
+        if sequence_and_version is not None:
+            # this utility bill is being frozen: check for existing frozen
+            # utility bills with same sequence and version (ignoring un-frozen
+            # ones)
+            unique_fields['sequence'] = sequence_and_version[0]
+            unique_fields['version'] = sequence_and_version[1]
+        elif 'sequence' in utilbill_doc:
+            # this utility bill is already a frozen one and has been saved:
+            # check for existing frozen utility bills with the same sequence
+            # and version (ignoring un-frozen ones)
+            unique_fields['sequence'] = utilbill_doc['sequence']
+            unique_fields['version'] = utilbill_doc['version']
+        else:
+            # not frozen: only check for existing utility bills that don't have
+            # sequence/version keys
+            unique_fields['sequence'] = {'$exists': False}
+            unique_fields['version'] = {'$exists': False}
         for duplicate in self.load_utilbills(**unique_fields):
             if duplicate['_id'] != utilbill_doc['_id']:
-                raise NotUniqueException(("There's already a utility bill with "
-                        "account=%{account}, service={service}, "
-                        "utility={utility}, start={start}, end={end}")
-                        .format(**utilbill_doc))
+                raise NotUniqueException(("Can't save utility bill with "
+                        "_id=%s: There's already a utility bill with "
+                        "id=%s matching %s") % (utilbill_doc['_id'],
+                        duplicate['_id'],
+                        format_query(unique_fields)))
 
         if sequence_and_version is not None:
             utilbill_doc.update({

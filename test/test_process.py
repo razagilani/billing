@@ -1124,23 +1124,25 @@ port = 27017
         cause it to change (a bug we have seen).'''
         acc = '99999'
         with DBSession(self.state_db) as session:
-            # setup: sequence-0 template, rate structure documents
-            zero = example_data.get_reebill(acc, 0)
-            self.reebill_dao.save_reebill(zero)
-            self.state_db.new_rebill(session, acc, 1)
+            # setup: reebill #1 to serve as predecessor for computing below
+            # (must be saved in mongo only so ReebillDAO.get_first_bill_date_for_account works)
+            one = example_data.get_reebill(acc, 1, version=0,
+                    start=date(2012,1,1), end=date(2012,2,1))
+            self.reebill_dao.save_reebill(one)
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
 
             for use_olap in (True, False):
-                b = example_data.get_reebill(acc, 1, version=0)
-                self.reebill_dao.save_reebill(b)
+                b = example_data.get_reebill(acc, 1, version=0,
+                        start=date(2012,2,1), end=date(2012,3,1))
+                # NOTE no need to save 'b' in mongo
                 olap_id = 'FakeSplinter ignores olap id'
 
                 # bind & compute once to start. this change should be
                 # idempotent.
                 fbd.fetch_oltp_data(self.splinter, olap_id, b, use_olap=use_olap)
-                self.process.compute_bill(session, zero, b)
+                self.process.compute_bill(session, one, b)
 
                 # save original values
                 # (more fields could be added here)
@@ -1167,23 +1169,23 @@ port = 27017
                 check()
 
                 # bind and compute repeatedly
-                self.process.compute_bill(session, zero, b)
+                self.process.compute_bill(session, one, b)
                 check()
                 fbd.fetch_oltp_data(self.splinter, olap_id, b)
                 check()
-                self.process.compute_bill(session, zero, b)
+                self.process.compute_bill(session, one, b)
                 check()
-                self.process.compute_bill(session, zero, b)
-                check()
-                fbd.fetch_oltp_data(self.splinter, olap_id, b)
-                fbd.fetch_oltp_data(self.splinter, olap_id, b)
-                fbd.fetch_oltp_data(self.splinter, olap_id, b)
-                check()
-                self.process.compute_bill(session, zero, b)
+                self.process.compute_bill(session, one, b)
                 check()
                 fbd.fetch_oltp_data(self.splinter, olap_id, b)
+                fbd.fetch_oltp_data(self.splinter, olap_id, b)
+                fbd.fetch_oltp_data(self.splinter, olap_id, b)
                 check()
-                self.process.compute_bill(session, zero, b)
+                self.process.compute_bill(session, one, b)
+                check()
+                fbd.fetch_oltp_data(self.splinter, olap_id, b)
+                check()
+                self.process.compute_bill(session, one, b)
                 check()
 
 if __name__ == '__main__':

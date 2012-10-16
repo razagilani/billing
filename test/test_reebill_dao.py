@@ -232,6 +232,10 @@ class ReebillDAOTest(unittest.TestCase):
             self.reebill_dao.save_reebill(b)
             self.assertRaises(NotUniqueException,
                     self.reebill_dao.save_reebill, b, freeze_utilbills=True)
+
+            # save again to make sure the failed call to
+            # save_reebill(freeze_utilbills=True) above did not modify
+            # _id, sequence, or version
             self.reebill_dao.save_reebill(b)
 
             # trying to make SQLAlchemy flush its cache
@@ -339,6 +343,14 @@ class ReebillDAOTest(unittest.TestCase):
 
         # and so is the original utilbill
         self.reebill_dao._save_utilbill(utilbill)
+
+        # it should never be possible to save a utilbill with the same
+        # account, utility, service, start, end as another
+        other_utilbill = example_data.get_utilbill_dict('99999',
+                start=utilbill['start'], end=utilbill['end'],
+                service=utilbill['service'], utility=utilbill['utility'])
+        self.assertRaises(NotUniqueException, self.reebill_dao._save_utilbill,
+                other_utilbill)
 
     def test_delete_reebill(self):
         with DBSession(self.state_db) as session:
