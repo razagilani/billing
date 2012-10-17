@@ -557,7 +557,7 @@ class MongoReebill(object):
         return self._get_utilbill_for_service(service_name)['total']
 
     def set_actual_total_for_service(self, service_name, new_total):
-        self._get_utilbill_for_service(service_name)['actual_total'] = new_total
+        self._get_utilbill_for_service(service_name)['total'] = new_total
 
     def ree_value_for_service(self, service_name):
         '''Returns the total of 'ree_value' (renewable energy value offsetting
