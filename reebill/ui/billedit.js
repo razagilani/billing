@@ -580,7 +580,7 @@ function reeBillReady() {
                 var jsonData = Ext.util.JSON.decode(result.responseText);
                 Ext.Msg.hide();
                 if (jsonData.success == true) {
-                    reeBillStore.reload();
+                    reeBillStore.reload(Ext.apply({}, {operation: deleteReebills}, reeBillStore.lastOptions));
                 } else {
                     Ext.MessageBox.alert("Error", jsonData.errors.reason +
                         "\n" + jsonData.errors.details);
@@ -610,7 +610,7 @@ function reeBillReady() {
                     }
             });
 
-            reeBillStore.reload();
+            reeBillStore.reload(Ext.apply({}, {operation: deleteButton}, reeBillStore.lastOptions));
         }
     })
 
@@ -633,7 +633,7 @@ function reeBillReady() {
                     var jsonData = Ext.util.JSON.decode(result.responseText);
                     Ext.Msg.hide();
                     if (jsonData.success == true) {
-                        reeBillStore.reload();
+                        reeBillStore.reload(Ext.apply({}, {operation: versionButton}, reeBillStore.lastOptions));
                         Ext.MessageBox.alert("New version created", jsonData.new_version);
                     } else {
                         Ext.MessageBox.alert("Error", jsonData.errors.reason +
@@ -770,6 +770,9 @@ function reeBillReady() {
     reeBillStore.on('load', function (store, records, options) {
         // was disabled prior to loading, and must be enabled when loading is complete
         reeBillGrid.setDisabled(false);
+
+        if(options.operation === rollOperation)
+            reeBillGrid.getSelectionModel().selectFirstRow()
     });
 
     // handles all server errors for reeBillStore. see DataProxy.exception
@@ -1496,7 +1499,7 @@ function reeBillReady() {
                     if (jsonData.success == false) {
                         Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                     } else {
-                        reeBillStore.reload();
+                        reeBillStore.reload(Ext.apply({}, {operation: rollOperation}, reeBillStore.lastOptions));
                     }
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
