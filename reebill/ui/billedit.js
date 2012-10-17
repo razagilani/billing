@@ -342,6 +342,7 @@ function reeBillReady() {
                 header: 'Service',
                 dataIndex: 'service',
                 editable: true,
+                editor: new Ext.form.TextField({}),
                 width: 50,
             },
             new Ext.grid.DateColumn({
@@ -451,7 +452,7 @@ function reeBillReady() {
                     // new window
                     if (record.data.state == 'Final' || record.data.state == 'Utility Estimated') {
 
-                        utilbillImageDataConn.request({
+                        utilbilleditableImageDataConn.request({
                             params: {account: record.data.account, begin_date: formatted_begin_date_string,
                                 end_date: formatted_end_date_string, resolution: resolution},
                             success: function(result, request) {
@@ -498,10 +499,21 @@ function reeBillReady() {
     // disallow rowediting of utility bills that are associated to reebills
     utilbillGrid.on('beforeedit', function(e) {
         if (!e.record.data.editable) {
-            Ext.Msg.alert("Utility bill date ranges cannot be edited once associated to a ReeBill.");
+            Ext.Msg.alert("Utility bill data cannot be edited once associated to a ReeBill.");
             return false;
         }
 
+    });
+
+    utilbillGrid.on('validateedit', function(e) {
+        // Resolve that 'service' values can only be Gas or Electric
+        // (or whatever is specified as acceptable values)
+        // TODO: Make this depend on a data source of good values rather than hard-coded values
+        if(e.field == 'service' && e.value != "Gas" && e.value != "Electric")
+        {
+            Ext.Msg.alert("Service type must be one of: \'Gas\' \'Electric\'");
+            return false;
+        }
     });
 
     //
