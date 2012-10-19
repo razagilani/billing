@@ -4,6 +4,7 @@ from mongoengine import Document, EmbeddedDocument
 from mongoengine import StringField, IntField, FloatField, BooleanField
 from mongoengine import DateTimeField, ListField, DictField
 from mongoengine import EmbeddedDocumentField
+from mongoengine import ObjectIdField
 '''MongoEngine schema definition for utility bill documents. Move this into
 mongo.py when it's done.'''
 
@@ -31,31 +32,23 @@ class Charge(EmbeddedDocument):
     rate = FloatField(required=True)
     total = FloatField(required=True)
 
-class UtilBillID(EmbeddedDocument):
-    account = StringField(required=True)
-    utility = StringField(required=True)
-    service = StringField(required=True)
-    start = DateTimeField(required=True) # Mongo does not have plain dates
-    end = DateTimeField(required=True)
-
-    # _id fields only present for frozen utility bills that belong to issued
-    # reebills
-    # TODO turn frozen utilbills into a subclass that contains these extra
-    # fields?
-    sequence = StringField(required=False)
-    version = IntField(required=False)
-
 class UtilBill(Document):
     meta = {
-        # "db_alias" tells MongoEngine which database this goes with, while still allowing it to be configurable.
+        # "db_alias" tells MongoEngine which database this goes with, while
+        # still allowing it to be configurable.
         'db_alias': 'utilbills',
         'collection': 'utilbills',
         'allow_inheritance': False
     }
 
-    # unfortunately _id must be defined as an "embedded document" (just like
-    # any other dictionary)
-    _id = EmbeddedDocumentField(UtilBillID)
+    _id = ObjectIdField(required=True)
+
+    # unofficially unique identifying fields
+    account = StringField(required=True)
+    utility = StringField(required=True)
+    service = StringField(required=True)
+    start = DateTimeField(required=True) # Mongo does not have plain dates
+    end = DateTimeField(required=True)
 
     # other fields
     chargegroups = DictField(required=True,
@@ -70,7 +63,7 @@ if __name__ == '__main__':
     mongoengine.connect('skyline-dev', host='localhost', port=27017, alias='utilbills')
     try:
         for u in UtilBill.objects():
-            print u._id.account, u._id.start
+            print u.account, u.start
             #for gp, charges in u.chargegroups.iteritems():
                 #print '%s:\n%s' % (
                     #gp,
