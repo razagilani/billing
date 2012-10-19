@@ -120,11 +120,12 @@ class Meter(EmbeddedDocument):
     estimated = BooleanField(required=True)
 
     def to_dict(self):
-        return {
-            'registers': [r.to_dict() for r in self.registers()],
-            field : getattr(self, field) for field in [rsi_binding, description,
-                    uuid, quantity_units, quantity, rate, total]
+        result = {
+            field : getattr(self, field) for field in [rsi_binding,
+                    description, uuid, quantity_units, quantity, rate, total]
         }
+        result['registers'] = [r.to_dict() for r in self.registers()]
+        return result
 
 class Charge(EmbeddedDocument):
     '''A charge in a utility bill document.'''
@@ -168,11 +169,11 @@ class UtilBill(Document):
     billing_address = DictField(required=True, field=StringField())
     meters = ListField(field=EmbeddedDocumentField(Meter), required=True)
 
-    @proprerty
+    @property
     def period(self):
         return self.start, self.end
 
-    @proprerty
+    @property
     def meter_period(self):
         m = meters[0]
         return m.prior_read_date, m.present_read_date
@@ -592,7 +593,7 @@ class MongoReebill(object):
         utility bill has the given service. There must be exactly 1.'''
         u = self._get_utilbill_for_service(service)
         handles = [h for h in self.reebill_dict['utilbills'] if h['id'] ==
-                u._id]]
+                u._id]
         if len(handles) == 0:
             raise ValueError(('Reebill has no reference to utilbill for '
                     'service "%s"') % service)
@@ -704,7 +705,6 @@ class MongoReebill(object):
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
         return self._get_utilbill_for_service(service_name).chargegroups.keys()
-                .keys()
 
     @property
     def services(self):
