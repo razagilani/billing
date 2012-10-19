@@ -231,6 +231,7 @@ class BillToolBridge:
 
             # directory to store temporary files for pdf rendering
             DEFAULT_RENDERING_TEMP_DIRECTORY = '/tmp'
+            DEFAULT_BACKGROUNDS = 'EmeraldCity-FullBleed-1v3.png EmeraldCity-FullBleed-2v3.png'
 
             # log file info
             self.config.add_section('log')
@@ -245,6 +246,9 @@ class BillToolBridge:
             # reebill pdf rendering
             self.config.add_section('reebillrendering')
             self.config.set('reebillrendering', 'temp_directory', DEFAULT_RENDERING_TEMP_DIRECTORY)
+            self.config.set('reebillrendering', 'default_backgrounds', DEFAULT_BACKGROUNDS)
+            self.config.set('reebillrendering', 'teva_backgrounds', '')
+            self.config.set('reebillrendering', 'teva_accounts', '')
 
             # TODO default config file is incomplete
 
@@ -414,10 +418,11 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def estimated_revenue_report(self, **kwargs):
+    def estimated_revenue_report(self, start, limit, **kwargs):
         '''Handles AJAX request for data to fill estimated revenue report
         grid.''' 
         with DBSession(self.state_db) as session:
+            start, limit = int(start), int(limit)
             er = EstimatedRevenue(self.state_db, self.reebill_dao,
                     self.ratestructure_dao, self.billUpload, self.nexus_util,
                     self.splinter)
@@ -446,7 +451,8 @@ class BillToolBridge:
                 #print rows
             return self.dumps({
                 'success': True,
-                'rows': rows
+                'rows': rows[start:start+limit],
+                'results': len(rows) 
             })
 
     @cherrypy.expose
@@ -658,12 +664,10 @@ class BillToolBridge:
     @json_exception
     def roll(self, account, sequence, **args):
         with DBSession(self.state_db) as session:
-            if not account or not sequence:
-                raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, sequence)
             new_reebill = self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(new_reebill)
-            new_reeill = self.reebill_dao.load_reebill(account, sequence)
+            new_reebill = self.reebill_dao.load_reebill(account, int(sequence) + 1)
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
                     account, sequence)
             return self.dumps({'success': True})
@@ -773,7 +777,7 @@ class BillToolBridge:
                 sequence,
                 self.config.get("billdb", "billpath")+ "%s" % account, 
                 "%.4d.pdf" % int(sequence),
-                "EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
+                #"EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
                 False
             )
             return self.dumps({'success': True})
@@ -784,6 +788,7 @@ class BillToolBridge:
         and marking the utility bills as processed. Utility bills for suspended
         services are skipped. Note that this does not issue the reebill or give
         it an issue date.'''
+        sequence = int(sequence)
         # finalize utility bill association
         self.process.attach_utilbills(session, account,
                 sequence)
@@ -929,7 +934,7 @@ class BillToolBridge:
                 self.renderer.render_max_version(session, reebill.account, reebill.sequence, 
                     self.config.get("billdb", "billpath")+ "%s" % reebill.account, 
                     "%.4d.pdf" % int(reebill.sequence),
-                    "EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
+                    #"EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
                     True
                 )
 
