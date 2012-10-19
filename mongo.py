@@ -24,6 +24,9 @@ from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1).pprint
 sys.stdout = sys.stderr
 
+###############################################################################
+# utility functions
+###############################################################################
 
 # type-conversion functions
 
@@ -91,6 +94,65 @@ def unflatten_chargegroups_list(flat_charges):
             del charge['chargegroup']
             new_chargegroups[cg].append(charge)
     return new_chargegroups
+
+###############################################################################
+# utility bill classes
+###############################################################################
+
+class Register(EmbeddedDocument):
+    quantity_units = StringField(required=True)
+    quantity = FloatField(required=True)
+    register_binding = StringField(required=True)
+    identifier = StringField(required=True)
+    type = StringField(required=True)
+    description = StringField(required=True)
+
+class Meter(EmbeddedDocument):
+    registers = ListField(field=EmbeddedDocumentField(Register))
+    identifier = StringField(required=True)
+    prior_read_date = DateTimeField(required=True)
+    present_read_date = DateTimeField(required=True)
+    estimated = BooleanField(required=True)
+
+class Charge(EmbeddedDocument):
+    rsi_binding = StringField(required=True)
+    description = StringField(required=True)
+    uuid = StringField(required=True)
+    quantity_units = StringField(required=True)
+    quantity = FloatField(required=True)
+    rate = FloatField(required=True)
+    total = FloatField(required=True)
+
+class UtilBill(Document):
+    meta = {
+        # "db_alias" tells MongoEngine which database this goes with, while
+        # still allowing it to be configurable.
+        'db_alias': 'utilbills',
+        'collection': 'utilbills',
+        'allow_inheritance': False
+    }
+
+    _id = ObjectIdField(required=True)
+
+    # unofficially unique identifying fields
+    account = StringField(required=True)
+    utility = StringField(required=True)
+    service = StringField(required=True)
+    start = DateTimeField(required=True) # Mongo does not have plain dates
+    end = DateTimeField(required=True)
+
+    # other fields
+    chargegroups = DictField(required=True,
+            field=ListField(field=EmbeddedDocumentField(Charge)))
+    total = FloatField(required=True)
+    rate_structure_binding = StringField(required=True)
+    service_address = DictField(required=True, field=StringField())
+    billing_address = DictField(required=True, field=StringField())
+    meters = ListField(field=EmbeddedDocumentField(Meter), required=True)
+
+###############################################################################
+# reebill
+###############################################################################
 
 class MongoReebill(object):
     '''Class representing the reebill data structure stored in MongoDB. All
@@ -1023,6 +1085,11 @@ class MongoReebill(object):
                         #del charge['chargegroup']
                         #new_chargegroups[cg].append(charge)
                 #ub[chargegroups] = new_chargegroups
+
+
+###############################################################################
+# DAO
+###############################################################################
 
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
