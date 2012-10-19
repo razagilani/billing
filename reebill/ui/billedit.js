@@ -4281,7 +4281,7 @@ function reeBillReady() {
                 dataIndex: 'primusname',
                 renderer: accountGridColumnRenderer,
             },{
-                header: 'Days since last UtilBill',
+                header: 'Days Since Utility Bill',
                 sortable: true,
                 dataIndex: 'dayssince',
                 renderer: accountGridColumnRenderer,
