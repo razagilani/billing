@@ -1774,14 +1774,14 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def reebill(self, xaction, start, limit, account, **kwargs):
+    def reebill(self, xaction, start, limit, account, sort = u'sequence', dir = u'DESC', **kwargs):
         '''Handles AJAX requests for reebill grid data.'''
         if not xaction or not start or not limit:
             raise ValueError("Bad Parameter Value")
         with DBSession(self.state_db) as session:
             if xaction == "read":
                 reebills, totalCount = self.state_db.listReebills(session,
-                        int(start), int(limit), account)
+                        int(start), int(limit), account, sort, dir)
                 rows = []
                 for reebill in reebills:
                     row_dict = {}
