@@ -130,8 +130,9 @@ class SIBillDocTemplate(BaseDocTemplate):
 def progress(type,value):
     # TODO fix module to support verbose flag passed in from cmd arg parser 
     #if (options.verbose):
-    #sys.stdout.write('.')
-    pass
+    # TODO 37460179: log to logger
+    print "%s %s" %(type, value)
+    #pass
     
 
 
@@ -170,6 +171,13 @@ class ReebillRenderer:
         # directory for temporary image file storage
         self.temp_directory = config['temp_directory']
 
+        # set default templates
+        self.default_backgrounds = config['default_backgrounds'].split()
+        if len(self.default_backgrounds) != 2: raise ValueError("default_backgrounds not specified") 
+
+        self.teva_backgrounds = config['teva_backgrounds'].split()
+        self.teva_accounts = config['teva_accounts'].split()
+
         self.state_db = state_db
         self.reebill_dao = reebill_dao
 
@@ -181,14 +189,13 @@ class ReebillRenderer:
 
 
     # TODO 32204509 Why don't we just pass in a ReeBill(s) here?  Preferable to passing account/sequence/version around?
-    def render(self, session, account, sequence, outputdir, outputfile,
-            backgrounds, verbose):
+    def render(self, session, account, sequence, outputdir, outputfile, verbose):
         # render each version
         max_version = self.state_db.max_version(session, account, sequence)
         for version in range(max_version + 1):
             reebill = self.reebill_dao.load_reebill(account, sequence, version=version)
             self.render_version(reebill, outputdir, outputfile + '-%s' %
-                    version, backgrounds, verbose)
+                    version, verbose)
 
         # concatenate version pdfs
         input_paths = ['%s-%s' % (os.path.join(outputdir, outputfile), v)
@@ -206,12 +213,12 @@ class ReebillRenderer:
         for input_path in input_paths:
             os.remove(input_path)
  
-    def render_max_version(self, session, account, sequence, outputdir, outputfile, backgrounds, verbose):
+    def render_max_version(self, session, account, sequence, outputdir, outputfile, verbose):
         max_version = self.state_db.max_version(session, account, sequence)
         reebill = self.reebill_dao.load_reebill(account, sequence, version=max_version)
-        self.render_version(reebill, outputdir, outputfile, backgrounds, verbose)
+        self.render_version(reebill, outputdir, outputfile, verbose)
 
-    def render_version(self, reebill, outputdir, outputfile, backgrounds, verbose):
+    def render_version(self, reebill, outputdir, outputfile, verbose):
         styles = getSampleStyleSheet()
         styles.add(ParagraphStyle(name='BillLabel', fontName='VerdanaB', fontSize=10, leading=10))
         styles.add(ParagraphStyle(name='BillLabelRight', fontName='VerdanaB', fontSize=10, leading=10, alignment=TA_RIGHT))
@@ -342,8 +349,10 @@ class ReebillRenderer:
 
         Elements = []
 
-        # grab the backgrounds that were passed in
-        backgrounds = backgrounds.split(",")
+        if (reebill.account in self.teva_accounts):
+            backgrounds = self.teva_backgrounds
+        else:
+            backgrounds = self.default_backgrounds
 
 
         #
@@ -351,7 +360,7 @@ class ReebillRenderer:
         #
 
         # populate backgroundF1
-        pageOneBackground = Image(os.path.join(os.path.join(resource_dir, 'images'), backgrounds.pop(0)),letter[0], letter[1])
+        pageOneBackground = Image(os.path.join(os.path.join(resource_dir, 'images'), backgrounds[0]),letter[0], letter[1])
         Elements.append(pageOneBackground)
 
         # populate account number, bill id & issue date
@@ -657,7 +666,7 @@ class ReebillRenderer:
 
 
 
-        pageTwoBackground = Image(os.path.join(resource_dir,'images',backgrounds.pop(0)),letter[0], letter[1])
+        pageTwoBackground = Image(os.path.join(resource_dir,'images',backgrounds[1]),letter[0], letter[1])
         Elements.append(pageTwoBackground)
 
         #populate measured usage header frame
