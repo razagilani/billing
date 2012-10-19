@@ -28,8 +28,6 @@ sys.stdout = sys.stderr
 # utility functions
 ###############################################################################
 
-# type-conversion functions
-
 def float_to_decimal(x):
     '''Converts float into Decimal. Used in getter methods.'''
     # str() tells Decimal to automatically figure out how many digts of
@@ -100,6 +98,7 @@ def unflatten_chargegroups_list(flat_charges):
 ###############################################################################
 
 class Register(EmbeddedDocument):
+    '''A register inside a meter in a utility bill document.'''
     quantity_units = StringField(required=True)
     quantity = FloatField(required=True)
     register_binding = StringField(required=True)
@@ -108,6 +107,7 @@ class Register(EmbeddedDocument):
     description = StringField(required=True)
 
 class Meter(EmbeddedDocument):
+    '''A utility meter inside a utility bill document.'''
     registers = ListField(field=EmbeddedDocumentField(Register))
     identifier = StringField(required=True)
     prior_read_date = DateTimeField(required=True)
@@ -115,6 +115,7 @@ class Meter(EmbeddedDocument):
     estimated = BooleanField(required=True)
 
 class Charge(EmbeddedDocument):
+    '''A charge in a utility bill document.'''
     rsi_binding = StringField(required=True)
     description = StringField(required=True)
     uuid = StringField(required=True)
@@ -124,6 +125,7 @@ class Charge(EmbeddedDocument):
     total = FloatField(required=True)
 
 class UtilBill(Document):
+    '''Schema definition for utility bill document in Mongo.'''
     meta = {
         # "db_alias" tells MongoEngine which database this goes with, while
         # still allowing it to be configurable.
