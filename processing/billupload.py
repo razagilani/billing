@@ -323,7 +323,7 @@ class BillUpload(object):
         # line programs
         output_path_without_extension = bill_image_path_without_extension + '-output'
 
-        if extension == "pdf".lower():
+        if extension.lower() == "pdf":
             convert_command = ['pdftoppm', '-png', '-rx', \
                     str(density), '-ry', str(density), bill_file_path, \
                     output_path_without_extension]

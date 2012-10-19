@@ -164,12 +164,15 @@ function reeBillReady() {
     });
     var upload_submit_button = new Ext.Button({
         text: 'Submit',
-        handler: saveForm,
-        /* TODO: update field values after upload: https://www.pivotaltracker.com/story/show/33241007 */
-        //handler: function() {
-            //saveForm();
-            //uploadStartDateField.setValue(uploadEndDateField.getValue());
-        //}
+        handler: function(b, e) {
+            //You cannot simply call saveForm, because it needs to be able to find its parent.
+            //Using 'this' as the scope tells it that it is not just in an anonymus function.
+            saveForm(b, e, function() {
+                utilbillGrid.getBottomToolbar().doRefresh();
+                uploadStartDateField.setValue(uploadEndDateField.getValue());
+                uploadEndDateField.setValue("");
+            })
+        },
     });
 
     var upload_form_panel = new Ext.form.FormPanel({
@@ -339,6 +342,7 @@ function reeBillReady() {
                 header: 'Service',
                 dataIndex: 'service',
                 editable: true,
+                editor: new Ext.form.TextField({}),
                 width: 50,
             },
             new Ext.grid.DateColumn({
@@ -448,7 +452,7 @@ function reeBillReady() {
                     // new window
                     if (record.data.state == 'Final' || record.data.state == 'Utility Estimated') {
 
-                        utilbillImageDataConn.request({
+                        utilbilleditableImageDataConn.request({
                             params: {account: record.data.account, begin_date: formatted_begin_date_string,
                                 end_date: formatted_end_date_string, resolution: resolution},
                             success: function(result, request) {
@@ -495,10 +499,21 @@ function reeBillReady() {
     // disallow rowediting of utility bills that are associated to reebills
     utilbillGrid.on('beforeedit', function(e) {
         if (!e.record.data.editable) {
-            Ext.Msg.alert("Utility bill date ranges cannot be edited once associated to a ReeBill.");
+            Ext.Msg.alert("Utility bill data cannot be edited once associated to a ReeBill.");
             return false;
         }
 
+    });
+
+    utilbillGrid.on('validateedit', function(e) {
+        // Resolve that 'service' values can only be Gas or Electric
+        // (or whatever is specified as acceptable values)
+        // TODO: Make this depend on a data source of good values rather than hard-coded values
+        if(e.field == 'service' && e.value != "Gas" && e.value != "Electric")
+        {
+            Ext.Msg.alert("Service type must be one of: \'Gas\' \'Electric\'");
+            return false;
+        }
     });
 
     //
@@ -565,7 +580,7 @@ function reeBillReady() {
                 var jsonData = Ext.util.JSON.decode(result.responseText);
                 Ext.Msg.hide();
                 if (jsonData.success == true) {
-                    reeBillStore.reload();
+                    reeBillStore.reload(Ext.apply({}, {operation: deleteReebills}, reeBillStore.lastOptions));
                 } else {
                     Ext.MessageBox.alert("Error", jsonData.errors.reason +
                         "\n" + jsonData.errors.details);
@@ -595,7 +610,7 @@ function reeBillReady() {
                     }
             });
 
-            reeBillStore.reload();
+            reeBillStore.reload(Ext.apply({}, {operation: deleteButton}, reeBillStore.lastOptions));
         }
     })
 
@@ -618,7 +633,7 @@ function reeBillReady() {
                     var jsonData = Ext.util.JSON.decode(result.responseText);
                     Ext.Msg.hide();
                     if (jsonData.success == true) {
-                        reeBillStore.reload();
+                        reeBillStore.reload(Ext.apply({}, {operation: versionButton}, reeBillStore.lastOptions));
                         Ext.MessageBox.alert("New version created", jsonData.new_version);
                     } else {
                         Ext.MessageBox.alert("Error", jsonData.errors.reason +
@@ -755,6 +770,9 @@ function reeBillReady() {
     reeBillStore.on('load', function (store, records, options) {
         // was disabled prior to loading, and must be enabled when loading is complete
         reeBillGrid.setDisabled(false);
+
+        if(options.operation === rollOperation)
+            reeBillGrid.getSelectionModel().selectFirstRow()
     });
 
     // handles all server errors for reeBillStore. see DataProxy.exception
@@ -1481,7 +1499,7 @@ function reeBillReady() {
                     if (jsonData.success == false) {
                         Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                     } else {
-                        reeBillStore.reload();
+                        reeBillStore.reload(Ext.apply({}, {operation: rollOperation}, reeBillStore.lastOptions));
                     }
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
@@ -1633,9 +1651,9 @@ function reeBillReady() {
     // Generic form save handler
     // 
     // TODO: 20496293 accept functions to callback on form post success
-    function saveForm() {
+    function saveForm(b, e, callback) {
         //http://www.sencha.com/forum/showthread.php?127087-Getting-the-right-scope-in-button-handler
-        var formPanel = this.findParentByType(Ext.form.FormPanel);
+        var formPanel = b.findParentByType(Ext.form.FormPanel);
         if (formPanel.getForm().isValid()) {
             formPanel.getForm().submit({
                 params:{
@@ -1658,8 +1676,10 @@ function reeBillReady() {
                     }
                 },
                 success: function(form, action) {
-                    // TODO: 20496293 pass this in as a callback
-                    utilbillGrid.getBottomToolbar().doRefresh();
+                    // If an argument is not passed into a function, it has type 'undefined'
+                    if (typeof callback !== 'undefined') {
+                        callback()
+                    }
                 }
             })
         }else{
@@ -4166,9 +4186,10 @@ function reeBillReady() {
 
     ///////////////////////////////////////
     // account status
-    function sortType(value){ 
-        return parseInt(value.match(/\d+$/),10);
-    }
+    // TODO keep this as an example
+    //function sortType(value){ 
+    //    return parseInt(value.match(/\d+$/),10);
+    //}
     var accountReader = new Ext.data.JsonReader({
         // metadata configuration options:
         // there is no concept of an id property because the records do not have identity other than being child charge nodes of a charges parent
@@ -4181,7 +4202,7 @@ function reeBillReady() {
             // map Record's field to json object's key of same name
             {name: 'account', mapping: 'account'},
             {name: 'fullname', mapping: 'fullname'},
-            {name: 'dayssince', mapping: 'dayssince', type:sortType},
+            {name: 'dayssince', mapping: 'dayssince'/*, type:sortType*/},
             {name: 'lastevent'},
             {name: 'provisionable', mapping: 'provisionable'},
         ]
@@ -4198,9 +4219,8 @@ function reeBillReady() {
         root: 'rows',
         totalProperty: 'results',
         remoteSort: true,
-        pageSize: 25,
         paramNames: {start: 'start', limit: 'limit'},
-        autoLoad: {params:{start: 0, limit: 25}},
+        autoLoad: {params:{start: 0, limit: 30}},
         reader: accountReader,
         fields: [
             {name: 'account'},
@@ -4211,6 +4231,11 @@ function reeBillReady() {
             {name: 'lastevent'},
             {name: 'provisionable'},
         ],
+        // looks to be initial order for load
+        sortInfo: {
+            field: 'dayssince',
+            direction: 'DESC'
+        },
     });
 
     /* This function controls the style of cells in the account grid. */
@@ -4256,7 +4281,7 @@ function reeBillReady() {
                 dataIndex: 'primusname',
                 renderer: accountGridColumnRenderer,
             },{
-                header: 'Days since last bill',
+                header: 'Days Since Utility Bill',
                 sortable: true,
                 dataIndex: 'dayssince',
                 renderer: accountGridColumnRenderer,
@@ -4345,7 +4370,7 @@ function reeBillReady() {
         proxy: accountReeValueProxy,
         root: 'rows',
         totalProperty: 'results',
-        pageSize: 25,
+        //pageSize: 25,
         paramNames: {start: 'start', limit: 'limit'},
         autoLoad: {params:{start: 0, limit: 25}},
         reader: accountReeValueReader,
@@ -5184,11 +5209,12 @@ function reeBillReady() {
         proxy: reconciliationProxy,
         root: 'rows',
         totalProperty: 'results',
-        pageSize: 30,
         //baseParams: {},
         paramNames: {start: 'start', limit: 'limit'},
         // TODO enable autoload
         //autoLoad: {params:{start: 0, limit: 25}},
+        // toolbar loads grid, so pagesize  doesn't have to be set
+        //pageSize: 30,
 
         // default sort
         sortInfo: {field: 'sequence', direction: 'ASC'}, // descending is DESC
@@ -5292,11 +5318,11 @@ function reeBillReady() {
         proxy: revenueProxy,
         root: 'rows',
         totalProperty: 'results',
-        pageSize: 30,
         //baseParams: {},
         paramNames: {start: 'start', limit: 'limit'},
         // TODO enable autoload
         //autoLoad: {params:{start: 0, limit: 25}},
+        //pageSize: 30,
 
         // default sort
         sortInfo: {field: 'sequence', direction: 'ASC'}, // descending is DESC

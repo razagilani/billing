@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import urllib, urllib2
 import json
 from optparse import OptionParser
@@ -24,6 +24,14 @@ class NexusUtil(object):
         url = "http://%s/nexus_query/lookup?system=primus&systemid=%s&forsystem=olap" % (
             self.host,
             urllib.quote(address)
+        )
+        f = urllib2.urlopen(url)
+        return f.read()
+
+    def primus_id_from_olap_id(self, olapid):
+        url = "http://%s/nexus_query/lookup?system=olap&systemid=%s&forsystem=primus" % (
+            self.host,
+            urllib.quote(olapid)
         )
         f = urllib2.urlopen(url)
         return f.read()
