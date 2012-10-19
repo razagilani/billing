@@ -831,13 +831,13 @@ function reeBillReady() {
                 //renderer: reeBillGridRenderer,
             },{
                 header: 'Start Date',
-                sortable: true,
+                sortable: false,
                 dataIndex: 'period_start',
                 width: 70,
                 renderer: reeBillGridRenderer,
             },{
                 header: 'End Date',
-                sortable: true,
+                sortable: false,
                 dataIndex: 'period_end',
                 width: 70,
                 renderer: reeBillGridRenderer,
@@ -1491,7 +1491,7 @@ function reeBillReady() {
         tabPanel.setDisabled(true);
 
         rollOperationConn.request({
-            params: {account: selected_account, sequence: selected_sequence},
+            params: {account: selected_account},
             success: function(result, request) {
                 var jsonData = null;
                 try {
