@@ -164,10 +164,10 @@ function reeBillReady() {
     });
     var upload_submit_button = new Ext.Button({
         text: 'Submit',
-        handler: function() {
+        handler: function(b, e) {
             //You cannot simply call saveForm, because it needs to be able to find its parent.
             //Using 'this' as the scope tells it that it is not just in an anonymus function.
-            saveForm.call(this, function() {
+            saveForm(b, e, function() {
                 utilbillGrid.getBottomToolbar().doRefresh();
                 uploadStartDateField.setValue(uploadEndDateField.getValue());
                 uploadEndDateField.setValue("");
@@ -1660,9 +1660,9 @@ function reeBillReady() {
     // Generic form save handler
     // 
     // TODO: 20496293 accept functions to callback on form post success
-    function saveForm(callback) {
+    function saveForm(b, e, callback) {
         //http://www.sencha.com/forum/showthread.php?127087-Getting-the-right-scope-in-button-handler
-        var formPanel = this.findParentByType(Ext.form.FormPanel);
+        var formPanel = b.findParentByType(Ext.form.FormPanel);
         if (formPanel.getForm().isValid()) {
             formPanel.getForm().submit({
                 params:{
@@ -4290,7 +4290,7 @@ function reeBillReady() {
                 dataIndex: 'primusname',
                 renderer: accountGridColumnRenderer,
             },{
-                header: 'Days since last UtilBill',
+                header: 'Days Since Utility Bill',
                 sortable: true,
                 dataIndex: 'dayssince',
                 renderer: accountGridColumnRenderer,
@@ -5468,7 +5468,7 @@ function reeBillReady() {
         id: 'aboutTab',
         title: 'About',
         disabled: aboutPanelDisabled,
-        html: '<table style="width: 100%; border: 0; margin-top:20px;"><tr><td align="center">&nbsp;</td></tr><tr><td align="center"><img width="50%" src="MrJonas.png"/></td></tr><tr><td align="center"><font style="font-family: impact; font-size:68pt;">Masterbiller</font></td></tr></table>',
+        html: '<table style="width: 100%; border: 0; margin-top:20px;"><tr><td align="center">&nbsp;</td></tr><tr><td align="center"><img width="30%" src="Cooki.png"/></td></tr><tr><td align="center"><font style="font-family: impact; font-size:68pt;">Billing Witch</font></td></tr></table>',
     });
 
     // end of tab widgets
