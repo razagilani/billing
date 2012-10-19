@@ -649,7 +649,7 @@ Working with PDF Files
 ======================
 
 Splitting apart a PDF document example
-    pdftk scan0015.pdf burst output HACA1-%d.pdf
+    pdftk scan0015.pdf burst output HACA1-%02d.pdf
 
 Combining pages together
     pdftk HACA1-2.pdf HACA2-8.pdf cat output HACA2.pdf
