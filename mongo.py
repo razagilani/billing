@@ -4,6 +4,7 @@ import datetime
 from datetime import date, time, datetime
 from decimal import Decimal
 import pymongo
+import bson # part of pymongo package
 import functools
 from urlparse import urlparse
 import httplib
@@ -13,11 +14,11 @@ import itertools as it
 import copy
 import uuid as UUID
 import operator
-from billing.mongo_utils import bson_convert, python_convert
-from billing.dictutils import deep_map
+from billing.mongo_utils import bson_convert, python_convert, format_query
+from billing.dictutils import deep_map, subdict
 from billing.dateutils import date_to_datetime
 from billing.session_contextmanager import DBSession
-from billing.exceptions import NoSuchBillException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
+from billing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -231,6 +232,38 @@ class MongoReebill(object):
                 "consumption_trend": [],
             }
 
+    def convert_to_new_account(self, account):
+        # TODO: the existence of this function is a symptom of ugly design.
+        # figure out how to make it go away if possible.
+        # https://www.pivotaltracker.com/story/show/37798427
+        '''Sets the account of this reebill and all its utility bills to
+        'account', and creates new _ids in all utility bills and the reebill's
+        references to them. And converts frozen utility bills into editable
+        ones by removing the "sequence" and "version" keys, if present. Used
+        for converting an existing reebill and its utility bills into a
+        template for a new account.'''
+        self.account = account
+        for u in self._utilbills:
+            u['account'] = account
+            if 'sequence' in u:
+                del u['sequence']
+            if 'version' in u:
+                del u['version']
+
+    def new_utilbill_ids(self):
+        '''Replaces _ids in utility bill documents and the reebill document's
+        references to them, and removed "sequence" and "version" keys if
+        present (to convert frozen utility bill into editable one). Used when
+        rolling to create copies of the utility bills.'''
+        for utilbill_handle in self.reebill_dict['utilbills']:
+            utilbill_doc = self._get_utilbill_for_handle(utilbill_handle)
+            new_id = bson.objectid.ObjectId()
+            utilbill_handle['id'] = utilbill_doc['_id'] = new_id
+            if 'sequence' in utilbill_doc:
+                del utilbill_doc['sequence']
+            if 'version' in utilbill_doc:
+                del utilbill_doc['version']
+
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
     # strings unless otherwise noted.
@@ -280,13 +313,13 @@ class MongoReebill(object):
     def due_date(self, value):
         self.reebill_dict['due_date'] = value
 
+    # TODO these must die
     @property
     def period_begin(self):
         return python_convert(self.reebill_dict['period_begin'])
     @period_begin.setter
     def period_begin(self, value):
         self.reebill_dict['period_begin'] = value
-
     @property
     def period_end(self):
         return python_convert(self.reebill_dict['period_end'])
@@ -448,158 +481,144 @@ class MongoReebill(object):
     def ree_value(self, value):
         self.reebill_dict['ree_value'] = value
 
+    def _utilbill_ids(self):
+        '''Useful for debugging.'''
+        # note order is not guranteed so the result may look weird
+        return zip([h['id'] for h in self.reebill_dict['utilbills']],
+                [u['_id'] for u in self._utilbills])
+
+    def _get_utilbill_for_service(self, service):
+        '''Returns utility bill document having the given service. There must
+        be exactly one.'''
+        matching_utilbills = [u for u in self._utilbills if u['service'] ==
+                service]
+        if len(matching_utilbills) == 0:
+            raise ValueError('No utilbill found for service "%s"' % service)
+        if len(matching_utilbills) > 1:
+            raise ValueError('Multiple utilbills found for service "%s"' % service)
+        return matching_utilbills[0]
+
+    def _get_handle_for_service(self, service):
+        '''Returns internal 'utibills' subdictionary whose corresponding
+        utility bill has the given service. There must be exactly 1.'''
+        u = self._get_utilbill_for_service(service)
+        handles = [h for h in self.reebill_dict['utilbills'] if h['id'] ==
+                u['_id']]
+        if len(handles) == 0:
+            raise ValueError(('Reebill has no reference to utilbill for '
+                    'service "%s"') % service)
+        if len(handles) > 1:
+            raise ValueError(('Reebil has mulutple references to utilbill '
+                    'for service "%s"' % service))
+        return handles[0]
+
+    def _get_utilbill_for_handle(self, utilbill_handle):
+        '''Returns the utility bill dictionary whose _id correspinds to the
+        "id" in the given internal utilbill dictionary.'''
+        # i am calling each subdocument in the "utilbills" list (which contains
+        # the utility bill's _id and data related to that bill) a "handle"
+        # because it is what you use to grab a utility bill and it's kind of
+        # like a pointer.
+        id = utilbill_handle['id']
+        matching_utilbills = [u for u in self._utilbills if u['_id'] == id]
+        if len(matching_utilbills) < 0:
+            raise ValueError('No utilbill found for id "%s"' % id)
+        if len(matching_utilbills) > 1:
+            raise ValueError('Multiple utilbills found for id "%s"' % id)
+        return matching_utilbills[0]
+
+    def _set_utilbill_for_id(self, id, new_utilbill_doc):
+        '''Used in save_reebill to replace an editable utility bill document
+        with a frozen one.'''
+        # find all utility bill documents with the given id, and make sure
+        # there's exactly 1
+        matching_indices = [index for (index, doc) in
+                enumerate(self._utilbills) if doc['_id'] == id]
+        if len(matching_indices) < 0:
+            raise ValueError('No utilbill found for id "%s"' % id)
+        if len(matching_indices) > 1:
+            raise ValueError('Multiple utilbills found for id "%s"' % id)
+
+        # replace that one with 'new_utilbill_doc'
+        self._utilbills[matching_indices[0]] = new_utilbill_doc
+
     def hypothetical_total_for_service(self, service_name):
         '''Returns the total of hypothetical charges for the utilbill whose
         service is 'service_name'. There's not supposed to be more than one
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
-        totals = [ub['hypothetical_total']
-                for ub in self.reebill_dict['utilbills']
-                if ub['service'] == service_name]
-        if totals == []:
-            raise Exception('No utilbills found for service "%s"' % service_name)
-        if len(totals) > 1:
-            raise Exception('Multiple utilbills found for service "%s"' % service_name)
-        return totals[0]
+        return self._get_handle_for_service(service_name)['hypothetical_total']
 
     def set_hypothetical_total_for_service(self, service_name, new_total):
-        for ub in self.reebill_dict['utilbills']:
-            if ub['service'] == service_name:
-                ub['hypothetical_total'] = new_total
+        self._get_handle_for_service(service_name)['hypothetical_total'] \
+                = new_total
 
     def actual_total_for_service(self, service_name):
-        '''Returns the total of actual charges for the utilbill whose
-        service is 'service_name'. There's not supposed to be more than one
-        utilbill per service, so an exception is raised if that happens (or if
-        there's no utilbill for that service).'''
-        totals = [ub['total'] for ub in self._utilbills if ub['_id']['service'] ==
-                service_name]
-        if totals == []:
-            raise Exception('No utilbills found for service "%s"' %
-                    service_name)
-        if len(totals) > 1:
-            raise Exception('Multiple utilbills found for service "%s"' %
-                    service_name)
-        return totals[0]
+        return self._get_utilbill_for_service(service_name)['total']
 
     def set_actual_total_for_service(self, service_name, new_total):
-        for ub in self._utilbills:
-            if ub['_id']['service'] == service_name:
-                ub['total'] = new_total
+        self._get_utilbill_for_service(service_name)['total'] = new_total
 
     def ree_value_for_service(self, service_name):
         '''Returns the total of 'ree_value' (renewable energy value offsetting
         hypothetical charges) for the utilbill whose service is 'service_name'.
-        There's not supposed to be more than one utilbill per service, so an
-        exception is raised if that happens (or if there's no utilbill for that
-        service).'''
-        totals = [ub['ree_value']
-                for ub in self.reebill_dict['utilbills']
-                if ub['service'] == service_name]
-        if totals == []:
-            raise Exception('No utilbills found for service "%s"' % service_name)
-        if len(totals) > 1:
-            raise Exception('Multiple utilbills found for service "%s"' % service_name)
-        return totals[0]
+        There's not supposed to be more than one utilbill per service.'''
+        return self._get_handle_for_service(service_name)['ree_value']
 
     def set_ree_value_for_service(self, service_name, new_ree_value):
-        for ub in self.reebill_dict['utilbills']:
-            if ub['service'] == service_name:
-                ub['ree_value'] = new_ree_value
+        self._get_handle_for_service(service_name)['ree_value'] = new_ree_value
 
     def ree_savings_for_service(self, service_name):
-        totals = [ub['ree_savings']
-                for ub in self.reebill_dict['utilbills']
-                if ub['service'] == service_name]
-        if totals == []:
-            raise Exception('No utilbills found for service "%s"' % service_name)
-        if len(totals) > 1:
-            raise Exception('Multiple utilbills found for service "%s"' % service_name)
-        return totals[0]
+        return self._get_handle_for_service(service_name)['ree_savings']
 
     def set_ree_savings_for_service(self, service_name, new_ree_savings):
-        for ub in self.reebill_dict['utilbills']:
-            if ub['service'] == service_name:
-                ub['ree_savings'] = new_ree_savings
+        self._get_handle_for_service(service_name)['ree_savings'] = new_ree_savings
 
     def ree_charges_for_service(self, service_name):
-        totals = [ub['ree_charges']
-                for ub in self.reebill_dict['utilbills']
-                if ub['service'] == service_name]
-        if totals == []:
-            raise Exception('No utilbills found for service "%s"' % service_name)
-        if len(totals) > 1:
-            raise Exception('Multiple utilbills found for service "%s"' % service_name)
-        return totals[0]
+        return self._get_handle_for_service(service_name)['ree_charges']
 
     def set_ree_charges_for_service(self, service_name, new_ree_charges):
-        for ub in self.reebill_dict['utilbills']:
-            if ub['service'] == service_name:
-                ub['ree_charges'] = new_ree_charges
-
+        self._get_handle_for_service(service_name)['ree_charges'] = new_ree_charges
 
     def hypothetical_chargegroups_for_service(self, service_name):
         '''Returns the list of hypothetical chargegroups for the utilbill whose
         service is 'service_name'. There's not supposed to be more than one
-        utilbill per service, so an exception is raised if that happens (or if
-        there's no utilbill for that service).'''
-        chargegroup_lists = [ub['hypothetical_chargegroups']
-                for ub in self.reebill_dict['utilbills']
-                if ub['service'] == service_name]
-        if chargegroup_lists == []:
-            raise Exception('No utilbills found for service "%s"' % service_name)
-        if len(chargegroup_lists) > 1:
-            raise Exception('Multiple utilbills found for service "%s"' % service_name)
-
-        return chargegroup_lists[0]
+        utilbill per service.'''
+        return self._get_handle_for_service(service_name)['hypothetical_chargegroups']
 
     def set_hypothetical_chargegroups_for_service(self, service_name, new_chargegroups):
         '''Set hypothetical chargegroups, based on actual chargegroups.  This is used
         because it is customary to define the actual charges and base the hypothetical
         charges on them.'''
-        for ub in self.reebill_dict['utilbills']:
-            if ub['service'] == service_name:
-                ub['hypothetical_chargegroups'] = new_chargegroups
+        self._get_handle_for_service(service_name)['hypothetical_chargegroups']\
+                = new_chargegroups
 
     def actual_chargegroups_for_service(self, service_name):
         '''Returns the list of actual chargegroups for the utilbill whose
         service is 'service_name'. There's not supposed to be more than one
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
-        chargegroup_lists = [ub['chargegroups']
-                for ub in self._utilbills
-                if ub['_id']['service'] == service_name]
-        if chargegroup_lists == []:
-            raise Exception('No utilbills found for service "%s"' % service_name)
-        if len(chargegroup_lists) > 1:
-            raise Exception('Multiple utilbills found for service "%s"' % service_name)
-        return chargegroup_lists[0]
+        return self._get_utilbill_for_service(service_name)['chargegroups']
 
     def set_actual_chargegroups_for_service(self, service_name, new_chargegroups):
         '''Set hypothetical chargegroups, based on actual chargegroups.  This is used
         because it is customary to define the actual charges and base the hypothetical
         charges on them.'''
-        for ub in self._utilbills:
-            if ub['_id']['service'] == service_name:
-                ub['chargegroups'] = new_chargegroups
+        self._get_utilbill_for_service(service_name)['chargegroups'] \
+                = new_chargegroups
 
     def chargegroups_model_for_service(self, service_name):
         '''Returns a shallow list of chargegroups for the utilbill whose
         service is 'service_name'. There's not supposed to be more than one
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
-        chargegroup_lists = [ub['chargegroups'].keys() for ub in
-                self._utilbills if ub['_id']['service'] == service_name]
-        if chargegroup_lists == []:
-            raise Exception('No utilbills found for service "%s"' % service_name)
-        if len(chargegroup_lists) > 1:
-            raise Exception('Multiple utilbills found for service "%s"' % service_name)
-        return chargegroup_lists[0]
+        return self._get_utilbill_for_service(service_name)['chargegroups']\
+                .keys()
 
     @property
     def services(self):
         '''Returns a list of all services for which there are utilbills.'''
-        return [u['service'] for u in self.reebill_dict['utilbills']]
+        return [u['service'] for u in self._utilbills]
 
     @property
     def suspended_services(self):
@@ -639,46 +658,15 @@ class MongoReebill(object):
     def utilbill_period_for_service(self, service_name):
         '''Returns start & end dates of the first utilbill found whose service
         is 'service_name'. There's not supposed to be more than one utilbill
-        per service, so an exception is raised if that happens (or if there's
-        no utilbill for that service).'''
-        date_string_pairs = [
-            (
-                u.get('start', None),
-                u.get('end', None),
-            )  for u in self.reebill_dict['utilbills'] if u['service'] == service_name
-        ]
-        if date_string_pairs == []:
-            raise Exception('No utilbills for service "%s"' % service_name)
-        if len(date_string_pairs) > 1:
-            raise Exception('Multiple utilbills for service "%s"' % service_name)
-        start, end = date_string_pairs[0]
-
-        # remember, mongo stores datetimes, but we only wish to treat dates here
-        return (start, end)
+        per service.'''
+        u = self._get_utilbill_for_service(service_name)
+        return u['start'], u['end']
 
     def set_utilbill_period_for_service(self, service, period):
         '''Changes the period dates of the first utility bill associated with
         this reebill whose service is 'service'.'''
-        if service not in self.services:
-            raise Exception('No such service "%s"' % service)
-
-        if len(period) != 2:
-            raise Exception('Utilbill period malformed "%s"' % period)
-        
-        for internal_utilbill in self.reebill_dict['utilbills']:
-            if internal_utilbill['service'] == service:
-                external_utilbill = next(u for u in self._utilbills if
-                        u['_id']['service'] == service)
-                        #u['_id']['start'] == period[0] and
-                        #u['_id']['end'] == period[1])
-
-                # update reference to utilbill document
-                internal_utilbill['start'] = period[0]
-                internal_utilbill['end'] = period[1]
-
-                # update utilbill document itself
-                external_utilbill['_id']['start'] = period[0]
-                external_utilbill['_id']['end'] = period[1]
+        u = self._get_utilbill_for_service(service)
+        u['start'], u['end'] = period
 
     def meter_read_period(self, service):
         '''Returns tuple of period dates for first meter found with the given
@@ -692,11 +680,9 @@ class MongoReebill(object):
         should only be one utility bill for the given service, and only one
         register in one meter that has a corresponding shadow register in the
         reebill.)'''
-        internal_utilbill = next(u for u in self.reebill_dict['utilbills'] if
-                u['service'] == service)
-        external_utilbill = next(u for u in self._utilbills if
-                u['_id']['service'] == service)
-        for shadow_register in internal_utilbill['shadow_registers']:
+        external_utilbill = self._get_utilbill_for_service(service)
+        utilbill_handle = self._get_handle_for_service(service)
+        for shadow_register in utilbill_handle['shadow_registers']:
             for meter in external_utilbill['meters']:
                 for actual_register in meter['registers']:
                     if actual_register['identifier'] == shadow_register['identifier']:
@@ -704,23 +690,8 @@ class MongoReebill(object):
         raise Exception(('Utility bill for service "%s" has no meter '
                 'containing a register whose identifier matches that of '
                 'a shadow register') % service)
-
-
         return utilbill['prior_read_date']
-        date_string_pairs = [
-            (
-                u.get('start', None),
-                u.get('end', None),
-            )  for u in self.reebill_dict['utilbills'] if u['service'] == service_name
-        ]
-        if date_string_pairs == []:
-            raise Exception('No utilbills for service "%s"' % service_name)
-        if len(date_string_pairs) > 1:
-            raise Exception('Multiple utilbills for service "%s"' % service_name)
-        start, end = date_string_pairs[0]
 
-        # remember, mongo stores datetimes, but we only wish to treat dates here
-        return (start, end)
     @property
     def utilbill_periods(self):
         '''Return a dictionary whose keys are service and values are the
@@ -734,13 +705,8 @@ class MongoReebill(object):
         whose service is 'service_name'. There's not supposed to be more than
         one utilbill per service, so an exception is raised if that happens (or
         if there's no utilbill for that service).'''
-        meters_lists = [copy.deepcopy(ub['meters']) for ub in self._utilbills
-                if ub['_id']['service'] == service_name]
-        if meters_lists == []:
-            raise Exception('No utilbills found for service "%s"' % service_name)
-        if len(meters_lists) > 1:
-            raise Exception('Multiple utilbills found for service "%s"' % service_name)
-        meters = meters_lists[0]
+        meters = copy.deepcopy(
+                self._get_utilbill_for_service(service_name)['meters'])
 
         # gather shadow register dictionaries
         shadow_registers = copy.deepcopy(self.shadow_registers(service_name))
@@ -766,8 +732,10 @@ class MongoReebill(object):
         return meter
 
     def delete_meter(self, service, identifier):
-        for ub in self._utilbills['utilbills']:
-            if ub['_id']['service'] == service:
+        '''Deletes all meters the utility bill for the given service.'''
+        ub = self._get_utilbill_for_service(service)
+        for ub in self._utilbills:
+            if ub['service'] == service:
                 for meter in ub['meters']:
                     del meter
 
@@ -779,9 +747,8 @@ class MongoReebill(object):
             'estimated': False,
             'registers': [],
         }
-        for ub in self.reebill_dict['utilbills']:
-            if ub['service'] == service:
-                ub['meters'].append(new_meter)
+        ub = self._get_utilbill_for_service(service)
+        ub['meters'].append(new_meter)
         return new_meter
 
     def new_register(self, service, meter_identifier):
@@ -806,26 +773,20 @@ class MongoReebill(object):
         }
 
         # put actual register in meter in utilbill document
-        utilbill = next(u for u in self._utilbills if u['_id']['service'] == service)
+        utilbill = self._get_utilbill_for_service(service)
         meter = next(m for m in utilbill['meters'] if m['identifier'] ==
                 meter_identifier)
         meter['registers'].append(new_actual_register)
 
         # put hypothetical register in 'utilbills' list of reebill document
-        utilbill = next(u for u in self.reebill_dict['utilbills'] if
-                u['service'] == service)
-        meter = next(m for m in utilbill['meters'] if m['identifier'] ==
-                meter_identifier)
-        meter['registers'].append(new_shadow_register)
-
+        self._get_handle_for_service(service)['shadow_registers']\
+                .append(new_shadow_register)
         return (new_actual_register, new_shadow_register)
 
-        
-    
-    def set_meter_read_date(self, service, identifier, present_read_date, prior_read_date):
+    def set_meter_read_date(self, service, identifier, present_read_date,
+            prior_read_date):
         ''' Set the read date for a specified meter.'''
-        utilbill = next(u for u in self._utilbills if u['_id']['service'] ==
-                service)
+        utilbill = self._get_utilbill_for_service(service)
         meter = next(m for m in utilbill['meters'] if m['identifier'] ==
                 identifier)
         meter['present_read_date'] = present_read_date
@@ -833,8 +794,7 @@ class MongoReebill(object):
 
     def set_meter_actual_register(self, service, meter_identifier, register_identifier, quantity):
         ''' Set the total for a specified meter register.'''
-        utilbill = next(u for u in self._utilbills if u['_id']['service'] ==
-                service)
+        utilbill = self._get_utilbill_for_service(service)
         meter = next(m for m in utilbill['meters'] if m['identifier'] ==
                 meter_identifier)
         for register in meter['registers']:
@@ -844,17 +804,11 @@ class MongoReebill(object):
     def set_meter_identifier(self, service, old_identifier, new_identifier):
         if old_identifier == new_identifier:
             return
-
-        # TODO: 23251399 - probably need a better strategy to enforce uniqueness
-
-        utilbill = next(u for u in self._utilbills if u['_id']['service'] ==
-                service)
-
+        utilbill = self._get_utilbill_for_service(service)
         # complain if any existing meter has the same identifier
         for meter in utilbill['meters']:
             if meter['identifier'] == new_identifier:
                 raise Exception("Duplicate Identifier")
-
         meter = next(m for m in utilbill['meters'] if m['identifier'] ==
                 meter_identifier)
         meter['identifier'] = new_identifier
@@ -862,9 +816,7 @@ class MongoReebill(object):
     def set_register_identifier(self, service, old_identifier, new_identifier):
         if old_identifier == new_identifier:
             return
-
-        utilbill = next(u for u in self._utilbills if u['_id']['service'] ==
-                service)
+        utilbill = self._get_utilbill_for_service(service)
 
         # complain if any register in any existing meter has the same
         # identifier
@@ -893,11 +845,9 @@ class MongoReebill(object):
                     return meter
     @property
     def meters(self):
-        # TODO rename to something like meters_dict
         '''Returns a dictionary mapping service names to lists of meters.'''
-        result = dict([(service, self.meters_for_service(service)) for service in self.services])
-        return result
-
+        return dict([(service, self.meters_for_service(service)) for service
+                in self.services])
 
     def actual_register(self, service, identifier):
         actual_register = [register for register in
@@ -939,14 +889,10 @@ class MongoReebill(object):
                 self.services], [])
 
     def shadow_registers(self, service):
-        '''Returns list of copies of shadow register dictionaries for first
-        utilbill found with given service.'''
-        result = []
-        for u in self.reebill_dict['utilbills']:
-            if u['service'] == service:
-                for sr in u['shadow_registers']:
-                    result.append(copy.deepcopy(sr))
-        return result
+        '''Returns list of copies of shadow register dictionaries for the
+        utility bill with the given service.'''
+        utilbill_handle = self._get_handle_for_service(service)
+        return copy.deepcopy(utilbill_handle['shadow_registers'])
 
     def set_shadow_register_quantity(self, identifier, quantity):
         '''Sets the value for the key "quantity" in the first shadow register
@@ -954,8 +900,8 @@ class MongoReebill(object):
         BTU). Raises an exception if no register with that identifier is
         found.'''
         # find the register and set its quanitity
-        for utilbill in self.reebill_dict['utilbills']:
-            for register in utilbill['shadow_registers']:
+        for utilbill_handle in self.reebill_dict['utilbills']:
+            for register in utilbill_handle['shadow_registers']:
                 if register['identifier'] == identifier:
                     # convert units
                     if register['quantity_units'].lower() == 'kwh':
@@ -977,19 +923,11 @@ class MongoReebill(object):
         raise Exception('No register found with identifier "%s"' % quantity)
 
     def utility_name_for_service(self, service_name):
-        for u in self.reebill_dict['utilbills']:
-            if u['service'] == service_name:
-                return u['utility']
-        if utility_names == []:
-            raise Exception('No utility name found for service "%s"' %
-                    service_name)
+        return self._get_utilbill_for_service(service_name)['utility']
 
     def rate_structure_name_for_service(self, service_name):
-        for u in self._utilbills:
-            if u['_id']['service'] == service_name:
-                return u['rate_structure_binding']
-        raise Exception('No rate structure binding found for service "%s"' %
-                service_name)
+        return self._get_utilbill_for_service(service_name)\
+                ['rate_structure_binding']
 
     @property
     def savings(self):
@@ -1039,16 +977,14 @@ class MongoReebill(object):
     # the following functions are all about flattening nested chargegroups for the UI grid
     def hypothetical_chargegroups_flattened(self, service,
             chargegroups='hypothetical_chargegroups'):
-        for u in self.reebill_dict['utilbills']:
-            if u['service'] == service:
-                return flatten_chargegroups_dict(copy.deepcopy(
-                        u['hypothetical_chargegroups']))
-        raise NoSuchBillException("No utility bill found for service %s" % service)
+        utilbill_handle = self._get_handle_for_service(service)
+        return flatten_chargegroups_dict(copy.deepcopy(
+                utilbill_handle['hypothetical_chargegroups']))
 
     def actual_chargegroups_flattened(self, service):
-        utilbill = next(u for u in self._utilbills if u['_id']['service'] ==
-                service)
-        return flatten_chargegroups_dict(copy.deepcopy(utilbill['chargegroups']))
+        utilbill = self._get_utilbill_for_service(service)
+        return flatten_chargegroups_dict(copy.deepcopy(
+                utilbill['chargegroups']))
 
     #def chargegroups_flattened(self, service, chargegroups):
         #if service not in self.services:
@@ -1066,14 +1002,12 @@ class MongoReebill(object):
         #return flat_charges
 
     def set_hypothetical_chargegroups_flattened(self, service, flat_charges):
-        utilbill = [u for u in self.reebill_dict['utilbills'] if
-                u['service'] == service][0]
-        utilbill['hypothetical_chargegroups'] = unflatten_chargegroups_list(
-                flat_charges)
+        utilbill_handle = self._get_handle_for_service(service)
+        utilbill_handle['hypothetical_chargegroups'] = \
+                unflatten_chargegroups_list(flat_charges)
 
     def set_actual_chargegroups_flattened(self, service, flat_charges):
-        utilbill = [u for u in self._utilbills if u['_id']['service'] ==
-                service][0]
+        utilbill = self._get_utilbill_for_service(service)
         utilbill['chargegroups'] = unflatten_chargegroups_list(flat_charges)
 
     #def set_chargegroups_flattened(self, service, flat_charges, chargegroups):
@@ -1127,13 +1061,38 @@ class ReebillDAO:
         from Mongo (since the reebill is unissued, these will be the current
         versionless ones, not the ones that belong to the previous old
         version of this reebill).'''
-        # version must be incremented before utilbills are loaded so
-        # _load_all_utillbills_for_reebill() can find out whether this version
-        # is issued
-        reebill.version += 1
-        reebill._utilbills = self._load_all_utillbills_for_reebill(session,
-                reebill.reebill_dict)
         reebill.issue_date = None
+        reebill.version += 1
+
+        # replace the reebill's utility bill dictionaries with new ones loaded
+        # from mongo. which ones? the un-frozen/editable/"current truth"
+        # versions of the frozen ones currently in the reebill. how do you find
+        # them? i think the only way is by {account, service, utility, start
+        # date, end date}.
+        # TODO reconsider: https://www.pivotaltracker.com/story/show/37521779
+        all_new_utilbills = []
+        for utilbill_handle in reebill.reebill_dict['utilbills']:
+            # load new utility bill
+            old_utilbill = reebill._get_utilbill_for_handle(utilbill_handle)
+            new_utilbill = self.load_utilbill(account=reebill.account,
+                    utility=old_utilbill['utility'],
+                    service=old_utilbill['service'],
+                    start=old_utilbill['start'], end=old_utilbill['end'],
+                    # must not contain "sequence" or "version" keys
+                    sequence=False, version=False)
+
+            # convert types
+            new_utilbill = deep_map(float_to_decimal, new_utilbill)
+            new_utilbill = convert_datetimes(new_utilbill)
+
+            all_new_utilbills.append(new_utilbill)
+
+            # utilbill_handle's _id should match the new utility bill
+            utilbill_handle['id'] = new_utilbill['_id']
+
+        # replace utilbills with new ones loaded above (all at once)
+        reebill._utilbills = all_new_utilbills
+
 
     def load_utilbills(self, account=None, service=None, utility=None,
             start=None, end=None, sequence=None, version=None):
@@ -1141,20 +1100,20 @@ class ReebillDAO:
         the raw dictionaries ordered by start date.'''
         query = {}
         if account is not None:
-            query.update({'_id.account': account})
+            query.update({'account': account})
         if utility is not None:
-            query.update({'_id.utility': utility})
+            query.update({'utility': utility})
         if service is not None:
-            query.update({'_id.service': service})
+            query.update({'service': service})
         if start is not None:
-            query.update({'_id.start': date_to_datetime(start)})
+            query.update({'start': date_to_datetime(start)})
         if end is not None:
-            query.update({'_id.end': date_to_datetime(end)})
+            query.update({'end': date_to_datetime(end)})
         if sequence is not None:
-            query.update({'_id.sequence': sequence})
+            query.update({'sequence': sequence})
         if version is not None:
-            query.update({'_id.version': version})
-        cursor = self.utilbills_collection.find(query, sort=[('_id.start',
+            query.update({'version': version})
+        cursor = self.utilbills_collection.find(query, sort=[('start',
                 pymongo.ASCENDING)])
         return list(cursor)
 
@@ -1173,13 +1132,13 @@ class ReebillDAO:
         test for the existence of the 'sequence' or 'version' key.'''
 
         query = {
-            '_id.account': account,
-            '_id.utility': utility,
-            '_id.service': service,
+            'account': account,
+            'utility': utility,
+            'service': service,
             # querying for None datetimes should work
-            '_id.start': date_to_datetime(start) \
+            'start': date_to_datetime(start) \
                     if isinstance(start, date) else None,
-            '_id.end': date_to_datetime(end) \
+            'end': date_to_datetime(end) \
                     if isinstance(end, date) else None,
         }
 
@@ -1188,16 +1147,16 @@ class ReebillDAO:
         # NOTE bool must be checked first because bool is a subclass of
         # int! http://www.python.org/dev/peps/pep-0285/
         if isinstance(sequence, bool):
-            query['_id.sequence'] = {'$exists': sequence}
+            query['sequence'] = {'$exists': sequence}
         elif isinstance(sequence, int):
-            query['_id.sequence'] = sequence
+            query['sequence'] = sequence
         elif sequence is not None:
             raise ValueError("'sequence'=%s; must be int or boolean" % sequence)
 
         if isinstance(version, bool):
-            query['_id.version'] = {'$exists': version}
+            query['version'] = {'$exists': version}
         elif isinstance(version, int):
-            query['_id.version'] = version
+            query['version'] = version
         elif version is not None:
             raise ValueError("'version'=%s; must be int or boolean" % version)
 
@@ -1205,12 +1164,15 @@ class ReebillDAO:
 
         # make sure exactly one doc was found
         if docs.count() == 0:
-            raise NoSuchBillException(("No utilbill found in %s: query was %s")
-                    % (self.utilbills_collection, query))
+            raise NoSuchBillException(("No utility bill found in %s: "
+                    "query was %s") % (self.utilbills_collection,
+                    format_query(query)))
         elif docs.count() > 1:
-            raise NoSuchBillException(("Multiple utilbills in %s satisfy query"
-                    " %s") % (self.utilbills_collection, query))
+            raise NotUniqueException(("Multiple utility bills in %s satisfy "
+                    "query %s") % (self.utilbills_collection,
+                    format_query(query)))
         return docs[0]
+
 
     def _load_all_utillbills_for_reebill(self, session, reebill_doc):
         '''Loads all utility bill documents from Mongo that match the ones in
@@ -1218,35 +1180,14 @@ class ReebillDAO:
         object). Returns list of dictionaries with converted types.'''
         result = []
 
-        # if this is a normal reebill, find out whether it's issued from MySQL.
-        # if it's a sequence-0 template, MySQL doesn't know about it.
-        if reebill_doc['_id']['sequence'] > 0:
-            issued = self.state_db.is_issued(session, reebill_doc['_id']['account'],
-                    reebill_doc['_id']['sequence'],
-                    version=reebill_doc['_id']['version'])
-        else:
-            issued = False
-
         for utilbill_handle in reebill_doc['utilbills']:
-            # parameters needed to look up the utilbill
-            lookup_params = [
-                reebill_doc['_id']['account'],
-                utilbill_handle['service'],
-                utilbill_handle['utility'],
-                utilbill_handle['start'],
-                utilbill_handle['end']
-            ]
-
-            # if the reebill is issued, look up its utilbills with sequence and
-            # version; if not, "sequence" and "version" keys should not be in
-            # the _ids
-            if issued:
-                utilbill_doc = self.load_utilbill(*lookup_params,
-                        sequence=reebill_doc['_id']['sequence'],
-                        version=reebill_doc['_id']['version'])
-            else:
-                utilbill_doc = self.load_utilbill(*lookup_params,
-                        sequence=False, version=False)
+            query = {'_id': utilbill_handle['id']}
+            utilbill_doc = self.utilbills_collection.find_one(query)
+            if utilbill_doc == None:
+                raise NoSuchBillException(("No utility bill found for reebill "
+                        " %s-%s in %s: query was %s") % (
+                        reebill_doc['account'], reebill_doc['sequence'],
+                        self.utilbills_collection, format_query(query)))
 
             # convert types
             utilbill_doc = deep_map(float_to_decimal, utilbill_doc)
@@ -1307,8 +1248,8 @@ class ReebillDAO:
                 raise ValueError('Unknown version specifier "%s"' % version)
 
             if mongo_doc is None:
-                raise NoSuchBillException(("No reebill found in %s: query was %s")
-                        % (self.reebills_collection, query))
+                raise NoSuchBillException(("no reebill found in %s: query was %s")
+                        % (self.reebills_collection, format_query(query)))
 
             # convert types in reebill document
             mongo_doc = deep_map(float_to_decimal, mongo_doc)
@@ -1376,9 +1317,8 @@ class ReebillDAO:
 
         'freeze_utilbills' should be used when issuing a reebill for the first
         time (an original or a correction). This creates immutable copies of
-        the utility bill documents with the reebill's sequence and version in
-        their _id. Whenever the reebill is loaded, these copies will be loaded
-        with it.
+        the utility bill documents with new _ids and puts the reebill's
+        sequence and version in them.
         
         Replacing an already-issued reebill (as determined by StateDB, using
         the rule that all versions except the highest are issued) or its
@@ -1389,52 +1329,92 @@ class ReebillDAO:
         with DBSession(self.state_db) as session:
             issued = self.state_db.is_issued(session, reebill.account,
                     reebill.sequence, version=reebill.version, nonexistent=False)
+            attached = self.state_db.is_attached(session, reebill.account,
+                    reebill.sequence, nonexistent=False)
             if issued and not force:
                 raise IssuedBillError("Can't modify an issued reebill.")
-            if issued and freeze_utilbills:
+            if (issued or attached) and freeze_utilbills:
                 raise IssuedBillError("Can't freeze utility bills because this "
                         "reebill is issued; frozen utility bills should "
                         "already exist")
             
-            reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
-
-            for utilbill_doc in reebill._utilbills:
+            for utilbill_handle in reebill.reebill_dict['utilbills']:
+                utilbill_doc = [u for u in reebill._utilbills if u['_id'] ==
+                        utilbill_handle['id']][0]
                 if freeze_utilbills:
-                    # this reebill is being issued: put "sequence" and "version"
-                    # keys in the utility bill's _id, so it will be saved as a
-                    # frozen copy associated with this particular reebill
+                    # this reebill is being attached (usually right before
+                    # issuing): convert the utility bills into frozen copies by
+                    # putting "sequence" and "version" keys in the utility
+                    # bill, and changing its _id to a new one
+                    old_id = utilbill_doc['_id']
+                    new_id = bson.objectid.ObjectId()
+
+                    # copy utility bill doc so changes to it do not persist if
+                    # saving fails below
+                    utilbill_doc = copy.deepcopy(utilbill_doc)
+                    utilbill_doc['_id'] = new_id
                     self._save_utilbill(utilbill_doc, force=force,
                             sequence_and_version=(reebill.sequence,
                             reebill.version))
+                    # saving succeeded: set handle id to match the saved
+                    # utility bill and replace the old utility bill document with the new one
+                    utilbill_handle['id'] = new_id
+                    reebill._set_utilbill_for_id(old_id, utilbill_doc)
                 else:
                     self._save_utilbill(utilbill_doc, force=force)
 
+            reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
             self.reebills_collection.save(reebill_doc, safe=True)
             # TODO catch mongo's return value and raise MongoError
 
-    def _save_utilbill(self, utilbill_doc, sequence_and_version=None, force=False):
+    def _save_utilbill(self, utilbill_doc, sequence_and_version=None,
+            force=False):
         '''Save raw utility bill dictionary. If this utility bill belongs to an
-        issued reebill (i.e. has sequence and version in it) it can't be
-        saved). force=True overrides this rule; only use it for testing.
+        issued reebill (i.e. has sequence and version in it) it can't be saved.
+        force=True overrides this rule; only use it for testing.
 
         'sequence_and_version' should a (sequence, version) tuple, to be used
         when (and only when) issuing the containing reebill for the first time
-        (calling save_reebill(freeze_utilbills=True). This puts sequence and
-        version keys into the utility bill's _id.'''
-        # utility bills that belong to a reebill (i.e. already have "sequence"
-        # and "version" keys) cannot be saved
-        # TODO replace this check with a better design when switching to
-        # MongoEngine: https://www.pivotaltracker.com/story/show/37202081
-        if not force and ('sequence' in utilbill_doc['_id'] \
-                or 'version' in utilbill_doc['_id']):
-            existing_docs = self.load_utilbills(**utilbill_doc['_id'])
-            if existing_docs != []:
-                raise IssuedBillError(("This utility bill can't be edited "
-                        "because it belongs to an issued reebill: %s-%s") % (
-                        utilbill_doc['_id']['account'], utilbill_doc['_id']['sequence']))
+        (i.e. calling save_reebill(freeze_utilbills=True). This puts sequence
+        and version keys into the utility bill. (If those keys are already in
+        the utility bill, you won't be able to save it.)'''
+
+        # check for uniqueness of {account, service, utility, start, end} (and
+        # sequence + version if appropriate). Mongo won't enforce this for us.
+        unique_fields = {
+            'account': utilbill_doc['account'],
+            'service': utilbill_doc['service'],
+            'utility': utilbill_doc['utility'],
+            'start': utilbill_doc['start'],
+            'end': utilbill_doc['end'],
+        }
+        if sequence_and_version is not None:
+            # this utility bill is being frozen: check for existing frozen
+            # utility bills with same sequence and version (ignoring un-frozen
+            # ones)
+            unique_fields['sequence'] = sequence_and_version[0]
+            unique_fields['version'] = sequence_and_version[1]
+        elif 'sequence' in utilbill_doc:
+            # this utility bill is already a frozen one and has been saved:
+            # check for existing frozen utility bills with the same sequence
+            # and version (ignoring un-frozen ones)
+            unique_fields['sequence'] = utilbill_doc['sequence']
+            unique_fields['version'] = utilbill_doc['version']
+        else:
+            # not frozen: only check for existing utility bills that don't have
+            # sequence/version keys
+            unique_fields['sequence'] = {'$exists': False}
+            unique_fields['version'] = {'$exists': False}
+        for duplicate in self.load_utilbills(**unique_fields):
+            if duplicate['_id'] != utilbill_doc['_id']:
+                raise NotUniqueException(("Can't save utility bill with "
+                        "_id=%s: There's already a utility bill with "
+                        "id=%s matching %s") % (utilbill_doc['_id'],
+                        duplicate['_id'],
+                        format_query(unique_fields)))
 
         if sequence_and_version is not None:
-            utilbill_doc['_id'].update({
+            utilbill_doc.update({
                 'sequence': sequence_and_version[0],
                 'version': sequence_and_version[1],
             })

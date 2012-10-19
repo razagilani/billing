@@ -220,6 +220,23 @@ class StateDB:
             utilbill.reebill = reebill
             utilbill.processed = True
 
+    def is_attached(self, session, account, sequence, nonexistent=None):
+        '''Returns True iff the given reebill has utility bills attached to it
+        in MySQL. If 'nonexistent' is given, that value will be returned if the
+        reebill is not present in the state database (e.g. False when you want
+        non-existent bills to be treated as unissued).'''
+        try:
+            customer = self.get_customer(session, account)
+            reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
+                    .filter(ReeBill.sequence==sequence).one()
+            num_utilbills = session.query(UtilBill)\
+                    .filter(UtilBill.reebill==reebill).count()
+        except NoResultFound:
+            if nonexistent is not None:
+                return nonexistent
+            raise
+        return num_utilbills >= 1
+
     def utilbills_for_reebill(self, session, account, sequence):
         '''Returns all utility bills for the reebill given by account,
         sequence.'''
@@ -484,7 +501,7 @@ class StateDB:
         # SQLAlchemy query to get account & dates for all utilbills
         query = session.query(UtilBill).with_lockmode('read').join(Customer)\
                 .filter(Customer.account==account)\
-                .order_by(Customer.account, asc(UtilBill.period_start))
+                .order_by(Customer.account, desc(UtilBill.period_start))
 
         if start is None:
             return query, query.count()
