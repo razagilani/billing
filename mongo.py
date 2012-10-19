@@ -1190,7 +1190,7 @@ class ReebillDAO:
             query.update({'sequence': sequence})
         if version is not None:
             query.update({'version': version})
-        return UtilBills.objects(__raw__=query).all()
+        return UtilBill.objects(__raw__=query).all()
 
     def load_utilbill(self, account, service, utility, start, end,
             sequence=None, version=None):
