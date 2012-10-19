@@ -1442,6 +1442,27 @@ class ReebillDAO:
             result = self.utilbills_collection.remove({'_id': bson_convert(u['_id'])}, safe=True)
             if result['err'] is not None or result['n'] == 0:
                 raise MongoError(result)
+
+            # if this is a frozen utility bill, both editable version also must
+            # be removed, but it's not in _utilbills. identify it by the
+            # unofficially unique keys
+            # NOTE if the dates have been changed, this will not work
+            if 'sequence' in u:
+                q = {
+                    'account': account,
+                    'service': u['service'],
+                    'utility': u['utility'],
+                    'start': None if u['start'] is None
+                            else date_to_datetime(u['start']),
+                    'end': None if u['end'] is None
+                            else date_to_datetime(u['end']),
+                    'sequence': {'$exists': False},
+                    'version': {'$exists': False},
+                }
+                result = self.utilbills_collection.remove(q, safe=True)
+                if result['err'] is not None or result['n'] == 0:
+                    raise MongoError(result)
+
         result = self.reebills_collection.remove({
             '_id.account': account,
             '_id.sequence': sequence,
