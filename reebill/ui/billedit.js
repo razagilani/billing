@@ -167,7 +167,7 @@ function reeBillReady() {
         handler: function(b, e) {
             //You cannot simply call saveForm, because it needs to be able to find its parent.
             //Using 'this' as the scope tells it that it is not just in an anonymus function.
-            saveForm(b, e, function() {
+            saveForm(b, e, function(b,e) {
                 utilbillGrid.getBottomToolbar().doRefresh();
                 uploadStartDateField.setValue(uploadEndDateField.getValue());
                 uploadEndDateField.setValue("");
@@ -1690,7 +1690,7 @@ function reeBillReady() {
                 success: function(form, action) {
                     // If an argument is not passed into a function, it has type 'undefined'
                     if (typeof callback !== 'undefined') {
-                        callback()
+                        callback(b, e)
                     }
                 }
             })
@@ -5153,7 +5153,14 @@ function reeBillReady() {
         text: 'Submit',
         // TODO: 20513861 clear form on success
         // TODO: 20514019 reload journal grid on success
-        handler: saveForm,
+        handler: function(b,e) {
+            saveForm(b, e, function(b,e) {
+                journalEntryField.reset();
+                if (tabPanel.getActiveTab() == journalPanel) {
+                    journalStore.reload();
+                }
+            })
+        },
     });
     var journalFormPanel = new Ext.form.FormPanel({
         url: 'http://'+location.host+'/reebill/save_journal_entry',
