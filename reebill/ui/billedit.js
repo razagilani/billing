@@ -1508,7 +1508,10 @@ function reeBillReady() {
                     } else {
                         reeBillGrid.getSelectionModel().clearSelections();
                         reeBillStore.setDefaultSort('sequence', 'DESC');
-                        reeBillGrid.getBottomToolbar().moveFirst();
+                        pageSize = reeBillGrid.getBottomToolbar().pageSize;
+                        reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
+                            reeBillGrid.getSelectionModel().selectFirstRow();
+                        }});
                     }
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
