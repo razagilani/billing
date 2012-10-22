@@ -8,6 +8,7 @@ import ConfigParser
 import logging
 import pymongo
 import sqlalchemy
+import mongoengine
 from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
 from datetime import date, datetime, timedelta
@@ -117,7 +118,7 @@ port = 27017
             'port': 27017
         })
         
-        mongoengine.connect('skyline-dev' host='localhost', port=27017
+        mongoengine.connect('skyline-dev', host='localhost', port=27017,
                 alias='utilbills')
 
         self.nexus_util = NexusUtil('nexus')

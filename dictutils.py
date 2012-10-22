@@ -1,7 +1,3 @@
-#TODO: looks like this makes a by value copy of a dictionary causing references to be lost
-# making difficult returning references to data that needs to be modified. (e.g. we return
-# a meter dict which might have an identifier changed)
-# See set_meter_read_date()
 def deep_map(func, x):
     '''Applies the function 'func' througout the data structure x, or just
     applies it to x if x is a scalar. Used for type conversions from Mongo
