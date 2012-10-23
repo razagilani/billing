@@ -640,13 +640,14 @@ class Process(object):
         if self.state_db.is_attached(session, account, sequence):
             return
 
+        reebill = self.reebill_dao.load_reebill(account, sequence)
+
         self.state_db.attach_utilbills(session, account, sequence,
                 reebill.period_begin, reebill.period_end,
                 suspended_services=reebill.suspended_services)
 
         # save in mongo, with frozen copies of the associated utility bill
         # (the mongo part should come last because it can't roll back)
-        reebill = self.reebill_dao.load_reebill(account, sequence)
         self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
 
     def bind_rate_structure(self, reebill):
