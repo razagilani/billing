@@ -1,7 +1,7 @@
 from datetime import date, time, datetime, timedelta
 import calendar
 import unittest
-from billing.monthmath import Month, approximate_month, months_of_past_year
+from billing.processing.monthmath import Month, approximate_month, months_of_past_year
 
 class MonthmathTest(unittest.TestCase):
     def test_month(self):

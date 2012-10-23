@@ -4,7 +4,7 @@ from operator import add
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from skyliner.sky_handlers import cross_range
-from billing.monthmath import Month
+from billing.processing.monthmath import Month
 
 def hour_of_energy(hour, deterministic=True):
     '''Returns a made-up energy value in BTU for the given hour (datetime). If
