@@ -11,25 +11,6 @@ scripts - generic scripts applicable to all software in 'billing'
 db - supporting scripts for underlying databases
 
 
-stuff to put into reebill/scripts:
-corrector.py
-utilbill_histogram.py
-graph.py
-reconciliation.py
-
-stuff to move into processing - a reebill specific lib
-json_util.py
-month_math.py
-exceptions.py
-mongo.py
-users.py
-excel_export
-estimated revenue
-
-Things to remove:
-
-bills/
-
 questions
 nexus_util.py - arguably skyliner level
 dict_utils - general lib
@@ -39,6 +20,3 @@ mongo_utils - general lib
 monthmath.py - probably still too close to reebill for general lib
 holidays.py - maybe all date stuff should go into datelib
 what should processing/ be renamed to?
-
-
-

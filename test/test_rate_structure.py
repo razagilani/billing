@@ -7,10 +7,10 @@ import sqlalchemy
 from billing.processing import rate_structure
 from billing.processing.db_objects import Customer
 from billing.processing.state import StateDB
-from billing import mongo
+from billing.processing import mongo
 from billing.test import example_data
 from billing.dictutils import deep_map, subdict
-from billing.session_contextmanager import DBSession
+from billing.processing.session_contextmanager import DBSession
 
 def compare_rsis(rsi1, rsi2):
     '''Compares two Rate Structure Item dictionaries, ignoring differences

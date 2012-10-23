@@ -164,10 +164,10 @@ function reeBillReady() {
     });
     var upload_submit_button = new Ext.Button({
         text: 'Submit',
-        handler: function() {
+        handler: function(b, e) {
             //You cannot simply call saveForm, because it needs to be able to find its parent.
             //Using 'this' as the scope tells it that it is not just in an anonymus function.
-            saveForm.call(this, function() {
+            saveForm(b, e, function(b,e) {
                 utilbillGrid.getBottomToolbar().doRefresh();
                 uploadStartDateField.setValue(uploadEndDateField.getValue());
                 uploadEndDateField.setValue("");
@@ -429,6 +429,10 @@ function reeBillReady() {
         selModel: new Ext.grid.RowSelectionModel({
             singleSelect: true,
             listeners: {
+                rowdeselect: function (selModel, index, record) {
+                    loadReeBillUIForSequence(record.data.account, null);
+                },
+                
                 rowselect: function (selModel, index, record) {
 
                     // a row was selected in the UI, update subordinate ReeBill Data
@@ -452,7 +456,7 @@ function reeBillReady() {
                     // new window
                     if (record.data.state == 'Final' || record.data.state == 'Utility Estimated') {
 
-                        utilbilleditableImageDataConn.request({
+                        utilbillImageDataConn.request({
                             params: {account: record.data.account, begin_date: formatted_begin_date_string,
                                 end_date: formatted_end_date_string, resolution: resolution},
                             success: function(result, request) {
@@ -580,7 +584,7 @@ function reeBillReady() {
                 var jsonData = Ext.util.JSON.decode(result.responseText);
                 Ext.Msg.hide();
                 if (jsonData.success == true) {
-                    reeBillStore.reload(Ext.apply({}, {operation: deleteReebills}, reeBillStore.lastOptions));
+                    reeBillStore.reload();
                 } else {
                     Ext.MessageBox.alert("Error", jsonData.errors.reason +
                         "\n" + jsonData.errors.details);
@@ -606,11 +610,12 @@ function reeBillReady() {
                 'Are you sure you want to delete the latest version of reebill '
                 + selected_account + '-' + sequences + '?', function(answer) {
                     if (answer == 'yes') {
+                        reeBillGrid.getSelectionModel().clearSelections();
                         deleteReebills(sequences);
                     }
             });
 
-            reeBillStore.reload(Ext.apply({}, {operation: deleteButton}, reeBillStore.lastOptions));
+            reeBillStore.reload();
         }
     })
 
@@ -633,7 +638,7 @@ function reeBillReady() {
                     var jsonData = Ext.util.JSON.decode(result.responseText);
                     Ext.Msg.hide();
                     if (jsonData.success == true) {
-                        reeBillStore.reload(Ext.apply({}, {operation: versionButton}, reeBillStore.lastOptions));
+                        reeBillStore.reload();
                         Ext.MessageBox.alert("New version created", jsonData.new_version);
                     } else {
                         Ext.MessageBox.alert("Error", jsonData.errors.reason +
@@ -714,6 +719,11 @@ function reeBillReady() {
             {name: 'total_error'},
             {name: 'issued'},
         ],
+        remoteSort: true,
+        sortInfo: { //Sort in descending order by sequence number
+            field: 'sequence',
+            direction: 'DESC'
+        },
     });
 
     reeBillStore.on('beforesave', function(store, data) {
@@ -765,16 +775,13 @@ function reeBillReady() {
         store.baseParams.account = selected_account;
 
     });
-
+    
     // fired when the datastore has completed loading
     reeBillStore.on('load', function (store, records, options) {
         // was disabled prior to loading, and must be enabled when loading is complete
         reeBillGrid.setDisabled(false);
-
-        if(options.operation === rollOperation)
-            reeBillGrid.getSelectionModel().selectFirstRow()
     });
-
+    
     // handles all server errors for reeBillStore. see DataProxy.exception
     // event for argument meanings
     reeBillStore.on('exception', function(dataProxy, type, action, options, response,
@@ -831,13 +838,13 @@ function reeBillReady() {
                 //renderer: reeBillGridRenderer,
             },{
                 header: 'Start Date',
-                sortable: true,
+                sortable: false,
                 dataIndex: 'period_start',
                 width: 70,
                 renderer: reeBillGridRenderer,
             },{
                 header: 'End Date',
-                sortable: true,
+                sortable: false,
                 dataIndex: 'period_end',
                 width: 70,
                 renderer: reeBillGridRenderer,
@@ -1491,7 +1498,7 @@ function reeBillReady() {
         tabPanel.setDisabled(true);
 
         rollOperationConn.request({
-            params: {account: selected_account, sequence: selected_sequence},
+            params: {account: selected_account},
             success: function(result, request) {
                 var jsonData = null;
                 try {
@@ -1499,7 +1506,12 @@ function reeBillReady() {
                     if (jsonData.success == false) {
                         Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                     } else {
-                        reeBillStore.reload(Ext.apply({}, {operation: rollOperation}, reeBillStore.lastOptions));
+                        reeBillGrid.getSelectionModel().clearSelections();
+                        reeBillStore.setDefaultSort('sequence', 'DESC');
+                        pageSize = reeBillGrid.getBottomToolbar().pageSize;
+                        reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
+                            reeBillGrid.getSelectionModel().selectFirstRow();
+                        }});
                     }
                 } catch (err) {
                     Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
@@ -1651,9 +1663,9 @@ function reeBillReady() {
     // Generic form save handler
     // 
     // TODO: 20496293 accept functions to callback on form post success
-    function saveForm(callback) {
+    function saveForm(b, e, callback) {
         //http://www.sencha.com/forum/showthread.php?127087-Getting-the-right-scope-in-button-handler
-        var formPanel = this.findParentByType(Ext.form.FormPanel);
+        var formPanel = b.findParentByType(Ext.form.FormPanel);
         if (formPanel.getForm().isValid()) {
             formPanel.getForm().submit({
                 params:{
@@ -1678,7 +1690,7 @@ function reeBillReady() {
                 success: function(form, action) {
                     // If an argument is not passed into a function, it has type 'undefined'
                     if (typeof callback !== 'undefined') {
-                        callback()
+                        callback(b, e)
                     }
                 }
             })
@@ -4281,7 +4293,7 @@ function reeBillReady() {
                 dataIndex: 'primusname',
                 renderer: accountGridColumnRenderer,
             },{
-                header: 'Days since last UtilBill',
+                header: 'Days Since Utility Bill',
                 sortable: true,
                 dataIndex: 'dayssince',
                 renderer: accountGridColumnRenderer,
@@ -5141,7 +5153,14 @@ function reeBillReady() {
         text: 'Submit',
         // TODO: 20513861 clear form on success
         // TODO: 20514019 reload journal grid on success
-        handler: saveForm,
+        handler: function(b,e) {
+            saveForm(b, e, function(b,e) {
+                journalEntryField.reset();
+                if (tabPanel.getActiveTab() == journalPanel) {
+                    journalStore.reload();
+                }
+            })
+        },
     });
     var journalFormPanel = new Ext.form.FormPanel({
         url: 'http://'+location.host+'/reebill/save_journal_entry',
@@ -5459,7 +5478,7 @@ function reeBillReady() {
         id: 'aboutTab',
         title: 'About',
         disabled: aboutPanelDisabled,
-        html: '<table style="width: 100%; border: 0; margin-top:20px;"><tr><td align="center">&nbsp;</td></tr><tr><td align="center"><img width="50%" src="MrJonas.png"/></td></tr><tr><td align="center"><font style="font-family: impact; font-size:68pt;">Masterbiller</font></td></tr></table>',
+        html: '<table style="width: 100%; border: 0; margin-top:20px;"><tr><td align="center">&nbsp;</td></tr><tr><td align="center"><img width="30%" src="Cooki.png"/></td></tr><tr><td align="center"><font style="font-family: impact; font-size:68pt;">Billing Witch</font></td></tr></table>',
     });
 
     // end of tab widgets
@@ -5720,20 +5739,30 @@ function reeBillReady() {
 
             // delete button requires selected unissued reebill whose predecessor
             // is issued, or whose sequence is the last one
-            deleteButton.setDisabled(sequence == null || ! (isLastSequence &&
+            deleteButton.setDisabled(! (isLastSequence &&
                     record.data.max_version == 0) && (record.data.issued == true ||
                     (prevRecord != null && prevRecord.data.issued == false)));
             // new version button requires selected issued reebill
             versionButton.setDisabled(sequence == null || record.data.issued == false);
         }
 
-        /* the rest of this applies only for a valid sequence */
-        if (sequence == null) {
-            return;
-        }
-
         selected_account = account;
         selected_sequence = sequence;
+
+        // update the journal form panel so entries get submitted to currently selected account
+        journalFormPanel.getForm().findField("account").setValue(account)
+        journalFormPanel.getForm().findField("sequence").setValue(sequence)
+        
+        /* the rest of this applies only for a valid sequence */
+        if (sequence == null) {
+            ubBillPeriodsPanel.setDisabled(true);
+            ubMeasuredUsagesPanel.setDisabled(true);
+            rateStructurePanel.setDisabled(true);
+            chargeItemsPanel.setDisabled(true);
+            updateStatusbar(selected_account, null);
+            deleteButton.setDisabled(true);
+            return;
+        }
 
         // enable or disable the reebill delete button depending on whether the
         // selected reebill is issued: only un-issued bills should be
@@ -5747,11 +5776,7 @@ function reeBillReady() {
         //var sequenceRecordIndex = sequencesStore.find('sequence', sequence);
         //var sequenceRecord = sequencesStore.getAt(sequenceRecordIndex);
         //deleteButton.setDisabled(sequenceRecord.get('committed'))
-
-        // update the journal form panel so entries get submitted to currently selected account
-        journalFormPanel.getForm().findField("account").setValue(account)
-        journalFormPanel.getForm().findField("sequence").setValue(sequence)
-
+        
         // TODO:23046181 abort connections in progress
         configureReeBillEditor(selected_account, selected_sequence);
 

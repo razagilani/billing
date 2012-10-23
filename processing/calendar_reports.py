@@ -6,7 +6,7 @@ import argparse
 from datetime import date, timedelta
 from calendar import Calendar
 from decimal import Decimal
-from billing import mongo
+from billing.processing import mongo
 from billing import dateutils
 import xlwt
 import sys
