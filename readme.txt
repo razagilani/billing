@@ -12,22 +12,6 @@ scripts - generic scripts applicable to all software in 'billing'
 db - supporting scripts for underlying databases
 
 
-stuff to put into reebill/scripts:
-corrector.py
-utilbill_histogram.py
-graph.py
-reconciliation.py
-
-stuff to move into processing - a reebill specific lib
-json_util.py
-month_math.py
-exceptions.py
-mongo.py
-users.py
-excel_export
-estimated revenue
-
-
 questions
 nexus_util.py - arguably skyliner level
 dict_utils - general lib

@@ -660,4 +660,29 @@ Combining pages together
 
 
 
+Deployment
+==========
 
+To deploy the code:
+
+$ cd billing/reebill
+$ fab deploy -R amazon
+
+When prompted
+
+Environment? [stage] 
+
+Type "stage27" or "prod27" and wait while files are uploaded. Log into staging/production servier using ssh key file from dropbox:
+
+$ ssh -i ~/Dropbox/IT/ec2keys/tyrell-prod.pem ec2-user@tyrell-prod.skylineinnovations.net
+
+Become the user reebill-stage and or reebill-prod and go to the directory where the code is located:
+
+[ec2-user@ip-10-2-197-163 in ~]$ sudo su - reebill-stage
+(reebill-stage)[reebill-stage@ip-10-2-197-163 reebill-stage]$ cd lib/python2.7/site-packages/billing/
+
+Restore database:
+
+reebill/admin/destage_prod_to_stage.bash
+
+Edit and run any upgrade scripts (insert staging/production database credentials).

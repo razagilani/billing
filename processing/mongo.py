@@ -17,8 +17,8 @@ import operator
 from billing.mongo_utils import bson_convert, python_convert, format_query
 from billing.dictutils import deep_map, subdict
 from billing.dateutils import date_to_datetime
-from billing.session_contextmanager import DBSession
-from billing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
+from billing.processing.session_contextmanager import DBSession
+from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -60,16 +60,6 @@ def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
                 element in x]
     return x
 
-
-def check_issued(method):
-    '''Decorator to evaluate the issued state.'''
-    @functools.wraps(method)
-    def wrapper(instance, *args, **kwargs):
-        # BTW this is not the right way to check if a bill is issued. Issued status found in StateDB
-        if 'issue_date' in instance.reebill_dict and instance.reebill_dict['issue_date'] is not None:
-            raise Exception("ReeBill cannot be modified once isssued.")
-        return method(instance, *args, **kwargs)
-    return wrapper
 
 # TODO believed to be needed only by presentation code, so put it there.
 def flatten_chargegroups_dict(chargegroups):
@@ -986,20 +976,6 @@ class MongoReebill(object):
         return flatten_chargegroups_dict(copy.deepcopy(
                 utilbill['chargegroups']))
 
-    #def chargegroups_flattened(self, service, chargegroups):
-        #if service not in self.services:
-            #raise ValueError('Unknown service "%s"' % service)
-        ## flatten structure into an array of dictionaries, one for each charge
-        ## this has to be done because the grid editor is  looking for a flat table
-        ## This should probably not be done in here, but rather by some helper object?
-        #flat_charges = []
-        #for ub in self.reebill_dict['utilbills']:
-            #if ub['service'] == service:
-                #for (chargegroup, charges) in ub[chargegroups].items(): 
-                    #for charge in charges:
-                        #charge['chargegroup'] = chargegroup
-                        #flat_charges.append(charge)
-        #return flat_charges
 
     def set_hypothetical_chargegroups_flattened(self, service, flat_charges):
         utilbill_handle = self._get_handle_for_service(service)
@@ -1010,19 +986,6 @@ class MongoReebill(object):
         utilbill = self._get_utilbill_for_service(service)
         utilbill['chargegroups'] = unflatten_chargegroups_list(flat_charges)
 
-    #def set_chargegroups_flattened(self, service, flat_charges, chargegroups):
-        #for ub in self.reebill_dict['utilbills']:
-            #if ub['service'] == service:
-                ## TODO sort flat_charges before groupby
-                ## They post sorted, but that is no guarantee...
-                #new_chargegroups = {}
-                #for cg, charges in it.groupby(sorted(flat_charges, key=lambda
-                                        #charge:charge['chargegroup']), key=lambda charge:charge['chargegroup']):
-                    #new_chargegroups[cg] = []
-                    #for charge in charges:
-                        #del charge['chargegroup']
-                        #new_chargegroups[cg].append(charge)
-                #ub[chargegroups] = new_chargegroups
 
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
