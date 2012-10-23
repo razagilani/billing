@@ -462,12 +462,23 @@ class StateDB:
 
         return result
 
-    def listReebills(self, session, start, limit, account):
+    def listReebills(self, session, start, limit, account, sort, dir, **kwargs):
 
-        query = session.query(ReeBill).join(Customer).filter(Customer.account==account) \
-            .order_by(desc(ReeBill.sequence))
+        query = session.query(ReeBill).join(Customer).filter(Customer.account==account)
+        
+        if (dir == u'DESC'):
+            order = desc
+        elif (dir == u'ASC'):
+            order = asc
+        else:
+            raise ValueError("Bad Parameter Value: 'dir' must be 'ASC' or 'DESC'")
 
-        slice = query[start:start + limit]
+        if (sort == u'sequence'):
+            field = ReeBill.sequence
+        else:
+            raise ValueError("Bad Parameter Value: 'sort' must be 'sequence'")
+
+        slice = query.order_by(order(field))[start:start + limit]
         count = query.count()
 
         return slice, count
