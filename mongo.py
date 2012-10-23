@@ -646,7 +646,7 @@ class MongoReebill(object):
         # because it is what you use to grab a utility bill and it's kind of
         # like a pointer.
         id = utilbill_handle['id']
-        matching_utilbills = [u for u in self._utilbills if u_id == id]
+        matching_utilbills = [u for u in self._utilbills if u._id == id]
         if len(matching_utilbills) < 0:
             raise ValueError('No utilbill found for id "%s"' % id)
         if len(matching_utilbills) > 1:
@@ -1235,7 +1235,7 @@ class ReebillDAO:
 
         # MongoEngine get() ensures uniqueness ("raw" means query like regular
         # pymongo)
-        docs = UtilBill.get(__raw__=query)
+        docs = UtilBill.objects(__raw__=query)
 
     def _load_all_utillbills_for_reebill(self, session, reebill_doc):
         '''Loads all utility bill documents from Mongo that match the ones in
@@ -1243,7 +1243,7 @@ class ReebillDAO:
         object). Returns list of dictionaries with converted types.'''
         result = []
         for utilbill_handle in reebill_doc['utilbills']:
-            result.append(UtilBill.objects().with_id(utilbill_handle['id']))
+            result.append(UtilBill.objects().get(_id=utilbill_handle['id']))
         return result
 
     def load_reebill(self, account, sequence, version='max'):
@@ -1387,20 +1387,19 @@ class ReebillDAO:
                         "already exist")
             
             for utilbill_handle in reebill.reebill_dict['utilbills']:
-                utilbill_doc = [u for u in reebill._utilbills if u['_id'] ==
-                        utilbill_handle['id']][0]
+                utilbill_doc = reebill._get_utilbill_for_handle(utilbill_handle)
                 if freeze_utilbills:
                     # this reebill is being attached (usually right before
                     # issuing): convert the utility bills into frozen copies by
                     # putting "sequence" and "version" keys in the utility
                     # bill, and changing its _id to a new one
-                    old_id = utilbill_doc['_id']
+                    old_id = utilbill_doc._id
                     new_id = bson.objectid.ObjectId()
 
                     # copy utility bill doc so changes to it do not persist if
                     # saving fails below
                     utilbill_doc = copy.deepcopy(utilbill_doc)
-                    utilbill_doc['_id'] = new_id
+                    utilbill_doc._id = new_id
                     self._save_utilbill(utilbill_doc, force=force,
                             sequence_and_version=(reebill.sequence,
                             reebill.version))
@@ -1430,11 +1429,11 @@ class ReebillDAO:
         # check for uniqueness of {account, service, utility, start, end} (and
         # sequence + version if appropriate). Mongo won't enforce this for us.
         unique_fields = {
-            'account': utilbill_doc['account'],
-            'service': utilbill_doc['service'],
-            'utility': utilbill_doc['utility'],
-            'start': utilbill_doc['start'],
-            'end': utilbill_doc['end'],
+            'account': utilbill_doc.account,
+            'service': utilbill_doc.service,
+            'utility': utilbill_doc.utility,
+            'start': utilbill_doc.start,
+            'end': utilbill_doc.end,
         }
         if sequence_and_version is not None:
             # this utility bill is being frozen: check for existing frozen
@@ -1446,29 +1445,27 @@ class ReebillDAO:
             # this utility bill is already a frozen one and has been saved:
             # check for existing frozen utility bills with the same sequence
             # and version (ignoring un-frozen ones)
-            unique_fields['sequence'] = utilbill_doc['sequence']
-            unique_fields['version'] = utilbill_doc['version']
+            unique_fields['sequence'] = utilbill_doc.sequence
+            unique_fields['version'] = utilbill_doc.version
         else:
             # not frozen: only check for existing utility bills that don't have
             # sequence/version keys
             unique_fields['sequence'] = {'$exists': False}
             unique_fields['version'] = {'$exists': False}
         for duplicate in self.load_utilbills(**unique_fields):
-            if duplicate['_id'] != utilbill_doc['_id']:
+            if duplicate._id != utilbill_doc._id:
                 raise NotUniqueException(("Can't save utility bill with "
                         "_id=%s: There's already a utility bill with "
-                        "id=%s matching %s") % (utilbill_doc['_id'],
-                        duplicate['_id'],
-                        format_query(unique_fields)))
+                        "_id=%s matching %s") % (utilbill_doc._id,
+                        duplicate._id, format_query(unique_fields)))
 
         if sequence_and_version is not None:
-            utilbill_doc.update({
-                'sequence': sequence_and_version[0],
-                'version': sequence_and_version[1],
-            })
+            utilbill_doc.sequence = sequence_and_version[0]
+            utilbill_doc.version = sequence_and_version[1]
 
-        utilbill_doc = bson_convert(copy.deepcopy(utilbill_doc))
-        self.utilbills_collection.save(utilbill_doc, safe=True)
+        #utilbill_doc = bson_convert(copy.deepcopy(utilbill_doc))
+        #self.utilbills_collection.save(utilbill_doc, safe=True)
+        utilbill_doc.save()
         # TODO catch mongo's return value and raise MongoError
 
     def delete_reebill(self, account, sequence, version):
@@ -1478,7 +1475,7 @@ class ReebillDAO:
         # first ensure that each utility bill can be found and the reebill can
         # be found (to help keep this operation atomic)
         for u in reebill._utilbills:
-            self.utilbills_collection.find({'_id': bson_convert(u['_id'])})
+            UtilBill.objects().get(_id=u._id)
         self.reebills_collection.find({
             '_id.account': account,
             '_id.sequence': sequence,
@@ -1487,13 +1484,11 @@ class ReebillDAO:
 
         # remove each utility bill, then the reebill
         for u in reebill._utilbills:
-            result = self.utilbills_collection.remove({'_id': bson_convert(u['_id'])}, safe=True)
-            if result['err'] is not None or result['n'] == 0:
-                raise MongoError(result)
+            u.delete(safe=True)
 
-            # if this is a frozen utility bill, both editable version also must
-            # be removed, but it's not in _utilbills. identify it by the
-            # unofficially unique keys
+            # if this is a frozen utility bill, editable version also must be
+            # removed, but it's not in _utilbills. identify it by the
+            # unofficially unique keys (account, service, utility, start, end)
             # NOTE if the dates have been changed, this will not work
             if 'sequence' in u:
                 q = {
@@ -1507,9 +1502,7 @@ class ReebillDAO:
                     'sequence': {'$exists': False},
                     'version': {'$exists': False},
                 }
-                result = self.utilbills_collection.remove(q, safe=True)
-                if result['err'] is not None or result['n'] == 0:
-                    raise MongoError(result)
+                UtilBill.objects().find(__raw__=q).remove(safe=True)
 
         result = self.reebills_collection.remove({
             '_id.account': account,

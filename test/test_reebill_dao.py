@@ -3,6 +3,7 @@ import unittest
 import pymongo
 import sqlalchemy
 import copy
+import mongoengine
 from datetime import date, datetime, timedelta
 from billing import dateutils, mongo
 from billing.processing.state import StateDB
@@ -40,6 +41,9 @@ class ReebillDAOTest(unittest.TestCase):
             'port': 27017
         })
         
+        mongoengine.connect('test', host='localhost', port=27017,
+                alias='utilbills')
+
         ## clear out tables in mysql test database (not relying on StateDB)
         mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
         c = mysql_connection.cursor()
@@ -71,7 +75,7 @@ class ReebillDAOTest(unittest.TestCase):
         c.execute("delete from rebill")
         c.execute("delete from customer")
         mysql_connection.commit()
-
+    
     def test_load_reebill(self):
         with DBSession(self.state_db) as session:
             # put some reebills in Mongo, including non-0 versions

@@ -118,7 +118,7 @@ port = 27017
             'port': 27017
         })
         
-        mongoengine.connect('skyline-dev', host='localhost', port=27017,
+        mongoengine.connect('test', host='localhost', port=27017,
                 alias='utilbills')
 
         self.nexus_util = NexusUtil('nexus')
