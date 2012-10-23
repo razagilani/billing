@@ -142,6 +142,7 @@ if __name__ == '__main__':
     #parser = argparse.ArgumentParser(description='Create and authenticate user accounts')
     #parser.add_argument('create', dest=username)
     from sys import argv
+    # TODO: remove defaults to external params
     dao = UserDAO(**{
         'host': 'localhost',
         'port': 27017,

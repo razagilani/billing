@@ -12,7 +12,7 @@ import uuid
 import yaml
 import yaml
 from billing.mongo_utils import bson_convert, python_convert, format_query
-from billing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError
+from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1)
@@ -360,12 +360,8 @@ class RateStructure(object):
         of "description", "quantity", "quantity_units", "rate", and
         "rate_units" from the RSI to the charge.'''
         for charge in charges:
-            #print "treating charge "
-            #pp.pprint (charge)
             # get rate structure item binding for this charge
             rsi = self.__dict__[charge['rsi_binding']]
-            #print "got associated RSI"
-            #pp.pprint (rsi)
 
             # copy some fields from the RSI to the charge
             if rsi.description is not None:
@@ -573,8 +569,6 @@ class RateStructureItem(object):
             # eval evals rsi_value in the context of self._rate_structure.__dict__
             # this enables the rsi_value to contain references to attributes 
             # (registers and RSIs) that are held in the RateStructure
-            #pp.pprint(rsi_value)
-            #pp.pprint(self._rate_structure.__dict__)
             result = eval(rsi_value, self._rate_structure.__dict__)
             # an evaluated result can be a string or float or who knows what
             return result
