@@ -847,7 +847,7 @@ def equivalentTrees(poundsCarbonAvoided = 0):
 if __name__ == '__main__':
     from billing.mongo import ReebillDAO
     from billing.processing.state import StateDB
-    from billing.session_contextmanager import DBSession
+    from billing.processing.session_contextmanager import DBSession
     from billing.processing.process import Process
     sdb = StateDB(**{
         'host': 'localhost',
