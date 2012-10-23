@@ -35,7 +35,7 @@ import pychartdir
 pychartdir.setLicenseCode('DEVP-2HYW-CAU5-4YTR-6EA6-57AC')
 
 from pychartdir import Center, Left, TopLeft, DataColor, XYChart, PieChart
-from billing import mongo
+from billing.processing import mongo
 from billing import graph
 
 # TODO render should not depend on BillUpload--move this function out to its

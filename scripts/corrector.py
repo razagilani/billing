@@ -26,7 +26,7 @@ from billing.processing.session_contextmanager import DBSession
 from billing.processing import fetch_bill_data as fbd
 from billing.processing.process import Process
 from billing.processing.rate_structure import RateStructureDAO
-from billing.reebill.journal import NewReebillVersionEvent
+from billing.processing.reebill.journal import NewReebillVersionEvent
 from billing.users import UserDAO
 from billing.test.fake_skyliner import FakeSplinter
 
