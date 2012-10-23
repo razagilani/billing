@@ -11,14 +11,6 @@ doc - doc
 scripts - generic scripts applicable to all software in 'billing'
 db - supporting scripts for underlying databases
 
-stuff to move into processing - a reebill specific lib
-month_math.py
-exceptions.py
-mongo.py
-users.py
-excel_export
-estimated revenue
-
 
 questions
 nexus_util.py - arguably skyliner level
