@@ -642,13 +642,16 @@ class Process(object):
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
+        # save in mongo, with frozen copies of the associated utility bill
+        # (the mongo part should normally come last because it can't roll back,
+        # but here it must precede MySQL because ReebillDAO.save_reebill will
+        # refuse to create frozen utility bills "again" if MySQL says its
+        # attached". see https://www.pivotaltracker.com/story/show/38308443)
+        self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
+
         self.state_db.attach_utilbills(session, account, sequence,
                 reebill.period_begin, reebill.period_end,
                 suspended_services=reebill.suspended_services)
-
-        # save in mongo, with frozen copies of the associated utility bill
-        # (the mongo part should come last because it can't roll back)
-        self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
 
     def bind_rate_structure(self, reebill):
             # process the actual charges across all services
