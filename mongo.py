@@ -1188,7 +1188,7 @@ class ReebillDAO:
             query.update({'sequence': sequence})
         if version is not None:
             query.update({'version': version})
-        return UtilBill.objects(__raw__=query).all()
+        return list(UtilBill.objects(__raw__=query).all())
 
     def load_utilbill(self, account, service, utility, start, end,
             sequence=None, version=None):
@@ -1462,11 +1462,12 @@ class ReebillDAO:
         if sequence_and_version is not None:
             utilbill_doc.sequence = sequence_and_version[0]
             utilbill_doc.version = sequence_and_version[1]
-
-        #utilbill_doc = bson_convert(copy.deepcopy(utilbill_doc))
-        #self.utilbills_collection.save(utilbill_doc, safe=True)
-        utilbill_doc.save()
-        # TODO catch mongo's return value and raise MongoError
+            # force creation of a new document (because the _id has just been
+            # changed in save_reebill())
+            utilbill_doc.save(safe=True, force_insert=True)
+        else:
+            # normal save
+            utilbill_doc.save(safe=True)
 
     def delete_reebill(self, account, sequence, version):
         # load reebill in order to find utility bills

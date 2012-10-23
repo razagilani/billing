@@ -342,7 +342,7 @@ class ReebillDAOTest(unittest.TestCase):
         self.reebill_dao._save_utilbill(attached_utilbill,
                 sequence_and_version=(1, 0))
 
-        # NOTE attached_utilbill is still saveable
+        # attached_utilbill is still saveable
         self.reebill_dao._save_utilbill(attached_utilbill)
 
         # and so is the original utilbill
