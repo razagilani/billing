@@ -18,7 +18,7 @@ from billing.mongo_utils import bson_convert, python_convert, format_query
 from billing.dictutils import deep_map, subdict
 from billing.dateutils import date_to_datetime
 from billing.session_contextmanager import DBSession
-from billing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
+from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1).pprint
