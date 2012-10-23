@@ -456,7 +456,7 @@ function reeBillReady() {
                     // new window
                     if (record.data.state == 'Final' || record.data.state == 'Utility Estimated') {
 
-                        utilbilleditableImageDataConn.request({
+                        utilbillImageDataConn.request({
                             params: {account: record.data.account, begin_date: formatted_begin_date_string,
                                 end_date: formatted_end_date_string, resolution: resolution},
                             success: function(result, request) {
