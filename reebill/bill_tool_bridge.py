@@ -31,13 +31,14 @@ from billing import json_util as ju, mongo, dateutils, nexus_util as nu
 from billing.nexus_util import NexusUtil
 from billing.dictutils import deep_map
 from billing.processing import billupload, excel_export
-from billing.processing import monthmath, process, state, db_objects, fetch_bill_data as fbd, rate_structure as rs
+from billing import monthmath
+from billing.processing import process, state, db_objects, fetch_bill_data as fbd, rate_structure as rs
 from billing.processing.billupload import BillUpload
 from billing.reebill import render, journal, bill_mailer
 from billing.processing.users import UserDAO, User
-from billing import calendar_reports
+from billing.processing import calendar_reports
 from billing.processing.estimated_revenue import EstimatedRevenue
-from billing.session_contextmanager import DBSession
+from billing.processing.session_contextmanager import DBSession
 from billing.processing.exceptions import Unauthenticated
 
 # collection names: all collections are now hard-coded. maybe this should go in

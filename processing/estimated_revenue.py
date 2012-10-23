@@ -16,7 +16,7 @@ from billing.processing.state import StateDB
 from billing.processing.mongo import ReebillDAO
 from billing.dictutils import deep_map
 from billing import dateutils
-from billing.processing.monthmath import Month, months_of_past_year
+from billing.monthmath import Month, months_of_past_year
 
 import pprint
 pp = pprint.PrettyPrinter(indent=4).pprint

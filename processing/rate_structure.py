@@ -12,7 +12,7 @@ import uuid
 import yaml
 import yaml
 from billing.mongo_utils import bson_convert, python_convert, format_query
-from billing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError
+from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1)
