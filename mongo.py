@@ -1335,8 +1335,8 @@ class ReebillDAO:
                 raise IssuedBillError("Can't modify an issued reebill.")
             if (issued or attached) and freeze_utilbills:
                 raise IssuedBillError("Can't freeze utility bills because this "
-                        "reebill is issued; frozen utility bills should "
-                        "already exist")
+                        "reebill is attached or issued; frozen utility bills "
+                        "should already exist")
             
             for utilbill_handle in reebill.reebill_dict['utilbills']:
                 utilbill_doc = [u for u in reebill._utilbills if u['_id'] ==
