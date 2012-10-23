@@ -25,7 +25,7 @@ from billing.mongo import ReebillDAO
 from billing import nexus_util
 from billing import dateutils
 from billing.dateutils import estimate_month, month_offset, month_difference
-from billing.monthmath import Month, approximate_month
+from billing.processing.monthmath import Month, approximate_month
 from billing.dictutils import deep_map
 from billing.mongo import float_to_decimal
 from billing.exceptions import IssuedBillError, NotIssuable, BillStateError

@@ -5,7 +5,7 @@ import tablib
 from billing import mongo
 from billing.processing import state
 from billing import dateutils
-from billing.monthmath import approximate_month
+from billing.processing.monthmath import approximate_month
 from billing.processing.db_objects import UtilBill, ReeBill, Customer
 
 import pprint
