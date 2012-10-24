@@ -25,8 +25,8 @@ from billing.processing.mongo import ReebillDAO
 from billing.processing.mongo import float_to_decimal
 from billing.util import nexus_util
 from billing.util import dateutils
-from billing.dateutils import estimate_month, month_offset, month_difference
-from billing.monthmath import Month, approximate_month
+from billing.util.dateutils import estimate_month, month_offset, month_difference
+from billing.util.monthmath import Month, approximate_month
 from billing.util.dictutils import deep_map
 from billing.processing.exceptions import IssuedBillError, NotIssuable, BillStateError
 
@@ -65,7 +65,7 @@ class Process(object):
         '''Uploads 'bill_file' with the name 'file_name' as a utility bill for
         the given account, service, and dates. If the upload succeeds, a row is
         added to the utilbill table. If this is the newest or oldest utility
-        bill for the given account and service, "hypothetical" utility bills
+        bill for the given account and service, "estimated" utility bills
         will be added to cover the gap between this bill's period and the
         previous newest or oldest one respectively.'''
 
@@ -89,7 +89,7 @@ class Process(object):
                     end_date, bill_file, file_name)
             if upload_result is True:
                 self.state_db.record_utilbill_in_database(session, account,
-                        service, begin_date, end_date,
+                        service, begin_date, end_date, total_charges,
                         datetime.utcnow())
             else:
                 raise IOError('File upload failed: %s %s %s' % (file_name,

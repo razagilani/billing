@@ -114,9 +114,6 @@ class BillUpload(object):
             if save_file is not None:
                 save_file.close()
 
-        # make a row in utilbill representing the bill that was uploaded.
-        #self.state_db.insert_bill_in_database(account, begin_date, end_date)
-
         return True
 
     def get_utilbill_file_path(self, account, begin_date, end_date, extension=None):
