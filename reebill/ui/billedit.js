@@ -156,6 +156,12 @@ function reeBillReady() {
             allowBlank: false,
             format: 'Y-m-d'
     });
+    var uploadTotalChargesField = new Ext.form.NumberField({
+        fieldLabel: 'Total Charges',
+            name: 'total_charges',
+            width: 90,
+            value: 0,
+    });
 
     // buttons
     var upload_reset_button = new Ext.Button({
@@ -192,6 +198,7 @@ function reeBillReady() {
             upload_service,
             uploadStartDateField,
             uploadEndDateField,
+            uploadTotalChargesField,
             {
                 xtype: 'fileuploadfield',
                 id: 'form-file',
