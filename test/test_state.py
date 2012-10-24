@@ -7,7 +7,7 @@ from billing.processing import state
 from billing.processing.db_objects import Customer, UtilBill
 from billing import mongo
 from billing import dateutils
-from billing.session_contextmanager import DBSession
+from billing.processing.session_contextmanager import DBSession
 from billing.test import utils
 
 billdb_config = {

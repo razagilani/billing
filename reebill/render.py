@@ -35,7 +35,7 @@ import pychartdir
 pychartdir.setLicenseCode('DEVP-2HYW-CAU5-4YTR-6EA6-57AC')
 
 from pychartdir import Center, Left, TopLeft, DataColor, XYChart, PieChart
-from billing import mongo
+from billing.processing import mongo
 from billing import graph
 
 # TODO render should not depend on BillUpload--move this function out to its
@@ -847,7 +847,7 @@ def equivalentTrees(poundsCarbonAvoided = 0):
 if __name__ == '__main__':
     from billing.mongo import ReebillDAO
     from billing.processing.state import StateDB
-    from billing.session_contextmanager import DBSession
+    from billing.processing.session_contextmanager import DBSession
     from billing.processing.process import Process
     sdb = StateDB(**{
         'host': 'localhost',
