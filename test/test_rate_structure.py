@@ -9,7 +9,7 @@ from billing.processing.db_objects import Customer
 from billing.processing.state import StateDB
 from billing.processing import mongo
 from billing.test import example_data
-from billing.dictutils import deep_map, subdict
+from billing.util.dictutils import deep_map, subdict
 from billing.processing.session_contextmanager import DBSession
 
 def compare_rsis(rsi1, rsi2):

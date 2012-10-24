@@ -11,22 +11,22 @@ import sqlalchemy
 from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
 from datetime import date, datetime, timedelta
-from billing import dateutils
+from billing.util import dateutils
 from billing.processing import mongo
 from billing.processing.session_contextmanager import DBSession
-from billing.dateutils import estimate_month, month_offset
+from billing.util.dateutils import estimate_month, month_offset
 from billing.processing import rate_structure
 from billing.processing.process import Process, IssuedBillError
 from billing.processing.state import StateDB
 from billing.processing.db_objects import ReeBill, Customer, UtilBill
 from billing.processing.billupload import BillUpload
 from decimal import Decimal
-from billing.dictutils import deep_map
+from billing.util.dictutils import deep_map
 import MySQLdb
-from billing.mongo_utils import python_convert
+from billing.util.mongo_utils import python_convert
 from billing.test import example_data
 from billing.test.fake_skyliner import FakeSplinter, FakeMonguru
-from billing.nexus_util import NexusUtil
+from billing.util.nexus_util import NexusUtil
 from billing.processing.mongo import NoSuchBillException
 from billing.processing.exceptions import BillStateError
 from billing.processing import fetch_bill_data as fbd

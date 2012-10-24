@@ -7,7 +7,7 @@ from datetime import date, timedelta
 from calendar import Calendar
 from decimal import Decimal
 from billing.processing import mongo
-from billing import dateutils
+from billing.util import dateutils
 import xlwt
 import sys
 
