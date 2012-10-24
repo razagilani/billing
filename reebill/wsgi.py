@@ -26,11 +26,11 @@ import mongoengine
 from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
 from billing.test import fake_skyliner
-from billing import json_util as ju, dateutils, nexus_util as nu
-from billing.nexus_util import NexusUtil
-from billing.dictutils import deep_map
+from billing.util import json_util as ju, dateutils, nexus_util as nu
+from billing.util.nexus_util import NexusUtil
+from billing.util.dictutils import deep_map
 from billing.processing import mongo, billupload, excel_export
-from billing import monthmath
+from billing.util import monthmath
 from billing.processing import process, state, db_objects, fetch_bill_data as fbd, rate_structure as rs
 from billing.processing.billupload import BillUpload
 from billing.processing import journal, bill_mailer

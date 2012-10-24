@@ -14,9 +14,9 @@ from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state
 from billing.processing.state import StateDB
 from billing.processing.mongo import ReebillDAO
-from billing.dictutils import deep_map
+from billing.util.dictutils import deep_map
 from billing.util import dateutils
-from billing.monthmath import Month, months_of_past_year
+from billing.util.monthmath import Month, months_of_past_year
 
 import pprint
 pp = pprint.PrettyPrinter(indent=4).pprint
