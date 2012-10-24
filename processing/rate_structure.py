@@ -11,7 +11,7 @@ import traceback
 import uuid
 import yaml
 import yaml
-from billing.mongo_utils import bson_convert, python_convert, format_query
+from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError
 
 import pprint
