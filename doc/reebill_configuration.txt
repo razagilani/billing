@@ -376,7 +376,7 @@ Configure Apache2
 
         CustomLog /var/log/httpd/reebill-prod_access.log combined
 
-        WSGIScriptAlias /reebill /var/local/reebill-prod/lib/python2.7/site-packages/billing/reebill/bill_tool_bridge.py
+        WSGIScriptAlias /reebill /var/local/reebill-prod/lib/python2.7/site-packages/billing/reebill/wsgi.py
 
         WSGIDaemonProcess reebill-prod user=reebill-prod group=reebill-prod processes=1 threads=1 python-path=/var/local/reebill-prod/lib/python2.7/site-packages/ChartDirector/lib/:/var/local/reebill-prod/lib/python2.7/site-packages
         WSGIApplicationGroup %{GLOBAL}
@@ -515,7 +515,7 @@ ReeBill Apache Configuration Details
 
             CustomLog ${APACHE_LOG_DIR}/reebill-stage_access.log combined
 
-                WSGIScriptAlias /reebill /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/bill_tool_bridge.py
+                WSGIScriptAlias /reebill /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/wsgi.py
 
                 WSGIDaemonProcess reebill-stage user=reebill-stage group=reebill-stage processes=1 threads=10 python-path=/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib/:/var/local/reebill-stage/lib/python2.6/site-packages
 
@@ -552,7 +552,7 @@ ReeBill Apache Configuration Details
                     Allow from all
                 </Proxy>
 
-                WSGIScriptAlias /billtool /home/randrews/workspace-skyline/billing/reebill/bill_tool_bridge.py
+                WSGIScriptAlias /billtool /home/randrews/workspace-skyline/billing/reebill/wsgi.py
                 WSGIDaemonProcess billtool user=randrews group=randrews processes=1 threads=10 python-path=/home/randrews/workspace-skyline:/usr/lib/python2.6/dist-packages/ChartDirector/lib
                 WSGIProcessGroup billtool
 
@@ -595,7 +595,7 @@ ReeBill Apache Configuration Details
                     Allow from all
                 </Proxy>
 
-                WSGIScriptAlias /reebill /home/randrews/workspace-skyline/billing/reebill/bill_tool_bridge.py
+                WSGIScriptAlias /reebill /home/randrews/workspace-skyline/billing/reebill/wsgi.py
                 WSGIDaemonProcess reebill user=randrews group=randrews processes=5 threads=1 python-path=/home/randrews/workspace-skyline/billing:/home/randrews/workspace-skyline/:/home/randrews/.virtualenvs/reebill/lib/python2.7/site-packages/ChartDirector/lib:/home/randrews/.virtualenvs/reebill/lib/python2.7/site-packages
                 WSGIProcessGroup reebill
                 WSGIApplicationGroup %{GLOBAL}
