@@ -483,6 +483,19 @@ class StateDB:
 
         return slice, count
 
+    def reebill_versions(self, session, include_unissued=True):
+        '''Generates (account, sequence, version) tuples for all reebills in
+        MySQL.'''
+        for account in self.listAccounts(session):
+            for sequence in self.listSequences(session, account):
+                reebill = self.get_reebill(session, account, sequence)
+                if include_unissued or reebill.issued:
+                    max_version = reebill.max_version
+                else:
+                    max_version = reebill.max_version - 1
+                for version in range(max_version + 1):
+                    yield account, sequence, version
+
     def get_reebill(self, session, account, sequence):
 
         query = session.query(ReeBill).join(Customer) \
