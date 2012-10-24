@@ -2414,21 +2414,22 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def upload_utility_bill(self, account, service, begin_date, end_date,
+    def upload_utility_bill(self, account, service, begin_date, end_date, total_charges,
             file_to_upload, **args):
         with DBSession(self.state_db) as session:
-            if not account or not begin_date or not end_date or not file_to_upload:
+            if not account or not begin_date or not end_date or not total_charges or not file_to_upload:
                 raise ValueError("Bad Parameter Value")
 
             # pre-process parameters
             service = service.lower()
+            total_charges_as_float = float(total_charges)
             begin_date_as_date = datetime.strptime(begin_date, '%Y-%m-%d').date()
             end_date_as_date = datetime.strptime(end_date, '%Y-%m-%d').date()
             self.validate_utilbill_period(begin_date_as_date, end_date_as_date)
 
             try:
                 self.process.upload_utility_bill(session, account, service,
-                        begin_date_as_date, end_date_as_date, file_to_upload.file,
+                        begin_date_as_date, end_date_as_date, total_charges_as_float, file_to_upload.file,
                         file_to_upload.filename if file_to_upload else None)
             except IOError:
                 self.logger.error('file upload failed:', begin_date, end_date,
