@@ -1904,6 +1904,8 @@ class BillToolBridge:
             for new_reebill in new_reebills:
                 journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
                         account, new_reebill.sequence, new_reebill.version)
+                journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
+                        account, new_reebill.sequence, new_reebill.version)
             # client doesn't do anything with the result (yet)
             return self.dumps({'success': True, 'sequences': [r.sequence for r in
                     new_reebills]})
