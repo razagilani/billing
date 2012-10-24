@@ -177,6 +177,7 @@ function reeBillReady() {
                 utilbillGrid.getBottomToolbar().doRefresh();
                 uploadStartDateField.setValue(uploadEndDateField.getValue());
                 uploadEndDateField.setValue("");
+                uploadTotalChargesField.setValue(0);
             })
         },
     });
@@ -235,6 +236,7 @@ function reeBillReady() {
             {name: 'account', mapping: 'account'},
             {name: 'period_start', mapping: 'period_start'},
             {name: 'period_end', mapping: 'period_end'},
+            {name: 'total_charges', mapping: 'total_charges'},
             {name: 'sequence', mapping: 'sequence'},
             {name: 'state', mapping: 'state'},
         ]
@@ -277,6 +279,10 @@ function reeBillReady() {
             name: 'period_end',
             type: 'date',
             dateFormat: 'Y-m-d'
+        },
+        {
+            name: 'total_charges',
+            type: 'float'
         },
         {name: 'sequence'},
         {name: 'state'},
@@ -369,6 +375,12 @@ function reeBillReady() {
                 width: 50
             }),
             {
+                id: 'total_charges',
+                header: 'Total Charges',
+                dataIndex: 'total_charges',
+                editable: true,
+                editor: new Ext.form.NumberField({allowBlank: false}),
+            },{
                 id: 'sequence',
                 header: 'Sequence',
                 dataIndex: 'sequence',
@@ -420,7 +432,7 @@ function reeBillReady() {
             emptyMsg: "No Utility Bills to display",
         }),
         colModel: utilbillColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: false}),
+        //selModel: new Ext.grid.RowSelectionModel({singleSelect: false}),
         store: utilbillGridStore,
         enableColumnMove: false,
         frame: true,
@@ -435,6 +447,7 @@ function reeBillReady() {
         clicksToEdit: 2,
         selModel: new Ext.grid.RowSelectionModel({
             singleSelect: true,
+            moveEditorOnEnter: false,
             listeners: {
                 rowdeselect: function (selModel, index, record) {
                     loadReeBillUIForSequence(record.data.account, null);
