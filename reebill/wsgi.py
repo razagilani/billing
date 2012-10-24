@@ -1,6 +1,5 @@
 '''
-File: bill_tool_bridge.py
-Description: Allows bill tool to be invoked as a CGI
+File: wsgi.py
 '''
 import sys
 import os
