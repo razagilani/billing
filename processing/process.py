@@ -61,7 +61,7 @@ class Process(object):
         return new_customer
 
     def upload_utility_bill(self, session, account, service, begin_date,
-            end_date, bill_file, file_name):
+            end_date, total_charges, bill_file, file_name):
         '''Uploads 'bill_file' with the name 'file_name' as a utility bill for
         the given account, service, and dates. If the upload succeeds, a row is
         added to the utilbill table. If this is the newest or oldest utility
@@ -79,7 +79,7 @@ class Process(object):
             # record it in the database with that state, but don't upload
             # anything
             self.state_db.record_utilbill_in_database(session, account,
-                    service, begin_date, end_date, datetime.utcnow(),
+                    service, begin_date, end_date, total_charges, datetime.utcnow(),
                     state=UtilBill.SkylineEstimated)
         else:
             # if there is a file, get the Python file object and name
