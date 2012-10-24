@@ -990,10 +990,8 @@ class MongoReebill(object):
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
-    # TODO: hardcoded database name, and the wrong default name at that.
-    # TODO: hardcoded host name
     def __init__(self, state_db, host='localhost', port=27017,
-            database='reebills', **kwargs):
+            database=None, **kwargs):
         self.state_db = state_db
 
         try:
