@@ -12,7 +12,7 @@ from glob import glob
 import shutil
 import ConfigParser
 from db_objects import Customer, UtilBill
-from billing.dateutils import ISO_8601_DATETIME_WITHOUT_ZONE
+from billing.util.dateutils import ISO_8601_DATETIME_WITHOUT_ZONE
 
 sys.stdout = sys.stderr
 
