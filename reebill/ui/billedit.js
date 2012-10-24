@@ -432,7 +432,7 @@ function reeBillReady() {
             emptyMsg: "No Utility Bills to display",
         }),
         colModel: utilbillColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: false}),
+        //selModel: new Ext.grid.RowSelectionModel({singleSelect: false}),
         store: utilbillGridStore,
         enableColumnMove: false,
         frame: true,
@@ -447,6 +447,7 @@ function reeBillReady() {
         clicksToEdit: 2,
         selModel: new Ext.grid.RowSelectionModel({
             singleSelect: true,
+            moveEditorOnEnter: false,
             listeners: {
                 rowdeselect: function (selModel, index, record) {
                     loadReeBillUIForSequence(record.data.account, null);
