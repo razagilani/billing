@@ -9,7 +9,8 @@ import sqlalchemy
 import sys
 import unittest
 from skyliner.sky_handlers import cross_range
-from billing import dateutils, mongo
+from billing.processing import mongo
+from billing.util import dateutils
 from billing.processing import state
 from billing.test import example_data
 from billing.test.fake_skyliner import FakeSplinter

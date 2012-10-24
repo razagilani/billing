@@ -4,7 +4,7 @@ import pymongo
 import sqlalchemy
 import copy
 from datetime import date, datetime, timedelta
-from billing import dateutils
+from billing.util import dateutils
 from billing.processing import mongo
 from billing.processing.state import StateDB
 from billing.processing.db_objects import ReeBill, Customer, UtilBill
