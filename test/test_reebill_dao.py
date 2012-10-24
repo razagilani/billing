@@ -5,13 +5,14 @@ import sqlalchemy
 import copy
 import mongoengine
 from datetime import date, datetime, timedelta
-from billing import dateutils, mongo
+from billing import dateutils
+from billing.processing import mongo
 from billing.processing.state import StateDB
 from billing.processing.db_objects import ReeBill, Customer, UtilBill
 import MySQLdb
 from billing.test import example_data
-from billing.mongo import NoSuchBillException, IssuedBillError, NotUniqueException
-from billing.session_contextmanager import DBSession
+from billing.processing.mongo import NoSuchBillException, IssuedBillError, NotUniqueException
+from billing.processing.session_contextmanager import DBSession
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint

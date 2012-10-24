@@ -13,7 +13,7 @@ from billing.nexus_util import NexusUtil
 from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state
 from billing.processing.state import StateDB
-from billing.mongo import ReebillDAO
+from billing.processing.mongo import ReebillDAO
 from billing.dictutils import deep_map
 from billing import dateutils
 from billing.monthmath import Month, months_of_past_year

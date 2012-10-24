@@ -27,18 +27,20 @@ import mongoengine
 from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
 from billing.test import fake_skyliner
-from billing import json_util as ju, mongo, dateutils, monthmath, excel_export, nexus_util as nu
+from billing import json_util as ju, dateutils, nexus_util as nu
 from billing.nexus_util import NexusUtil
 from billing.dictutils import deep_map
-from billing.processing import billupload
+from billing.processing import mongo, billupload, excel_export
+from billing import monthmath
 from billing.processing import process, state, db_objects, fetch_bill_data as fbd, rate_structure as rs
 from billing.processing.billupload import BillUpload
-from billing.reebill import render, journal, bill_mailer
-from billing.users import UserDAO, User
-from billing import calendar_reports
-from billing.estimated_revenue import EstimatedRevenue
-from billing.session_contextmanager import DBSession
-from billing.exceptions import Unauthenticated
+from billing.processing import journal, bill_mailer
+from billing.reebill import render
+from billing.processing.users import UserDAO, User
+from billing.processing import calendar_reports
+from billing.processing.estimated_revenue import EstimatedRevenue
+from billing.processing.session_contextmanager import DBSession
+from billing.processing.exceptions import Unauthenticated
 
 # collection names: all collections are now hard-coded. maybe this should go in
 # some kind of documentation when we have documentation...
@@ -1774,14 +1776,14 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def reebill(self, xaction, start, limit, account, **kwargs):
+    def reebill(self, xaction, start, limit, account, sort = u'sequence', dir = u'DESC', **kwargs):
         '''Handles AJAX requests for reebill grid data.'''
         if not xaction or not start or not limit:
             raise ValueError("Bad Parameter Value")
         with DBSession(self.state_db) as session:
             if xaction == "read":
                 reebills, totalCount = self.state_db.listReebills(session,
-                        int(start), int(limit), account)
+                        int(start), int(limit), account, sort, dir)
                 rows = []
                 for reebill in reebills:
                     row_dict = {}

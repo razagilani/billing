@@ -18,11 +18,11 @@ from skyliner import sky_install
 from skyliner import sky_objects
 from skyliner.sky_errors import DataHandlerError
 from skyliner.sky_handlers import cross_range
-from billing import mongo
+from billing.processing import mongo
 from billing.dictutils import dict_merge
 from billing import dateutils, holidays
 from billing.dateutils import date_to_datetime, timedelta_in_hours
-from billing.exceptions import MissingDataError
+from billing.processing.exceptions import MissingDataError
 from decimal import Decimal
 
 def get_billable_energy_timeseries(splinter, install, start, end,

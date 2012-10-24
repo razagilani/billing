@@ -22,11 +22,11 @@ from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
 from skyliner.sky_paths import BufferingTLSSMTPHandler
 from billing.nexus_util import NexusUtil
-from billing.session_contextmanager import DBSession
+from billing.processing.session_contextmanager import DBSession
 from billing.processing import fetch_bill_data as fbd
 from billing.processing.process import Process
 from billing.processing.rate_structure import RateStructureDAO
-from billing.reebill.journal import NewReebillVersionEvent
+from billing.processing.reebill.journal import NewReebillVersionEvent
 from billing.users import UserDAO
 from billing.test.fake_skyliner import FakeSplinter
 
