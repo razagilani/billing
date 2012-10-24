@@ -2539,6 +2539,7 @@ class BillToolBridge:
                 ('service', 'Unknown' if ub.service is None else ub.service[0].upper() + ub.service[1:]),
                 ('period_start', ub.period_start),
                 ('period_end', ub.period_end),
+                ('total_charges', ub.total_charges),
                 ('sequence', ub.reebill.sequence if ub.reebill else None),
                 ('state', state_descriptions[ub.state]),
                 # utility bill rows are only editable if they don't have a
@@ -2594,9 +2595,10 @@ class BillToolBridge:
                 # TODO move out of BillToolBridge, make into its own function
                 # so it's testable
 
-                # only the dates and service can be updated.
-                # parse data from the client: for some reason it returns single
-                # utility bill row in a json string called "rows"
+                # only certain data can be updated.
+                # parse data from the client
+
+                # ext sends a dict if there is one row, a list of dicts if there are more than one
                 rows = ju.loads(kwargs['rows'])
                 utilbill_id = rows['id']
                 new_period_start = datetime.strptime(rows['period_start'],
@@ -2604,6 +2606,7 @@ class BillToolBridge:
                 new_period_end = datetime.strptime(rows['period_end'],
                         dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
                 new_service = rows['service']
+                new_total_charges = rows['total_charges']
 
                 # check that new dates are reasonable
                 self.validate_utilbill_period(new_period_start, new_period_end)
@@ -2637,8 +2640,9 @@ class BillToolBridge:
                     raise Exception("Can't edit utility bills that have already been attached to a reebill.")
                 utilbill.period_start = new_period_start
                 utilbill.period_end = new_period_end
+                utilbill.total_charges = new_total_charges
 
-                # delete any hypothetical utility bills that were created to
+                # delete any estimated utility bills that were created to
                 # cover gaps that no longer exist
                 self.process.state_db.trim_hypothetical_utilbills(session,
                         customer.account, utilbill.service)
