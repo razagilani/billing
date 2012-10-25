@@ -257,6 +257,7 @@ class BillToolBridge:
             # reebill pdf rendering
             self.config.add_section('reebillrendering')
             self.config.set('reebillrendering', 'temp_directory', DEFAULT_RENDERING_TEMP_DIRECTORY)
+            self.config.set('reebillrendering', 'template_directory', "absolute path to reebill_templates/")
             self.config.set('reebillrendering', 'default_backgrounds', DEFAULT_BACKGROUNDS)
             self.config.set('reebillrendering', 'teva_backgrounds', '')
             self.config.set('reebillrendering', 'teva_accounts', '')
