@@ -655,10 +655,10 @@ class Process(object):
 
     def bind_rate_structure(self, reebill):
             # process the actual charges across all services
-            self.bindrs(reebill, self.rate_structure_dao)
+            self.bindrs(reebill)
 
     # TODO remove (move to bind_rate_structure)
-    def bindrs(self, reebill, ratestructure_db):
+    def bindrs(self, reebill):
         """This function binds a rate structure against the actual and
         hypothetical charges found in a bill. If and RSI specifies information
         no in the bill, it is added to the bill. If the bill specifies
@@ -682,19 +682,19 @@ class Process(object):
             # get non-shadow registers in the reebill
             actual_register_readings = reebill.actual_registers(service)
 
-            print "loaded rate structure"
-            pp(rate_structure)
+            #print "loaded rate structure"
+            #pp(rate_structure)
 
-            print "loaded actual register readings"
-            pp(actual_register_readings)
+            #print "loaded actual register readings"
+            #pp(actual_register_readings)
 
             # copy the quantity of each non-shadow register in the reebill to
             # the corresponding register dictionary in the rate structure
             # ("apply the registers from the reebill to the probable rate structure")
             rate_structure.bind_register_readings(actual_register_readings)
 
-            print "rate structure with bound registers"
-            pp(rate_structure)
+            #print "rate structure with bound registers"
+            #pp(rate_structure)
 
             # get all utility charges from the reebill's utility bill (in the
             # form of a group name -> [list of charges] dictionary). for each
