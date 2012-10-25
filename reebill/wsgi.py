@@ -242,7 +242,7 @@ class BillToolBridge:
 
             # directory to store temporary files for pdf rendering
             DEFAULT_RENDERING_TEMP_DIRECTORY = '/tmp'
-            DEFAULT_BACKGROUNDS = 'EmeraldCity-FullBleed-1v3.png EmeraldCity-FullBleed-2v3.png'
+            DEFAULT_TEMPLATE = 'skyline'
 
             # log file info
             self.config.add_section('log')
@@ -258,9 +258,9 @@ class BillToolBridge:
             self.config.add_section('reebillrendering')
             self.config.set('reebillrendering', 'temp_directory', DEFAULT_RENDERING_TEMP_DIRECTORY)
             self.config.set('reebillrendering', 'template_directory', "absolute path to reebill_templates/")
-            self.config.set('reebillrendering', 'default_backgrounds', DEFAULT_BACKGROUNDS)
-            self.config.set('reebillrendering', 'teva_backgrounds', '')
+            self.config.set('reebillrendering', 'default_template', DEFAULT_TEMPLATE)
             self.config.set('reebillrendering', 'teva_accounts', '')
+
 
             # TODO default config file is incomplete
 
