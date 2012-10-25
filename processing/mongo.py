@@ -1270,6 +1270,12 @@ class ReebillDAO:
                 utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
                 result.append(MongoReebill(mongo_doc, utilbill_docs))
             return result
+
+    def last_issue_date(self, session, account):
+        last_sequence = self.state_db.last_issued_sequence(session, account)
+        reebill = self.load_reebill(account, last_sequence)
+        return reebill.issue_date
+
         
     def save_reebill(self, reebill, freeze_utilbills=False, force=False):
         '''Saves the MongoReebill 'reebill' into the database. If a document
@@ -1287,6 +1293,7 @@ class ReebillDAO:
         used for testing).'''
         # TODO pass session into save_reebill instead of re-creating it
         # https://www.pivotaltracker.com/story/show/36258193
+        # TODO 38459029
         with DBSession(self.state_db) as session:
             issued = self.state_db.is_issued(session, reebill.account,
                     reebill.sequence, version=reebill.version, nonexistent=False)

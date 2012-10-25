@@ -1071,18 +1071,29 @@ class BillToolBridge:
             statuses = self.state_db.retrieve_status_days_since(session, sortcol, sortdir)
 
             name_dicts = self.nexus_util.all_names_for_accounts([s.account for s in statuses])
-            rows = [dict([
-                ('account', status.account),
-                ('codename', name_dicts[status.account]['codename'] if
-                    'codename' in name_dicts[status.account] else ''),
-                ('casualname', name_dicts[status.account]['casualname'] if
-                    'casualname' in name_dicts[status.account] else ''),
-                ('primusname', name_dicts[status.account]['primus'] if
-                    'primus' in name_dicts[status.account] else ''),
-                ('dayssince', status.dayssince),
-                ('lastevent', self.journal_dao.last_event_summary(status.account)),
-                ('provisionable', False),
-            ]) for i, status in enumerate(statuses)]
+
+            rows = []
+            for i, status in enumerate(statuses):
+
+                last_issue_date = self.reebill_dao.last_issue_date(session, status.account)
+                last_issue_date = str(last_issue_date) if last_issue_date is not None else 'Never Issued'
+                lastevent = self.journal_dao.last_event_summary(status.account)
+
+                row = dict([
+                    ('account', status.account),
+                    ('codename', name_dicts[status.account]['codename'] if
+                        'codename' in name_dicts[status.account] else ''),
+                    ('casualname', name_dicts[status.account]['casualname'] if
+                        'casualname' in name_dicts[status.account] else ''),
+                    ('primusname', name_dicts[status.account]['primus'] if
+                        'primus' in name_dicts[status.account] else ''),
+                    ('dayssince', status.dayssince),
+                    ('lastissuedate', last_issue_date),
+                    ('lastevent', lastevent),
+                    ('provisionable', False),
+                ])
+                
+                rows.append(row)
 
             if sortcol == 'account':
                 rows.sort(key=lambda r: r['account'], reverse=sortreverse)
@@ -1094,6 +1105,8 @@ class BillToolBridge:
                 rows.sort(key=lambda r: r['primusname'], reverse=sortreverse)
             elif sortcol == 'dayssince':
                 rows.sort(key=lambda r: r['dayssince'], reverse=sortreverse)
+            elif sortcol == 'lastissuedate':
+                rows.sort(key=lambda r: r['lastissuedate'], reverse=sortreverse)
             elif sortcol == 'lastevent':
                 rows.sort(key=lambda r: r['lastevent'], reverse=sortreverse)
 
