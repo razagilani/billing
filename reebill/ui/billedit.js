@@ -1622,61 +1622,6 @@ function reeBillReady() {
         });
     }
 
-    var mailDataConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/mail',
-    });
-    mailDataConn.autoAbort = true;
-    mailDataConn.disableCaching = true;
-    function mailReebillOperation(sequences) {
-        Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', function(btn, recipients){
-            if (btn == 'ok') {
-                mailDataConn.request({
-                    params: {
-                        account: selected_account,
-                        recipients: recipients,
-                        sequences: sequences,
-                    },
-                    success: function(response, options) {
-                        var o = {};
-                        try {
-                            o = Ext.decode(response.responseText);}
-                        catch(e) {
-                            alert("Could not decode JSON data");
-                        }
-                        if (o.success == true) {
-                            Ext.Msg.alert('Success', "mail successfully sent");
-                        } else if (o.success !== true && o['corrections'] != undefined) {
-                            var result = Ext.Msg.confirm('Corrections must be applied',
-                                'Corrections from reebills ' + o.corrections +
-                                ' will be applied to this bill as an adjusment of $'
-                                + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
-                                    if (answer == 'yes') {
-                                        mailDataConn.request({
-                                            params: { account: selected_account, recipients: recipients, sequences: sequences, corrections: o.corrections},
-                                            success: function(response, options) {
-                                                var o2 = Ext.decode(response.responseText);
-                                                if (o2.success == true)
-                                                    Ext.Msg.alert('Success', "mail successfully sent");
-                                                else
-                                                    Ext.Msg.alert('Error', o2.errors.reason + o2.errors.details);
-                                            },
-                                            failure: function() {
-                                                Ext.Msg.alert('Failure', "mail response fail");
-                                            }
-                                        });
-                                    }
-                                });
-                        } else {
-                            Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
-                        }
-                    },
-                    failure: function () {
-                        Ext.Msg.alert('Failure', "mail response fail");
-                    }
-                });
-            }
-        });
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     //
@@ -4031,6 +3976,62 @@ function reeBillReady() {
 
     ///////////////////////////////////////
     // Mail Tab
+
+    var mailDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/mail',
+    });
+    mailDataConn.autoAbort = true;
+    mailDataConn.disableCaching = true;
+    function mailReebillOperation(sequences) {
+        Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', function(btn, recipients){
+            if (btn == 'ok') {
+                mailDataConn.request({
+                    params: {
+                        account: selected_account,
+                        recipients: recipients,
+                        sequences: sequences,
+                    },
+                    success: function(response, options) {
+                        var o = {};
+                        try {
+                            o = Ext.decode(response.responseText);}
+                        catch(e) {
+                            alert("Could not decode JSON data");
+                        }
+                        if (o.success == true) {
+                            Ext.Msg.alert('Success', "mail successfully sent");
+                        } else if (o.success !== true && o['corrections'] != undefined) {
+                            var result = Ext.Msg.confirm('Corrections must be applied',
+                                'Corrections from reebills ' + o.corrections +
+                                ' will be applied to this bill as an adjusment of $'
+                                + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
+                                    if (answer == 'yes') {
+                                        mailDataConn.request({
+                                            params: { account: selected_account, recipients: recipients, sequences: sequences, corrections: o.corrections},
+                                            success: function(response, options) {
+                                                var o2 = Ext.decode(response.responseText);
+                                                if (o2.success == true)
+                                                    Ext.Msg.alert('Success', "mail successfully sent");
+                                                else
+                                                    Ext.Msg.alert('Error', o2.errors.reason + o2.errors.details);
+                                            },
+                                            failure: function() {
+                                                Ext.Msg.alert('Failure', "mail response fail");
+                                            }
+                                        });
+                                    }
+                                });
+                        } else {
+                            Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
+                        }
+                    },
+                    failure: function () {
+                        Ext.Msg.alert('Failure', "mail response fail");
+                    }
+                });
+            }
+        }, );
+    }
 
     var initialMailReebill =  {
         rows: [
