@@ -46,43 +46,6 @@ from billing.processing.billupload import create_directory_if_necessary
 
 sys.stdout = sys.stderr
 
-#
-#  Load Fonts
-#
-# add your font directories to the T1SearchPath in reportlab/rl_config.py as an alternative.
-# TODO make the font directory relocatable
-rptlab_folder = os.path.join(os.path.dirname(reportlab.__file__), 'fonts')
-
-our_fonts = os.path.join(os.path.dirname(__file__), 'fonts/')
-
-# register Vera (Included in reportlab)
-pdfmetrics.registerFont(TTFont('Vera', os.path.join(rptlab_folder, 'Vera.ttf')))
-pdfmetrics.registerFont(TTFont('VeraBd', os.path.join(rptlab_folder, 'VeraBd.ttf')))
-pdfmetrics.registerFont(TTFont('VeraIt', os.path.join(rptlab_folder, 'VeraIt.ttf')))
-pdfmetrics.registerFont(TTFont('VeraBI', os.path.join(rptlab_folder, 'VeraBI.ttf')))
-registerFontFamily('Vera',normal='Vera',bold='VeraBd',italic='VeraIt',boldItalic='VeraBI')
-
-
-# register Verdana (MS Licensed CoreFonts http://sourceforge.net/projects/corefonts/files/)
-pdfmetrics.registerFont(TTFont("Verdana", os.path.join(our_fonts, 'verdana.ttf')))
-pdfmetrics.registerFont(TTFont("VerdanaB", os.path.join(our_fonts, 'verdanab.ttf')))
-pdfmetrics.registerFont(TTFont("VerdanaI", os.path.join(our_fonts, 'verdanai.ttf')))
-registerFontFamily('Verdana',normal='Verdana',bold='VerdanaB',italic='VerdanaI')
-
-# register Calibri (MS Licensed CoreFonts http://sourceforge.net/projects/corefonts/files/)
-pdfmetrics.registerFont(TTFont("Courier", os.path.join(our_fonts, 'cour.ttf')))
-pdfmetrics.registerFont(TTFont("CourierB", os.path.join(our_fonts, 'courbd.ttf')))
-pdfmetrics.registerFont(TTFont("CourieI", os.path.join(our_fonts, 'couri.ttf')))
-pdfmetrics.registerFont(TTFont("CourieBI", os.path.join(our_fonts, 'courbi.ttf')))
-registerFontFamily('Courier',normal='Courier',bold='CourierB',italic='CourierBI')
-
-
-#register Inconsolata (TODO address here)
-pdfmetrics.registerFont(TTFont("Inconsolata", os.path.join(our_fonts,'Inconsolata.ttf')))
-registerFontFamily('Inconsolata', 
-                    normal = 'Inconsolata', 
-                    bold = 'Inconsolata',
-                    italic = 'Inconsolata')
 
 #
 # Globals
@@ -93,7 +56,6 @@ Title = "Skyline Bill"
 pageinfo = "Skyline Bill"
 firstPageName = 'FirstPage'
 secondPageName = 'SecondPage'
-resource_dir = os.path.dirname(__file__)
 
 class SIBillDocTemplate(BaseDocTemplate):
     """Structure Skyline Innovations Bill. """
@@ -173,6 +135,7 @@ class ReebillRenderer:
         '''Config should be a dict of configuration keys and values.'''
         # directory for temporary image file storage
         self.temp_directory = config['temp_directory']
+        self.template_directory = config['template_directory']
 
         # set default templates
         self.default_backgrounds = config['default_backgrounds'].split()
@@ -189,6 +152,44 @@ class ReebillRenderer:
 
         # create temp directory if it doesn't exist
         create_directory_if_necessary(self.temp_directory, self.logger)
+
+        #
+        #  Load Fonts
+        #
+        # add your font directories to the T1SearchPath in reportlab/rl_config.py as an alternative.
+        # TODO make the font directory relocatable
+        rptlab_folder = os.path.join(os.path.dirname(reportlab.__file__), 'fonts')
+
+        our_fonts = os.path.join(os.path.join(self.template_directory, 'fonts/'))
+
+        # register Vera (Included in reportlab)
+        pdfmetrics.registerFont(TTFont('Vera', os.path.join(rptlab_folder, 'Vera.ttf')))
+        pdfmetrics.registerFont(TTFont('VeraBd', os.path.join(rptlab_folder, 'VeraBd.ttf')))
+        pdfmetrics.registerFont(TTFont('VeraIt', os.path.join(rptlab_folder, 'VeraIt.ttf')))
+        pdfmetrics.registerFont(TTFont('VeraBI', os.path.join(rptlab_folder, 'VeraBI.ttf')))
+        registerFontFamily('Vera',normal='Vera',bold='VeraBd',italic='VeraIt',boldItalic='VeraBI')
+
+
+        # register Verdana (MS Licensed CoreFonts http://sourceforge.net/projects/corefonts/files/)
+        pdfmetrics.registerFont(TTFont("Verdana", os.path.join(our_fonts, 'verdana.ttf')))
+        pdfmetrics.registerFont(TTFont("VerdanaB", os.path.join(our_fonts, 'verdanab.ttf')))
+        pdfmetrics.registerFont(TTFont("VerdanaI", os.path.join(our_fonts, 'verdanai.ttf')))
+        registerFontFamily('Verdana',normal='Verdana',bold='VerdanaB',italic='VerdanaI')
+
+        # register Calibri (MS Licensed CoreFonts http://sourceforge.net/projects/corefonts/files/)
+        pdfmetrics.registerFont(TTFont("Courier", os.path.join(our_fonts, 'cour.ttf')))
+        pdfmetrics.registerFont(TTFont("CourierB", os.path.join(our_fonts, 'courbd.ttf')))
+        pdfmetrics.registerFont(TTFont("CourieI", os.path.join(our_fonts, 'couri.ttf')))
+        pdfmetrics.registerFont(TTFont("CourieBI", os.path.join(our_fonts, 'courbi.ttf')))
+        registerFontFamily('Courier',normal='Courier',bold='CourierB',italic='CourierBI')
+
+
+        #register Inconsolata (TODO address here)
+        pdfmetrics.registerFont(TTFont("Inconsolata", os.path.join(our_fonts,'Inconsolata.ttf')))
+        registerFontFamily('Inconsolata', 
+                            normal = 'Inconsolata', 
+                            bold = 'Inconsolata',
+                            italic = 'Inconsolata')
 
 
     # TODO 32204509 Why don't we just pass in a ReeBill(s) here?  Preferable to passing account/sequence/version around?
@@ -363,7 +364,7 @@ class ReebillRenderer:
         #
 
         # populate backgroundF1
-        pageOneBackground = Image(os.path.join(os.path.join(resource_dir, 'images'), backgrounds[0]),letter[0], letter[1])
+        pageOneBackground = Image(os.path.join(os.path.join(self.template_directory, 'images'), backgrounds[0]),letter[0], letter[1])
         Elements.append(pageOneBackground)
 
         # populate account number, bill id & issue date
@@ -514,10 +515,10 @@ class ReebillRenderer:
 
         treeString = ""
         while (whole_tree_images) > 0:
-            treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(resource_dir, "images", "tree3.png") +"\"/>"
+            treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(self.template_directory, "images", "tree3.png") +"\"/>"
             whole_tree_images -= 1
 
-        if (tree_image_fraction != 0): treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(resource_dir, "images","tree3-" + tree_image_fraction + ".png") + "\"/>"
+        if (tree_image_fraction != 0): treeString += "<img width=\"20\" height=\"25\" src=\"" + os.path.join(self.template_directory, "images","tree3-" + tree_image_fraction + ".png") + "\"/>"
 
         Elements.append(Paragraph("<para leftIndent=\"6\">"+treeString+"</para>", styles['BillLabel']))
 
@@ -554,7 +555,7 @@ class ReebillRenderer:
 
 
         # populate summary background
-        Elements.append(Image(os.path.join(resource_dir,'images','SummaryBackground.png'), 443, 151))
+        Elements.append(Image(os.path.join(self.template_directory,'images','SummaryBackground.png'), 443, 151))
         Elements.append(UseUpSpace())
 
         # populate billPeriodTableF
@@ -669,7 +670,7 @@ class ReebillRenderer:
 
 
 
-        pageTwoBackground = Image(os.path.join(resource_dir,'images',backgrounds[1]),letter[0], letter[1])
+        pageTwoBackground = Image(os.path.join(self.template_directory,'images',backgrounds[1]),letter[0], letter[1])
         Elements.append(pageTwoBackground)
 
         #populate measured usage header frame
