@@ -4236,6 +4236,7 @@ function reeBillReady() {
             {name: 'account', mapping: 'account'},
             {name: 'fullname', mapping: 'fullname'},
             {name: 'dayssince', mapping: 'dayssince'/*, type:sortType*/},
+            {name: 'lastissuedate'},
             {name: 'lastevent'},
             {name: 'provisionable', mapping: 'provisionable'},
         ]
@@ -4262,6 +4263,7 @@ function reeBillReady() {
             {name: 'primusname'},
             {name: 'dayssince'},
             {name: 'lastevent'},
+            {name: 'lastissuedate'},
             {name: 'provisionable'},
         ],
         // looks to be initial order for load
@@ -4312,6 +4314,11 @@ function reeBillReady() {
                 header: 'Primus Name',
                 sortable: true,
                 dataIndex: 'primusname',
+                renderer: accountGridColumnRenderer,
+            },{
+                header: 'Last Issued',
+                sortable: true,
+                dataIndex: 'lastissuedate',
                 renderer: accountGridColumnRenderer,
             },{
                 header: 'Days Since Utility Bill',
