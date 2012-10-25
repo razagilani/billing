@@ -25,6 +25,7 @@ from StringIO import StringIO
 import mongoengine
 from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
+#TODO don't rely on test code, if we are, it isn't test code
 from billing.test import fake_skyliner
 from billing.util import json_util as ju, dateutils, nexus_util as nu
 from billing.util.nexus_util import NexusUtil
@@ -34,7 +35,7 @@ from billing.util import monthmath
 from billing.processing import process, state, db_objects, fetch_bill_data as fbd, rate_structure as rs
 from billing.processing.billupload import BillUpload
 from billing.processing import journal, bill_mailer
-from billing.reebill import render
+from billing.processing import render
 from billing.processing.users import UserDAO, User
 from billing.processing import calendar_reports
 from billing.processing.estimated_revenue import EstimatedRevenue
@@ -176,22 +177,27 @@ class BillToolBridge:
             self.config.set('runtime', 'integrate_skyline_backend', 'true')
             self.config.set('runtime', 'integrate_nexus', 'true')
             self.config.set('runtime', 'mock_skyliner', 'false')
+
             self.config.add_section('skyline_backend')
             self.config.set('skyline_backend', 'oltp_url', 'http://duino-drop.appspot.com/')
             self.config.set('skyline_backend', 'olap_host', 'tyrell')
             self.config.set('skyline_backend', 'olap_database', 'dev')
             self.config.set('skyline_backend', 'nexus_host', '[specify nexus host]')
+
             self.config.add_section('journaldb')
             self.config.set('journaldb', 'host', 'localhost')
             self.config.set('journaldb', 'port', '27017')
             self.config.set('journaldb', 'database', 'skyline')
+
             self.config.add_section('http')
             self.config.set('http', 'socket_port', '8185')
             self.config.set('http', 'socket_host', '10.0.0.250')
+
             self.config.add_section('rsdb')
             self.config.set('rsdb', 'host', 'localhost')
             self.config.set('rsdb', 'port', '27017')
             self.config.set('rsdb', 'database', 'skyline')
+
             self.config.add_section('billdb')
             self.config.set('billdb', 'utilitybillpath', '[root]db/skyline/utilitybills/')
             self.config.set('billdb', 'billpath', '[root]db/skyline/bills/')
@@ -199,17 +205,20 @@ class BillToolBridge:
             self.config.set('billdb', 'port', '27017')
             self.config.set('billdb', 'database', 'skyline')
             self.config.set('billdb', 'utility_bill_trash_directory', '[root]db/skyline/utilitybills-deleted')
+
             self.config.add_section('statedb')
             self.config.set('statedb', 'host', 'localhost')
             self.config.set('statedb', 'database', 'skyline')
             self.config.set('statedb', 'user', '[your mysql user]')
             self.config.set('statedb', 'password', '[your mysql password]')
+
             self.config.add_section('usersdb')
             self.config.set('usersdb', 'host', 'localhost')
             self.config.set('usersdb', 'database', 'skyline')
             self.config.set('usersdb', 'user', 'dev')
             self.config.set('usersdb', 'port', '27017')
             self.config.set('usersdb', 'password', 'dev')
+
             self.config.add_section('mailer')
             self.config.set('mailer', 'smtp_host', 'smtp.gmail.com')
             self.config.set('mailer', 'smtp_port', '587')
@@ -217,6 +226,7 @@ class BillToolBridge:
             self.config.set('mailer', 'from', '"Jules Watson" <jwatson@skylineinnovations.com>')
             self.config.set('mailer', 'bcc_list', '')
             self.config.set('mailer', 'password', 'password')
+
             self.config.add_section('authentication')
             self.config.set('authentication', 'authenticate', 'true')
 

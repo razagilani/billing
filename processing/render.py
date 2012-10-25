@@ -50,6 +50,7 @@ sys.stdout = sys.stderr
 #  Load Fonts
 #
 # add your font directories to the T1SearchPath in reportlab/rl_config.py as an alternative.
+# TODO make the font directory relocatable
 rptlab_folder = os.path.join(os.path.dirname(reportlab.__file__), 'fonts')
 
 our_fonts = os.path.join(os.path.dirname(__file__), 'fonts/')
