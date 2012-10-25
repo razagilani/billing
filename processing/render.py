@@ -96,8 +96,8 @@ def progress(type,value):
     # TODO fix module to support verbose flag passed in from cmd arg parser 
     #if (options.verbose):
     # TODO 37460179: log to logger
-    print "%s %s" %(type, value)
-    #pass
+    # print "%s %s" %(type, value)
+    pass
     
 
 
@@ -136,13 +136,15 @@ class ReebillRenderer:
         # directory for temporary image file storage
         self.temp_directory = config['temp_directory']
         self.template_directory = config['template_directory']
+        self.default_template = config['default_template']
 
         # set default templates
-        self.default_backgrounds = config['default_backgrounds'].split()
-        if len(self.default_backgrounds) != 2: raise ValueError("default_backgrounds not specified") 
+        #self.default_backgrounds = config['default_backgrounds'].split()
+        #if len(self.default_backgrounds) != 2: raise ValueError("default_backgrounds not specified") 
 
-        self.teva_backgrounds = config['teva_backgrounds'].split()
+        #self.teva_backgrounds = config['teva_backgrounds'].split()
         self.teva_accounts = config['teva_accounts'].split()
+
 
         self.state_db = state_db
         self.reebill_dao = reebill_dao
@@ -194,6 +196,11 @@ class ReebillRenderer:
 
     # TODO 32204509 Why don't we just pass in a ReeBill(s) here?  Preferable to passing account/sequence/version around?
     def render(self, session, account, sequence, outputdir, outputfile, verbose):
+
+        # Hack for overriding default template
+        if (account in self.teva_accounts):
+            self.default_template = 'teva'
+
         # render each version
         max_version = self.state_db.max_version(session, account, sequence)
         for version in range(max_version + 1):
@@ -348,23 +355,18 @@ class ReebillRenderer:
 
         # TODO: 17377331 - find out why the failure is silent
         # for some reasons, if the file path passed in does not exist, SIBillDocTemplate fails silently 
+        # print "%s %s" % (outputdir, outputfile)
         doc = SIBillDocTemplate("%s/%s" % (outputdir, outputfile), pagesize=letter, showBoundary=0, allowSplitting=0)
         doc.addPageTemplates([firstPage, secondPage])
 
         Elements = []
-
-        if (reebill.account in self.teva_accounts):
-            backgrounds = self.teva_backgrounds
-        else:
-            backgrounds = self.default_backgrounds
-
 
         #
         # First Page
         #
 
         # populate backgroundF1
-        pageOneBackground = Image(os.path.join(os.path.join(self.template_directory, 'images'), backgrounds[0]),letter[0], letter[1])
+        pageOneBackground = Image(os.path.join(os.path.join(self.template_directory, self.default_template), "page_one.png"),letter[0], letter[1])
         Elements.append(pageOneBackground)
 
         # populate account number, bill id & issue date
@@ -670,7 +672,7 @@ class ReebillRenderer:
 
 
 
-        pageTwoBackground = Image(os.path.join(self.template_directory,'images',backgrounds[1]),letter[0], letter[1])
+        pageTwoBackground = Image(os.path.join(self.template_directory, self.default_template, "page_two.png"), letter[0], letter[1])
         Elements.append(pageTwoBackground)
 
         #populate measured usage header frame
