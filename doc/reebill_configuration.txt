@@ -58,6 +58,11 @@ Create user for running and deploying ReeBill
 .bash_profile/login shell
 =========================
 
+
+development user
+
+login user with virtualenv
+
 staging user
 
 source /var/local/reebill-stage/bin/activate
@@ -69,6 +74,89 @@ production user
 source /var/local/reebill-prod/bin/activate
 export PYTHONPATH=/var/local/reebill-prod/lib/python2.7/site-packages:/var/local/reebill-prod/lib/python2.7/site-packages/ChartDirector/lib
 cd /var/local/reebill-prod
+
+Configure Apache2 
+=================
+
+    Predicates
+    ----------
+
+    Installed Apache2
+    Installed and enabled mod_wsgi for Python WSGI applications
+    Created user that will run the WSGI code
+        sudo mkdir /var/local/reebill
+        sudo chown -R reebill:reebill /var/local/reebill
+
+    Deployed software in the WSGI code directory
+
+
+    Big catch on AWS Linux AMI:  
+        http://code.google.com/p/modwsgi/wiki/ConfigurationIssues
+        Add this to the wsgi module config file
+        WSGISocketPrefix /var/run/wsgi
+    
+
+    Virtual Hosting
+    ---------------
+
+    Configure a name based virtual host for your development environment
+        Ensure that the Apache2 host knows of the virtual hostnames so Apache can start virtual hosts with ServerName directive
+
+        Add to /etc/hosts:
+            [local ip address] atsite
+
+        Ensure that NameVirtualHost *:80 is declared in an appropriate httpd configuration file
+
+        Declare the virtual host's name in the site configuration file
+            ServerName [virtualhostname]
+
+        Ensure that the WSGI directives respect the desired virtualenv
+
+        Restart Apache2
+            sudo service httpd restart
+
+    Example virtual host config directive
+    -------------------------------------
+<VirtualHost *:80>
+        ServerName reebill-prod
+        ServerAlias reebill
+        serverAlias reebill.skylineinnovations.net
+        serverAlias reebill-prod.skylineinnovations.net
+
+        ServerAdmin webmaster@localhost
+
+        DocumentRoot /var/local/reebill-prod/lib/python2.7/site-packages/billing/reebill/ui
+        <Directory /var/local/reebill-prod/lib/python2.7/site-packages/billing/reebill/ui>
+                DirectoryIndex /reebill 
+                Options FollowSymLinks
+                AllowOverride None
+        </Directory>
+        # directory where utility bill images are saved
+        Alias /utilitybillimages /tmp/billimages-prod
+        <Directory /tmp/billimages>
+            #Order deny,allow
+            #Allow from all
+            Options Indexes FollowSymLinks MultiViews
+            #AllowOverride None
+        </Directory>
+
+
+        ErrorLog /var/log/httpd/reebill-prod_error.log
+
+        # Possible values include: debug, info, notice, warn, error, crit,
+        # alert, emerg.
+        LogLevel debug
+
+        CustomLog /var/log/httpd/reebill-prod_access.log combined
+
+        WSGIScriptAlias /reebill /var/local/reebill-prod/lib/python2.7/site-packages/billing/reebill/wsgi.py
+
+        WSGIDaemonProcess reebill-prod user=reebill-prod group=reebill-prod processes=1 threads=1 python-path=/var/local/reebill-prod/lib/python2.7/site-packages/ChartDirector/lib/:/var/local/reebill-prod/lib/python2.7/site-packages
+        WSGIApplicationGroup %{GLOBAL}
+
+        WSGIProcessGroup reebill-prod
+
+</VirtualHost>
 
 
 
@@ -97,8 +185,12 @@ For example, on AWS:
 
 Install the following packages with sudo pip install [package]
 
-MySQL-Server Dev Headers so MySQL-python can compile
-Gevent requires libevent-dev to be installed
+	MySQL-Server Dev Headers so MySQL-python can compile
+	Gevent requires libevent-dev to be installed
+
+	requirements.txt will fail without the above two predicates
+
+
 
 
 This list is now maintained in the ./requirements.txt file
@@ -136,22 +228,25 @@ This list is now maintained in the ./requirements.txt file
     eventlet
     google
 
+turn on virtualenv
 pip install -r [above file]
 
     
 
 Chart Director 'pychartdir'
+
+    http://www.advsofteng.com/download.html
+    http://download2.advsofteng.com/chartdir_python_linux.tar.gz
+    http://download2.advsofteng.com/chartdir_python_linux_64.tar.gz
+
     Chart Director is installed by:
         tar xvf chartdir_python_linux.tar
-        mv ChartDirector /usr/lib/python2.6/site-packages
+        mv ChartDirector /usr/lib/python2.6/site-packages (or to site-packages in virtualenv)
         Then add python path to WSGIDaemonProcess directive in Apache2 /usr/lib/python2.6/site-packages/ChartDirector/lib
     Fonts have to be copied?
 
 Details on installing ChartDirector:
 
-    http://www.advsofteng.com/download.html
-    http://download2.advsofteng.com/chartdir_python_linux.tar.gz
-    http://download2.advsofteng.com/chartdir_python_linux_64.tar.gz
 
     The files for the ChartDirector for Python module are in "ChartDirector/lib". Copy *everything* in "ChartDirector/lib" (including the fonts subdirectory in Linux, FreeBSD and Solaris versions) to a directory in your Python module search path.  This path may have to be set in the WSGI configuration if used by a WSGI app.
     There is no setup.py, so manually copy to site or dist-packages (may be site-packages under windows)
@@ -302,88 +397,6 @@ MySQL
             mysql -uroot -p[password] -Dskyline < /var/local/reebill/billing/db/processing/billdb.sql
 
 
-Configure Apache2 
-=================
-
-    Predicates
-    ----------
-
-    Installed Apache2
-    Installed and enabled mod_wsgi for Python WSGI applications
-    Created user that will run the WSGI code
-        sudo mkdir /var/local/reebill
-        sudo chown -R reebill:reebill /var/local/reebill
-
-    Deployed software in the WSGI code directory
-
-
-    Big catch on AWS Linux AMI:  
-        http://code.google.com/p/modwsgi/wiki/ConfigurationIssues
-        Add this to the wsgi module config file
-        WSGISocketPrefix /var/run/wsgi
-    
-
-    Virtual Hosting
-    ---------------
-
-    Configure a name based virtual host for your development environment
-        Ensure that the Apache2 host knows of the virtual hostnames so Apache can start virtual hosts with ServerName directive
-
-        Add to /etc/hosts:
-            [local ip address] atsite
-
-        Ensure that NameVirtualHost *:80 is declared in an appropriate httpd configuration file
-
-        Declare the virtual host's name in the site configuration file
-            ServerName [virtualhostname]
-
-        Ensure that the WSGI directives respect the desired virtualenv
-
-        Restart Apache2
-            sudo service httpd restart
-
-    Example virtual host config directive
-    -------------------------------------
-<VirtualHost *:80>
-        ServerName reebill-prod
-        ServerAlias reebill
-        serverAlias reebill.skylineinnovations.net
-        serverAlias reebill-prod.skylineinnovations.net
-
-        ServerAdmin webmaster@localhost
-
-        DocumentRoot /var/local/reebill-prod/lib/python2.7/site-packages/billing/reebill/ui
-        <Directory /var/local/reebill-prod/lib/python2.7/site-packages/billing/reebill/ui>
-                DirectoryIndex /reebill 
-                Options FollowSymLinks
-                AllowOverride None
-        </Directory>
-        # directory where utility bill images are saved
-        Alias /utilitybillimages /tmp/billimages-prod
-        <Directory /tmp/billimages>
-            #Order deny,allow
-            #Allow from all
-            Options Indexes FollowSymLinks MultiViews
-            #AllowOverride None
-        </Directory>
-
-
-        ErrorLog /var/log/httpd/reebill-prod_error.log
-
-        # Possible values include: debug, info, notice, warn, error, crit,
-        # alert, emerg.
-        LogLevel debug
-
-        CustomLog /var/log/httpd/reebill-prod_access.log combined
-
-        WSGIScriptAlias /reebill /var/local/reebill-prod/lib/python2.7/site-packages/billing/reebill/wsgi.py
-
-        WSGIDaemonProcess reebill-prod user=reebill-prod group=reebill-prod processes=1 threads=1 python-path=/var/local/reebill-prod/lib/python2.7/site-packages/ChartDirector/lib/:/var/local/reebill-prod/lib/python2.7/site-packages
-        WSGIApplicationGroup %{GLOBAL}
-
-        WSGIProcessGroup reebill-prod
-
-</VirtualHost>
 
 
 
