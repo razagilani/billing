@@ -139,34 +139,45 @@ class UserDAO:
         
 if __name__ == '__main__':
     # command-line arguments
-    #parser = argparse.ArgumentParser(description='Create and authenticate user accounts')
-    #parser.add_argument('create', dest=username)
-    from sys import argv
-    # TODO: remove defaults to external params
+    parser = argparse.ArgumentParser(
+            description='Create and authenticate user accounts')
+    parser.add_argument('--host', default='localhost',
+            help='Database host (default: localhost)')
+    parser.add_argument('--db', required=True,
+            help='Mongo database containing users')
+    parser.add_argument('command', choices=['add', 'check', 'change'],
+            help=('"add" to create a user, "check" to test authentication, '
+            '"change" to change password'))
+    parser.add_argument('identifier')
+    parser.add_argument('password')
+    parser.add_argument('newpassword', nargs='?') # optional
+    args = parser.parse_args()
+
     dao = UserDAO(**{
-        'host': 'localhost',
+        'host': args.host,
         'port': 27017,
-        'database': 'skyline',
-        'collection': 'users',
+        'database': args.db,
+        'collection': 'users', # intentionally non-configurable
     })
-    command = argv[1]
-    identifier = argv[2]
-    password = argv[3]
 
-    if command == 'add':
-        dao.create_user(identifier, password)
-        print 'created'
+    if args.command == 'add':
+        dao.create_user(args.identifier, args.password)
+        print 'New user created'
 
-    elif command == 'check':
-        result = dao.load_user(identifier, password)
+    elif args.command == 'check':
+        result = dao.load_user(args.identifier, args.password)
         if result is None:
-            print 'authentication failed'
+            print 'Authentication failed'
         else:
-            print 'authentication succeeded:', result
-    elif command == 'change':
-        new_password = argv[4]
-        result = dao.change_password(identifier, password, new_password)
+            print 'Authentication succeeded'
+
+    elif args.command == 'change':
+        if args.newpassword is None:
+            print 'New password must be specified'
+            exit(1)
+        result = dao.change_password(args.identifier, args.password,
+                args.newpassword)
         if result:
-            print 'password updated'
+            print 'Password changed'
         else:
-            print 'password change failed'
+            print 'Password change failed'
