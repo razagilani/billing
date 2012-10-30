@@ -28,8 +28,6 @@ from billing.processing.process import Process
 from billing.processing.rate_structure import RateStructureDAO
 from billing.processing.reebill.journal import NewReebillVersionEvent
 from billing.processing.users import UserDAO
-# TODO: do not rely on test code, if we are, it isn't test code
-from billing.test.fake_skyliner import FakeSplinter
 
 # config file containing database connection info etc. 
 CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),

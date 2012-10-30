@@ -26,7 +26,7 @@ import mongoengine
 from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
 #TODO don't rely on test code, if we are, it isn't test code
-from billing.test import fake_skyliner
+from billing.test import mock_skyliner
 from billing.util import json_util as ju, dateutils, nexus_util as nu
 from billing.util.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
@@ -328,7 +328,7 @@ class BillToolBridge:
 
         # create a Splinter
         if self.config.getboolean('runtime', 'mock_skyliner'):
-            self.splinter = fake_skyliner.FakeSplinter()
+            self.splinter = mock_skyliner.MockSplinter()
         else:
             self.splinter = Splinter(
                 self.config.get('skyline_backend', 'oltp_url'),

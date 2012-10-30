@@ -25,7 +25,7 @@ from billing.util.dictutils import deep_map
 import MySQLdb
 from billing.util.mongo_utils import python_convert
 from billing.test import example_data
-from billing.test.fake_skyliner import FakeSplinter, FakeMonguru
+from billing.test.mock_skyliner import MockSplinter, MockMonguru
 from billing.util.nexus_util import NexusUtil
 from billing.processing.mongo import NoSuchBillException
 from billing.processing.exceptions import BillStateError
@@ -73,7 +73,7 @@ port = 27017
             'host': 'localhost',
             'port': 27017
         })
-        self.splinter = FakeSplinter(deterministic=True)
+        self.splinter = MockSplinter(deterministic=True)
         
         # temporary hack to get a bill that's always the same
         # this bill came straight out of mongo (except for .date() applied to
@@ -1138,7 +1138,7 @@ port = 27017
                 b = example_data.get_reebill(acc, 1, version=0,
                         start=date(2012,2,1), end=date(2012,3,1))
                 # NOTE no need to save 'b' in mongo
-                olap_id = 'FakeSplinter ignores olap id'
+                olap_id = 'MockSplinter ignores olap id'
 
                 # bind & compute once to start. this change should be
                 # idempotent.
