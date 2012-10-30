@@ -63,6 +63,11 @@ class UserDAO:
         if name is None:
             name = identifier
 
+        # make sure this user doesn't already exist:
+        if self.user_exists(identifier):
+            raise ValueError('A user with identifier "%s" already exists' %
+                    identifier)
+
         # generate a salt, and hash the password + salt
         salt = bcrypt.gensalt()
         pw_hash = bcrypt.hashpw(password, salt)
@@ -76,6 +81,11 @@ class UserDAO:
 
         # save in db
         self.save_user(new_user)
+
+    def user_exists(self, identifier):
+        '''Returns True if there is a user with the given identifier (no
+        password needed because user's data is not accessed).'''
+        return self.collection.find_one({'_id': identifier}) != None
 
     def load_user(self, identifier, password):
         '''Returns a User object representing the user given by 'identifier' and
@@ -161,8 +171,13 @@ if __name__ == '__main__':
     })
 
     if args.command == 'add':
-        dao.create_user(args.identifier, args.password)
-        print 'New user created'
+        try:
+            dao.create_user(args.identifier, args.password)
+        except ValueError:
+            print 'User "%s" already exists; use "change" to change password' \
+                    % args.identifier
+        else:
+            print 'New user created'
 
     elif args.command == 'check':
         result = dao.load_user(args.identifier, args.password)
