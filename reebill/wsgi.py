@@ -215,9 +215,7 @@ class BillToolBridge:
             self.config.add_section('usersdb')
             self.config.set('usersdb', 'host', 'localhost')
             self.config.set('usersdb', 'database', 'skyline')
-            self.config.set('usersdb', 'user', 'dev')
             self.config.set('usersdb', 'port', '27017')
-            self.config.set('usersdb', 'password', 'dev')
 
             self.config.add_section('mailer')
             self.config.set('mailer', 'smtp_host', 'smtp.gmail.com')
