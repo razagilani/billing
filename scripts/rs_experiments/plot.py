@@ -20,4 +20,4 @@ with open('rs_data/' + rsi_binding) as in_file:
         plt.plot([start, end], [rate, rate], 'x')
 
 # save image to file
-plt.savefig(rsi_binding + '.pdf')
+plt.savefig('graphs/' + rsi_binding + '.pdf')
