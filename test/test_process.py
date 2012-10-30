@@ -418,7 +418,7 @@ port = 27017
 
         # compute charges in the bill using the rate structure created from the
         # above documents
-        self.process.bindrs(bill1, None)
+        self.process.bindrs(bill1)
 
         # ##############################################################
         # check that each actual (utility) charge was computed correctly:
