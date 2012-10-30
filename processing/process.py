@@ -28,7 +28,7 @@ from billing.util import dateutils
 from billing.util.dateutils import estimate_month, month_offset, month_difference
 from billing.util.monthmath import Month, approximate_month
 from billing.util.dictutils import deep_map
-from billing.processing.exceptions import IssuedBillError, NotIssuable, BillStateError
+from billing.processing.exceptions import IssuedBillError, NotIssuable, NotAttachable, BillStateError
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -962,7 +962,9 @@ class Process(object):
             raise NotIssuable(("Can't issue reebill %s-%s because its "
                     "predecessor has not been issued.") % (account, sequence))
         # TODO complain if utility bills have not been attached yet
-        # https://www.pivotaltracker.com/story/show/37560565
+        if not self.state_db.is_attached(session, account, sequence):
+            raise NotAttachable(("Can't attach reebill %s-%s: it must "
+                    "be attached first") % (account, sequence))
 
         # set issue date and due date in mongo
         reebill = self.reebill_dao.load_reebill(account, sequence)

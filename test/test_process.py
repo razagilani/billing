@@ -984,6 +984,9 @@ port = 27017
             self.assertRaises(BillStateError, self.process.attach_utilbills, session, acc, 2)
             self.assertRaises(BillStateError, self.process.issue, session, acc, 2)
 
+            # one should not be issuable until one is attached
+            self.assertRaises(BillStateError, self.process.issue, session, acc, 1)
+
             # attach & issue one
             self.process.attach_utilbills(session, one.account, one.sequence)
             self.process.issue(session, acc, 1)
