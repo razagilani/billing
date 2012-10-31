@@ -68,6 +68,7 @@ class UserDAO:
             raise ValueError('A user with identifier "%s" already exists' %
                     identifier)
 
+        # TODO externalize
         # generate a salt, and hash the password + salt
         salt = bcrypt.gensalt()
         pw_hash = bcrypt.hashpw(password, salt)

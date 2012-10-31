@@ -103,8 +103,8 @@ def authenticate_ajax(method):
             # ajax response handlers in front-end interpret this and show
             # message box to redirect to login page
             # TODO: 28251379
-            return ju.dumps({'success': False, 'errors':
-                {'reason': 'No Session'}})
+            return ju.dumps({'success': False, 'code':1, 'errors':
+                {'reason': 'Authenticate Ajax: No Session'}})
     return wrapper
 
 def authenticate(method):
@@ -122,6 +122,9 @@ def authenticate(method):
             btb_instance.check_authentication()
             return method(btb_instance, *args, **kwargs)
         except Unauthenticated:
+            # Non-Ajax requests can't handle json responses
+            #return ju.dumps({'success': False, 'code': 1, 'errors':
+            #    {'reason': 'Authenticate: No Session'}})
             cherrypy.response.status = 403
             raise cherrypy.HTTPRedirect('/login.html')
     return wrapper
@@ -496,7 +499,8 @@ class BillToolBridge:
         if user is None:
             self.logger.info(('login attempt failed: username "%s"'
                 ', remember me: %s') % (username, rememberme))
-            raise cherrypy.HTTPRedirect("/login.html")
+            return ju.dumps({'success': False, 'errors':
+                {'username':'Incorrect username or password', 'reason': 'No Session'}})
 
         # successful login:
 
@@ -513,10 +517,17 @@ class BillToolBridge:
         # store identifier & user preferences in cherrypy session object &
         # redirect to main page
         cherrypy.session['user'] = user
+
+        if rememberme == 'on':
+            # TODO need to encrypt or otherwise provide credentials and return them to client
+            credentials = password
+            cherrypy.response.cookie['username'] = user.username
+            cherrypy.response.cookie['credentials'] = password
+
         self.logger.info(('user "%s" logged in: remember '
             'me: "%s" type is %s') % (username, rememberme,
             type(rememberme)))
-        raise cherrypy.HTTPRedirect("/billentry.html")
+        return ju.dumps({'success': True});
 
     def check_authentication(self):
         '''Function to check authentication for HTTP request functions: if user
@@ -530,6 +541,25 @@ class BillToolBridge:
             if 'user' not in cherrypy.session:
                 cherrypy.session['user'] = UserDAO.default_user
         if 'user' not in cherrypy.session:
+            # is this user rememberme'd?
+            cookie = cherrypy.request.cookie
+            username = cookie['username'].value if 'username' in cookie else None
+            credentials = cookie['credentials'].value if 'credentials' in cookie else None
+
+            # the server did not have the user in session
+            # log that user back in automatically based on 
+            # the values found in the cookie
+
+            # need to 
+            password = credentials
+            user = self.user_dao.load_user(username, password)
+            if user is None:
+                self.logger.info(('Remember Me login attempt failed: username "%s"') % (username))
+            else:
+                self.logger.info(('Remember Me login attempt success: username "%s"') % (username))
+                cherrypy.session['user'] = user
+                return
+
             # TODO show the wrapped function name here instead of "wrapper"
             # (probably inspect.stack is too smart to be fooled by
             # functools.wraps)
@@ -578,14 +608,24 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             return self.dumps({'success':True,
                     'username': cherrypy.session['user'].username})
-            
 
     @cherrypy.expose
     @random_wait
     def logout(self):
+
+        # delete remember me
+        # This is how cookies are deleted? the key in the response cookie must be set before
+        # expires can be set
+        cherrypy.response.cookie['username'] = ""
+        cherrypy.response.cookie['username'].expires = 0
+        cherrypy.response.cookie['hash'] = ""
+        cherrypy.response.cookie['hash'].expires = 0
+
+        # delete the current server session
         if hasattr(cherrypy, 'session') and 'user' in cherrypy.session:
             self.logger.info('user "%s" logged out' % (cherrypy.session['user'].username))
             del cherrypy.session['user']
+
         raise cherrypy.HTTPRedirect('/login.html')
 
     ###########################################################################
