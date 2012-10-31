@@ -15,20 +15,19 @@ import ConfigParser
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from billing import mongo
-from billing.reebill import render
+from billing.processing import mongo
+from billing.processing import render
 from billing.processing import state
 from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
 from skyliner.sky_paths import BufferingTLSSMTPHandler
-from billing.nexus_util import NexusUtil
+from billing.util.nexus_util import NexusUtil
 from billing.processing.session_contextmanager import DBSession
 from billing.processing import fetch_bill_data as fbd
 from billing.processing.process import Process
 from billing.processing.rate_structure import RateStructureDAO
 from billing.processing.reebill.journal import NewReebillVersionEvent
-from billing.users import UserDAO
-from billing.test.fake_skyliner import FakeSplinter
+from billing.processing.users import UserDAO
 
 # config file containing database connection info etc. 
 CONFIG_FILE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),

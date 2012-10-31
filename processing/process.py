@@ -23,12 +23,12 @@ from billing.processing import state, fetch_bill_data
 from billing.processing.db_objects import Payment, Customer, UtilBill, ReeBill
 from billing.processing.mongo import ReebillDAO
 from billing.processing.mongo import float_to_decimal
-from billing import nexus_util
-from billing import dateutils
-from billing.dateutils import estimate_month, month_offset, month_difference
-from billing.monthmath import Month, approximate_month
-from billing.dictutils import deep_map
-from billing.processing.exceptions import IssuedBillError, NotIssuable, BillStateError
+from billing.util import nexus_util
+from billing.util import dateutils
+from billing.util.dateutils import estimate_month, month_offset, month_difference
+from billing.util.monthmath import Month, approximate_month
+from billing.util.dictutils import deep_map
+from billing.processing.exceptions import IssuedBillError, NotIssuable, NotAttachable, BillStateError
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -61,11 +61,11 @@ class Process(object):
         return new_customer
 
     def upload_utility_bill(self, session, account, service, begin_date,
-            end_date, bill_file, file_name):
+            end_date, total_charges, bill_file, file_name):
         '''Uploads 'bill_file' with the name 'file_name' as a utility bill for
         the given account, service, and dates. If the upload succeeds, a row is
         added to the utilbill table. If this is the newest or oldest utility
-        bill for the given account and service, "hypothetical" utility bills
+        bill for the given account and service, "estimated" utility bills
         will be added to cover the gap between this bill's period and the
         previous newest or oldest one respectively.'''
 
@@ -79,7 +79,7 @@ class Process(object):
             # record it in the database with that state, but don't upload
             # anything
             self.state_db.record_utilbill_in_database(session, account,
-                    service, begin_date, end_date, datetime.utcnow(),
+                    service, begin_date, end_date, total_charges, datetime.utcnow(),
                     state=UtilBill.SkylineEstimated)
         else:
             # if there is a file, get the Python file object and name
@@ -89,7 +89,7 @@ class Process(object):
                     end_date, bill_file, file_name)
             if upload_result is True:
                 self.state_db.record_utilbill_in_database(session, account,
-                        service, begin_date, end_date,
+                        service, begin_date, end_date, total_charges,
                         datetime.utcnow())
             else:
                 raise IOError('File upload failed: %s %s %s' % (file_name,
@@ -655,10 +655,10 @@ class Process(object):
 
     def bind_rate_structure(self, reebill):
             # process the actual charges across all services
-            self.bindrs(reebill, self.rate_structure_dao)
+            self.bindrs(reebill)
 
     # TODO remove (move to bind_rate_structure)
-    def bindrs(self, reebill, ratestructure_db):
+    def bindrs(self, reebill):
         """This function binds a rate structure against the actual and
         hypothetical charges found in a bill. If and RSI specifies information
         no in the bill, it is added to the bill. If the bill specifies
@@ -682,19 +682,19 @@ class Process(object):
             # get non-shadow registers in the reebill
             actual_register_readings = reebill.actual_registers(service)
 
-            print "loaded rate structure"
-            pp(rate_structure)
+            #print "loaded rate structure"
+            #pp(rate_structure)
 
-            print "loaded actual register readings"
-            pp(actual_register_readings)
+            #print "loaded actual register readings"
+            #pp(actual_register_readings)
 
             # copy the quantity of each non-shadow register in the reebill to
             # the corresponding register dictionary in the rate structure
             # ("apply the registers from the reebill to the probable rate structure")
             rate_structure.bind_register_readings(actual_register_readings)
 
-            print "rate structure with bound registers"
-            pp(rate_structure)
+            #print "rate structure with bound registers"
+            #pp(rate_structure)
 
             # get all utility charges from the reebill's utility bill (in the
             # form of a group name -> [list of charges] dictionary). for each
@@ -962,7 +962,9 @@ class Process(object):
             raise NotIssuable(("Can't issue reebill %s-%s because its "
                     "predecessor has not been issued.") % (account, sequence))
         # TODO complain if utility bills have not been attached yet
-        # https://www.pivotaltracker.com/story/show/37560565
+        if not self.state_db.is_attached(session, account, sequence):
+            raise NotAttachable(("Can't attach reebill %s-%s: it must "
+                    "be attached first") % (account, sequence))
 
         # set issue date and due date in mongo
         reebill = self.reebill_dao.load_reebill(account, sequence)
