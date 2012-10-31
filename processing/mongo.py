@@ -14,9 +14,9 @@ import itertools as it
 import copy
 import uuid as UUID
 import operator
-from billing.mongo_utils import bson_convert, python_convert, format_query
-from billing.dictutils import deep_map, subdict
-from billing.dateutils import date_to_datetime
+from billing.util.mongo_utils import bson_convert, python_convert, format_query
+from billing.util.dictutils import deep_map, subdict
+from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
 from sqlalchemy.orm.exc import NoResultFound
@@ -1107,10 +1107,8 @@ class MongoReebill(object):
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
-    # TODO: hardcoded database name, and the wrong default name at that.
-    # TODO: hardcoded host name
     def __init__(self, state_db, host='localhost', port=27017,
-            database='reebills', **kwargs):
+            database=None, **kwargs):
         self.state_db = state_db
 
         try:
@@ -1358,6 +1356,12 @@ class ReebillDAO:
                 utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
                 result.append(MongoReebill(mongo_doc, utilbill_docs))
             return result
+
+    def last_issue_date(self, session, account):
+        last_sequence = self.state_db.last_issued_sequence(session, account)
+        reebill = self.load_reebill(account, last_sequence)
+        return reebill.issue_date
+
         
     def save_reebill(self, reebill, freeze_utilbills=False, force=False):
         '''Saves the MongoReebill 'reebill' into the database. If a document
@@ -1375,6 +1379,7 @@ class ReebillDAO:
         used for testing).'''
         # TODO pass session into save_reebill instead of re-creating it
         # https://www.pivotaltracker.com/story/show/36258193
+        # TODO 38459029
         with DBSession(self.state_db) as session:
             issued = self.state_db.is_issued(session, reebill.account,
                     reebill.sequence, version=reebill.version, nonexistent=False)

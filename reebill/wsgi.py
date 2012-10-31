@@ -1,6 +1,5 @@
 '''
-File: bill_tool_bridge.py
-Description: Allows bill tool to be invoked as a CGI
+File: wsgi.py
 '''
 import sys
 import os
@@ -26,16 +25,17 @@ from StringIO import StringIO
 import mongoengine
 from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
-from billing.test import fake_skyliner
-from billing import json_util as ju, dateutils, nexus_util as nu
-from billing.nexus_util import NexusUtil
-from billing.dictutils import deep_map
+#TODO don't rely on test code, if we are, it isn't test code
+from billing.test import mock_skyliner
+from billing.util import json_util as ju, dateutils, nexus_util as nu
+from billing.util.nexus_util import NexusUtil
+from billing.util.dictutils import deep_map
 from billing.processing import mongo, billupload, excel_export
-from billing import monthmath
+from billing.util import monthmath
 from billing.processing import process, state, db_objects, fetch_bill_data as fbd, rate_structure as rs
 from billing.processing.billupload import BillUpload
 from billing.processing import journal, bill_mailer
-from billing.reebill import render
+from billing.processing import render
 from billing.processing.users import UserDAO, User
 from billing.processing import calendar_reports
 from billing.processing.estimated_revenue import EstimatedRevenue
@@ -103,8 +103,8 @@ def authenticate_ajax(method):
             # ajax response handlers in front-end interpret this and show
             # message box to redirect to login page
             # TODO: 28251379
-            return ju.dumps({'success': False, 'errors':
-                {'reason': 'No Session'}})
+            return ju.dumps({'success': False, 'code':1, 'errors':
+                {'reason': 'Authenticate Ajax: No Session'}})
     return wrapper
 
 def authenticate(method):
@@ -122,6 +122,9 @@ def authenticate(method):
             btb_instance.check_authentication()
             return method(btb_instance, *args, **kwargs)
         except Unauthenticated:
+            # Non-Ajax requests can't handle json responses
+            #return ju.dumps({'success': False, 'code': 1, 'errors':
+            #    {'reason': 'Authenticate: No Session'}})
             cherrypy.response.status = 403
             raise cherrypy.HTTPRedirect('/login.html')
     return wrapper
@@ -177,22 +180,27 @@ class BillToolBridge:
             self.config.set('runtime', 'integrate_skyline_backend', 'true')
             self.config.set('runtime', 'integrate_nexus', 'true')
             self.config.set('runtime', 'mock_skyliner', 'false')
+
             self.config.add_section('skyline_backend')
             self.config.set('skyline_backend', 'oltp_url', 'http://duino-drop.appspot.com/')
             self.config.set('skyline_backend', 'olap_host', 'tyrell')
             self.config.set('skyline_backend', 'olap_database', 'dev')
             self.config.set('skyline_backend', 'nexus_host', '[specify nexus host]')
+
             self.config.add_section('journaldb')
             self.config.set('journaldb', 'host', 'localhost')
             self.config.set('journaldb', 'port', '27017')
             self.config.set('journaldb', 'database', 'skyline')
+
             self.config.add_section('http')
             self.config.set('http', 'socket_port', '8185')
             self.config.set('http', 'socket_host', '10.0.0.250')
+
             self.config.add_section('rsdb')
             self.config.set('rsdb', 'host', 'localhost')
             self.config.set('rsdb', 'port', '27017')
             self.config.set('rsdb', 'database', 'skyline')
+
             self.config.add_section('billdb')
             self.config.set('billdb', 'utilitybillpath', '[root]db/skyline/utilitybills/')
             self.config.set('billdb', 'billpath', '[root]db/skyline/bills/')
@@ -200,17 +208,18 @@ class BillToolBridge:
             self.config.set('billdb', 'port', '27017')
             self.config.set('billdb', 'database', 'skyline')
             self.config.set('billdb', 'utility_bill_trash_directory', '[root]db/skyline/utilitybills-deleted')
+
             self.config.add_section('statedb')
             self.config.set('statedb', 'host', 'localhost')
             self.config.set('statedb', 'database', 'skyline')
             self.config.set('statedb', 'user', '[your mysql user]')
             self.config.set('statedb', 'password', '[your mysql password]')
+
             self.config.add_section('usersdb')
             self.config.set('usersdb', 'host', 'localhost')
             self.config.set('usersdb', 'database', 'skyline')
-            self.config.set('usersdb', 'user', 'dev')
             self.config.set('usersdb', 'port', '27017')
-            self.config.set('usersdb', 'password', 'dev')
+
             self.config.add_section('mailer')
             self.config.set('mailer', 'smtp_host', 'smtp.gmail.com')
             self.config.set('mailer', 'smtp_port', '587')
@@ -218,6 +227,7 @@ class BillToolBridge:
             self.config.set('mailer', 'from', '"Jules Watson" <jwatson@skylineinnovations.com>')
             self.config.set('mailer', 'bcc_list', '')
             self.config.set('mailer', 'password', 'password')
+
             self.config.add_section('authentication')
             self.config.set('authentication', 'authenticate', 'true')
 
@@ -233,7 +243,7 @@ class BillToolBridge:
 
             # directory to store temporary files for pdf rendering
             DEFAULT_RENDERING_TEMP_DIRECTORY = '/tmp'
-            DEFAULT_BACKGROUNDS = 'EmeraldCity-FullBleed-1v3.png EmeraldCity-FullBleed-2v3.png'
+            DEFAULT_TEMPLATE = 'skyline'
 
             # log file info
             self.config.add_section('log')
@@ -248,9 +258,10 @@ class BillToolBridge:
             # reebill pdf rendering
             self.config.add_section('reebillrendering')
             self.config.set('reebillrendering', 'temp_directory', DEFAULT_RENDERING_TEMP_DIRECTORY)
-            self.config.set('reebillrendering', 'default_backgrounds', DEFAULT_BACKGROUNDS)
-            self.config.set('reebillrendering', 'teva_backgrounds', '')
+            self.config.set('reebillrendering', 'template_directory', "absolute path to reebill_templates/")
+            self.config.set('reebillrendering', 'default_template', DEFAULT_TEMPLATE)
             self.config.set('reebillrendering', 'teva_accounts', '')
+
 
             # TODO default config file is incomplete
 
@@ -320,7 +331,7 @@ class BillToolBridge:
 
         # create a Splinter
         if self.config.getboolean('runtime', 'mock_skyliner'):
-            self.splinter = fake_skyliner.FakeSplinter()
+            self.splinter = mock_skyliner.MockSplinter()
         else:
             self.splinter = Splinter(
                 self.config.get('skyline_backend', 'oltp_url'),
@@ -488,7 +499,8 @@ class BillToolBridge:
         if user is None:
             self.logger.info(('login attempt failed: username "%s"'
                 ', remember me: %s') % (username, rememberme))
-            raise cherrypy.HTTPRedirect("/login.html")
+            return ju.dumps({'success': False, 'errors':
+                {'username':'Incorrect username or password', 'reason': 'No Session'}})
 
         # successful login:
 
@@ -505,10 +517,17 @@ class BillToolBridge:
         # store identifier & user preferences in cherrypy session object &
         # redirect to main page
         cherrypy.session['user'] = user
+
+        if rememberme == 'on':
+            # TODO need to encrypt or otherwise provide credentials and return them to client
+            credentials = password
+            cherrypy.response.cookie['username'] = user.username
+            cherrypy.response.cookie['credentials'] = password
+
         self.logger.info(('user "%s" logged in: remember '
             'me: "%s" type is %s') % (username, rememberme,
             type(rememberme)))
-        raise cherrypy.HTTPRedirect("/billentry.html")
+        return ju.dumps({'success': True});
 
     def check_authentication(self):
         '''Function to check authentication for HTTP request functions: if user
@@ -522,6 +541,25 @@ class BillToolBridge:
             if 'user' not in cherrypy.session:
                 cherrypy.session['user'] = UserDAO.default_user
         if 'user' not in cherrypy.session:
+            # is this user rememberme'd?
+            cookie = cherrypy.request.cookie
+            username = cookie['username'].value if 'username' in cookie else None
+            credentials = cookie['credentials'].value if 'credentials' in cookie else None
+
+            # the server did not have the user in session
+            # log that user back in automatically based on 
+            # the values found in the cookie
+
+            # need to 
+            password = credentials
+            user = self.user_dao.load_user(username, password)
+            if user is None:
+                self.logger.info(('Remember Me login attempt failed: username "%s"') % (username))
+            else:
+                self.logger.info(('Remember Me login attempt success: username "%s"') % (username))
+                cherrypy.session['user'] = user
+                return
+
             # TODO show the wrapped function name here instead of "wrapper"
             # (probably inspect.stack is too smart to be fooled by
             # functools.wraps)
@@ -570,14 +608,24 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             return self.dumps({'success':True,
                     'username': cherrypy.session['user'].username})
-            
 
     @cherrypy.expose
     @random_wait
     def logout(self):
+
+        # delete remember me
+        # This is how cookies are deleted? the key in the response cookie must be set before
+        # expires can be set
+        cherrypy.response.cookie['username'] = ""
+        cherrypy.response.cookie['username'].expires = 0
+        cherrypy.response.cookie['hash'] = ""
+        cherrypy.response.cookie['hash'].expires = 0
+
+        # delete the current server session
         if hasattr(cherrypy, 'session') and 'user' in cherrypy.session:
             self.logger.info('user "%s" logged out' % (cherrypy.session['user'].username))
             del cherrypy.session['user']
+
         raise cherrypy.HTTPRedirect('/login.html')
 
     ###########################################################################
@@ -1061,18 +1109,29 @@ class BillToolBridge:
             statuses = self.state_db.retrieve_status_days_since(session, sortcol, sortdir)
 
             name_dicts = self.nexus_util.all_names_for_accounts([s.account for s in statuses])
-            rows = [dict([
-                ('account', status.account),
-                ('codename', name_dicts[status.account]['codename'] if
-                    'codename' in name_dicts[status.account] else ''),
-                ('casualname', name_dicts[status.account]['casualname'] if
-                    'casualname' in name_dicts[status.account] else ''),
-                ('primusname', name_dicts[status.account]['primus'] if
-                    'primus' in name_dicts[status.account] else ''),
-                ('dayssince', status.dayssince),
-                ('lastevent', self.journal_dao.last_event_summary(status.account)),
-                ('provisionable', False),
-            ]) for i, status in enumerate(statuses)]
+
+            rows = []
+            for i, status in enumerate(statuses):
+
+                last_issue_date = self.reebill_dao.last_issue_date(session, status.account)
+                last_issue_date = str(last_issue_date) if last_issue_date is not None else 'Never Issued'
+                lastevent = self.journal_dao.last_event_summary(status.account)
+
+                row = dict([
+                    ('account', status.account),
+                    ('codename', name_dicts[status.account]['codename'] if
+                        'codename' in name_dicts[status.account] else ''),
+                    ('casualname', name_dicts[status.account]['casualname'] if
+                        'casualname' in name_dicts[status.account] else ''),
+                    ('primusname', name_dicts[status.account]['primus'] if
+                        'primus' in name_dicts[status.account] else ''),
+                    ('dayssince', status.dayssince),
+                    ('lastissuedate', last_issue_date),
+                    ('lastevent', lastevent),
+                    ('provisionable', False),
+                ])
+                
+                rows.append(row)
 
             if sortcol == 'account':
                 rows.sort(key=lambda r: r['account'], reverse=sortreverse)
@@ -1084,6 +1143,8 @@ class BillToolBridge:
                 rows.sort(key=lambda r: r['primusname'], reverse=sortreverse)
             elif sortcol == 'dayssince':
                 rows.sort(key=lambda r: r['dayssince'], reverse=sortreverse)
+            elif sortcol == 'lastissuedate':
+                rows.sort(key=lambda r: r['lastissuedate'], reverse=sortreverse)
             elif sortcol == 'lastevent':
                 rows.sort(key=lambda r: r['lastevent'], reverse=sortreverse)
 
@@ -1905,6 +1966,8 @@ class BillToolBridge:
             for new_reebill in new_reebills:
                 journal.NewReebillVersionEvent.save_instance(cherrypy.session['user'],
                         account, new_reebill.sequence, new_reebill.version)
+                journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
+                        account, new_reebill.sequence, new_reebill.version)
             # client doesn't do anything with the result (yet)
             return self.dumps({'success': True, 'sequences': [r.sequence for r in
                     new_reebills]})
@@ -2416,21 +2479,22 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def upload_utility_bill(self, account, service, begin_date, end_date,
+    def upload_utility_bill(self, account, service, begin_date, end_date, total_charges,
             file_to_upload, **args):
         with DBSession(self.state_db) as session:
-            if not account or not begin_date or not end_date or not file_to_upload:
+            if not account or not begin_date or not end_date or not total_charges or not file_to_upload:
                 raise ValueError("Bad Parameter Value")
 
             # pre-process parameters
             service = service.lower()
+            total_charges_as_float = float(total_charges)
             begin_date_as_date = datetime.strptime(begin_date, '%Y-%m-%d').date()
             end_date_as_date = datetime.strptime(end_date, '%Y-%m-%d').date()
             self.validate_utilbill_period(begin_date_as_date, end_date_as_date)
 
             try:
                 self.process.upload_utility_bill(session, account, service,
-                        begin_date_as_date, end_date_as_date, file_to_upload.file,
+                        begin_date_as_date, end_date_as_date, total_charges_as_float, file_to_upload.file,
                         file_to_upload.filename if file_to_upload else None)
             except IOError:
                 self.logger.error('file upload failed:', begin_date, end_date,
@@ -2540,6 +2604,7 @@ class BillToolBridge:
                 ('service', 'Unknown' if ub.service is None else ub.service[0].upper() + ub.service[1:]),
                 ('period_start', ub.period_start),
                 ('period_end', ub.period_end),
+                ('total_charges', ub.total_charges),
                 ('sequence', ub.reebill.sequence if ub.reebill else None),
                 ('state', state_descriptions[ub.state]),
                 # utility bill rows are only editable if they don't have a
@@ -2595,9 +2660,10 @@ class BillToolBridge:
                 # TODO move out of BillToolBridge, make into its own function
                 # so it's testable
 
-                # only the dates and service can be updated.
-                # parse data from the client: for some reason it returns single
-                # utility bill row in a json string called "rows"
+                # only certain data can be updated.
+                # parse data from the client
+
+                # ext sends a dict if there is one row, a list of dicts if there are more than one
                 rows = ju.loads(kwargs['rows'])
                 utilbill_id = rows['id']
                 new_period_start = datetime.strptime(rows['period_start'],
@@ -2605,6 +2671,7 @@ class BillToolBridge:
                 new_period_end = datetime.strptime(rows['period_end'],
                         dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
                 new_service = rows['service']
+                new_total_charges = rows['total_charges']
 
                 # check that new dates are reasonable
                 self.validate_utilbill_period(new_period_start, new_period_end)
@@ -2638,8 +2705,9 @@ class BillToolBridge:
                     raise Exception("Can't edit utility bills that have already been attached to a reebill.")
                 utilbill.period_start = new_period_start
                 utilbill.period_end = new_period_end
+                utilbill.total_charges = new_total_charges
 
-                # delete any hypothetical utility bills that were created to
+                # delete any estimated utility bills that were created to
                 # cover gaps that no longer exist
                 self.process.state_db.trim_hypothetical_utilbills(session,
                         customer.account, utilbill.service)

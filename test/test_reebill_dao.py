@@ -3,9 +3,8 @@ import unittest
 import pymongo
 import sqlalchemy
 import copy
-import mongoengine
 from datetime import date, datetime, timedelta
-from billing import dateutils
+from billing.util import dateutils
 from billing.processing import mongo
 from billing.processing.state import StateDB
 from billing.processing.db_objects import ReeBill, Customer, UtilBill
@@ -17,66 +16,7 @@ from billing.processing.session_contextmanager import DBSession
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
 
-class ReebillDAOTest(unittest.TestCase):
-
-    def setUp(self):
-        # this method runs before every test.
-        # clear SQLAlchemy mappers so StateDB can be instantiated again
-        sqlalchemy.orm.clear_mappers()
-
-        # customer database ("test" database has already been created with
-        # empty customer table)
-        self.state_db = StateDB(**{
-            'user':'dev',
-            'password':'dev',
-            'host':'localhost',
-            'database':'test'
-        })
-
-        self.reebill_dao = mongo.ReebillDAO(self.state_db, **{
-            'billpath': '/db-dev/skyline/bills/',
-            'database': 'test',
-            'utilitybillpath': '/db-dev/skyline/utilitybills/',
-            'collection': 'test_reebills',
-            'host': 'localhost',
-            'port': 27017
-        })
-        
-        mongoengine.connect('test', host='localhost', port=27017,
-                alias='utilbills')
-
-        ## clear out tables in mysql test database (not relying on StateDB)
-        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        c = mysql_connection.cursor()
-        c.execute("delete from payment")
-        c.execute("delete from utilbill")
-        c.execute("delete from rebill")
-        c.execute("delete from customer")
-        # (note that status_days_since, status_unbilled are views and you
-        # neither can nor need to delete from them)
-        mysql_connection.commit()
-
-        # insert one customer
-        session = self.state_db.session()
-        # name, account, discount rate, late charge rate
-        customer = Customer('Test Customer', '99999', .12, .34)
-        session.add(customer)
-        session.commit()
-
-    def tearDown(self):
-        # clear out mongo test database
-        mongo_connection = pymongo.Connection('localhost', 27017)
-        mongo_connection.drop_database('test')
-
-        # clear out tables in mysql test database (not relying on StateDB)
-        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        c = mysql_connection.cursor()
-        c.execute("delete from payment")
-        c.execute("delete from utilbill")
-        c.execute("delete from rebill")
-        c.execute("delete from customer")
-        mysql_connection.commit()
-    
+class ReebillDAOTest(TestCaseWithSetup):
     def test_load_reebill(self):
         with DBSession(self.state_db) as session:
             # put some reebills in Mongo, including non-0 versions
@@ -343,7 +283,7 @@ class ReebillDAOTest(unittest.TestCase):
         self.reebill_dao._save_utilbill(attached_utilbill,
                 sequence_and_version=(1, 0))
 
-        # attached_utilbill is still saveable
+        # NOTE attached_utilbill is still saveable
         self.reebill_dao._save_utilbill(attached_utilbill)
 
         # and so is the original utilbill

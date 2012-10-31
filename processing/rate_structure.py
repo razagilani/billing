@@ -11,7 +11,7 @@ import traceback
 import uuid
 import yaml
 import yaml
-from billing.mongo_utils import bson_convert, python_convert, format_query
+from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError
 
 import pprint
@@ -534,9 +534,11 @@ class RateStructureItem(object):
                     # do not access them since @property methods are used for expression evaluation
                     setattr(self, "_"+key, value)
                 else:
-                    print "Warning: %s %s is an empty property" % (props["rsi_binding"], key)
+                    pass
+                    #print "Warning: %s %s is an empty property" % (props["rsi_binding"], key)
             else:
-                print "Warning: %s %s is an empty property" % (props["rsi_binding"], key)
+                pass
+                #print "Warning: %s %s is an empty property" % (props["rsi_binding"], key)
                 # Don't add the attr the property since it has no value and its only contribution 
                 # would be to make for None type checking all over the place.
 

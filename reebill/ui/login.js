@@ -1,11 +1,14 @@
+/* Global variables for login */
+Ext.namespace("ReeBill.LoginWindow");
+
 //FIELD_INITIAL_STYLE = 'color:#bbdd99; font-size:medium';
 //FIELD_NORMAL_STYLE = 'color:#66aa44; font-size:medium';
-FIELD_NORMAL_STYLE = 'font-size:medium';
+//FIELD_NORMAL_STYLE = 'font-size:medium';
 
 //var nameBlank = true;
 //var passwordBlank = true;
 
-var prettyField = function(name, label, inputType) {
+/*var prettyField = function(name, label, inputType) {
     return new Ext.form.TextField({
         name: name,
         fieldLabel: label,
@@ -21,19 +24,91 @@ var nameField = new prettyField('username', 'Username');
 var passwordField = new prettyField('password', 'Password', 'password');
 
 var openIdIdentifierField = new prettyField('identifier', 'Identifier');
+*/
 
-var rememberMeCheckbox = new Ext.form.Checkbox({
+//var rememberMeCheckbox = 
+ReeBill.LoginFormFields = [
+{
+    name:'username',
+    fieldLabel:'User Name',
+    msgTarget:'side',
+},{
+    name:'password',
+    fieldLabel:'Password',
+    inputType:'password',
+    msgTarget:'side',
+},{
     name: 'rememberme',
-    boxLabel: 'Remember Me'
+    xtype: 'checkbox',
+    fieldLabel: 'Remember Me'
+}];
+
+ReeBill.WelcomeLoginFormPanel = new Ext.form.FormPanel({
+    id: "WelcomeLoginFormPanel",
+    url: 'http://' + location.host + '/reebill/login',
+    border: false,
+    defaultType: 'textfield', // if this is wrong, including anything in 'items results in 'undefined is not a function'
+    items: ReeBill.LoginFormFields,
+    buttons: [{
+        text: 'Log In',
+        type: 'submit',
+        formBind: true,
+        handler: function () {
+            console.log(this);
+            Ext.getCmp('WelcomeLoginFormPanel').form.submit({
+                waitMsg:'Authenticating',
+                success: function() {
+                    window.location = 'http://' + location.host + '/billentry.html';
+                }
+            });
+        },
+    }],
+    /*keys: [{
+        key: [Ext.EventObject.ENTER],
+        handler: submitHandler
+    }]*/
+})
+
+
+// used in main app for re-authenticating
+ReeBill.LoginWindow = new Ext.Window({
+    id: 'LoginWindow',
+    title: "Log In",
+    layout:'fit',
+    width:500,
+    height:300,
+    closeAction:'hide',
+    resizable: false,
+    closable: false,
+    items: new Ext.form.FormPanel({
+        id: "LoginFormPanel",
+        //standardSubmit: true,
+        url: 'http://' + location.host + '/reebill/login',
+        border: false,
+        defaultType: 'textfield', // if this is wrong, including anything in 'items results in 'undefined is not a function'
+        items: ReeBill.LoginFormFields,
+        buttons: [{
+            text: 'Log In',
+            type: 'submit',
+            formBind: true,
+            handler: function () {
+                console.log(this);
+                Ext.getCmp('LoginFormPanel').form.submit({
+                    waitMsg:'Authenticating',
+                    success: function() {
+                        Ext.getCmp('LoginWindow').close();
+                    }
+                });
+            },
+        }],
+        /*keys: [{
+            key: [Ext.EventObject.ENTER],
+            handler: submitHandler
+        }]*/
+    }),
 });
 
-function submitHandler() {
-    loginFormPanel.getForm().getEl().dom.action = 'http://' + location.host + '/reebill/login'
-    loginFormPanel.getForm().getEl().dom.method = 'POST';
-    loginFormPanel.getForm().submit();
-}
-
-var loginFormPanel = new Ext.form.FormPanel({
+/*var loginFormPanel = new Ext.form.FormPanel({
     standardSubmit: true,
     //frame: true,
     //title: 'Log in',
@@ -43,8 +118,8 @@ var loginFormPanel = new Ext.form.FormPanel({
     defaultType: 'textfield', // if this is wrong, including anything in 'items results in 'undefined is not a function'
     items: [nameField, passwordField, rememberMeCheckbox],
     buttons: [{
-        /* button style requires "cls:'buttonstyle'" attribute in button,
-         * separate css file with ".buttonstyle {...}" */
+        //* button style requires "cls:'buttonstyle'" attribute in button,
+        // * separate css file with ".buttonstyle {...}" /
         text: 'Log In',
         handler: submitHandler
     }],
@@ -52,15 +127,15 @@ var loginFormPanel = new Ext.form.FormPanel({
         key: [Ext.EventObject.ENTER],
         handler: submitHandler
     }]
-});
+});*/
 
-var openIDButton = new Ext.Button({
+/*var openIDButton = new Ext.Button({
     text: 'Log in With Your Google Account',
     //cls:'x-btn-text-icon',
     disabled: true,
-});
+});*/
 
-var outerPanel = new Ext.Panel({
+/*var outerPanel = new Ext.Panel({
     items: [loginFormPanel, openIDButton],
     layout: new Ext.layout.VBoxLayout({
         align: 'center',
@@ -70,16 +145,16 @@ var outerPanel = new Ext.Panel({
     border: false,
     height: 200, // TODO these should be set by the size of the contents instead of hard-coded
     width: 350,
-})
+})*/
 
 
-function submitHandler() {
+/*function submitHandler() {
     loginFormPanel.getForm().getEl().dom.action = 'http://' + location.host + '/reebill/login'
     loginFormPanel.getForm().getEl().dom.method = 'POST';
     loginFormPanel.getForm().submit();
-}
+}*/
 
-Ext.onReady(function() {
+/*Ext.onReady(function() {
 
     outerPanel.render('loginform');
 
@@ -113,5 +188,4 @@ Ext.onReady(function() {
 
         //}
     //});
-});
-
+});*/

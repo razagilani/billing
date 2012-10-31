@@ -41,6 +41,14 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
 */
 
 
+function login() {
+    // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
+    // of which there may be many.
+    if (ReeBill.LoginWindow.hidden) {
+        ReeBill.LoginWindow.show(this);
+    }
+}
+
 function reeBillReady() {
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
@@ -56,9 +64,10 @@ function reeBillReady() {
             var jsonData = Ext.util.JSON.decode(response.responseText);
             // handle the various failure modes
             if (jsonData.success == false) {
-                if (jsonData.errors.reason == "No Session") {
-                    console.log("Not logged in, redirecting");
-                    Ext.MessageBox.alert("Authentication", "Not logged in, or session expiration", function(){ document.location = "../"});
+                console.log(jsonData);
+                console.log(jsonData.code);
+                if (jsonData.code == 1) {
+                    login();
                 } else {
                     // turn on to log application failures
                     //console.log(response.responseText);
@@ -156,6 +165,12 @@ function reeBillReady() {
             allowBlank: false,
             format: 'Y-m-d'
     });
+    var uploadTotalChargesField = new Ext.form.NumberField({
+        fieldLabel: 'Total Charges',
+            name: 'total_charges',
+            width: 90,
+            value: 0,
+    });
 
     // buttons
     var upload_reset_button = new Ext.Button({
@@ -171,6 +186,7 @@ function reeBillReady() {
                 utilbillGrid.getBottomToolbar().doRefresh();
                 uploadStartDateField.setValue(uploadEndDateField.getValue());
                 uploadEndDateField.setValue("");
+                uploadTotalChargesField.setValue(0);
             })
         },
     });
@@ -192,6 +208,7 @@ function reeBillReady() {
             upload_service,
             uploadStartDateField,
             uploadEndDateField,
+            uploadTotalChargesField,
             {
                 xtype: 'fileuploadfield',
                 id: 'form-file',
@@ -228,6 +245,7 @@ function reeBillReady() {
             {name: 'account', mapping: 'account'},
             {name: 'period_start', mapping: 'period_start'},
             {name: 'period_end', mapping: 'period_end'},
+            {name: 'total_charges', mapping: 'total_charges'},
             {name: 'sequence', mapping: 'sequence'},
             {name: 'state', mapping: 'state'},
         ]
@@ -270,6 +288,10 @@ function reeBillReady() {
             name: 'period_end',
             type: 'date',
             dateFormat: 'Y-m-d'
+        },
+        {
+            name: 'total_charges',
+            type: 'float'
         },
         {name: 'sequence'},
         {name: 'state'},
@@ -362,6 +384,12 @@ function reeBillReady() {
                 width: 50
             }),
             {
+                id: 'total_charges',
+                header: 'Total Charges',
+                dataIndex: 'total_charges',
+                editable: true,
+                editor: new Ext.form.NumberField({allowBlank: false}),
+            },{
                 id: 'sequence',
                 header: 'Sequence',
                 dataIndex: 'sequence',
@@ -413,7 +441,7 @@ function reeBillReady() {
             emptyMsg: "No Utility Bills to display",
         }),
         colModel: utilbillColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: false}),
+        //selModel: new Ext.grid.RowSelectionModel({singleSelect: false}),
         store: utilbillGridStore,
         enableColumnMove: false,
         frame: true,
@@ -428,6 +456,7 @@ function reeBillReady() {
         clicksToEdit: 2,
         selModel: new Ext.grid.RowSelectionModel({
             singleSelect: true,
+            moveEditorOnEnter: false,
             listeners: {
                 rowdeselect: function (selModel, index, record) {
                     loadReeBillUIForSequence(record.data.account, null);
@@ -1602,61 +1631,6 @@ function reeBillReady() {
         });
     }
 
-    var mailDataConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/mail',
-    });
-    mailDataConn.autoAbort = true;
-    mailDataConn.disableCaching = true;
-    function mailReebillOperation(sequences) {
-        Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', function(btn, recipients){
-            if (btn == 'ok') {
-                mailDataConn.request({
-                    params: {
-                        account: selected_account,
-                        recipients: recipients,
-                        sequences: sequences,
-                    },
-                    success: function(response, options) {
-                        var o = {};
-                        try {
-                            o = Ext.decode(response.responseText);}
-                        catch(e) {
-                            alert("Could not decode JSON data");
-                        }
-                        if (o.success == true) {
-                            Ext.Msg.alert('Success', "mail successfully sent");
-                        } else if (o.success !== true && o['corrections'] != undefined) {
-                            var result = Ext.Msg.confirm('Corrections must be applied',
-                                'Corrections from reebills ' + o.corrections +
-                                ' will be applied to this bill as an adjusment of $'
-                                + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
-                                    if (answer == 'yes') {
-                                        mailDataConn.request({
-                                            params: { account: selected_account, recipients: recipients, sequences: sequences, corrections: o.corrections},
-                                            success: function(response, options) {
-                                                var o2 = Ext.decode(response.responseText);
-                                                if (o2.success == true)
-                                                    Ext.Msg.alert('Success', "mail successfully sent");
-                                                else
-                                                    Ext.Msg.alert('Error', o2.errors.reason + o2.errors.details);
-                                            },
-                                            failure: function() {
-                                                Ext.Msg.alert('Failure', "mail response fail");
-                                            }
-                                        });
-                                    }
-                                });
-                        } else {
-                            Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
-                        }
-                    },
-                    failure: function () {
-                        Ext.Msg.alert('Failure', "mail response fail");
-                    }
-                });
-            }
-        });
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     //
@@ -4012,6 +3986,62 @@ function reeBillReady() {
     ///////////////////////////////////////
     // Mail Tab
 
+    var mailDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/mail',
+    });
+    mailDataConn.autoAbort = true;
+    mailDataConn.disableCaching = true;
+    function mailReebillOperation(sequences) {
+        Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', function(btn, recipients){
+            if (btn == 'ok') {
+                mailDataConn.request({
+                    params: {
+                        account: selected_account,
+                        recipients: recipients,
+                        sequences: sequences,
+                    },
+                    success: function(response, options) {
+                        var o = {};
+                        try {
+                            o = Ext.decode(response.responseText);}
+                        catch(e) {
+                            alert("Could not decode JSON data");
+                        }
+                        if (o.success == true) {
+                            Ext.Msg.alert('Success', "mail successfully sent");
+                        } else if (o.success !== true && o['corrections'] != undefined) {
+                            var result = Ext.Msg.confirm('Corrections must be applied',
+                                'Corrections from reebills ' + o.corrections +
+                                ' will be applied to this bill as an adjusment of $'
+                                + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
+                                    if (answer == 'yes') {
+                                        mailDataConn.request({
+                                            params: { account: selected_account, recipients: recipients, sequences: sequences, corrections: o.corrections},
+                                            success: function(response, options) {
+                                                var o2 = Ext.decode(response.responseText);
+                                                if (o2.success == true)
+                                                    Ext.Msg.alert('Success', "mail successfully sent");
+                                                else
+                                                    Ext.Msg.alert('Error', o2.errors.reason + o2.errors.details);
+                                            },
+                                            failure: function() {
+                                                Ext.Msg.alert('Failure', "mail response fail");
+                                            }
+                                        });
+                                    }
+                                });
+                        } else {
+                            Ext.Msg.alert('Error', o.errors.reason + o.errors.details);
+                        }
+                    },
+                    failure: function () {
+                        Ext.Msg.alert('Failure', "mail response fail");
+                    }
+                });
+            }
+        }, false, "");
+    }
+
     var initialMailReebill =  {
         rows: [
         ]
@@ -4215,6 +4245,7 @@ function reeBillReady() {
             {name: 'account', mapping: 'account'},
             {name: 'fullname', mapping: 'fullname'},
             {name: 'dayssince', mapping: 'dayssince'/*, type:sortType*/},
+            {name: 'lastissuedate'},
             {name: 'lastevent'},
             {name: 'provisionable', mapping: 'provisionable'},
         ]
@@ -4241,6 +4272,7 @@ function reeBillReady() {
             {name: 'primusname'},
             {name: 'dayssince'},
             {name: 'lastevent'},
+            {name: 'lastissuedate'},
             {name: 'provisionable'},
         ],
         // looks to be initial order for load
@@ -4291,6 +4323,11 @@ function reeBillReady() {
                 header: 'Primus Name',
                 sortable: true,
                 dataIndex: 'primusname',
+                renderer: accountGridColumnRenderer,
+            },{
+                header: 'Last Issued',
+                sortable: true,
+                dataIndex: 'lastissuedate',
                 renderer: accountGridColumnRenderer,
             },{
                 header: 'Days Since Utility Bill',
