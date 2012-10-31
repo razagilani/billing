@@ -41,6 +41,14 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
 */
 
 
+function login() {
+    // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
+    // of which there may be many.
+    if (ReeBill.LoginWindow.hidden) {
+        ReeBill.LoginWindow.show(this);
+    }
+}
+
 function reeBillReady() {
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
@@ -56,9 +64,10 @@ function reeBillReady() {
             var jsonData = Ext.util.JSON.decode(response.responseText);
             // handle the various failure modes
             if (jsonData.success == false) {
-                if (jsonData.errors.reason == "No Session") {
-                    console.log("Not logged in, redirecting");
-                    Ext.MessageBox.alert("Authentication", "Not logged in, or session expiration", function(){ document.location = "../"});
+                console.log(jsonData);
+                console.log(jsonData.code);
+                if (jsonData.code == 1) {
+                    login();
                 } else {
                     // turn on to log application failures
                     //console.log(response.responseText);
