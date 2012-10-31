@@ -1,7 +1,6 @@
 from datetime import date, datetime, timedelta
 from collections import defaultdict
 from billing.util.dateutils import date_to_datetime, date_generator
-from billing.mongo import float_to_decimal
 from decimal import Decimal
 import pymongo
 from billing.processing.process import Process
@@ -27,8 +26,6 @@ rs_dao = RateStructureDAO(**{
 db = pymongo.Connection('localhost')['skyline-dev']
 process = Process(state_db, bill_dao, rs_dao, None, None, None)
 
-TOLERANCE = 10
-
 # build dict mapping RSIs to list of periods during which they occur
 earliest, latest = date(3000,1,1), date(1000,1,1)
 bindings = defaultdict(lambda: [])
@@ -46,8 +43,8 @@ with DBSession(state_db) as session:
         try:
             # load raw dictionary (RateStructure object is unusable)
             rs = rs_dao._load_probable_rs_dict(reebill, service)
-        except:
-            print acc, seq, ver, 'ERROR'
+        except Exception as e:
+            print acc, seq, ver, 'ERROR:', e
             pass
         else:
             #print acc, seq, ver
@@ -59,37 +56,13 @@ with DBSession(state_db) as session:
                 except ValueError:
                     pass
                 else:
-                    bindings[binding].append((period, rate))
+                    bindings[binding].append((acc, period, rate))
             earliest = min(earliest, period[0])
             latest = max(latest, period[1])
 
 # write out data to files for plotting
 for binding in bindings:
-    with open('/tmp/rs_data/' + binding, 'w') as out_file:
-        for period, rate in bindings[binding]:
-            out_file.write('%s %s %s\n' % ( period[0], period[1], rate)),
-exit()
-def period_contains_day(period, day):
-    return day >= period[0] and day < period[1]
+    with open('rs_data/' + binding, 'w') as out_file:
+        for account, period, rate in bindings[binding]:
+            out_file.write('%s %s %s %s\n' % (account, period[0], period[1], rate)),
 
-from tablib import Dataset
-keys = sorted(bindings.keys())
-table = Dataset(headers=(['date'] + keys))
-for day in date_generator(earliest, latest):
-    row = [0] * (len(keys) + 1)
-    row[0] = day
-    for i, binding in enumerate(keys):
-        # how many bills had a given rsi today?
-        row[i+1] = [rate for period, rate in bindings[binding] if period_contains_day(period, day)][0]
-        print row
-        if i > 10:
-            exit()
-    table.append(row)
-
-format = '%s ' + ('%8s' * (len(row)-1))
-print [str(h) for h in table.headers]
-print len(row), len(table.headers), format
-#print format % table.headers
-for row in table:
-    print format % row
-print bindings.keys()

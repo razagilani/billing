@@ -9,6 +9,7 @@ from billing.processing.db_objects import Customer
 from billing.processing.state import StateDB
 from billing.processing import mongo
 from billing.test import example_data
+from billing.test.setup_teardown import TestCaseWithSetup
 from billing.util.dictutils import deep_map, subdict
 from billing.processing.session_contextmanager import DBSession
 
@@ -22,57 +23,7 @@ def compare_rsis(rsi1, rsi2):
     return deep_map(str_to_unicode, subdict(rsi1, keys)) == \
             deep_map(str_to_unicode, subdict(rsi2, keys))
 
-class RateStructureTest(unittest.TestCase):
-    def setUp(self):
-        self.rs_db_config = {
-            'database': 'test',
-            'collection': 'ratestructure',
-            'host': 'localhost',
-            'port': 27017
-        }
-        self.billdb_config = {
-            'billpath': '/db-dev/skyline/bills/',
-            'database': 'test',
-            'utilitybillpath': '/db-dev/skyline/utilitybills/',
-            'collection': 'test_reebills',
-            'host': 'localhost',
-            'port': 27017
-        }
-        self.rate_structure_dao = rate_structure.RateStructureDAO(
-                **self.rs_db_config)
-        sqlalchemy.orm.clear_mappers()
-        self.state_db = StateDB(**{
-            'host': 'localhost',
-            'database': 'test',
-            'user': 'dev',
-            'password': 'dev'
-        })
-        self.reebill_dao = mongo.ReebillDAO(self.state_db, **self.billdb_config)
-
-        # clear out tables in mysql test database (not relying on StateDB)
-        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        c = mysql_connection.cursor()
-        c.execute("delete from payment")
-        c.execute("delete from utilbill")
-        c.execute("delete from rebill")
-        c.execute("delete from customer")
-        # (note that status_days_since, status_unbilled are views and you
-        # neither can nor need to delete from them)
-        mysql_connection.commit()
-
-        # insert one customer
-        session = self.state_db.session()
-        # name, account, discount rate, late charge rate
-        customer = Customer('Test Customer', '99999', .12, .34)
-        session.add(customer)
-        session.commit()
-
-    def tearDown(self):
-        # drop test database(s)
-        mongo_connection = pymongo.Connection(self.rs_db_config['host'],
-                self.rs_db_config['port'])
-        mongo_connection.drop_database(self.rs_db_config['database'])
-        mongo_connection.drop_database(self.billdb_config['database'])
+class RateStructureTest(TestCaseWithSetup):
 
     def test_load_rate_structure(self):
         '''Tests loading the "probable RS" by combining the URS, UPRS, and CPRS
