@@ -10,7 +10,7 @@ from billing.processing.state import StateDB
 from billing.processing.db_objects import ReeBill, Customer, UtilBill
 import MySQLdb
 from billing.test import example_data
-from billin.test.setup_teardown import TestCaseWithSetup
+from billing.test.setup_teardown import TestCaseWithSetup
 from billing.processing.mongo import NoSuchBillException, IssuedBillError
 from billing.processing.session_contextmanager import DBSession
 
