@@ -9,6 +9,7 @@ import shutil
 import errno
 from datetime import date, datetime, timedelta
 from billing.processing.billupload import BillUpload
+from billing.test.setup_teardown import TestCaseWithSetup
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
