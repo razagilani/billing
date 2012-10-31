@@ -26,6 +26,14 @@ class User:
     def preferences(self):
         return self.dictionary['preferences']
 
+    @property
+    def session_token(self):
+        return self.dictionary['session_token']
+
+    @session_token.setter
+    def session_token(self, value):
+        self.dictionary['session_token'] = value
+
 #    def get_preference(self, key):
 #        '''Get a user preference using its name (e.g.
 #        "bill_image_resolution").'''
@@ -109,6 +117,15 @@ class UserDAO:
             return User(user_dict)
         return None
 
+    def load_by_session_token(self, token):
+        user_dict = self.collection.find_one({
+            'session_token': token,
+        })
+        if user_dict is None:
+            return None
+
+        return User(user_dict)
+
     def load_openid_user(self, identifier):
         '''Returns a User object representing the user given by 'identifier'
         (username or an OpenID URL), or None if the user is not found.'''
@@ -131,7 +148,10 @@ class UserDAO:
         existing user with the same identifier.'''
         # for the default user, do nothing
         if user is UserDAO.default_user:
+            print "DID NOT SAVE USER BECAUSE THEY ARE DEFAULT"
             return
+
+        print "will save user ", user
 
         self.collection.save(user.dictionary)
 

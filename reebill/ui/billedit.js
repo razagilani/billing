@@ -64,8 +64,6 @@ function reeBillReady() {
             var jsonData = Ext.util.JSON.decode(response.responseText);
             // handle the various failure modes
             if (jsonData.success == false) {
-                console.log(jsonData);
-                console.log(jsonData.code);
                 if (jsonData.code == 1) {
                     login();
                 } else {
@@ -523,7 +521,6 @@ function reeBillReady() {
 
     utilbillGrid.getSelectionModel().on('selectionchange', function(sm){
         //utilbillGrid.getTopToolbar().findById('utilbillInsertBtn').setDisabled(sm.getCount() <1);
-        console.log(sm.getSelections());
         var enable = sm.getSelections().every(function(r) {return r.data.editable});
         utilbillGrid.getTopToolbar().findById('utilbillRemoveButton').setDisabled(!enable);
     });
@@ -756,7 +753,6 @@ function reeBillReady() {
     });
 
     reeBillStore.on('beforesave', function(store, data) {
-        console.log("reeBillStore beforesave ");
         reeBillGrid.setDisabled(true);
     });
 
@@ -5587,7 +5583,7 @@ function reeBillReady() {
             split: false,
             border: false,
             bodyStyle: 'background-image:url("green_stripe.jpg");',
-            html: '<div id="header"><table style="border-collapse: collapse;"><tr><td><img src="skyline_logo.png"/></td><td><img src="reebill_logo.png"/></td><td style="width: 85%; text-align: right;"><img src="money_chaser.png"/></td></tr></table></div>',
+            html: '<div id="header" style=""><table style="border-collapse: collapse;"><tr><td><img src="skyline_logo.png"/></td><td><img src="reebill_logo.png"/></td><td style="width: 85%; text-align: right;"><img src="money_chaser.png"/></td></tr></table></div>',
           },
           utilBillImageBox,
           tabPanel,

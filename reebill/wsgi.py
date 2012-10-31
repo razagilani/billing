@@ -21,6 +21,7 @@ import time
 import copy
 import functools
 import re
+import md5
 from StringIO import StringIO
 import mongoengine
 from skyliner.skymap.monguru import Monguru
@@ -41,6 +42,8 @@ from billing.processing import calendar_reports
 from billing.processing.estimated_revenue import EstimatedRevenue
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.exceptions import Unauthenticated
+
+
 
 # collection names: all collections are now hard-coded. maybe this should go in
 # some kind of documentation when we have documentation...
@@ -179,6 +182,7 @@ class BillToolBridge:
             self.config.add_section('runtime')
             self.config.set('runtime', 'integrate_skyline_backend', 'true')
             self.config.set('runtime', 'integrate_nexus', 'true')
+            self.config.set('runtime', 'sessions_key', 'some random bytes to all users to automatically reauthenticate')
             self.config.set('runtime', 'mock_skyliner', 'false')
 
             self.config.add_section('skyline_backend')
@@ -328,6 +332,12 @@ class BillToolBridge:
                 host=journal_config['host'], port=int(journal_config['port']),
                 alias='journal')
         self.journal_dao = journal.JournalDAO()
+
+
+        # set the server sessions key which is used to return credentials
+        # in a client side cookie for the 'rememberme' feature
+        if self.config.get('runtime', 'sessions_key'):
+            self.sessions_key = self.config.get('runtime', 'sessions_key')
 
         # create a Splinter
         if self.config.getboolean('runtime', 'mock_skyliner'):
@@ -520,9 +530,14 @@ class BillToolBridge:
 
         if rememberme == 'on':
             # TODO need to encrypt or otherwise provide credentials and return them to client
-            credentials = password
+            credentials = "%s-%s-%s" % (username, cherrypy.request.headers['Remote-Addr'], self.sessions_key)
+            m = md5.new()
+            m.update(credentials)
+            digest = m.hexdigest()
+            user.session_token = digest
+            self.user_dao.save_user(user)
             cherrypy.response.cookie['username'] = user.username
-            cherrypy.response.cookie['credentials'] = password
+            cherrypy.response.cookie['c'] = digest
 
         self.logger.info(('user "%s" logged in: remember '
             'me: "%s" type is %s') % (username, rememberme,
@@ -544,15 +559,16 @@ class BillToolBridge:
             # is this user rememberme'd?
             cookie = cherrypy.request.cookie
             username = cookie['username'].value if 'username' in cookie else None
-            credentials = cookie['credentials'].value if 'credentials' in cookie else None
+            credentials = cookie['c'].value if 'c' in cookie else None
 
             # the server did not have the user in session
             # log that user back in automatically based on 
-            # the values found in the cookie
-
-            # need to 
-            password = credentials
-            user = self.user_dao.load_user(username, password)
+            # the credentials value found in the cookie
+            credentials = "%s-%s-%s" % (username, cherrypy.request.headers['Remote-Addr'], self.sessions_key)
+            m = md5.new()
+            m.update(credentials)
+            digest = m.hexdigest()
+            user = self.user_dao.load_by_session_token(digest)
             if user is None:
                 self.logger.info(('Remember Me login attempt failed: username "%s"') % (username))
             else:
@@ -618,8 +634,8 @@ class BillToolBridge:
         # expires can be set
         cherrypy.response.cookie['username'] = ""
         cherrypy.response.cookie['username'].expires = 0
-        cherrypy.response.cookie['hash'] = ""
-        cherrypy.response.cookie['hash'].expires = 0
+        cherrypy.response.cookie['c'] = ""
+        cherrypy.response.cookie['c'].expires = 0
 
         # delete the current server session
         if hasattr(cherrypy, 'session') and 'user' in cherrypy.session:

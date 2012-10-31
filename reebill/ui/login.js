@@ -43,6 +43,7 @@ ReeBill.LoginFormFields = [
     fieldLabel: 'Remember Me'
 }];
 
+// used by external pages such as login.html
 ReeBill.WelcomeLoginFormPanel = new Ext.form.FormPanel({
     id: "WelcomeLoginFormPanel",
     url: 'http://' + location.host + '/reebill/login',
@@ -70,13 +71,13 @@ ReeBill.WelcomeLoginFormPanel = new Ext.form.FormPanel({
 })
 
 
-// used in main app for re-authenticating
+// used in app for re-authenticating
 ReeBill.LoginWindow = new Ext.Window({
     id: 'LoginWindow',
     title: "Log In",
     layout:'fit',
-    width:500,
-    height:300,
+    width:300,
+    height:160,
     closeAction:'hide',
     resizable: false,
     closable: false,
@@ -85,6 +86,7 @@ ReeBill.LoginWindow = new Ext.Window({
         //standardSubmit: true,
         url: 'http://' + location.host + '/reebill/login',
         border: false,
+        padding: '10px 0px 0px 10px',
         defaultType: 'textfield', // if this is wrong, including anything in 'items results in 'undefined is not a function'
         items: ReeBill.LoginFormFields,
         buttons: [{
