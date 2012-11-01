@@ -40,15 +40,6 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
     }, this);
 */
 
-
-function login() {
-    // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
-    // of which there may be many.
-    if (ReeBill.LoginWindow.hidden) {
-        ReeBill.LoginWindow.show(this);
-    }
-}
-
 function reeBillReady() {
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
@@ -65,7 +56,11 @@ function reeBillReady() {
             // handle the various failure modes
             if (jsonData.success == false) {
                 if (jsonData.code == 1) {
-                    login();
+                    // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
+                    // of which there may be many.
+                    if (ReeBill.LoginWindow.hidden) {
+                        ReeBill.LoginWindow.show(this);
+                    }
                 } else {
                     // turn on to log application failures
                     //console.log(response.responseText);
