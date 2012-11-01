@@ -588,14 +588,17 @@ class Process(object):
         reebill = self.reebill_dao.load_reebill(template_account, template_last_sequence, 0)
 
         reebill.convert_to_new_account(account)
+
+        # This 'copy' is set to sequence zero which acts as a 'template' 
         reebill.sequence = 0
         reebill.version = 0
 
         reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         reebill.billing_address = {}
         reebill.service_address = {}
-        reebill.prior_balance = Decimal('0')
         reebill.late_charge_rate = late_charge_rate
+
+
         # NOTE reebill.clear is not called here because roll_bill takes care of that
 
         # create template reebill in mongo for this new account
@@ -618,7 +621,8 @@ class Process(object):
             self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence,
                 reebill.version, utility_name, rate_structure_name, cprs)
 
-        # create new account in mysql
+        # Finally, create the account in MySQL and let it be committed should all
+        # prior operations succeed.
         customer = self.new_account(session, name, account, discount_rate, late_charge_rate)
 
         return customer

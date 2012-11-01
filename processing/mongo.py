@@ -136,6 +136,7 @@ class MongoReebill(object):
         self.reebill_dict = copy.deepcopy(reebill_data)
         self._utilbills = copy.deepcopy(utilbill_dicts)
 
+    # TODO 36805917 clear() can go away when ReeBills can be constructed
     def clear(self):
         '''Code for clearing out fields of newly-rolled rebill (moved from
         __init__, called by Process.roll_bill). TODO remove this.'''
