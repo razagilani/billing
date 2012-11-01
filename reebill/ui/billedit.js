@@ -59,17 +59,24 @@ function reeBillReady() {
                     // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
                     // of which there may be many.
                     if (ReeBill.LoginWindow.hidden) {
+                        // this is exploding on new account form submit when there is no session
+                        // an exception is thrown for some unknown reason
                         ReeBill.LoginWindow.show(this);
+                    } else {
+                        console.log("ReeBill.LoginWindow has been shown");
                     }
                 } else {
                     // turn on to log application failures
-                    //console.log(response.responseText);
+                    console.log(response.responseText);
                 }
                 
+            } else {
+                console.log("JsonData.success == true");
             }
 
         } catch (e) {
             console.log("Unexpected failure while processing requestcomplete");
+            console.log("ReeBill.LoginWindow.hidden is " + ReeBill.LoginWindow.hidden);
             console.log(e);
             console.log(response);
             // TODO: evaluate response to see if the object is well formed
@@ -4785,6 +4792,7 @@ function reeBillReady() {
                                 var nextAccount = jsonData['nextAccount'];
                                 if (jsonData.success == false) {
                                     Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                                    console.log('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                                 } else {
                                     Ext.Msg.alert('Success', "New account created");
                                     // update next account number shown in field
