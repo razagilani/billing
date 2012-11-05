@@ -61,13 +61,15 @@ class Process(object):
         return new_customer
 
     def upload_utility_bill(self, session, account, service, begin_date,
-            end_date, total_charges, bill_file, file_name):
+                end_date, bill_file, file_name, total=0):
         '''Uploads 'bill_file' with the name 'file_name' as a utility bill for
         the given account, service, and dates. If the upload succeeds, a row is
-        added to the utilbill table. If this is the newest or oldest utility
-        bill for the given account and service, "estimated" utility bills
-        will be added to cover the gap between this bill's period and the
-        previous newest or oldest one respectively.'''
+        added to the utilbill table in MySQL. If this is the newest or oldest
+        utility bill for the given account and service, "estimated" utility
+        bills will be added to cover the gap between this bill's period and the
+        previous newest or oldest one respectively. The total of all charges on
+        the utility bill may be given.'''
+        # NOTE 'total' does not yet go into the utility bill document in Mongo
 
         # get & save end date of last bill (before uploading a new bill which
         # may come later)
@@ -79,7 +81,7 @@ class Process(object):
             # record it in the database with that state, but don't upload
             # anything
             self.state_db.record_utilbill_in_database(session, account,
-                    service, begin_date, end_date, total_charges, datetime.utcnow(),
+                    service, begin_date, end_date, total, datetime.utcnow(),
                     state=UtilBill.SkylineEstimated)
         else:
             # if there is a file, get the Python file object and name
@@ -89,7 +91,7 @@ class Process(object):
                     end_date, bill_file, file_name)
             if upload_result is True:
                 self.state_db.record_utilbill_in_database(session, account,
-                        service, begin_date, end_date, total_charges,
+                        service, begin_date, end_date, total,
                         datetime.utcnow())
             else:
                 raise IOError('File upload failed: %s %s %s' % (file_name,
