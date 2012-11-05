@@ -73,10 +73,15 @@ class ProcessTest(TestCaseWithSetup):
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
             self.state_db.new_rebill(session, bill1.account, bill1.sequence)
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), 100,
+                    datetime.utcnow().date())
 
             # issue bill 1, so a later bill can have a late charge based on the
             # customer's failure to pay bill1 by its due date, i.e. 30 days
             # after bill1's issue date.
+            self.process.attach_utilbills(session, bill1.account,
+                    bill1.sequence)
             self.process.issue(session, bill1.account, bill1.sequence,
                     issue_date=date(2012,1,1))
             # since process.issue() only modifies databases, bill1 must be
@@ -675,6 +680,10 @@ class ProcessTest(TestCaseWithSetup):
         # issue reebill 1
         with DBSession(self.state_db) as session:
             self.state_db.new_rebill(session, '99999', 1)
+            self.state_db.record_utilbill_in_database(session, '99999', 'gas',
+                    date(2012,1,1), date(2012,2,1), 100,
+                    datetime.utcnow().date())
+            self.process.attach_utilbills(session, '99999', 1)
             self.process.issue(session, '99999', 1, issue_date=date(2012,1,15))
             session.commit()
 
@@ -727,8 +736,20 @@ class ProcessTest(TestCaseWithSetup):
             self.state_db.new_rebill(session, acc, 2)
             self.state_db.new_rebill(session, acc, 3)
             self.state_db.new_rebill(session, acc, 4)
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), 100,
+                    datetime.utcnow().date())
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,2,1), date(2012,3,1), 100,
+                    datetime.utcnow().date())
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,3,1), date(2012,4,1), 100,
+                    datetime.utcnow().date())
+            self.process.attach_utilbills(session, acc, 1)
             self.process.issue(session, acc, 1)
+            self.process.attach_utilbills(session, acc, 2)
             self.process.issue(session, acc, 2)
+            self.process.attach_utilbills(session, acc, 3)
             self.process.issue(session, acc, 3)
 
             # no unissued corrections yet
@@ -807,6 +828,13 @@ class ProcessTest(TestCaseWithSetup):
             self.reebill_dao.save_reebill(two0)
             self.state_db.new_rebill(session, acc, 1)
             self.state_db.new_rebill(session, acc, 2)
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), 100,
+                    datetime.utcnow().date())
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,2,1), date(2012,3,1), 100,
+                    datetime.utcnow().date())
+            self.process.attach_utilbills(session, acc, 1)
             self.process.issue(session, acc, 1,
                     issue_date=datetime.utcnow().date() - timedelta(40))
 
@@ -830,6 +858,7 @@ class ProcessTest(TestCaseWithSetup):
 
             # save and issue 2nd reebill so a new version can be created
             self.reebill_dao.save_reebill(two0)
+            self.process.attach_utilbills(session, acc, two0.sequence)
             self.process.issue(session, acc, two0.sequence)
 
             # add a payment of $80 30 days ago (10 days after 1st reebill was
@@ -998,10 +1027,19 @@ class ProcessTest(TestCaseWithSetup):
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 2))
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 3))
 
-            # save reebills in mysql
+            # put reebills and utility bills in mysql
             self.state_db.new_rebill(session, acc, 1)
             self.state_db.new_rebill(session, acc, 2)
             self.state_db.new_rebill(session, acc, 3)
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), 100,
+                    datetime.utcnow().date())
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,2,1), date(2012,3,1), 100,
+                    datetime.utcnow().date())
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,3,1), date(2012,4,1), 100,
+                    datetime.utcnow().date())
 
             # load out of mongo
             one = self.reebill_dao.load_reebill(acc, 1)
@@ -1009,6 +1047,7 @@ class ProcessTest(TestCaseWithSetup):
             three = self.reebill_dao.load_reebill(acc, 3)
 
             # issue reebill #1 and correct it with an adjustment of 100
+            self.process.attach_utilbills(session, acc, 1)
             self.process.issue(session, acc, 1)
             one_corrected = self.process.new_version(session, acc, 1)
             one_corrected.ree_charges = one.ree_charges + 100
