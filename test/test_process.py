@@ -667,39 +667,39 @@ class ProcessTest(TestCaseWithSetup):
     def test_new_version(self):
         # put reebill documents for sequence 0 and 1 in mongo (0 is needed to
         # recompute 1), and rate structures for 1
-        zero = example_data.get_reebill('99999', 0, version=0, start=date(2011,12,1), end=date(2012,1,1))
-        one = example_data.get_reebill('99999', 1, version=0, start=date(2012,1,1), end=date(2012,2,1))
+        acc = '99999'
+        zero = example_data.get_reebill(acc, 0, version=0,
+                start=date(2011,12,1), end=date(2012,1,1))
+        one = example_data.get_reebill(acc, 1, version=0, start=date(2012,1,1),
+                end=date(2012,2,1))
         self.reebill_dao.save_reebill(zero)
         self.reebill_dao.save_reebill(one)
         self.rate_structure_dao.save_rs(example_data.get_urs_dict())
         self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
-        self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
+        self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
 
         # TODO creating new version of 1 should fail until it's issued
 
         # issue reebill 1
         with DBSession(self.state_db) as session:
-            self.state_db.new_rebill(session, '99999', 1)
-            self.state_db.record_utilbill_in_database(session, '99999', 'gas',
+            self.state_db.new_rebill(session, acc, 1)
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
                     date(2012,1,1), date(2012,2,1), 100,
                     datetime.utcnow().date())
-            self.process.attach_utilbills(session, '99999', 1)
-            self.process.issue(session, '99999', 1, issue_date=date(2012,1,15))
-            session.commit()
+            self.process.attach_utilbills(session, acc, 1)
+            self.process.issue(session, acc, 1, issue_date=date(2012,1,15))
 
         # create new version of 1
         with DBSession(self.state_db) as session:
-            new_bill = self.process.new_version(session, '99999', 1)
-            session.commit()
-        self.assertEqual('99999', new_bill.account)
+            new_bill = self.process.new_version(session, acc, 1)
+        self.assertEqual(acc, new_bill.account)
         self.assertEqual(1, new_bill.sequence)
         self.assertEqual(1, new_bill.version)
-        self.assertEqual(1, self.state_db.max_version(session, '99999', 1))
+        self.assertEqual(1, self.state_db.max_version(session, acc, 1))
         # new version of CPRS(s) should also be created, so rate structure
         # should be loadable
         for s in new_bill.services:
-            self.assertNotEqual(None,
-                    self.rate_structure_dao.load_cprs('99999', 1,
+            self.assertNotEqual(None, self.rate_structure_dao.load_cprs(acc, 1,
                     new_bill.version, new_bill.utility_name_for_service(s),
                     new_bill.rate_structure_name_for_service(s)))
             self.assertNotEqual(None,
