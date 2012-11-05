@@ -285,11 +285,11 @@ class ProcessTest(TestCaseWithSetup):
             self.state_db.record_utilbill_in_database(session, bill1.account,
                     bill1._utilbills[0]['service'],
                     bill1._utilbills[0]['start'],
-                    bill1._utilbills[0]['end'], date.today())
+                    bill1._utilbills[0]['end'], 100, date.today())
             self.state_db.record_utilbill_in_database(session, bill1.account,
                     bill1._utilbills[1]['service'],
                     bill1._utilbills[1]['start'],
-                    bill1._utilbills[1]['end'], date.today())
+                    bill1._utilbills[1]['end'], 100, date.today())
 
             self.process.attach_utilbills(session, bill1.account, bill1.sequence)
 
@@ -901,10 +901,10 @@ class ProcessTest(TestCaseWithSetup):
             self.state_db.new_rebill(session, acc, 2)
             self.state_db.record_utilbill_in_database(session, acc,
                     one.services[0], date(2012,1,1), date(2012,2,1),
-                    date.today())
+                    100, date.today())
             self.state_db.record_utilbill_in_database(session, acc,
                     two.services[0], date(2012,2,1), date(2012,3,1),
-                    date.today())
+                    100, date.today())
 
             # neither reebill should be issued yet
             self.assertEquals(False, self.state_db.is_issued(session, acc, 1))
