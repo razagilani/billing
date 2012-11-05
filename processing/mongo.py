@@ -1231,7 +1231,7 @@ class ReebillDAO:
         return [self.load_reebill(account, sequence) for sequence in sequences]
     
     def load_reebills_in_period(self, account, version=0, start_date=None,
-            end_date=None):
+            end_date=None, include_0=False):
         '''Returns a list of MongoReebills whose period began on or before
         'end_date' and ended on or after 'start_date' (i.e. all bills between
         those dates and all bills whose period includes either endpoint). The
@@ -1242,17 +1242,16 @@ class ReebillDAO:
         'version' may be a specific version number, or 'any' to get all
         versions.'''
         with DBSession(self.state_db) as session:
-            query = {
-                '_id.account': str(account),
-                '_id.sequence': {'$gt': 0},
-            }
+            query = { '_id.account': str(account) }
             if isinstance(version, int):
                 query.update({'_id.version': version})
             elif version == 'any':
                 pass
+            # TODO max version
             else:
                 raise ValueError('Unknown version specifier "%s"' % version)
-            # TODO max version
+            if not include_0:
+                query['_id.sequence'] = {'$gt': 0}
 
             # add dates to query if present (converting dates into datetimes
             # because mongo only allows datetimes)
@@ -1394,7 +1393,6 @@ class ReebillDAO:
         # TODO catch mongo's return value and raise MongoError
 
     def delete_reebill(self, account, sequence, version):
-        print '************** delete_reebill', account, sequence, version
         # load reebill in order to find utility bills
         reebill = self.load_reebill(account, sequence, version)
 

@@ -320,10 +320,47 @@ class ReebillDAOTest(TestCaseWithSetup):
             self.assertEquals(0, len(all_reebills))
             self.assertEquals(0, len(all_utilbill_docs))
 
-            # save reebill (with utility bills)
+            # save reebill and utility bills again
             b = example_data.get_reebill('99999', 1)
             self.reebill_dao.save_reebill(b)
-            self.state_db.new_rebill(session, '99999', 1)
+
+            # if utility bill is frozen and verison == 0, both frozen utility
+            # bill and editable one should be deleted
+            self.reebill_dao.save_reebill(b, freeze_utilbills=True)
+            self.reebill_dao.delete_reebill('99999', 1, 0)
+            all_reebills = self.reebill_dao.load_reebills_in_period('99999', version=0)
+            all_utilbill_docs = self.reebill_dao.load_utilbills('99999')
+            self.assertEquals(0, len(all_reebills))
+            self.assertEquals(0, len(all_utilbill_docs))
+
+            # if utility bill is frozen and version > 0, nothing should be
+            # deleted
+            self.state_db.issue(session, '99999', 1)
+            self.state_db.increment_version(session, '99999', 1)
+            correction = example_data.get_reebill('99999', 1, version=1)
+            self.reebill_dao.save_reebill(correction)
+            all_reebills = self.reebill_dao.load_reebills_in_period('99999', version='any', include_0=True)
+            all_utilbill_docs = self.reebill_dao.load_utilbills('99999')
+            self.assertEquals(1, len(all_reebills))
+            self.assertEquals(1, all_reebills[0].version)
+            self.assertEquals(1, len(all_utilbill_docs))
+            self.assertFalse('sequence' in all_utilbill_docs[0])
+            self.assertFalse('version' in all_utilbill_docs[0])
+
+            # if utility bill is frozen and version > 0, frozen utility
+            # bill should be deleted but editable one should not
+            self.reebill_dao.save_reebill(correction, freeze_utilbills=True)
+            all_reebills = self.reebill_dao.load_reebills_in_period('99999', version='any', include_0=True)
+            all_utilbill_docs = self.reebill_dao.load_utilbills('99999')
+            assert len(all_reebills) == 1
+            assert len(all_utilbill_docs) == 2
+            self.reebill_dao.delete_reebill('99999', 1, 1)
+            all_reebills = self.reebill_dao.load_reebills_in_period('99999', version='any', include_0=True)
+            all_utilbill_docs = self.reebill_dao.load_utilbills('99999')
+            self.assertEquals(0, len(all_reebills))
+            self.assertEquals(1, len(all_utilbill_docs))
+            self.assertFalse('sequence' in all_utilbill_docs[0])
+            self.assertFalse('version' in all_utilbill_docs[0])
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
