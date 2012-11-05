@@ -1166,6 +1166,7 @@ class ReebillDAO:
         greatest issued version is returned, and after which the greatest
         overall version is returned), or 'max', which specifies the greatest
         version overall.'''
+        #print >> sys.stderr, '********** load_reebill', account, sequence, version
         with DBSession(self.state_db) as session:
             # TODO looks like somebody's temporary hack should be removed
             if account is None: return None
@@ -1393,6 +1394,7 @@ class ReebillDAO:
         # TODO catch mongo's return value and raise MongoError
 
     def delete_reebill(self, account, sequence, version):
+        print '************** delete_reebill', account, sequence, version
         # load reebill in order to find utility bills
         reebill = self.load_reebill(account, sequence, version)
 
@@ -1408,15 +1410,23 @@ class ReebillDAO:
 
         # remove each utility bill, then the reebill
         for u in reebill._utilbills:
-            result = self.utilbills_collection.remove({'_id': bson_convert(u['_id'])}, safe=True)
-            if result['err'] is not None or result['n'] == 0:
-                raise MongoError(result)
-
-            # if this is a frozen utility bill, both editable version also must
-            # be removed, but it's not in _utilbills. identify it by the
-            # unofficially unique keys
-            # NOTE if the dates have been changed, this will not work
+            # if this is a frozen utility bill, delete it
             if 'sequence' in u:
+                result = self.utilbills_collection.remove({'_id': bson_convert(u['_id'])}, safe=True)
+                if result['err'] is not None or result['n'] == 0:
+                    raise MongoError(result)
+
+            # if this is an editable utility bill, delete it only if the
+            # reebill's version is 0. (the editable document is retained for
+            # version > 0 so new versions can still be created after this
+            # version is removed.) this also deletes the "editable version of"
+            # the frozen utility bill above, if any.
+            #
+            # (NOTE it is not actually possible to identify the "editable
+            # version of" a given frozen utility bill because the keys can
+            # change; see
+            # https://www.pivotaltracker.com/projects/397621#!/stories/37521779)
+            if version == 0:
                 q = {
                     'account': account,
                     'service': u['service'],
