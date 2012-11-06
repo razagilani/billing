@@ -32,8 +32,8 @@ earliest, latest = date(3000,1,1), date(1000,1,1)
 bindings = defaultdict(lambda: [])
 with DBSession(state_db) as session:
     # TODO only use last issued version (lower ones contain errors)
-    for acc, seq, ver in state_db.reebill_versions(session, include_unissued=False):
-        reebill = bill_dao.load_reebill(acc, seq, version=ver)
+    for acc, seq, ver in state_db.reebills(session, include_unissued=False):
+        reebill = bill_dao.load_reebill(acc, seq)
 
         service = reebill.services[0] # assume only 1 service bc almost all bills have 1
         utility = reebill.utility_name_for_service(service)
@@ -44,18 +44,19 @@ with DBSession(state_db) as session:
         try:
             # load raw dictionary (RateStructure object is unusable)
             rs = rs_dao._load_probable_rs_dict(reebill, service)
+            charges = reebill.actual_chargegroups_flattened(service)
         except Exception as e:
             print acc, seq, ver, 'ERROR:', e
-            pass
         else:
             period = reebill.meter_read_period(service)
-            # exclude RSIs whose rate is 0 because that's often used instead of removal
             for binding in [r['rsi_binding'] for r in rs['rates'] if r['rate'] != 0]:
-                bindings[binding].append(period)
+                # exclude RSIs whose rate is 0 or ones that don't have a
+                # corresponding charge, because that's often used instead of
+                # removal
+                if r['rate'] != 0 and any(c['rsi_binding'] == binding for c in charges):
+                    bindings[binding].append(period)
             earliest = min(earliest, period[0])
             latest = max(latest, period[1])
-
-#import ipdb; ipdb.set_trace()
 
 def period_contains_day(period, day):
     return day >= period[0] and day < period[1]
