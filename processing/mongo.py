@@ -173,7 +173,7 @@ class UtilBill(Document):
         'allow_inheritance': False
     }
 
-    _id = ObjectIdField(required=True)
+    id = ObjectIdField(required=True)
 
     # unofficially unique identifying fields
     account = StringField(required=True)
@@ -611,8 +611,10 @@ class MongoReebill(object):
     def _utilbill_ids(self):
         '''Useful for debugging.'''
         # note order is not guranteed so the result may look weird
+        # NOTE MongoEngine uses the name "id" for the "_id" property; you set
+        # a property called _id but it won't work
         return zip([h['id'] for h in self.reebill_dict['utilbills']],
-                [u._id for u in self._utilbills])
+                [u.id for u in self._utilbills])
 
     def _get_utilbill_for_service(self, service):
         '''Returns utility bill document having the given service. There must
@@ -630,7 +632,7 @@ class MongoReebill(object):
         utility bill has the given service. There must be exactly 1.'''
         u = self._get_utilbill_for_service(service)
         handles = [h for h in self.reebill_dict['utilbills'] if h['id'] ==
-                u._id]
+                u.id]
         if len(handles) == 0:
             raise ValueError(('Reebill has no reference to utilbill for '
                     'service "%s"') % service)
@@ -640,14 +642,14 @@ class MongoReebill(object):
         return handles[0]
 
     def _get_utilbill_for_handle(self, utilbill_handle):
-        '''Returns the utility bill dictionary whose _id correspinds to the
-        "id" in the given internal utilbill dictionary.'''
+        '''Returns the utility bill document whose id correspinds to the "id"
+        in the given internal utilbill dictionary.'''
         # i am calling each subdocument in the "utilbills" list (which contains
-        # the utility bill's _id and data related to that bill) a "handle"
+        # the utility bill's id and data related to that bill) a "handle"
         # because it is what you use to grab a utility bill and it's kind of
         # like a pointer.
         id = utilbill_handle['id']
-        matching_utilbills = [u for u in self._utilbills if u._id == id]
+        matching_utilbills = [u for u in self._utilbills if u.id == id]
         if len(matching_utilbills) < 0:
             raise ValueError('No utilbill found for id "%s"' % id)
         if len(matching_utilbills) > 1:
@@ -660,7 +662,7 @@ class MongoReebill(object):
         # find all utility bill documents with the given id, and make sure
         # there's exactly 1
         matching_indices = [index for (index, doc) in
-                enumerate(self._utilbills) if doc._id == id]
+                enumerate(self._utilbills) if doc.id == id]
         if len(matching_indices) < 0:
             raise ValueError('No utilbill found for id "%s"' % id)
         if len(matching_indices) > 1:
@@ -1162,7 +1164,7 @@ class ReebillDAO:
             all_new_utilbills.append(new_utilbill)
 
             # utilbill_handle's _id should match the new utility bill
-            utilbill_handle['id'] = new_utilbill._id
+            utilbill_handle['id'] = new_utilbill.id
 
         # replace utilbills with new ones loaded above (all at once)
         reebill._utilbills = all_new_utilbills
@@ -1242,7 +1244,7 @@ class ReebillDAO:
         object). Returns list of dictionaries with converted types.'''
         result = []
         for utilbill_handle in reebill_doc['utilbills']:
-            result.append(UtilBill.objects().get(_id=utilbill_handle['id']))
+            result.append(UtilBill.objects().get(id=utilbill_handle['id']))
         return result
 
     def load_reebill(self, account, sequence, version='max'):
@@ -1398,13 +1400,15 @@ class ReebillDAO:
                     # issuing): convert the utility bills into frozen copies by
                     # putting "sequence" and "version" keys in the utility
                     # bill, and changing its _id to a new one
-                    old_id = utilbill_doc._id
+                    # NOTE MongEngine's name for the _id property is "id";
+                    # don't use "_id"
+                    old_id = utilbill_doc.id
                     new_id = bson.objectid.ObjectId()
 
                     # copy utility bill doc so changes to it do not persist if
                     # saving fails below
                     utilbill_doc = copy.deepcopy(utilbill_doc)
-                    utilbill_doc._id = new_id
+                    utilbill_doc.id = new_id
                     self._save_utilbill(utilbill_doc, force=force,
                             sequence_and_version=(reebill.sequence,
                             reebill.version))
@@ -1417,7 +1421,6 @@ class ReebillDAO:
 
             reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
             self.reebills_collection.save(reebill_doc, safe=True)
-            # TODO catch mongo's return value and raise MongoError
 
     def _save_utilbill(self, utilbill_doc, sequence_and_version=None,
             force=False):
@@ -1458,17 +1461,17 @@ class ReebillDAO:
             unique_fields['sequence'] = {'$exists': False}
             unique_fields['version'] = {'$exists': False}
         for duplicate in self.load_utilbills(**unique_fields):
-            if duplicate._id != utilbill_doc._id:
+            if duplicate.id != utilbill_doc.id:
                 raise NotUniqueException(("Can't save utility bill with "
                         "_id=%s: There's already a utility bill with "
-                        "_id=%s matching %s") % (utilbill_doc._id,
-                        duplicate._id, format_query(unique_fields)))
+                        "_id=%s matching %s") % (utilbill_doc.id,
+                        duplicate.id, format_query(unique_fields)))
 
         if sequence_and_version is not None:
             utilbill_doc.sequence = sequence_and_version[0]
             utilbill_doc.version = sequence_and_version[1]
-            # force creation of a new document (because the _id has just been
-            # changed in save_reebill())
+            # tell MongoEngine to force creation of a new document (because the
+            # id has just been changed in save_reebill())
             utilbill_doc.save(safe=True, force_insert=True)
         else:
             # normal save
@@ -1481,7 +1484,7 @@ class ReebillDAO:
         # first ensure that each utility bill can be found and the reebill can
         # be found (to help keep this operation atomic)
         for u in reebill._utilbills:
-            UtilBill.objects().get(_id=u._id)
+            UtilBill.objects().get(id=u.id)
         self.reebills_collection.find({
             '_id.account': account,
             '_id.sequence': sequence,
