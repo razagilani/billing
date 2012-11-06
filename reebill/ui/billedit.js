@@ -40,15 +40,6 @@ Ext.Ajax.addListener('requestaborted', function (conn, request) {
     }, this);
 */
 
-
-function login() {
-    // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
-    // of which there may be many.
-    if (ReeBill.LoginWindow.hidden) {
-        ReeBill.LoginWindow.show(this);
-    }
-}
-
 function reeBillReady() {
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
@@ -64,19 +55,28 @@ function reeBillReady() {
             var jsonData = Ext.util.JSON.decode(response.responseText);
             // handle the various failure modes
             if (jsonData.success == false) {
-                console.log(jsonData);
-                console.log(jsonData.code);
                 if (jsonData.code == 1) {
-                    login();
+                    // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
+                    // of which there may be many.
+                    if (ReeBill.LoginWindow.hidden) {
+                        // this is exploding on new account form submit when there is no session
+                        // an exception is thrown for some unknown reason
+                        ReeBill.LoginWindow.show(this);
+                    } else {
+                        console.log("ReeBill.LoginWindow has been shown");
+                    }
                 } else {
                     // turn on to log application failures
-                    //console.log(response.responseText);
+                    console.log(response.responseText);
                 }
                 
+            } else {
+                console.log("JsonData.success == true");
             }
 
         } catch (e) {
             console.log("Unexpected failure while processing requestcomplete");
+            console.log("ReeBill.LoginWindow.hidden is " + ReeBill.LoginWindow.hidden);
             console.log(e);
             console.log(response);
             // TODO: evaluate response to see if the object is well formed
@@ -523,7 +523,6 @@ function reeBillReady() {
 
     utilbillGrid.getSelectionModel().on('selectionchange', function(sm){
         //utilbillGrid.getTopToolbar().findById('utilbillInsertBtn').setDisabled(sm.getCount() <1);
-        console.log(sm.getSelections());
         var enable = sm.getSelections().every(function(r) {return r.data.editable});
         utilbillGrid.getTopToolbar().findById('utilbillRemoveButton').setDisabled(!enable);
     });
@@ -756,7 +755,6 @@ function reeBillReady() {
     });
 
     reeBillStore.on('beforesave', function(store, data) {
-        console.log("reeBillStore beforesave ");
         reeBillGrid.setDisabled(true);
     });
 
@@ -4794,6 +4792,7 @@ function reeBillReady() {
                                 var nextAccount = jsonData['nextAccount'];
                                 if (jsonData.success == false) {
                                     Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                                    console.log('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
                                 } else {
                                     Ext.Msg.alert('Success', "New account created");
                                     // update next account number shown in field
@@ -5587,7 +5586,7 @@ function reeBillReady() {
             split: false,
             border: false,
             bodyStyle: 'background-image:url("green_stripe.jpg");',
-            html: '<div id="header"><table style="border-collapse: collapse;"><tr><td><img src="skyline_logo.png"/></td><td><img src="reebill_logo.png"/></td><td style="width: 85%; text-align: right;"><img src="money_chaser.png"/></td></tr></table></div>',
+            html: '<div id="header" style=""><table style="border-collapse: collapse;"><tr><td><img src="skyline_logo.png"/></td><td><img src="reebill_logo.png"/></td><td style="width: 85%; text-align: right;"><img src="money_chaser.png"/></td></tr></table></div>',
           },
           utilBillImageBox,
           tabPanel,
