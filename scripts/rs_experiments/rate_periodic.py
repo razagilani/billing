@@ -31,8 +31,8 @@ earliest, latest = date(3000,1,1), date(1000,1,1)
 bindings = defaultdict(lambda: [])
 with DBSession(state_db) as session:
     # TODO only use last issued version (lower ones contain errors)
-    for acc, seq, ver in state_db.reebill_versions(session, include_unissued=False):
-        reebill = bill_dao.load_reebill(acc, seq, version=ver)
+    for acc, seq, ver in state_db.reebills(session, include_unissued=False):
+        reebill = bill_dao.load_reebill(acc, seq)
 
         service = reebill.services[0] # assume only 1 service bc almost all bills have 1
         utility = reebill.utility_name_for_service(service)
@@ -45,10 +45,10 @@ with DBSession(state_db) as session:
             rs = rs_dao._load_probable_rs_dict(reebill, service)
         except Exception as e:
             print acc, seq, ver, 'ERROR:', e
-            pass
         else:
-            #print acc, seq, ver
             period = reebill.meter_read_period(service)
+            earliest = min(earliest, period[0])
+            latest = max(latest, period[1])
             for binding, rate in [(r['rsi_binding'], r['rate']) for r in rs['rates']]:
                 # only add rate if it's a number
                 try:
@@ -56,9 +56,10 @@ with DBSession(state_db) as session:
                 except ValueError:
                     pass
                 else:
+                    if binding == 'BALANCING' and rate > 200:
+                        print '**************', reebill.account, sequence
+                        exit()
                     bindings[binding].append((acc, period, rate))
-            earliest = min(earliest, period[0])
-            latest = max(latest, period[1])
 
 # write out data to files for plotting
 for binding in bindings:
