@@ -56,9 +56,10 @@ with DBSession(state_db) as session:
                 except ValueError:
                     pass
                 else:
-                    if binding == 'BALANCING' and rate > 200:
-                        print '**************', reebill.account, sequence
-                        exit()
+                    # find out what the weird outlier is
+                    #if binding == 'BALANCING' and rate > 200:
+                        #print '**************', reebill.account, sequence
+                        #exit()
                     bindings[binding].append((acc, period, rate))
 
 # write out data to files for plotting
