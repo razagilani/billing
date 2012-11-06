@@ -927,11 +927,10 @@ class Process(object):
     def set_reebill_period(self, reebill):
         '''Sets the period dates of 'reebill' to the earliest utility bill
         start date and latest utility bill end date.'''
-        #reebill = self.reebill_dao.load_reebill(account, sequence)
-        
         utilbill_period_beginnings = []
         utilbill_period_ends = []
-        for period in reebill.utilbill_periods.itervalues():
+        for service in reebill.services:
+            period = reebill.meter_read_dates_for_service(service)
             utilbill_period_beginnings.append(period[0])
             utilbill_period_ends.append(period[1])
 

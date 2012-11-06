@@ -195,12 +195,12 @@ class UtilBill(Document):
     def period(self):
         return self.start, self.end
 
-    @property
-    def read_period(self):
-        if len(self.meters) != 1:
-            raise ValueError("There must be exactly one meter")
-        m = meters[0]
-        return m.prior_read_date, m.present_read_date
+    #@property
+    #def read_period(self):
+        #if len(self.meters) != 1:
+            #raise ValueError("There must be exactly one meter")
+        #m = meters[0]
+        #return m.prior_read_date, m.present_read_date
 
     def get_meter(self, identifier):
         '''Returns the Meter with the given identifier.'''
@@ -333,14 +333,14 @@ class MongoReebill(object):
        
             # reset measured usage
             for service in self.services:
-                utilbill = self.get_utilbill_for_service(service)
+                utilbill = self._get_utilbill_for_service(service)
                 for meter in utilbill.meters:
                     meter.prior_read_date = meter.present_read_date
                     meter.prior_read_date = None
                     for register in meter.registers:
                         register.quantity = Decimal(0.0)
                 for shadow_register in self.shadow_registers(service):
-                    self.set_shadow_register_quantity(shadow_register.identifier,
+                    self.set_shadow_register_quantity(shadow_register['identifier'],
                             Decimal(0.0))
 
             # zero out statistics section
@@ -787,7 +787,7 @@ class MongoReebill(object):
         '''Returns start & end dates of the first utilbill found whose service
         is 'service_name'. There's not supposed to be more than one utilbill
         per service.'''
-        u = self._get_utilbill_for_service(service_name).period
+        return self._get_utilbill_for_service(service_name).period
 
     def set_utilbill_period_for_service(self, service, period):
         '''Changes the period dates of the first utility bill associated with
@@ -798,7 +798,7 @@ class MongoReebill(object):
     def meter_read_period(self, service):
         '''Returns tuple of period dates for first meter found with the given
         service.'''
-        return self._get_utilbill_for_service(service).meter_period
+        return self._get_utilbill_for_service(service).meters[0].read_period
 
     def meter_read_dates_for_service(self, service):
         '''Returns (prior_read_date, present_read_date) of the shadowed meter
@@ -875,7 +875,7 @@ class MongoReebill(object):
             estimated=False,
             resgisters=[],
         )
-        self.get_utilbill_for_service(service).meters.append(new_meter)
+        self._get_utilbill_for_service(service).meters.append(new_meter)
         return new_meter
 
     # TODO 37477445 replace with utility bill method; remove this method from MongoReebill
@@ -1516,7 +1516,7 @@ class ReebillDAO:
                     'sequence': {'$exists': False},
                     'version': {'$exists': False},
                 }
-                UtilBill.objects().find(__raw__=q).remove(safe=True)
+                UtilBill.objects(__raw__=q).delete(safe=True)
 
         result = self.reebills_collection.remove({
             '_id.account': account,

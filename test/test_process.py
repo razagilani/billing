@@ -45,7 +45,6 @@ class ProcessTest(TestCaseWithSetup):
         #super(ProcessTest, self).__init__(methodName)
 
     def test_get_late_charge(self):
-        print 'test_get_late_charge'
         '''Tests computation of late charges (without rolling bills).'''
         acc = '99999'
         with DBSession(self.state_db) as session:
@@ -179,7 +178,6 @@ class ProcessTest(TestCaseWithSetup):
             another database, fails with a SQLAlchemy error about multiple
             mappers. SQLAlchemy does provide a way to get around this.''')
     def test_sequences_for_approximate_month(self):
-        print 'test_sequences_for_approximate_month'
         # use real databases instead of the fake ones
         state_db = StateDB(
             host='localhost',
@@ -252,7 +250,6 @@ class ProcessTest(TestCaseWithSetup):
         session.commit()
 
     def test_service_suspension(self):
-        print 'test_service_suspension'
         try:
             session = self.state_db.session()
 
@@ -309,8 +306,6 @@ class ProcessTest(TestCaseWithSetup):
             raise
 
     def test_bind_rate_structure(self):
-        print 'test_bind_rate_structure'
-
         # make a reebill
         account, sequence = '99999', 1
         bill1 = example_data.get_reebill(account, sequence)
@@ -468,7 +463,6 @@ class ProcessTest(TestCaseWithSetup):
         '''Tests saving of utility bills in database (which also belongs partly
         to StateDB); does not test saving of utility bill files (which belongs
         to BillUpload).'''
-        print 'test_upload_utility_bill'
         with DBSession(self.state_db) as session:
             account, service = '99999', 'gas'
             #self.process = Process(self.config, self.state_db, self.reebill_dao,
@@ -552,7 +546,6 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEqual(UtilBill.Complete, bills[i].state)
 
     def test_delete_utility_bill(self):
-        print 'test_delete_utility_bill'
         account, service, = '99999', 'gas'
         start, end = date(2012,1,1), date(2012,2,1)
 
@@ -979,7 +972,6 @@ class ProcessTest(TestCaseWithSetup):
             self.process.attach_utilbills(session, account, 1)
             self.process.issue(session, account, 1)
             utilbills = self.state_db.utilbills_for_reebill(session, account, 1)
-            print utilbills
             assert len(utilbills) == 1; u = utilbills[0]
             assert (u.customer.account, u.reebill.sequence) == (account, 1)
             self.reebill_dao.load_reebill(account, 1, version=0)
