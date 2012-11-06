@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 from collections import defaultdict
 from billing.util.dateutils import date_to_datetime, date_generator
-from billing.mongo import float_to_decimal
+from billing.processing.mongo import float_to_decimal
 from decimal import Decimal
 import pymongo
 from billing.processing.process import Process
@@ -27,8 +27,6 @@ rs_dao = RateStructureDAO(**{
 db = pymongo.Connection('localhost')['skyline-dev']
 process = Process(state_db, bill_dao, rs_dao, None, None, None)
 
-TOLERANCE = 10
-
 # build dict mapping RSIs to list of periods during which they occur
 earliest, latest = date(3000,1,1), date(1000,1,1)
 bindings = defaultdict(lambda: [])
@@ -46,13 +44,13 @@ with DBSession(state_db) as session:
         try:
             # load raw dictionary (RateStructure object is unusable)
             rs = rs_dao._load_probable_rs_dict(reebill, service)
-        except:
-            print acc, seq, ver, 'ERROR'
+        except Exception as e:
+            print acc, seq, ver, 'ERROR:', e
             pass
         else:
-            #print acc, seq, ver
             period = reebill.meter_read_period(service)
-            for binding in [r['rsi_binding'] for r in rs['rates']]:
+            # exclude RSIs whose rate is 0 because that's often used instead of removal
+            for binding in [r['rsi_binding'] for r in rs['rates'] if r['rate'] != 0]:
                 bindings[binding].append(period)
             earliest = min(earliest, period[0])
             latest = max(latest, period[1])
@@ -73,10 +71,10 @@ for day in date_generator(earliest, latest):
         row[i+1] = sum(1 for period in bindings[binding] if period_contains_day(period, day))
     table.append(row)
 
-format = '%s ' + ('%8s' * (len(row)-1))
-print [str(h) for h in table.headers]
-print len(row), len(table.headers), format
-#print format % table.headers
+format = '%10s ' + ('%11s' * (len(row)-1))
+print format % tuple(h[:10] for h in table.headers)
+print format % tuple(h[10:20] for h in table.headers)
+print format % tuple(h[20:30] for h in table.headers)
+print format % tuple(h[30:40] for h in table.headers)
 for row in table:
     print format % row
-print bindings.keys()
