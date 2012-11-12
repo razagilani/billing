@@ -792,6 +792,7 @@ class RateStructureItem(object):
         return s
 
 if __name__ == '__main__':
+    # example of probable rate structure
     dao = RateStructureDAO(**{
         'database': 'skyline-dev',
         'collection': 'ratestructure',
@@ -800,6 +801,4 @@ if __name__ == '__main__':
     })
     probable_uprs = dao._get_probable_uprs('washgas', 'DC Non Residential Non Heat', (date(2012,10,1), date(2012,11,1)))
     print probable_uprs
-    #for key in probable_uprs:
-        #print key
 
