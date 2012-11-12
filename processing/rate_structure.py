@@ -79,6 +79,7 @@ class RateStructureDAO(object):
 
     def _get_probable_uprs(self, utility, rate_structure_name, period):
         def euclidean_distance(p1, p2):
+            # this may be the usual distance function but i think it grows too fast
             delta_begin = abs(p1[0] - p2[0]).days
             delta_end = abs(p1[1] - p2[1]).days
             return sqrt(delta_begin**2 + delta_end**2)
@@ -89,25 +90,39 @@ class RateStructureDAO(object):
             delta_end = abs(p1[1] - p2[1]).days
             return delta_begin + delta_end
 
-        rsi_bindings = defaultdict(lambda: 0)
+        # for every UPRS document that matches the utility and rate structure
+        # name, add its weighted distance from 'period' to the total score for
+        # each RSI, and keep track of the rate formula in the closest UPRS
+        # where each RSI appeared
+        scores = defaultdict(lambda: 0)
+        closest_rates = defaultdict(lambda: (float('inf'), 0))
         for uprs in self.load_uprss(utility, rate_structure_name):
             for rsi in uprs['rates']:
                 binding = rsi['rsi_binding']
-                if binding not in rsi_bindings:
+                if binding not in scores:
                     uprs_period = (uprs['_id']['effective'].date(), uprs['_id']['expires'].date())
+
+                    # add weighted distance to RSI presence score
                     distance = manhattan_distance(uprs_period, period)
                     weight = gaussian(1, 0, RSI_FWHM)(distance)
-                    print binding, distance, weight
-                    rsi_bindings[binding] += weight
+                    print '%35s %10s %20s' % (binding, distance, weight)
+                    scores[binding] += weight
 
-        # include each binding whose normalized weight > threshold
-        bindings_to_include = []
-        total_weight = sum(rsi_bindings.values())
+                    # update rate of closest UPRS containing the binding
+                    if weight < closest_rates[binding][0]:
+                        rsi_dict = next(rsi for rsi in uprs['rates']
+                                if rsi['rsi_binding'] == binding)
+                        closest_rates[binding] = (weight, rsi_dict['rate'])
+
+        # include each binding whose normalized weight exceeds the threshold,
+        # with the rate it had in the UPRS closest to 'period' where it appears
+        bindings_to_include = {}
+        total_weight = sum(scores.values())
         assert total_weight > 0
-        for binding, weight in rsi_bindings.iteritems():
+        for binding, weight in scores.iteritems():
             print binding, weight / total_weight
-            if weight / total_weight > RSI_PRESENCE_THRESHOLD:
-                bindings_to_include.append(binding)
+            if weight / total_weight >= RSI_PRESENCE_THRESHOLD:
+                bindings_to_include[binding] = closest_rates[binding][1]
 
         return bindings_to_include
 
