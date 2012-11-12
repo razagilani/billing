@@ -43,7 +43,7 @@ with DBSession(state_db) as session:
 
         try:
             # load raw dictionary (RateStructure object is unusable)
-            rs = rs_dao._load_probable_rs_dict(reebill, service)
+            rs = rs_dao._load_combined_rs_dict(reebill, service)
             charges = reebill.actual_chargegroups_flattened(service)
         except Exception as e:
             print acc, seq, ver, 'ERROR:', e

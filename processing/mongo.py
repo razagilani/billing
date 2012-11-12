@@ -1230,7 +1230,7 @@ class ReebillDAO:
             sequences = self.state_db.listSequences(session, account)
         return [self.load_reebill(account, sequence) for sequence in sequences]
     
-    def load_reebills_in_period(self, account, version=0, start_date=None,
+    def load_reebills_in_period(self, account=None, version=0, start_date=None,
             end_date=None, include_0=False):
         '''Returns a list of MongoReebills whose period began on or before
         'end_date' and ended on or after 'start_date' (i.e. all bills between
@@ -1242,7 +1242,9 @@ class ReebillDAO:
         'version' may be a specific version number, or 'any' to get all
         versions.'''
         with DBSession(self.state_db) as session:
-            query = { '_id.account': str(account) }
+            query = {}
+            if account is not None:
+                query['_id.account'] = account
             if isinstance(version, int):
                 query.update({'_id.version': version})
             elif version == 'any':
