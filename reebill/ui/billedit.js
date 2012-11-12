@@ -1464,6 +1464,7 @@ function reeBillReady() {
                 } finally {
                     //Ext.Msg.hide();
                     tabPanel.setDisabled(false);
+                    reeBillStore.reload()
                 }
             },
             failure: function(result, request) {
