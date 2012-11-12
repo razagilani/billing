@@ -1,5 +1,7 @@
 #!/usr/bin/python
-from datetime import datetime
+from __future__ import division
+from datetime import datetime, date
+from collections import defaultdict
 from decimal import Decimal
 import copy
 import inspect
@@ -11,11 +13,28 @@ import traceback
 import uuid
 import yaml
 import yaml
+from math import sqrt, log, exp
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1)
+
+# minimum normlized score for an RSI to get included in a probable UPRS
+# (between 0 and 1)
+# TODO why does this have to be so low? it should be more like 0.5
+RSI_PRESENCE_THRESHOLD = 0.001
+
+# controls how much more a probable UPRS is influenced by nearby UPRSs compared
+# to far ones. ("full width at half maximum" of gaussian weight function: an
+# RSI gets a score of 0.5 at half this number of days' distance)
+RSI_FWHM = 120
+
+def gaussian(height, center, fwhm):
+    def result(x):
+        sigma =  fwhm / 2 * sqrt(2 * log(2))
+        return height * exp(- (x - center)**2 / (2 * sigma**2))
+    return result
 
 class RateStructureDAO(object):
     '''
@@ -58,7 +77,41 @@ class RateStructureDAO(object):
         self.database = self.connection[database]
         self.collection = self.database['ratestructure']
 
-    def _load_probable_rs_dict(self, reebill, service):
+    def _get_probable_uprs(self, utility, rate_structure_name, period):
+        def euclidean_distance(p1, p2):
+            delta_begin = abs(p1[0] - p2[0]).days
+            delta_end = abs(p1[1] - p2[1]).days
+            return sqrt(delta_begin**2 + delta_end**2)
+        def manhattan_distance(p1, p2):
+            # note that 15-day offset is a 30-day distance, 30-day offset is a
+            # 60-day difference
+            delta_begin = abs(p1[0] - p2[0]).days
+            delta_end = abs(p1[1] - p2[1]).days
+            return delta_begin + delta_end
+
+        rsi_bindings = defaultdict(lambda: 0)
+        for uprs in self.load_uprss(utility, rate_structure_name):
+            for rsi in uprs['rates']:
+                binding = rsi['rsi_binding']
+                if binding not in rsi_bindings:
+                    uprs_period = (uprs['_id']['effective'].date(), uprs['_id']['expires'].date())
+                    distance = manhattan_distance(uprs_period, period)
+                    weight = gaussian(1, 0, RSI_FWHM)(distance)
+                    print binding, distance, weight
+                    rsi_bindings[binding] += weight
+
+        # include each binding whose normalized weight > threshold
+        bindings_to_include = []
+        total_weight = sum(rsi_bindings.values())
+        assert total_weight > 0
+        for binding, weight in rsi_bindings.iteritems():
+            print binding, weight / total_weight
+            if weight / total_weight > RSI_PRESENCE_THRESHOLD:
+                bindings_to_include.append(binding)
+
+        return bindings_to_include
+
+    def _load_combined_rs_dict(self, reebill, service):
         '''Returns a dictionary of combined rate structure (derived from URS,
         UPRS, and CPRS) that should be used to compute the charges of
         'reebill'.'''
@@ -163,7 +216,7 @@ class RateStructureDAO(object):
         '''Returns a RateStructure object representing the combined rate
         structure used to compute charges for the utility bill of the given
         service in 'reebill'.'''
-        rs_dict = self._load_probable_rs_dict(reebill, service)
+        rs_dict = self._load_combined_rs_dict(reebill, service)
         return RateStructure(rs_dict)
 
     def load_urs(self, utility_name, rate_structure_name, period_begin=None,
@@ -182,6 +235,15 @@ class RateStructureDAO(object):
         }
         urs = self.collection.find_one(query)
         return urs
+
+    def load_uprss(self, utility_name, rate_structure_name):
+        '''Returns list of raw UPRS dictionaries with given utility and rate
+        structure name.'''
+        return self.collection.find({
+            '_id.type': 'UPRS',
+            '_id.utility_name': utility_name,
+            '_id.rate_structure_name': rate_structure_name
+        })
 
     def load_uprs(self, utility_name, rate_structure_name, effective, expires):
         '''Loads Utility Periodic Rate Structure docuemnt from Mongo, returns
@@ -713,4 +775,16 @@ class RateStructureItem(object):
             s += 'total: %s\n' % (self.total)
             s += '\n'
         return s
+
+if __name__ == '__main__':
+    dao = RateStructureDAO(**{
+        'database': 'skyline-dev',
+        'collection': 'ratestructure',
+        'host': 'localhost',
+        'port': 27017
+    })
+    probable_uprs = dao._get_probable_uprs('washgas', 'DC Non Residential Non Heat', (date(2012,10,1), date(2012,11,1)))
+    print probable_uprs
+    #for key in probable_uprs:
+        #print key
 
