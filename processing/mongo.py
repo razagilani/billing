@@ -472,6 +472,17 @@ class MongoReebill(object):
     def ree_value(self, value):
         self.reebill_dict['ree_value'] = value
 
+    @property
+    def recipients(self):
+        '''E-mail addresses of bill recipients.
+
+        If these data exist, returns a list of strings. Otherwise, returns None.'''
+        return self.reebill_dict.get('bill_recipients', None)
+    @recipients.setter
+    def recipients(self, value):
+        '''Assigns a list of e-mail addresses representing bill recipients.'''
+        self.reebill_dict['bill_recipients'] = value
+
     def _utilbill_ids(self):
         '''Useful for debugging.'''
         # note order is not guranteed so the result may look weird

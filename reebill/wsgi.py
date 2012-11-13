@@ -932,6 +932,28 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
+    def retrieve_mail_addresses(self, account, **kwargs):
+        if not account:
+            raise ValueError("Bad Parameter Value")
+
+        with DBSession(self.state_db) as session:
+            # The last issued sequence would be associated with the ReeBill that was
+            # most recently issued. Therefore, if it exists, we can look up the record
+            # for the e-mail addresses of who received that ReeBill
+            # By default, assume there are no such addresses (yielding a null value in the JSON response)
+            mail_addresses = None
+            last_issued_sequence = self.state_db.last_issued_sequence(session, account)
+
+            if last_issued_sequence:
+                last_issued_reebill = self.reebill_dao.load_reebill(account, last_issued_sequence)
+                mail_addresses = last_issued_reebill.recipients
+
+        return self.dumps({'success': True, 'mail_addresses': mail_addresses})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
     def mail(self, account, sequences, recipients, **kwargs):
         if not account or not sequences or not recipients:
             raise ValueError("Bad Parameter Value")

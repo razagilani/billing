@@ -3984,14 +3984,46 @@ function reeBillReady() {
 
     ///////////////////////////////////////
     // Mail Tab
-
+    var mailAddressesConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/retrieve_mail_addresses',
+    });
+    mailAddressesConn.autoAbort = true;
+    mailAddressesConn.disableCaching = true;
     var mailDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/mail',
     });
     mailDataConn.autoAbort = true;
     mailDataConn.disableCaching = true;
     function mailReebillOperation(sequences) {
-        Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', function(btn, recipients){
+        mailAddressesConn.request({
+            params: {
+                account: selected_account,
+            },
+            success: function(response, options) {
+                var a = {};
+                try {
+                    a = Ext.decode(response.responseText);
+                }
+                catch(e) {
+                    alert("Could not decode JSON data.");
+                }
+                if(a.success == true) {
+                    if(a.mail_addresses == null)
+                        a.mail_addresses = "";
+                    else
+                        a.mail_addresses = a.mail_addresses.join(", ");
+                    Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', mailCallback, false, a.mail_addresses);
+                }
+                else {
+                    Ext.Msg.alert('Error', a.errors.reason + a.errors.details);
+                }
+            },
+            failure: function () {
+                        Ext.Msg.alert('Failure', "mail response fail");
+            },
+        });
+
+        function mailCallback(btn, recipients) {
             if (btn == 'ok') {
                 mailDataConn.request({
                     params: {
@@ -4038,7 +4070,8 @@ function reeBillReady() {
                     }
                 });
             }
-        }, false, "");
+        }
+        
     }
 
     var initialMailReebill =  {
