@@ -54,5 +54,5 @@ for reebill in db.reebills.find():
     print 'upgraded', reebill['_id']
     count += 1
 
-print 'total upgraded:', count
-print db.ratestructure.find({'_id.type':'UPRS', '_id.effective':{'$exists': True}}).count(), 'left over'
+not_upgraded = db.ratestructure.find({'_id.type':'UPRS', '_id.effective':{'$exists': True}}).count()
+print count, 'upgraded', not_upgraded, 'remaining'
