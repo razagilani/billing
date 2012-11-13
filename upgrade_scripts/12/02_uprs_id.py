@@ -1,5 +1,6 @@
 '''Changes UPRS document ids to contain reebill sequence and version.'''
 from sys import stderr
+from copy import deepcopy
 import pymongo
 
 host = 'localhost'
@@ -7,6 +8,7 @@ database = 'skyline-dev'
 
 db = pymongo.Connection(host, 27017)[database]
 
+count = 0
 for reebill in db.reebills.find():
     # get utility bill
     utilbill = db.utilbills.find_one({'_id': reebill['utilbills'][0]['id']})
@@ -31,20 +33,26 @@ for reebill in db.reebills.find():
         '_id.effective': utilbill['start'],
         '_id.expires': utilbill['end'],
     }
-    uprs = db.ratestructure.find_one(uprs_query)
-    if uprs is None:
+    original_uprs = db.ratestructure.find_one(uprs_query)
+    if original_uprs is None:
         print >> stderr, "missing UPRS: %s" % uprs_query
         continue
+    new_uprs = deepcopy(original_uprs)
 
     try:
-        del uprs['_id']['effective']
-        del uprs['_id']['expires']
+        del new_uprs['_id']['effective']
+        del new_uprs['_id']['expires']
     except KeyError:
-        print >> stderr, "malformed UPRS id:", uprs['_id']
-    uprs['_id']['account'] = reebill['_id']['account']
-    uprs['_id']['sequence'] = reebill['_id']['sequence']
-    uprs['_id']['version'] = reebill['_id']['version']
+        print >> stderr, "malformed UPRS id:", new_uprs['_id']
+    new_uprs['_id']['account'] = reebill['_id']['account']
+    new_uprs['_id']['sequence'] = reebill['_id']['sequence']
+    new_uprs['_id']['version'] = reebill['_id']['version']
 
-    db.ratestructure.remove({'_id': uprs['_id']})
-    db.ratestructure.save(uprs)
+    db.ratestructure.remove({'_id': new_uprs['_id']})
+    db.ratestructure.save(new_uprs)
+    db.ratestructure.remove(original_uprs)
     print 'upgraded', reebill['_id']
+    count += 1
+
+print 'total upgraded:', count
+print db.ratestructure.find({'_id.type':'UPRS', '_id.effective':{'$exists': True}}).count(), 'left over'
