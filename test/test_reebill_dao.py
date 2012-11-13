@@ -1,4 +1,3 @@
-#!/usr/bin/python
 import unittest
 import pymongo
 import sqlalchemy
