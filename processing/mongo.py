@@ -307,6 +307,7 @@ class MongoReebill(object):
     # TODO these must die
     @property
     def period_begin(self):
+
         return python_convert(self.reebill_dict['period_begin'])
     @period_begin.setter
     def period_begin(self, value):
@@ -481,7 +482,10 @@ class MongoReebill(object):
     @recipients.setter
     def recipients(self, value):
         '''Assigns a list of e-mail addresses representing bill recipients.'''
-        self.reebill_dict['bill_recipients'] = value
+        if value:
+            self.reebill_dict['bill_recipients'] = value
+        else:
+            self.reebill_dict.pop('bill_recipients', None)
 
     def _utilbill_ids(self):
         '''Useful for debugging.'''

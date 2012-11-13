@@ -930,15 +930,19 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEquals(True, self.state_db.is_issued(session, acc, 1))
             self.assertEquals(datetime.utcnow().date(), one.issue_date)
             self.assertEquals(one.issue_date + timedelta(30), one.due_date)
+            self.assertEquals(one.recipients, None)
 
             # attach & issue two
             self.process.attach_utilbills(session, two.account, two.sequence)
-            self.process.issue(session, acc, 2)
+            self.process.issue(session, acc, 2, ['test1@reebill.us', 'test2@reebill.us'])
             # re-load from mongo to see updated issue date and due date
             two = self.reebill_dao.load_reebill(acc, 2)
             self.assertEquals(True, self.state_db.is_issued(session, acc, 2))
             self.assertEquals(datetime.utcnow().date(), two.issue_date)
             self.assertEquals(two.issue_date + timedelta(30), two.due_date)
+            self.assertEquals(isinstance(two.recipients, list), True)
+            self.assertEquals(len(two.recipients), 2)
+            self.assertEquals(True, all(map(isinstance, two.recipients, [unicode]*len(two.recipients))))
 
     def test_delete_reebill(self):
         account = '99999'
