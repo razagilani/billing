@@ -484,7 +484,8 @@ class StateDB:
         return slice, count
 
     def reebills(self, session, include_unissued=True):
-        '''Generates (account, sequence) tuples for all reebills in MySQL.'''
+        '''Generates (account, sequence, max version) tuples for all reebills
+        in MySQL.'''
         for account in self.listAccounts(session):
             for sequence in self.listSequences(session, account):
                 reebill = self.get_reebill(session, account, sequence)
