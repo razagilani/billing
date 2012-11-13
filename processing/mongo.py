@@ -307,6 +307,7 @@ class MongoReebill(object):
     # TODO these must die
     @property
     def period_begin(self):
+
         return python_convert(self.reebill_dict['period_begin'])
     @period_begin.setter
     def period_begin(self, value):
@@ -471,6 +472,20 @@ class MongoReebill(object):
     @ree_value.setter
     def ree_value(self, value):
         self.reebill_dict['ree_value'] = value
+
+    @property
+    def recipients(self):
+        '''E-mail addresses of bill recipients.
+
+        If these data exist, returns a list of strings. Otherwise, returns None.'''
+        return self.reebill_dict.get('bill_recipients', None)
+    @recipients.setter
+    def recipients(self, value):
+        '''Assigns a list of e-mail addresses representing bill recipients.'''
+        if value:
+            self.reebill_dict['bill_recipients'] = value
+        else:
+            self.reebill_dict.pop('bill_recipients', None)
 
     def _utilbill_ids(self):
         '''Useful for debugging.'''
@@ -1249,7 +1264,11 @@ class ReebillDAO:
                 query.update({'_id.version': version})
             elif version == 'any':
                 pass
-            # TODO max version
+            elif version == 'max':
+                # TODO max version (it's harder than it looks because you don't
+                # have the account or sequence of a specific reebill to query
+                # MySQL for here)
+                raise NotImplementedError
             else:
                 raise ValueError('Unknown version specifier "%s"' % version)
             if not include_0:

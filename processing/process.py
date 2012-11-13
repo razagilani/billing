@@ -538,7 +538,8 @@ class Process(object):
         source_balance = min_balance_due - \
                 self.state_db.get_total_payment_since(session, acc,
                 predecessor0.issue_date)
-        return (reebill.late_charge_rate) * source_balance
+        #Late charges can only be positive
+        return (reebill.late_charge_rate) * max(0, source_balance)
 
     def get_outstanding_balance(self, session, account, sequence=None):
         '''Returns the balance due of the reebill given by account and sequence
@@ -959,13 +960,13 @@ class Process(object):
         reebill.period_begin = rebill_periodbegindate
         reebill.period_end = rebill_periodenddate
 
-    def issue(self, session, account, sequence,
+    def issue(self, session, account, sequence, recipients=None,
             issue_date=datetime.utcnow().date()):
         '''Sets the issue date of the reebill given by account, sequence to
-        'issue_date' (or today by default) and the due date to 30 days from the
-        issue date. The reebill's late charge is set to its permanent value in
-        mongo, and the reebill is marked as issued in the state database.
-        Does not attach utililty bills.'''
+        'issue_date' (or today by default), the recipients of the issued bill,
+        and the due date to 30 days from the issue date. The reebill's late
+        charge is set to its permanent value in mongo, and the reebill is
+        marked as issued in the state database. Does not attach utililty bills.'''
         # version 0 of predecessor must be issued before this bill can be
         # issued:
         if sequence > 1 and not self.state_db.is_issued(session, account,
@@ -980,6 +981,7 @@ class Process(object):
         # set issue date and due date in mongo
         reebill = self.reebill_dao.load_reebill(account, sequence)
         reebill.issue_date = issue_date
+        reebill.recipients = recipients
 
         # TODO: parameterize for dependence on customer 
         reebill.due_date = issue_date + timedelta(days=30)

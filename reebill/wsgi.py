@@ -881,7 +881,7 @@ class BillToolBridge:
             self.attach_utility_bills(session, account, sequence)
             return self.dumps({'success': True})
 
-    def issue_reebills(self, session, account, sequences,
+    def issue_reebills(self, session, account, sequences, recipients,
             apply_corrections=True):
         '''Issues all unissued bills given by account and sequences. These must
         be version 0, not corrections. If apply_corrections is True, all
@@ -906,7 +906,7 @@ class BillToolBridge:
                     unissued_sequence - 1, version=0)
             reebill = self.reebill_dao.load_reebill(account, unissued_sequence)
             self.process.compute_bill(session, predecessor, reebill)
-            self.process.issue(session, account, unissued_sequence)
+            self.process.issue(session, account, unissued_sequence, recipients)
 
         # journal attaching of utility bills
         for unissued_sequence in sequences:
@@ -932,9 +932,34 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
+    def retrieve_mail_addresses(self, account, **kwargs):
+        if not account:
+            raise ValueError("Bad Parameter Value")
+
+        with DBSession(self.state_db) as session:
+            # The last issued sequence would be associated with the ReeBill that was
+            # most recently issued. Therefore, if it exists, we can look up the record
+            # for the e-mail addresses of who received that ReeBill
+            # By default, assume there are no such addresses (yielding a null value in the JSON response)
+            mail_addresses = None
+            last_issued_sequence = self.state_db.last_issued_sequence(session, account)
+
+            if last_issued_sequence:
+                last_issued_reebill = self.reebill_dao.load_reebill(account, last_issued_sequence)
+                mail_addresses = last_issued_reebill.recipients
+
+        return self.dumps({'success': True, 'mail_addresses': mail_addresses})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
     def mail(self, account, sequences, recipients, **kwargs):
         if not account or not sequences or not recipients:
             raise ValueError("Bad Parameter Value")
+
+        # Go from comma-separated e-mail addresses to a list of e-mail addresses
+        recipient_list = [rec.strip() for rec in recipients.split(',')]
 
         # sequences will come in as a string if there is one element in post data. 
         # If there are more, it will come in as a list of strings
@@ -985,7 +1010,7 @@ class BillToolBridge:
                     if not sorted(corrections_to_apply) == sorted(
                             unissued_correction_sequences):
                         raise ValueError('All corrections must be issued.')
-                self.issue_reebills(session, account, unissued_sequences,
+                self.issue_reebills(session, account, unissued_sequences, recipient_list,
                         apply_corrections=('corrections_to_apply' in locals()))
 
 
@@ -1016,7 +1041,7 @@ class BillToolBridge:
             merge_fields["balance_due"] = most_recent_bill.balance_due.quantize(Decimal("0.00"))
             merge_fields["bill_dates"] = bill_dates
             merge_fields["last_bill"] = bill_file_names[-1]
-            bill_mailer.mail(recipients, merge_fields,
+            bill_mailer.mail(recipient_list, merge_fields,
                     os.path.join(self.config.get("billdb", "billpath"),
                         account), bill_file_names);
 

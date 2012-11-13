@@ -1,4 +1,3 @@
-#!/usr/bin/python
 '''Tests for rate_structure.py'''
 import unittest
 import pymongo
