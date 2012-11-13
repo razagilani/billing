@@ -36,11 +36,14 @@ for reebill in db.reebills.find():
         print >> stderr, "missing UPRS: %s" % uprs_query
         continue
 
+    try:
+        del uprs['_id']['effective']
+        del uprs['_id']['expires']
+    except KeyError:
+        print >> stderr, "malformed UPRS id:", uprs['_id']
     uprs['_id']['account'] = reebill['_id']['account']
     uprs['_id']['sequence'] = reebill['_id']['sequence']
     uprs['_id']['version'] = reebill['_id']['version']
-    del uprs['_id']['effective']
-    del uprs['_id']['expires']
 
     db.ratestructure.remove({'_id': uprs['_id']})
     db.ratestructure.save(uprs)

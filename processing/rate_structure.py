@@ -36,6 +36,18 @@ def gaussian(height, center, fwhm):
         return height * exp(- (x - center)**2 / (2 * sigma**2))
     return result
 
+def euclidean_distance(p1, p2):
+    delta_begin = abs(p1[0] - p2[0]).days
+    delta_end = abs(p1[1] - p2[1]).days
+    return sqrt(delta_begin**2 + delta_end**2)
+
+def manhattan_distance(p1, p2):
+    # note that 15-day offset is a 30-day distance, 30-day offset is a
+    # 60-day difference
+    delta_begin = abs(p1[0] - p2[0]).days
+    delta_end = abs(p1[1] - p2[1]).days
+    return delta_begin + delta_end
+
 class RateStructureDAO(object):
     '''
     Manages loading and saving rate structures.
@@ -77,30 +89,22 @@ class RateStructureDAO(object):
         self.database = self.connection[database]
         self.collection = self.database['ratestructure']
 
-    def _get_probable_uprs(self, utility, rate_structure_name, period):
-        def euclidean_distance(p1, p2):
-            # this may be the usual distance function but i think it grows too fast
-            delta_begin = abs(p1[0] - p2[0]).days
-            delta_end = abs(p1[1] - p2[1]).days
-            return sqrt(delta_begin**2 + delta_end**2)
-        def manhattan_distance(p1, p2):
-            # note that 15-day offset is a 30-day distance, 30-day offset is a
-            # 60-day difference
-            delta_begin = abs(p1[0] - p2[0]).days
-            delta_end = abs(p1[1] - p2[1]).days
-            return delta_begin + delta_end
-
+    def _get_probable_rsis(self, utility, rate_structure_name, period):
+        '''Returns list of RSI dictionaries: a guess of what RSIs will be in a
+        new bill for the given rate structure during the given period. The list
+        will be empty if no guess could be made.'''
         # for every UPRS document that matches the utility and rate structure
         # name, add its weighted distance from 'period' to the total score for
         # each RSI, and keep track of the rate formula in the closest UPRS
         # where each RSI appeared
         scores = defaultdict(lambda: 0)
-        closest_rates = defaultdict(lambda: (float('inf'), 0))
+        closest_rates_and_quantities = defaultdict(lambda: (float('inf'), 0))
         for uprs in self.load_uprss(utility, rate_structure_name):
             for rsi in uprs['rates']:
                 binding = rsi['rsi_binding']
                 if binding not in scores:
-                    uprs_period = (uprs['_id']['effective'].date(), uprs['_id']['expires'].date())
+                    uprs_period = (uprs['_id']['effective'].date(),
+                            uprs['_id']['expires'].date())
 
                     # add weighted distance to RSI presence score
                     distance = manhattan_distance(uprs_period, period)
@@ -108,23 +112,53 @@ class RateStructureDAO(object):
                     print '%35s %10s %20s' % (binding, distance, weight)
                     scores[binding] += weight
 
-                    # update rate of closest UPRS containing the binding
-                    if weight < closest_rates[binding][0]:
+                    # update rate and quantity of closest UPRS containing the binding
+                    if weight < closest_rates_and_quantities[binding][0]:
                         rsi_dict = next(rsi for rsi in uprs['rates']
                                 if rsi['rsi_binding'] == binding)
-                        closest_rates[binding] = (weight, rsi_dict['rate'])
+                        closest_rates_and_quantities[binding] = (weight,
+                                rsi_dict['rate'], rsi_dict['quantity'])
 
-        # include each binding whose normalized weight exceeds the threshold,
-        # with the rate it had in the UPRS closest to 'period' where it appears
-        bindings_to_include = {}
+        # if every RSI got a score of 0, there's no way to make a guess: return
+        # an empty list. this should only happen if no bills have ever been
+        # created for this rate structure.
+        # TODO in the future we could make a guess based on other rate
+        # structures for the same utility and/or geographic region
         total_weight = sum(scores.values())
-        assert total_weight > 0
+        if total_weight <= 0:
+           return []
+
+        # normalize the weight associated with each RSI binding, and include
+        # each binding whose normalized weight exceeds the threshold, with the
+        # rate and quantity formulas it had in the UPRS closest to 'period'
+        # where it appears.
+        rsis = []
         for binding, weight in scores.iteritems():
             print binding, weight / total_weight
             if weight / total_weight >= RSI_PRESENCE_THRESHOLD:
-                bindings_to_include[binding] = closest_rates[binding][1]
+                rsis.append({
+                    'rsi_binding': binding,
+                    'rate': closest_rates_and_quantities[binding][1],
+                    'quantity': closest_rates_and_quantities[binding][2],
+                    #'total': 0,
+                    'uuid': uuid.uuid1(), # uuid1 is used in wsgi.py
+                })
+        return rsis
 
-        return bindings_to_include
+    def get_probable_uprs(self, reebill, service):
+        utility = reebill.utility_name_for_service(service)
+        rate_structure_name = reebill.utility_name_for_service(service)
+        return {
+            '_id': {
+                'account': reebill.account,
+                'sequence': reebill.sequence,
+                'version': reebill.version,
+                'utility_name': utility,
+                'rate_structure_name': rate_structure_name,
+            },
+            'rates': self._get_probable_rsis(utility, rate_structure_name,
+                    reebill.utilbill_period_for_service(service))
+        }
 
     def _load_combined_rs_dict(self, reebill, service):
         '''Returns a dictionary of combined rate structure (derived from URS,
@@ -802,6 +836,6 @@ if __name__ == '__main__':
         'host': 'localhost',
         'port': 27017
     })
-    probable_uprs = dao._get_probable_uprs('washgas', 'DC Non Residential Non Heat', (date(2012,10,1), date(2012,11,1)))
+    probable_uprs = dao._get_probable_rsis('washgas', 'DC Non Residential Non Heat', (date(2012,10,1), date(2012,11,1)))
     print probable_uprs
 
