@@ -4309,9 +4309,17 @@ function reeBillReady() {
         ],
         // looks to be initial order for load
         sortInfo: {
-            field: 'dayssince',
+            field: 'account',
             direction: 'DESC'
         },
+    });
+
+    accountStore.on('beforeload', function(store, options) {
+        accountGrid.setDisabled(true);
+    });
+
+    accountStore.on('load', function(store, options) {
+        accountGrid.setDisabled(false);
     });
 
     /* This function controls the style of cells in the account grid. */
@@ -4378,18 +4386,19 @@ function reeBillReady() {
 
     // this grid tracks the state of the currently selected account
     var accountGrid = new Ext.grid.EditorGridPanel({
+        id: 'accountGrid',
         colModel: accountColModel,
         selModel: new Ext.grid.RowSelectionModel({
             singleSelect: true,
-        listeners: {
-            rowselect: function (selModel, index, record) {
-               loadReeBillUIForAccount(record.data.account);
-               return false;
-           },
-        rowdeselect: function(selModel, index, record) {
-             loadReeBillUIForAccount(null);
-         }
-        },
+            listeners: {
+                rowselect: function (selModel, index, record) {
+                    loadReeBillUIForAccount(record.data.account);
+                    return false;
+                },
+                rowdeselect: function(selModel, index, record) {
+                    loadReeBillUIForAccount(null);
+                }
+            },
         }),
         store: accountStore,
         enableColumnMove: false,
@@ -4549,6 +4558,7 @@ function reeBillReady() {
     // this grid tracks the state of the currently selected account
 
     var accountReeValueGrid = new Ext.grid.GridPanel({
+        id: 'accountReeValueGrid',
         colModel: accountReeValueColModel,
         selModel: new Ext.grid.RowSelectionModel({
             singleSelect: true,
@@ -4701,6 +4711,7 @@ function reeBillReady() {
     newAccountDataConn.autoAbort = true;
     newAccountDataConn.disableCaching = true;
     var newAccountFormPanel = new Ext.FormPanel({
+        id: 'newAccountFormPanel',
         url: 'http://'+location.host+'/reebill/new_account',
         labelWidth: 120, // label settings here cascade unless overridden
         frame: true,
@@ -4831,7 +4842,13 @@ function reeBillReady() {
                                     Ext.Msg.alert('Success', "New account created");
                                     // update next account number shown in field
                                     newAccountField.setValue(nextAccount);
-
+                                    accountsPanel.getLayout().setActiveItem('accountGrid');
+                                    accountGrid.getSelectionModel().clearSelections();
+                                    accountStore.setDefaultSort('account','DESC');
+                                    pageSize = accountGrid.getBottomToolbar().pageSize;
+                                    accountStore.load({params: {start: 0, limit: pageSize}, callback: function() {
+                                        accountGrid.getSelectionModel().selectFirstRow();
+                                    }});
                                     // reload grid to show new account
                                     // TODO "load" gets no records, "reload" gets records, but neither one causes the grid to update
                                     reeBillStore.reload({
@@ -5645,7 +5662,7 @@ function reeBillReady() {
     {
 
         var sb = Ext.getCmp('statusbar');
-        var selStatus;
+        var selStatus = "No REE Bill Selected";
         if (account != null && sequence != null && branch != null)
             selStatus = account + "-" + sequence + "-" + branch;
         else if (account != null && sequence != null)
@@ -5688,6 +5705,7 @@ function reeBillReady() {
         if (account == null) {
             /* no account selected */
             journalPanel.setDisabled(true);
+            updateStatusbar(null, null, null)
             return;
         }
 
@@ -5829,7 +5847,7 @@ function reeBillReady() {
             ubMeasuredUsagesPanel.setDisabled(true);
             rateStructurePanel.setDisabled(true);
             chargeItemsPanel.setDisabled(true);
-            updateStatusbar(selected_account, null);
+            updateStatusbar(selected_account, null, null);
             deleteButton.setDisabled(true);
             return;
         }
