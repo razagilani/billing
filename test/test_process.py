@@ -1,4 +1,3 @@
-#!/usr/bin/python
 import sys
 import os
 import unittest
@@ -173,6 +172,19 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEqual((50 - 10) * bill2.late_charge_rate,
                     self.process.get_late_charge(session, bill2,
                     date(2013,1,1)))
+
+            #Pay off the bill, make sure the late charge is 0
+            self.state_db.create_payment(session, acc, date(2012,6,6),
+                    'a $40 payment in june', 40)
+            self.assertEqual(0, self.process.get_late_charge(session, bill2,
+                    date(2013,1,1)))
+
+            #Overpay the bill, make sure the late charge is still 0
+            self.state_db.create_payment(session, acc, date(2012,6,7),
+                    'a $40 payment in june', 40)
+            self.assertEqual(0, self.process.get_late_charge(session, bill2,
+                    date(2013,1,1)))
+            
 
     @unittest.skip('''Creating a second StateDB object, even if it's for
             another database, fails with a SQLAlchemy error about multiple
