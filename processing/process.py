@@ -954,7 +954,7 @@ class Process(object):
         reebill.period_begin = rebill_periodbegindate
         reebill.period_end = rebill_periodenddate
 
-    def issue(self, session, account, sequence, recipients,
+    def issue(self, session, account, sequence, recipients=None,
             issue_date=datetime.utcnow().date()):
         '''Sets the issue date of the reebill given by account, sequence to
         'issue_date' (or today by default), the recipients of the issued bill,
