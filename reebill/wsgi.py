@@ -881,7 +881,7 @@ class BillToolBridge:
             self.attach_utility_bills(session, account, sequence)
             return self.dumps({'success': True})
 
-    def issue_reebills(self, session, account, sequences,
+    def issue_reebills(self, session, account, sequences, recipients,
             apply_corrections=True):
         '''Issues all unissued bills given by account and sequences. These must
         be version 0, not corrections. If apply_corrections is True, all
@@ -906,7 +906,7 @@ class BillToolBridge:
                     unissued_sequence - 1, version=0)
             reebill = self.reebill_dao.load_reebill(account, unissued_sequence)
             self.process.compute_bill(session, predecessor, reebill)
-            self.process.issue(session, account, unissued_sequence)
+            self.process.issue(session, account, unissued_sequence, recipients)
 
         # journal attaching of utility bills
         for unissued_sequence in sequences:
@@ -1010,7 +1010,7 @@ class BillToolBridge:
                     if not sorted(corrections_to_apply) == sorted(
                             unissued_correction_sequences):
                         raise ValueError('All corrections must be issued.')
-                self.issue_reebills(session, account, unissued_sequences,
+                self.issue_reebills(session, account, unissued_sequences, recipient_list,
                         apply_corrections=('corrections_to_apply' in locals()))
 
 

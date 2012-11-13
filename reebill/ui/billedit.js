@@ -4012,7 +4012,7 @@ function reeBillReady() {
                         a.mail_addresses = "";
                     else
                         a.mail_addresses = a.mail_addresses.join(", ");
-                    Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', mailCallback, false, a.mail_addresses);
+                    Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', mailCallback, false, false, a.mail_addresses);
                 }
                 else {
                     Ext.Msg.alert('Error', a.errors.reason + a.errors.details);
