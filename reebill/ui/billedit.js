@@ -4019,7 +4019,7 @@ function reeBillReady() {
                 }
             },
             failure: function () {
-                        Ext.Msg.alert('Failure', "mail response fail");
+                Ext.Msg.alert('Failure', "mail response fail");
             },
         });
 

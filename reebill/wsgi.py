@@ -958,6 +958,9 @@ class BillToolBridge:
         if not account or not sequences or not recipients:
             raise ValueError("Bad Parameter Value")
 
+        # Go from comma-separated e-mail addresses to a list of e-mail addresses
+        recipient_list = [rec.strip() for rec in recipients.split(',')]
+
         # sequences will come in as a string if there is one element in post data. 
         # If there are more, it will come in as a list of strings
         if type(sequences) is list:
@@ -1038,7 +1041,7 @@ class BillToolBridge:
             merge_fields["balance_due"] = most_recent_bill.balance_due.quantize(Decimal("0.00"))
             merge_fields["bill_dates"] = bill_dates
             merge_fields["last_bill"] = bill_file_names[-1]
-            bill_mailer.mail(recipients, merge_fields,
+            bill_mailer.mail(recipient_list, merge_fields,
                     os.path.join(self.config.get("billdb", "billpath"),
                         account), bill_file_names);
 
