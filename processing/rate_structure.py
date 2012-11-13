@@ -161,8 +161,8 @@ class RateStructureDAO(object):
             del urs_reg['uuid']
 
         # load the UPRS
-        uprs = self.load_uprs(utility_name, rate_structure_name, period_begin,
-                period_end)
+        uprs = self.load_uprs(reebill.account, reebill.sequence,
+                reebill.version, utility_name, rate_structure_name)
 
         # remove the mongo key, because the requester already has this
         # information and we do not want application code depending on the
@@ -260,17 +260,19 @@ class RateStructureDAO(object):
             '_id.rate_structure_name': rate_structure_name
         })
 
-    def load_uprs(self, utility_name, rate_structure_name, effective, expires):
+    def load_uprs(self, account, sequence, version, utility_name,
+            rate_structure_name):
         '''Loads Utility Periodic Rate Structure docuemnt from Mongo, returns
         it as a dictionary.'''
         # eventually, return a uprs that may have useful information that
         # matches this service period 
         query = {
             "_id.type":"UPRS",
+            "_id.account": account,
+            "_id.sequence": sequence,
+            "_id.version": version,
             "_id.utility_name": utility_name,
             "_id.rate_structure_name": rate_structure_name,
-            "_id.effective": datetime(effective.year, effective.month, effective.day),
-            "_id.expires": datetime(expires.year, expires.month, expires.day),
         }
         uprs = self.collection.find_one(query)
         # create it if it does not exist
@@ -279,8 +281,8 @@ class RateStructureDAO(object):
         # TODO 24253017
         if uprs is None:
             uprs = {'rates':[]} 
-            uprs = self.save_uprs(utility_name, rate_structure_name, effective,
-                    expires, uprs)
+            uprs = self.save_uprs(account, sequence,
+                    version, utility_name, rate_structure_name, uprs)
         return uprs
 
     def load_cprs(self, account, sequence, version, utility_name,
@@ -318,16 +320,17 @@ class RateStructureDAO(object):
         self.collection.save(rate_structure_data)
         return rate_structure_data
 
-    def save_uprs(self, utility_name, rate_structure_name, effective, expires,
-            rate_structure_data):
+    def save_uprs(self, account, sequence, version, utility_name,
+            rate_structure_name, rate_structure_data):
         '''Saves the dictionary 'rate_structure_data' as a Utility Periodic
         Rate Structure document in Mongo.'''
         rate_structure_data['_id'] = { 
-            "type":"UPRS",
+            "type": "UPRS",
+            'account': account,
+            'sequence': sequence,
+            'version': version,
             "utility_name": utility_name,
-            "rate_structure_name": rate_structure_name,
-            'effective': effective,
-            'expires': expires
+            "rate_structure_name": rate_structure_name
         }
         rate_structure_data = bson_convert(rate_structure_data)
         self.collection.save(rate_structure_data)

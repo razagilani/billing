@@ -37,9 +37,9 @@ class RateStructureTest(TestCaseWithSetup):
         self.rate_structure_dao.save_urs(urs_dict['_id']['utility_name'],
                 # 'effective', 'expires' args are ignored
                 urs_dict['_id']['rate_structure_name'], None, None, urs_dict)
-        self.rate_structure_dao.save_uprs(uprs_dict['_id']['utility_name'],
-                # 'effective', 'expires' args are ignored
-                uprs_dict['_id']['rate_structure_name'], None, None, uprs_dict)
+        self.rate_structure_dao.save_uprs(account, sequence, 0,
+                uprs_dict['_id']['utility_name'],
+                uprs_dict['_id']['rate_structure_name'], uprs_dict)
         self.rate_structure_dao.save_cprs(account, sequence, 0,
                 cprs_dict['_id']['utility_name'],
                 cprs_dict['_id']['rate_structure_name'], cprs_dict)

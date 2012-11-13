@@ -1544,6 +1544,7 @@ class BillToolBridge:
             raise ValueError("Bad Parameter Value")
         # client sends capitalized service names! workaround:
         service = service.lower()
+        sequence = int(sequence)
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
@@ -1557,12 +1558,14 @@ class BillToolBridge:
         utility_name = reebill.utility_name_for_service(service)
         rs_name = reebill.rate_structure_name_for_service(service)
         (effective, expires) = reebill.utilbill_period_for_service(service)
-        rate_structure = self.ratestructure_dao.load_uprs(utility_name, rs_name, effective, expires)
+        rate_structure = self.ratestructure_dao.load_uprs(account, sequence,
+                reebill.version, utility_name, rs_name)
 
         # It is possible the a UPRS does not exist for the utility billing period.
         # If this is the case, create it
         if rate_structure is None:
-            raise Exception("Could not load UPRS for %s, %s %s to %s" % (utility_name, rs_name, effective, expires) )
+            raise Exception("Could not load UPRS for %s, %s %s to %s" %
+                    (utility_name, rs_name, effective, expires) )
 
         rates = rate_structure["rates"]
 
@@ -1607,10 +1610,9 @@ class BillToolBridge:
                 rsi.update(row)
 
             self.ratestructure_dao.save_uprs(
+                reebill.account, reebill.sequence, reebill.version,
                 reebill.utility_name_for_service(service),
                 reebill.rate_structure_name_for_service(service),
-                effective,
-                expires,
                 rate_structure
             )
 
@@ -1628,10 +1630,9 @@ class BillToolBridge:
             rates.append(new_rate)
 
             self.ratestructure_dao.save_uprs(
+                reebill.account, reebill.sequence, reebill.version,
                 reebill.utility_name_for_service(service),
                 reebill.rate_structure_name_for_service(service),
-                effective,
-                expires,
                 rate_structure
             )
 
@@ -1662,6 +1663,7 @@ class BillToolBridge:
                 rates.remove(rsi)
 
             self.ratestructure_dao.save_uprs(
+                reebill.account, reebill.sequence, reebill.version,
                 reebill.utility_name_for_service(service),
                 reebill.rate_structure_name_for_service(service),
                 effective,
