@@ -25,10 +25,9 @@ for reebill in db.reebills.find():
     # get UPRS
     uprs_query = {
         '_id.type': 'UPRS',
-        '_id.utility_name': cprs['_id']['utility_name'],
-        '_id.rate_structure_name': cprs['_id']['rate_structure_name'],
-        '_id.effective': utilbill['start'],
-        '_id.expires': utilbill['end'],
+        '_id.account': reebill['_id']['account'],
+        '_id.sequence': reebill['_id']['sequence'],
+        '_id.version': reebill['_id']['version']
     }
     uprs = db.ratestructure.find_one(uprs_query)
     if uprs is None:

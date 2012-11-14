@@ -56,11 +56,10 @@ for reebill in db.reebills.find():
     new_uprs['_id']['sequence'] = reebill['_id']['sequence']
     new_uprs['_id']['version'] = reebill['_id']['version']
 
-    db.ratestructure.remove({'_id': new_uprs['_id']})
+    db.ratestructure.remove({'_id': original_uprs['_id']})
     db.ratestructure.save(new_uprs)
-    db.ratestructure.remove(original_uprs)
     print 'upgraded', reebill['_id']
     count += 1
 
-not_upgraded = db.ratestructure.find({'_id.type':'UPRS', '_id.effective':{'$exists': True}}).count()
+not_upgraded = db.ratestructure.find({'_id.type':'UPRS', '_id.account':{'$exists': False}}).count()
 print count, 'upgraded', not_upgraded, 'remaining'
