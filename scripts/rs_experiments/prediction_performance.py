@@ -49,8 +49,12 @@ with DBSession(state_db) as session:
                 print >> stderr, account, sequence, max_version, e
             else:
                 # temporarily remove real UPRS from database
-                db.ratestructure.remove({'_id.account': account, '_id.sequence':
-                    sequence, '_id.version': max_version})
+                uprs = db.ratestructure.find({'_id.type':'UPRS', '_id.account':
+                        account, '_id.sequence': sequence, '_id.version':
+                        max_version})
+                db.ratestructure.remove({'_id.type':'CPRS', '_id.account':
+                        account, '_id.sequence': sequence, '_id.version':
+                        max_version})
 
                 try:
                     actual_bindings = [rsi['binding'] for rsi in actual_rs['rates']]
@@ -79,6 +83,5 @@ with DBSession(state_db) as session:
                 #print account, sequence, max_version, precision, recall
 
                 # restore real UPRS to database
-                db.ratestructure.remove({'_id.account': account, '_id.sequence':
-                        sequence, '_id.version': max_version})
+                db.ratestructure.save(uprs)
         print '*****', threshold, precision_sum / count, recall_sum / count
