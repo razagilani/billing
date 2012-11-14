@@ -89,7 +89,8 @@ class RateStructureDAO(object):
         self.database = self.connection[database]
         self.collection = self.database['ratestructure']
 
-    def _get_probable_rsis(self, utility, rate_structure_name, period):
+    def _get_probable_rsis(self, utility, rate_structure_name, period,
+            threshold=RSI_PRESENCE_THRESHOLD):
         '''Returns list of RSI dictionaries: a guess of what RSIs will be in a
         new bill for the given rate structure during the given period. The list
         will be empty if no guess could be made.'''
@@ -100,16 +101,19 @@ class RateStructureDAO(object):
         scores = defaultdict(lambda: 0)
         closest_rates_and_quantities = defaultdict(lambda: (float('inf'), 0))
         for uprs in self.load_uprss(utility, rate_structure_name):
+            uprs_period = (uprs['_id']['effective'].date(),
+                    uprs['_id']['expires'].date())
+            if None in uprs_period:
+                print >> sys.stderr, 'UPRS has null dates:', uprs['_id']
+                continue
+
             for rsi in uprs['rates']:
                 binding = rsi['rsi_binding']
                 if binding not in scores:
-                    uprs_period = (uprs['_id']['effective'].date(),
-                            uprs['_id']['expires'].date())
-
                     # add weighted distance to RSI presence score
                     distance = manhattan_distance(uprs_period, period)
                     weight = gaussian(1, 0, RSI_FWHM)(distance)
-                    print '%35s %10s %20s' % (binding, distance, weight)
+                    #print '%35s %10s %20s' % (binding, distance, weight)
                     scores[binding] += weight
 
                     # update rate and quantity of closest UPRS containing the binding
@@ -134,8 +138,8 @@ class RateStructureDAO(object):
         # where it appears.
         rsis = []
         for binding, weight in scores.iteritems():
-            print binding, weight / total_weight
-            if weight / total_weight >= RSI_PRESENCE_THRESHOLD:
+            #print binding, weight / total_weight
+            if weight / total_weight >= threshold:
                 rsis.append({
                     'rsi_binding': binding,
                     'rate': closest_rates_and_quantities[binding][1],
@@ -466,7 +470,8 @@ class RateStructure(object):
                     register.quantity = register_reading['quantity']
                     #print "%s bound to rate structure" % register_reading
             if not matched:
-                print "%s not bound to rate structure" % register_reading
+                pass
+                #print "%s not bound to rate structure" % register_reading
 
     def bind_charges(self, charges):
         '''For each charge in a list of charges from a reebill, find the

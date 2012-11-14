@@ -39,11 +39,14 @@ for reebill in db.reebills.find():
         continue
     new_uprs = deepcopy(original_uprs)
 
-    try:
-        del new_uprs['_id']['effective']
-        del new_uprs['_id']['expires']
-    except KeyError:
-        print >> stderr, "malformed UPRS id:", new_uprs['_id']
+    # NOTE not deleting "effective" and "expires" because dates are needed to
+    # find the distance of a UPRS from a new utility bill period; the utility
+    # bill could be used, but this is more convenient.
+    #try:
+        #del new_uprs['_id']['effective']
+        #del new_uprs['_id']['expires']
+    #except KeyError:
+        #print >> stderr, "malformed UPRS id:", new_uprs['_id']
     new_uprs['_id']['account'] = reebill['_id']['account']
     new_uprs['_id']['sequence'] = reebill['_id']['sequence']
     new_uprs['_id']['version'] = reebill['_id']['version']
