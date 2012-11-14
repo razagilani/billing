@@ -108,11 +108,13 @@ class RateStructureDAO(object):
         # for the occurrence of each RSI binding closest to the target period
         scores = defaultdict(lambda: 0)
         total_weight = defaultdict(lambda: 0)
-        closest_occurrence = defaultdict(lambda: sys.maxint)
+        closest_occurrence = defaultdict(lambda: (sys.maxint, None))
         for binding in bindings:
             for uprs in all_uprss:
                 uprs_period = (uprs['_id']['effective'].date(),
                         uprs['_id']['expires'].date())
+
+                # skip uprs if its period is not completely filled in
                 if None in uprs_period:
                     print >> sys.stderr, 'UPRS has null dates:', uprs['_id']
                     continue
@@ -131,7 +133,7 @@ class RateStructureDAO(object):
 
                     # if this distance is closer than the closest occurence seen so
                     # far, put the RSI dictionary in closest_occurrence
-                    if distance < closest_occurrence[binding]:
+                    if distance < closest_occurrence[binding][0]:
                         closest_occurrence[binding] = (distance, rsi_dict)
                 except StopIteration:
                     # binding not present in UPRS: add 0 * weight to score
