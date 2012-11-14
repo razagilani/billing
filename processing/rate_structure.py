@@ -23,7 +23,7 @@ pp = pprint.PrettyPrinter(indent=1).pprint
 # minimum normlized score for an RSI to get included in a probable UPRS
 # (between 0 and 1)
 # TODO why does this have to be so low? it should be more like 0.5
-RSI_PRESENCE_THRESHOLD = 0.001
+RSI_PRESENCE_THRESHOLD = 0.5
 
 # controls how much more a probable UPRS is influenced by nearby UPRSs compared
 # to far ones. ("full width at half maximum" of gaussian weight function: an
@@ -161,8 +161,8 @@ class RateStructureDAO(object):
                 })
         return result
 
-
     def get_probable_uprs(self, reebill, service):
+        '''Returns a guess of the rate structure for the given reebill.'''
         utility = reebill.utility_name_for_service(service)
         rate_structure_name = reebill.utility_name_for_service(service)
         return {
