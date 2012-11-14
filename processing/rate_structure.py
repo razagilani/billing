@@ -18,7 +18,7 @@ from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError
 
 import pprint
-pp = pprint.PrettyPrinter(indent=1)
+pp = pprint.PrettyPrinter(indent=1).pprint
 
 # minimum normlized score for an RSI to get included in a probable UPRS
 # (between 0 and 1)
@@ -94,60 +94,73 @@ class RateStructureDAO(object):
         '''Returns list of RSI dictionaries: a guess of what RSIs will be in a
         new bill for the given rate structure during the given period. The list
         will be empty if no guess could be made.'''
-        # for every UPRS document that matches the utility and rate structure
-        # name, add its weighted distance from 'period' to the total score for
-        # each RSI, and keep track of the rate formula in the closest UPRS
-        # where each RSI appeared
-        scores = defaultdict(lambda: 0)
-        closest_rates_and_quantities = defaultdict(lambda: (float('inf'), 0))
-        for uprs in self.load_uprss(utility, rate_structure_name):
-            uprs_period = (uprs['_id']['effective'].date(),
-                    uprs['_id']['expires'].date())
-            if None in uprs_period:
-                print >> sys.stderr, 'UPRS has null dates:', uprs['_id']
-                continue
+        # load all UPRSs (to avoid repeated queries)
+        all_uprss = self.load_uprss(utility, rate_structure_name)
 
+        # find every RSI binding that ever existed for this rate structure
+        bindings = set()
+        for uprs in all_uprss:
             for rsi in uprs['rates']:
-                binding = rsi['rsi_binding']
-                if binding not in scores:
-                    # add weighted distance to RSI presence score
-                    distance = manhattan_distance(uprs_period, period)
-                    weight = gaussian(1, 0, RSI_FWHM)(distance)
-                    #print '%35s %10s %20s' % (binding, distance, weight)
+                bindings.add(rsi['rsi_binding'])
+        
+        # for each UPRS period, update the presence/absence score, total
+        # presence/absence weight (for normalization), and full RSI dictionary
+        # for the occurrence of each RSI binding closest to the target period
+        scores = defaultdict(lambda: 0)
+        total_weight = defaultdict(lambda: 0)
+        closest_occurrence = defaultdict(lambda: sys.maxint)
+        for binding in bindings:
+            for uprs in all_uprss:
+                uprs_period = (uprs['_id']['effective'].date(),
+                        uprs['_id']['expires'].date())
+                if None in uprs_period:
+                    print >> sys.stderr, 'UPRS has null dates:', uprs['_id']
+                    continue
+
+                # calculate weighted distance of this UPRS period from the
+                # target period
+                distance = manhattan_distance(uprs_period, period)
+                weight = gaussian(1, 0, RSI_FWHM)(distance)
+
+                # update score and total weight for this binding
+                try:
+                    rsi_dict = next(rsi for rsi in uprs['rates'] if
+                            rsi['rsi_binding'] == binding)
+                    # binding present in UPRS: add 1 * weight to score
                     scores[binding] += weight
 
-                    # update rate and quantity of closest UPRS containing the binding
-                    if weight < closest_rates_and_quantities[binding][0]:
-                        rsi_dict = next(rsi for rsi in uprs['rates']
-                                if rsi['rsi_binding'] == binding)
-                        closest_rates_and_quantities[binding] = (weight,
-                                rsi_dict['rate'], rsi_dict['quantity'])
+                    # if this distance is closer than the closest occurence seen so
+                    # far, put the RSI dictionary in closest_occurrence
+                    if distance < closest_occurrence[binding]:
+                        closest_occurrence[binding] = (distance, rsi_dict)
+                except StopIteration:
+                    # binding not present in UPRS: add 0 * weight to score
+                    pass
+                # whether the binding was present or not, update total weight
+                total_weight[binding] += weight
 
-        # if every RSI got a score of 0, there's no way to make a guess: return
-        # an empty list. this should only happen if no bills have ever been
-        # created for this rate structure.
-        # TODO in the future we could make a guess based on other rate
-        # structures for the same utility and/or geographic region
-        total_weight = sum(scores.values())
-        if total_weight <= 0:
-           return []
 
-        # normalize the weight associated with each RSI binding, and include
-        # each binding whose normalized weight exceeds the threshold, with the
-        # rate and quantity formulas it had in the UPRS closest to 'period'
-        # where it appears.
-        rsis = []
+        # include in the result all RSI bindings whose normalized weight
+        # exceeds 'threshold', with the rate and quantity formulas it had in
+        # its closest occurrence.
+        result = []
         for binding, weight in scores.iteritems():
-            #print binding, weight / total_weight
-            if weight / total_weight >= threshold:
-                rsis.append({
+            print '%35s %.02f %d' % (binding, weight, 100 * weight /
+                    total_weight[binding])
+
+            # note that total_weight[binding] will never be 0 because it must
+            # have occurred somewhere in order to occur in 'scores'
+            normalized_weight = weight / total_weight[binding]
+            if normalized_weight >= threshold:
+                result.append({
                     'rsi_binding': binding,
-                    'rate': closest_rates_and_quantities[binding][1],
-                    'quantity': closest_rates_and_quantities[binding][2],
+                    'rate': closest_occurrence[binding][1]['rate'],
+                    'quantity': closest_occurrence[binding][1]['quantity'],
                     #'total': 0,
                     'uuid': uuid.uuid1(), # uuid1 is used in wsgi.py
                 })
-        return rsis
+        return result
+
 
     def get_probable_uprs(self, reebill, service):
         utility = reebill.utility_name_for_service(service)
@@ -292,11 +305,11 @@ class RateStructureDAO(object):
     def load_uprss(self, utility_name, rate_structure_name):
         '''Returns list of raw UPRS dictionaries with given utility and rate
         structure name.'''
-        return self.collection.find({
+        return list(self.collection.find({
             '_id.type': 'UPRS',
             '_id.utility_name': utility_name,
             '_id.rate_structure_name': rate_structure_name
-        })
+        }))
 
     def load_uprs(self, account, sequence, version, utility_name,
             rate_structure_name):
@@ -841,6 +854,7 @@ if __name__ == '__main__':
         'host': 'localhost',
         'port': 27017
     })
+    from pprint import PrettyPrinter
     probable_uprs = dao._get_probable_rsis('washgas', 'DC Non Residential Non Heat', (date(2012,10,1), date(2012,11,1)))
-    print probable_uprs
+    PrettyPrinter().pprint(probable_uprs)
 
