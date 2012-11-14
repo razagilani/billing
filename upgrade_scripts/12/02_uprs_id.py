@@ -13,6 +13,11 @@ for reebill in db.reebills.find():
     # get utility bill
     utilbill = db.utilbills.find_one({'_id': reebill['utilbills'][0]['id']})
 
+    # skip this reebill if utilbill periods are not filled in
+    # (note that null as value in a mongo query always matches)
+    if utilbill['start'] is None or utilbill['end'] is None:
+        continue
+
     # get CPRS
     cprs_query = {
         '_id.type': 'CPRS',
