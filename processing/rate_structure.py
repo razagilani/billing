@@ -111,8 +111,12 @@ class RateStructureDAO(object):
         closest_occurrence = defaultdict(lambda: (sys.maxint, None))
         for binding in bindings:
             for uprs in all_uprss:
-                uprs_period = (uprs['_id']['effective'].date(),
-                        uprs['_id']['expires'].date())
+                try:
+                    uprs_period = (uprs['_id']['effective'].date(),
+                            uprs['_id']['expires'].date())
+                except KeyError:
+                    print >> sys.stderr, 'malformed UPRS id:', uprs['_id']
+                    continue
 
                 # skip uprs if its period is not completely filled in
                 if None in uprs_period:
@@ -154,10 +158,17 @@ class RateStructureDAO(object):
             # have occurred somewhere in order to occur in 'scores'
             normalized_weight = weight / total_weight[binding]
             if normalized_weight >= threshold:
+                rsi_dict = closest_occurrence[binding][1]
+                rate, quantity = 0, 0
+                try:
+                    rate = rsi_dict['rate']
+                    quantity = closest_occurrence[binding][1]['quantity']
+                except KeyError:
+                    print >> sys.stderr, 'malformed RSI: %' % rsi_dict
                 result.append({
                     'rsi_binding': binding,
-                    'rate': closest_occurrence[binding][1]['rate'],
-                    'quantity': closest_occurrence[binding][1]['quantity'],
+                    'rate': rate,
+                    'quantity': quantity,
                     #'total': 0,
                     'uuid': uuid.uuid1(), # uuid1 is used in wsgi.py
                 })
