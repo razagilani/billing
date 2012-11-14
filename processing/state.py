@@ -220,6 +220,19 @@ class StateDB:
             utilbill.reebill = reebill
             utilbill.processed = True
 
+    def _attach_utilbills(self, session, account, sequence, utilbill_ids):
+        customer = session.query(Customer).filter(Customer.account==account).one()
+        reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
+                .filter(ReeBill.sequence==sequence).one()
+
+        utilbills = session.query(UtilBill)\
+                .filter(UtilBill.customer==customer)\
+                .filter(UtilBill.id in utilbill_ids).all()
+
+        for utilbill in non_suspended_utilbills:
+            utilbill.reebill = reebill
+            utilbill.processed = True
+
     def is_attached(self, session, account, sequence, nonexistent=None):
         '''Returns True iff the given reebill has utility bills attached to it
         in MySQL. If 'nonexistent' is given, that value will be returned if the
@@ -541,6 +554,34 @@ class StateDB:
             return query[start:], query.count()
         # SQLAlchemy does SQL 'limit' with Python list slicing
         return query[start:start + limit], query.count()
+
+    def last_attached_utilbills(self, session, account):
+        # get customer id from account number
+        customer = session.query(Customer).filter(Customer.account==account) \
+                .one()
+        inner_query = session.query(UtilBill).with_lockmode('read')\
+                .filter(UtilBill.rebill_id is not None, UtilBill.customer_id == customer.id)\
+                .order_by(desc(UtilBill.period_end)).subquery()
+        query = session.query(inner_query).group_by(UtilBill.service)
+
+        result = {}
+        for ub in query:
+            result[ub['service']] = ub
+        return result
+
+    def first_unattached_utilbills(self, session, account):
+        # get customer id from account number
+        customer = session.query(Customer).filter(Customer.account==account) \
+                .one()
+        inner_query = session.query(UtilBill).with_lockmode('read')\
+                .filter(UtilBill.rebill_id is None, UtilBill.customer_id == customer.id)\
+                .order_by(asc(UtilBill.period_start))
+        query = session.query(inner_query).group_by(UtilBill.service)
+
+        result = {}
+        for ub in query:
+            result[ub['service']] = ub
+        return result
 
     def record_utilbill_in_database(self, session, account, service,
             begin_date, end_date, total_charges, date_received, state=UtilBill.Complete):

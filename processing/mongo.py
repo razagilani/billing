@@ -142,13 +142,13 @@ class MongoReebill(object):
         __init__, called by Process.roll_bill). TODO remove this.'''
         # set start date of each utility bill in this reebill to the end date
         # of the previous utility bill for that service
-        for service in self.services:
-            prev_start, prev_end = self.utilbill_period_for_service(service)
-            self.set_utilbill_period_for_service(service, (prev_end, None))
+        #for service in self.services:
+        #    prev_start, prev_end = self.utilbill_period_for_service(service)
+        #    self.set_utilbill_period_for_service(service, (prev_end, None))
 
         # process rebill
-        self.period_begin = self.period_end
-        self.period_end = None
+        #self.period_begin = self.period_end
+        #self.period_end = None
         self.total_adjustment = Decimal("0.00")
         self.hypothetical_total = Decimal("0.00")
         self.actual_total = Decimal("0.00")

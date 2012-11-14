@@ -315,6 +315,25 @@ class Process(object):
                 reebill.account):
             raise Exception("Not the last sequence")
 
+        last_attached = self.state_db.last_attached_utilbills(session, reebill.account)
+        first_unattached = self.state_db.first_unattached_utilbills(session, reebill.account)
+        next_utilbills = {}
+
+        for service in reebill.services:
+            if service in last_attached and service in first_unattached:
+                if first_unattached[service]['period_start'] - last_attached[service]['period_end'] >= timedelta(days=1):
+                    raise Exception("Gap exists after last attached %s utility bill" % service)
+                else if first_unattached[service]['state'] > 1:
+                    raise Exception("Next %s utility bill is not confirmed or estimated by Skyline" % service)
+                else:
+                    next_utilbills[service] = first_unattached[service]['id']
+            else:
+                raise Exception("Do not have any unassigned utility bills for %s service" % service)
+
+        utilbill_ids = []
+        for next_id in next_utilbills.itervalues():
+            utilbill_ids.append(next_id)
+
         # duplicate the CPRS for each service
         # TODO: 22597151 refactor
         for service in reebill.services:
@@ -339,10 +358,10 @@ class Process(object):
         new_reebill.new_utilbill_ids()
         new_reebill.clear()
 
-        new_period_end, _ = state.guess_utilbills_and_end_date(session,
-                reebill.account, reebill.period_end)
+        #new_period_end, _ = state.guess_utilbills_and_end_date(session,
+        #        reebill.account, reebill.period_end)
 
-        new_reebill.period_end = new_period_end
+        #new_reebill.period_end = new_period_end
 
         # set discount rate & late charge rate to the instananeous value from MySQL
         # NOTE suspended_services list is carried over automatically
@@ -355,6 +374,7 @@ class Process(object):
 
         # create reebill row in state database
         self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
+        self.state_db._attach_utilbills(session, new_reebill.account, new_reebill.sequence, utilbill_ids)
         
         return new_reebill
 
