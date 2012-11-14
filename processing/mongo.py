@@ -1264,7 +1264,11 @@ class ReebillDAO:
                 query.update({'_id.version': version})
             elif version == 'any':
                 pass
-            # TODO max version
+            elif version == 'max':
+                # TODO max version (it's harder than it looks because you don't
+                # have the account or sequence of a specific reebill to query
+                # MySQL for here)
+                raise NotImplementedError
             else:
                 raise ValueError('Unknown version specifier "%s"' % version)
             if not include_0:
