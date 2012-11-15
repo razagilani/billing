@@ -13,7 +13,9 @@ from sqlalchemy.orm import mapper, sessionmaker, scoped_session
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
-from sqlalchemy.sql.expression import desc, asc
+from sqlalchemy.sql.expression import desc, asc, label
+from sqlalchemy.sql.functions import max as sql_max
+from sqlalchemy.sql.functions import min as sql_min
 from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, StatusUnbilled
 sys.stdout = sys.stderr
 
@@ -221,15 +223,15 @@ class StateDB:
             utilbill.processed = True
 
     def _attach_utilbills(self, session, account, sequence, utilbill_ids):
-        customer = session.query(Customer).filter(Customer.account==account).one()
-        reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
-                .filter(ReeBill.sequence==sequence).one()
+        customer = session.query(Customer).filter(Customer.account == account).one()
+        reebill = session.query(ReeBill).filter(ReeBill.customer == customer)\
+                .filter(ReeBill.sequence == sequence).one()
 
         utilbills = session.query(UtilBill)\
-                .filter(UtilBill.customer==customer)\
-                .filter(UtilBill.id in utilbill_ids).all()
+                .filter(UtilBill.customer == customer)\
+                .filter(UtilBill.id.in_(utilbill_ids))
 
-        for utilbill in non_suspended_utilbills:
+        for utilbill in utilbills:
             utilbill.reebill = reebill
             utilbill.processed = True
 
@@ -557,31 +559,41 @@ class StateDB:
 
     def last_attached_utilbills(self, session, account):
         # get customer id from account number
-        customer = session.query(Customer).filter(Customer.account==account) \
+        customer = session.query(Customer).filter(Customer.account==account)\
                 .one()
-        inner_query = session.query(UtilBill).with_lockmode('read')\
-                .filter(UtilBill.rebill_id is not None, UtilBill.customer_id == customer.id)\
-                .order_by(desc(UtilBill.period_end)).subquery()
-        query = session.query(inner_query).group_by(UtilBill.service)
+        inner_query = session.query(sql_max(UtilBill.period_end).label('max_period')).with_lockmode('read')\
+                .filter(UtilBill.rebill_id != None, UtilBill.customer_id == customer.id)\
+                .group_by(UtilBill.service).subquery()
+        query = session.query(UtilBill).filter(UtilBill.period_end == inner_query.c.max_period)
 
-        result = {}
-        for ub in query:
-            result[ub['service']] = ub
-        return result
+        return query
 
     def first_unattached_utilbills(self, session, account):
         # get customer id from account number
-        customer = session.query(Customer).filter(Customer.account==account) \
+        customer = session.query(Customer).filter(Customer.account==account)\
                 .one()
-        inner_query = session.query(UtilBill).with_lockmode('read')\
-                .filter(UtilBill.rebill_id is None, UtilBill.customer_id == customer.id)\
-                .order_by(asc(UtilBill.period_start))
-        query = session.query(inner_query).group_by(UtilBill.service)
+        inner_query = session.query(sql_min(UtilBill.period_start).label('min_period')).with_lockmode('read')\
+                .filter(UtilBill.rebill_id == None, UtilBill.customer_id == customer.id)\
+                .group_by(UtilBill.service).subquery()
+        query = session.query(UtilBill).filter(UtilBill.period_start == inner_query.c.min_period)
 
-        result = {}
+        return query
+
+    def choose_next_utilbills(self, session, account):
+        customer = session.query(Customer).filter(Customer.account==account).one()
+        all_utilbills = session.query(UtilBill).order_by(asc(UtilBill.period_start))
+
+        last_attached = {}
+        first_unattached = {}
+        
         for ub in query:
-            result[ub['service']] = ub
-        return result
+            if ub.rebill_id is None:
+                if query.count() == 1:
+                    
+                if ub.service in first_unattached:
+                    if ub.period_start > first_unattached[ub.service].period_start:
+                        last_attached[ub.service] = ub
+
 
     def record_utilbill_in_database(self, session, account, service,
             begin_date, end_date, total_charges, date_received, state=UtilBill.Complete):
