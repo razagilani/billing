@@ -315,18 +315,22 @@ class Process(object):
                 reebill.account):
             raise Exception("Not the last sequence")
 
+        self.state_db.choose_next_utilbills(session, reebill.account)
+
         last_attached = self.state_db.last_attached_utilbills(session, reebill.account)
         first_unattached = self.state_db.first_unattached_utilbills(session, reebill.account)
         next_utilbills = {}
 
+        raise Exception(last_attached.all() + first_unattached.all())
+
         for service in reebill.services:
             if service in last_attached and service in first_unattached:
-                if first_unattached[service]['period_start'] - last_attached[service]['period_end'] >= timedelta(days=1):
+                if first_unattached[service].period_start - last_attached[service].period_end >= timedelta(days=1):
                     raise Exception("Gap exists after last attached %s utility bill" % service)
-                else if first_unattached[service]['state'] > 1:
+                elif first_unattached[service].state > 1:
                     raise Exception("Next %s utility bill is not confirmed or estimated by Skyline" % service)
                 else:
-                    next_utilbills[service] = first_unattached[service]['id']
+                    next_utilbills[service] = first_unattached[service].id
             else:
                 raise Exception("Do not have any unassigned utility bills for %s service" % service)
 
