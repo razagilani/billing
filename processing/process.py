@@ -315,24 +315,47 @@ class Process(object):
                 reebill.account):
             raise Exception("Not the last sequence")
 
-        self.state_db.choose_next_utilbills(session, reebill.account)
-
-        last_attached = self.state_db.last_attached_utilbills(session, reebill.account)
-        first_unattached = self.state_db.first_unattached_utilbills(session, reebill.account)
-        next_utilbills = {}
-
-        raise Exception(last_attached.all() + first_unattached.all())
-
-        for service in reebill.services:
-            if service in last_attached and service in first_unattached:
-                if first_unattached[service].period_start - last_attached[service].period_end >= timedelta(days=1):
-                    raise Exception("Gap exists after last attached %s utility bill" % service)
-                elif first_unattached[service].state > 1:
-                    raise Exception("Next %s utility bill is not confirmed or estimated by Skyline" % service)
-                else:
-                    next_utilbills[service] = first_unattached[service].id
+        utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
+        ids_to_attach = []
+        att = 'last_attached'
+        un = 'first_unattached'
+        for s in reebill.services:
+            if utilbills[s][un] is not None and utilbills[s][att] is None:
+                # This is the first utility bill ever for an account. No attached reebills yet.
+                ids_to_attach.append(utilbills[s]['first_unattached'].id)
+            elif utilbills[s][un] is None and utilbills[s][att] is None:
+                # No utility bills found? Raise exception.
+                raise Exception("No %s utility bills found to roll to" % s)
+            elif utilbills[s][un] is None and utilbills[s][att] is not None:
+                # No utilbills since last reebill, so nothing to base the reebill on
+                raise Exception("No %s utility bills since last reebill" % s)
+            elif utilbills[s][un].period_start - utilbills[s][att].period_end > timedelta(days=1):
+                # Utilbills found but there's a gap before the best-fitting utilbill
+                time_gap = str(utilbills[s][un].period_start - utilbills[s][att].period_end)
+                time_gap = time_gap[:time_gap.find(',')] # Isolate the 'X days' part of timedelta.__str__
+                raise Exception("Gap of %s since last processed %s utility bill" % (time_gap, s))
+            elif utilbills[s][un].state < 2:
+                # Contiguous utilbill but it's too hypothetical to create a reebill from it
+                raise Exception("The next %s utility bill has not been properly estimated or received" % s)
             else:
-                raise Exception("Do not have any unassigned utility bills for %s service" % service)
+                # Unattached utilbill was found to be contiguous to an attached utilbill. Hooray?
+                ids_to_attach.append(utilbills[s]['first_unattached'].id)
+
+
+        #last_attached = self.state_db.last_attached_utilbills(session, reebill.account)
+        #first_unattached = self.state_db.first_unattached_utilbills(session, reebill.account)
+        #next_utilbills = {}
+
+        #for service in reebill.services:
+        #    if service in last_attached and service in first_unattached:
+        #        if first_unattached[service].period_start - last_attached[service].period_end >= timedelta(days=1):
+        #            raise Exception("Gap exists after last attached %s utility bill" % service)
+        #        elif first_unattached[service].state > 1:
+        #            raise Exception("Next %s utility bill is not confirmed or estimated by Skyline" % service)
+        #        else:
+        #            next_utilbills[service] = first_unattached[service].id
+        #    else:
+        #        raise Exception("Do not have any unassigned utility bills for %s service" % service)
 
         utilbill_ids = []
         for next_id in next_utilbills.itervalues():
