@@ -3,6 +3,7 @@
 Utility functions to interact with state database
 """
 import os, sys
+import itertools
 import datetime
 from datetime import timedelta, datetime, date
 from decimal import Decimal
@@ -579,21 +580,37 @@ class StateDB:
 
         return query
 
-    def choose_next_utilbills(self, session, account):
+    def choose_next_utilbills(self, session, account, services):
         customer = session.query(Customer).filter(Customer.account==account).one()
-        all_utilbills = session.query(UtilBill).order_by(asc(UtilBill.period_start))
+        all_utilbills = session.query(UtilBill).filter(UtilBill.customer_id==customer.id).order_by(asc(UtilBill.period_start))
 
+        # Grouped by service
+        grouped_utilbills = [(s, list(itertools.ifilter(lambda ub: ub.service==s.lower(), all_utilbills))) for s in services]
+        grouped_utilbills = dict(grouped_utilbills)
+        #print grouped_utilbills
         last_attached = {}
-        first_unattached = {}
-        
-        for ub in query:
-            if ub.rebill_id is None:
-                if query.count() == 1:
-                    
-                if ub.service in first_unattached:
-                    if ub.period_start > first_unattached[ub.service].period_start:
-                        last_attached[ub.service] = ub
+        next_utilbills = {}
 
+        for s in services:
+            for ub in grouped_utilbills[s]:
+                if ub.rebill_id is None:
+                    if len(grouped_utilbills[s]) == 1:
+                        next_utilbills[s] = ub # No utilbills have been issued for this service yet
+                    elif s in last_attached and s not in next_utilbills:
+                        next_utilbills[s] = ub # Utilbill after an attached one? Could be good
+                else:
+                    if s in next_utilbills:
+                        del next_utilbills[s] # Attached bill after unattached, so reset consideration of unattached
+                    last_attached[s] = ub
+
+        result = {}
+        for s, d in itertools.product(services, ('last_attached', 'first_unattached')):
+            result[s] = {d: None}
+
+        for s in services:
+            result[s]['last_attached'] = last_attached.get(s, None)
+            result[s]['first_unattached'] = next_utilbills.get(s, None)
+        return result
 
     def record_utilbill_in_database(self, session, account, service,
             begin_date, end_date, total_charges, date_received, state=UtilBill.Complete):
