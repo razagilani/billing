@@ -1162,8 +1162,8 @@ class ReebillDAO:
             utilbill_doc = self.utilbills_collection.find_one(query)
             if utilbill_doc == None:
                 raise NoSuchBillException(("No utility bill found for reebill "
-                        " %s-%s in %s: query was %s") % (
-                        reebill_doc['account'], reebill_doc['sequence'],
+                        " %s-%s-%s in %s: query was %s") % (
+                        reebill_doc['_id']['account'], reebill_doc['_id']['sequence'], reebill_doc['_id']['version'],
                         self.utilbills_collection, format_query(query)))
 
             # convert types
