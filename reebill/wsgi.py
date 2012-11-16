@@ -529,13 +529,24 @@ class BillToolBridge:
         cherrypy.session['user'] = user
 
         if rememberme == 'on':
-            # TODO need to encrypt or otherwise provide credentials and return them to client
+            # The user has elected to be remembered
+            # so create credentials based on a server secret, the user's IP address and username.
+            # Some other reasonably secret, ephemeral, information could also be included such as 
+            # current date.
             credentials = "%s-%s-%s" % (username, cherrypy.request.headers['Remote-Addr'], self.sessions_key)
             m = md5.new()
             m.update(credentials)
             digest = m.hexdigest()
+
+            # Set this token in the persistent user object
+            # then, if returned to the server it can be looked up in the user
+            # and the user can be automatically logged in.
+            # This giving the user who has just authenticated a credential that
+            # can be later used for automatic authentication.
             user.session_token = digest
             self.user_dao.save_user(user)
+
+            # this cookie has no expiration, so lasts as long as the browser is open
             cherrypy.response.cookie['username'] = user.username
             cherrypy.response.cookie['c'] = digest
 
