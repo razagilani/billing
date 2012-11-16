@@ -150,6 +150,7 @@ class MongoReebill(object):
         self.period_begin = self.period_end
         self.period_end = None
         self.total_adjustment = Decimal("0.00")
+        self.manual_adjustment = Decimal("0.00")
         self.hypothetical_total = Decimal("0.00")
         self.actual_total = Decimal("0.00")
         self.ree_value = Decimal("0.00")
@@ -411,6 +412,13 @@ class MongoReebill(object):
     @total_adjustment.setter
     def total_adjustment(self, value):
         self.reebill_dict['total_adjustment'] = value
+
+    @property
+    def manual_adjustment(self):
+        return self.reebill_dict['manual_adjustment']
+    @manual_adjustment.setter
+    def manual_adjustment(self, value):
+        self.reebill_dict['manual_adjustment'] = value
 
     @property
     def ree_charges(self):
