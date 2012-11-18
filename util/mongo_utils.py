@@ -1,10 +1,10 @@
 import datetime
 from datetime import date, time, datetime
 from decimal import Decimal
-from billing.mutable_named_tuple import MutableNamedTuple
+from billing.util.mutable_named_tuple import MutableNamedTuple
 from bson.objectid import ObjectId
-from billing.dictutils import deep_map
-from billing.dateutils import date_to_datetime, ISO_8601_DATETIME
+from billing.util.dictutils import deep_map
+from billing.util.dateutils import date_to_datetime, ISO_8601_DATETIME
 
 def python_convert(x):
     '''Strip out the MutableNamedTuples since they are no longer 
