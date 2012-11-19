@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="744.09448819"
+   height="1052.3622047"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.48.0 r9654"
+   sodipodi:docname="selectbill.svg">
+  <defs
+     id="defs4" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.49497475"
+     inkscape:cx="448.90858"
+     inkscape:cy="492.88279"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="1853"
+     inkscape:window-height="1170"
+     inkscape:window-x="0"
+     inkscape:window-y="1"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       style="fill:#7fbb59;stroke:none;stroke-width:6.77863121000000035;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;fill-opacity:1"
+       d="M 5.9895984,118.2717 462.98841,188.83813 c 0,0 87.25409,54.88458 122.93332,158.35379 35.67923,103.46921 -35.85101,154.71388 -27.55962,228.08141 8.29136,73.36753 79.47803,141.13287 79.47803,141.13287 l -496.73786,63.84583 c 0,0 -97.040438,-88.18683 -99.34757,-191.53747 C 39.447567,485.36393 112.96478,430.75896 95.659001,330.58513 78.353214,230.41131 5.9895984,118.2717 5.9895984,118.2717 z"
+       id="path2985"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cczzcczzc"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3791-6"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 160.68913,183.75487 1.72962,12.82594 c -5.14131,-3.02164 -9.92821,-5.39981 -14.36077,-7.13457 -4.43258,-1.73456 -8.63948,-2.86398 -12.62064,-3.38818 -6.9147,-0.91026 -12.07055,-0.22475 -15.46761,2.05647 -3.35517,2.28691 -4.68742,5.99116 -3.99673,11.11279 0.57936,4.29707 2.25457,7.71513 5.02561,10.25421 2.80706,2.50129 7.77964,4.8826 14.91773,7.14392 l 7.88848,2.63729 c 9.72269,3.11334 17.14503,7.33066 22.26716,12.652 5.15806,5.28354 8.26968,11.87508 9.33503,19.77459 1.27003,9.41875 -0.82642,16.15595 -6.28925,20.21171 -5.42111,4.06127 -14.01955,5.31674 -25.79546,3.76641 -4.44219,-0.58484 -9.24793,-1.72911 -14.41729,-3.43287 -5.12745,-1.69824 -10.51077,-3.9205 -16.15001,-6.66668 l -1.82608,-13.5421 c 5.55846,3.67353 10.9126,6.59537 16.06252,8.76552 5.14988,2.17017 10.11356,3.56975 14.89102,4.1987 7.2499,0.9545 12.64551,0.2153 16.18681,-2.21758 3.54122,-2.43286 4.94315,-6.38376 4.20575,-11.85269 -0.64389,-4.77443 -2.57207,-8.69477 -5.78455,-11.76101 -3.17078,-3.06069 -8.07367,-5.68863 -14.70877,-7.88385 l -7.94256,-2.58048 c -9.73453,-3.20004 -16.99891,-7.16208 -21.79344,-11.88617 -4.79453,-4.72398 -7.69222,-10.79705 -8.69302,-18.21921 -1.1589,-8.59395 0.84061,-14.98156 5.9985,-19.16283 5.19973,-4.17559 12.93326,-5.58753 23.20063,-4.2359 4.40019,0.5794 8.93988,1.58206 13.61898,3.00802 4.67907,1.42616 9.51852,3.27833 14.51834,5.55655"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3793-7"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 253.2228,249.52762 0.79016,5.85956 -53.18032,-7.00131 c 1.61492,8.313 4.85233,14.92111 9.71219,19.82425 4.89581,4.86527 11.17827,7.80275 18.84735,8.81239 4.44212,0.58482 8.66149,0.58608 12.65821,0.004 4.03851,-0.57678 7.95907,-1.72334 11.76168,-3.43968 l 1.52759,11.32846 c -3.90308,1.27679 -7.9693,2.10572 -12.19882,2.48685 -4.2297,0.38107 -8.58648,0.27646 -13.07048,-0.31387 -11.23121,-1.4786 -20.59307,-6.03654 -28.08556,-13.67379 -7.45059,-7.6317 -11.95429,-17.22033 -13.51118,-28.76586 -1.60949,-11.93609 0.21568,-20.98991 5.47564,-27.16151 5.29595,-6.20935 13.2243,-8.61886 23.78491,-7.22861 9.47102,1.24695 17.3787,5.40027 23.72314,12.45996 6.38038,7.02194 10.30225,15.9584 11.76549,26.80939 m -12.04049,-5.03849 c -0.9678,-6.56505 -3.45402,-12.02971 -7.45899,-16.39404 -3.96319,-4.35873 -8.79445,-6.9133 -14.4938,-7.66369 -6.45375,-0.84961 -11.37471,0.35707 -14.76284,3.62011 -3.34627,3.26865 -4.85043,8.29323 -4.51228,15.07382 l 41.22792,5.36384"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3795-7"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 263.86634,190.17596 11.56643,1.52276 13.66077,101.30533 -11.5664,-1.52277 -13.6608,-101.30532"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3797-4"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 368.13249,264.65575 0.79014,5.85958 -53.18031,-7.00133 c 1.61495,8.31304 4.85236,14.92111 9.71221,19.82426 4.8958,4.86528 11.17827,7.80273 18.84733,8.81238 4.44215,0.58483 8.66151,0.5861 12.65822,0.004 4.03851,-0.5768 7.95907,-1.72334 11.76169,-3.43968 l 1.5276,11.32848 c -3.90307,1.27678 -7.96934,2.10571 -12.19885,2.48682 -4.22968,0.38108 -8.58647,0.27647 -13.07049,-0.31386 -11.23118,-1.4786 -20.59306,-6.03653 -28.08551,-13.67379 -7.45059,-7.63171 -11.95432,-17.22033 -13.51119,-28.76586 -1.60951,-11.93608 0.21567,-20.9899 5.47566,-27.16148 5.29593,-6.20937 13.22424,-8.6189 23.78489,-7.22864 9.47101,1.24696 17.3787,5.40028 23.72315,12.45998 6.38038,7.02193 10.30223,15.95837 11.76546,26.80935 M 356.092,259.61728 c -0.96779,-6.56504 -3.45399,-12.0297 -7.45894,-16.39404 -3.96325,-4.35874 -8.79453,-6.9133 -14.49384,-7.66368 -6.45376,-0.8496 -11.37473,0.35707 -14.76288,3.62011 -3.34624,3.26863 -4.85037,8.29322 -4.51226,15.0738 l 41.2279,5.36385"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3799-9"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 433.64728,243.16029 1.51007,11.19828 c -3.52052,-2.29665 -6.9975,-4.11869 -10.43101,-5.46609 -3.39759,-1.38519 -6.77263,-2.29849 -10.12519,-2.73991 -7.50144,-0.98753 -12.99292,0.71964 -16.47451,5.12144 -3.48746,4.35849 -4.63118,10.98667 -3.43134,19.88448 1.19981,8.89786 4.20779,16.09395 9.02386,21.5882 4.81014,5.45087 10.96592,8.67011 18.46735,9.65767 3.35256,0.44138 6.60176,0.42149 9.74766,-0.0597 3.18183,-0.51907 6.28138,-1.49658 9.29853,-2.93262 l 1.49248,11.06805 c -3.01621,1.13773 -6.21077,1.86827 -9.58367,2.19164 -3.33106,0.32882 -6.94526,0.23668 -10.84258,-0.27636 -10.60256,-1.39586 -19.49124,-5.95546 -26.66601,-13.67877 -7.17477,-7.72331 -11.55236,-17.44454 -13.13263,-29.16367 -1.60371,-11.89271 0.27791,-20.83251 5.64523,-26.81943 5.40905,-5.98128 13.60342,-8.24921 24.58312,-6.80378 3.5621,0.46902 7.09306,1.31761 10.59299,2.5457 3.49394,1.18482 6.93581,2.74644 10.32565,4.68481"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3801-0"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 462.1598,223.82794 2.79186,20.70379 23.82425,3.13654 1.25551,9.31019 -23.82428,-3.13652 5.33784,39.58459 c 0.80184,5.94637 2.09217,9.86801 3.87106,11.7649 1.82067,1.90242 5.14069,3.17086 9.96003,3.80533 l 11.88073,1.56414 1.35209,10.02636 -11.88071,-1.56413 c -8.92625,-1.17515 -15.31789,-3.70066 -19.17471,-7.57647 -3.86272,-3.91922 -6.40863,-10.43627 -7.63775,-19.55118 l -5.33783,-39.58458 -8.48622,-1.11723 -1.2555,-9.31019 8.48623,1.11725 -2.79185,-20.70381 11.62925,1.53102"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3803-0"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 153.24153,395.65627 13.56418,0.35518 -8.89159,60.41315 c -1.56855,10.65725 -0.76147,18.39008 2.42125,23.19849 3.18925,4.76404 9.12707,7.25977 17.81355,7.48723 8.64177,0.2263 15.24357,-1.9411 19.80533,-6.50215 4.56816,-4.60545 7.63653,-12.23678 9.20516,-22.89403 l 8.89161,-60.41315 13.56416,0.35518 -9.13668,62.07835 c -1.90849,12.96632 -6.57914,22.67307 -14.01194,29.12028 -7.38847,6.44838 -17.3636,9.50811 -29.92541,9.17917 -12.60646,-0.33012 -21.65239,-3.88792 -27.13767,-10.6734 -5.44079,-6.78433 -7.207,-16.65964 -5.29863,-29.62596 l 9.13668,-62.07834"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3805-2"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 266.09348,402.28891 -3.11747,21.18126 25.32425,0.66313 -1.40186,9.52491 -25.32425,-0.66315 -5.9604,40.49747 c -0.89541,6.08351 -0.64645,10.01274 0.7469,11.78769 1.43781,1.77614 4.71812,2.73126 9.84093,2.86541 l 12.62873,0.3307 -1.50974,10.25758 -12.62872,-0.33071 c -9.48825,-0.24846 -15.77833,-2.17392 -18.87019,-5.77642 -3.08536,-3.64687 -3.94182,-10.13286 -2.56936,-19.45794 l 5.96044,-40.49746 -9.02052,-0.23622 1.40187,-9.52491 9.02051,0.23622 3.11747,-21.18125 12.36142,0.32369"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3807-7"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 304.53719,424.55847 12.29461,0.32195 -10.97971,74.60061 -12.29461,-0.32196 10.97971,-74.6006 m 4.27422,-29.04094 12.29464,0.32194 -2.28419,15.5196 -12.2946,-0.32196 2.28415,-15.51958"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3809-1"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 346.76436,396.51137 12.29462,0.32196 -15.25395,103.64153 -12.29461,-0.32196 15.25394,-103.64153"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3811-6"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 380.44308,426.54613 12.29461,0.32195 -10.97971,74.60061 -12.29461,-0.32196 10.97971,-74.6006 m 4.27423,-29.04092 12.29462,0.32194 -2.28418,15.5196 -12.29458,-0.32196 2.28414,-15.51958"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3813-2"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 433.67447,406.67718 -3.11748,21.18125 25.32423,0.66314 -1.40187,9.52489 -25.32423,-0.66315 -5.9604,40.49748 c -0.8954,6.08351 -0.64646,10.01273 0.74691,11.78769 1.43785,1.77613 4.71813,2.73127 9.84091,2.86539 l 12.6287,0.33072 -1.50968,10.25755 -12.62872,-0.33069 c -9.48824,-0.24846 -15.7783,-2.17391 -18.8702,-5.7764 -3.08535,-3.64688 -3.94183,-10.13288 -2.56934,-19.45795 l 5.96044,-40.49746 -9.02052,-0.23621 1.40188,-9.5249 9.0205,0.23621 3.11745,-21.18126 12.36145,0.3237"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3815-0"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 491.25635,511.2899 c -4.78172,8.79002 -9.02007,14.49623 -12.71508,17.11865 -3.69508,2.62237 -8.30447,3.86125 -13.82809,3.71664 l -9.82233,-0.25722 1.50971,-10.25758 7.21639,0.18896 c 3.38548,0.0887 6.13133,-0.64182 8.23753,-2.1914 2.10616,-1.54962 4.73307,-5.26981 7.88067,-11.16058 l 3.02851,-5.5373 -19.46558,-74.19429 13.02962,0.3412 14.79881,58.96072 31.9742,-57.73592 13.02961,0.34118 -44.87397,80.66694"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3817-4"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 264.76469,678.0192 11.44521,33.41394 20.34277,-2.859 c 6.82273,-0.95885 11.39927,-3.03196 13.72962,-6.21932 2.35814,-3.23395 2.5678,-7.68123 0.62892,-13.34187 -1.95291,-5.7013 -5.04305,-9.66348 -9.27039,-11.88657 -4.1995,-2.26961 -9.71063,-2.92501 -16.53335,-1.96617 l -20.34278,2.85899 m -12.84711,-37.50666 9.41563,27.48859 18.77312,-2.63838 c 6.19489,-0.87058 10.41562,-2.63758 12.66218,-5.301 2.27439,-2.70991 2.61651,-6.38615 1.02636,-11.02875 -1.57628,-4.60171 -4.28278,-7.82814 -8.11949,-9.67934 -3.79489,-1.85689 -8.78978,-2.35006 -14.98469,-1.47951 l -18.77311,2.63839 m -16.15613,-8.3578 32.39774,-4.5532 c 9.66903,-1.35879 17.78924,-0.45119 24.36055,2.72287 6.57126,3.17425 11.09138,8.36539 13.56045,15.57342 1.91095,5.57926 2.09197,10.20639 0.54307,13.88146 -1.54909,3.67517 -4.77924,6.2847 -9.69056,7.82858 6.68311,0.42669 12.45223,2.47574 17.3074,6.14714 4.88298,3.62489 8.38462,8.53233 10.50494,14.72229 2.78976,8.14482 2.09863,14.83665 -2.07352,20.07559 -4.17226,5.23897 -11.51146,8.59671 -22.01764,10.07326 l -33.65345,4.72968 -31.23895,-91.20109"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3819-8"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 331.2156,642.62139 11.55269,-1.62363 23.43445,68.41609 -11.55269,1.62363 -23.43445,-68.41609 m -9.12269,-26.63341 11.55269,-1.62361 4.8752,14.23298 -11.55268,1.62362 -4.87521,-14.23299"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3821-2"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 357.75551,610.97593 11.55268,-1.62362 32.55715,95.04949 -11.55267,1.62361 -32.55716,-95.04948"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3823-2"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 393.41814,605.96389 11.55267,-1.62363 32.55714,95.04948 -11.55268,1.62363 -32.55713,-95.04948"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_utilbill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       style="fill:#189949;stroke:none;stroke-width:6.77863121000000035;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;fill-opacity:1"
+       d="m 718.36044,25.657727 456.99886,70.56643 c 0,0 87.254,54.884593 122.9332,158.353803 35.6793,103.4692 -35.851,154.7139 -27.5596,228.0814 8.2914,73.3675 79.4781,141.1329 79.4781,141.1329 l -496.73787,63.8458 c 0,0 -97.04044,-88.1868 -99.34757,-191.5375 C 751.81841,392.74996 825.33563,338.145 808.02985,237.97117 790.72406,137.79735 718.36044,25.657727 718.36044,25.657727 z"
+       id="path2985-4"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cczzcczzc"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_reebill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3791-6-0"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 873.05998,91.140897 1.72962,12.825943 c -5.14131,-3.02164 -9.92821,-5.399813 -14.36077,-7.134573 -4.43258,-1.73456 -8.63948,-2.86398 -12.62064,-3.38818 -6.9147,-0.91026 -12.07055,-0.22475 -15.46761,2.05647 -3.35517,2.28691 -4.68742,5.991163 -3.99673,11.112793 0.57936,4.29707 2.25457,7.71513 5.02561,10.25421 2.80706,2.50129 7.77964,4.8826 14.91773,7.14393 l 7.88848,2.63729 c 9.72269,3.11334 17.14503,7.33066 22.26716,12.652 5.15806,5.28354 8.26968,11.87508 9.33503,19.77459 1.27003,9.41875 -0.82642,16.15595 -6.28925,20.21171 -5.42111,4.06127 -14.01955,5.31674 -25.79546,3.76641 -4.44219,-0.58484 -9.24793,-1.72911 -14.41729,-3.43287 -5.12745,-1.69824 -10.51077,-3.9205 -16.15001,-6.66668 l -1.82608,-13.5421 c 5.55846,3.67353 10.9126,6.59537 16.06252,8.76552 5.14988,2.17017 10.11356,3.56975 14.89102,4.1987 7.2499,0.9545 12.64551,0.2153 16.18681,-2.21758 3.54122,-2.43286 4.94315,-6.38376 4.20575,-11.85269 -0.64389,-4.77443 -2.57207,-8.69477 -5.78455,-11.76101 -3.17078,-3.06069 -8.07367,-5.68863 -14.70877,-7.88385 l -7.94256,-2.58048 c -9.73453,-3.20004 -16.99891,-7.16208 -21.79344,-11.88617 -4.79453,-4.72399 -7.69222,-10.79706 -8.69302,-18.21922 -1.1589,-8.593953 0.84061,-14.981563 5.9985,-19.162833 5.19973,-4.17559 12.93326,-5.58753 23.20063,-4.2359 4.40019,0.5794 8.93988,1.58206 13.61898,3.00802 4.67907,1.42616 9.51852,3.27833 14.51834,5.55655"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_reebill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3793-7-1"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 965.59365,156.91366 0.79016,5.85956 -53.18032,-7.00131 c 1.61492,8.313 4.85233,14.92111 9.71219,19.82425 4.89581,4.86527 11.17827,7.80275 18.84735,8.81239 4.44212,0.58482 8.66149,0.58608 12.65821,0.004 4.03851,-0.57678 7.95907,-1.72334 11.76168,-3.43968 l 1.52759,11.32846 c -3.90308,1.27679 -7.9693,2.10572 -12.19882,2.48685 -4.2297,0.38107 -8.58648,0.27646 -13.07048,-0.31387 -11.23121,-1.4786 -20.59307,-6.03654 -28.08556,-13.67379 -7.45059,-7.6317 -11.95429,-17.22033 -13.51118,-28.76586 -1.60949,-11.93609 0.21568,-20.98991 5.47564,-27.16151 5.29595,-6.20936 13.2243,-8.61887 23.78491,-7.22862 9.47102,1.24695 17.3787,5.40028 23.72314,12.45997 6.38038,7.02194 10.30225,15.9584 11.76549,26.80939 m -12.04049,-5.03849 c -0.9678,-6.56505 -3.45402,-12.02971 -7.45899,-16.39404 -3.96319,-4.35873 -8.79445,-6.9133 -14.4938,-7.66369 -6.45375,-0.84961 -11.37471,0.35707 -14.76284,3.62011 -3.34627,3.26865 -4.85043,8.29323 -4.51228,15.07382 l 41.22792,5.36384"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_reebill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3795-7-0"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 976.23719,97.561987 11.56643,1.52276 13.66078,101.305343 -11.56641,-1.52277 -13.6608,-101.305333"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_reebill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3797-4-0"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 1080.5033,172.04179 0.7902,5.85958 -53.1803,-7.00133 c 1.6149,8.31304 4.8523,14.92111 9.7122,19.82426 4.8958,4.86528 11.1782,7.80273 18.8473,8.81238 4.4422,0.58483 8.6615,0.5861 12.6582,0.004 4.0385,-0.5768 7.9591,-1.72334 11.7617,-3.43968 l 1.5276,11.32848 c -3.9031,1.27678 -7.9693,2.10571 -12.1988,2.48682 -4.2297,0.38108 -8.5865,0.27647 -13.0705,-0.31386 -11.2312,-1.4786 -20.5931,-6.03653 -28.0855,-13.67379 -7.4506,-7.63171 -11.9544,-17.22033 -13.5112,-28.76586 -1.6095,-11.93608 0.2156,-20.9899 5.4756,-27.16148 5.296,-6.20937 13.2243,-8.6189 23.7849,-7.22864 9.471,1.24696 17.3787,5.40028 23.7232,12.45998 6.3804,7.02193 10.3022,15.95837 11.7654,26.80935 m -12.0405,-5.03868 c -0.9677,-6.56504 -3.4539,-12.0297 -7.4589,-16.39404 -3.9632,-4.35874 -8.7945,-6.9133 -14.4938,-7.66368 -6.4538,-0.8496 -11.3748,0.35707 -14.7629,3.62011 -3.3463,3.26863 -4.8504,8.29322 -4.5123,15.0738 l 41.2279,5.36385"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_reebill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3799-9-1"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 1146.0181,150.54633 1.5101,11.19828 c -3.5205,-2.29665 -6.9975,-4.11869 -10.431,-5.46609 -3.3976,-1.38519 -6.7726,-2.29849 -10.1252,-2.73991 -7.5014,-0.98753 -12.9929,0.71964 -16.4745,5.12144 -3.4875,4.35849 -4.6312,10.98667 -3.4314,19.88448 1.1999,8.89786 4.2078,16.09395 9.0239,21.5882 4.8101,5.45087 10.9659,8.67011 18.4674,9.65767 3.3525,0.44138 6.6017,0.42149 9.7476,-0.0597 3.1818,-0.51907 6.2814,-1.49658 9.2985,-2.93262 l 1.4925,11.06805 c -3.0162,1.13773 -6.2107,1.86827 -9.5836,2.19164 -3.3311,0.32882 -6.9453,0.23668 -10.8426,-0.27636 -10.6026,-1.39586 -19.4913,-5.95546 -26.666,-13.67877 -7.1748,-7.72331 -11.5524,-17.44454 -13.1327,-29.16367 -1.6037,-11.89271 0.2779,-20.83251 5.6453,-26.81943 5.409,-5.98128 13.6034,-8.24921 24.5831,-6.80378 3.5621,0.46902 7.093,1.31761 10.593,2.5457 3.4939,1.18482 6.9358,2.74644 10.3256,4.68481"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_reebill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path3801-0-1"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       d="m 1174.5306,131.21398 2.7919,20.70379 23.8242,3.13654 1.2555,9.31019 -23.8242,-3.13652 5.3378,39.58459 c 0.8019,5.94637 2.0922,9.86801 3.8711,11.7649 1.8206,1.90242 5.1406,3.17086 9.96,3.80533 l 11.8807,1.56414 1.3521,10.02636 -11.8807,-1.56413 c -8.9263,-1.17515 -15.3179,-3.70066 -19.1747,-7.57647 -3.8627,-3.91922 -6.4086,-10.43627 -7.6377,-19.55118 l -5.3379,-39.58458 -8.4862,-1.11723 -1.2555,-9.31019 8.4862,1.11725 -2.7918,-20.70381 11.6292,1.53102"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_reebill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23" />
+    <text
+       xml:space="preserve"
+       style="font-size:129.48822021000000859px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#ffffff;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="425.86639"
+       y="737.57202"
+       id="text4007"
+       sodipodi:linespacing="125%"
+       transform="matrix(0.99254616,-0.12186935,0.59069867,0.93498114,0,0)"
+       inkscape:export-filename="/home/randrews/workspace-skyline/billing/reebill/ui/select_reebill.png"
+       inkscape:export-xdpi="18.23"
+       inkscape:export-ydpi="18.23"><tspan
+         sodipodi:role="line"
+         id="tspan4009"
+         x="425.86639"
+         y="737.57202">ReeBill</tspan></text>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m -502.72401,-55.78535 45.45687,372.74629 25.25381,9.09137 -0.50507,75.76144 67.17514,-22.72843 4.54569,-54.04316 27.77919,-10.6066 61.61931,-382.34274 -55.55839,16.66752 4.04061,-56.56854 -78.28682,21.71828 -65.65992,-21.71828 5.55584,65.65991 z"
+       id="path3053"
+       inkscape:connector-curvature="0" />
+    <path
+       style="opacity:1;fill:#189949;fill-opacity:1;stroke:none"
+       d="m -836.22813,-50.50814 70.71429,32.14286 0,351.42857 -24.28572,-5 z"
+       id="path3055"
+       inkscape:connector-curvature="0" />
+    <path
+       style="opacity:0.8;fill:#2e7e49;fill-opacity:1;stroke:none"
+       d="m -799.08527,-99.07957 27.14286,339.28572 75.71428,22.85714 0,-328.57143 z"
+       id="path3057"
+       inkscape:connector-curvature="0" />
+    <path
+       style="opacity:0.85;fill:#189949;fill-opacity:1;stroke:none"
+       d="m -605.51384,-59.79385 -129.28572,42.85714 2.14286,362.85714 65.71429,-22.14285 z"
+       id="path3061"
+       inkscape:connector-curvature="0" />
+    <path
+       style="opacity:1;fill:#7fbb59;fill-opacity:1;stroke:none"
+       d="m -656.22813,-99.79385 -109.28571,32.85714 0,477.85714 67.85714,-24.28571 z"
+       id="path3059"
+       inkscape:connector-curvature="0" />
+  </g>
+</svg>
