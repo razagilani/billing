@@ -1386,8 +1386,10 @@ class ReebillDAO:
             'account': utilbill_doc['account'],
             'service': utilbill_doc['service'],
             'utility': utilbill_doc['utility'],
-            'start': utilbill_doc['start'],
-            'end': utilbill_doc['end'],
+            'start': date_to_datetime(utilbill_doc['start']) if
+                    utilbill_doc['start'] is not None else None,
+            'end': date_to_datetime(utilbill_doc['end']) if utilbill_doc['end']
+                    is not None else None,
         }
         if sequence_and_version is not None:
             # this utility bill is being frozen: check for existing frozen
@@ -1406,7 +1408,10 @@ class ReebillDAO:
             # sequence/version keys
             unique_fields['sequence'] = {'$exists': False}
             unique_fields['version'] = {'$exists': False}
-        for duplicate in self.load_utilbills(**unique_fields):
+        # NOTE do not use load_utilbills(**unique_fields) here because it
+        # unpacks None values into nonexistent keys!
+        # see bug #39717171
+        for duplicate in self.utilbills_collection.find(unique_fields):
             if duplicate['_id'] != utilbill_doc['_id']:
                 raise NotUniqueException(("Can't save utility bill with "
                         "_id=%s: There's already a utility bill with "
