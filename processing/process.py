@@ -566,7 +566,8 @@ class Process(object):
         source_balance = min_balance_due - \
                 self.state_db.get_total_payment_since(session, acc,
                 predecessor0.issue_date)
-        return (reebill.late_charge_rate) * source_balance
+        #Late charges can only be positive
+        return (reebill.late_charge_rate) * max(0, source_balance)
 
     def get_outstanding_balance(self, session, account, sequence=None):
         '''Returns the balance due of the reebill given by account and sequence
@@ -633,8 +634,8 @@ class Process(object):
         reebill.service_address = {}
         reebill.late_charge_rate = late_charge_rate
 
-
         # NOTE reebill.clear is not called here because roll_bill takes care of that
+        reebill.clear()
 
         # create template reebill in mongo for this new account
         self.reebill_dao.save_reebill(reebill)

@@ -1,4 +1,3 @@
-#!/usr/bin/python
 import sys
 import os
 import unittest
@@ -42,6 +41,72 @@ class ProcessTest(TestCaseWithSetup):
     #def __init__(self, methodName='runTest', param=None):
         #print '__init__'
         #super(ProcessTest, self).__init__(methodName)
+
+    def test_create_new_account(self):
+        # set up template customer
+        with DBSession(self.state_db) as session:
+            #self.process.new_account(session, 'Template Account', '99999', 0.5,
+                    #0.1)
+            self.reebill_dao.save_reebill(example_data.get_reebill('99999', 1,
+                    start=date(2012,1,1), end=date(2012,2,1)))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.state_db.new_rebill(session, '99999', 1)
+            # store template account's reebill (includes utility bill) to check
+            # for modification
+            template_reebill = self.reebill_dao.load_reebill('99999', 1)
+
+        # create new account "10000" based on template account "99999"
+        with DBSession(self.state_db) as session:
+            self.process.create_new_account(session, '100000', 'New Account',
+                    0.6, 0.2, '99999')
+
+            # MySQL customer
+            customer = self.state_db.get_customer(session, '100000')
+            self.assertEquals('100000', customer.account)
+            self.assertEquals(Decimal('0.6'), customer.discountrate)
+            self.assertEquals(Decimal('0.2'), customer.latechargerate)
+
+            # MySQL reebill: none exist in MySQL until #1 is rolled
+            self.assertEquals([], self.state_db.listSequences(session, '100000'))
+            #mysql_reebill = self.state_db.get_reebill(session, '100000', 1)
+            #self.assertEquals(1, mysql_reebill.sequence)
+            #self.assertEquals(customer.id, mysql_reebill.customer_id)
+            #self.assertEquals(False, mysql_reebill.issued)
+            #self.assertEquals(0, mysql_reebill.max_version)
+
+            # Mongo reebill (sequence 0)
+            mongo_reebill = self.reebill_dao.load_reebill('100000', 0)
+            self.assertEquals('100000', mongo_reebill.account)
+            self.assertEquals(0, mongo_reebill.sequence)
+            self.assertEquals(0, mongo_reebill.version)
+            #self.assertEquals(0, mongo_reebill.prior_balance) # TODO fails
+            self.assertEquals(0, mongo_reebill.payment_received)
+            #self.assertEquals(0, mongo_reebill.balance_forward) # TODO fails
+            #self.assertEquals(0, mongo_reebill.total_renewable_energy()) # TODO fails
+            #self.assertEquals(0, mongo_reebill.ree_charges) # TODO fails
+            #self.assertEquals(0, mongo_reebill.ree_value) # TODO fails
+            #self.assertEquals(0, mongo_reebill.ree_savings) # TODO fails
+            #self.assertEquals(0, mongo_reebill.balance_due) # TODO fails
+            #self.assertEquals(0, mongo_reebill.late_charges) # TODO fails due to KeyError
+            #self.assertEquals(0, mongo_reebill.total)
+            #self.assertEquals(0, mongo_reebill.total_adjustment) # TODO fails due to KeyError
+            #self.assertEquals(0, mongo_reebill.manual_adjustment) # TODO fails due to KeyError
+            self.assertEquals(None, mongo_reebill.issue_date)
+            self.assertEquals(None, mongo_reebill.recipients)
+            #self.assertEquals(0.6, mongo_reebill.discount_rate) # TODO fails: template account's value
+            #self.assertEquals(0.2, mongo_reebill.late_charge_rate) # TODO fails: template account's value
+
+            # Mongo utility bill: nothing to check? (existence tested by load_reebill)
+
+            # TODO Mongo rate structure documents
+
+            # check that template account's utility bill and reebill was not modified
+            template_reebill_again = self.reebill_dao.load_reebill('99999', 1)
+            self.assertEquals(template_reebill.reebill_dict, template_reebill_again.reebill_dict)
+            self.assertEquals(template_reebill._utilbills, template_reebill_again._utilbills)
+
 
     def test_get_late_charge(self):
         print 'test_get_late_charge'
@@ -173,6 +238,19 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEqual((50 - 10) * bill2.late_charge_rate,
                     self.process.get_late_charge(session, bill2,
                     date(2013,1,1)))
+
+            #Pay off the bill, make sure the late charge is 0
+            self.state_db.create_payment(session, acc, date(2012,6,6),
+                    'a $40 payment in june', 40)
+            self.assertEqual(0, self.process.get_late_charge(session, bill2,
+                    date(2013,1,1)))
+
+            #Overpay the bill, make sure the late charge is still 0
+            self.state_db.create_payment(session, acc, date(2012,6,7),
+                    'a $40 payment in june', 40)
+            self.assertEqual(0, self.process.get_late_charge(session, bill2,
+                    date(2013,1,1)))
+            
 
     @unittest.skip('''Creating a second StateDB object, even if it's for
             another database, fails with a SQLAlchemy error about multiple

@@ -597,10 +597,14 @@ class ReebillRenderer:
         Elements.append(UseUpSpace())
 
         # populate balances
+        manual_adjustments = reebill.manual_adjustment
+        other_adjustments = reebill.total_adjustment - reebill.manual_adjustment
+
         balances = [
             [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(reebill.prior_balance.quantize(Decimal(".00"))),styles['BillFieldRight'])],
             [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(reebill.payment_received.quantize(Decimal(".00"))), styles['BillFieldRight'])],
-            [Paragraph("Adjustments", styles['BillLabelRight']), Paragraph(str(reebill.total_adjustment.quantize(Decimal(".00"))), styles['BillFieldRight'])],
+            [Paragraph("Manual Adjustments", styles['BillLabelRight']), Paragraph(str(manual_adjustments.quantize(Decimal(".00"))), styles['BillFieldRight'])],
+            [Paragraph("Other Adjustments", styles['BillLabelRight']), Paragraph(str(other_adjustments.quantize(Decimal(".00"))), styles['BillFieldRight'])]
         ]
 
         t = Table(balances, [180,85])
