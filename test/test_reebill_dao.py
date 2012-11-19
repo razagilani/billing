@@ -1,77 +1,22 @@
-#!/usr/bin/python
 import unittest
 import pymongo
 import sqlalchemy
 import copy
 from datetime import date, datetime, timedelta
-from billing import dateutils, mongo
+from billing.util import dateutils
+from billing.processing import mongo
 from billing.processing.state import StateDB
 from billing.processing.db_objects import ReeBill, Customer, UtilBill
 import MySQLdb
 from billing.test import example_data
-from billing.mongo import NoSuchBillException, IssuedBillError, NotUniqueException
-from billing.session_contextmanager import DBSession
+from billing.test.setup_teardown import TestCaseWithSetup
+from billing.processing.mongo import NoSuchBillException, IssuedBillError, NotUniqueException
+from billing.processing.session_contextmanager import DBSession
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
 
-class ReebillDAOTest(unittest.TestCase):
-
-    def setUp(self):
-        # this method runs before every test.
-        # clear SQLAlchemy mappers so StateDB can be instantiated again
-        sqlalchemy.orm.clear_mappers()
-
-        # customer database ("test" database has already been created with
-        # empty customer table)
-        self.state_db = StateDB(**{
-            'user':'dev',
-            'password':'dev',
-            'host':'localhost',
-            'database':'test'
-        })
-
-        self.reebill_dao = mongo.ReebillDAO(self.state_db, **{
-            'billpath': '/db-dev/skyline/bills/',
-            'database': 'test',
-            'utilitybillpath': '/db-dev/skyline/utilitybills/',
-            'collection': 'test_reebills',
-            'host': 'localhost',
-            'port': 27017
-        })
-        
-        ## clear out tables in mysql test database (not relying on StateDB)
-        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        c = mysql_connection.cursor()
-        c.execute("delete from payment")
-        c.execute("delete from utilbill")
-        c.execute("delete from rebill")
-        c.execute("delete from customer")
-        # (note that status_days_since, status_unbilled are views and you
-        # neither can nor need to delete from them)
-        mysql_connection.commit()
-
-        # insert one customer
-        session = self.state_db.session()
-        # name, account, discount rate, late charge rate
-        customer = Customer('Test Customer', '99999', .12, .34)
-        session.add(customer)
-        session.commit()
-
-    def tearDown(self):
-        # clear out mongo test database
-        mongo_connection = pymongo.Connection('localhost', 27017)
-        mongo_connection.drop_database('test')
-
-        # clear out tables in mysql test database (not relying on StateDB)
-        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        c = mysql_connection.cursor()
-        c.execute("delete from payment")
-        c.execute("delete from utilbill")
-        c.execute("delete from rebill")
-        c.execute("delete from customer")
-        mysql_connection.commit()
-
+class ReebillDAOTest(TestCaseWithSetup):
     def test_load_reebill(self):
         with DBSession(self.state_db) as session:
             # put some reebills in Mongo, including non-0 versions
@@ -374,10 +319,47 @@ class ReebillDAOTest(unittest.TestCase):
             self.assertEquals(0, len(all_reebills))
             self.assertEquals(0, len(all_utilbill_docs))
 
-            # save reebill (with utility bills)
+            # save reebill and utility bills again
             b = example_data.get_reebill('99999', 1)
             self.reebill_dao.save_reebill(b)
-            self.state_db.new_rebill(session, '99999', 1)
+
+            # if utility bill is frozen and verison == 0, both frozen utility
+            # bill and editable one should be deleted
+            self.reebill_dao.save_reebill(b, freeze_utilbills=True)
+            self.reebill_dao.delete_reebill('99999', 1, 0)
+            all_reebills = self.reebill_dao.load_reebills_in_period('99999', version=0)
+            all_utilbill_docs = self.reebill_dao.load_utilbills('99999')
+            self.assertEquals(0, len(all_reebills))
+            self.assertEquals(0, len(all_utilbill_docs))
+
+            # if utility bill is frozen and version > 0, nothing should be
+            # deleted
+            self.state_db.issue(session, '99999', 1)
+            self.state_db.increment_version(session, '99999', 1)
+            correction = example_data.get_reebill('99999', 1, version=1)
+            self.reebill_dao.save_reebill(correction)
+            all_reebills = self.reebill_dao.load_reebills_in_period('99999', version='any', include_0=True)
+            all_utilbill_docs = self.reebill_dao.load_utilbills('99999')
+            self.assertEquals(1, len(all_reebills))
+            self.assertEquals(1, all_reebills[0].version)
+            self.assertEquals(1, len(all_utilbill_docs))
+            self.assertFalse('sequence' in all_utilbill_docs[0])
+            self.assertFalse('version' in all_utilbill_docs[0])
+
+            # if utility bill is frozen and version > 0, frozen utility
+            # bill should be deleted but editable one should not
+            self.reebill_dao.save_reebill(correction, freeze_utilbills=True)
+            all_reebills = self.reebill_dao.load_reebills_in_period('99999', version='any', include_0=True)
+            all_utilbill_docs = self.reebill_dao.load_utilbills('99999')
+            assert len(all_reebills) == 1
+            assert len(all_utilbill_docs) == 2
+            self.reebill_dao.delete_reebill('99999', 1, 1)
+            all_reebills = self.reebill_dao.load_reebills_in_period('99999', version='any', include_0=True)
+            all_utilbill_docs = self.reebill_dao.load_utilbills('99999')
+            self.assertEquals(0, len(all_reebills))
+            self.assertEquals(1, len(all_utilbill_docs))
+            self.assertFalse('sequence' in all_utilbill_docs[0])
+            self.assertFalse('version' in all_utilbill_docs[0])
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)

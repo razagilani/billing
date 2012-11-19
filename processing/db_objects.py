@@ -35,10 +35,11 @@ class UtilBill(object):
     # Such a bill may not really exist (since we can't even know how many bills
     # there are in a given period of time), and if it does exist, its actual dates
     # will probably be different than the guessed ones.
+    # TODO 38385969: not sure this strategy is a good idea
     Complete, UtilityEstimated, SkylineEstimated, Hypothetical = range(4)
 
     def __init__(self, customer, state, service, period_start=None,
-            period_end=None, date_received=None, processed=False,
+            period_end=None, total_charges=0, date_received=None, processed=False,
             reebill=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
@@ -49,6 +50,7 @@ class UtilBill(object):
         self.service = service
         self.period_start = period_start
         self.period_end = period_end
+        self.total_charges = total_charges
         self.date_received = date_received
         self.processed = processed
         self.reebill = reebill # newly-created utilbill has NULL in reebill_id column

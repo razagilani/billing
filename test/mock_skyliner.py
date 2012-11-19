@@ -4,7 +4,7 @@ from operator import add
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from skyliner.sky_handlers import cross_range
-from billing.monthmath import Month
+from billing.util.monthmath import Month
 
 def hour_of_energy(hour, deterministic=True):
     '''Returns a made-up energy value in BTU for the given hour (datetime). If
@@ -17,22 +17,22 @@ def hour_of_energy(hour, deterministic=True):
     # every time)
     return max(0, gauss(3000, 1000))
 
-class FakeSplinter(object):
+class MockSplinter(object):
     def __init__(self, deterministic=True):
         self.deterministic = deterministic
-        self._guru = FakeMonguru(deterministic=deterministic)
+        self._guru = MockMonguru(deterministic=deterministic)
 
     def get_install_obj_for(self, olap_id):
-        return FakeSkyInstall(deterministic=self.deterministic)
+        return MockSkyInstall(deterministic=self.deterministic)
 
     def get_monguru(self):
         return self._guru
     guru = property(get_monguru)
 
-class FakeSkyInstall(object):
+class MockSkyInstall(object):
     def __init__(self, deterministic=True, *args, **kwargs):
         self.deterministic = deterministic
-        self.name = 'Fake SkyInstall'
+        self.name = 'Mock SkyInstall'
 
     def get_billable_energy_timeseries(self, start, end, places=None):
         # NOTE you can't pass a float into Decimal() in 2.6, only 2.7
@@ -47,24 +47,24 @@ class FakeSkyInstall(object):
     def get_annotations(self):
         return []
 
-class FakeCubeDocument(object):
+class MockCubeDocument(object):
     def __init__(self, energy_sold):
         self.timestamp = datetime.utcnow()
         self.energy_sold = energy_sold
 
-class FakeMonguru(object):
+class MockMonguru(object):
     def __init__(self, deterministic=True):
         self.deterministic = deterministic
 
     def get_data_for_hour(self, install, day, hour):
         hour = datetime(day.year, day.month, day.day, hour)
-        return FakeCubeDocument(hour_of_energy(hour,
+        return MockCubeDocument(hour_of_energy(hour,
                 deterministic=self.deterministic))
 
     def get_data_for_day(self, install, day):
         hours = [datetime(day.year, day.month, day.day, hour)
                 for hour in range(24)]
-        return FakeCubeDocument(sum(hour_of_energy(hour,
+        return MockCubeDocument(sum(hour_of_energy(hour,
                 deterministic=self.deterministic) for hour in hours))
 
     def get_data_for_week(self, install, year, week):
@@ -73,14 +73,14 @@ class FakeMonguru(object):
     def get_data_for_month(self, install, year, month):
         hours = reduce(add, [[datetime(day.year, day.month, day.day, hour)
                 for hour in range(24)] for day in Month(year, month)])
-        return FakeCubeDocument(sum(hour_of_energy(hour,
+        return MockCubeDocument(sum(hour_of_energy(hour,
                 deterministic=self.deterministic) for hour in hours))
 
 if __name__ == '__main__':
     '''Print out 2 deterministic and 2 random values for each hour in January
     1-2, 2012.'''
-    m1 = FakeMonguru(deterministic=True)
-    m2 = FakeMonguru(deterministic=False)
+    m1 = MockMonguru(deterministic=True)
+    m2 = MockMonguru(deterministic=False)
     print '%19s %16s %16s %16s %16s' % ('hour', 'deterministic 1',
             'deterministic 2', 'random 1', 'random 2')
     for hour in cross_range(datetime(2012,1,1), datetime(2012,1,3)):
