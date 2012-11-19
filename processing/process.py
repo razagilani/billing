@@ -344,7 +344,7 @@ class Process(object):
             raise Exception("Not the last sequence")
 
         utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
-        ubids_to_attach = self.choose_next_utilbills(session, utilbills, services)
+        ubids_to_attach = self.choose_next_utilbills(session, utilbills, reebill.services)
         
         # duplicate the CPRS for each service
         # TODO: 22597151 refactor
