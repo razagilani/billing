@@ -601,8 +601,8 @@ class Process(object):
         reebill.service_address = {}
         reebill.late_charge_rate = late_charge_rate
 
-
         # NOTE reebill.clear is not called here because roll_bill takes care of that
+        reebill.clear()
 
         # create template reebill in mongo for this new account
         self.reebill_dao.save_reebill(reebill)
