@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import sys
 import datetime
 from datetime import date, time, datetime
@@ -243,12 +243,14 @@ class MongoReebill(object):
         for converting an existing reebill and its utility bills into a
         template for a new account.'''
         self.account = account
-        for u in self._utilbills:
+        for handle in self.reebill_dict['utilbills']:
+            u = self._get_utilbill_for_handle(handle)
             u['account'] = account
             if 'sequence' in u:
                 del u['sequence']
             if 'version' in u:
                 del u['version']
+            u['_id'] = handle['id'] = bson.ObjectId()
 
     def new_utilbill_ids(self):
         '''Replaces _ids in utility bill documents and the reebill document's
