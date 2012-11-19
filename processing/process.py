@@ -304,29 +304,30 @@ class Process(object):
 
     def choose_next_utilbills(self, session, utilbills, services):
         ids_to_attach = []
-        att = 'last_attached'
-        un = 'first_unattached'
         for s in services:
-            if utilbills[s][un] is not None and utilbills[s][att] is None:
-                # This is the first utility bill ever for an account. No attached reebills yet.
-                ids_to_attach.append(utilbills[s]['first_unattached'].id)
-            elif utilbills[s][un] is None and utilbills[s][att] is None:
-                # No utility bills found? Raise exception.
+            utilbill = utilbills[s].get('utilbill', None)
+            time_gap = utilbills[s].get('time_gap', None)
+            
+            if utilbill is None:
+                # Either no utilbills found or there haven't been any unattached ones
+                # since the last reebill
                 raise Exception("No %s utility bills found to roll to" % s)
-            elif utilbills[s][un] is None and utilbills[s][att] is not None:
-                # No utilbills since last reebill, so nothing to base the reebill on
-                raise Exception("No %s utility bills since last reebill" % s)
-            elif utilbills[s][un].period_start - utilbills[s][att].period_end > timedelta(days=1):
-                # Utilbills found but there's a gap before the best-fitting utilbill
-                time_gap = str(utilbills[s][un].period_start - utilbills[s][att].period_end)
-                time_gap = time_gap[:time_gap.find(',')] # Isolate the 'X days' part of timedelta.__str__
-                raise Exception("Gap of %s since last processed %s utility bill" % (time_gap, s))
-            elif utilbills[s][un].state > 2:
+            elif utilbill is not None and time_gap is None:
+                # This is the first utility bill ever for an account. No attached reebills yet.
+                # Therefore, this is appropriate to be attached to a new reebill.
+                ids_to_attach.append(utilbill.id)
+            elif time_gap > timedelta(days=1):
+                # Utilbills found but there's a gap before the last reebill period for this service
+                time_gap_str = str(time_gap)
+                # Isolate the 'X days' part of timedelta.__str__
+                time_gap_str = time_gap_str[:time_gap_str.find(',')]
+                raise Exception("Gap of %s since last processed %s utility bill" % (time_gap_str, s))
+            elif utilbill.state > 2:
                 # Contiguous utilbill but it's too hypothetical to create a reebill from it
                 raise Exception("The next %s utility bill has not been properly estimated or received" % s)
             else:
                 # Unattached utilbill was found to be contiguous to an attached utilbill. Hooray?
-                ids_to_attach.append(utilbills[s]['first_unattached'].id)
+                ids_to_attach.append(utilbill.id)
         return ids_to_attach
 
     def roll_bill(self, session, reebill):
@@ -345,25 +346,6 @@ class Process(object):
         utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
         ubids_to_attach = self.choose_next_utilbills(session, utilbills, services)
         
-        #last_attached = self.state_db.last_attached_utilbills(session, reebill.account)
-        #first_unattached = self.state_db.first_unattached_utilbills(session, reebill.account)
-        #next_utilbills = {}
-
-        #for service in reebill.services:
-        #    if service in last_attached and service in first_unattached:
-        #        if first_unattached[service].period_start - last_attached[service].period_end >= timedelta(days=1):
-        #            raise Exception("Gap exists after last attached %s utility bill" % service)
-        #        elif first_unattached[service].state > 1:
-        #            raise Exception("Next %s utility bill is not confirmed or estimated by Skyline" % service)
-        #        else:
-        #            next_utilbills[service] = first_unattached[service].id
-        #    else:
-        #        raise Exception("Do not have any unassigned utility bills for %s service" % service)
-
-        #utilbill_ids = []
-        #for next_id in next_utilbills.itervalues():
-        #    utilbill_ids.append(next_id)
-
         # duplicate the CPRS for each service
         # TODO: 22597151 refactor
         for service in reebill.services:
@@ -404,7 +386,8 @@ class Process(object):
 
         # create reebill row in state database
         self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
-        self.state_db._attach_utilbills(session, new_reebill.account, new_reebill.sequence, ubids_to_attach)
+        self.attach_utilbills(session, new_reebill.account, new_reebill.sequence)
+        self.state_db.attach_utilbills(session, new_reebill.account, new_reebill.sequence, ubids_to_attach, new_reebill.suspended_services)
         
         return new_reebill
 
@@ -682,20 +665,9 @@ class Process(object):
 
     # TODO 21052893: probably want to set up the next reebill here.  Automatically roll?
     def attach_utilbills(self, session, account, sequence):
-        '''Creates association between the reebill given by 'account',
-        'sequence' and all utilbills belonging to that customer whose entire
-        periods are within the reebill's period and whose services are not
-        suspended. The utility bills are marked as processed.'''
-        if sequence > 1 and not self.state_db.is_attached(session, account,
-                sequence - 1):
-            raise BillStateError("Predecessor's utility bill(s) are not "
-                    "attached yet.")
+        '''Freeze utilbills from the previous reebill into a new reebill.
 
-        # if already attached, do nothing (otherwise trying to re-freeze
-        # utility bills below will cause an error)
-        if self.state_db.is_attached(session, account, sequence):
-            return
-
+        This affects only the Mongo document.'''
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # save in mongo, with frozen copies of the associated utility bill
@@ -704,10 +676,6 @@ class Process(object):
         # refuse to create frozen utility bills "again" if MySQL says its
         # attached". see https://www.pivotaltracker.com/story/show/38308443)
         self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
-
-        self.state_db.attach_utilbills(session, account, sequence,
-                reebill.period_begin, reebill.period_end,
-                suspended_services=reebill.suspended_services)
 
     def bind_rate_structure(self, reebill):
             # process the actual charges across all services

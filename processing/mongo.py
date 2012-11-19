@@ -304,20 +304,13 @@ class MongoReebill(object):
     def due_date(self, value):
         self.reebill_dict['due_date'] = value
 
-    # TODO these must die
+    # Periods are read-only on the basis of which utilbills have been attached
     @property
     def period_begin(self):
-
-        return python_convert(self.reebill_dict['period_begin'])
-    @period_begin.setter
-    def period_begin(self, value):
-        self.reebill_dict['period_begin'] = value
+        return min([self._get_utilbill_for_service(s)['start'] for s in self.services])
     @property
     def period_end(self):
-        return python_convert(self.reebill_dict['period_end'])
-    @period_end.setter
-    def period_end(self, value):
-        self.reebill_dict['period_end'] = value
+        return max([self._get_utilbill_for_service(s)['end'] for s in self.services])
     
     @property
     def discount_rate(self):
