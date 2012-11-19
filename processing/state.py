@@ -482,7 +482,7 @@ class StateDB:
             for sequence in self.listSequences(session, account):
                 reebill = self.get_reebill(session, account, sequence)
                 if include_unissued or reebill.issued:
-                    yield account, sequence, reebill.max_version
+                    yield account, int(sequence), int(reebill.max_version)
 
     def reebill_versions(self, session, include_unissued=True):
         '''Generates (account, sequence, version) tuples for all reebills in
