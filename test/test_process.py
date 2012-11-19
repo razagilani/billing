@@ -1,4 +1,3 @@
-#!/usr/bin/python
 import sys
 import os
 import unittest
@@ -11,131 +10,103 @@ import sqlalchemy
 from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
 from datetime import date, datetime, timedelta
-from billing import dateutils, mongo
-from billing.session_contextmanager import DBSession
-from billing.dateutils import estimate_month, month_offset
+from billing.util import dateutils
+from billing.processing import mongo
+from billing.processing.session_contextmanager import DBSession
+from billing.util.dateutils import estimate_month, month_offset
 from billing.processing import rate_structure
 from billing.processing.process import Process, IssuedBillError
 from billing.processing.state import StateDB
 from billing.processing.db_objects import ReeBill, Customer, UtilBill
 from billing.processing.billupload import BillUpload
 from decimal import Decimal
-from billing.dictutils import deep_map
+from billing.util.dictutils import deep_map
 import MySQLdb
-from billing.mongo_utils import python_convert
+from billing.util.mongo_utils import python_convert
+from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
-from billing.test.fake_skyliner import FakeSplinter, FakeMonguru
-from billing.nexus_util import NexusUtil
-from billing.mongo import NoSuchBillException
-from billing.exceptions import BillStateError
+from billing.test.mock_skyliner import MockSplinter, MockMonguru
+from billing.util.nexus_util import NexusUtil
+from billing.processing.mongo import NoSuchBillException
+from billing.processing.exceptions import BillStateError
 from billing.processing import fetch_bill_data as fbd
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
 pformat = pprint.PrettyPrinter(indent=1).pformat
 
-class ProcessTest(unittest.TestCase):
+class ProcessTest(TestCaseWithSetup):
     # apparenty this is what you need to do if you override the __init__ method
     # of a TestCase
     #def __init__(self, methodName='runTest', param=None):
         #print '__init__'
         #super(ProcessTest, self).__init__(methodName)
 
-    def setUp(self):
-        print 'setUp'
+    def test_create_new_account(self):
+        # set up template customer
+        with DBSession(self.state_db) as session:
+            #self.process.new_account(session, 'Template Account', '99999', 0.5,
+                    #0.1)
+            self.reebill_dao.save_reebill(example_data.get_reebill('99999', 1,
+                    start=date(2012,1,1), end=date(2012,2,1)))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.state_db.new_rebill(session, '99999', 1)
+            # store template account's reebill (includes utility bill) to check
+            # for modification
+            template_reebill = self.reebill_dao.load_reebill('99999', 1)
 
-        # this method runs before every test.
-        # clear SQLAlchemy mappers so StateDB can be instantiated again
-        sqlalchemy.orm.clear_mappers()
+        # create new account "10000" based on template account "99999"
+        with DBSession(self.state_db) as session:
+            self.process.create_new_account(session, '100000', 'New Account',
+                    0.6, 0.2, '99999')
 
-        # everything needed to create a Process object
-        config_file = StringIO('''[runtime]
-integrate_skyline_backend = true
-[billimages]
-bill_image_directory = /tmp/test/billimages
-show_reebill_images = true
-[billdb]
-billpath = /tmp/test/db-test/skyline/bills/
-database = test
-utilitybillpath = /tmp/test/db-test/skyline/utilitybills/
-utility_bill_trash_directory = /tmp/test/db-test/skyline/utilitybills-deleted
-collection = reebills
-host = localhost
-port = 27017
-''')
-        self.config = ConfigParser.RawConfigParser()
-        self.config.readfp(config_file)
-        self.billupload = BillUpload(self.config, logging.getLogger('test'))
-        self.rate_structure_dao = rate_structure.RateStructureDAO(**{
-            'database': 'test',
-            'collection': 'ratestructure',
-            'host': 'localhost',
-            'port': 27017
-        })
-        self.splinter = FakeSplinter(deterministic=True)
-        
-        # temporary hack to get a bill that's always the same
-        # this bill came straight out of mongo (except for .date() applied to
-        # datetimes)
-        ISODate = lambda s: datetime.strptime(s, dateutils.ISO_8601_DATETIME)
-        true, false = True, False
+            # MySQL customer
+            customer = self.state_db.get_customer(session, '100000')
+            self.assertEquals('100000', customer.account)
+            self.assertEquals(Decimal('0.6'), customer.discountrate)
+            self.assertEquals(Decimal('0.2'), customer.latechargerate)
 
-        # customer database ("test" database has already been created with
-        # empty customer table)
-        statedb_config = {
-            'host': 'localhost',
-            'database': 'test',
-            'user': 'dev',
-            'password': 'dev'
-        }
+            # MySQL reebill: none exist in MySQL until #1 is rolled
+            self.assertEquals([], self.state_db.listSequences(session, '100000'))
+            #mysql_reebill = self.state_db.get_reebill(session, '100000', 1)
+            #self.assertEquals(1, mysql_reebill.sequence)
+            #self.assertEquals(customer.id, mysql_reebill.customer_id)
+            #self.assertEquals(False, mysql_reebill.issued)
+            #self.assertEquals(0, mysql_reebill.max_version)
 
-        # clear out tables in mysql test database (not relying on StateDB)
-        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        c = mysql_connection.cursor()
-        c.execute("delete from payment")
-        c.execute("delete from utilbill")
-        c.execute("delete from rebill")
-        c.execute("delete from customer")
-        # (note that status_days_since, status_unbilled are views and you
-        # neither can nor need to delete from them)
-        mysql_connection.commit()
+            # Mongo reebill (sequence 0)
+            mongo_reebill = self.reebill_dao.load_reebill('100000', 0)
+            self.assertEquals('100000', mongo_reebill.account)
+            self.assertEquals(0, mongo_reebill.sequence)
+            self.assertEquals(0, mongo_reebill.version)
+            #self.assertEquals(0, mongo_reebill.prior_balance) # TODO fails
+            self.assertEquals(0, mongo_reebill.payment_received)
+            #self.assertEquals(0, mongo_reebill.balance_forward) # TODO fails
+            #self.assertEquals(0, mongo_reebill.total_renewable_energy()) # TODO fails
+            #self.assertEquals(0, mongo_reebill.ree_charges) # TODO fails
+            #self.assertEquals(0, mongo_reebill.ree_value) # TODO fails
+            #self.assertEquals(0, mongo_reebill.ree_savings) # TODO fails
+            #self.assertEquals(0, mongo_reebill.balance_due) # TODO fails
+            #self.assertEquals(0, mongo_reebill.late_charges) # TODO fails due to KeyError
+            #self.assertEquals(0, mongo_reebill.total)
+            #self.assertEquals(0, mongo_reebill.total_adjustment) # TODO fails due to KeyError
+            #self.assertEquals(0, mongo_reebill.manual_adjustment) # TODO fails due to KeyError
+            self.assertEquals(None, mongo_reebill.issue_date)
+            self.assertEquals(None, mongo_reebill.recipients)
+            #self.assertEquals(0.6, mongo_reebill.discount_rate) # TODO fails: template account's value
+            #self.assertEquals(0.2, mongo_reebill.late_charge_rate) # TODO fails: template account's value
 
-        # insert one customer
-        self.state_db = StateDB(**statedb_config)
-        session = self.state_db.session()
-        # name, account, discount rate, late charge rate
-        customer = Customer('Test Customer', '99999', .12, .34)
-        session.add(customer)
-        session.commit()
+            # Mongo utility bill: nothing to check? (existence tested by load_reebill)
 
-        self.reebill_dao = mongo.ReebillDAO(self.state_db, **{
-            'billpath': '/db-dev/skyline/bills/',
-            'database': 'test',
-            'utilitybillpath': '/db-dev/skyline/utilitybills/',
-            'collection': 'test_reebills',
-            'host': 'localhost',
-            'port': 27017
-        })
+            # TODO Mongo rate structure documents
 
-        self.nexus_util = NexusUtil('nexus')
-        self.process = Process(self.state_db, self.reebill_dao,
-                self.rate_structure_dao, self.billupload, self.nexus_util,
-                self.splinter)
+            # check that template account's utility bill and reebill was not modified
+            template_reebill_again = self.reebill_dao.load_reebill('99999', 1)
+            self.assertEquals(template_reebill.reebill_dict, template_reebill_again.reebill_dict)
+            self.assertEquals(template_reebill._utilbills, template_reebill_again._utilbills)
 
-    def tearDown(self):
-        '''This gets run even if a test fails.'''
-        # clear out mongo test database
-        mongo_connection = pymongo.Connection('localhost', 27017)
-        mongo_connection.drop_database('test')
-
-        # clear out tables in mysql test database (not relying on StateDB)
-        mysql_connection = MySQLdb.connect('localhost', 'dev', 'dev', 'test')
-        c = mysql_connection.cursor()
-        c.execute("delete from payment")
-        c.execute("delete from utilbill")
-        c.execute("delete from rebill")
-        c.execute("delete from customer")
-        mysql_connection.commit()
 
     def test_get_late_charge(self):
         print 'test_get_late_charge'
@@ -167,10 +138,15 @@ port = 27017
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
             self.state_db.new_rebill(session, bill1.account, bill1.sequence)
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), 100,
+                    datetime.utcnow().date())
 
             # issue bill 1, so a later bill can have a late charge based on the
             # customer's failure to pay bill1 by its due date, i.e. 30 days
             # after bill1's issue date.
+            self.process.attach_utilbills(session, bill1.account,
+                    bill1.sequence)
             self.process.issue(session, bill1.account, bill1.sequence,
                     issue_date=date(2012,1,1))
             # since process.issue() only modifies databases, bill1 must be
@@ -262,6 +238,19 @@ port = 27017
             self.assertEqual((50 - 10) * bill2.late_charge_rate,
                     self.process.get_late_charge(session, bill2,
                     date(2013,1,1)))
+
+            #Pay off the bill, make sure the late charge is 0
+            self.state_db.create_payment(session, acc, date(2012,6,6),
+                    'a $40 payment in june', 40)
+            self.assertEqual(0, self.process.get_late_charge(session, bill2,
+                    date(2013,1,1)))
+
+            #Overpay the bill, make sure the late charge is still 0
+            self.state_db.create_payment(session, acc, date(2012,6,7),
+                    'a $40 payment in june', 40)
+            self.assertEqual(0, self.process.get_late_charge(session, bill2,
+                    date(2013,1,1)))
+            
 
     @unittest.skip('''Creating a second StateDB object, even if it's for
             another database, fails with a SQLAlchemy error about multiple
@@ -374,11 +363,11 @@ port = 27017
             self.state_db.record_utilbill_in_database(session, bill1.account,
                     bill1._utilbills[0]['service'],
                     bill1._utilbills[0]['start'],
-                    bill1._utilbills[0]['end'], date.today())
+                    bill1._utilbills[0]['end'], 100, date.today())
             self.state_db.record_utilbill_in_database(session, bill1.account,
                     bill1._utilbills[1]['service'],
                     bill1._utilbills[1]['start'],
-                    bill1._utilbills[1]['end'], date.today())
+                    bill1._utilbills[1]['end'], 100, date.today())
 
             self.process.attach_utilbills(session, bill1.account, bill1.sequence)
 
@@ -417,7 +406,7 @@ port = 27017
 
         # compute charges in the bill using the rate structure created from the
         # above documents
-        self.process.bindrs(bill1, None)
+        self.process.bindrs(bill1)
 
         # ##############################################################
         # check that each actual (utility) charge was computed correctly:
@@ -756,35 +745,39 @@ port = 27017
     def test_new_version(self):
         # put reebill documents for sequence 0 and 1 in mongo (0 is needed to
         # recompute 1), and rate structures for 1
-        zero = example_data.get_reebill('99999', 0, version=0, start=date(2011,12,1), end=date(2012,1,1))
-        one = example_data.get_reebill('99999', 1, version=0, start=date(2012,1,1), end=date(2012,2,1))
+        acc = '99999'
+        zero = example_data.get_reebill(acc, 0, version=0,
+                start=date(2011,12,1), end=date(2012,1,1))
+        one = example_data.get_reebill(acc, 1, version=0, start=date(2012,1,1),
+                end=date(2012,2,1))
         self.reebill_dao.save_reebill(zero)
         self.reebill_dao.save_reebill(one)
         self.rate_structure_dao.save_rs(example_data.get_urs_dict())
         self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
-        self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
+        self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
 
         # TODO creating new version of 1 should fail until it's issued
 
         # issue reebill 1
         with DBSession(self.state_db) as session:
-            self.state_db.new_rebill(session, '99999', 1)
-            self.process.issue(session, '99999', 1, issue_date=date(2012,1,15))
-            session.commit()
+            self.state_db.new_rebill(session, acc, 1)
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), 100,
+                    datetime.utcnow().date())
+            self.process.attach_utilbills(session, acc, 1)
+            self.process.issue(session, acc, 1, issue_date=date(2012,1,15))
 
         # create new version of 1
         with DBSession(self.state_db) as session:
-            new_bill = self.process.new_version(session, '99999', 1)
-            session.commit()
-        self.assertEqual('99999', new_bill.account)
+            new_bill = self.process.new_version(session, acc, 1)
+        self.assertEqual(acc, new_bill.account)
         self.assertEqual(1, new_bill.sequence)
         self.assertEqual(1, new_bill.version)
-        self.assertEqual(1, self.state_db.max_version(session, '99999', 1))
+        self.assertEqual(1, self.state_db.max_version(session, acc, 1))
         # new version of CPRS(s) should also be created, so rate structure
         # should be loadable
         for s in new_bill.services:
-            self.assertNotEqual(None,
-                    self.rate_structure_dao.load_cprs('99999', 1,
+            self.assertNotEqual(None, self.rate_structure_dao.load_cprs(acc, 1,
                     new_bill.version, new_bill.utility_name_for_service(s),
                     new_bill.rate_structure_name_for_service(s)))
             self.assertNotEqual(None,
@@ -821,8 +814,20 @@ port = 27017
             self.state_db.new_rebill(session, acc, 2)
             self.state_db.new_rebill(session, acc, 3)
             self.state_db.new_rebill(session, acc, 4)
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), 100,
+                    datetime.utcnow().date())
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,2,1), date(2012,3,1), 100,
+                    datetime.utcnow().date())
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,3,1), date(2012,4,1), 100,
+                    datetime.utcnow().date())
+            self.process.attach_utilbills(session, acc, 1)
             self.process.issue(session, acc, 1)
+            self.process.attach_utilbills(session, acc, 2)
             self.process.issue(session, acc, 2)
+            self.process.attach_utilbills(session, acc, 3)
             self.process.issue(session, acc, 3)
 
             # no unissued corrections yet
@@ -901,6 +906,13 @@ port = 27017
             self.reebill_dao.save_reebill(two0)
             self.state_db.new_rebill(session, acc, 1)
             self.state_db.new_rebill(session, acc, 2)
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), 100,
+                    datetime.utcnow().date())
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,2,1), date(2012,3,1), 100,
+                    datetime.utcnow().date())
+            self.process.attach_utilbills(session, acc, 1)
             self.process.issue(session, acc, 1,
                     issue_date=datetime.utcnow().date() - timedelta(40))
 
@@ -924,6 +936,7 @@ port = 27017
 
             # save and issue 2nd reebill so a new version can be created
             self.reebill_dao.save_reebill(two0)
+            self.process.attach_utilbills(session, acc, two0.sequence)
             self.process.issue(session, acc, two0.sequence)
 
             # add a payment of $80 30 days ago (10 days after 1st reebill was
@@ -966,10 +979,10 @@ port = 27017
             self.state_db.new_rebill(session, acc, 2)
             self.state_db.record_utilbill_in_database(session, acc,
                     one.services[0], date(2012,1,1), date(2012,2,1),
-                    date.today())
+                    100, date.today())
             self.state_db.record_utilbill_in_database(session, acc,
                     two.services[0], date(2012,2,1), date(2012,3,1),
-                    date.today())
+                    100, date.today())
 
             # neither reebill should be issued yet
             self.assertEquals(False, self.state_db.is_issued(session, acc, 1))
@@ -983,6 +996,9 @@ port = 27017
             self.assertRaises(BillStateError, self.process.attach_utilbills, session, acc, 2)
             self.assertRaises(BillStateError, self.process.issue, session, acc, 2)
 
+            # one should not be issuable until one is attached
+            self.assertRaises(BillStateError, self.process.issue, session, acc, 1)
+
             # attach & issue one
             self.process.attach_utilbills(session, one.account, one.sequence)
             self.process.issue(session, acc, 1)
@@ -992,15 +1008,19 @@ port = 27017
             self.assertEquals(True, self.state_db.is_issued(session, acc, 1))
             self.assertEquals(datetime.utcnow().date(), one.issue_date)
             self.assertEquals(one.issue_date + timedelta(30), one.due_date)
+            self.assertEquals(one.recipients, None)
 
             # attach & issue two
             self.process.attach_utilbills(session, two.account, two.sequence)
-            self.process.issue(session, acc, 2)
+            self.process.issue(session, acc, 2, ['test1@reebill.us', 'test2@reebill.us'])
             # re-load from mongo to see updated issue date and due date
             two = self.reebill_dao.load_reebill(acc, 2)
             self.assertEquals(True, self.state_db.is_issued(session, acc, 2))
             self.assertEquals(datetime.utcnow().date(), two.issue_date)
             self.assertEquals(two.issue_date + timedelta(30), two.due_date)
+            self.assertEquals(isinstance(two.recipients, list), True)
+            self.assertEquals(len(two.recipients), 2)
+            self.assertEquals(True, all(map(isinstance, two.recipients, [unicode]*len(two.recipients))))
 
     def test_delete_reebill(self):
         account = '99999'
@@ -1089,10 +1109,19 @@ port = 27017
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 2))
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 3))
 
-            # save reebills in mysql
+            # put reebills and utility bills in mysql
             self.state_db.new_rebill(session, acc, 1)
             self.state_db.new_rebill(session, acc, 2)
             self.state_db.new_rebill(session, acc, 3)
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), 100,
+                    datetime.utcnow().date())
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,2,1), date(2012,3,1), 100,
+                    datetime.utcnow().date())
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,3,1), date(2012,4,1), 100,
+                    datetime.utcnow().date())
 
             # load out of mongo
             one = self.reebill_dao.load_reebill(acc, 1)
@@ -1100,6 +1129,7 @@ port = 27017
             three = self.reebill_dao.load_reebill(acc, 3)
 
             # issue reebill #1 and correct it with an adjustment of 100
+            self.process.attach_utilbills(session, acc, 1)
             self.process.issue(session, acc, 1)
             one_corrected = self.process.new_version(session, acc, 1)
             one_corrected.ree_charges = one.ree_charges + 100
@@ -1137,7 +1167,7 @@ port = 27017
                 b = example_data.get_reebill(acc, 1, version=0,
                         start=date(2012,2,1), end=date(2012,3,1))
                 # NOTE no need to save 'b' in mongo
-                olap_id = 'FakeSplinter ignores olap id'
+                olap_id = 'MockSplinter ignores olap id'
 
                 # bind & compute once to start. this change should be
                 # idempotent.
