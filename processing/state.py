@@ -564,8 +564,10 @@ class StateDB:
             result[s] = {}
             result[s]['utilbill'] = next_utilbills.get(s, None)
             if result[s]['utilbill'] is not None:
-                if last_attached[s] is not None:
+                if s in last_attached and last_attached[s] is not None:
                     result[s]['time_gap'] = result[s]['utilbill'].period_start - last_attached[s].period_end
+                else:
+                    result[s]['time_gap'] = None
 
         return result
 
