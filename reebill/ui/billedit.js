@@ -4819,8 +4819,10 @@ function reeBillReady() {
         ],
         buttons: [
             new Ext.Button({
+                id: 'newAccountSaveButton',
                 text: 'Save',
-                handler: function() {
+                handler: function(b, e) {
+                    b.setDisabled(true);
                     // TODO 22645885 show progress during post
                     // why do we need ajax to do form submission?
                     newAccountDataConn.request({
@@ -4852,7 +4854,6 @@ function reeBillReady() {
                                 } else {
                                     Ext.Msg.alert('Success', "New account created");
                                     // update next account number shown in field
-                                    newAccountField.setValue(nextAccount);
                                     accountsPanel.getLayout().setActiveItem('accountGrid');
                                     accountGrid.getSelectionModel().clearSelections();
                                     accountStore.setDefaultSort('account','DESC');
@@ -4868,14 +4869,28 @@ function reeBillReady() {
                                                       //console.log(records);
                                         //}
                                     });
+                                    //Reset account info
+                                    newAccountTemplateCombo.reset();
+                                    //Addresses all have 'xtype' == 'textfield'
+                                    var sets = newAccountFormPanel.findByType('fieldset')
+                                    for (var i = 0;i < sets.length;i++) {
+                                        var fields = sets[i].findByType('textfield');
+                                        for (var j = 0;j < fields.length;j++) {
+                                            fields[j].reset();
+                                        }
+                                    }
+                                    newAccountField.setValue(nextAccount);
                                 }
                             } catch (err) {
                                 Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
                             }
+                            
+                            b.setDisabled(false);
                             // TODO 22645885 confirm save and clear form
                         },
                         failure: function () {
                             Ext.Msg.alert("Create new account request failed");
+                            b.setDisabled(false);
                         }
                     });
                 }
