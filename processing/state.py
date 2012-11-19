@@ -191,39 +191,12 @@ class StateDB:
                 .filter(UtilBill.period_end==end).one()
 
     # TODO move to process.py?
-    def attach_utilbills(self, session, account, sequence, start, end,
-            suspended_services=[]):
+    def attach_utilbills(self, session, account, sequence, utilbill_ids, suspended_services=[]):
         '''Records in MySQL the association between the reebill given by
         'account', 'sequence' and all utilbills belonging to that customer
         whose entire periods are within the date interval [start, end] and
         whose services are not in 'suspended_services'. The utility bills are
         marked as processed.'''
-        # get customer id from account and the reebill from account and sequence
-        customer = session.query(Customer).filter(Customer.account==account).one()
-        reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
-                .filter(ReeBill.sequence==sequence).one()
-
-        # get all utilbills for this customer whose dates are between 'start'
-        # and 'end' (inclusive)
-        all_utilbills = session.query(UtilBill) \
-                .filter(UtilBill.customer==customer)\
-                .filter(UtilBill.period_start>=start)\
-                .filter(UtilBill.period_end<=end).all()
-        if all_utilbills == []:
-            raise Exception('No utility bills found between %s and %s' %
-                    (start, end))
-        non_suspended_utilbills = [u for u in all_utilbills if u.service.lower() not in
-                suspended_services]
-        if non_suspended_utilbills == []:
-            raise Exception('No utility bills to attach because the services %s'
-                    ' are suspended' % ', '.join(suspended_services))
-
-        # update 'reebill_id' and 'processed' for each non-suspended utilbill
-        for utilbill in non_suspended_utilbills:
-            utilbill.reebill = reebill
-            utilbill.processed = True
-
-    def _attach_utilbills(self, session, account, sequence, utilbill_ids):
         customer = session.query(Customer).filter(Customer.account == account).one()
         reebill = session.query(ReeBill).filter(ReeBill.customer == customer)\
                 .filter(ReeBill.sequence == sequence).one()
@@ -231,7 +204,11 @@ class StateDB:
         utilbills = session.query(UtilBill)\
                 .filter(UtilBill.customer == customer)\
                 .filter(UtilBill.id.in_(utilbill_ids))
-
+        non_suspended_utilbills = [ub for ub in utilbills if ub.service.lower() not in suspended_services]
+        if non_suspended_utilbills == []:
+            raise Exception('No utility bills to attach because the services %s'\
+                    ' are suspended' % ', '.join(suspended_services))
+        
         for utilbill in utilbills:
             utilbill.reebill = reebill
             utilbill.processed = True
@@ -558,28 +535,6 @@ class StateDB:
         # SQLAlchemy does SQL 'limit' with Python list slicing
         return query[start:start + limit], query.count()
 
-    def last_attached_utilbills(self, session, account):
-        # get customer id from account number
-        customer = session.query(Customer).filter(Customer.account==account)\
-                .one()
-        inner_query = session.query(sql_max(UtilBill.period_end).label('max_period')).with_lockmode('read')\
-                .filter(UtilBill.rebill_id != None, UtilBill.customer_id == customer.id)\
-                .group_by(UtilBill.service).subquery()
-        query = session.query(UtilBill).filter(UtilBill.period_end == inner_query.c.max_period)
-
-        return query
-
-    def first_unattached_utilbills(self, session, account):
-        # get customer id from account number
-        customer = session.query(Customer).filter(Customer.account==account)\
-                .one()
-        inner_query = session.query(sql_min(UtilBill.period_start).label('min_period')).with_lockmode('read')\
-                .filter(UtilBill.rebill_id == None, UtilBill.customer_id == customer.id)\
-                .group_by(UtilBill.service).subquery()
-        query = session.query(UtilBill).filter(UtilBill.period_start == inner_query.c.min_period)
-
-        return query
-
     def choose_next_utilbills(self, session, account, services):
         customer = session.query(Customer).filter(Customer.account==account).one()
         all_utilbills = session.query(UtilBill).filter(UtilBill.customer_id==customer.id).order_by(asc(UtilBill.period_start))
@@ -604,12 +559,14 @@ class StateDB:
                     last_attached[s] = ub
 
         result = {}
-        for s, d in itertools.product(services, ('last_attached', 'first_unattached')):
-            result[s] = {d: None}
-
+        
         for s in services:
-            result[s]['last_attached'] = last_attached.get(s, None)
-            result[s]['first_unattached'] = next_utilbills.get(s, None)
+            result[s] = {}
+            result[s]['utilbill'] = next_utilbills.get(s, None)
+            if result[s]['utilbill'] is not None:
+                if last_attached[s] is not None:
+                    result[s]['time_gap'] = result[s]['utilbill'].period_start - last_attached[s].period_end
+
         return result
 
     def record_utilbill_in_database(self, session, account, service,
