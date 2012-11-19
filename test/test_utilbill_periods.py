@@ -1,6 +1,7 @@
 import unittest
 from datetime import date, datetime, timedelta
 
+import example_data as data
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.processing import mongo
 from billing.processing.session_contextmanager import DBSession
@@ -223,3 +224,19 @@ class UtilbillPeriodTest(TestCaseWithSetup):
         
         ubids_to_attach = self.process.choose_next_utilbills(session, utilbills, services)
         self.assertEqual(len(ubids_to_attach), 1)
+
+    def test_reebill_roll_selections(self):
+        account = '99999'
+        dt = date.today()
+
+        with DBSession(self.state_db) as session:
+            customer = session.query(Customer).filter(Customer.account == account).one()
+            reebill = ReeBill(customer, 1)
+            session.add(ReeBill(customer, 1))
+            session.add(UtilBill(customer=customer, state=0, service='gas',\
+                period_start=dt, period_end=dt+timedelta(days=30), reebill=reebill))
+            session.add(UtilBill(customer=customer, state=0, service='gas',\
+                period_start=dt+timedelta(days=30), period_end=dt+timedelta(days=60), reebill=reebill))
+            b1 = data.get_reebill(account, 1)
+            self.rate_structure_dao.save_rs(data.get_cprs_dict(account, 1))
+            b2 = self.process.roll_bill(session, b1)
