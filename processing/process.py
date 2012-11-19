@@ -585,6 +585,11 @@ class Process(object):
         result = self.state_db.account_exists(session, account)
         if result is True:
             raise ValueError("Account exists")
+
+        # create row for new customer in MySQL
+        customer = self.new_account(session, name, account, discount_rate,
+                late_charge_rate)
+
         template_last_sequence = self.state_db.last_sequence(session, template_account)
 
         #TODO 22598787 use the active version of the template_account
@@ -601,8 +606,12 @@ class Process(object):
         reebill.service_address = {}
         reebill.late_charge_rate = late_charge_rate
 
-        # NOTE reebill.clear is not called here because roll_bill takes care of that
+        # reset the reebill's fields to 0/blank/etc., even though it's not
+        # strictly necessary (double protection against junk data propagation)
         reebill.clear()
+        reebill.discount_rate = self.state_db.discount_rate(session, account)
+        reebill.late_charge_rate = self.state_db.late_charge_rate(session,
+                account)
 
         # create template reebill in mongo for this new account
         self.reebill_dao.save_reebill(reebill)
@@ -623,10 +632,6 @@ class Process(object):
             # save the CPRS for the new reebill
             self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence,
                 reebill.version, utility_name, rate_structure_name, cprs)
-
-        # Finally, create the account in MySQL and let it be committed should all
-        # prior operations succeed.
-        customer = self.new_account(session, name, account, discount_rate, late_charge_rate)
 
         return customer
 
