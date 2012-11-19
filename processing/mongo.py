@@ -1079,25 +1079,35 @@ class ReebillDAO:
         reebill._utilbills = all_new_utilbills
 
 
-    def load_utilbills(self, account=None, service=None, utility=None,
-            start=None, end=None, sequence=None, version=None):
+    def load_utilbills(self, **kwargs):
         '''Loads 0 or more utility bill documents from Mongo, returns a list of
-        the raw dictionaries ordered by start date.'''
+        the raw dictionaries ordered by start date.
+
+        kwargs (any of these added will be added to the query:
+        account
+        service
+        utility
+        start
+        end
+        sequence
+        version
+        '''
+        #check individually for each allowed key in case extra things get thrown into kwargs
         query = {}
-        if account is not None:
-            query.update({'account': account})
-        if utility is not None:
-            query.update({'utility': utility})
-        if service is not None:
-            query.update({'service': service})
-        if start is not None:
-            query.update({'start': date_to_datetime(start)})
-        if end is not None:
-            query.update({'end': date_to_datetime(end)})
-        if sequence is not None:
-            query.update({'sequence': sequence})
-        if version is not None:
-            query.update({'version': version})
+        if kwargs.has_key('account'):
+            query.update({'account': kwargs['account']})
+        if kwargs.has_key('utility'):
+            query.update({'utility': kwargs['utility']})
+        if kwargs.has_key('service'):
+            query.update({'service': kwargs['service']})
+        if kwargs.has_key('start'):
+            query.update({'start': date_to_datetime(kwargs['start'])})
+        if kwargs.has_key('end'):
+            query.update({'end': date_to_datetime(kwargs['end'])})
+        if kwargs.has_key('sequence'):
+            query.update({'sequence': kwargs['sequence']})
+        if kwargs.has_key('version'):
+            query.update({'version': kwargs['version']})
         cursor = self.utilbills_collection.find(query, sort=[('start',
                 pymongo.ASCENDING)])
         return list(cursor)
