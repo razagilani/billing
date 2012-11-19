@@ -150,6 +150,7 @@ class MongoReebill(object):
         self.period_begin = self.period_end
         self.period_end = None
         self.total_adjustment = Decimal("0.00")
+        self.manual_adjustment = Decimal("0.00")
         self.hypothetical_total = Decimal("0.00")
         self.actual_total = Decimal("0.00")
         self.ree_value = Decimal("0.00")
@@ -411,6 +412,13 @@ class MongoReebill(object):
     @total_adjustment.setter
     def total_adjustment(self, value):
         self.reebill_dict['total_adjustment'] = value
+
+    @property
+    def manual_adjustment(self):
+        return self.reebill_dict['manual_adjustment']
+    @manual_adjustment.setter
+    def manual_adjustment(self, value):
+        self.reebill_dict['manual_adjustment'] = value
 
     @property
     def ree_charges(self):
@@ -1162,8 +1170,8 @@ class ReebillDAO:
             utilbill_doc = self.utilbills_collection.find_one(query)
             if utilbill_doc == None:
                 raise NoSuchBillException(("No utility bill found for reebill "
-                        " %s-%s in %s: query was %s") % (
-                        reebill_doc['account'], reebill_doc['sequence'],
+                        " %s-%s-%s in %s: query was %s") % (
+                        reebill_doc['_id']['account'], reebill_doc['_id']['sequence'], reebill_doc['_id']['version'],
                         self.utilbills_collection, format_query(query)))
 
             # convert types
