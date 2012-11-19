@@ -302,24 +302,11 @@ class Process(object):
             actual_chargegroups = reebill.actual_chargegroups_for_service(service)
             reebill.set_hypothetical_chargegroups_for_service(service, actual_chargegroups)
 
-    def roll_bill(self, session, reebill):
-        '''Modifies 'reebill' to convert it into a template for the reebill of
-        the next period (including incrementing the sequence). 'reebill' must
-        be its customer's last bill before roll_bill is called. This method
-        does not save the reebill in Mongo, but it DOES create new CPRS
-        documents in Mongo (by copying the ones originally attached to the
-        reebill). compute_bill() should always be called immediately after this
-        one so the bill is updated to its current state.'''
-        # obtain the last Reebill sequence from the state database
-        if reebill.sequence < self.state_db.last_sequence(session,
-                reebill.account):
-            raise Exception("Not the last sequence")
-
-        utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
+    def choose_next_utilbills(self, session, utilbills, services):
         ids_to_attach = []
         att = 'last_attached'
         un = 'first_unattached'
-        for s in reebill.services:
+        for s in services:
             if utilbills[s][un] is not None and utilbills[s][att] is None:
                 # This is the first utility bill ever for an account. No attached reebills yet.
                 ids_to_attach.append(utilbills[s]['first_unattached'].id)
@@ -334,14 +321,30 @@ class Process(object):
                 time_gap = str(utilbills[s][un].period_start - utilbills[s][att].period_end)
                 time_gap = time_gap[:time_gap.find(',')] # Isolate the 'X days' part of timedelta.__str__
                 raise Exception("Gap of %s since last processed %s utility bill" % (time_gap, s))
-            elif utilbills[s][un].state < 2:
+            elif utilbills[s][un].state > 2:
                 # Contiguous utilbill but it's too hypothetical to create a reebill from it
                 raise Exception("The next %s utility bill has not been properly estimated or received" % s)
             else:
                 # Unattached utilbill was found to be contiguous to an attached utilbill. Hooray?
                 ids_to_attach.append(utilbills[s]['first_unattached'].id)
+        return ids_to_attach
 
+    def roll_bill(self, session, reebill):
+        '''Modifies 'reebill' to convert it into a template for the reebill of
+        the next period (including incrementing the sequence). 'reebill' must
+        be its customer's last bill before roll_bill is called. This method
+        does not save the reebill in Mongo, but it DOES create new CPRS
+        documents in Mongo (by copying the ones originally attached to the
+        reebill). compute_bill() should always be called immediately after this
+        one so the bill is updated to its current state.'''
+        # obtain the last Reebill sequence from the state database
+        if reebill.sequence < self.state_db.last_sequence(session,
+                reebill.account):
+            raise Exception("Not the last sequence")
 
+        utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
+        ubids_to_attach = self.choose_next_utilbills(session, utilbills, services)
+        
         #last_attached = self.state_db.last_attached_utilbills(session, reebill.account)
         #first_unattached = self.state_db.first_unattached_utilbills(session, reebill.account)
         #next_utilbills = {}
@@ -357,9 +360,9 @@ class Process(object):
         #    else:
         #        raise Exception("Do not have any unassigned utility bills for %s service" % service)
 
-        utilbill_ids = []
-        for next_id in next_utilbills.itervalues():
-            utilbill_ids.append(next_id)
+        #utilbill_ids = []
+        #for next_id in next_utilbills.itervalues():
+        #    utilbill_ids.append(next_id)
 
         # duplicate the CPRS for each service
         # TODO: 22597151 refactor
@@ -401,7 +404,7 @@ class Process(object):
 
         # create reebill row in state database
         self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
-        self.state_db._attach_utilbills(session, new_reebill.account, new_reebill.sequence, utilbill_ids)
+        self.state_db._attach_utilbills(session, new_reebill.account, new_reebill.sequence, ubids_to_attach)
         
         return new_reebill
 
