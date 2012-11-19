@@ -970,6 +970,16 @@ class ProcessTest(TestCaseWithSetup):
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 1))
             b2 = self.process.roll_bill(session, b1)
 
+        # MySQL reebill
+        customer = self.state_db.get_customer(session, '99999')
+        mysql_reebill = self.state_db.get_reebill(session, '99999', 2)
+        self.assertEquals(2, mysql_reebill.sequence)
+        self.assertEquals(customer.id, mysql_reebill.customer_id)
+        self.assertEquals(False, mysql_reebill.issued)
+        self.assertEquals(0, mysql_reebill.max_version)
+
+        # TODO ...
+
     def test_issue(self):
         '''Tests attach_utilbills and issue.'''
         acc = '99999'
