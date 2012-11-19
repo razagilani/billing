@@ -9,9 +9,9 @@ import mongoengine
 import ConfigParser
 import os
 from operator import attrgetter
-from billing.dateutils import ISO_8601_DATE
+from billing.util.dateutils import ISO_8601_DATE
 from billing.processing.state import StateDB
-from billing.session_contextmanager import DBSession
+from billing.processing.session_contextmanager import DBSession
 
 # list of event types proposed but not used yet:
 # ReeBillUsagePeriodUpdated

@@ -10,7 +10,7 @@ from bson.objectid import ObjectId
 from billing.dictutils import dict_merge, subdict
 from billing.processing.state import StateDB
 from billing.mongo import ReebillDAO
-from billing.session_contextmanager import DBSession
+from billing.processing.session_contextmanager import DBSession
 from billing.exceptions import NotUniqueException
 pp = pprint.PrettyPrinter().pprint
 
