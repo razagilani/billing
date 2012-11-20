@@ -386,7 +386,7 @@ class Process(object):
 
         # create reebill row in state database
         self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
-        self.attach_utilbills(session, new_reebill.account, new_reebill.sequence)
+        self.attach_utilbills(session, new_reebill)
         self.state_db.attach_utilbills(session, new_reebill.account, new_reebill.sequence, ubids_to_attach, new_reebill.suspended_services)
         
         return new_reebill
@@ -665,11 +665,11 @@ class Process(object):
 
 
     # TODO 21052893: probably want to set up the next reebill here.  Automatically roll?
-    def attach_utilbills(self, session, account, sequence):
+    def attach_utilbills(self, session, reebill):
         '''Freeze utilbills from the previous reebill into a new reebill.
 
         This affects only the Mongo document.'''
-        reebill = self.reebill_dao.load_reebill(account, sequence)
+        #reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # save in mongo, with frozen copies of the associated utility bill
         # (the mongo part should normally come last because it can't roll back,

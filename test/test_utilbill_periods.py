@@ -240,3 +240,6 @@ class UtilbillPeriodTest(TestCaseWithSetup):
             b1 = data.get_reebill(account, 1)
             self.rate_structure_dao.save_rs(data.get_cprs_dict(account, 1))
             b2 = self.process.roll_bill(session, b1)
+            
+            self.assertEqual(b2.period_begin, dt+timedelta(days=30))
+            self.assertEqual(b2.period_end, dt+timedelta(days=60))
