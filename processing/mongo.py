@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import sys
 import datetime
 from datetime import date, time, datetime
@@ -169,6 +169,11 @@ class MongoReebill(object):
         self.balance_due = Decimal("0.00")
         self.payment_received = Decimal("0.00")
         self.balance_forward = Decimal("0.00")
+        # some customers are supposed to lack late_charges key, some are
+        # supposed to have late_charges: None, and others have
+        # self.late_charges: 0
+        if 'late_charges' in self.reebill_dict and self.late_charges is not None:
+            self.late_charges = Decimal("0.00")
 
         for service in self.services:
             # get utilbill numbers and zero them out
@@ -235,12 +240,14 @@ class MongoReebill(object):
         for converting an existing reebill and its utility bills into a
         template for a new account.'''
         self.account = account
-        for u in self._utilbills:
+        for handle in self.reebill_dict['utilbills']:
+            u = self._get_utilbill_for_handle(handle)
             u['account'] = account
             if 'sequence' in u:
                 del u['sequence']
             if 'version' in u:
                 del u['version']
+            u['_id'] = handle['id'] = bson.ObjectId()
 
     def new_utilbill_ids(self):
         '''Replaces _ids in utility bill documents and the reebill document's
@@ -1079,25 +1086,35 @@ class ReebillDAO:
         reebill._utilbills = all_new_utilbills
 
 
-    def load_utilbills(self, account=None, service=None, utility=None,
-            start=None, end=None, sequence=None, version=None):
+    def load_utilbills(self, **kwargs):
         '''Loads 0 or more utility bill documents from Mongo, returns a list of
-        the raw dictionaries ordered by start date.'''
+        the raw dictionaries ordered by start date.
+
+        kwargs (any of these added will be added to the query:
+        account
+        service
+        utility
+        start
+        end
+        sequence
+        version
+        '''
+        #check individually for each allowed key in case extra things get thrown into kwargs
         query = {}
-        if account is not None:
-            query.update({'account': account})
-        if utility is not None:
-            query.update({'utility': utility})
-        if service is not None:
-            query.update({'service': service})
-        if start is not None:
-            query.update({'start': date_to_datetime(start)})
-        if end is not None:
-            query.update({'end': date_to_datetime(end)})
-        if sequence is not None:
-            query.update({'sequence': sequence})
-        if version is not None:
-            query.update({'version': version})
+        if kwargs.has_key('account'):
+            query.update({'account': kwargs['account']})
+        if kwargs.has_key('utility'):
+            query.update({'utility': kwargs['utility']})
+        if kwargs.has_key('service'):
+            query.update({'service': kwargs['service']})
+        if kwargs.has_key('start'):
+            query.update({'start': date_to_datetime(kwargs['start'])})
+        if kwargs.has_key('end'):
+            query.update({'end': date_to_datetime(kwargs['end'])})
+        if kwargs.has_key('sequence'):
+            query.update({'sequence': kwargs['sequence']})
+        if kwargs.has_key('version'):
+            query.update({'version': kwargs['version']})
         cursor = self.utilbills_collection.find(query, sort=[('start',
                 pymongo.ASCENDING)])
         return list(cursor)
@@ -1384,8 +1401,10 @@ class ReebillDAO:
             'account': utilbill_doc['account'],
             'service': utilbill_doc['service'],
             'utility': utilbill_doc['utility'],
-            'start': utilbill_doc['start'],
-            'end': utilbill_doc['end'],
+            'start': date_to_datetime(utilbill_doc['start']) if
+                    utilbill_doc['start'] is not None else None,
+            'end': date_to_datetime(utilbill_doc['end']) if utilbill_doc['end']
+                    is not None else None,
         }
         if sequence_and_version is not None:
             # this utility bill is being frozen: check for existing frozen
@@ -1404,7 +1423,10 @@ class ReebillDAO:
             # sequence/version keys
             unique_fields['sequence'] = {'$exists': False}
             unique_fields['version'] = {'$exists': False}
-        for duplicate in self.load_utilbills(**unique_fields):
+        # NOTE do not use load_utilbills(**unique_fields) here because it
+        # unpacks None values into nonexistent keys!
+        # see bug #39717171
+        for duplicate in self.utilbills_collection.find(unique_fields):
             if duplicate['_id'] != utilbill_doc['_id']:
                 raise NotUniqueException(("Can't save utility bill with "
                         "_id=%s: There's already a utility bill with "
