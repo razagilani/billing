@@ -30,11 +30,12 @@ db = Connection('localhost')['skyline-dev']
 
 with DBSession(state_db) as session:
 
-    roc = {}
+    roc = []
 
     # precision a.k.a. false positive rate = false positives / all predicted positives (precision)
     # recall a.k.a. true positive rate = predicted positives / all real positives
-    for threshold in arange(0, 1, 0.1):
+
+    for threshold in [0.5]:#arange(0, 1, 0.1):
 
         for account, sequence, max_version in state_db.reebills(session):
             reebill = bill_dao.load_reebill(account, sequence, version=max_version)
@@ -58,16 +59,19 @@ with DBSession(state_db) as session:
                 print >> stderr, account, sequence, max_version, e
                 continue
             try:
-                actual_bindings = [rsi['binding'] for rsi in actual_rs['rates']]
+                actual_bindings = [rsi['rsi_binding'] for rsi in actual_rs['rates']]
             except KeyError as e:
                 #print >> stderr, 'malformed rate structure doc:', pf(actual_rs)
+                print >> stderr, account, sequence, max_version, 'malformed rate structure doc: missing key "%s"' % e.message
                 continue
 
             # temporarily remove real UPRS from database
             uprs = db.ratestructure.find_one({'_id.type':'UPRS', '_id.account':
                     account, '_id.sequence': sequence, '_id.version':
                     max_version})
-            if uprs is None: continue
+            if uprs is None:
+                #print >> stderr, account, sequence, version 'missing UPRS'
+                raise Exception("missing UPRS")
             db.ratestructure.remove({'_id.type':'CPRS', '_id.account':
                     account, '_id.sequence': sequence, '_id.version':
                     max_version})

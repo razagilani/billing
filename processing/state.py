@@ -436,7 +436,8 @@ class StateDB:
     def listAccounts(self, session):
         '''List of all customer accounts (ordered).'''    
         # SQLAlchemy returns a list of tuples, so convert it into a plain list
-        result = map((lambda x: x[0]), session.query(Customer.account).all())
+        result = map((lambda x: x[0]),
+                session.query(Customer.account).order_by(Customer.account).all())
         return result
 
     def list_accounts(self, session, start, limit):
