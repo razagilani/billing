@@ -7,6 +7,7 @@ from billing.processing.session_contextmanager import DBSession
 from sys import stderr
 from pymongo import Connection
 from numpy import arange
+from matplotlib import pyplot as plt
 
 import pprint
 pf = pprint.PrettyPrinter().pformat
@@ -29,45 +30,55 @@ db = Connection('localhost')['skyline-dev']
 
 with DBSession(state_db) as session:
 
-    threshold = 0.5
-    for account, sequence, max_version in state_db.reebills(session):
-        reebill = bill_dao.load_reebill(account, sequence, version=max_version)
-        service = reebill.services[0]
-        utility_name = reebill.utility_name_for_service(service)
-        rate_structure_name = reebill.rate_structure_name_for_service(service)
-        period = reebill.utilbill_period_for_service(service)
-        # ignore reebills that don't yet have definite periods
-        if None in period:
-            continue
+    roc = {}
 
-        try:
-            #actual_rs = rs_dao._load_combined_rs_dict(reebill,
-                    #service)
-            actual_rs = rs_dao.load_uprs(account, sequence, max_version,
-                    utility_name, rate_structure_name)
-        except ValueError as e:
-            print >> stderr, account, sequence, max_version, 'missing CPRS'
-        except Exception as e:
-            print >> stderr, account, sequence, max_version, e
-        else:
+    # precision a.k.a. false positive rate = false positives / all predicted positives (precision)
+    # recall a.k.a. true positive rate = predicted positives / all real positives
+    for threshold in arange(0, 1, 0.1):
+
+        for account, sequence, max_version in state_db.reebills(session):
+            reebill = bill_dao.load_reebill(account, sequence, version=max_version)
+            service = reebill.services[0]
+            utility_name = reebill.utility_name_for_service(service)
+            rate_structure_name = reebill.rate_structure_name_for_service(service)
+            period = reebill.utilbill_period_for_service(service)
+            # ignore reebills that don't yet have definite periods
+            if None in period:
+                continue
+
+            # get actual rate structure for this reebill, and get the set of
+            # RSI bindings in it
+            try:
+                actual_rs = rs_dao._load_combined_rs_dict(reebill,
+                        service)
+                #actual_rs = rs_dao.load_uprs(account, sequence, max_version,
+                        #utility_name, rate_structure_name)
+            except ValueError as e:
+                # skip if rate structure not found
+                print >> stderr, account, sequence, max_version, e
+                continue
+            try:
+                actual_bindings = [rsi['binding'] for rsi in actual_rs['rates']]
+            except KeyError as e:
+                #print >> stderr, 'malformed rate structure doc:', pf(actual_rs)
+                continue
+
             # temporarily remove real UPRS from database
             uprs = db.ratestructure.find_one({'_id.type':'UPRS', '_id.account':
                     account, '_id.sequence': sequence, '_id.version':
                     max_version})
+            if uprs is None: continue
             db.ratestructure.remove({'_id.type':'CPRS', '_id.account':
                     account, '_id.sequence': sequence, '_id.version':
                     max_version})
 
-            try:
-                actual_bindings = [rsi['binding'] for rsi in actual_rs['rates']]
-            except KeyError as e:
-                print >> stderr, 'malformed rate structure doc:', pf(actual_rs)
-                continue
+            # guess the set of UPRS bindings, without the real one in the db
             guessed_bindings = rs_dao._get_probable_rsis(utility_name,
                     rate_structure_name,
                     period=reebill.utilbill_period_for_service(service),
                     threshold=threshold)
 
+            # calculate performance of the guess
             if len(guessed_bindings) == 0:
                 precision = 0
             else:
@@ -78,8 +89,14 @@ with DBSession(state_db) as session:
             else:
                 recall = len([b for b in actual_bindings if b in
                         guessed_bindings]) / len(actual_bindings)
+            roc.append((threshold, 1 - precision, recall))
 
             print account, sequence, max_version, precision, recall
 
-            # restore real UPRS to database
+            # put real UPRS back in the database
             db.ratestructure.save(uprs)
+
+#print zip(*roc)[1:]
+#plt.plot(*zip(*roc)[1:])
+#plt.savefig('roc.png')
+#plt.show()

@@ -208,7 +208,7 @@ class RateStructureDAO(object):
         urs = self.load_urs(utility_name, rate_structure_name, period_begin,
                 period_end)
         if urs is None:
-            raise Exception(("Could not find URS for utility_name %s, "
+            raise ValueError(("Could not find URS for utility_name %s, "
                     "rate_structure_name %s, period %s - %s") % (utility_name,
                     rate_structure_name, period_begin, period_end))
 
