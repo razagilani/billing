@@ -968,6 +968,7 @@ class ProcessTest(TestCaseWithSetup):
         with DBSession(self.state_db) as session:
             b1 = example_data.get_reebill(account, 1)
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 1))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 1))
             b2 = self.process.roll_bill(session, b1)
 
         # MySQL reebill
