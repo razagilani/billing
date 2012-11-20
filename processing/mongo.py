@@ -14,11 +14,11 @@ import itertools as it
 import copy
 import uuid as UUID
 import operator
-from billing.mongo_utils import bson_convert, python_convert, format_query
-from billing.dictutils import deep_map, subdict
-from billing.dateutils import date_to_datetime
-from billing.session_contextmanager import DBSession
-from billing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
+from billing.util.mongo_utils import bson_convert, python_convert, format_query
+from billing.util.dictutils import deep_map, subdict
+from billing.util.dateutils import date_to_datetime
+from billing.processing.session_contextmanager import DBSession
+from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -60,16 +60,6 @@ def convert_datetimes(x, datetime_keys=[], ancestor_key=None):
                 element in x]
     return x
 
-
-def check_issued(method):
-    '''Decorator to evaluate the issued state.'''
-    @functools.wraps(method)
-    def wrapper(instance, *args, **kwargs):
-        # BTW this is not the right way to check if a bill is issued. Issued status found in StateDB
-        if 'issue_date' in instance.reebill_dict and instance.reebill_dict['issue_date'] is not None:
-            raise Exception("ReeBill cannot be modified once isssued.")
-        return method(instance, *args, **kwargs)
-    return wrapper
 
 # TODO believed to be needed only by presentation code, so put it there.
 def flatten_chargegroups_dict(chargegroups):
@@ -146,6 +136,7 @@ class MongoReebill(object):
         self.reebill_dict = copy.deepcopy(reebill_data)
         self._utilbills = copy.deepcopy(utilbill_dicts)
 
+    # TODO 36805917 clear() can go away when ReeBills can be constructed
     def clear(self):
         '''Code for clearing out fields of newly-rolled rebill (moved from
         __init__, called by Process.roll_bill). TODO remove this.'''
@@ -159,6 +150,7 @@ class MongoReebill(object):
         self.period_begin = self.period_end
         self.period_end = None
         self.total_adjustment = Decimal("0.00")
+        self.manual_adjustment = Decimal("0.00")
         self.hypothetical_total = Decimal("0.00")
         self.actual_total = Decimal("0.00")
         self.ree_value = Decimal("0.00")
@@ -177,6 +169,11 @@ class MongoReebill(object):
         self.balance_due = Decimal("0.00")
         self.payment_received = Decimal("0.00")
         self.balance_forward = Decimal("0.00")
+        # some customers are supposed to lack late_charges key, some are
+        # supposed to have late_charges: None, and others have
+        # self.late_charges: 0
+        if 'late_charges' in self.reebill_dict and self.late_charges is not None:
+            self.late_charges = Decimal("0.00")
 
         for service in self.services:
             # get utilbill numbers and zero them out
@@ -318,6 +315,7 @@ class MongoReebill(object):
     # TODO these must die
     @property
     def period_begin(self):
+
         return python_convert(self.reebill_dict['period_begin'])
     @period_begin.setter
     def period_begin(self, value):
@@ -423,6 +421,13 @@ class MongoReebill(object):
         self.reebill_dict['total_adjustment'] = value
 
     @property
+    def manual_adjustment(self):
+        return self.reebill_dict['manual_adjustment']
+    @manual_adjustment.setter
+    def manual_adjustment(self, value):
+        self.reebill_dict['manual_adjustment'] = value
+
+    @property
     def ree_charges(self):
         return self.reebill_dict['ree_charges']
     @ree_charges.setter
@@ -482,6 +487,20 @@ class MongoReebill(object):
     @ree_value.setter
     def ree_value(self, value):
         self.reebill_dict['ree_value'] = value
+
+    @property
+    def recipients(self):
+        '''E-mail addresses of bill recipients.
+
+        If these data exist, returns a list of strings. Otherwise, returns None.'''
+        return self.reebill_dict.get('bill_recipients', None)
+    @recipients.setter
+    def recipients(self, value):
+        '''Assigns a list of e-mail addresses representing bill recipients.'''
+        if value:
+            self.reebill_dict['bill_recipients'] = value
+        else:
+            self.reebill_dict.pop('bill_recipients', None)
 
     def _utilbill_ids(self):
         '''Useful for debugging.'''
@@ -988,20 +1007,6 @@ class MongoReebill(object):
         return flatten_chargegroups_dict(copy.deepcopy(
                 utilbill['chargegroups']))
 
-    #def chargegroups_flattened(self, service, chargegroups):
-        #if service not in self.services:
-            #raise ValueError('Unknown service "%s"' % service)
-        ## flatten structure into an array of dictionaries, one for each charge
-        ## this has to be done because the grid editor is  looking for a flat table
-        ## This should probably not be done in here, but rather by some helper object?
-        #flat_charges = []
-        #for ub in self.reebill_dict['utilbills']:
-            #if ub['service'] == service:
-                #for (chargegroup, charges) in ub[chargegroups].items(): 
-                    #for charge in charges:
-                        #charge['chargegroup'] = chargegroup
-                        #flat_charges.append(charge)
-        #return flat_charges
 
     def set_hypothetical_chargegroups_flattened(self, service, flat_charges):
         utilbill_handle = self._get_handle_for_service(service)
@@ -1012,27 +1017,12 @@ class MongoReebill(object):
         utilbill = self._get_utilbill_for_service(service)
         utilbill['chargegroups'] = unflatten_chargegroups_list(flat_charges)
 
-    #def set_chargegroups_flattened(self, service, flat_charges, chargegroups):
-        #for ub in self.reebill_dict['utilbills']:
-            #if ub['service'] == service:
-                ## TODO sort flat_charges before groupby
-                ## They post sorted, but that is no guarantee...
-                #new_chargegroups = {}
-                #for cg, charges in it.groupby(sorted(flat_charges, key=lambda
-                                        #charge:charge['chargegroup']), key=lambda charge:charge['chargegroup']):
-                    #new_chargegroups[cg] = []
-                    #for charge in charges:
-                        #del charge['chargegroup']
-                        #new_chargegroups[cg].append(charge)
-                #ub[chargegroups] = new_chargegroups
 
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
 
-    # TODO: hardcoded database name, and the wrong default name at that.
-    # TODO: hardcoded host name
     def __init__(self, state_db, host='localhost', port=27017,
-            database='reebills', **kwargs):
+            database=None, **kwargs):
         self.state_db = state_db
 
         try:
@@ -1096,25 +1086,35 @@ class ReebillDAO:
         reebill._utilbills = all_new_utilbills
 
 
-    def load_utilbills(self, account=None, service=None, utility=None,
-            start=None, end=None, sequence=None, version=None):
+    def load_utilbills(self, **kwargs):
         '''Loads 0 or more utility bill documents from Mongo, returns a list of
-        the raw dictionaries ordered by start date.'''
+        the raw dictionaries ordered by start date.
+
+        kwargs (any of these added will be added to the query:
+        account
+        service
+        utility
+        start
+        end
+        sequence
+        version
+        '''
+        #check individually for each allowed key in case extra things get thrown into kwargs
         query = {}
-        if account is not None:
-            query.update({'account': account})
-        if utility is not None:
-            query.update({'utility': utility})
-        if service is not None:
-            query.update({'service': service})
-        if start is not None:
-            query.update({'start': date_to_datetime(start)})
-        if end is not None:
-            query.update({'end': date_to_datetime(end)})
-        if sequence is not None:
-            query.update({'sequence': sequence})
-        if version is not None:
-            query.update({'version': version})
+        if kwargs.has_key('account'):
+            query.update({'account': kwargs['account']})
+        if kwargs.has_key('utility'):
+            query.update({'utility': kwargs['utility']})
+        if kwargs.has_key('service'):
+            query.update({'service': kwargs['service']})
+        if kwargs.has_key('start'):
+            query.update({'start': date_to_datetime(kwargs['start'])})
+        if kwargs.has_key('end'):
+            query.update({'end': date_to_datetime(kwargs['end'])})
+        if kwargs.has_key('sequence'):
+            query.update({'sequence': kwargs['sequence']})
+        if kwargs.has_key('version'):
+            query.update({'version': kwargs['version']})
         cursor = self.utilbills_collection.find(query, sort=[('start',
                 pymongo.ASCENDING)])
         return list(cursor)
@@ -1207,6 +1207,7 @@ class ReebillDAO:
         greatest issued version is returned, and after which the greatest
         overall version is returned), or 'max', which specifies the greatest
         version overall.'''
+        #print >> sys.stderr, '********** load_reebill', account, sequence, version
         with DBSession(self.state_db) as session:
             # TODO looks like somebody's temporary hack should be removed
             if account is None: return None
@@ -1270,8 +1271,8 @@ class ReebillDAO:
             sequences = self.state_db.listSequences(session, account)
         return [self.load_reebill(account, sequence) for sequence in sequences]
     
-    def load_reebills_in_period(self, account, version=0, start_date=None,
-            end_date=None):
+    def load_reebills_in_period(self, account=None, version=0, start_date=None,
+            end_date=None, include_0=False):
         '''Returns a list of MongoReebills whose period began on or before
         'end_date' and ended on or after 'start_date' (i.e. all bills between
         those dates and all bills whose period includes either endpoint). The
@@ -1282,17 +1283,22 @@ class ReebillDAO:
         'version' may be a specific version number, or 'any' to get all
         versions.'''
         with DBSession(self.state_db) as session:
-            query = {
-                '_id.account': str(account),
-                '_id.sequence': {'$gt': 0},
-            }
+            query = {}
+            if account is not None:
+                query['_id.account'] = account
             if isinstance(version, int):
                 query.update({'_id.version': version})
             elif version == 'any':
                 pass
+            elif version == 'max':
+                # TODO max version (it's harder than it looks because you don't
+                # have the account or sequence of a specific reebill to query
+                # MySQL for here)
+                raise NotImplementedError
             else:
                 raise ValueError('Unknown version specifier "%s"' % version)
-            # TODO max version
+            if not include_0:
+                query['_id.sequence'] = {'$gt': 0}
 
             # add dates to query if present (converting dates into datetimes
             # because mongo only allows datetimes)
@@ -1312,6 +1318,12 @@ class ReebillDAO:
                 utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
                 result.append(MongoReebill(mongo_doc, utilbill_docs))
             return result
+
+    def last_issue_date(self, session, account):
+        last_sequence = self.state_db.last_issued_sequence(session, account)
+        reebill = self.load_reebill(account, last_sequence)
+        return reebill.issue_date
+
         
     def save_reebill(self, reebill, freeze_utilbills=False, force=False):
         '''Saves the MongoReebill 'reebill' into the database. If a document
@@ -1329,6 +1341,7 @@ class ReebillDAO:
         used for testing).'''
         # TODO pass session into save_reebill instead of re-creating it
         # https://www.pivotaltracker.com/story/show/36258193
+        # TODO 38459029
         with DBSession(self.state_db) as session:
             issued = self.state_db.is_issued(session, reebill.account,
                     reebill.sequence, version=reebill.version, nonexistent=False)
@@ -1447,15 +1460,23 @@ class ReebillDAO:
 
         # remove each utility bill, then the reebill
         for u in reebill._utilbills:
-            result = self.utilbills_collection.remove({'_id': bson_convert(u['_id'])}, safe=True)
-            if result['err'] is not None or result['n'] == 0:
-                raise MongoError(result)
-
-            # if this is a frozen utility bill, both editable version also must
-            # be removed, but it's not in _utilbills. identify it by the
-            # unofficially unique keys
-            # NOTE if the dates have been changed, this will not work
+            # if this is a frozen utility bill, delete it
             if 'sequence' in u:
+                result = self.utilbills_collection.remove({'_id': bson_convert(u['_id'])}, safe=True)
+                if result['err'] is not None or result['n'] == 0:
+                    raise MongoError(result)
+
+            # if this is an editable utility bill, delete it only if the
+            # reebill's version is 0. (the editable document is retained for
+            # version > 0 so new versions can still be created after this
+            # version is removed.) this also deletes the "editable version of"
+            # the frozen utility bill above, if any.
+            #
+            # (NOTE it is not actually possible to identify the "editable
+            # version of" a given frozen utility bill because the keys can
+            # change; see
+            # https://www.pivotaltracker.com/projects/397621#!/stories/37521779)
+            if version == 0:
                 q = {
                     'account': account,
                     'service': u['service'],

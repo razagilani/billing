@@ -2,11 +2,11 @@
 import copy
 from datetime import date, datetime, timedelta
 from bson.objectid import ObjectId
-from billing.mongo import MongoReebill, float_to_decimal
+from billing.processing.mongo import MongoReebill, float_to_decimal
 from billing.processing.rate_structure import RateStructure
-from billing import dateutils
-from billing.dictutils import deep_map, subdict
-from billing.dateutils import date_to_datetime
+from billing.util import dateutils
+from billing.util.dictutils import deep_map, subdict
+from billing.util.dateutils import date_to_datetime
 
 # for converting Mongo's JSON directly to Python
 ISODate = lambda s: datetime.strptime(s, dateutils.ISO_8601_DATETIME)
@@ -170,6 +170,8 @@ example_reebill = {
 	"ree_charges" : 118.42,
 	"ree_value" : 236.84,
 	"discount_rate" : 0.5,
+    'late_charge_rate': 0.1,
+    'late_charges': 12.34,
 	"message" : null,
 	"issue_date" : null,
 	"utilbills" : [
@@ -295,7 +297,7 @@ example_reebill = {
             },
         }
     ],
-	"payment_received" : 0,
+	"payment_received" : 10,
 	"version" : 0,
 	"period_end" : ISODate("2011-12-14T00:00:00Z"),
 	"actual_total" : 743.49,
