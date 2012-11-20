@@ -232,11 +232,11 @@ class UtilbillPeriodTest(TestCaseWithSetup):
         with DBSession(self.state_db) as session:
             customer = session.query(Customer).filter(Customer.account == account).one()
             reebill = ReeBill(customer, 1)
-            session.add(ReeBill(customer, 1))
+            #session.add(ReeBill(customer, 1))
             session.add(UtilBill(customer=customer, state=0, service='gas',\
                 period_start=dt, period_end=dt+timedelta(days=30), reebill=reebill))
             session.add(UtilBill(customer=customer, state=0, service='gas',\
-                period_start=dt+timedelta(days=30), period_end=dt+timedelta(days=60), reebill=reebill))
+                period_start=dt+timedelta(days=30), period_end=dt+timedelta(days=60), reebill=None))
             b1 = data.get_reebill(account, 1)
             self.rate_structure_dao.save_rs(data.get_cprs_dict(account, 1))
             b2 = self.process.roll_bill(session, b1)
