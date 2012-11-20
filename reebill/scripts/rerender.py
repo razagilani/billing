@@ -5,7 +5,7 @@ import traceback
 from billing import mongo
 from billing.reebill import render
 from billing.processing import state
-from billing.session_contextmanager import DBSession
+from billing.processing.session_contextmanager import DBSession
 
 billdb_config = {
     'billpath': '/db-dev/skyline/bills/',
