@@ -5597,6 +5597,17 @@ function reeBillReady() {
     // end of tab widgets
     ////////////////////////////////////////////////////////////////////////////
 
+    ///////////////////////////////////////////////////////////////////////////
+    //Issuable Reebills Tab
+    //Show all unissued reebills, show the reebills whose totals match their
+    //  utilbills first
+
+    var  issuablePanel = new Ext.Panel({
+        id: 'issuableTab',
+        title: 'Issuable Reebills',
+        disabled: issuablePanelDisabled,
+    });
+
     ////////////////////////////////////////////////////////////////////////////
     // Status bar displayed at footer of every panel in the tabpanel
 
@@ -5631,13 +5642,14 @@ function reeBillReady() {
             rateStructurePanel,
             chargeItemsPanel,
             journalPanel,
+            issuablePanel,
             mailPanel,
             reportPanel,
             preferencesPanel,
             aboutPanel,
         ]
     });
-
+    
     // end of tab widgets
     ////////////////////////////////////////////////////////////////////////////
 
