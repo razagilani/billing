@@ -2437,7 +2437,7 @@ function reeBillReady() {
         height: 900,
         width: 1000,
         title: 'Actual Charges',
-        clicksToEdit: 1
+        clicksToEdit: 2
         // config options for stateful behavior
         //stateful: true,
         //stateId: 'grid' 
@@ -2812,7 +2812,7 @@ function reeBillReady() {
         height: 900,
         width: 1000,
         title: 'Hypothetical Charges',
-        clicksToEdit: 1
+        clicksToEdit: 2
         // config options for stateful behavior
         //stateful: true,
         //stateId: 'grid' 
@@ -3165,7 +3165,7 @@ function reeBillReady() {
             forceFit: true,
         },
         title: 'Customer Periodic',
-        clicksToEdit: 1
+        clicksToEdit: 2
     });
 
     CPRSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
@@ -3427,7 +3427,7 @@ function reeBillReady() {
             forceFit: true,
         },
         title: 'Utility Periodic',
-        clicksToEdit: 1
+        clicksToEdit: 2
     });
 
     UPRSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
@@ -3683,7 +3683,7 @@ function reeBillReady() {
             forceFit: true,
         },
         title: 'Utility Global',
-        clicksToEdit: 1
+        clicksToEdit: 2
     });
 
     URSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
@@ -3955,7 +3955,7 @@ function reeBillReady() {
             forceFit: true,
         },
         title: 'Payments',
-        clicksToEdit: 1
+        clicksToEdit: 2
     });
 
 /*    paymentGrid.getSelectionModel().on('selectionchange', function(sm){
@@ -3978,7 +3978,7 @@ function reeBillReady() {
         title: 'Pay',
         disabled: paymentPanelDisabled,
         layout: 'accordion',
-        items: [paymentGrid, ]
+        items: [paymentGrid, ],
     });
 
     // this event is received when the tab panel tab is clicked on
@@ -4432,7 +4432,7 @@ function reeBillReady() {
             displayMsg: 'Displaying {0} - {1} of {2}',
             emptyMsg: "No statuses to display",
         }),
-        clicksToEdit: 1,
+        clicksToEdit: 2,
     });
 
     accountGrid.getSelectionModel().on('beforerowselect', function(selModel, rowIndex, keepExisting, record) {
@@ -5238,7 +5238,7 @@ function reeBillReady() {
         },
         // this is actually set in loadReeBillUIForAccount()
         title: 'Journal Entries ' + selected_account,
-        clicksToEdit: 1
+        clicksToEdit: 2
     });
 
     //
@@ -5601,11 +5601,156 @@ function reeBillReady() {
     //Issuable Reebills Tab
     //Show all unissued reebills, show the reebills whose totals match their
     //  utilbills first
+    
+    var initialIssuable = {
+        rows: [
+        ]
+    };
 
+    var issuableReader = new Ext.data.JsonReader({
+        root: 'rows',
+        totalProperty: 'total',
+        fields: [
+            {name: 'id', mapping: 'id'},
+            {name: 'account', mapping: 'account'},
+            {name: 'sequence', mapping: 'sequence'},
+            {name: 'mailto', mapping: 'mailto'},
+            {name: 'util_total', mapping: 'util_total'},
+            {name: 'reebill_total', mapping: 'reebill_total'},
+            {name: 'matching', mapping: 'matching'},
+        ],
+    });
+
+    var issuableWriter = new Ext.data.JsonWriter({
+        encode: true,
+        writeAllFields: true
+    });
+
+    var issuableStoreProxyConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/issuable'
+    });
+    issuableStoreProxyConn.autoAbort = true;
+    issuableStoreProxyConn.disableCaching = true;
+    
+    var issuableStoreProxy = new Ext.data.HttpProxy(issuableStoreProxyConn);
+
+    var issuableStore = new Ext.data.GroupingStore({
+        proxy: issuableStoreProxy,
+        reader: issuableReader,
+        writer: issuableWriter,
+        autoSave: true,
+        baseParams: {start: 0, limit: 25},
+        data: initialIssuable,
+        groupField: 'matching',
+        sortInfo:{field: 'matching', direction: 'ASC'},
+    });
+    
+    issuableStore.on('beforeload', function () {
+        issuableGrid.setDisabled(true);
+    });
+    
+    issuableStore.on('load', function() {
+        issuableGrid.setDisabled(false);
+    });
+
+    var issuableColModel = new Ext.grid.ColumnModel({
+        columns: [
+            {
+                id: 'matching',
+                header: '',
+                width: 160,
+                sortable: true,
+                dataIndex: 'matching',
+                hidden: true,
+            },{
+                id: 'account',
+                header: 'Account',
+                width: 75,
+                sortable: true,
+                dataIndex: 'account',
+                editable: false,
+                editor: new Ext.form.TextField(),
+            },{
+                id: 'sequence',
+                header: 'Sequence',
+                width: 75,
+                sortable: true,
+                dataIndex: 'sequence',
+                editable: false,
+                editor: new Ext.form.TextField(),
+            },{
+                id: 'mailto',
+                header: 'Recipients',
+                columnWidth: 1,
+                sortable: false,
+                dataIndex: 'mailto',
+                editable: true,
+                editor: new Ext.form.TextArea({allowBlank: false}),
+            },{
+                id: 'util_total',
+                header: 'Utility Bill Total',
+                width: 125,
+                sortable: false,
+                dataIndex: 'util_total',
+                editable: false,
+                editor: new Ext.form.NumberField(),
+                renderer: function(v, params, record)
+                {
+                    return Ext.util.Format.usMoney(record.data.util_total);
+                },
+            },{
+                id: 'reebill_total',
+                header: 'Reebill Total',
+                width: 125,
+                sortable: false,
+                dataIndex: 'reebill_total',
+                editable: false,
+                editor: new Ext.form.NumberField(),
+                renderer: function(v, params, record)
+                {
+                    return Ext.util.Format.usMoney(record.data.reebill_total);
+                },
+            },
+        ],
+    });
+
+    var issuableGrid = new Ext.grid.EditorGridPanel({
+        colModel: issuableColModel,
+        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+        bbar: new Ext.PagingToolbar({
+            pageSize: 25,
+            store: issuableStore,
+            displayInfo: true,
+            displayMsg: 'Displaying {0} - {1} of {2}',
+            emptyMsg: 'No ReeBills to display',
+        }),
+        store: issuableStore,
+        enableColumnMove: false,
+        view: new Ext.grid.GroupingView({
+            forceFit: false,
+            groupTextTpl: '{[gvalue=="true"?"Reebills with Matching Totals":"Reebills without Matching Totals"]}',
+            showGroupName: false,
+        }),
+        frame: true,
+        animCollapse: false,
+        stripeRows: true,
+        autoExpandColumn: 'mailto',
+        height: 900,
+        width: 1000,
+        title: 'Reebills Ready to be Issued',
+        clicksToEdit: 2
+    });
+        
     var  issuablePanel = new Ext.Panel({
         id: 'issuableTab',
         title: 'Issuable Reebills',
         disabled: issuablePanelDisabled,
+        layout: 'accordion',
+        items: [issuableGrid,],
+    });
+
+    issuablePanel.on('activate', function(panel) {
+        issuableStore.reload();
     });
 
     ////////////////////////////////////////////////////////////////////////////
