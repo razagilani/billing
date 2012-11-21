@@ -644,6 +644,7 @@ class Process(object):
         # try to attach in MySQL first: if it fails, mongo will not be updated.
         # this prevents a bug where if attachment fails in MySQL, the changes
         # to Mongo cannot be rolled back.
+        # https://www.pivotaltracker.com/story/show/39905517
         self.state_db.try_to_attach_utilbills(session, account, sequence,
                 reebill.period_begin, reebill.period_end,
                 suspended_services=reebill.suspended_services)
