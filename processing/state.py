@@ -197,13 +197,12 @@ class StateDB:
         whose entire periods are within the date interval [start, end] and
         whose services are not in 'suspended_services'. The utility bills are
         marked as processed.'''
-        customer = session.query(Customer).filter(Customer.account == account).one()
-        reebill = session.query(ReeBill).filter(ReeBill.customer == customer)\
-                .filter(ReeBill.sequence == sequence).one()
+        customer = self.get_customer(session, account)
+        reebill = self.get_reebill(session, account, sequence)
 
         non_suspended_utilbills = filter(lambda ub: ub.service.lower() not in suspended_services, utilbills)
         if not non_suspended_utilbills:
-            raise Exception('No utility bills to attach because the services %s'\
+            raise Exception('No utility bills to attach because %s services'\
                     ' are suspended' % ', '.join(suspended_services))
         
         for utilbill in utilbills:
@@ -535,30 +534,49 @@ class StateDB:
     def choose_next_utilbills(self, session, account, services):
         customer = self.get_customer(session, account)
         sequence = self.last_issued_sequence(session, account)
+        # If there is a last issued sequence, then we can use the utilbills attached to it as a reference
+        # for dates after which subsequent utilbill(s) will occur
         if sequence:
             reebill = self.get_reebill(session, account, sequence)
             last_utilbills = session.query(UtilBill).filter(UtilBill.rebill_id==reebill.id).all()
-            service_iter = {ub.service: ub.period_end for ub in last_utilbills if ub.service in services}
+            # 
+            service_iter = ((ub.service, ub.period_end) for ub in last_utilbills if ub.service in services)
+        # Without a last issued reebill, we can't use any reference dates for our query(ies)
         else:
             last_utilbills = None
-            service_iter = {service: date.min for service in services}
+            service_iter = ((service, date.min) for service in services)
 
-        next_utilbills = dict.fromkeys(services)
+        next_utilbills = []
 
-        for s, period_end in service_iter.iteritems():
+        for service, period_end in service_iter:
+            # First, query to find the next unattached utilbill on this account for this customer and this service
             try:
-                utilbill = session.query(UtilBill).filter(UtilBill.customer==customer, UtilBill.service==s, UtilBill.period_start>=period_end, UtilBill.rebill_id == None)\
+                utilbill = session.query(UtilBill).filter(UtilBill.customer==customer, UtilBill.service==service, UtilBill.period_start>=period_end, UtilBill.rebill_id == None)\
                     .order_by(asc(UtilBill.period_start)).first()
             except NoResultFound:
-                raise Exception('No new %s utility bills found' % s)
-            
+                # If the utilbill is not found, then the rolling process can't proceed
+                raise Exception('No new %s utility bill found' % s)
+            # Second, calculate the time gap between the last attached utilbill's end date and the next utilbill's start date.
+            # If there is a gap of more than one day, then someone may have mucked around in the database or another issue
+            # arose. In any case, it suggests missing data, and we don't want to proceed with potentially the wrong
+            # utilbill.
             time_gap = utilbill.period_start - period_end
+            # Note that the time gap only matters if the account HAD a previous utilbill. For a new account, this isn't the case.
+            # Therefore, make sure that new accounts don't fail the time gap condition
             if last_utilbills is not None and time_gap > timedelta(days=1):
-                raise Exception('There is a gap of %d days before the next %s utility bill found' % (abs(time_gap.days), s))
-            elif utilbill.state > 2:
-                raise Exception("The next %s utility bill exists but has not been fully estimated or received" % s)
+                raise Exception('There is a gap of %d days before the next %s utility bill found' % (abs(time_gap.days), service))
+            elif utilbill.state == UtilBill.Hypothetical:
+                # Hypothetical utilbills are not an acceptable basis for a reebill. Only allow a roll to subsequent reebills if
+                # the next utilbill(s) have been received or estimated
+                raise Exception("The next %s utility bill exists but has not been fully estimated or received" % service)
 
-            next_utilbills[s] = utilbill
+            # Attach if no failure condition arose
+            next_utilbills.append(utilbill)
+
+        # This may be an irrelevant check, but if no specific exceptions were raised and yet there were no
+        # utilbills selected for attachment, there is a problem
+        if not next_utilbills:
+            raise Exception('No qualifying utility bills found for account #%s' % account)
 
         return next_utilbills
 
