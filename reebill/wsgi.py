@@ -1969,7 +1969,24 @@ class BillToolBridge:
                 # necessarily mean that a row disappears from the grid.
                 raise ValueError("Use delete_reebill instead!")
 
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def issuable(self, xaction, start, limit, sort, dir, **kwargs):
+        '''Return a list of the issuable reebills'''
+        print kwargs
+        rows = []
+        rows.append({'id':'ID10092', 'account':'10009', 'sequence':8, 'mailto':'dstiles@skylineinnovations.com','util_total':3000.54,'reebill_total':2345.00,'matching':True})
+        rows.append({'id':'ID1092', 'account':'140409', 'sequence':0, 'mailto':'dstiles@skylineinnovations.com','util_total':3000.54,'reebill_total':2345.00,'matching':True})
+        rows.append({'id':'ID10002', 'account':'10002', 'sequence':2, 'mailto':'dstiles@skylineinnovations.com','util_total':3000.54,'reebill_total':2345.00,'matching':False})
+        rows.append({'id':'ID10042', 'account':'10062', 'sequence':7, 'mailto':'dstiles@skylineinnovations.com','util_total':3000.54,'reebill_total':2345.00,'matching':False})
+        rows.append({'id':'ID10992', 'account':'14009', 'sequence':10, 'mailto':'dstiles@skylineinnovations.com','util_total':3000.54,'reebill_total':2345.00,'matching':True})
+        if not xaction or not start or not limit:
+            raise ValueError("Bad Parameter Value")
+        return self.dumps({'success': True, 'rows':rows, 'total':len(rows)})
 
+            
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
