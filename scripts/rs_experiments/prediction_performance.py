@@ -66,21 +66,20 @@ with DBSession(state_db) as session:
                 continue
 
             # temporarily remove real UPRS from database
-            uprs = db.ratestructure.find_one({'_id.type':'UPRS', '_id.account':
-                    account, '_id.sequence': sequence, '_id.version':
-                    max_version})
+            uprs_query = {'_id.type':'UPRS', '_id.account': account,
+                    '_id.sequence': sequence, '_id.version': max_version}
+            uprs = db.ratestructure.find_one(uprs_query)
             if uprs is None:
                 #print >> stderr, account, sequence, version 'missing UPRS'
                 raise Exception("missing UPRS")
-            db.ratestructure.remove({'_id.type':'CPRS', '_id.account':
-                    account, '_id.sequence': sequence, '_id.version':
-                    max_version})
+            db.ratestructure.remove(uprs_query)
 
             # guess the set of UPRS bindings, without the real one in the db
-            guessed_bindings = rs_dao._get_probable_rsis(utility_name,
+            guessed_rsis = rs_dao._get_probable_rsis(utility_name,
                     rate_structure_name,
                     period=reebill.utilbill_period_for_service(service),
                     threshold=threshold)
+            guessed_bindings = [rsi['rsi_binding'] for rsi in guessed_rsis]
 
             # calculate performance of the guess
             if len(guessed_bindings) == 0:
@@ -95,7 +94,9 @@ with DBSession(state_db) as session:
                         guessed_bindings]) / len(actual_bindings)
             roc.append((threshold, 1 - precision, recall))
 
-            print account, sequence, max_version, precision, recall
+            print 'actual bindings:', actual_bindings
+            print 'guessed bindings:', guessed_bindings
+            print '%s-%s-%s %s %s' % (account, sequence, max_version, precision, recall)
 
             # put real UPRS back in the database
             db.ratestructure.save(uprs)
