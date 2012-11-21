@@ -39,7 +39,7 @@ for reebill in db.reebills.find():
     }
     uprs = db.ratestructure.find_one(uprs_query)
     if uprs is None:
-        print >> stderr, "missing UPRS: %s" % uprs_query
+        print >> stderr, '%s-%s-%s' % (account, sequence, version), "missing UPRS: %s" % uprs_query
         continue
 
     # put CPRS rates into UPRS
@@ -54,7 +54,7 @@ for reebill in db.reebills.find():
     assert uprs['rates'] != []
 
     # save UPRS
-    #db.ratestructure.save(uprs)
+    db.ratestructure.save(uprs)
     print account, sequence, version, 'upgraded'
     count += 1
 

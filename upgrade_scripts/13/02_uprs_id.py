@@ -27,7 +27,7 @@ for reebill in db.reebills.find():
     }
     cprs = db.ratestructure.find_one(cprs_query)
     if cprs is None:
-        print >> stderr, "missing CPRS: %s" % cprs_query
+        #print >> stderr, "missing CPRS: %s" % cprs_query
         continue
 
     # get UPRS
@@ -37,10 +37,11 @@ for reebill in db.reebills.find():
         '_id.rate_structure_name': cprs['_id']['rate_structure_name'],
         '_id.effective': utilbill['start'],
         '_id.expires': utilbill['end'],
+        '_id.account': {'$exists': False},
     }
     original_uprs = db.ratestructure.find_one(uprs_query)
     if original_uprs is None:
-        print >> stderr, "missing UPRS: %s" % uprs_query
+        #print >> stderr, "missing UPRS: %s" % uprs_query
         continue
     new_uprs = deepcopy(original_uprs)
 
