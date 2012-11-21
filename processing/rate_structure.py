@@ -114,11 +114,6 @@ class RateStructureDAO(object):
                 uprs_period = (uprs['_id']['effective'].date(),
                         uprs['_id']['expires'].date())
 
-                # skip uprs if its period is not completely filled in
-                if None in uprs_period:
-                    print >> sys.stderr, 'UPRS has null dates:', uprs['_id']
-                    continue
-
                 # calculate weighted distance of this UPRS period from the
                 # target period
                 distance = manhattan_distance(uprs_period, period)
@@ -147,8 +142,8 @@ class RateStructureDAO(object):
         # its closest occurrence.
         result = []
         for binding, weight in scores.iteritems():
-            print '%35s %.02f %d' % (binding, weight, 100 * weight /
-                    total_weight[binding])
+            #print '%35s %.02f %d' % (binding, weight, 100 * weight /
+                    #total_weight[binding])
 
             # note that total_weight[binding] will never be 0 because it must
             # have occurred somewhere in order to occur in 'scores'
@@ -160,7 +155,8 @@ class RateStructureDAO(object):
                     rate = rsi_dict['rate']
                     quantity = closest_occurrence[binding][1]['quantity']
                 except KeyError:
-                    print >> sys.stderr, 'malformed RSI:', rsi_dict
+                    pass
+                    #print >> sys.stderr, 'malformed RSI:', rsi_dict
                 result.append({
                     'rsi_binding': binding,
                     'rate': rate,
@@ -311,7 +307,7 @@ class RateStructureDAO(object):
         urs = self.collection.find_one(query)
         return urs
 
-    def load_uprss(self, utility_name, rate_structure_name):
+    def load_uprss(self, utility_name, rate_structure_name, verbose=False):
         '''Returns list of raw UPRS dictionaries with given utility and rate
         structure name.'''
         cursor = self.collection.find({
@@ -323,7 +319,8 @@ class RateStructureDAO(object):
         for doc in cursor:
             if doc['_id'].get('effective', None) is None or \
                     doc['_id'].get('expires', None) is None:
-                print >> sys.stderr, 'malformed UPRS id:', doc['_id']
+                if verbose:
+                    print >> sys.stderr, 'malformed UPRS id:', doc['_id']
             else:
                 result.append(doc)
         return result
