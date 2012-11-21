@@ -191,7 +191,7 @@ class StateDB:
                 .filter(UtilBill.period_end==end).one()
 
     # TODO move to process.py?
-    def attach_utilbills(self, session, account, sequence, utilbill_ids, suspended_services=[]):
+    def attach_utilbills(self, session, account, sequence, utilbills, suspended_services=[]):
         '''Records in MySQL the association between the reebill given by
         'account', 'sequence' and all utilbills belonging to that customer
         whose entire periods are within the date interval [start, end] and
@@ -201,11 +201,8 @@ class StateDB:
         reebill = session.query(ReeBill).filter(ReeBill.customer == customer)\
                 .filter(ReeBill.sequence == sequence).one()
 
-        utilbills = session.query(UtilBill)\
-                .filter(UtilBill.customer == customer)\
-                .filter(UtilBill.id.in_(utilbill_ids))
-        non_suspended_utilbills = [ub for ub in utilbills if ub.service.lower() not in suspended_services]
-        if non_suspended_utilbills == []:
+        non_suspended_utilbills = filter(lambda ub: ub.service.lower() not in suspended_services, utilbills)
+        if not non_suspended_utilbills:
             raise Exception('No utility bills to attach because the services %s'\
                     ' are suspended' % ', '.join(suspended_services))
         
@@ -536,40 +533,34 @@ class StateDB:
         return query[start:start + limit], query.count()
 
     def choose_next_utilbills(self, session, account, services):
-        customer = session.query(Customer).filter(Customer.account==account).one()
-        all_utilbills = session.query(UtilBill).filter(UtilBill.customer_id==customer.id).order_by(asc(UtilBill.period_start))
+        customer = self.get_customer(session, account)
+        sequence = self.last_issued_sequence(session, account)
+        if sequence:
+            reebill = self.get_reebill(session, account, sequence)
+            last_utilbills = session.query(UtilBill).filter(UtilBill.rebill_id==reebill.id).all()
+            service_iter = {ub.service: ub.period_end for ub in last_utilbills if ub.service in services}
+        else:
+            last_utilbills = None
+            service_iter = {service: date.min for service in services}
 
-        # Grouped by service
-        grouped_utilbills = [(s, list(itertools.ifilter(lambda ub: ub.service==s.lower(), all_utilbills))) for s in services]
-        grouped_utilbills = dict(grouped_utilbills)
-        #print grouped_utilbills
-        last_attached = {}
-        next_utilbills = {}
+        next_utilbills = dict.fromkeys(services)
 
-        for s in services:
-            for ub in grouped_utilbills[s]:
-                if ub.rebill_id is None:
-                    if len(grouped_utilbills[s]) == 1:
-                        next_utilbills[s] = ub # No utilbills have been issued for this service yet
-                    elif s in last_attached and s not in next_utilbills:
-                        next_utilbills[s] = ub # Utilbill after an attached one? Could be good
-                else:
-                    if s in next_utilbills:
-                        del next_utilbills[s] # Attached bill after unattached, so reset consideration of unattached
-                    last_attached[s] = ub
+        for s, period_end in service_iter.iteritems():
+            try:
+                utilbill = session.query(UtilBill).filter(UtilBill.customer==customer, UtilBill.service==s, UtilBill.period_start>=period_end, UtilBill.rebill_id == None)\
+                    .order_by(asc(UtilBill.period_start)).first()
+            except NoResultFound:
+                raise Exception('No new %s utility bills found' % s)
+            
+            time_gap = utilbill.period_start - period_end
+            if last_utilbills is not None and time_gap > timedelta(days=1):
+                raise Exception('There is a gap of %d days before the next %s utility bill found' % (abs(time_gap.days), s))
+            elif utilbill.state > 2:
+                raise Exception("The next %s utility bill exists but has not been fully estimated or received" % s)
 
-        result = {}
-        
-        for s in services:
-            result[s] = {}
-            result[s]['utilbill'] = next_utilbills.get(s, None)
-            if result[s]['utilbill'] is not None:
-                if s in last_attached and last_attached[s] is not None:
-                    result[s]['time_gap'] = result[s]['utilbill'].period_start - last_attached[s].period_end
-                else:
-                    result[s]['time_gap'] = None
+            next_utilbills[s] = utilbill
 
-        return result
+        return next_utilbills
 
     def record_utilbill_in_database(self, session, account, service,
             begin_date, end_date, total_charges, date_received, state=UtilBill.Complete):

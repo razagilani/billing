@@ -302,34 +302,6 @@ class Process(object):
             actual_chargegroups = reebill.actual_chargegroups_for_service(service)
             reebill.set_hypothetical_chargegroups_for_service(service, actual_chargegroups)
 
-    def choose_next_utilbills(self, session, utilbills, services):
-        ids_to_attach = []
-        for s in services:
-            utilbill = utilbills[s].get('utilbill', None)
-            time_gap = utilbills[s].get('time_gap', None)
-            
-            if utilbill is None:
-                # Either no utilbills found or there haven't been any unattached ones
-                # since the last reebill
-                raise Exception("No %s utility bills found to roll to" % s)
-            elif utilbill is not None and time_gap is None:
-                # This is the first utility bill ever for an account. No attached reebills yet.
-                # Therefore, this is appropriate to be attached to a new reebill.
-                ids_to_attach.append(utilbill.id)
-            elif time_gap > timedelta(days=1):
-                # Utilbills found but there's a gap before the last reebill period for this service
-                time_gap_str = str(time_gap)
-                # Isolate the 'X days' part of timedelta.__str__
-                time_gap_str = time_gap_str[:time_gap_str.find(',')]
-                raise Exception("Gap of %s since last processed %s utility bill" % (time_gap_str, s))
-            elif utilbill.state > 2:
-                # Contiguous utilbill but it's too hypothetical to create a reebill from it
-                raise Exception("The next %s utility bill has not been properly estimated or received" % s)
-            else:
-                # Unattached utilbill was found to be contiguous to an attached utilbill. Hooray?
-                ids_to_attach.append(utilbill.id)
-        return ids_to_attach
-
     def roll_bill(self, session, reebill):
         '''Modifies 'reebill' to convert it into a template for the reebill of
         the next period (including incrementing the sequence). 'reebill' must
@@ -344,7 +316,6 @@ class Process(object):
             raise Exception("Not the last sequence")
 
         utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
-        ubids_to_attach = self.choose_next_utilbills(session, utilbills, reebill.services)
         
         # duplicate the CPRS for each service
         # TODO: 22597151 refactor
@@ -370,24 +341,21 @@ class Process(object):
         new_reebill.new_utilbill_ids()
         new_reebill.clear()
 
-        #new_period_end, _ = state.guess_utilbills_and_end_date(session,
-        #        reebill.account, reebill.period_end)
-
-        #new_reebill.period_end = new_period_end
+        # Update the new reebill's periods to the periods identified in the StateDB
+        for s in new_reebill.services:
+            new_reebill.set_utilbill_period_for_service(s, (utilbills[s].period_start, utilbills[s].period_end))
 
         # set discount rate & late charge rate to the instananeous value from MySQL
         # NOTE suspended_services list is carried over automatically
-        new_reebill.discount_rate = self.state_db.discount_rate(session,
-                reebill.account)
-        new_reebill.late_charge_rate = self.state_db.late_charge_rate(session,
-                reebill.account)
+        new_reebill.discount_rate = self.state_db.discount_rate(session, reebill.account)
+        new_reebill.late_charge_rate = self.state_db.late_charge_rate(session, reebill.account)
 
         new_reebill.sequence += 1
 
         # create reebill row in state database
         self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
         self.attach_utilbills(session, new_reebill)
-        self.state_db.attach_utilbills(session, new_reebill.account, new_reebill.sequence, ubids_to_attach, new_reebill.suspended_services)
+        self.state_db.attach_utilbills(session, new_reebill.account, new_reebill.sequence, utilbills, new_reebill.suspended_services)
         
         return new_reebill
 
