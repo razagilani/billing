@@ -5642,7 +5642,8 @@ function reeBillReady() {
         baseParams: {start: 0, limit: 25},
         data: initialIssuable,
         groupField: 'matching',
-        sortInfo:{field: 'matching', direction: 'ASC'},
+        sortInfo:{field: 'matching', direction: 'DESC'},
+        remoteSort: true,
     });
     
     issuableStore.on('beforeload', function () {
@@ -5674,7 +5675,7 @@ function reeBillReady() {
                 id: 'sequence',
                 header: 'Sequence',
                 width: 75,
-                sortable: true,
+                sortable: false,
                 dataIndex: 'sequence',
                 editable: false,
                 editor: new Ext.form.TextField(),
@@ -5685,7 +5686,7 @@ function reeBillReady() {
                 sortable: false,
                 dataIndex: 'mailto',
                 editable: true,
-                editor: new Ext.form.TextArea({allowBlank: false}),
+                editor: new Ext.form.TextField({allowBlank: false}),
             },{
                 id: 'util_total',
                 header: 'Utility Bill Total',
@@ -5728,7 +5729,7 @@ function reeBillReady() {
         enableColumnMove: false,
         view: new Ext.grid.GroupingView({
             forceFit: false,
-            groupTextTpl: '{[gvalue=="true"?"Reebills with Matching Totals":"Reebills without Matching Totals"]}',
+            groupTextTpl: '{[values.gvalue==true?"Reebill"+(values.rs.length>1?"s":"")+" with Matching Totals":"Reebill"+(values.rs.length>1?"s":"")+" without Matching Totals"]}',
             showGroupName: false,
         }),
         frame: true,
