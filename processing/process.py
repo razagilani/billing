@@ -342,8 +342,8 @@ class Process(object):
         new_reebill.clear()
 
         # Update the new reebill's periods to the periods identified in the StateDB
-        for s in new_reebill.services:
-            new_reebill.set_utilbill_period_for_service(s, (utilbills[s].period_start, utilbills[s].period_end))
+        for ub in utilbills:
+            new_reebill.set_utilbill_period_for_service(ub.service, (ub.period_start, ub.period_end))
 
         # set discount rate & late charge rate to the instananeous value from MySQL
         # NOTE suspended_services list is carried over automatically
