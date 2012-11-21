@@ -114,8 +114,8 @@ class RateStructureDAO(object):
                 try:
                     uprs_period = (uprs['_id']['effective'].date(),
                             uprs['_id']['expires'].date())
-                except KeyError:
-                    print >> sys.stderr, 'malformed UPRS id:', uprs['_id']
+                except KeyError as ke:
+                    print >> sys.stderr, 'skipping malformed UPRS id: KeyError "%s"' % ke.message
                     continue
 
                 # skip uprs if its period is not completely filled in
