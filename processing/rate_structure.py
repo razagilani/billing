@@ -111,12 +111,8 @@ class RateStructureDAO(object):
         closest_occurrence = defaultdict(lambda: (sys.maxint, None))
         for binding in bindings:
             for uprs in all_uprss:
-                try:
-                    uprs_period = (uprs['_id']['effective'].date(),
-                            uprs['_id']['expires'].date())
-                except KeyError as ke:
-                    print >> sys.stderr, 'skipping malformed UPRS id: KeyError "%s"' % ke.message
-                    continue
+                uprs_period = (uprs['_id']['effective'].date(),
+                        uprs['_id']['expires'].date())
 
                 # skip uprs if its period is not completely filled in
                 if None in uprs_period:
@@ -164,7 +160,7 @@ class RateStructureDAO(object):
                     rate = rsi_dict['rate']
                     quantity = closest_occurrence[binding][1]['quantity']
                 except KeyError:
-                    print >> sys.stderr, 'malformed RSI: %' % rsi_dict
+                    print >> sys.stderr, 'malformed RSI:', rsi_dict
                 result.append({
                     'rsi_binding': binding,
                     'rate': rate,
@@ -318,11 +314,19 @@ class RateStructureDAO(object):
     def load_uprss(self, utility_name, rate_structure_name):
         '''Returns list of raw UPRS dictionaries with given utility and rate
         structure name.'''
-        return list(self.collection.find({
+        cursor = self.collection.find({
             '_id.type': 'UPRS',
             '_id.utility_name': utility_name,
             '_id.rate_structure_name': rate_structure_name
-        }))
+        })
+        result = []
+        for doc in cursor:
+            if doc['_id'].get('effective', None) is None or \
+                    doc['_id'].get('expires', None) is None:
+                print >> sys.stderr, 'malformed UPRS id:', doc['_id']
+            else:
+                result.append(doc)
+        return result
 
     def load_uprs(self, account, sequence, version, utility_name,
             rate_structure_name):

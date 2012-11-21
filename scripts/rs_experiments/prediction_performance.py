@@ -35,8 +35,10 @@ with DBSession(state_db) as session:
     # precision a.k.a. false positive rate = false positives / all predicted positives (precision)
     # recall a.k.a. true positive rate = predicted positives / all real positives
 
-    for threshold in [0.5]:#arange(0, 1, 0.1):
+    for threshold in arange(0, 1, 0.05):
 
+        precision_sum, precision_count = 0, 0
+        recall_sum, recall_count = 0, 0
         for account, sequence, max_version in state_db.reebills(session):
             reebill = bill_dao.load_reebill(account, sequence, version=max_version)
             service = reebill.services[0]
@@ -56,13 +58,12 @@ with DBSession(state_db) as session:
                         #utility_name, rate_structure_name)
             except ValueError as e:
                 # skip if rate structure not found
-                print >> stderr, account, sequence, max_version, e
+                #print >> stderr, account, sequence, max_version, e
                 continue
             try:
                 actual_bindings = [rsi['rsi_binding'] for rsi in actual_rs['rates']]
             except KeyError as e:
-                #print >> stderr, 'malformed rate structure doc:', pf(actual_rs)
-                print >> stderr, account, sequence, max_version, 'malformed rate structure doc: missing key "%s"' % e.message
+                #print >> stderr, account, sequence, max_version, 'malformed rate structure doc: missing key "%s"' % e.message
                 continue
 
             # temporarily remove real UPRS from database
@@ -92,14 +93,27 @@ with DBSession(state_db) as session:
             else:
                 recall = len([b for b in actual_bindings if b in
                         guessed_bindings]) / len(actual_bindings)
-            roc.append((threshold, 1 - precision, recall))
+            precision_sum += precision
+            precision_count += 1
+            recall_sum += recall
+            recall_count += 1
 
-            print 'actual bindings:', actual_bindings
-            print 'guessed bindings:', guessed_bindings
-            print '%s-%s-%s %s %s' % (account, sequence, max_version, precision, recall)
+            #print 'actual bindings:', actual_bindings
+            #print 'guessed bindings:', guessed_bindings
+            #print '%s-%s-%s %s %s' % (account, sequence, max_version, precision, recall)
 
             # put real UPRS back in the database
             db.ratestructure.save(uprs)
+        avg_precision = precision_sum / precision_count 
+        avg_recall = recall_sum / recall_count
+        roc.append((threshold, 1 - avg_precision, avg_recall))
+
+print roc
+import csv
+with open('roc.csv', 'w') as out_file:
+    writer = csv.writer(out_file)
+    for row in roc:
+        writer.writerow(row)
 
 #print zip(*roc)[1:]
 #plt.plot(*zip(*roc)[1:])
