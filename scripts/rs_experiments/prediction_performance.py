@@ -30,10 +30,9 @@ db = Connection('localhost')['skyline-dev']
 
 with DBSession(state_db) as session:
 
-    roc = []
-
-    # precision a.k.a. false positive rate = false positives / all predicted positives (precision)
-    # recall a.k.a. true positive rate = predicted positives / all real positives
+    # will store threshold, average precision for all RSIs, average recall for
+    # all RSIs
+    results = []
 
     for threshold in arange(0, 1, 0.05):
 
@@ -106,16 +105,12 @@ with DBSession(state_db) as session:
             db.ratestructure.save(uprs)
         avg_precision = precision_sum / precision_count 
         avg_recall = recall_sum / recall_count
-        roc.append((threshold, 1 - avg_precision, avg_recall))
+        results.append((threshold, avg_precision, avg_recall))
 
-print roc
+print results
+# dump data to file
 import csv
-with open('roc.csv', 'w') as out_file:
+with open('performance.csv', 'w') as out_file:
     writer = csv.writer(out_file)
-    for row in roc:
+    for row in results:
         writer.writerow(row)
-
-#print zip(*roc)[1:]
-#plt.plot(*zip(*roc)[1:])
-#plt.savefig('roc.png')
-#plt.show()
