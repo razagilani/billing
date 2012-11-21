@@ -32,6 +32,8 @@ class UtilbillPeriodTest(TestCaseWithSetup):
 
         # Add ten utilbills "associated" to reebills
         reebills = [ReeBill(customer, x) for x in xrange(1, 11)]
+        for r in reebills:
+            r.issued = 1
         utilbills = [UtilBill(customer, 0, 'gas', dt+timedelta(days=30*x),\
                 dt+timedelta(days=30*(x+1)), reebill=reebills[x]) for x in xrange(0, 10)]
         for x in xrange(10):
@@ -39,24 +41,22 @@ class UtilbillPeriodTest(TestCaseWithSetup):
             session.add(utilbills[x])
 
         # Add one utilbill that comes after the last utilbill from the above loop
-        session.add(UtilBill(customer=customer, state=0, service='gas',\
+        target_utilbill = UtilBill(customer=customer, state=0, service='gas',\
                 period_start=dt+timedelta(days=30*10),\
                 period_end=dt+timedelta(days=30*11),\
-                reebill=None))
+                reebill=None)
+        session.add(target_utilbill)
 
         session.commit()
         session = self.state_db.session()
 
         utilbills = self.state_db.choose_next_utilbills(session, account, services)
         self.assertNotIn('electric', utilbills)
+        self.assertIn('gas', utilbills)
         self.assertEqual(len(utilbills.keys()), 1)
-        self.assertIsNotNone(utilbills['gas']['utilbill'])
-        self.assertIsNotNone(utilbills['gas']['time_gap'])
-        self.assertLessEqual(utilbills['gas']['time_gap'], timedelta(days=1))
-        self.assertEqual(utilbills['gas']['utilbill'].reebill, None)
-
-        ubids_to_attach = self.process.choose_next_utilbills(session, utilbills, services)
-        self.assertListEqual(ubids_to_attach, [utilbills['gas']['utilbill'].id])
+        self.assertIsNotNone(utilbills['gas'])
+        self.assertIsNone(utilbills['gas'].reebill)
+        self.assertEqual(utilbills['gas'], target_utilbill)
 
     def test_multiple_unattached(self):
         # Add ten, nice, sequential gas bills
@@ -69,6 +69,8 @@ class UtilbillPeriodTest(TestCaseWithSetup):
 
         # Add ten utilbills "associated" to reebills
         reebills = [ReeBill(customer, x) for x in xrange(1, 11)]
+        for r in reebills:
+            r.issued = 1
         utilbills = [UtilBill(customer, 0, 'gas', dt+timedelta(days=30*x),\
                 dt+timedelta(days=30*(x+1)), reebill=reebills[x]) for x in xrange(0, 10)]
         for x in xrange(10):
@@ -76,10 +78,11 @@ class UtilbillPeriodTest(TestCaseWithSetup):
             session.add(utilbills[x])
 
         # Add multiple utilbills that come after the last utilbill from the above loop
-        session.add(UtilBill(customer=customer, state=0, service='gas',\
+        target_utilbill = UtilBill(customer=customer, state=0, service='gas',\
                 period_start=dt+timedelta(days=30*10),\
                 period_end=dt+timedelta(days=30*11),\
-                reebill=None))
+                reebill=None)
+        session.add(target_utilbill)
         session.add(UtilBill(customer=customer, state=0, service='gas',\
                 period_start=dt+timedelta(days=30*11),\
                 period_end=dt+timedelta(days=30*12),\
@@ -95,15 +98,11 @@ class UtilbillPeriodTest(TestCaseWithSetup):
         # Same tests
         utilbills = self.state_db.choose_next_utilbills(session, account, services)
         self.assertNotIn('electric', utilbills)
+        self.assertIn('gas', utilbills)
         self.assertEqual(len(utilbills.keys()), 1)
-        self.assertIsNotNone(utilbills['gas']['utilbill'])
-        self.assertIsNotNone(utilbills['gas']['time_gap'])
-        self.assertLessEqual(utilbills['gas']['time_gap'], timedelta(days=1))
-        self.assertIsNone(utilbills['gas']['utilbill'].reebill)
-        self.assertAlmostEqual(utilbills['gas']['utilbill'].period_start, dt+timedelta(days=30*10), delta=timedelta(days=1))
-
-        ubids_to_attach = self.process.choose_next_utilbills(session, utilbills, services)
-        self.assertListEqual(ubids_to_attach, [utilbills['gas']['utilbill'].id])
+        self.assertIsNotNone(utilbills['gas'])
+        self.assertIsNone(utilbills['gas'].reebill)
+        self.assertEqual(utilbills['gas'], target_utilbill)
 
     def test_legacy_unattached(self):
         account = 1
@@ -115,6 +114,9 @@ class UtilbillPeriodTest(TestCaseWithSetup):
 
         # 7 reebills, 10 utilbills
         reebills = [None, None, None] + [ReeBill(customer, x+1) for x in xrange(1, 8)]
+        for r in reebills:
+            if r is not None:
+                r.issued = 1
         utilbills = [UtilBill(customer, 0, 'gas', dt+timedelta(days=30*x),\
                 dt+timedelta(days=30*(x+1)), reebill=reebills[x]) for x in xrange(0, 10)]
 
@@ -128,10 +130,11 @@ class UtilbillPeriodTest(TestCaseWithSetup):
             session.add(ub)
 
         # Add an unattached utilbill that comes after the last utilbill from the above loop
-        session.add(UtilBill(customer=customer, state=0, service='gas',\
+        target_utilbill = UtilBill(customer=customer, state=0, service='gas',\
                 period_start=datetime.utcnow()+timedelta(days=30*10),\
                 period_end=datetime.utcnow()+timedelta(days=30*11),\
-                reebill=None))
+                reebill=None)
+        session.add(target_utilbill)
 
         session.commit()
         session = self.state_db.session()
@@ -140,14 +143,9 @@ class UtilbillPeriodTest(TestCaseWithSetup):
         utilbills = self.state_db.choose_next_utilbills(session, account, services)
         self.assertNotIn('electric', utilbills)
         self.assertEqual(len(utilbills.keys()), 1)
-        self.assertIsNotNone(utilbills['gas']['utilbill'])
-        self.assertIsNotNone(utilbills['gas']['time_gap'])
-        self.assertLessEqual(utilbills['gas']['time_gap'], timedelta(days=1))
-        self.assertIsNone(utilbills['gas']['utilbill'].reebill)
-        self.assertAlmostEqual(utilbills['gas']['utilbill'].period_start, dt+timedelta(days=30*10), delta=timedelta(days=1))
-
-        ubids_to_attach = self.process.choose_next_utilbills(session, utilbills, services)
-        self.assertListEqual(ubids_to_attach, [utilbills['gas']['utilbill'].id])
+        self.assertIsNotNone(utilbills['gas'])
+        self.assertIsNone(utilbills['gas'].reebill)
+        self.assertEqual(utilbills['gas'], target_utilbill)
 
     def test_multiple_services(self):
         account = 1
@@ -159,6 +157,8 @@ class UtilbillPeriodTest(TestCaseWithSetup):
         self.assertEqual(customer.name, 'Test1')
 
         reebills = [ReeBill(customer, x+1) for x in xrange(1, 11)]
+        for r in reebills:
+            r.issued = 1
         gas_utilbills = [UtilBill(customer, 0, 'gas', dt_gas+timedelta(days=30*x),\
                 dt_gas+timedelta(days=30*(x+1)), reebill=reebills[x]) for x in xrange(0, 10)]
         elec_utilbills = [UtilBill(customer, 0, 'electric', dt_elec+timedelta(days=30*x),\
@@ -171,14 +171,17 @@ class UtilbillPeriodTest(TestCaseWithSetup):
             session.add(gas_utilbills[x])
             session.add(elec_utilbills[x])
 
-        session.add(UtilBill(customer=customer, state=0, service='gas',\
+        target_gas_utilbill = UtilBill(customer=customer, state=0, service='gas',\
                 period_start=dt_gas+timedelta(days=30*10),\
                 period_end=dt_gas+timedelta(days=30*11),\
-                reebill=None))
-        session.add(UtilBill(customer=customer, state=0, service='electric',\
+                reebill=None)
+        session.add(target_gas_utilbill)
+
+        target_elec_utilbill = UtilBill(customer=customer, state=0, service='electric',\
                 period_start=dt_elec+timedelta(days=30*10),\
                 period_end=dt_elec+timedelta(days=30*11),\
-                reebill=None))
+                reebill=None)
+        session.add(target_elec_utilbill)
 
         session.commit()
         session = self.state_db.session()
@@ -187,19 +190,12 @@ class UtilbillPeriodTest(TestCaseWithSetup):
         self.assertIn('gas', utilbills)
         self.assertIn('electric', utilbills)
         self.assertEqual(len(utilbills.keys()), 2)
-        self.assertIsNotNone(utilbills['gas']['utilbill'])
-        self.assertEqual(utilbills['gas']['utilbill'].reebill, None)
-        self.assertIsNotNone(utilbills['electric']['utilbill'])
-        self.assertEqual(utilbills['electric']['utilbill'].reebill, None)
-        self.assertIsNotNone(utilbills['gas']['time_gap'])
-        self.assertIsNotNone(utilbills['electric']['time_gap'])
-        self.assertLessEqual(utilbills['gas']['time_gap'], timedelta(days=1))
-        self.assertLessEqual(utilbills['electric']['time_gap'], timedelta(days=1))
-        self.assertAlmostEqual(utilbills['gas']['utilbill'].period_start, dt_gas+timedelta(days=30*10), delta=timedelta(days=1))
-        self.assertAlmostEqual(utilbills['electric']['utilbill'].period_start, dt_elec+timedelta(days=30*10), delta=timedelta(days=1))
-
-        ubids_to_attach = self.process.choose_next_utilbills(session, utilbills, services)
-        self.assertListEqual(ubids_to_attach, [utilbills['gas']['utilbill'].id, utilbills['electric']['utilbill'].id])
+        self.assertIsNotNone(utilbills['gas'])
+        self.assertIsNotNone(utilbills['electric'])
+        self.assertIsNone(utilbills['gas'].reebill)
+        self.assertIsNone(utilbills['electric'].reebill)
+        self.assertEqual(utilbills['gas'], target_gas_utilbill)
+        self.assertEqual(utilbills['electric'], target_elec_utilbill)
 
     def test_first_utilbill(self):
         account = 1
@@ -209,8 +205,9 @@ class UtilbillPeriodTest(TestCaseWithSetup):
         customer = session.query(Customer).filter(Customer.account == account).one()
         self.assertEqual(customer.name, 'Test1')
 
-        session.add(UtilBill(customer=customer, state=0, service='gas',\
-            period_start=dt, period_end=dt+timedelta(days=30), reebill=None))
+        target_utilbill = UtilBill(customer=customer, state=0, service='gas',\
+            period_start=dt, period_end=dt+timedelta(days=30), reebill=None)
+        session.add(target_utilbill)
 
         session.commit()
         session = self.state_db.session()
@@ -218,12 +215,11 @@ class UtilbillPeriodTest(TestCaseWithSetup):
         utilbills = self.state_db.choose_next_utilbills(session, account, services)
         self.assertIn('gas', utilbills)
         self.assertNotIn('electric', utilbills)
-        self.assertIsNotNone(utilbills['gas']['utilbill'])
-        self.assertIsNone(utilbills['gas']['time_gap'])
-        self.assertAlmostEqual(utilbills['gas']['utilbill'].period_start, dt, delta=timedelta(days=1))
-        
-        ubids_to_attach = self.process.choose_next_utilbills(session, utilbills, services)
-        self.assertEqual(len(ubids_to_attach), 1)
+        self.assertEqual(len(utilbills.keys()), 1)
+        self.assertIsNotNone(utilbills['gas'])
+        self.assertIsNone(utilbills['gas'].reebill)
+        self.assertEqual(utilbills['gas'], target_utilbill)
+
 
     def test_reebill_roll_selections(self):
         account = '99999'
@@ -232,6 +228,7 @@ class UtilbillPeriodTest(TestCaseWithSetup):
         with DBSession(self.state_db) as session:
             customer = session.query(Customer).filter(Customer.account == account).one()
             reebill = ReeBill(customer, 1)
+            reebill.issued = 1
             #session.add(ReeBill(customer, 1))
             session.add(UtilBill(customer=customer, state=0, service='gas',\
                 period_start=dt, period_end=dt+timedelta(days=30), reebill=reebill))
