@@ -86,12 +86,12 @@ with DBSession(state_db) as session:
 
             # calculate performance of the guess
             if len(guessed_bindings) == 0:
-                precision = 0
+                precision = 1
             else:
                 precision = len([b for b in guessed_bindings if b in
                         actual_bindings]) / len(guessed_bindings)
             if len(actual_bindings) == 0:
-                recall = 0
+                recall = 1
             else:
                 recall = len([b for b in actual_bindings if b in
                         guessed_bindings]) / len(actual_bindings)
