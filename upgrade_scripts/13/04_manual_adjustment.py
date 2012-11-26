@@ -9,7 +9,7 @@ database = 'skyline-dev'
 db = pymongo.Connection(host, 27017)[database]
 
 # Set manual_adjustment = 0 on all reebills
-db.reebills.update({}, {"$set": {"manual_adjustment": 0}}, multi=True)
+db.reebills.update({}, {"$set": {"manual_adjustment": 0.0}}, multi=True)
 
 error = db.error()
 
