@@ -555,7 +555,12 @@ class StateDB:
                     .order_by(asc(UtilBill.period_start)).first()
             except NoResultFound:
                 # If the utilbill is not found, then the rolling process can't proceed
-                raise Exception('No new %s utility bill found' % s)
+                raise Exception('No new %s utility bill found' % service)
+            else:
+                if not utilbill:
+                    # If the utilbill is not found, then the rolling process can't proceed
+                    raise Exception('No new %s utility bill found' % service)
+
             # Second, calculate the time gap between the last attached utilbill's end date and the next utilbill's start date.
             # If there is a gap of more than one day, then someone may have mucked around in the database or another issue
             # arose. In any case, it suggests missing data, and we don't want to proceed with potentially the wrong

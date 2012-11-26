@@ -1,4 +1,5 @@
 import unittest
+import re
 from datetime import date, datetime, timedelta
 
 import example_data
@@ -221,21 +222,82 @@ class UtilbillPeriodTest(TestCaseWithSetup):
     def test_reebill_roll_selections(self):
         account = '99999'
         dt = date.today()
+        month = timedelta(days=30)
+        re_no_utilbill = re.compile('No new [a-z]+ utility bill found')
+        re_no_final_utilbill = re.compile('The next [a-z]+ utility bill exists but has not been fully estimated or received')
+        re_time_gap = re.compile('There is a gap of [0-9]+ days before the next [a-z]+ utility bill found')
 
         with DBSession(self.state_db) as session:
             customer = self.state_db.get_customer(session, account)
-            reebill = ReeBill(customer, 1)
-            reebill.issued = 1
-            #session.add(ReeBill(customer, 1))
-            session.add(UtilBill(customer=customer, state=0, service='gas',\
-                period_start=dt, period_end=dt+timedelta(days=30), reebill=reebill))
-            session.add(UtilBill(customer=customer, state=0, service='gas',\
-                period_start=dt+timedelta(days=30), period_end=dt+timedelta(days=60), reebill=None))
-            b1 = example_data.get_reebill(account, 1)
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 1))
-            b2 = self.process.roll_bill(session, b1)
-            
-            self.assertEqual(b2.period_begin, dt+timedelta(days=30))
-            self.assertEqual(b2.period_end, dt+timedelta(days=60))
+            reebill_0 = example_data.get_reebill(account, 0, dt-month, dt)
+            self.reebill_dao.save_reebill(reebill_0, freeze_utilbills=True)
+            # Set up example rate structure
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 0))
 
-            self.state_db.get_reebill(session, account, 2)
+            # There are no utility bills yet, so rolling should fail.
+            with self.assertRaises(Exception) as context:
+                self.process.roll_bill(session, reebill_0)
+            self.assertTrue(re.match(re_no_utilbill, str(context.exception)))
+
+            target_utilbill = UtilBill(customer=customer, state=0, service='gas',\
+                period_start=dt, period_end=dt+month, reebill=None)
+            session.add(target_utilbill)
+
+            # Make sure the reebill period reflects the correct utilbill
+            reebill_1 = self.process.roll_bill(session, reebill_0)
+            self.assertEqual(reebill_1.period_begin, target_utilbill.period_start)
+            self.assertEqual(reebill_1.period_end, target_utilbill.period_end)
+
+            self.process.issue(session, account, reebill_1.sequence)
+            reebill_1 = self.reebill_dao.load_reebill(account, reebill_1.sequence)
+
+            # Add two utilbills: one hypothetical followed by one final one
+            hypo_utilbill = UtilBill(customer=customer, state=3, service='gas',\
+                period_start=dt+month, period_end=dt+(month*2), reebill=None)
+            later_utilbill = UtilBill(customer=customer, state=0, service='gas',\
+                period_start=dt+(month*2), period_end=dt+(month*3), reebill=None)
+
+            session.add_all([hypo_utilbill, later_utilbill])
+
+            # The next utility bill isn't estimated or final, so rolling should fail
+            with self.assertRaises(Exception) as context:
+                self.process.roll_bill(session, reebill_1)
+            self.assertTrue(re.match(re_no_final_utilbill, str(context.exception)))
+
+            # Set hypo_utilbill to Utility Estimated, save it, and then we should be able to roll on it
+            hypo_utilbill.state = UtilBill.UtilityEstimated;
+            target_utilbill = session.merge(hypo_utilbill)
+
+            reebill_2 = self.process.roll_bill(session, reebill_1)
+            self.assertEqual(reebill_2.period_begin, target_utilbill.period_start)
+            self.assertEqual(reebill_2.period_end, target_utilbill.period_end)
+
+            self.process.issue(session, account, reebill_2.sequence)
+            reebill_2 = self.reebill_dao.load_reebill(account, reebill_2.sequence)
+
+            # Shift later_utilbill a few days into the future so that there is a time gap
+            # after the last attached utilbill
+            later_utilbill.period_start += timedelta(days=5)
+            later_utilbill.period_end += timedelta(days=5)
+            later_utilbill = session.merge(later_utilbill)
+
+            with self.assertRaises(Exception) as context:
+                self.process.roll_bill(session, reebill_2)
+            self.assertTrue(re.match(re_time_gap, str(context.exception)))
+
+            # Shift it back to a 1 day (therefore acceptable) gap, which should make it work
+            later_utilbill.period_start -= timedelta(days=4)
+            later_utilbill.period_end -= timedelta(days=4)
+            target_utilbill = session.merge(later_utilbill)
+
+            self.process.roll_bill(session, reebill_2)
+
+            reebill_3 = self.reebill_dao.load_reebill(account, 3)
+            from nose.tools import set_trace
+            set_trace()
+            self.assertEqual(reebill_3.period_begin, target_utilbill.period_start)
+            self.assertEqual(reebill_3.period_end, target_utilbill.period_end)
+
+
+
+            # TODO: Test multiple services            
