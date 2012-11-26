@@ -28,13 +28,16 @@ rs_dao = RateStructureDAO(**{
 
 db = Connection('localhost')['skyline-dev']
 
+#THRESHOLD_STEP = 0.01
+THRESHOLD_STEP = 0.1
+
 with DBSession(state_db) as session:
 
     # will store threshold, average precision for all RSIs, average recall for
     # all RSIs
     results = []
 
-    for threshold in arange(0, 1.05, 0.05):
+    for threshold in arange(0, 1 + THRESHOLD_STEP, THRESHOLD_STEP):
 
         precision_sum, precision_count = 0, 0
         recall_sum, recall_count = 0, 0
@@ -108,6 +111,25 @@ with DBSession(state_db) as session:
             recall_sum += recall
             recall_count += 1
 
+            correct_quantities, correct_rates, total = 0, 0, 0
+            for binding in guessed_bindings:
+                if binding in actual_bindings:
+                    actual_rsi = next(r for r in actual_rs['rates'] if
+                            r['rsi_binding'] == binding)
+                    guessed_rsi = next(r for r in guessed_rsis if
+                            r['rsi_binding'] == binding)
+                    if guessed_rsi['quantity'] == actual_rsi.get('quantity', 1): # NOTE assume quantity is "1" if missing
+                        correct_quantities += 1
+                    if guessed_rsi['rate'] == actual_rsi.get('rate', "1"): # NOTE assume rate is "1" if missing
+                        correct_rates += 1
+                    total += 1
+            if total == 0:
+                quantity_correct_fraction = 1
+                rate_correct_fraction = 1
+            else:
+                quantity_correct_fraction = correct_quantities / total
+                rate_correct_fraction = correct_rates / total
+
             #print 'actual bindings:', actual_bindings
             #print 'guessed bindings:', guessed_bindings
             #print '%s-%s-%s %s %s' % (account, sequence, max_version, precision, recall)
@@ -116,7 +138,7 @@ with DBSession(state_db) as session:
             #db.ratestructure.save(uprs)
         avg_precision = precision_sum / precision_count 
         avg_recall = recall_sum / recall_count
-        results.append((threshold, avg_precision, avg_recall))
+        results.append((threshold, avg_precision, avg_recall, quantity_correct_fraction, rate_correct_fraction))
 
 print results
 # dump data to file
