@@ -90,12 +90,16 @@ class RateStructureDAO(object):
         self.collection = self.database['ratestructure']
 
     def _get_probable_rsis(self, utility, rate_structure_name, period,
-            threshold=RSI_PRESENCE_THRESHOLD):
+            threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False):
         '''Returns list of RSI dictionaries: a guess of what RSIs will be in a
         new bill for the given rate structure during the given period. The list
-        will be empty if no guess could be made.'''
+        will be empty if no guess could be made. 'threshold' is the minimum
+        score (between 0 and 1) for an RSI to be included. 'ignore' is an
+        optional function to exclude UPRSs from the input data (used for
+        testing).'''
         # load all UPRSs (to avoid repeated queries)
-        all_uprss = self.load_uprss(utility, rate_structure_name)
+        all_uprss = [uprs for uprs in self.load_uprss(utility,
+                rate_structure_name) if not ignore(uprs)]
 
         # find every RSI binding that ever existed for this rate structure
         bindings = set()
