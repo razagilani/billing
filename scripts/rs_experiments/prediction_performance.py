@@ -65,7 +65,6 @@ with DBSession(state_db) as session:
                 #print >> stderr, account, sequence, max_version, 'malformed rate structure doc: missing key "%s"' % e.message
                 continue
             
-            # temporarily remove real UPRS from database
             uprs_query = {'_id.type':'UPRS', '_id.account': account,
                     '_id.sequence': sequence, '_id.version': max_version}
             uprs = db.ratestructure.find_one(uprs_query)
@@ -75,13 +74,22 @@ with DBSession(state_db) as session:
             if uprs is None:
                 #print >> stderr, account, sequence, version 'missing UPRS'
                 raise Exception("missing UPRS")
-            db.ratestructure.remove(uprs_query)
+            ## temporarily remove real UPRS from database
+            #db.ratestructure.remove(uprs_query)
+
+            # function to excude UPRSs from same account, current sequence
+            def ignore(x):
+                try:
+                    return (x['_id']['account'] == account and
+                            x['_id']['sequence'] >= sequence)
+                except KeyError:
+                    return True
 
             # guess the set of UPRS bindings, without the real one in the db
             guessed_rsis = rs_dao._get_probable_rsis(utility_name,
                     rate_structure_name,
                     period=reebill.utilbill_period_for_service(service),
-                    threshold=threshold)
+                    threshold=threshold, ignore=ignore)
             guessed_bindings = [rsi['rsi_binding'] for rsi in guessed_rsis]
 
             # calculate performance of the guess
@@ -104,8 +112,8 @@ with DBSession(state_db) as session:
             #print 'guessed bindings:', guessed_bindings
             #print '%s-%s-%s %s %s' % (account, sequence, max_version, precision, recall)
 
-            # put real UPRS back in the database
-            db.ratestructure.save(uprs)
+            ## put real UPRS back in the database
+            #db.ratestructure.save(uprs)
         avg_precision = precision_sum / precision_count 
         avg_recall = recall_sum / recall_count
         results.append((threshold, avg_precision, avg_recall))
