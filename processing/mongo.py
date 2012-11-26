@@ -167,6 +167,11 @@ class MongoReebill(object):
         self.balance_due = Decimal("0.00")
         self.payment_received = Decimal("0.00")
         self.balance_forward = Decimal("0.00")
+        # some customers are supposed to lack late_charges key, some are
+        # supposed to have late_charges: None, and others have
+        # self.late_charges: 0
+        if 'late_charges' in self.reebill_dict and self.late_charges is not None:
+            self.late_charges = Decimal("0.00")
 
         for service in self.services:
             # get utilbill numbers and zero them out
