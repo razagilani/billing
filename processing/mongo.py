@@ -147,8 +147,6 @@ class MongoReebill(object):
         #    self.set_utilbill_period_for_service(service, (prev_end, None))
 
         # process rebill
-        #self.period_begin = self.period_end
-        #self.period_end = None
         self.total_adjustment = Decimal("0.00")
         self.manual_adjustment = Decimal("0.00")
         self.hypothetical_total = Decimal("0.00")
@@ -1495,12 +1493,23 @@ class ReebillDAO:
             '_id.account': account,
             '_id.sequence': 1,
         }
-        result = self.reebills_collection.find_one(query)
-        if result == None:
+        reebill_result = self.reebills_collection.find_one(query)
+        if reebill_result is None:
             raise NoSuchBillException('First reebill for account %s is missing'
                     % account)
-        # empty utilbills list because it doesn't matter
-        return MongoReebill(result, []).period_begin
+
+        utilbill_ids = [ub['id'] for ub in reebill_result['utilbills']]
+        query = {
+            '_id': {"$in": utilbill_ids}
+        }
+        utilbill_result = self.utilbills_collection.find(query)
+        if utilbill_result is None:
+            raise NoSuchBillException('Utilbills for first reebill for account %s is missing'
+                    % account)
+        else:
+            utilbill_result = list(utilbill_result)
+
+        return MongoReebill(reebill_result, utilbill_result).period_begin
 
     def get_first_issue_date_for_account(self, account):
         '''Returns the issue date of the account's earliest reebill, or None if
