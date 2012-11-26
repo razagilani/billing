@@ -147,8 +147,6 @@ class Process(object):
         whenever roll_bill() is called.'''
         acc = present_reebill.account
 
-        self.set_reebill_period(present_reebill)
-
         ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
         present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
@@ -909,38 +907,6 @@ class Process(object):
                     'quantity': therms
                 })
              
-
-
-    def set_reebill_period(self, reebill):
-        '''Sets the period dates of 'reebill' to the earliest utility bill
-        start date and latest utility bill end date.'''
-        #reebill = self.reebill_dao.load_reebill(account, sequence)
-        
-        utilbill_period_beginnings = []
-        utilbill_period_ends = []
-        for period in reebill.utilbill_periods.itervalues():
-            utilbill_period_beginnings.append(period[0])
-            utilbill_period_ends.append(period[1])
-
-        rebill_periodbegindate = datetime.max
-        for beginning in utilbill_period_beginnings:
-            candidate_date = datetime(beginning.year, beginning.month,
-                    beginning.day, 0, 0, 0)
-            # find minimum date
-            if (candidate_date < rebill_periodbegindate):
-                rebill_periodbegindate = candidate_date
-
-        rebill_periodenddate = datetime.min 
-        for end in utilbill_period_ends:
-            # find maximum date
-            candidate_date = datetime(end.year, end.month, end.day, 0,
-                    0, 0)
-            if (candidate_date > rebill_periodenddate):
-                rebill_periodenddate = candidate_date
-
-        reebill.period_begin = rebill_periodbegindate
-        reebill.period_end = rebill_periodenddate
-
     def issue(self, session, account, sequence, recipients=None,
             issue_date=datetime.utcnow().date()):
         '''Sets the issue date of the reebill given by account, sequence to
