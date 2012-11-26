@@ -71,33 +71,34 @@ class ProcessTest(TestCaseWithSetup):
 
             # MySQL reebill: none exist in MySQL until #1 is rolled
             self.assertEquals([], self.state_db.listSequences(session, '100000'))
-            #mysql_reebill = self.state_db.get_reebill(session, '100000', 1)
-            #self.assertEquals(1, mysql_reebill.sequence)
-            #self.assertEquals(customer.id, mysql_reebill.customer_id)
-            #self.assertEquals(False, mysql_reebill.issued)
-            #self.assertEquals(0, mysql_reebill.max_version)
 
             # Mongo reebill (sequence 0)
             mongo_reebill = self.reebill_dao.load_reebill('100000', 0)
             self.assertEquals('100000', mongo_reebill.account)
             self.assertEquals(0, mongo_reebill.sequence)
             self.assertEquals(0, mongo_reebill.version)
-            #self.assertEquals(0, mongo_reebill.prior_balance) # TODO fails
+            self.assertEquals(0, mongo_reebill.prior_balance)
             self.assertEquals(0, mongo_reebill.payment_received)
-            #self.assertEquals(0, mongo_reebill.balance_forward) # TODO fails
-            #self.assertEquals(0, mongo_reebill.total_renewable_energy()) # TODO fails
-            #self.assertEquals(0, mongo_reebill.ree_charges) # TODO fails
-            #self.assertEquals(0, mongo_reebill.ree_value) # TODO fails
-            #self.assertEquals(0, mongo_reebill.ree_savings) # TODO fails
-            #self.assertEquals(0, mongo_reebill.balance_due) # TODO fails
-            #self.assertEquals(0, mongo_reebill.late_charges) # TODO fails due to KeyError
-            #self.assertEquals(0, mongo_reebill.total)
-            #self.assertEquals(0, mongo_reebill.total_adjustment) # TODO fails due to KeyError
-            #self.assertEquals(0, mongo_reebill.manual_adjustment) # TODO fails due to KeyError
+            self.assertEquals(0, mongo_reebill.balance_forward)
+            self.assertEquals(0, mongo_reebill.total_renewable_energy())
+            self.assertEquals(0, mongo_reebill.ree_charges)
+            self.assertEquals(0, mongo_reebill.ree_value)
+            self.assertEquals(0, mongo_reebill.ree_savings)
+            self.assertEquals(0, mongo_reebill.balance_due)
+            # some bills lack late_charges key, which is supposed to be
+            # distinct from late_charges: None, and late_charges: 0
+            try:
+                self.assertEquals(0, mongo_reebill.late_charges)
+            except KeyError as ke:
+                if ke.message != 'late_charges':
+                    raise
+            self.assertEquals(0, mongo_reebill.total)
+            self.assertEquals(0, mongo_reebill.total_adjustment)
+            self.assertEquals(0, mongo_reebill.manual_adjustment)
             self.assertEquals(None, mongo_reebill.issue_date)
             self.assertEquals(None, mongo_reebill.recipients)
-            #self.assertEquals(0.6, mongo_reebill.discount_rate) # TODO fails: template account's value
-            #self.assertEquals(0.2, mongo_reebill.late_charge_rate) # TODO fails: template account's value
+            self.assertEquals(Decimal('0.6'), mongo_reebill.discount_rate)
+            self.assertEquals(Decimal('0.2'), mongo_reebill.late_charge_rate)
 
             # Mongo utility bill: nothing to check? (existence tested by load_reebill)
 
@@ -107,6 +108,9 @@ class ProcessTest(TestCaseWithSetup):
             template_reebill_again = self.reebill_dao.load_reebill('99999', 1)
             self.assertEquals(template_reebill.reebill_dict, template_reebill_again.reebill_dict)
             self.assertEquals(template_reebill._utilbills, template_reebill_again._utilbills)
+            for utilbill in mongo_reebill._utilbills:
+                self.assertNotIn(utilbill['_id'], [u['_id'] for u in
+                        template_reebill._utilbills])
 
 
     def test_get_late_charge(self):
@@ -1038,6 +1042,16 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEqual(reebill_3.period_end, target_utilbill.period_end)
 
             # TODO: Test multiple services
+
+            # MySQL reebill
+            customer = self.state_db.get_customer(session, '99999')
+            mysql_reebill = self.state_db.get_reebill(session, '99999', 2)
+            self.assertEquals(2, mysql_reebill.sequence)
+            self.assertEquals(customer.id, mysql_reebill.customer_id)
+            self.assertEquals(False, mysql_reebill.issued)
+            self.assertEquals(0, mysql_reebill.max_version)
+
+            # TODO ...
 
     def test_issue(self):
         '''Tests attach_utilbills and issue.'''
