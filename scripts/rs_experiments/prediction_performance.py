@@ -34,7 +34,7 @@ with DBSession(state_db) as session:
     # all RSIs
     results = []
 
-    for threshold in arange(0, 1, 0.05):
+    for threshold in arange(0, 1.05, 0.05):
 
         precision_sum, precision_count = 0, 0
         recall_sum, recall_count = 0, 0
@@ -64,11 +64,14 @@ with DBSession(state_db) as session:
             except KeyError as e:
                 #print >> stderr, account, sequence, max_version, 'malformed rate structure doc: missing key "%s"' % e.message
                 continue
-
+            
             # temporarily remove real UPRS from database
             uprs_query = {'_id.type':'UPRS', '_id.account': account,
                     '_id.sequence': sequence, '_id.version': max_version}
             uprs = db.ratestructure.find_one(uprs_query)
+            #if uprs['_id']['rate_structure_name'] != 'DC Non Residential Non Heat':
+                #continue
+
             if uprs is None:
                 #print >> stderr, account, sequence, version 'missing UPRS'
                 raise Exception("missing UPRS")
