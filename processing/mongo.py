@@ -159,6 +159,7 @@ class MongoReebill(object):
         self.due_date = None
         self.issue_date = None
         self.motd = None
+        self.bill_recipients = None
 
         # this should always be set from the value in MySQL, which holds the
         # "current" discount rate for each customer

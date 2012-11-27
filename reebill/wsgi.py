@@ -11,7 +11,7 @@ import string, re
 import ConfigParser
 from datetime import datetime, date, timedelta
 import itertools as it
-from decimal import Decimal
+from decimal import Decimal, DivisionByZero
 import uuid as UUID # uuid collides with locals so both module and locals are renamed
 import inspect
 import logging
@@ -1975,16 +1975,38 @@ class BillToolBridge:
     @json_exception
     def issuable(self, xaction, start, limit, sort, dir, **kwargs):
         '''Return a list of the issuable reebills'''
-        print kwargs
-        rows = []
-        rows.append({'id':'ID10092', 'account':'10009', 'sequence':8, 'mailto':'dstiles@skylineinnovations.com','util_total':3000.54,'reebill_total':2345.00,'matching':True})
-        rows.append({'id':'ID1092', 'account':'140409', 'sequence':0, 'mailto':'dstiles@skylineinnovations.com','util_total':3000.54,'reebill_total':2345.00,'matching':True})
-        rows.append({'id':'ID10002', 'account':'10002', 'sequence':2, 'mailto':'dstiles@skylineinnovations.com','util_total':3000.54,'reebill_total':2345.00,'matching':False})
-        rows.append({'id':'ID10042', 'account':'10062', 'sequence':7, 'mailto':'dstiles@skylineinnovations.com','util_total':3000.54,'reebill_total':2345.00,'matching':False})
-        rows.append({'id':'ID10992', 'account':'14009', 'sequence':10, 'mailto':'dstiles@skylineinnovations.com','util_total':3000.54,'reebill_total':2345.00,'matching':True})
         if not xaction or not start or not limit:
             raise ValueError("Bad Parameter Value")
-        return self.dumps({'success': True, 'rows':rows, 'total':len(rows)})
+        with DBSession(self.state_db) as session:
+            if xaction == 'read':
+                rows = []
+                allowable_diff = 0
+                try:
+                    allowable_diff = cherrypy.session['user'].preferences['reebill_total-percent_cutoff']
+                except:
+                    allowable_diff = UserDAO.default_user.preferences['matching_total_percent_threshold']
+                reebills, total = self.state_db.listAllIssuableReebillInfo(session=session)
+                for reebill_info in reebills:
+                    row_dict = {}
+                    mongo_reebill = self.reebill_dao.load_reebill(reebill_info[0], reebill_info[1])
+                    row_dict['id'] = reebill_info[0]
+                    row_dict['account'] = reebill_info[0]
+                    row_dict['sequence'] = reebill_info[1]
+                    row_dict['util_total'] = Decimal(231.67) #reebill_info[2]
+                    try:
+                        row_dict['mailto'] = mongo_reebill.bill_recipients
+                    except AttributeError:
+                        row_dict['mailto'] = []
+                    row_dict['reebill_total'] = mongo_reebill.actual_total
+                    try:
+                        row_dict['difference'] = abs(1-row_dict['reebill_total']/row_dict['util_total'])
+                    except DivisionByZero:
+                        row_dict['difference'] = Decimal('Infinity')
+                    row_dict['matching'] = row_dict['difference'] < allowable_diff
+                    rows.append(row_dict)
+                rows.sort(key=lambda d: d[sort], reverse = (dir == 'ASC'))
+                rows.sort(key=lambda d: d['matching'], reverse = True)
+                return self.dumps({'success': True, 'rows':rows[int(start):int(start)+int(limit)], 'total':total})
 
             
     @cherrypy.expose

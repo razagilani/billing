@@ -14,6 +14,7 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
 from sqlalchemy.sql.expression import desc, asc
+from sqlalchemy import func
 from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, StatusUnbilled
 sys.stdout = sys.stderr
 
@@ -481,6 +482,15 @@ class StateDB:
         slice = query.order_by(order(field))[start:start + limit]
         count = query.count()
 
+        return slice, count
+
+    def listAllIssuableReebillInfo(self, session, **kwargs):
+        unissued = session.query(ReeBill.sequence.label('sequence'), ReeBill.customer_id.label('customer_id')).filter(ReeBill.issued == 0, ReeBill.max_version == 0).subquery('unissued')
+        minseq = session.query(unissued.c.customer_id.label('customer_id'), func.min(unissued.c.sequence).label('sequence')).group_by(unissued.c.customer_id).subquery('minseq')
+        query = session.query(Customer.account, ReeBill.sequence, UtilBill.total_charges).filter(ReeBill.sequence == minseq.c.sequence).filter(ReeBill.customer_id == minseq.c.customer_id).filter(UtilBill.customer_id == Customer.id).filter(UtilBill.rebill_id == ReeBill.id)
+
+        slice = query.order_by(asc(Customer.account)).all()
+        count = query.count()
         return slice, count
 
     def reebills(self, session, include_unissued=True):
