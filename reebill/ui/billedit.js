@@ -5618,6 +5618,7 @@ function reeBillReady() {
             {name: 'util_total', mapping: 'util_total'},
             {name: 'reebill_total', mapping: 'reebill_total'},
             {name: 'matching', mapping: 'matching'},
+            {name: 'difference', mapping: 'difference'},
         ],
     });
 
@@ -5642,7 +5643,7 @@ function reeBillReady() {
         baseParams: {start: 0, limit: 25},
         data: initialIssuable,
         groupField: 'matching',
-        sortInfo:{field: 'matching', direction: 'DESC'},
+        sortInfo:{field: 'difference', direction: 'DESC'},
         remoteSort: true,
     });
     
@@ -5668,6 +5669,7 @@ function reeBillReady() {
                 header: 'Account',
                 width: 75,
                 sortable: true,
+                groupable: false,
                 dataIndex: 'account',
                 editable: false,
                 editor: new Ext.form.TextField(),
@@ -5676,6 +5678,7 @@ function reeBillReady() {
                 header: 'Sequence',
                 width: 75,
                 sortable: false,
+                groupable: false,
                 dataIndex: 'sequence',
                 editable: false,
                 editor: new Ext.form.TextField(),
@@ -5684,6 +5687,7 @@ function reeBillReady() {
                 header: 'Recipients',
                 columnWidth: 1,
                 sortable: false,
+                groupable: false,
                 dataIndex: 'mailto',
                 editable: true,
                 editor: new Ext.form.TextField({allowBlank: false}),
@@ -5692,6 +5696,7 @@ function reeBillReady() {
                 header: 'Utility Bill Total',
                 width: 125,
                 sortable: false,
+                groupable: false,
                 dataIndex: 'util_total',
                 editable: false,
                 editor: new Ext.form.NumberField(),
@@ -5704,12 +5709,26 @@ function reeBillReady() {
                 header: 'Reebill Total',
                 width: 125,
                 sortable: false,
+                groupable: false,
                 dataIndex: 'reebill_total',
                 editable: false,
                 editor: new Ext.form.NumberField(),
                 renderer: function(v, params, record)
                 {
                     return Ext.util.Format.usMoney(record.data.reebill_total);
+                },
+            },{
+                id: 'difference',
+                header: '% Difference',
+                width: 125,
+                sortable: true,
+                groupable: false,
+                dataIndex: 'difference',
+                editable: false,
+                editor: new Ext.form.NumberField(),
+                renderer: function(v, params, record)
+                {
+                    return Ext.util.Format.number(record.data.difference * 100,'0.00')+"%";
                 },
             },
         ],
@@ -5729,7 +5748,7 @@ function reeBillReady() {
         enableColumnMove: false,
         view: new Ext.grid.GroupingView({
             forceFit: false,
-            groupTextTpl: '{[values.gvalue==true?"Reebill"+(values.rs.length>1?"s":"")+" with Matching Totals":"Reebill"+(values.rs.length>1?"s":"")+" without Matching Totals"]}',
+            groupTextTpl: '{[values.gvalue==true?"Reebill"+(values.rs.length>1?"s":"")+" with Matching Total"+(values.rs.length>1?"s":""):"Reebill"+(values.rs.length>1?"s":"")+" without Matching Total"+(values.rs.length>1?"s":"")]}',
             showGroupName: false,
         }),
         frame: true,
