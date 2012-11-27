@@ -9,10 +9,11 @@ import sqlalchemy
 import sys
 import unittest
 from skyliner.sky_handlers import cross_range
-from billing import dateutils, mongo
+from billing.processing import mongo
+from billing.util import dateutils
 from billing.processing import state
 from billing.test import example_data
-from billing.test.fake_skyliner import FakeSplinter
+from billing.test.mock_skyliner import MockSplinter
 from datetime import date, datetime, timedelta
 import billing.processing.fetch_bill_data as fbd
 
@@ -264,7 +265,7 @@ class FetchTest(unittest.TestCase):
         reebill = example_data.get_reebill('99999', 1)
 
         # create mock skyliner objects
-        splinter = FakeSplinter(deterministic=True)
+        splinter = MockSplinter(deterministic=True)
         monguru = splinter.get_monguru()
         install = splinter.get_install_obj_for('99999')
 
