@@ -2042,6 +2042,7 @@ class BillToolBridge:
         # if this is the case, return no periods.  
         # This is done so that the UI can configure itself with no data
         if reebill is None:
+            # TODO: 40161259 - must return success field
             return self.dumps({})
 
         ba = reebill.billing_address
@@ -2073,6 +2074,7 @@ class BillToolBridge:
 
         account_info['discount_rate'] = reebill.discount_rate
 
+        # TODO: 40161259 - must return success field
         return self.dumps(account_info)
 
 
@@ -2158,7 +2160,7 @@ class BillToolBridge:
         reebill = self.reebill_dao.load_reebill(account, sequence)
         if reebill is None:
             raise Exception('No reebill found for %s-%s' % (account, sequence))
-        
+        # TODO: 40161259 must return success field
         return self.dumps({
             'services': reebill.services,
             'suspended_services': reebill.suspended_services
@@ -2186,6 +2188,7 @@ class BillToolBridge:
         # This is done so that the UI can configure itself with no data for the
         # requested measured usage
         if reebill is None:
+            # TODO: 40161259 must return success field
             return self.dumps({})
         
         utilbill_periods = {}
@@ -2193,6 +2196,7 @@ class BillToolBridge:
             (begin, end) = reebill.utilbill_period_for_service(service)
             utilbill_periods[service] = { 'begin': begin, 'end': end }
 
+        # TODO: 40161259 must return success field
         return self.dumps(utilbill_periods)
 
     @cherrypy.expose
@@ -2483,9 +2487,11 @@ class BillToolBridge:
         # This is done so that the UI can configure itself with no data for the
         # requested measured usage
         if reebill is None:
+            # TODO: 40161259 must return success field
             return self.dumps({'success': True})
 
         meters = reebill.meters
+        # TODO: 40161259 must return success field
         return self.dumps(meters)
 
     @cherrypy.expose
@@ -2936,6 +2942,7 @@ class BillToolBridge:
                 # we want to return success to ajax call and then load the tree in page
                 #return self.dumps({'success':True, 'reebill_structure':tree});
                 # but the TreeLoader doesn't abide by the above ajax packet
+                # TODO: 40161259 must return success field
                 return self.dumps(tree);
 
     @cherrypy.expose
