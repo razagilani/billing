@@ -48,39 +48,48 @@ function reeBillReady() {
     var selected_sequence = null;
 
     // handle global success:false responses
-    // monitor session status and redirect user if they are not logged in.
+    // monitor session status and display login panel if they are not logged in.
     Ext.util.Observable.observeClass(Ext.data.Connection); 
     Ext.data.Connection.on('requestcomplete', function(dataconn, response) { 
         try {
             var jsonData = Ext.util.JSON.decode(response.responseText);
-            // handle the various failure modes
-            if (jsonData.success == false) {
-                if (jsonData.code == 1) {
-                    // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
-                    // of which there may be many.
-                    if (ReeBill.LoginWindow.hidden) {
-                        // this is exploding on new account form submit when there is no session
-                        // an exception is thrown for some unknown reason
-                        ReeBill.LoginWindow.show(this);
+            if (typeof(jsonData.success) === "undefined") {
+                console.log("Server returned malformed json reponse:  Success field missing.");
+            } else {
+                if (jsonData.success == false) {
+                    if (typeof(jsonData.code) === "undefined") {
+                        console.log("Server returned malformed json reponse:  Code field missing.");
                     } else {
-                        console.log("ReeBill.LoginWindow has been shown");
+                        if (jsonData.code == 1) {
+                            // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
+                            // of which there may be many.
+                            if (ReeBill.LoginWindow.hidden) {
+                                ReeBill.LoginWindow.show();
+                            } else {
+                                console.log("ReeBill.LoginWindow requested to be shown but was previously shown.");
+                            }
+                        } else {
+                            // turn on to log application failures
+                            console.log(response.responseText);
+                        }
                     }
                 } else {
-                    // turn on to log application failures
-                    console.log(response.responseText);
+                    console.log("JsonData.success == true");
                 }
-                
-            } else {
-                console.log("JsonData.success == true");
             }
 
         } catch (e) {
+            // TODO clean this up
             console.log("Unexpected failure while processing requestcomplete");
             console.log("ReeBill.LoginWindow.hidden is " + ReeBill.LoginWindow.hidden);
+            console.log("Exception Caught");
             console.log(e);
+            console.log("Exception " + e);
+            console.log("Reponse");
             console.log(response);
+            console.log("Response " + response);
             // TODO: evaluate response to see if the object is well formed
-            Ext.MessageBox.alert("Unexpected failure while processing requestcomplete: " + response.responseText);
+            //Ext.MessageBox.alert("Unexpected failure while processing requestcomplete: " + response.responseText);
         }
     });
 
@@ -4824,7 +4833,6 @@ function reeBillReady() {
                 handler: function(b, e) {
                     b.setDisabled(true);
                     // TODO 22645885 show progress during post
-                    // why do we need ajax to do form submission?
                     newAccountDataConn.request({
                         params: { 
                           'name': newNameField.getValue(),
@@ -4849,8 +4857,10 @@ function reeBillReady() {
                                 jsonData = Ext.util.JSON.decode(result.responseText);
                                 var nextAccount = jsonData['nextAccount'];
                                 if (jsonData.success == false) {
-                                    Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                                    console.log('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                                    //Ext.MessageBox.alert('1Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                                    //Ext.MessageBox.alert('1Server Error');
+                                    //console.log('1Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                                    console.log('1Server Error');
                                 } else {
                                     Ext.Msg.alert('Success', "New account created");
                                     // update next account number shown in field
@@ -5612,6 +5622,7 @@ function reeBillReady() {
 
     // Assemble all of the above panels into a parent tab panel
     var tabPanel = new Ext.TabPanel({
+        id: 'tabPanel',
         region:'center',
         deferredRender:false,
         autoScroll: false, 
