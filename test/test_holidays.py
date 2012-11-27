@@ -1,6 +1,6 @@
 import unittest
 from datetime import date
-from billing.holidays import *
+from billing.util.holidays import *
 
 class HolidaysTest(unittest.TestCase):
     def test_all_holidays(self):

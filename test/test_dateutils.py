@@ -2,7 +2,7 @@ import unittest
 import calendar
 import math
 from datetime import date, time, timedelta
-from billing.dateutils import *
+from billing.util.dateutils import *
 
 class DateUtilsTest(unittest.TestCase):
     def test_iso_year_start(self):
