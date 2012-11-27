@@ -486,15 +486,47 @@ class StateDB:
 
         return result
 
-    def listReebills(self, session, start, limit, account):
+    def listReebills(self, session, start, limit, account, sort, dir, **kwargs):
 
-        query = session.query(ReeBill).join(Customer).filter(Customer.account==account) \
-            .order_by(desc(ReeBill.sequence))
+        query = session.query(ReeBill).join(Customer).filter(Customer.account==account)
+        
+        if (dir == u'DESC'):
+            order = desc
+        elif (dir == u'ASC'):
+            order = asc
+        else:
+            raise ValueError("Bad Parameter Value: 'dir' must be 'ASC' or 'DESC'")
 
-        slice = query[start:start + limit]
+        if (sort == u'sequence'):
+            field = ReeBill.sequence
+        else:
+            raise ValueError("Bad Parameter Value: 'sort' must be 'sequence'")
+
+        slice = query.order_by(order(field))[start:start + limit]
         count = query.count()
 
         return slice, count
+
+    def reebills(self, session, include_unissued=True):
+        '''Generates (account, sequence) tuples for all reebills in MySQL.'''
+        for account in self.listAccounts(session):
+            for sequence in self.listSequences(session, account):
+                reebill = self.get_reebill(session, account, sequence)
+                if include_unissued or reebill.issued:
+                    yield account, int(sequence), int(reebill.max_version)
+
+    def reebill_versions(self, session, include_unissued=True):
+        '''Generates (account, sequence, version) tuples for all reebills in
+        MySQL.'''
+        for account in self.listAccounts(session):
+            for sequence in self.listSequences(session, account):
+                reebill = self.get_reebill(session, account, sequence)
+                if include_unissued or reebill.issued:
+                    max_version = reebill.max_version
+                else:
+                    max_version = reebill.max_version - 1
+                for version in range(max_version + 1):
+                    yield account, sequence, version
 
     def get_reebill(self, session, account, sequence):
 
@@ -535,7 +567,7 @@ class StateDB:
         return query[start:start + limit], query.count()
 
     def record_utilbill_in_database(self, session, account, service,
-            begin_date, end_date, date_received, state=UtilBill.Complete):
+            begin_date, end_date, total_charges, date_received, state=UtilBill.Complete):
         '''Inserts a row into the utilbill table when a utility bill file has
         been uploaded. The bill is Complete by default but can can have other
         states (see comment in db_objects.UtilBill for explanation of utility
@@ -564,7 +596,7 @@ class StateDB:
             # nothing to replace; just upload the bill
             new_utilbill = UtilBill(customer, state, service,
                     period_start=begin_date, period_end=end_date,
-                    date_received=date_received)
+                    total_charges=total_charges, date_received=date_received)
             session.add(new_utilbill)
         elif len(list(existing_bills)) > 1:
             raise Exception(("Can't upload a bill for dates %s, %s because"
@@ -574,6 +606,7 @@ class StateDB:
             # now there is one existing bill with the same dates. if state is
             # "more final" than an existing non-final bill that matches this
             # one, replace that bill
+            # TODO 38385969: is this really a good idea?
             # (we can compare with '>' because states are ordered from "most
             # final" to least (see db_objects.UtilBill)
             bills_to_replace = existing_bills.filter(UtilBill.state > state)
@@ -590,7 +623,7 @@ class StateDB:
             session.delete(bill_to_replace)
             new_utilbill = UtilBill(customer, state, service,
                     period_start=begin_date, period_end=end_date,
-                    date_received=date_received)
+                    total_charges=total_charges, date_received=date_received)
             session.add(new_utilbill)
     
     def fill_in_hypothetical_utilbills(self, session, account, service,
