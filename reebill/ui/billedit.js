@@ -55,41 +55,32 @@ function reeBillReady() {
             var jsonData = Ext.util.JSON.decode(response.responseText);
             if (typeof(jsonData.success) === "undefined") {
                 console.log("Server returned malformed json reponse:  Success field missing.");
+                console.log(jsonData);
             } else {
-                if (jsonData.success == false) {
+                if (jsonData.success == true) {
                     if (typeof(jsonData.code) === "undefined") {
                         console.log("Server returned malformed json reponse:  Code field missing.");
+                        console.log(jsonData);
                     } else {
                         if (jsonData.code == 1) {
                             // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
                             // of which there may be many.
                             if (ReeBill.LoginWindow.hidden) {
                                 ReeBill.LoginWindow.show();
-                            } else {
-                                console.log("ReeBill.LoginWindow requested to be shown but was previously shown.");
                             }
                         } else {
-                            // turn on to log application failures
-                            console.log(response.responseText);
+                            console.log(jsonData);
                         }
                     }
                 } else {
-                    console.log("JsonData.success == true");
+                    console.log(jsonData);
                 }
             }
 
         } catch (e) {
-            // TODO clean this up
-            console.log("Unexpected failure while processing requestcomplete");
-            console.log("ReeBill.LoginWindow.hidden is " + ReeBill.LoginWindow.hidden);
-            console.log("Exception Caught");
+            console.log("Unexpected exception observing Ext.data.Connection requestcomplete:");
             console.log(e);
-            console.log("Exception " + e);
-            console.log("Reponse");
-            console.log(response);
-            console.log("Response " + response);
-            // TODO: evaluate response to see if the object is well formed
-            //Ext.MessageBox.alert("Unexpected failure while processing requestcomplete: " + response.responseText);
+            Ext.MessageBox.alert("Unexpected exception observing Ext.data.Connection requestcomplete: " + e);
         }
     });
 

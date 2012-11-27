@@ -103,11 +103,8 @@ def authenticate_ajax(method):
             btb_instance.check_authentication()
             return method(btb_instance, *args, **kwargs)
         except Unauthenticated as e:
-            # ajax response handlers in front-end interpret this and show
-            # message box to redirect to login page
             # TODO: 28251379
-            return ju.dumps({'success': False, 'code':1, 'errors':
-                {'reason': 'Authenticate Ajax: No Session'}})
+            return ju.dumps({'success': True, 'code':1})
     return wrapper
 
 def authenticate(method):
@@ -397,10 +394,13 @@ class BillToolBridge:
         self.logger.info('BillToolBridge initialized')
 
     def dumps(self, data):
-        # don't turn this on unless you need the json results to return
-        # the url that was called. This is a good client side debug feature
-        # when you need to associate ajax calls with ajax responses.
-        #data['url'] = cherrypy.url()
+
+        # accept only dictionaries so that additional keys may be added
+        if type(data) is not dict: raise ValueError("Dictionary required.")
+
+        # diagnostic information for client side troubleshooting
+        data['server_url'] = cherrypy.url()
+        data['server_time'] = datetime.now()
 
         # round datetimes to nearest second so Ext-JS JsonReader can parse them
         def round_datetime(x):
