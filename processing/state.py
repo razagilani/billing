@@ -678,6 +678,7 @@ class StateDB:
                 .filter(UtilBill.customer==customer)\
                 .filter(UtilBill.state==UtilBill.Hypothetical)\
                 .order_by(asc(UtilBill.period_start)).all()
+
         for hb in hypothetical_utilbills:
             # delete if entire period comes before end of first real bill or
             # after start of last real bill

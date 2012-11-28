@@ -139,6 +139,11 @@ class StateTest(utils.TestCase):
             # start of latest)
             bills = self.state_db.list_utilbills(session, account)[0]\
                     .filter(UtilBill.state==UtilBill.Hypothetical).all()
+
+            # Ensure that the results are sorted in ascending order by period_start
+            # because the constant indices used in the assertions below rely on that order
+            bills.sort(key=lambda x: x.period_start)
+
             self.assertEqual(3, len(bills))
             self.assertEqual((date(2012,1,30), date(2012,3,1)),
                     (bills[0].period_start, bills[0].period_end))
