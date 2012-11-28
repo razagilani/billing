@@ -104,7 +104,7 @@ def authenticate_ajax(method):
             return method(btb_instance, *args, **kwargs)
         except Unauthenticated as e:
             # TODO: 28251379
-            return ju.dumps({'success': True, 'code':1})
+            return self.dumps({'success': False, 'code':1})
     return wrapper
 
 def authenticate(method):
@@ -398,6 +398,16 @@ class BillToolBridge:
         # accept only dictionaries so that additional keys may be added
         if type(data) is not dict: raise ValueError("Dictionary required.")
 
+        if 'success' in data: 
+            if data['success']: 
+                # nothing else required
+                pass
+            else:
+                if 'errors' not in data:
+                    self.logger.warning('JSON response require errors key.')
+        else:
+            self.logger.warning('JSON response require success key.')
+
         # diagnostic information for client side troubleshooting
         data['server_url'] = cherrypy.url()
         data['server_time'] = datetime.now()
@@ -509,7 +519,7 @@ class BillToolBridge:
         if user is None:
             self.logger.info(('login attempt failed: username "%s"'
                 ', remember me: %s') % (username, rememberme))
-            return ju.dumps({'success': False, 'errors':
+            return self.dumps({'success': False, 'errors':
                 {'username':'Incorrect username or password', 'reason': 'No Session'}})
 
         # successful login:
@@ -553,7 +563,7 @@ class BillToolBridge:
         self.logger.info(('user "%s" logged in: remember '
             'me: "%s" type is %s') % (username, rememberme,
             type(rememberme)))
-        return ju.dumps({'success': True});
+        return self.dumps({'success': True});
 
     def check_authentication(self):
         '''Function to check authentication for HTTP request functions: if user
@@ -704,7 +714,7 @@ class BillToolBridge:
         strings).'''
         with DBSession(self.state_db) as session:
             next_account = self.state_db.get_next_account_number(session)
-            return ju.dumps({'success': True, 'account': next_account})
+            return self.dumps({'success': True, 'account': next_account})
             
     @cherrypy.expose
     @random_wait

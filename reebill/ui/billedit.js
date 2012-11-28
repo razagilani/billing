@@ -44,6 +44,7 @@ function reeBillReady() {
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
     // the current Reebill Account-Sequence being acted on
+    // TODO:  Put these in ReeBill namespace?
     var selected_account = null;
     var selected_sequence = null;
 
@@ -57,7 +58,7 @@ function reeBillReady() {
                 console.log("Server returned malformed json reponse:  Success field missing.");
                 console.log(jsonData);
             } else {
-                if (jsonData.success == true) {
+                if (jsonData.success == false) {
                     if (typeof(jsonData.code) === "undefined") {
                         console.log("Server returned malformed json reponse:  Code field missing.");
                         console.log(jsonData);
@@ -76,16 +77,12 @@ function reeBillReady() {
                     console.log(jsonData);
                 }
             }
-
         } catch (e) {
             console.log("Unexpected exception observing Ext.data.Connection requestcomplete:");
             console.log(e);
             Ext.MessageBox.alert("Unexpected exception observing Ext.data.Connection requestcomplete: " + e);
         }
     });
-
-
-
 
     // ToDo: 5204832 state support for grid
     //Ext.state.Manager.setProvider(new Ext.state.CookieProvider());
@@ -474,6 +471,7 @@ function reeBillReady() {
 
 
                     // image rendering resolution
+                    // TODO Ext.getCmp vs doc.getElement
                     var menu = document.getElementById('billresolutionmenu');
                     if (menu) {
                         resolution = menu.value;
