@@ -339,17 +339,16 @@ class Process(object):
         new_reebill.version = 0
         new_reebill.new_utilbill_ids()
         new_reebill.clear()
-
+        new_reebill.sequence += 1
         # Update the new reebill's periods to the periods identified in the StateDB
         for ub in utilbills:
             new_reebill.set_utilbill_period_for_service(ub.service, (ub.period_start, ub.period_end))
-
         # set discount rate & late charge rate to the instananeous value from MySQL
         # NOTE suspended_services list is carried over automatically
         new_reebill.discount_rate = self.state_db.discount_rate(session, reebill.account)
         new_reebill.late_charge_rate = self.state_db.late_charge_rate(session, reebill.account)
 
-        new_reebill.sequence += 1
+        self.reebill_dao.save_reebill(new_reebill)
 
         # create reebill row in state database
         self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
