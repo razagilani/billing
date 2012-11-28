@@ -395,7 +395,7 @@ class Process(object):
                     1, utility_name, rs_name, cprs)
 
         # re-bind
-        fetch_bill_data.fetch_oltp_data(self.splinter,
+        fetch_bill_data.fetch_oltp_data(self.splinter,\
                 self.nexus_util.olap_id(account), reebill)
 
         # recompute, using sequence predecessor to compute balance forward and
@@ -640,6 +640,9 @@ class Process(object):
         '''Freeze utilbills from the previous reebill into a new reebill.
 
         This affects only the Mongo document.'''
+        if self.state_db.is_attached(session, reebill.account, reebill.sequence):
+            raise NotAttachable(("Can't attach reebill %s-%s: it already has utility "
+                    "bill(s) attached") % (reebill.account, reebill.sequence))
         #reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # save in mongo, with frozen copies of the associated utility bill
