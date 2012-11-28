@@ -630,7 +630,7 @@ class MongoReebill(object):
     @property
     def services(self):
         '''Returns a list of all services for which there are utilbills.'''
-        return [u['service'] for u in self._utilbills]
+        return [u['service'] for u in self._utilbills if u['service'] not in self.suspended_services]
 
     @property
     def suspended_services(self):
@@ -643,7 +643,6 @@ class MongoReebill(object):
     def suspend_service(self, service):
         '''Adds 'service' to the list of suspended services. Returns True iff
         it was added, False if it already present.'''
-        print self.services
         service = service.lower()
         if service not in [s.lower() for s in self.services]:
             raise ValueError('Unknown service %s: services are %s' % (service, self.services))
@@ -652,7 +651,6 @@ class MongoReebill(object):
             self.reebill_dict['suspended_services'] = []
         if service not in self.reebill_dict['suspended_services']:
             self.reebill_dict['suspended_services'].append(service)
-        print '%s-%s suspended_services set to %s' % (self.account, self.sequence, self.reebill_dict['suspended_services'])
 
     def resume_service(self, service):
         '''Removes 'service' from the list of suspended services. Returns True
@@ -904,7 +902,8 @@ class MongoReebill(object):
         '''Returns list of copies of shadow register dictionaries for the
         utility bill with the given service.'''
         utilbill_handle = self._get_handle_for_service(service)
-        return copy.deepcopy(utilbill_handle['shadow_registers'])
+        #print repr(utilbill_handle.get('shadow_registers'))
+        return copy.deepcopy(utilbill_handle.get('shadow_registers'))
 
     def set_shadow_register_quantity(self, identifier, quantity):
         '''Sets the value for the key "quantity" in the first shadow register
