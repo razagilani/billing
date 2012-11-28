@@ -534,6 +534,7 @@ class StateDB:
     def choose_next_utilbills(self, session, account, services):
         customer = self.get_customer(session, account)
         sequence = self.last_issued_sequence(session, account)
+
         # If there is a last issued sequence, then we can use the utilbills attached to it as a reference
         # for dates after which subsequent utilbill(s) will occur
         if sequence:
