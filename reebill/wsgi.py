@@ -2189,7 +2189,7 @@ class BillToolBridge:
         # requested measured usage
         if reebill is None:
             # TODO: 40161259 must return success field
-            return self.dumps({})
+            return self.dumps({"periods":None})
         
         utilbill_periods = {}
         for service in reebill.services:
@@ -2197,7 +2197,7 @@ class BillToolBridge:
             utilbill_periods[service] = { 'begin': begin, 'end': end }
 
         # TODO: 40161259 must return success field
-        return self.dumps(utilbill_periods)
+        return self.dumps({"periods":utilbill_periods})
 
     @cherrypy.expose
     @random_wait
@@ -2492,7 +2492,7 @@ class BillToolBridge:
 
         meters = reebill.meters
         # TODO: 40161259 must return success field
-        return self.dumps(meters)
+        return self.dumps({"meters":meters})
 
     @cherrypy.expose
     @random_wait
