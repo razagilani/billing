@@ -5655,6 +5655,8 @@ function reeBillReady() {
         issuableGrid.setDisabled(false);
     });
 
+    issuableMailListRegex = new RegExp("^[\\w!#$%&'*+\\-/=?^_`{\\|}~](\\.?[\\w!#$%&'*+\\-/=?^_`{\\|}~])*@[\\w-](\\.?[\\w-])*(,\\s*[\\w!#$%&'*+\\-/=?^_`{\\|}~](\\.?[\\w!#$%&'*+\\-/=?^_`{\\|}~])*@[\\w-](\\.?[\\w-])*)*$")
+
     var issuableColModel = new Ext.grid.ColumnModel({
         columns: [
             {
@@ -5690,7 +5692,9 @@ function reeBillReady() {
                 groupable: false,
                 dataIndex: 'mailto',
                 editable: true,
-                editor: new Ext.form.TextField({allowBlank: false}),
+                editor: new Ext.form.TextField({
+                    //regex: issuableMailListRegex,
+                }),
             },{
                 id: 'util_total',
                 header: 'Utility Bill Total',
@@ -5734,9 +5738,51 @@ function reeBillReady() {
         ],
     });
 
+    var issueDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/issue',
+    });
+    issueDataConn.autoAbort = true;
+    issueDataConn.disableCaching = true;
+    
+    var issuableCurrentlyEditing = false;
+    
+    var issueReebillButton = new Ext.Button({
+        xtype: 'button',
+        id: 'issueReebillBtn',
+        iconCls: 'icon-mail-go',
+        text: 'Issue',
+        disabled: true,
+        handler: function()
+        {
+            var r = issuableGrid.getSelectionModel().getSelected();
+            issueDataConn.request({
+                params: {
+                    account: r.data.account,
+                    sequence: r.data.sequence,
+                    apply_corrections: false,
+                }
+            });
+        },
+    });
+    
+    var issueReebillToolbar = new Ext.Toolbar({
+        items: [
+            issueReebillButton,
+        ],
+    });
+    
     var issuableGrid = new Ext.grid.EditorGridPanel({
         colModel: issuableColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+        selModel: new Ext.grid.RowSelectionModel({
+            singleSelect: true,
+            moveEditorOnEnter: false,
+            listeners: {
+                rowselect: function (selModel, index, record) {
+                    issueReebillButton.setDisabled(!issuableMailListRegex.test(record.data.mailto));
+                },
+            },
+        }),
+        tbar: issueReebillToolbar,
         bbar: new Ext.PagingToolbar({
             pageSize: 25,
             store: issuableStore,
@@ -5748,7 +5794,7 @@ function reeBillReady() {
         enableColumnMove: false,
         view: new Ext.grid.GroupingView({
             forceFit: false,
-            groupTextTpl: '{[values.gvalue==true?"Reebill"+(values.rs.length>1?"s":"")+" with Matching Total"+(values.rs.length>1?"s":""):"Reebill"+(values.rs.length>1?"s":"")+" without Matching Total"+(values.rs.length>1?"s":"")]}',
+            groupTextTpl: '{[values.gvalue==true?"Reebill"+(values.rs.length>1?"s":"")+" with Matching Totals":"Reebill"+(values.rs.length>1?"s":"")+" without Matching Totals"]}',
             showGroupName: false,
         }),
         frame: true,
@@ -5758,9 +5804,24 @@ function reeBillReady() {
         height: 900,
         width: 1000,
         title: 'Reebills Ready to be Issued',
-        clicksToEdit: 2
+        clicksToEdit: 2,
+        forceValidation: true,
     });
-        
+    
+    issuableGrid.on('validateedit', function (e /*{grid, record, field, value, originalValue, row, column}*/ ) {
+        oldAllowed = issuableMailListRegex.test(e.originalValue)
+        allowed = issuableMailListRegex.test(e.value);
+        issueReebillButton.setDisabled(!allowed && !oldAllowed);
+        if (!allowed && e.value != '') {
+            Ext.Msg.alert('Invalid Input','Please input a comma seperated list of email addresses.')
+        }
+        return allowed
+    });
+
+    issuableGrid.on('beforeedit', function () {
+        issueReebillButton.setDisabled(true);
+    });
+    
     var  issuablePanel = new Ext.Panel({
         id: 'issuableTab',
         title: 'Issuable Reebills',
