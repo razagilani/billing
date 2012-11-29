@@ -346,13 +346,18 @@ class StateDB:
             max_sequence =  0
         return max_sequence
         
-    def last_issued_sequence(self, session, account):
+    def last_issued_sequence(self, session, account, include_corrections=False):
         '''Returns the sequence of the last issued reebill for 'account', or 0
         if there are no issued reebills.'''
         customer = session.query(Customer).filter(Customer.account==account).one()
+        if include_corrections:
+            filter_logic = sqlalchemy.or_(ReeBill.issued==1, sqlalchemy.and_(ReeBill.issued==0, ReeBill.max_version>0))
+        else:
+            filter_logic = ReeBill.issued==1
+
         max_sequence = session.query(sqlalchemy.func.max(ReeBill.sequence)) \
                 .filter(ReeBill.customer_id==customer.id) \
-                .filter(ReeBill.issued==1).one()[0]
+                .filter(filter_logic).one()[0]
         if max_sequence is None:
             max_sequence = 0
         return max_sequence
@@ -533,7 +538,7 @@ class StateDB:
 
     def choose_next_utilbills(self, session, account, services):
         customer = self.get_customer(session, account)
-        sequence = self.last_issued_sequence(session, account)
+        sequence = self.last_issued_sequence(session, account, include_corrections=True)
 
         # If there is a last issued sequence, then we can use the utilbills attached to it as a reference
         # for dates after which subsequent utilbill(s) will occur
