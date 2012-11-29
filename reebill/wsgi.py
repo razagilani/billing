@@ -750,6 +750,8 @@ class BillToolBridge:
             new_reebill = self.reebill_dao.load_reebill(account, lastSequence+1)
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
                     account, new_reebill.sequence)
+            journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
+                account, new_reebill.sequence, new_reebill.version)
             return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -869,7 +871,8 @@ class BillToolBridge:
         services are skipped. Note that this does not issue the reebill or give
         it an issue date.'''
         # finalize utility bill association
-        self.process.attach_utilbills(session, account, sequence)
+        reebill = self.reebill_dao.load_reebill(account, sequence)
+        self.process.attach_utilbills(session, reebill)
 
         version = self.state_db.max_version(session, account, sequence)
         journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
