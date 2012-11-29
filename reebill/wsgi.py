@@ -2722,7 +2722,7 @@ class BillToolBridge:
                         dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
                 new_period_end = datetime.strptime(rows['period_end'],
                         dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
-                new_service = rows['service']
+                new_service = rows['service'].lower()
                 new_total_charges = rows['total_charges']
 
                 # check that new dates are reasonable
