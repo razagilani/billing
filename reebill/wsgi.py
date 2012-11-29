@@ -103,11 +103,7 @@ def authenticate_ajax(method):
             btb_instance.check_authentication()
             return method(btb_instance, *args, **kwargs)
         except Unauthenticated as e:
-            # ajax response handlers in front-end interpret this and show
-            # message box to redirect to login page
-            # TODO: 28251379
-            return ju.dumps({'success': False, 'code':1, 'errors':
-                {'reason': 'Authenticate Ajax: No Session'}})
+            return btb_instance.dumps({'success': False, 'code':1})
     return wrapper
 
 def authenticate(method):
@@ -397,10 +393,23 @@ class BillToolBridge:
         self.logger.info('BillToolBridge initialized')
 
     def dumps(self, data):
-        # don't turn this on unless you need the json results to return
-        # the url that was called. This is a good client side debug feature
-        # when you need to associate ajax calls with ajax responses.
-        #data['url'] = cherrypy.url()
+
+        # accept only dictionaries so that additional keys may be added
+        if type(data) is not dict: raise ValueError("Dictionary required.")
+
+        if 'success' in data: 
+            if data['success']: 
+                # nothing else required
+                pass
+            else:
+                if 'errors' not in data:
+                    self.logger.warning('JSON response require errors key.')
+        else:
+            self.logger.warning('JSON response require success key.')
+
+        # diagnostic information for client side troubleshooting
+        data['server_url'] = cherrypy.url()
+        data['server_time'] = datetime.now()
 
         # round datetimes to nearest second so Ext-JS JsonReader can parse them
         def round_datetime(x):
@@ -509,7 +518,7 @@ class BillToolBridge:
         if user is None:
             self.logger.info(('login attempt failed: username "%s"'
                 ', remember me: %s') % (username, rememberme))
-            return ju.dumps({'success': False, 'errors':
+            return self.dumps({'success': False, 'errors':
                 {'username':'Incorrect username or password', 'reason': 'No Session'}})
 
         # successful login:
@@ -553,7 +562,7 @@ class BillToolBridge:
         self.logger.info(('user "%s" logged in: remember '
             'me: "%s" type is %s') % (username, rememberme,
             type(rememberme)))
-        return ju.dumps({'success': True});
+        return self.dumps({'success': True});
 
     def check_authentication(self):
         '''Function to check authentication for HTTP request functions: if user
@@ -704,7 +713,7 @@ class BillToolBridge:
         strings).'''
         with DBSession(self.state_db) as session:
             next_account = self.state_db.get_next_account_number(session)
-            return ju.dumps({'success': True, 'account': next_account})
+            return self.dumps({'success': True, 'account': next_account})
             
     @cherrypy.expose
     @random_wait
@@ -2044,6 +2053,7 @@ class BillToolBridge:
         # if this is the case, return no periods.  
         # This is done so that the UI can configure itself with no data
         if reebill is None:
+            # TODO: 40161259 - must return success field
             return self.dumps({})
 
         ba = reebill.billing_address
@@ -2075,6 +2085,7 @@ class BillToolBridge:
 
         account_info['discount_rate'] = reebill.discount_rate
 
+        # TODO: 40161259 - must return success field
         return self.dumps(account_info)
 
 
@@ -2160,7 +2171,7 @@ class BillToolBridge:
         reebill = self.reebill_dao.load_reebill(account, sequence)
         if reebill is None:
             raise Exception('No reebill found for %s-%s' % (account, sequence))
-        
+        # TODO: 40161259 must return success field
         return self.dumps({
             'services': reebill.services,
             'suspended_services': reebill.suspended_services
@@ -2188,14 +2199,16 @@ class BillToolBridge:
         # This is done so that the UI can configure itself with no data for the
         # requested measured usage
         if reebill is None:
-            return self.dumps({})
+            # TODO: 40161259 must return success field
+            return self.dumps({"periods":None})
         
         utilbill_periods = {}
         for service in reebill.services:
             (begin, end) = reebill.utilbill_period_for_service(service)
             utilbill_periods[service] = { 'begin': begin, 'end': end }
 
-        return self.dumps(utilbill_periods)
+        # TODO: 40161259 must return success field
+        return self.dumps({"periods":utilbill_periods})
 
     @cherrypy.expose
     @random_wait
@@ -2485,10 +2498,12 @@ class BillToolBridge:
         # This is done so that the UI can configure itself with no data for the
         # requested measured usage
         if reebill is None:
+            # TODO: 40161259 must return success field
             return self.dumps({'success': True})
 
         meters = reebill.meters
-        return self.dumps(meters)
+        # TODO: 40161259 must return success field
+        return self.dumps({"meters":meters})
 
     @cherrypy.expose
     @random_wait
@@ -2938,6 +2953,7 @@ class BillToolBridge:
                 # we want to return success to ajax call and then load the tree in page
                 #return self.dumps({'success':True, 'reebill_structure':tree});
                 # but the TreeLoader doesn't abide by the above ajax packet
+                # TODO: 40161259 must return success field
                 return self.dumps(tree);
 
     @cherrypy.expose

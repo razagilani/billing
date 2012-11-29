@@ -641,7 +641,6 @@ class Process(object):
         return customer
 
 
-    # TODO 21052893: probably want to set up the next reebill here.  Automatically roll?
     def attach_utilbills(self, session, account, sequence):
         '''Creates association between the reebill given by 'account',
         'sequence' and all utilbills belonging to that customer whose entire
@@ -658,6 +657,14 @@ class Process(object):
             return
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
+
+        # try to attach in MySQL first: if it fails, mongo will not be updated.
+        # this prevents a bug where if attachment fails in MySQL, the changes
+        # to Mongo cannot be rolled back.
+        # https://www.pivotaltracker.com/story/show/39905517
+        self.state_db.try_to_attach_utilbills(session, account, sequence,
+                reebill.period_begin, reebill.period_end,
+                suspended_services=reebill.suspended_services)
 
         # save in mongo, with frozen copies of the associated utility bill
         # (the mongo part should normally come last because it can't roll back,
