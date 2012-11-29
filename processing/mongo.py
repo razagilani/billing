@@ -1534,8 +1534,8 @@ class ReebillDAO:
         reebills in Mongo that are not in MySQL.'''
         result = self.reebills_collection.find_one({
             '_id.account': account
-            }, sort=[('sequence', pymongo.DESCENDING)])
-        if result == None:
+            }, sort=[('_id.sequence', pymongo.DESCENDING)])
+        if result is None:
             return 0
-        return MongoReebill(result).sequence
+        return result['_id']['sequence']
 
