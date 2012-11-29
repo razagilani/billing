@@ -308,10 +308,7 @@ class Process(object):
         documents in Mongo (by copying the ones originally attached to the
         reebill). compute_bill() should always be called immediately after this
         one so the bill is updated to its current state.'''
-        # obtain the last Reebill sequence from the state database
-        if reebill.sequence < self.state_db.last_sequence(session, reebill.account):
-            raise Exception("Can only roll period on the last sequence")
-        elif reebill.sequence > self.state_db.last_issued_sequence(session, reebill.account):
+        if reebill.sequence > self.state_db.last_issued_sequence(session, reebill.account):
             raise Exception('Cannot roll period on an unissued reebill')
 
         utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
