@@ -5759,11 +5759,65 @@ function reeBillReady() {
         handler: function()
         {
             var r = issuableGrid.getSelectionModel().getSelected();
+            issuableGrid.setDisabled(true);
             issueDataConn.request({
                 params: {
                     account: r.data.account,
                     sequence: r.data.sequence,
                     apply_corrections: false,
+                },
+                success: function (response, options) {
+                    var o = {};
+                    try {
+                        o = Ext.decode(response.responseText);
+                    }
+                    catch(e) {
+                        Ext.Msg.alert("Data Error", "Could not decode response from server");
+                        return;
+                        issuableStore.reload();
+                        issuableGrid.setDisabled(false);
+                    }
+                    if (o.success == true) {
+                        Ext.Msg.alert("Success", "Mail successfully sent");
+                        issuableStore.reload();
+                        issuableGrid.setDisabled(false);
+                    }
+                    else if (o.success !== true && o.corrections != undefined) {
+                        var result = Ext.Msg.confirm('Corrections must be applied',
+                                                     'Corrections from reebills ' + o.corrections +
+                                                     ' will be applied to this bill as an adjusment of $'
+                                + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
+                                    if (answer == 'yes') {
+                                        issueDataConn.request({
+                                            params: { account: r.data.account, sequence: r.data.sequence, apply_corrections: true},
+                                            success: function(response, options) {
+                                                var o2 = Ext.decode(response.responseText);
+                                                if (o2.success == true)
+                                                    Ext.Msg.alert("Success", "Mail successfully sent");
+                                                else
+                                                    Ext.Msg.alert('Error', o2.errors.reason + "\n" + o2.errors.details);
+                                                issuableStore.reload();
+                                                issuableGrid.setDisabled(false);
+                                            },
+                                            failure: function() {
+                                                Ext.Msg.alert('Failure', "Connection Failure");
+                                                issuableStore.reload();
+                                                issuableGrid.setDisabled(false);
+                                            }
+                                        });
+                                    }
+                                });
+                    }
+                    else {
+                        Ext.Msg.alert('Error', o.errors.reason + "\n" + o.errors.details);
+                        issuableStore.reload();
+                        issuableGrid.setDisabled(false);
+                    }
+                },
+                failure: function () {
+                    Ext.Msg.alert('Failure', "Connection Failure");
+                    issuableStore.reload();
+                    issuableGrid.setDisabled(false);
                 }
             });
         },
