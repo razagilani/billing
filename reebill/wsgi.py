@@ -944,16 +944,35 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def issue(self, account, sequence, apply_corrections, **kwargs):
-        recipients = self.reebill_dao.load_reebill(account, sequence).bill_recipients
+        sequence = int(sequence)
+        apply_corrections = (apply_corrections == 'true')
         with DBSession(self.state_db) as session:
+            mongo_reebill = self.reebill_dao.load_reebill(account, sequence)
+            recipients = mongo_reebill.bill_recipients
             unissued_corrections = self.process.get_unissued_corrections(session, account)
             unissued_correction_sequences = [c[0] for c in unissued_corrections]
             unissued_correction_adjustment = sum(c[2] for c in unissued_corrections)
-            if len(unissued_corrections) > 0 and len(unissued_sequences) > 0 and not appaly_corrections:
+            if len(unissued_corrections) > 0 and len(unissued_sequences) > 0 and not apply_corrections:
                     return self.dumps({'success': False,
                         'corrections': unissued_correction_sequences,
                         'adjustment': unissued_correction_adjustment })
-            self.issue_reebills(account, [sequence], recipients, apply_corrections)
+            self.issue_reebills(session, account, [sequence], recipients, apply_corrections=apply_corrections)
+            mongo_reebill = self.reebill_dao.load_reebill(account, sequence)
+            self.renderer.render_max_version(session, account, sequence, 
+                                             self.config.get("billdb", "billpath")+ "%s" % account, 
+                                             "%.4d.pdf" % sequence, True)
+            bill_name = "%.4d.pdf" %sequence
+            merge_fields = {}
+            merge_fields["sa_street1"] = mongo_reebill.service_address["sa_street1"]
+            merge_fields["balance_due"] = mongo_reebill.balance_due.quantize(Decimal("0.00"))
+            merge_fields["bill_dates"] = ["%s" % (mongo_reebill.period_end) ]
+            merge_fields["last_bill"] = bill_name
+            bill_mailer.mail(recipients, merge_fields,
+                    os.path.join(self.config.get("billdb", "billpath"),
+                        account), [bill_name]);
+
+            journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
+                                                     account, sequence, ", ".join(recipients))
             
         return self.dumps({'success': True})
 
