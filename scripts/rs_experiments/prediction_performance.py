@@ -2,7 +2,7 @@ from __future__ import division
 from datetime import date, time, timedelta
 from billing.processing.mongo import ReebillDAO
 from billing.processing.state import StateDB
-from billing.processing.rate_structure import RateStructureDAO
+from billing.processing.rate_structure import RateStructureDAO, exp_weight
 from billing.processing.session_contextmanager import DBSession
 from sys import stderr
 from pymongo import Connection
@@ -30,6 +30,12 @@ db = Connection('localhost')['skyline-dev']
 
 #THRESHOLD_STEP = 0.01 # slow
 THRESHOLD_STEP = 0.1 # fast
+
+exp_7 = exp_weight(.5, 1/7)
+exp_15 = exp_weight(.5, 1/15)
+exp_30 = exp_weight(.5, 1/30)
+exp_60 = exp_weight(.5, 1/60)
+exp_60 = exp_weight(.5, 1/120)
 
 with DBSession(state_db) as session:
 
@@ -78,8 +84,6 @@ with DBSession(state_db) as session:
             if uprs is None:
                 #print >> stderr, account, sequence, version 'missing UPRS'
                 raise Exception("missing UPRS")
-            ## temporarily remove real UPRS from database
-            #db.ratestructure.remove(uprs_query)
 
             # function to excude UPRSs from same account, current sequence
             def ignore(x):
@@ -93,6 +97,7 @@ with DBSession(state_db) as session:
             guessed_rsis = rs_dao._get_probable_rsis(utility_name,
                     rate_structure_name,
                     period=reebill.utilbill_period_for_service(service),
+                    weight_func=exp_60,
                     threshold=threshold, ignore=ignore)
             guessed_bindings = [rsi['rsi_binding'] for rsi in guessed_rsis]
 
@@ -135,8 +140,6 @@ with DBSession(state_db) as session:
             #print 'guessed bindings:', guessed_bindings
             #print '%s-%s-%s %s %s' % (account, sequence, max_version, precision, recall)
 
-            ## put real UPRS back in the database
-            #db.ratestructure.save(uprs)
         avg_precision = precision_sum / precision_count 
         avg_recall = recall_sum / recall_count
         results.append((threshold, avg_precision, avg_recall, quantity_correct_fraction, rate_correct_fraction))

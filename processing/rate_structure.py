@@ -22,19 +22,7 @@ pp = pprint.PrettyPrinter(indent=1).pprint
 
 # minimum normlized score for an RSI to get included in a probable UPRS
 # (between 0 and 1)
-# TODO why does this have to be so low? it should be more like 0.5
 RSI_PRESENCE_THRESHOLD = 0.5
-
-# controls how much more a probable UPRS is influenced by nearby UPRSs compared
-# to far ones. ("full width at half maximum" of gaussian weight function: an
-# RSI gets a score of 0.5 at half this number of days' distance)
-RSI_FWHM = 120
-
-def gaussian(height, center, fwhm):
-    def result(x):
-        sigma =  fwhm / 2 * sqrt(2 * log(2))
-        return height * exp(- (x - center)**2 / (2 * sigma**2))
-    return result
 
 def euclidean_distance(p1, p2):
     delta_begin = abs(p1[0] - p2[0]).days
@@ -47,6 +35,15 @@ def manhattan_distance(p1, p2):
     delta_begin = abs(p1[0] - p2[0]).days
     delta_end = abs(p1[1] - p2[1]).days
     return delta_begin + delta_end
+
+def gaussian(height, center, fwhm):
+    def result(x):
+        sigma =  fwhm / 2 * sqrt(2 * log(2))
+        return height * exp(- (x - center)**2 / (2 * sigma**2))
+    return result
+
+def exp_weight(a, b):
+    return lambda x: a**(x * b)
 
 class RateStructureDAO(object):
     '''
@@ -90,6 +87,7 @@ class RateStructureDAO(object):
         self.collection = self.database['ratestructure']
 
     def _get_probable_rsis(self, utility, rate_structure_name, period,
+            distance_func=manhattan_distance, weight_func=exp_weight(2, 15),
             threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False):
         '''Returns list of RSI dictionaries: a guess of what RSIs will be in a
         new bill for the given rate structure during the given period. The list
@@ -120,10 +118,8 @@ class RateStructureDAO(object):
 
                 # calculate weighted distance of this UPRS period from the
                 # target period
-                distance = manhattan_distance(uprs_period, period)
-                #weight = gaussian(1, 0, RSI_FWHM)(distance)
-                #weight = 0.5**(distance/30.)
-                weight = 0.5**(distance/15.)
+                distance = distance_func(uprs_period, period)
+                weight = weight_func(distance)
 
                 # update score and total weight for this binding
                 try:
