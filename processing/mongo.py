@@ -142,13 +142,11 @@ class MongoReebill(object):
         __init__, called by Process.roll_bill). TODO remove this.'''
         # set start date of each utility bill in this reebill to the end date
         # of the previous utility bill for that service
-        for service in self.services:
-            prev_start, prev_end = self.utilbill_period_for_service(service)
-            self.set_utilbill_period_for_service(service, (prev_end, None))
+        #for service in self.services:
+        #    prev_start, prev_end = self.utilbill_period_for_service(service)
+        #    self.set_utilbill_period_for_service(service, (prev_end, None))
 
         # process rebill
-        self.period_begin = self.period_end
-        self.period_end = None
         self.total_adjustment = Decimal("0.00")
         self.manual_adjustment = Decimal("0.00")
         self.hypothetical_total = Decimal("0.00")
@@ -312,20 +310,13 @@ class MongoReebill(object):
     def due_date(self, value):
         self.reebill_dict['due_date'] = value
 
-    # TODO these must die
+    # Periods are read-only on the basis of which utilbills have been attached
     @property
     def period_begin(self):
-
-        return python_convert(self.reebill_dict['period_begin'])
-    @period_begin.setter
-    def period_begin(self, value):
-        self.reebill_dict['period_begin'] = value
+        return min([self._get_utilbill_for_service(s)['start'] for s in self.services])
     @property
     def period_end(self):
-        return python_convert(self.reebill_dict['period_end'])
-    @period_end.setter
-    def period_end(self, value):
-        self.reebill_dict['period_end'] = value
+        return max([self._get_utilbill_for_service(s)['end'] for s in self.services])
     
     @property
     def discount_rate(self):
@@ -639,7 +630,7 @@ class MongoReebill(object):
     @property
     def services(self):
         '''Returns a list of all services for which there are utilbills.'''
-        return [u['service'] for u in self._utilbills]
+        return [u['service'] for u in self._utilbills if u['service'] not in self.suspended_services]
 
     @property
     def suspended_services(self):
@@ -652,7 +643,6 @@ class MongoReebill(object):
     def suspend_service(self, service):
         '''Adds 'service' to the list of suspended services. Returns True iff
         it was added, False if it already present.'''
-        print self.services
         service = service.lower()
         if service not in [s.lower() for s in self.services]:
             raise ValueError('Unknown service %s: services are %s' % (service, self.services))
@@ -661,7 +651,6 @@ class MongoReebill(object):
             self.reebill_dict['suspended_services'] = []
         if service not in self.reebill_dict['suspended_services']:
             self.reebill_dict['suspended_services'].append(service)
-        print '%s-%s suspended_services set to %s' % (self.account, self.sequence, self.reebill_dict['suspended_services'])
 
     def resume_service(self, service):
         '''Removes 'service' from the list of suspended services. Returns True
@@ -913,7 +902,8 @@ class MongoReebill(object):
         '''Returns list of copies of shadow register dictionaries for the
         utility bill with the given service.'''
         utilbill_handle = self._get_handle_for_service(service)
-        return copy.deepcopy(utilbill_handle['shadow_registers'])
+        #print repr(utilbill_handle.get('shadow_registers'))
+        return copy.deepcopy(utilbill_handle.get('shadow_registers'))
 
     def set_shadow_register_quantity(self, identifier, quantity):
         '''Sets the value for the key "quantity" in the first shadow register
@@ -1507,12 +1497,23 @@ class ReebillDAO:
             '_id.account': account,
             '_id.sequence': 1,
         }
-        result = self.reebills_collection.find_one(query)
-        if result == None:
+        reebill_result = self.reebills_collection.find_one(query)
+        if reebill_result is None:
             raise NoSuchBillException('First reebill for account %s is missing'
                     % account)
-        # empty utilbills list because it doesn't matter
-        return MongoReebill(result, []).period_begin
+
+        utilbill_ids = [ub['id'] for ub in reebill_result['utilbills']]
+        query = {
+            '_id': {"$in": utilbill_ids}
+        }
+        utilbill_result = self.utilbills_collection.find(query)
+        if utilbill_result is None:
+            raise NoSuchBillException('Utilbills for first reebill for account %s is missing'
+                    % account)
+        else:
+            utilbill_result = list(utilbill_result)
+
+        return MongoReebill(reebill_result, utilbill_result).period_begin
 
     def get_first_issue_date_for_account(self, account):
         '''Returns the issue date of the account's earliest reebill, or None if
@@ -1533,8 +1534,8 @@ class ReebillDAO:
         reebills in Mongo that are not in MySQL.'''
         result = self.reebills_collection.find_one({
             '_id.account': account
-            }, sort=[('sequence', pymongo.DESCENDING)])
-        if result == None:
+            }, sort=[('_id.sequence', pymongo.DESCENDING)])
+        if result is None:
             return 0
-        return MongoReebill(result).sequence
+        return result['_id']['sequence']
 

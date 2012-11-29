@@ -759,6 +759,8 @@ class BillToolBridge:
             new_reebill = self.reebill_dao.load_reebill(account, lastSequence+1)
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
                     account, new_reebill.sequence)
+            journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
+                account, new_reebill.sequence, new_reebill.version)
             return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -878,8 +880,8 @@ class BillToolBridge:
         services are skipped. Note that this does not issue the reebill or give
         it an issue date.'''
         # finalize utility bill association
-        self.process.attach_utilbills(session, account,
-                sequence)
+        reebill = self.reebill_dao.load_reebill(account, sequence)
+        self.process.attach_utilbills(session, reebill)
 
         version = self.state_db.max_version(session, account, sequence)
         journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
@@ -908,8 +910,8 @@ class BillToolBridge:
         unissued corrections will be applied to the earliest unissued bill in
         sequences.'''
         # attach utility bills to all unissued bills
-        for unissued_sequence in sequences:
-            self.attach_utility_bills(session, account, unissued_sequence)
+        #for unissued_sequence in sequences:
+        #    self.attach_utility_bills(session, account, unissued_sequence)
 
         if apply_corrections:
             # get unissued corrections for this account
@@ -2735,7 +2737,7 @@ class BillToolBridge:
                         dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
                 new_period_end = datetime.strptime(rows['period_end'],
                         dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
-                new_service = rows['service']
+                new_service = rows['service'].lower()
                 new_total_charges = rows['total_charges']
 
                 # check that new dates are reasonable
