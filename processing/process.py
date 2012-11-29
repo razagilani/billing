@@ -147,8 +147,6 @@ class Process(object):
         whenever roll_bill() is called.'''
         acc = present_reebill.account
 
-        self.set_reebill_period(present_reebill)
-
         ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
         present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
@@ -310,11 +308,15 @@ class Process(object):
         documents in Mongo (by copying the ones originally attached to the
         reebill). compute_bill() should always be called immediately after this
         one so the bill is updated to its current state.'''
-        # obtain the last Reebill sequence from the state database
-        if reebill.sequence < self.state_db.last_sequence(session,
-                reebill.account):
-            raise Exception("Not the last sequence")
+        
+        # Allow rolling if the latest reebill has unissued corrections; we need to be able to generate a new reebill
+        # to apply corrections, plus it makes sense since such a reebill has technically already been issued in some form
+        if reebill.sequence > self.state_db.last_issued_sequence(session, reebill.account) and \
+                reebill.version == self.state_db.max_issued_version(session, reebill.account, reebill.sequence):
+            raise Exception('Cannot roll period on an unissued reebill')
 
+        utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
+        
         # duplicate the CPRS for each service
         # TODO: 22597151 refactor
         for service in reebill.services:
@@ -338,23 +340,21 @@ class Process(object):
         new_reebill.version = 0
         new_reebill.new_utilbill_ids()
         new_reebill.clear()
-
-        new_period_end, _ = state.guess_utilbills_and_end_date(session,
-                reebill.account, reebill.period_end)
-
-        new_reebill.period_end = new_period_end
-
+        new_reebill.sequence += 1
+        # Update the new reebill's periods to the periods identified in the StateDB
+        for ub in utilbills:
+            new_reebill.set_utilbill_period_for_service(ub.service, (ub.period_start, ub.period_end))
         # set discount rate & late charge rate to the instananeous value from MySQL
         # NOTE suspended_services list is carried over automatically
-        new_reebill.discount_rate = self.state_db.discount_rate(session,
-                reebill.account)
-        new_reebill.late_charge_rate = self.state_db.late_charge_rate(session,
-                reebill.account)
+        new_reebill.discount_rate = self.state_db.discount_rate(session, reebill.account)
+        new_reebill.late_charge_rate = self.state_db.late_charge_rate(session, reebill.account)
 
-        new_reebill.sequence += 1
+        self.reebill_dao.save_reebill(new_reebill)
 
         # create reebill row in state database
         self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
+        self.attach_utilbills(session, new_reebill)
+        self.state_db.attach_utilbills(session, new_reebill.account, new_reebill.sequence, utilbills, new_reebill.suspended_services)
         
         return new_reebill
 
@@ -636,30 +636,15 @@ class Process(object):
         return customer
 
 
-    def attach_utilbills(self, session, account, sequence):
-        '''Creates association between the reebill given by 'account',
-        'sequence' and all utilbills belonging to that customer whose entire
-        periods are within the reebill's period and whose services are not
-        suspended. The utility bills are marked as processed.'''
-        if sequence > 1 and not self.state_db.is_attached(session, account,
-                sequence - 1):
-            raise BillStateError("Predecessor's utility bill(s) are not "
-                    "attached yet.")
+    # TODO 21052893: probably want to set up the next reebill here.  Automatically roll?
+    def attach_utilbills(self, session, reebill):
+        '''Freeze utilbills from the previous reebill into a new reebill.
 
-        # if already attached, do nothing (otherwise trying to re-freeze
-        # utility bills below will cause an error)
-        if self.state_db.is_attached(session, account, sequence):
-            return
-
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-
-        # try to attach in MySQL first: if it fails, mongo will not be updated.
-        # this prevents a bug where if attachment fails in MySQL, the changes
-        # to Mongo cannot be rolled back.
-        # https://www.pivotaltracker.com/story/show/39905517
-        self.state_db.try_to_attach_utilbills(session, account, sequence,
-                reebill.period_begin, reebill.period_end,
-                suspended_services=reebill.suspended_services)
+        This affects only the Mongo document.'''
+        if self.state_db.is_attached(session, reebill.account, reebill.sequence):
+            raise NotAttachable(("Can't attach reebill %s-%s: it already has utility "
+                    "bill(s) attached") % (reebill.account, reebill.sequence))
+        #reebill = self.reebill_dao.load_reebill(account, sequence)
 
         # save in mongo, with frozen copies of the associated utility bill
         # (the mongo part should normally come last because it can't roll back,
@@ -667,10 +652,6 @@ class Process(object):
         # refuse to create frozen utility bills "again" if MySQL says its
         # attached". see https://www.pivotaltracker.com/story/show/38308443)
         self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
-
-        self.state_db.attach_utilbills(session, account, sequence,
-                reebill.period_begin, reebill.period_end,
-                suspended_services=reebill.suspended_services)
 
     def bind_rate_structure(self, reebill):
             # process the actual charges across all services
@@ -935,38 +916,6 @@ class Process(object):
                     'quantity': therms
                 })
              
-
-
-    def set_reebill_period(self, reebill):
-        '''Sets the period dates of 'reebill' to the earliest utility bill
-        start date and latest utility bill end date.'''
-        #reebill = self.reebill_dao.load_reebill(account, sequence)
-        
-        utilbill_period_beginnings = []
-        utilbill_period_ends = []
-        for period in reebill.utilbill_periods.itervalues():
-            utilbill_period_beginnings.append(period[0])
-            utilbill_period_ends.append(period[1])
-
-        rebill_periodbegindate = datetime.max
-        for beginning in utilbill_period_beginnings:
-            candidate_date = datetime(beginning.year, beginning.month,
-                    beginning.day, 0, 0, 0)
-            # find minimum date
-            if (candidate_date < rebill_periodbegindate):
-                rebill_periodbegindate = candidate_date
-
-        rebill_periodenddate = datetime.min 
-        for end in utilbill_period_ends:
-            # find maximum date
-            candidate_date = datetime(end.year, end.month, end.day, 0,
-                    0, 0)
-            if (candidate_date > rebill_periodenddate):
-                rebill_periodenddate = candidate_date
-
-        reebill.period_begin = rebill_periodbegindate
-        reebill.period_end = rebill_periodenddate
-
     def issue(self, session, account, sequence, recipients=None,
             issue_date=datetime.utcnow().date()):
         '''Sets the issue date of the reebill given by account, sequence to
