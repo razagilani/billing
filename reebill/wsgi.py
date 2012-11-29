@@ -103,8 +103,7 @@ def authenticate_ajax(method):
             btb_instance.check_authentication()
             return method(btb_instance, *args, **kwargs)
         except Unauthenticated as e:
-            # TODO: 28251379
-            return self.dumps({'success': False, 'code':1})
+            return btb_instance.dumps({'success': False, 'code':1})
     return wrapper
 
 def authenticate(method):
