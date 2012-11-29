@@ -11,7 +11,7 @@ import string, re
 import ConfigParser
 from datetime import datetime, date, timedelta
 import itertools as it
-from decimal import Decimal
+from decimal import Decimal, DivisionByZero
 import uuid as UUID # uuid collides with locals so both module and locals are renamed
 import inspect
 import logging
@@ -947,6 +947,43 @@ class BillToolBridge:
         for unissued_sequence in sequences:
             journal.ReeBillIssuedEvent.save_instance(cherrypy.session['user'],
                     account, unissued_sequence, 0)
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def issue(self, account, sequence, apply_corrections, **kwargs):
+        sequence = int(sequence)
+        apply_corrections = (apply_corrections == 'true')
+        with DBSession(self.state_db) as session:
+            mongo_reebill = self.reebill_dao.load_reebill(account, sequence)
+            recipients = mongo_reebill.bill_recipients
+            unissued_corrections = self.process.get_unissued_corrections(session, account)
+            unissued_correction_sequences = [c[0] for c in unissued_corrections]
+            unissued_correction_adjustment = sum(c[2] for c in unissued_corrections)
+            if len(unissued_corrections) > 0 and len(unissued_sequences) > 0 and not apply_corrections:
+                    return self.dumps({'success': False,
+                        'corrections': unissued_correction_sequences,
+                        'adjustment': unissued_correction_adjustment })
+            self.issue_reebills(session, account, [sequence], recipients, apply_corrections=apply_corrections)
+            mongo_reebill = self.reebill_dao.load_reebill(account, sequence)
+            self.renderer.render_max_version(session, account, sequence, 
+                                             self.config.get("billdb", "billpath")+ "%s" % account, 
+                                             "%.4d.pdf" % sequence, True)
+            bill_name = "%.4d.pdf" %sequence
+            merge_fields = {}
+            merge_fields["sa_street1"] = mongo_reebill.service_address["sa_street1"]
+            merge_fields["balance_due"] = mongo_reebill.balance_due.quantize(Decimal("0.00"))
+            merge_fields["bill_dates"] = ["%s" % (mongo_reebill.period_end) ]
+            merge_fields["last_bill"] = bill_name
+            bill_mailer.mail(recipients, merge_fields,
+                    os.path.join(self.config.get("billdb", "billpath"),
+                        account), [bill_name]);
+
+            journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
+                                                     account, sequence, ", ".join(recipients))
+            
+        return self.dumps({'success': True})
 
     @cherrypy.expose
     @random_wait
@@ -1978,7 +2015,52 @@ class BillToolBridge:
                 # necessarily mean that a row disappears from the grid.
                 raise ValueError("Use delete_reebill instead!")
 
-
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def issuable(self, xaction, **kwargs):
+        '''Return a list of the issuable reebills'''
+        if not xaction:
+            raise ValueError("Bad Parameter Value")
+        with DBSession(self.state_db) as session:
+            if xaction == 'read':
+                start = kwargs['start']
+                limit = kwargs['limit']
+                sort = kwargs['sort']
+                direction = kwargs['dir']
+                rows = []
+                allowable_diff = 0
+                try:
+                    allowable_diff = cherrypy.session['user'].preferences['reebill_total-percent_cutoff']
+                except:
+                    allowable_diff = UserDAO.default_user.preferences['matching_total_percent_threshold']
+                reebills, total = self.state_db.listAllIssuableReebillInfo(session=session)
+                for reebill_info in reebills:
+                    row_dict = {}
+                    mongo_reebill = self.reebill_dao.load_reebill(reebill_info[0], reebill_info[1])
+                    row_dict['id'] = reebill_info[0]
+                    row_dict['account'] = reebill_info[0]
+                    row_dict['sequence'] = reebill_info[1]
+                    row_dict['util_total'] = Decimal(231.67) #reebill_info[2]
+                    row_dict['mailto'] = ", ".join(mongo_reebill.bill_recipients)
+                    row_dict['reebill_total'] = mongo_reebill.actual_total
+                    try:
+                        row_dict['difference'] = abs(1-row_dict['reebill_total']/row_dict['util_total'])
+                    except DivisionByZero:
+                        row_dict['difference'] = Decimal('Infinity')
+                    row_dict['matching'] = row_dict['difference'] < allowable_diff
+                    rows.append(row_dict)
+                rows.sort(key=lambda d: d[sort], reverse = (direction == 'ASC'))
+                rows.sort(key=lambda d: d['matching'], reverse = True)
+                return self.dumps({'success': True, 'rows':rows[int(start):int(start)+int(limit)], 'total':total})
+            elif xaction == 'update':
+                row = json.loads(kwargs["rows"])
+                mongo_reebill = self.reebill_dao.load_reebill(row['account'],row['sequence'])
+                mongo_reebill.bill_recipients = [r.strip() for r in row['mailto'].split(',')]
+                self.reebill_dao.save_reebill(mongo_reebill)
+                return self.dumps({'success':True})
+            
     @cherrypy.expose
     @random_wait
     @authenticate_ajax

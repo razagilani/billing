@@ -55,7 +55,8 @@ class UserDAO:
         '_id':'default',
         'name':'Default User',
         'preferences': {
-            'bill_image_resolution': 80
+            'bill_image_resolution': 80,
+            'matching_total_percent_threshold': 0.01
         }
     })
 
