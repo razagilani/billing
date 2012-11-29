@@ -308,7 +308,11 @@ class Process(object):
         documents in Mongo (by copying the ones originally attached to the
         reebill). compute_bill() should always be called immediately after this
         one so the bill is updated to its current state.'''
-        if reebill.sequence > self.state_db.last_issued_sequence(session, reebill.account):
+        
+        # Allow rolling if the latest reebill has unissued corrections; we need to be able to generate a new reebill
+        # to apply corrections, plus it makes sense since such a reebill has technically already been issued in some form
+        if reebill.sequence > self.state_db.last_issued_sequence(session, reebill.account) and \
+                reebill.version == self.state_db.max_issued_version(session, reebill.account, reebill.sequence):
             raise Exception('Cannot roll period on an unissued reebill')
 
         utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
