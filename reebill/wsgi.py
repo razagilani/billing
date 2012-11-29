@@ -943,6 +943,24 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
+    def issue(self, account, sequence, apply_corrections, **kwargs):
+        recipients = self.reebill_dao.load_reebill(account, sequence).bill_recipients
+        with DBSession(self.state_db) as session:
+            unissued_corrections = self.process.get_unissued_corrections(session, account)
+            unissued_correction_sequences = [c[0] for c in unissued_corrections]
+            unissued_correction_adjustment = sum(c[2] for c in unissued_corrections)
+            if len(unissued_corrections) > 0 and len(unissued_sequences) > 0 and not appaly_corrections:
+                    return self.dumps({'success': False,
+                        'corrections': unissued_correction_sequences,
+                        'adjustment': unissued_correction_adjustment })
+            self.issue_reebills(account, [sequence], recipients, apply_corrections)
+            
+        return self.dumps({'success': True})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
     def retrieve_mail_addresses(self, account, **kwargs):
         if not account:
             raise ValueError("Bad Parameter Value")
@@ -1973,12 +1991,16 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def issuable(self, xaction, start, limit, sort, dir, **kwargs):
+    def issuable(self, xaction, **kwargs):
         '''Return a list of the issuable reebills'''
-        if not xaction or not start or not limit:
+        if not xaction:
             raise ValueError("Bad Parameter Value")
         with DBSession(self.state_db) as session:
             if xaction == 'read':
+                start = kwargs['start']
+                limit = kwargs['limit']
+                sort = kwargs['sort']
+                direction = kwargs['dir']
                 rows = []
                 allowable_diff = 0
                 try:
@@ -1993,10 +2015,7 @@ class BillToolBridge:
                     row_dict['account'] = reebill_info[0]
                     row_dict['sequence'] = reebill_info[1]
                     row_dict['util_total'] = Decimal(231.67) #reebill_info[2]
-                    try:
-                        row_dict['mailto'] = mongo_reebill.bill_recipients
-                    except AttributeError:
-                        row_dict['mailto'] = []
+                    row_dict['mailto'] = ", ".join(mongo_reebill.bill_recipients)
                     row_dict['reebill_total'] = mongo_reebill.actual_total
                     try:
                         row_dict['difference'] = abs(1-row_dict['reebill_total']/row_dict['util_total'])
@@ -2004,10 +2023,15 @@ class BillToolBridge:
                         row_dict['difference'] = Decimal('Infinity')
                     row_dict['matching'] = row_dict['difference'] < allowable_diff
                     rows.append(row_dict)
-                rows.sort(key=lambda d: d[sort], reverse = (dir == 'ASC'))
+                rows.sort(key=lambda d: d[sort], reverse = (direction == 'ASC'))
                 rows.sort(key=lambda d: d['matching'], reverse = True)
                 return self.dumps({'success': True, 'rows':rows[int(start):int(start)+int(limit)], 'total':total})
-
+            elif xaction == 'update':
+                row = json.loads(kwargs["rows"])
+                mongo_reebill = self.reebill_dao.load_reebill(row['account'],row['sequence'])
+                mongo_reebill.bill_recipients = [r.strip() for r in row['mailto'].split(',')]
+                self.reebill_dao.save_reebill(mongo_reebill)
+                return self.dumps({'success':True})
             
     @cherrypy.expose
     @random_wait

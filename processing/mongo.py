@@ -490,19 +490,37 @@ class MongoReebill(object):
         self.reebill_dict['ree_value'] = value
 
     @property
-    def recipients(self):
+    def bill_recipients(self):
         '''E-mail addresses of bill recipients.
 
         If these data exist, returns a list of strings. Otherwise, returns None.'''
-        return self.reebill_dict.get('bill_recipients', None)
-    @recipients.setter
-    def recipients(self, value):
+        res = self.reebill_dict.get('bill_recipients', None)
+        if res is None:
+            self.reebill_dict['bill_recipients'] = []
+            return self.reebill_dict['bill_recipients']
+        return res
+        
+    @bill_recipients.setter
+    def bill_recipients(self, value):
         '''Assigns a list of e-mail addresses representing bill recipients.'''
-        if value:
-            self.reebill_dict['bill_recipients'] = value
-        else:
-            self.reebill_dict.pop('bill_recipients', None)
+        self.reebill_dict['bill_recipients'] = value
 
+    @property
+    def last_recipients(self):
+        '''E-mail addresses of bill recipients.
+
+        If these data exist, returns a list of strings. Otherwise, returns None.'''
+        res = self.reebill_dict.get('last_recipients', None)
+        if res is None:
+            self.reebill_dict['last_recipients'] = []
+            return self.reebill_dict['last_recipients']
+        return res
+    
+    @last_recipients.setter
+    def last_recipients(self, value):
+        '''Assigns a list of e-mail addresses representing bill recipients.'''
+        self.reebill_dict['last_recipients'] = value
+        
     def _utilbill_ids(self):
         '''Useful for debugging.'''
         # note order is not guranteed so the result may look weird
