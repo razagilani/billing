@@ -979,7 +979,12 @@ class BillToolBridge:
             bill_mailer.mail(recipients, merge_fields,
                     os.path.join(self.config.get("billdb", "billpath"),
                         account), [bill_name]);
-
+            
+            last_sequence = self.state_db.last_sequence(session, account)
+            if sequence != last_sequence:
+                next_bill = self.reebill_dao.load_reebill(account, sequence+1)
+                next_bill.bill_recipients = recipients
+                self.reebill_dao.save_reebill(next_bill)
             journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
                                                      account, sequence, ", ".join(recipients))
             
