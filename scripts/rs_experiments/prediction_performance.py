@@ -28,8 +28,8 @@ rs_dao = RateStructureDAO(**{
 
 db = Connection('localhost')['skyline-dev']
 
-#THRESHOLD_STEP = 0.01
-THRESHOLD_STEP = 0.1
+#THRESHOLD_STEP = 0.01 # slow
+THRESHOLD_STEP = 0.1 # fast
 
 with DBSession(state_db) as session:
 
@@ -38,6 +38,7 @@ with DBSession(state_db) as session:
     results = []
 
     for threshold in arange(0, 1 + THRESHOLD_STEP, THRESHOLD_STEP):
+        print threshold
 
         precision_sum, precision_count = 0, 0
         recall_sum, recall_count = 0, 0

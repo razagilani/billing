@@ -121,7 +121,9 @@ class RateStructureDAO(object):
                 # calculate weighted distance of this UPRS period from the
                 # target period
                 distance = manhattan_distance(uprs_period, period)
-                weight = gaussian(1, 0, RSI_FWHM)(distance)
+                #weight = gaussian(1, 0, RSI_FWHM)(distance)
+                #weight = 0.5**(distance/30.)
+                weight = 0.5**(distance/15.)
 
                 # update score and total weight for this binding
                 try:
