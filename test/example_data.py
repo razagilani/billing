@@ -523,7 +523,7 @@ def get_reebill(account, sequence, start=date(2011,11,12),
     reebill_dict['utilbills'][0]['id'] = id
 
     u = get_utilbill_dict(account, start=start, end=end)
-    u._id = id
+    u.id = id
 
     return MongoReebill(deep_map(float_to_decimal, reebill_dict),
             [copy.deepcopy(deep_map(float_to_decimal, u))])
@@ -534,7 +534,7 @@ def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14),
     '''Returns an example utility bill.'''
     start, end = date_to_datetime(start), date_to_datetime(end)
     u = copy.deepcopy(example_utilbill)
-    u._id = ObjectId()
+    u.id = ObjectId()
     u.account = account
     u.start = start
     u.end = end

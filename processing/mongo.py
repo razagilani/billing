@@ -659,7 +659,7 @@ class MongoReebill(object):
         utility bill has the given service. There must be exactly 1.'''
         u = self._get_utilbill_for_service(service)
         handles = [h for h in self.reebill_dict['utilbills'] if h['id'] ==
-                u.id]
+                str(u.id)]
         if len(handles) == 0:
             raise ValueError(('Reebill has no reference to utilbill for '
                     'service "%s"') % service)
@@ -676,7 +676,8 @@ class MongoReebill(object):
         # because it is what you use to grab a utility bill and it's kind of
         # like a pointer.
         id = utilbill_handle['id']
-        matching_utilbills = [u for u in self._utilbills if u.id == id]
+        matching_utilbills = [u for u in self._utilbills if str(u.id) ==
+                str(id)]
         if len(matching_utilbills) == 0:
             raise ValueError('No utilbill found for id "%s"' % id)
         if len(matching_utilbills) > 1:
@@ -689,7 +690,7 @@ class MongoReebill(object):
         # find all utility bill documents with the given id, and make sure
         # there's exactly 1
         matching_indices = [index for (index, doc) in
-                enumerate(self._utilbills) if doc.id == id]
+                enumerate(self._utilbills) if str(doc.id) == str(id)]
         if len(matching_indices) == 0:
             raise ValueError('No utilbill found for id "%s"' % id)
         if len(matching_indices) > 1:
