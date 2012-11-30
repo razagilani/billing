@@ -168,10 +168,11 @@ def prepare_deploy(project, environment):
     fabops.local('tar czvf /tmp/skyliner.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../skyliner' % (exclude_from))
 
     # grab the ui and application code
-    fabops.local('tar czvf /tmp/%s.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../reebill' % (project, exclude_from))
+    fabops.local('tar czvf /tmp/%s.tar.z --exclude-from=%s --exclude-caches-all --exclude-vcs ../reebill ../reebill_templates' % (project, exclude_from))
 
     # grab other billing code
-    fabops.local('tar czvf /tmp/bill_framework_code.tar.z ../*.py ../processing/*.py ../upgrade_scripts/ ../scripts ../test')
+    # TODO: 40302577 don't deploy test code
+    fabops.local('tar czvf /tmp/bill_framework_code.tar.z ../util ../*.py ../processing ../upgrade_scripts ../scripts ../test')
 
     # try and put back sane values since the software was likely deployed from a development environment
     fabops.local("sed -i 's/SKYLINE_VERSIONINFO=\".*\".*$/SKYLINE_VERSIONINFO=\"UNSPECIFIED\"/g' ui/billedit.js")

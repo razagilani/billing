@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import sys
 import datetime
 from datetime import date, time, datetime
@@ -283,6 +283,7 @@ class MongoReebill(object):
         self.period_begin = self.period_end
         self.period_end = None
         self.total_adjustment = Decimal("0.00")
+        self.manual_adjustment = Decimal("0.00")
         self.hypothetical_total = Decimal("0.00")
         self.actual_total = Decimal("0.00")
         self.ree_value = Decimal("0.00")
@@ -301,6 +302,11 @@ class MongoReebill(object):
         self.balance_due = Decimal("0.00")
         self.payment_received = Decimal("0.00")
         self.balance_forward = Decimal("0.00")
+        # some customers are supposed to lack late_charges key, some are
+        # supposed to have late_charges: None, and others have
+        # self.late_charges: 0
+        if 'late_charges' in self.reebill_dict and self.late_charges is not None:
+            self.late_charges = Decimal("0.00")
 
         for service in self.services:
             # get utilbill numbers and zero them out
@@ -548,6 +554,13 @@ class MongoReebill(object):
         self.reebill_dict['total_adjustment'] = value
 
     @property
+    def manual_adjustment(self):
+        return self.reebill_dict['manual_adjustment']
+    @manual_adjustment.setter
+    def manual_adjustment(self, value):
+        self.reebill_dict['manual_adjustment'] = value
+
+    @property
     def ree_charges(self):
         return self.reebill_dict['ree_charges']
     @ree_charges.setter
@@ -607,6 +620,20 @@ class MongoReebill(object):
     @ree_value.setter
     def ree_value(self, value):
         self.reebill_dict['ree_value'] = value
+
+    @property
+    def recipients(self):
+        '''E-mail addresses of bill recipients.
+
+        If these data exist, returns a list of strings. Otherwise, returns None.'''
+        return self.reebill_dict.get('bill_recipients', None)
+    @recipients.setter
+    def recipients(self, value):
+        '''Assigns a list of e-mail addresses representing bill recipients.'''
+        if value:
+            self.reebill_dict['bill_recipients'] = value
+        else:
+            self.reebill_dict.pop('bill_recipients', None)
 
     def _utilbill_ids(self):
         '''Useful for debugging.'''
@@ -1333,7 +1360,11 @@ class ReebillDAO:
                 query.update({'_id.version': version})
             elif version == 'any':
                 pass
-            # TODO max version
+            elif version == 'max':
+                # TODO max version (it's harder than it looks because you don't
+                # have the account or sequence of a specific reebill to query
+                # MySQL for here)
+                raise NotImplementedError
             else:
                 raise ValueError('Unknown version specifier "%s"' % version)
             if not include_0:

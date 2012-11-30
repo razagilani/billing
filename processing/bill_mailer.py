@@ -79,11 +79,9 @@ def mail(recipients, merge_fields, bill_path, bill_files):
     container = MIMEMultipart()
     container['Subject'] = "Skyline Innovations: Your Monthly Bill for %s" % (merge_fields["sa_street1"])
     container['From'] = from_user
-    container['To'] = recipients
+    container['To'] = u', '.join(recipients)
 
-
-
-    (text, html) = bind_template(merge_fields)
+    text, html = bind_template(merge_fields)
 
     for bill_file in bill_files:
         path = os.path.join(bill_path, bill_file)
@@ -136,15 +134,14 @@ def mail(recipients, merge_fields, bill_path, bill_files):
     server.starttls()
     server.ehlo()
     server.login(originator, password)
-    server.sendmail(originator, container['To'].split(','), container.as_string())
+    server.sendmail(originator, recipients, container.as_string())
 
     if "bcc_list" in config:
         bcc_addrs = config["bcc_list"]
-        if len(bcc_addrs):
-            bcc_list = [bcc_addr.lstrip(" ") for bcc_addr in bcc_addrs.split(",")]
-            container['Bcc'] = ', '.join(bcc_list)
-
-            server.sendmail(originator, container['Bcc'].split(','), container.as_string())
+        if bcc_addrs:
+            bcc_list = [bcc_addr.strip() for bcc_addr in bcc_addrs.split(",")]
+            container['Bcc'] = bcc_addrs
+            server.sendmail(originator, bcc_list, container.as_string())
 
     server.close()
 

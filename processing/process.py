@@ -533,7 +533,8 @@ class Process(object):
         source_balance = min_balance_due - \
                 self.state_db.get_total_payment_since(session, acc,
                 predecessor0.issue_date)
-        return (reebill.late_charge_rate) * source_balance
+        #Late charges can only be positive
+        return (reebill.late_charge_rate) * max(0, source_balance)
 
     def get_outstanding_balance(self, session, account, sequence=None):
         '''Returns the balance due of the reebill given by account and sequence
@@ -584,6 +585,11 @@ class Process(object):
         result = self.state_db.account_exists(session, account)
         if result is True:
             raise ValueError("Account exists")
+
+        # create row for new customer in MySQL
+        customer = self.new_account(session, name, account, discount_rate,
+                late_charge_rate)
+
         template_last_sequence = self.state_db.last_sequence(session, template_account)
 
         #TODO 22598787 use the active version of the template_account
@@ -600,8 +606,12 @@ class Process(object):
         reebill.service_address = {}
         reebill.late_charge_rate = late_charge_rate
 
-
-        # NOTE reebill.clear is not called here because roll_bill takes care of that
+        # reset the reebill's fields to 0/blank/etc., even though it's not
+        # strictly necessary (double protection against junk data propagation)
+        reebill.clear()
+        reebill.discount_rate = self.state_db.discount_rate(session, account)
+        reebill.late_charge_rate = self.state_db.late_charge_rate(session,
+                account)
 
         # create template reebill in mongo for this new account
         self.reebill_dao.save_reebill(reebill)
@@ -623,14 +633,9 @@ class Process(object):
             self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence,
                 reebill.version, utility_name, rate_structure_name, cprs)
 
-        # Finally, create the account in MySQL and let it be committed should all
-        # prior operations succeed.
-        customer = self.new_account(session, name, account, discount_rate, late_charge_rate)
-
         return customer
 
 
-    # TODO 21052893: probably want to set up the next reebill here.  Automatically roll?
     def attach_utilbills(self, session, account, sequence):
         '''Creates association between the reebill given by 'account',
         'sequence' and all utilbills belonging to that customer whose entire
@@ -647,6 +652,14 @@ class Process(object):
             return
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
+
+        # try to attach in MySQL first: if it fails, mongo will not be updated.
+        # this prevents a bug where if attachment fails in MySQL, the changes
+        # to Mongo cannot be rolled back.
+        # https://www.pivotaltracker.com/story/show/39905517
+        self.state_db.try_to_attach_utilbills(session, account, sequence,
+                reebill.period_begin, reebill.period_end,
+                suspended_services=reebill.suspended_services)
 
         # save in mongo, with frozen copies of the associated utility bill
         # (the mongo part should normally come last because it can't roll back,
@@ -953,13 +966,13 @@ class Process(object):
         reebill.period_begin = rebill_periodbegindate
         reebill.period_end = rebill_periodenddate
 
-    def issue(self, session, account, sequence,
+    def issue(self, session, account, sequence, recipients=None,
             issue_date=datetime.utcnow().date()):
         '''Sets the issue date of the reebill given by account, sequence to
-        'issue_date' (or today by default) and the due date to 30 days from the
-        issue date. The reebill's late charge is set to its permanent value in
-        mongo, and the reebill is marked as issued in the state database.
-        Does not attach utililty bills.'''
+        'issue_date' (or today by default), the recipients of the issued bill,
+        and the due date to 30 days from the issue date. The reebill's late
+        charge is set to its permanent value in mongo, and the reebill is
+        marked as issued in the state database. Does not attach utililty bills.'''
         # version 0 of predecessor must be issued before this bill can be
         # issued:
         if sequence > 1 and not self.state_db.is_issued(session, account,
@@ -974,6 +987,7 @@ class Process(object):
         # set issue date and due date in mongo
         reebill = self.reebill_dao.load_reebill(account, sequence)
         reebill.issue_date = issue_date
+        reebill.recipients = recipients
 
         # TODO: parameterize for dependence on customer 
         reebill.due_date = issue_date + timedelta(days=30)

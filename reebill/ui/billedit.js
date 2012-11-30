@@ -44,48 +44,45 @@ function reeBillReady() {
     // global declaration of account and sequence variable
     // these variables are updated by various UI's and represent
     // the current Reebill Account-Sequence being acted on
+    // TODO:  Put these in ReeBill namespace?
     var selected_account = null;
     var selected_sequence = null;
 
     // handle global success:false responses
-    // monitor session status and redirect user if they are not logged in.
+    // monitor session status and display login panel if they are not logged in.
     Ext.util.Observable.observeClass(Ext.data.Connection); 
     Ext.data.Connection.on('requestcomplete', function(dataconn, response) { 
         try {
             var jsonData = Ext.util.JSON.decode(response.responseText);
-            // handle the various failure modes
-            if (jsonData.success == false) {
-                if (jsonData.code == 1) {
-                    // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
-                    // of which there may be many.
-                    if (ReeBill.LoginWindow.hidden) {
-                        // this is exploding on new account form submit when there is no session
-                        // an exception is thrown for some unknown reason
-                        ReeBill.LoginWindow.show(this);
+            if (typeof(jsonData.success) === "undefined") {
+                console.log("Server returned malformed json reponse:  Success field missing.");
+                console.log(jsonData);
+            } else {
+                if (jsonData.success == false) {
+                    if (typeof(jsonData.code) === "undefined") {
+                        console.log("Server returned malformed json reponse:  Code field missing.");
+                        console.log(jsonData);
                     } else {
-                        console.log("ReeBill.LoginWindow has been shown");
+                        if (jsonData.code == 1) {
+                            // if the loginWindow is not showing, show it. Otherwise ignore all other calls to login
+                            // of which there may be many.
+                            if (ReeBill.LoginWindow.hidden) {
+                                ReeBill.LoginWindow.show();
+                            }
+                        } else {
+                            console.log(jsonData);
+                        }
                     }
                 } else {
-                    // turn on to log application failures
-                    console.log(response.responseText);
+                    console.log(jsonData);
                 }
-                
-            } else {
-                console.log("JsonData.success == true");
             }
-
         } catch (e) {
-            console.log("Unexpected failure while processing requestcomplete");
-            console.log("ReeBill.LoginWindow.hidden is " + ReeBill.LoginWindow.hidden);
+            console.log("Unexpected exception observing Ext.data.Connection requestcomplete:");
             console.log(e);
-            console.log(response);
-            // TODO: evaluate response to see if the object is well formed
-            Ext.MessageBox.alert("Unexpected failure while processing requestcomplete: " + response.responseText);
+            Ext.MessageBox.alert("Unexpected exception observing Ext.data.Connection requestcomplete: " + e);
         }
     });
-
-
-
 
     // ToDo: 5204832 state support for grid
     //Ext.state.Manager.setProvider(new Ext.state.CookieProvider());
@@ -474,6 +471,7 @@ function reeBillReady() {
 
 
                     // image rendering resolution
+                    // TODO Ext.getCmp vs doc.getElement
                     var menu = document.getElementById('billresolutionmenu');
                     if (menu) {
                         resolution = menu.value;
@@ -998,7 +996,7 @@ function reeBillReady() {
                     // TODO: have other widgets pull when this selection is made
                     loadReeBillUIForSequence(selected_account, record.data.sequence);
                 },
-            }
+            },
         }),
         store: reeBillStore,
         enableColumnMove: false,
@@ -1464,6 +1462,7 @@ function reeBillReady() {
                 } finally {
                     //Ext.Msg.hide();
                     tabPanel.setDisabled(false);
+                    reeBillStore.reload()
                 }
             },
             failure: function(result, request) {
@@ -1692,53 +1691,55 @@ function reeBillReady() {
 
         var ubPeriodsFormPanels = [];
         
-        for (var service in periods) { 
-            var ubPeriodsFormPanel = new Ext.FormPanel({
-                id: service + 'UBPeriodsFormPanel',
-                title: 'Service ' + service,
-                header: true,
-                url: 'http://'+location.host+'/reebill/setUBPeriod',
-                border: false,
-                frame: true,
-                labelWidth: 125,
-                bodyStyle:'padding:10px 10px 0px 10px',
-                items:[], // added by configureUBPeriodsForm()
-                buttons: [
-                    // TODO: the save button is generic in function, refactor
-                    {
-                        text   : 'Save',
-                        handler: saveForm
-                    },{
-                        text   : 'Reset',
-                        handler: function() {
-                            var formPanel = this.findParentByType(Ext.form.FormPanel);
-                            formPanel.getForm().reset();
+        if (periods) {
+            for (var service in periods["periods"]) { 
+                var ubPeriodsFormPanel = new Ext.FormPanel({
+                    id: service + 'UBPeriodsFormPanel',
+                    title: 'Service ' + service,
+                    header: true,
+                    url: 'http://'+location.host+'/reebill/setUBPeriod',
+                    border: false,
+                    frame: true,
+                    labelWidth: 125,
+                    bodyStyle:'padding:10px 10px 0px 10px',
+                    items:[], // added by configureUBPeriodsForm()
+                    buttons: [
+                        // TODO: the save button is generic in function, refactor
+                        {
+                            text   : 'Save',
+                            handler: saveForm
+                        },{
+                            text   : 'Reset',
+                            handler: function() {
+                                var formPanel = this.findParentByType(Ext.form.FormPanel);
+                                formPanel.getForm().reset();
+                            }
                         }
-                    }
-                ]
-            });
+                    ]
+                });
 
-            // add the period date pickers to the form
-            ubPeriodsFormPanel.add(
-                new Ext.form.DateField({
-                    fieldLabel: 'Begin',
-                    name: 'begin',
-                    value: periods[service].begin,
-                    format: 'Y-m-d'
-                }),
-                new Ext.form.DateField({
-                    fieldLabel: 'End',
-                    name: 'end',
-                    value: periods[service].end,
-                    format: 'Y-m-d'
-                })
-            );
+                // add the period date pickers to the form
+                ubPeriodsFormPanel.add(
+                    new Ext.form.DateField({
+                        fieldLabel: 'Begin',
+                        name: 'begin',
+                        value: periods["periods"][service].begin,
+                        format: 'Y-m-d'
+                    }),
+                    new Ext.form.DateField({
+                        fieldLabel: 'End',
+                        name: 'end',
+                        value: periods["periods"][service].end,
+                        format: 'Y-m-d'
+                    })
+                );
 
-            // add base parms for form post
-            ubPeriodsFormPanel.getForm().baseParams = {account: account, sequence: sequence, service:service}
+                // add base parms for form post
+                ubPeriodsFormPanel.getForm().baseParams = {account: account, sequence: sequence, service:service}
 
-            ubPeriodsFormPanels.push(ubPeriodsFormPanel);
+                ubPeriodsFormPanels.push(ubPeriodsFormPanel);
 
+            }
         }
         ubPeriodsTab.add(ubPeriodsFormPanels);
         ubPeriodsTab.doLayout();
@@ -1809,248 +1810,251 @@ function reeBillReady() {
 
         var ubMeasuredUsagesFormPanels = [];
 
-        // for each service
-        for (var service in usages)
+        if (usages)
         {
-
-            // enumerate each meter
-            usages[service].forEach(function(meter, index, array)
+            // for each service
+            for (var service in usages["meters"])
             {
 
-                var meterFormPanel = new Ext.FormPanel(
+                // enumerate each meter
+                usages["meters"][service].forEach(function(meter, index, array)
                 {
-                    id: service +'-'+meter.identifier+'-meterReadDateFormPanel',
-                    title: 'Meter ' + meter.identifier,
-                    header: true,
-                    url: 'http://'+location.host+'/reebill/setMeter',
-                    border: true,
-                    frame: true,
-                    labelWidth: 175,
-                    items:[], // added by configureUBMeasuredUsagesForm()
-                    baseParams: null, // added by configureUBMeasuredUsagesForm()
-                    autoDestroy: true,
-                    buttons: 
-                    [
-                        // TODO: the save button is generic in function, refactor
-                        {
-                            text   : 'Save',
-                            handler: saveForm
-                        },{
-                            text   : 'Reset',
-                            handler: function() {
-                                var formPanel = this.findParentByType(Ext.form.FormPanel);
-                                formPanel.getForm().reset();
-                            }
-                        }
-                    ]
-                });
 
-                // add the period date pickers to the form
-                meterFormPanel.add(
-                    new Ext.form.DateField({
-                        fieldLabel: service + ' Prior Read',
-                        name: 'priorreaddate',
-                        value: meter.prior_read_date,
-                        format: 'Y-m-d'
-                    }),
-                    new Ext.form.DateField({
-                        fieldLabel: service + ' Present Read',
-                        name: 'presentreaddate',
-                        value: meter.present_read_date,
-                        format: 'Y-m-d'
-                    })
-                );
-
-                // add base parms for form post
-                meterFormPanel.getForm().baseParams = {account: account, sequence: sequence, service:service, meter_identifier:meter.identifier}
-
-                ubMeasuredUsagesFormPanels.push(meterFormPanel);
-
-                // and each register for that meter
-                meter.registers.forEach(function(register, index, array) 
-                {
-                    if (register.shadow == false)
+                    var meterFormPanel = new Ext.FormPanel(
                     {
-
-                        var registerFormPanel = new Ext.FormPanel(
-                        {
-                            id: service +'-'+meter.identifier+'-'+ register.identifier+'-meterReadDateFormPanel',
-                            title: 'Meter ' + meter.identifier + ' Register ' + register.identifier,
-                            header: true,
-                            url: 'http://'+location.host+'/reebill/setActualRegister',
-                            border: true,
-                            frame: true,
-                            labelWidth: 175,
-                            items:[], // added by configureUBMeasuredUsagesForm()
-                            baseParams: null, // added by configureUBMeasuredUsagesForm()
-                            autoDestroy: true,
-                            buttons: 
-                            [
-                                // TODO: the save button is generic in function, refactor
-                                {
-                                    text   : 'Save',
-                                    handler: saveForm
-                                },{
-                                    text   : 'Reset',
-                                    handler: function() {
-                                        var formPanel = this.findParentByType(Ext.form.FormPanel);
-                                        formPanel.getForm().reset();
-                                    }
+                        id: service +'-'+meter.identifier+'-meterReadDateFormPanel',
+                        title: 'Meter ' + meter.identifier,
+                        header: true,
+                        url: 'http://'+location.host+'/reebill/setMeter',
+                        border: true,
+                        frame: true,
+                        labelWidth: 175,
+                        items:[], // added by configureUBMeasuredUsagesForm()
+                        baseParams: null, // added by configureUBMeasuredUsagesForm()
+                        autoDestroy: true,
+                        buttons: 
+                        [
+                            // TODO: the save button is generic in function, refactor
+                            {
+                                text   : 'Save',
+                                handler: saveForm
+                            },{
+                                text   : 'Reset',
+                                handler: function() {
+                                    var formPanel = this.findParentByType(Ext.form.FormPanel);
+                                    formPanel.getForm().reset();
                                 }
-                            ]
-                        });
-
-                        // add the period date pickers to the form
-                        registerFormPanel.add(
-                            new Ext.form.NumberField({
-                                fieldLabel: register.identifier,
-                                name: 'quantity',
-                                value: register.quantity,
-                            })
-                        );
-
-                        // add base parms for form post
-                        registerFormPanel.getForm().baseParams = {account: account, sequence: sequence, service:service, meter_identifier: meter.identifier, register_identifier:register.identifier}
-
-                        ubMeasuredUsagesFormPanels.push(registerFormPanel);
-                    }
-
-                });
-
-                var intervalMeterFormPanel = new Ext.form.FormPanel({
-                    id: service +'-'+meter.identifier+'-interval-meter-csv-field',
-                    title: 'Upload Interval Meter CSV for ' + meter.identifier,
-                    fileUpload: true,
-                    url: 'http://'+location.host+'/reebill/upload_interval_meter_csv',
-                    frame:true,
-                    //bodyStyle: 'padding: 10px 10px 0 10px;',
-                    labelWidth: 175,
-                    defaults: {
-                        anchor: '95%',
-                        //allowBlank: false,
-                        msgTarget: 'side'
-                    },
-                    items: [
-                        //file_chooser - defined in FileUploadField.js
-                        {
-                            xtype: 'fileuploadfield',
-                            emptyText: 'Select a file to upload',
-                            name: 'csv_file',
-                            fieldLabel: 'CSV File',
-                            buttonText: 'Choose file...',
-                            buttonCfg: { width:80 },
-                            allowBlank: true
-                        },{
-                            xtype: 'fieldset',
-                            title: 'Mapping',
-                            collapsible: false,
-                            defaults: {
-                                anchor: '0',
-                            },
-                            items: [
-                                {
-                                    xtype: 'textfield',
-                                    name: 'timestamp_column',
-                                    fieldLabel: "Timestamp Column",
-                                    value: "A",
-                                },{
-                                    xtype: 'combo',
-                                    mode: 'local',
-                                    value: "%Y-%m-%d %H:%M:%S",
-                                    //forceSelection: true,
-                                    editable: true,
-                                    triggerAction: 'all',
-                                    fieldLabel: "Timestamp Format",
-                                    name: 'timestamp_format',
-                                    hiddenName: 'timestamp_format',
-                                    displayField: 'name',
-                                    valueField: 'value',
-                                    store: new Ext.data.JsonStore({
-                                        fields: ['name', 'value'],
-                                        data: [
-                                            {name: '%Y-%m-%d %H:%M:%S',value: '%Y-%m-%d %H:%M:%S'},
-                                            {name: '%Y/%m/%d %H:%M:%S',value: '%Y/%m/%d %H:%M:%S'},
-                                            {name: '%m/%d/%Y %H:%M:%S',value: '%m/%d/%Y %H:%M:%S'},
-                                        ]
-                                    })
-                                },{
-                                    xtype: 'textfield',
-                                    name: 'energy_column',
-                                    fieldLabel: "Metered Energy Column",
-                                    value: "B",
-                                },{
-                                    xtype: 'combo',
-                                    mode: 'local',
-                                    value: 'kwh',
-                                    triggerAction: 'all',
-                                    forceSelection: true,
-                                    editable: false,
-                                    fieldLabel: 'Metered Energy Units',
-                                    name: 'energy_unit',
-                                    hiddenName: 'energy_unit',
-                                    displayField: 'name',
-                                    valueField: 'value',
-                                    store: new Ext.data.JsonStore({
-                                        fields : ['name', 'value'],
-                                        data : [
-                                            {name : 'kWh', value: 'kwh'},
-                                            {name : 'BTU', value: 'btu'},
-                                        ]
-                                    })
-                                }
-                            ],
-                        },
-                    ],
-                    buttons: [
-                        new Ext.Button({
-                            text: 'Reset',
-                            handler: function() {
-                                this.findParentByType(Ext.form.FormPanel).getForm().reset();
                             }
+                        ]
+                    });
+
+                    // add the period date pickers to the form
+                    meterFormPanel.add(
+                        new Ext.form.DateField({
+                            fieldLabel: service + ' Prior Read',
+                            name: 'priorreaddate',
+                            value: meter.prior_read_date,
+                            format: 'Y-m-d'
                         }),
-                        new Ext.Button({ text: 'Submit', handler: function () {
-                                var formPanel = this.findParentByType(Ext.form.FormPanel);
-                                if (! formPanel.getForm().isValid()) {
-                                    Ext.MessageBox.alert('Errors', 'Please fix form errors noted.');
-                                    return;
-                                }
-                                //formPanel.getForm().setValues({
-                                    //'account': selected_account,
-                                    //'sequence': selected_sequence,
-                                    //'interval-meter-csv-field': 'new value',
-                                //});
-                                formPanel.getForm().submit({
-                                    params: {
-                                        'account': selected_account,
-                                        'sequence': selected_sequence,
-                                        'meter_identifier': meter.identifier,
-                                    }, 
-                                    waitMsg:'Saving...',
-                                    failure: function(form, action) {
-                                        switch (action.failureType) {
-                                            case Ext.form.Action.CLIENT_INVALID:
-                                                Ext.Msg.alert('Failure', 'Form fields may not be submitted with invalid values');
-                                                break;
-                                            case Ext.form.Action.CONNECT_FAILURE:
-                                                Ext.Msg.alert('Failure', 'Ajax communication failed');
-                                                break;
-                                            case Ext.form.Action.SERVER_INVALID:
-                                                Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
-                                            default:
-                                                Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
-                                        }
-                                    },
-                                    success: function(form, action) {
-                                         //
-                                    }
-                                })
-                            }
-                         })
-                    ],
-                });
-                ubMeasuredUsagesFormPanels.push(intervalMeterFormPanel);
+                        new Ext.form.DateField({
+                            fieldLabel: service + ' Present Read',
+                            name: 'presentreaddate',
+                            value: meter.present_read_date,
+                            format: 'Y-m-d'
+                        })
+                    );
 
-            })
+                    // add base parms for form post
+                    meterFormPanel.getForm().baseParams = {account: account, sequence: sequence, service:service, meter_identifier:meter.identifier}
+
+                    ubMeasuredUsagesFormPanels.push(meterFormPanel);
+
+                    // and each register for that meter
+                    meter.registers.forEach(function(register, index, array) 
+                    {
+                        if (register.shadow == false)
+                        {
+
+                            var registerFormPanel = new Ext.FormPanel(
+                            {
+                                id: service +'-'+meter.identifier+'-'+ register.identifier+'-meterReadDateFormPanel',
+                                title: 'Meter ' + meter.identifier + ' Register ' + register.identifier,
+                                header: true,
+                                url: 'http://'+location.host+'/reebill/setActualRegister',
+                                border: true,
+                                frame: true,
+                                labelWidth: 175,
+                                items:[], // added by configureUBMeasuredUsagesForm()
+                                baseParams: null, // added by configureUBMeasuredUsagesForm()
+                                autoDestroy: true,
+                                buttons: 
+                                [
+                                    // TODO: the save button is generic in function, refactor
+                                    {
+                                        text   : 'Save',
+                                        handler: saveForm
+                                    },{
+                                        text   : 'Reset',
+                                        handler: function() {
+                                            var formPanel = this.findParentByType(Ext.form.FormPanel);
+                                            formPanel.getForm().reset();
+                                        }
+                                    }
+                                ]
+                            });
+
+                            // add the period date pickers to the form
+                            registerFormPanel.add(
+                                new Ext.form.NumberField({
+                                    fieldLabel: register.identifier,
+                                    name: 'quantity',
+                                    value: register.quantity,
+                                })
+                            );
+
+                            // add base parms for form post
+                            registerFormPanel.getForm().baseParams = {account: account, sequence: sequence, service:service, meter_identifier: meter.identifier, register_identifier:register.identifier}
+
+                            ubMeasuredUsagesFormPanels.push(registerFormPanel);
+                        }
+
+                    });
+
+                    var intervalMeterFormPanel = new Ext.form.FormPanel({
+                        id: service +'-'+meter.identifier+'-interval-meter-csv-field',
+                        title: 'Upload Interval Meter CSV for ' + meter.identifier,
+                        fileUpload: true,
+                        url: 'http://'+location.host+'/reebill/upload_interval_meter_csv',
+                        frame:true,
+                        //bodyStyle: 'padding: 10px 10px 0 10px;',
+                        labelWidth: 175,
+                        defaults: {
+                            anchor: '95%',
+                            //allowBlank: false,
+                            msgTarget: 'side'
+                        },
+                        items: [
+                            //file_chooser - defined in FileUploadField.js
+                            {
+                                xtype: 'fileuploadfield',
+                                emptyText: 'Select a file to upload',
+                                name: 'csv_file',
+                                fieldLabel: 'CSV File',
+                                buttonText: 'Choose file...',
+                                buttonCfg: { width:80 },
+                                allowBlank: true
+                            },{
+                                xtype: 'fieldset',
+                                title: 'Mapping',
+                                collapsible: false,
+                                defaults: {
+                                    anchor: '0',
+                                },
+                                items: [
+                                    {
+                                        xtype: 'textfield',
+                                        name: 'timestamp_column',
+                                        fieldLabel: "Timestamp Column",
+                                        value: "A",
+                                    },{
+                                        xtype: 'combo',
+                                        mode: 'local',
+                                        value: "%Y-%m-%d %H:%M:%S",
+                                        //forceSelection: true,
+                                        editable: true,
+                                        triggerAction: 'all',
+                                        fieldLabel: "Timestamp Format",
+                                        name: 'timestamp_format',
+                                        hiddenName: 'timestamp_format',
+                                        displayField: 'name',
+                                        valueField: 'value',
+                                        store: new Ext.data.JsonStore({
+                                            fields: ['name', 'value'],
+                                            data: [
+                                                {name: '%Y-%m-%d %H:%M:%S',value: '%Y-%m-%d %H:%M:%S'},
+                                                {name: '%Y/%m/%d %H:%M:%S',value: '%Y/%m/%d %H:%M:%S'},
+                                                {name: '%m/%d/%Y %H:%M:%S',value: '%m/%d/%Y %H:%M:%S'},
+                                            ]
+                                        })
+                                    },{
+                                        xtype: 'textfield',
+                                        name: 'energy_column',
+                                        fieldLabel: "Metered Energy Column",
+                                        value: "B",
+                                    },{
+                                        xtype: 'combo',
+                                        mode: 'local',
+                                        value: 'kwh',
+                                        triggerAction: 'all',
+                                        forceSelection: true,
+                                        editable: false,
+                                        fieldLabel: 'Metered Energy Units',
+                                        name: 'energy_unit',
+                                        hiddenName: 'energy_unit',
+                                        displayField: 'name',
+                                        valueField: 'value',
+                                        store: new Ext.data.JsonStore({
+                                            fields : ['name', 'value'],
+                                            data : [
+                                                {name : 'kWh', value: 'kwh'},
+                                                {name : 'BTU', value: 'btu'},
+                                            ]
+                                        })
+                                    }
+                                ],
+                            },
+                        ],
+                        buttons: [
+                            new Ext.Button({
+                                text: 'Reset',
+                                handler: function() {
+                                    this.findParentByType(Ext.form.FormPanel).getForm().reset();
+                                }
+                            }),
+                            new Ext.Button({ text: 'Submit', handler: function () {
+                                    var formPanel = this.findParentByType(Ext.form.FormPanel);
+                                    if (! formPanel.getForm().isValid()) {
+                                        Ext.MessageBox.alert('Errors', 'Please fix form errors noted.');
+                                        return;
+                                    }
+                                    //formPanel.getForm().setValues({
+                                        //'account': selected_account,
+                                        //'sequence': selected_sequence,
+                                        //'interval-meter-csv-field': 'new value',
+                                    //});
+                                    formPanel.getForm().submit({
+                                        params: {
+                                            'account': selected_account,
+                                            'sequence': selected_sequence,
+                                            'meter_identifier': meter.identifier,
+                                        }, 
+                                        waitMsg:'Saving...',
+                                        failure: function(form, action) {
+                                            switch (action.failureType) {
+                                                case Ext.form.Action.CLIENT_INVALID:
+                                                    Ext.Msg.alert('Failure', 'Form fields may not be submitted with invalid values');
+                                                    break;
+                                                case Ext.form.Action.CONNECT_FAILURE:
+                                                    Ext.Msg.alert('Failure', 'Ajax communication failed');
+                                                    break;
+                                                case Ext.form.Action.SERVER_INVALID:
+                                                    Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                                                default:
+                                                    Ext.Msg.alert('Failure', action.result.errors.reason + action.result.errors.details);
+                                            }
+                                        },
+                                        success: function(form, action) {
+                                             //
+                                        }
+                                    })
+                                }
+                             })
+                        ],
+                    });
+                    ubMeasuredUsagesFormPanels.push(intervalMeterFormPanel);
+
+                })
+            }
         }
 
 
@@ -3818,6 +3822,7 @@ function reeBillReady() {
     });
 
     paymentStore.on('beforeload', function() {
+        paymentGrid.setDisabled(true);
         paymentStore.setBaseParam("account", selected_account);
         paymentStore.setBaseParam("service", Ext.getCmp('service_for_charges').getValue());
     });
@@ -3931,7 +3936,17 @@ function reeBillReady() {
     var paymentGrid = new Ext.grid.EditorGridPanel({
         tbar: paymentToolbar,
         colModel: paymentColModel,
-        selModel: new Ext.grid.RowSelectionModel({singleSelect: true}),
+        selModel: new Ext.grid.RowSelectionModel({
+            singleSelect: true,
+            listeners: {
+                rowdeselect: function(selModel, index, record) {
+                    paymentToolbar.find('id','paymentRemoveBtn')[0].setDisabled(true);
+                },
+                rowselect: function(selModel, index, record) {
+                    paymentToolbar.find('id','paymentRemoveBtn')[0].setDisabled(!record.data.editable);
+                },
+            },
+        }),
         store: paymentStore,
         enableColumnMove: false,
         frame: true,
@@ -3946,10 +3961,10 @@ function reeBillReady() {
         clicksToEdit: 1
     });
 
-    paymentGrid.getSelectionModel().on('selectionchange', function(sm){
+/*    paymentGrid.getSelectionModel().on('selectionchange', function(sm){
         //paymentGrid.getTopToolbar().findById('paymentInsertBtn').setDisabled(sm.getCount() <1);
         paymentGrid.getTopToolbar().findById('paymentRemoveBtn').setDisabled(sm.getCount() <1);
-    });
+    });*/
 
     // for bid editing of payments that the server says are not "editable"
     paymentGrid.on('beforeedit', function(e) {
@@ -3983,14 +3998,46 @@ function reeBillReady() {
 
     ///////////////////////////////////////
     // Mail Tab
-
+    var mailAddressesConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/retrieve_mail_addresses',
+    });
+    mailAddressesConn.autoAbort = true;
+    mailAddressesConn.disableCaching = true;
     var mailDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/mail',
     });
     mailDataConn.autoAbort = true;
     mailDataConn.disableCaching = true;
     function mailReebillOperation(sequences) {
-        Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', function(btn, recipients){
+        mailAddressesConn.request({
+            params: {
+                account: selected_account,
+            },
+            success: function(response, options) {
+                var a = {};
+                try {
+                    a = Ext.decode(response.responseText);
+                }
+                catch(e) {
+                    alert("Could not decode JSON data.");
+                }
+                if(a.success == true) {
+                    if(a.mail_addresses == null)
+                        a.mail_addresses = "";
+                    else
+                        a.mail_addresses = a.mail_addresses.join(", ");
+                    Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', mailCallback, false, false, a.mail_addresses);
+                }
+                else {
+                    Ext.Msg.alert('Error', a.errors.reason + a.errors.details);
+                }
+            },
+            failure: function () {
+                Ext.Msg.alert('Failure', "mail response fail");
+            },
+        });
+
+        function mailCallback(btn, recipients) {
             if (btn == 'ok') {
                 mailDataConn.request({
                     params: {
@@ -4037,7 +4084,8 @@ function reeBillReady() {
                     }
                 });
             }
-        }, false, "");
+        }
+        
     }
 
     var initialMailReebill =  {
@@ -4275,9 +4323,17 @@ function reeBillReady() {
         ],
         // looks to be initial order for load
         sortInfo: {
-            field: 'dayssince',
+            field: 'account',
             direction: 'DESC'
         },
+    });
+
+    accountStore.on('beforeload', function(store, options) {
+        accountGrid.setDisabled(true);
+    });
+
+    accountStore.on('load', function(store, options) {
+        accountGrid.setDisabled(false);
     });
 
     /* This function controls the style of cells in the account grid. */
@@ -4344,18 +4400,19 @@ function reeBillReady() {
 
     // this grid tracks the state of the currently selected account
     var accountGrid = new Ext.grid.EditorGridPanel({
+        id: 'accountGrid',
         colModel: accountColModel,
         selModel: new Ext.grid.RowSelectionModel({
             singleSelect: true,
-        listeners: {
-            rowselect: function (selModel, index, record) {
-               loadReeBillUIForAccount(record.data.account);
-               return false;
-           },
-        rowdeselect: function(selModel, index, record) {
-             loadReeBillUIForAccount(null);
-         }
-        },
+            listeners: {
+                rowselect: function (selModel, index, record) {
+                    loadReeBillUIForAccount(record.data.account);
+                    return false;
+                },
+                rowdeselect: function(selModel, index, record) {
+                    loadReeBillUIForAccount(null);
+                }
+            },
         }),
         store: accountStore,
         enableColumnMove: false,
@@ -4515,6 +4572,7 @@ function reeBillReady() {
     // this grid tracks the state of the currently selected account
 
     var accountReeValueGrid = new Ext.grid.GridPanel({
+        id: 'accountReeValueGrid',
         colModel: accountReeValueColModel,
         selModel: new Ext.grid.RowSelectionModel({
             singleSelect: true,
@@ -4667,6 +4725,7 @@ function reeBillReady() {
     newAccountDataConn.autoAbort = true;
     newAccountDataConn.disableCaching = true;
     var newAccountFormPanel = new Ext.FormPanel({
+        id: 'newAccountFormPanel',
         url: 'http://'+location.host+'/reebill/new_account',
         labelWidth: 120, // label settings here cascade unless overridden
         frame: true,
@@ -4763,10 +4822,11 @@ function reeBillReady() {
         ],
         buttons: [
             new Ext.Button({
+                id: 'newAccountSaveButton',
                 text: 'Save',
-                handler: function() {
+                handler: function(b, e) {
+                    b.setDisabled(true);
                     // TODO 22645885 show progress during post
-                    // why do we need ajax to do form submission?
                     newAccountDataConn.request({
                         params: { 
                           'name': newNameField.getValue(),
@@ -4791,13 +4851,20 @@ function reeBillReady() {
                                 jsonData = Ext.util.JSON.decode(result.responseText);
                                 var nextAccount = jsonData['nextAccount'];
                                 if (jsonData.success == false) {
-                                    Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                                    console.log('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                                    //Ext.MessageBox.alert('1Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                                    //Ext.MessageBox.alert('1Server Error');
+                                    //console.log('1Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                                    console.log('1Server Error');
                                 } else {
                                     Ext.Msg.alert('Success', "New account created");
                                     // update next account number shown in field
-                                    newAccountField.setValue(nextAccount);
-
+                                    accountsPanel.getLayout().setActiveItem('accountGrid');
+                                    accountGrid.getSelectionModel().clearSelections();
+                                    accountStore.setDefaultSort('account','DESC');
+                                    pageSize = accountGrid.getBottomToolbar().pageSize;
+                                    accountStore.load({params: {start: 0, limit: pageSize}, callback: function() {
+                                        accountGrid.getSelectionModel().selectFirstRow();
+                                    }});
                                     // reload grid to show new account
                                     // TODO "load" gets no records, "reload" gets records, but neither one causes the grid to update
                                     reeBillStore.reload({
@@ -4806,14 +4873,28 @@ function reeBillReady() {
                                                       //console.log(records);
                                         //}
                                     });
+                                    //Reset account info
+                                    newAccountTemplateCombo.reset();
+                                    //Addresses all have 'xtype' == 'textfield'
+                                    var sets = newAccountFormPanel.findByType('fieldset')
+                                    for (var i = 0;i < sets.length;i++) {
+                                        var fields = sets[i].findByType('textfield');
+                                        for (var j = 0;j < fields.length;j++) {
+                                            fields[j].reset();
+                                        }
+                                    }
+                                    newAccountField.setValue(nextAccount);
                                 }
                             } catch (err) {
                                 Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
                             }
+                            
+                            b.setDisabled(false);
                             // TODO 22645885 confirm save and clear form
                         },
                         failure: function () {
                             Ext.Msg.alert("Create new account request failed");
+                            b.setDisabled(false);
                         }
                     });
                 }
@@ -5535,6 +5616,7 @@ function reeBillReady() {
 
     // Assemble all of the above panels into a parent tab panel
     var tabPanel = new Ext.TabPanel({
+        id: 'tabPanel',
         region:'center',
         deferredRender:false,
         autoScroll: false, 
@@ -5611,7 +5693,7 @@ function reeBillReady() {
     {
 
         var sb = Ext.getCmp('statusbar');
-        var selStatus;
+        var selStatus = "No REE Bill Selected";
         if (account != null && sequence != null && branch != null)
             selStatus = account + "-" + sequence + "-" + branch;
         else if (account != null && sequence != null)
@@ -5654,6 +5736,7 @@ function reeBillReady() {
         if (account == null) {
             /* no account selected */
             journalPanel.setDisabled(true);
+            updateStatusbar(null, null, null)
             return;
         }
 
@@ -5795,7 +5878,7 @@ function reeBillReady() {
             ubMeasuredUsagesPanel.setDisabled(true);
             rateStructurePanel.setDisabled(true);
             chargeItemsPanel.setDisabled(true);
-            updateStatusbar(selected_account, null);
+            updateStatusbar(selected_account, null, null);
             deleteButton.setDisabled(true);
             return;
         }
