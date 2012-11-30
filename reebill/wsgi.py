@@ -1968,7 +1968,7 @@ class BillToolBridge:
                 try:
                     allowable_diff = cherrypy.session['user'].preferences['reebill_total-percent_cutoff']
                 except:
-                    allowable_diff = UserDAO.default_user.preferences['matching_total_percent_threshold']
+                    allowable_diff = UserDAO.default_user.preferences['difference_threshold']
                 reebills, total = self.state_db.listAllIssuableReebillInfo(session=session)
                 for reebill_info in reebills:
                     row_dict = {}
@@ -2873,6 +2873,23 @@ class BillToolBridge:
         self.user_dao.save_user(cherrypy.session['user'])
         return self.dumps({'success':True})
 
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def getDifferenceThreshold(self, **kwargs):
+        threshold = cherrypy.session['user'].preferences['difference_threshold']*100.0
+        return self.dumps({'success':True, 'threshold': threshold})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def setDifferenceThreshold(self, threshold, **kwargs):
+        cherrypy.session['user'].preferences['difference_threshold'] = float(threshold)/100.0
+        self.user_dao.save_user(cherrypy.session['user'])
+        return self.dumps({'success':True})
+    
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
