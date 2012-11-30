@@ -545,7 +545,7 @@ class Process(object):
         balance due, or if no reebill has ever been issued for the customer.'''
         # get balance due of last reebill
         if sequence == None:
-            sequence = self.state_db.last_sequence(session, account)
+            sequence = self.state_db.last_issued_sequence(session, account)
         if sequence == 0:
             return Decimal(0)
         reebill = self.reebill_dao.load_reebill(account, sequence)
