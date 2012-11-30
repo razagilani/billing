@@ -4290,8 +4290,8 @@ function reeBillReady() {
         ],
         // looks to be initial order for load
         sortInfo: {
-            field: 'account',
-            direction: 'DESC'
+            field: 'lastissuedate',
+            direction: 'ASC'
         },
     });
 
