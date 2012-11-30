@@ -1983,6 +1983,8 @@ class BillToolBridge:
                         row_dict['difference'] = abs(1-row_dict['reebill_total']/row_dict['util_total'])
                     except DivisionByZero:
                         row_dict['difference'] = Decimal('Infinity')
+                    except InvalidOperation:
+                        row_dict['difference'] = Decimal(0.0)
                     row_dict['matching'] = row_dict['difference'] < allowable_diff
                     rows.append(row_dict)
                 rows.sort(key=lambda d: d[sort], reverse = (direction == 'ASC'))
