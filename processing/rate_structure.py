@@ -87,7 +87,7 @@ class RateStructureDAO(object):
         self.collection = self.database['ratestructure']
 
     def _get_probable_rsis(self, utility, rate_structure_name, period,
-            distance_func=manhattan_distance, weight_func=exp_weight(2, 15),
+            distance_func=manhattan_distance, weight_func=exp_weight(0.5, 7),
             threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False):
         '''Returns list of RSI dictionaries: a guess of what RSIs will be in a
         new bill for the given rate structure during the given period. The list
@@ -144,8 +144,8 @@ class RateStructureDAO(object):
         # its closest occurrence.
         result = []
         for binding, weight in scores.iteritems():
-            #print '%35s %.02f %d' % (binding, weight, 100 * weight /
-                    #total_weight[binding])
+            print '%35s %.02f %d' % (binding, weight, 100 * weight /
+                    total_weight[binding])
 
             # note that total_weight[binding] will never be 0 because it must
             # have occurred somewhere in order to occur in 'scores'
