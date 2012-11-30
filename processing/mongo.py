@@ -182,6 +182,9 @@ class UtilBill(Document):
     start = DateTimeField(required=True) # Mongo does not have plain dates
     end = DateTimeField(required=True)
 
+    sequence = IntField(required=False)
+    version = IntField(required=False)
+
     # other fields
     chargegroups = DictField(required=True,
             field=ListField(field=EmbeddedDocumentField(Charge)))
