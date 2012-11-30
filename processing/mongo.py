@@ -812,6 +812,12 @@ class MongoReebill(object):
                 .append(new_shadow_register)
         return (new_actual_register, new_shadow_register)
 
+    def set_meter_dates_from_utilbills(self):
+        '''Set the meter read dates to the start and end dates of the associated utilbill.'''
+        for service in self.services:
+            for meter in self.meters_for_service(service):
+                self.set_meter_read_date(service, meter['identifier'], *self.utilbill_period_for_service(service))
+
     def set_meter_read_date(self, service, identifier, present_read_date,
             prior_read_date):
         ''' Set the read date for a specified meter.'''
