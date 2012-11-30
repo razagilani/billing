@@ -1007,8 +1007,13 @@ class ProcessTest(TestCaseWithSetup):
             # one should not be issuable until one is attached
             self.assertRaises(BillStateError, self.process.issue, session, acc, 1)
 
-            # attach & issue one
+            # attach one
+            import ipdb; ipdb.set_trace()
             self.process.attach_utilbills(session, one.account, one.sequence)
+            self.assertEquals(1, one._utilbills[0].sequence)
+            self.assertEquals(0, one._utilbills[0].version)
+
+            # issue one
             self.process.issue(session, acc, 1)
 
             # re-load from mongo to see updated issue date and due date
