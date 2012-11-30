@@ -1492,7 +1492,7 @@ class ReebillDAO:
             # sequence/version keys
             unique_fields['sequence'] = {'$exists': False}
             unique_fields['version'] = {'$exists': False}
-        for duplicate in self.load_utilbills(**unique_fields):
+        for duplicate in UtilBill.objects(__raw__=unique_fields):
             if duplicate.id != utilbill_doc.id:
                 raise NotUniqueException(("Can't save utility bill with "
                         "_id=%s: There's already a utility bill with "
