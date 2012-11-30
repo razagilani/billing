@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 from collections import defaultdict
 from billing.util.dateutils import date_to_datetime, date_generator
-from billing.mongo import float_to_decimal
+from billing.processing.mongo import float_to_decimal
 from decimal import Decimal
 import pymongo
 from billing.processing.process import Process
@@ -27,15 +27,13 @@ rs_dao = RateStructureDAO(**{
 db = pymongo.Connection('localhost')['skyline-dev']
 process = Process(state_db, bill_dao, rs_dao, None, None, None)
 
-TOLERANCE = 10
-
 # build dict mapping RSIs to list of periods during which they occur
 earliest, latest = date(3000,1,1), date(1000,1,1)
 bindings = defaultdict(lambda: [])
 with DBSession(state_db) as session:
     # TODO only use last issued version (lower ones contain errors)
-    for acc, seq, ver in state_db.reebill_versions(session, include_unissued=False):
-        reebill = bill_dao.load_reebill(acc, seq, version=ver)
+    for acc, seq, ver in state_db.reebills(session, include_unissued=False):
+        reebill = bill_dao.load_reebill(acc, seq)
 
         service = reebill.services[0] # assume only 1 service bc almost all bills have 1
         utility = reebill.utility_name_for_service(service)
@@ -45,19 +43,20 @@ with DBSession(state_db) as session:
 
         try:
             # load raw dictionary (RateStructure object is unusable)
-            rs = rs_dao._load_probable_rs_dict(reebill, service)
-        except:
-            print acc, seq, ver, 'ERROR'
-            pass
+            rs = rs_dao._load_combined_rs_dict(reebill, service)
+            charges = reebill.actual_chargegroups_flattened(service)
+        except Exception as e:
+            print acc, seq, ver, 'ERROR:', e
         else:
-            #print acc, seq, ver
             period = reebill.meter_read_period(service)
-            for binding in [r['rsi_binding'] for r in rs['rates']]:
-                bindings[binding].append(period)
+            for binding in [r['rsi_binding'] for r in rs['rates'] if r['rate'] != 0]:
+                # exclude RSIs whose rate is 0 or ones that don't have a
+                # corresponding charge, because that's often used instead of
+                # removal
+                if r['rate'] != 0 and any(c['rsi_binding'] == binding for c in charges):
+                    bindings[binding].append(period)
             earliest = min(earliest, period[0])
             latest = max(latest, period[1])
-
-#import ipdb; ipdb.set_trace()
 
 def period_contains_day(period, day):
     return day >= period[0] and day < period[1]
@@ -73,10 +72,10 @@ for day in date_generator(earliest, latest):
         row[i+1] = sum(1 for period in bindings[binding] if period_contains_day(period, day))
     table.append(row)
 
-format = '%s ' + ('%8s' * (len(row)-1))
-print [str(h) for h in table.headers]
-print len(row), len(table.headers), format
-#print format % table.headers
+format = '%10s ' + ('%11s' * (len(row)-1))
+print format % tuple(h[:10] for h in table.headers)
+print format % tuple(h[10:20] for h in table.headers)
+print format % tuple(h[20:30] for h in table.headers)
+print format % tuple(h[30:40] for h in table.headers)
 for row in table:
     print format % row
-print bindings.keys()

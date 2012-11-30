@@ -23,6 +23,7 @@ ReeBill.WelcomeLoginFormPanel = new Ext.form.FormPanel({
     id: "WelcomeLoginFormPanel",
     url: 'http://' + location.host + '/reebill/login',
     border: false,
+    padding: 1, // chrome truncates top border of username text field
     defaultType: 'textfield', // if this is wrong, including anything in 'items results in 'undefined is not a function'
     items: ReeBill.LoginFormFields,
     buttons: [{
@@ -73,7 +74,7 @@ ReeBill.LoginWindow = new Ext.Window({
                 Ext.getCmp('LoginFormPanel').form.submit({
                     waitMsg:'Authenticating',
                     success: function() {
-                        Ext.getCmp('LoginWindow').close();
+                        Ext.getCmp('LoginWindow').hide();
                     }
                 });
             },

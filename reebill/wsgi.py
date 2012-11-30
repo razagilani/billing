@@ -103,11 +103,7 @@ def authenticate_ajax(method):
             btb_instance.check_authentication()
             return method(btb_instance, *args, **kwargs)
         except Unauthenticated as e:
-            # ajax response handlers in front-end interpret this and show
-            # message box to redirect to login page
-            # TODO: 28251379
-            return ju.dumps({'success': False, 'code':1, 'errors':
-                {'reason': 'Authenticate Ajax: No Session'}})
+            return btb_instance.dumps({'success': False, 'code':1})
     return wrapper
 
 def authenticate(method):
@@ -397,10 +393,23 @@ class BillToolBridge:
         self.logger.info('BillToolBridge initialized')
 
     def dumps(self, data):
-        # don't turn this on unless you need the json results to return
-        # the url that was called. This is a good client side debug feature
-        # when you need to associate ajax calls with ajax responses.
-        #data['url'] = cherrypy.url()
+
+        # accept only dictionaries so that additional keys may be added
+        if type(data) is not dict: raise ValueError("Dictionary required.")
+
+        if 'success' in data: 
+            if data['success']: 
+                # nothing else required
+                pass
+            else:
+                if 'errors' not in data:
+                    self.logger.warning('JSON response require errors key.')
+        else:
+            self.logger.warning('JSON response require success key.')
+
+        # diagnostic information for client side troubleshooting
+        data['server_url'] = cherrypy.url()
+        data['server_time'] = datetime.now()
 
         # round datetimes to nearest second so Ext-JS JsonReader can parse them
         def round_datetime(x):
@@ -509,7 +518,7 @@ class BillToolBridge:
         if user is None:
             self.logger.info(('login attempt failed: username "%s"'
                 ', remember me: %s') % (username, rememberme))
-            return ju.dumps({'success': False, 'errors':
+            return self.dumps({'success': False, 'errors':
                 {'username':'Incorrect username or password', 'reason': 'No Session'}})
 
         # successful login:
@@ -529,20 +538,31 @@ class BillToolBridge:
         cherrypy.session['user'] = user
 
         if rememberme == 'on':
-            # TODO need to encrypt or otherwise provide credentials and return them to client
+            # The user has elected to be remembered
+            # so create credentials based on a server secret, the user's IP address and username.
+            # Some other reasonably secret, ephemeral, information could also be included such as 
+            # current date.
             credentials = "%s-%s-%s" % (username, cherrypy.request.headers['Remote-Addr'], self.sessions_key)
             m = md5.new()
             m.update(credentials)
             digest = m.hexdigest()
+
+            # Set this token in the persistent user object
+            # then, if returned to the server it can be looked up in the user
+            # and the user can be automatically logged in.
+            # This giving the user who has just authenticated a credential that
+            # can be later used for automatic authentication.
             user.session_token = digest
             self.user_dao.save_user(user)
+
+            # this cookie has no expiration, so lasts as long as the browser is open
             cherrypy.response.cookie['username'] = user.username
             cherrypy.response.cookie['c'] = digest
 
         self.logger.info(('user "%s" logged in: remember '
             'me: "%s" type is %s') % (username, rememberme,
             type(rememberme)))
-        return ju.dumps({'success': True});
+        return self.dumps({'success': True});
 
     def check_authentication(self):
         '''Function to check authentication for HTTP request functions: if user
@@ -693,7 +713,7 @@ class BillToolBridge:
         strings).'''
         with DBSession(self.state_db) as session:
             next_account = self.state_db.get_next_account_number(session)
-            return ju.dumps({'success': True, 'account': next_account})
+            return self.dumps({'success': True, 'account': next_account})
             
     @cherrypy.expose
     @random_wait
@@ -881,7 +901,7 @@ class BillToolBridge:
             self.attach_utility_bills(session, account, sequence)
             return self.dumps({'success': True})
 
-    def issue_reebills(self, session, account, sequences,
+    def issue_reebills(self, session, account, sequences, recipients,
             apply_corrections=True):
         '''Issues all unissued bills given by account and sequences. These must
         be version 0, not corrections. If apply_corrections is True, all
@@ -906,7 +926,7 @@ class BillToolBridge:
                     unissued_sequence - 1, version=0)
             reebill = self.reebill_dao.load_reebill(account, unissued_sequence)
             self.process.compute_bill(session, predecessor, reebill)
-            self.process.issue(session, account, unissued_sequence)
+            self.process.issue(session, account, unissued_sequence, recipients)
 
         # journal attaching of utility bills
         for unissued_sequence in sequences:
@@ -932,9 +952,34 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
+    def retrieve_mail_addresses(self, account, **kwargs):
+        if not account:
+            raise ValueError("Bad Parameter Value")
+
+        with DBSession(self.state_db) as session:
+            # The last issued sequence would be associated with the ReeBill that was
+            # most recently issued. Therefore, if it exists, we can look up the record
+            # for the e-mail addresses of who received that ReeBill
+            # By default, assume there are no such addresses (yielding a null value in the JSON response)
+            mail_addresses = None
+            last_issued_sequence = self.state_db.last_issued_sequence(session, account)
+
+            if last_issued_sequence:
+                last_issued_reebill = self.reebill_dao.load_reebill(account, last_issued_sequence)
+                mail_addresses = last_issued_reebill.recipients
+
+        return self.dumps({'success': True, 'mail_addresses': mail_addresses})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
     def mail(self, account, sequences, recipients, **kwargs):
         if not account or not sequences or not recipients:
             raise ValueError("Bad Parameter Value")
+
+        # Go from comma-separated e-mail addresses to a list of e-mail addresses
+        recipient_list = [rec.strip() for rec in recipients.split(',')]
 
         # sequences will come in as a string if there is one element in post data. 
         # If there are more, it will come in as a list of strings
@@ -985,7 +1030,7 @@ class BillToolBridge:
                     if not sorted(corrections_to_apply) == sorted(
                             unissued_correction_sequences):
                         raise ValueError('All corrections must be issued.')
-                self.issue_reebills(session, account, unissued_sequences,
+                self.issue_reebills(session, account, unissued_sequences, recipient_list,
                         apply_corrections=('corrections_to_apply' in locals()))
 
 
@@ -1016,7 +1061,7 @@ class BillToolBridge:
             merge_fields["balance_due"] = most_recent_bill.balance_due.quantize(Decimal("0.00"))
             merge_fields["bill_dates"] = bill_dates
             merge_fields["last_bill"] = bill_file_names[-1]
-            bill_mailer.mail(recipients, merge_fields,
+            bill_mailer.mail(recipient_list, merge_fields,
                     os.path.join(self.config.get("billdb", "billpath"),
                         account), bill_file_names);
 
@@ -2006,6 +2051,7 @@ class BillToolBridge:
         # if this is the case, return no periods.  
         # This is done so that the UI can configure itself with no data
         if reebill is None:
+            # TODO: 40161259 - must return success field
             return self.dumps({})
 
         ba = reebill.billing_address
@@ -2037,6 +2083,7 @@ class BillToolBridge:
 
         account_info['discount_rate'] = reebill.discount_rate
 
+        # TODO: 40161259 - must return success field
         return self.dumps(account_info)
 
 
@@ -2122,7 +2169,7 @@ class BillToolBridge:
         reebill = self.reebill_dao.load_reebill(account, sequence)
         if reebill is None:
             raise Exception('No reebill found for %s-%s' % (account, sequence))
-        
+        # TODO: 40161259 must return success field
         return self.dumps({
             'services': reebill.services,
             'suspended_services': reebill.suspended_services
@@ -2150,14 +2197,16 @@ class BillToolBridge:
         # This is done so that the UI can configure itself with no data for the
         # requested measured usage
         if reebill is None:
-            return self.dumps({})
+            # TODO: 40161259 must return success field
+            return self.dumps({"periods":None})
         
         utilbill_periods = {}
         for service in reebill.services:
             (begin, end) = reebill.utilbill_period_for_service(service)
             utilbill_periods[service] = { 'begin': begin, 'end': end }
 
-        return self.dumps(utilbill_periods)
+        # TODO: 40161259 must return success field
+        return self.dumps({"periods":utilbill_periods})
 
     @cherrypy.expose
     @random_wait
@@ -2447,10 +2496,12 @@ class BillToolBridge:
         # This is done so that the UI can configure itself with no data for the
         # requested measured usage
         if reebill is None:
+            # TODO: 40161259 must return success field
             return self.dumps({'success': True})
 
         meters = reebill.meters
-        return self.dumps(meters)
+        # TODO: 40161259 must return success field
+        return self.dumps({"meters":meters})
 
     @cherrypy.expose
     @random_wait
@@ -2903,6 +2954,7 @@ class BillToolBridge:
                 # we want to return success to ajax call and then load the tree in page
                 #return self.dumps({'success':True, 'reebill_structure':tree});
                 # but the TreeLoader doesn't abide by the above ajax packet
+                # TODO: 40161259 must return success field
                 return self.dumps(tree);
 
     @cherrypy.expose

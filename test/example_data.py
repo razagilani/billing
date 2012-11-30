@@ -175,6 +175,8 @@ example_reebill = {
 	"ree_charges" : 118.42,
 	"ree_value" : 236.84,
 	"discount_rate" : 0.5,
+    'late_charge_rate': 0.1,
+    'late_charges': 12.34,
 	"message" : null,
 	"issue_date" : null,
 	"utilbills" : [
@@ -300,7 +302,7 @@ example_reebill = {
             },
         }
     ],
-	"payment_received" : 0,
+	"payment_received" : 10,
 	"version" : 0,
 	"period_end" : ISODate("2011-12-14T00:00:00Z"),
 	"actual_total" : 743.49,

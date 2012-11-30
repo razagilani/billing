@@ -1,4 +1,3 @@
-#!/usr/bin/python
 import sys
 import os
 import unittest
@@ -43,6 +42,76 @@ class ProcessTest(TestCaseWithSetup):
     #def __init__(self, methodName='runTest', param=None):
         #print '__init__'
         #super(ProcessTest, self).__init__(methodName)
+
+    def test_create_new_account(self):
+        # set up template customer
+        with DBSession(self.state_db) as session:
+            #self.process.new_account(session, 'Template Account', '99999', 0.5,
+                    #0.1)
+            self.reebill_dao.save_reebill(example_data.get_reebill('99999', 1,
+                    start=date(2012,1,1), end=date(2012,2,1)))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.state_db.new_rebill(session, '99999', 1)
+            # store template account's reebill (includes utility bill) to check
+            # for modification
+            template_reebill = self.reebill_dao.load_reebill('99999', 1)
+
+        # create new account "10000" based on template account "99999"
+        with DBSession(self.state_db) as session:
+            self.process.create_new_account(session, '100000', 'New Account',
+                    0.6, 0.2, '99999')
+
+            # MySQL customer
+            customer = self.state_db.get_customer(session, '100000')
+            self.assertEquals('100000', customer.account)
+            self.assertEquals(Decimal('0.6'), customer.discountrate)
+            self.assertEquals(Decimal('0.2'), customer.latechargerate)
+
+            # MySQL reebill: none exist in MySQL until #1 is rolled
+            self.assertEquals([], self.state_db.listSequences(session, '100000'))
+
+            # Mongo reebill (sequence 0)
+            mongo_reebill = self.reebill_dao.load_reebill('100000', 0)
+            self.assertEquals('100000', mongo_reebill.account)
+            self.assertEquals(0, mongo_reebill.sequence)
+            self.assertEquals(0, mongo_reebill.version)
+            self.assertEquals(0, mongo_reebill.prior_balance)
+            self.assertEquals(0, mongo_reebill.payment_received)
+            self.assertEquals(0, mongo_reebill.balance_forward)
+            self.assertEquals(0, mongo_reebill.total_renewable_energy())
+            self.assertEquals(0, mongo_reebill.ree_charges)
+            self.assertEquals(0, mongo_reebill.ree_value)
+            self.assertEquals(0, mongo_reebill.ree_savings)
+            self.assertEquals(0, mongo_reebill.balance_due)
+            # some bills lack late_charges key, which is supposed to be
+            # distinct from late_charges: None, and late_charges: 0
+            try:
+                self.assertEquals(0, mongo_reebill.late_charges)
+            except KeyError as ke:
+                if ke.message != 'late_charges':
+                    raise
+            self.assertEquals(0, mongo_reebill.total)
+            self.assertEquals(0, mongo_reebill.total_adjustment)
+            self.assertEquals(0, mongo_reebill.manual_adjustment)
+            self.assertEquals(None, mongo_reebill.issue_date)
+            self.assertEquals(None, mongo_reebill.recipients)
+            self.assertEquals(Decimal('0.6'), mongo_reebill.discount_rate)
+            self.assertEquals(Decimal('0.2'), mongo_reebill.late_charge_rate)
+
+            # Mongo utility bill: nothing to check? (existence tested by load_reebill)
+
+            # TODO Mongo rate structure documents
+
+            # check that template account's utility bill and reebill was not modified
+            template_reebill_again = self.reebill_dao.load_reebill('99999', 1)
+            self.assertEquals(template_reebill.reebill_dict, template_reebill_again.reebill_dict)
+            self.assertEquals(template_reebill._utilbills, template_reebill_again._utilbills)
+            for utilbill in mongo_reebill._utilbills:
+                self.assertNotIn(utilbill['_id'], [u['_id'] for u in
+                        template_reebill._utilbills])
+
 
     def test_get_late_charge(self):
         '''Tests computation of late charges (without rolling bills).'''
@@ -173,6 +242,19 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEqual((50 - 10) * bill2.late_charge_rate,
                     self.process.get_late_charge(session, bill2,
                     date(2013,1,1)))
+
+            #Pay off the bill, make sure the late charge is 0
+            self.state_db.create_payment(session, acc, date(2012,6,6),
+                    'a $40 payment in june', 40)
+            self.assertEqual(0, self.process.get_late_charge(session, bill2,
+                    date(2013,1,1)))
+
+            #Overpay the bill, make sure the late charge is still 0
+            self.state_db.create_payment(session, acc, date(2012,6,7),
+                    'a $40 payment in june', 40)
+            self.assertEqual(0, self.process.get_late_charge(session, bill2,
+                    date(2013,1,1)))
+            
 
     @unittest.skip('''Creating a second StateDB object, even if it's for
             another database, fails with a SQLAlchemy error about multiple
@@ -882,6 +964,16 @@ class ProcessTest(TestCaseWithSetup):
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 1))
             b2 = self.process.roll_bill(session, b1)
 
+        # MySQL reebill
+        customer = self.state_db.get_customer(session, '99999')
+        mysql_reebill = self.state_db.get_reebill(session, '99999', 2)
+        self.assertEquals(2, mysql_reebill.sequence)
+        self.assertEquals(customer.id, mysql_reebill.customer_id)
+        self.assertEquals(False, mysql_reebill.issued)
+        self.assertEquals(0, mysql_reebill.max_version)
+
+        # TODO ...
+
     def test_issue(self):
         '''Tests attach_utilbills and issue.'''
         acc = '99999'
@@ -924,15 +1016,19 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEquals(True, self.state_db.is_issued(session, acc, 1))
             self.assertEquals(datetime.utcnow().date(), one.issue_date)
             self.assertEquals(one.issue_date + timedelta(30), one.due_date)
+            self.assertEquals(one.recipients, None)
 
             # attach & issue two
             self.process.attach_utilbills(session, two.account, two.sequence)
-            self.process.issue(session, acc, 2)
+            self.process.issue(session, acc, 2, ['test1@reebill.us', 'test2@reebill.us'])
             # re-load from mongo to see updated issue date and due date
             two = self.reebill_dao.load_reebill(acc, 2)
             self.assertEquals(True, self.state_db.is_issued(session, acc, 2))
             self.assertEquals(datetime.utcnow().date(), two.issue_date)
             self.assertEquals(two.issue_date + timedelta(30), two.due_date)
+            self.assertEquals(isinstance(two.recipients, list), True)
+            self.assertEquals(len(two.recipients), 2)
+            self.assertEquals(True, all(map(isinstance, two.recipients, [unicode]*len(two.recipients))))
 
     def test_delete_reebill(self):
         account = '99999'

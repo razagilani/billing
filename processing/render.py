@@ -303,7 +303,10 @@ class ReebillRenderer:
         summaryChargesTableF = Frame(328, 167, 252, 90, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='summaryCharges', showBoundary=_showBoundaries)
 
         # balance block
-        balanceF = Frame(78, 100, 265, 55, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balance', showBoundary=_showBoundaries)
+        balanceF = Frame(77, 105, 265, 50, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='balance', showBoundary=_showBoundaries)
+
+        # adjustments block
+        adjustmentsF = Frame(77, 64, 265, 50, leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0, id='adjustments', showBoundary=_showBoundaries)
 
         # current charges block
         # your savings and renewable charges
@@ -320,7 +323,7 @@ class ReebillRenderer:
 
 
         # build page container for flowables to populate
-        firstPage = PageTemplate(id=firstPageName,frames=[backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, graphOneF, graphTwoF, graphThreeF, graphFourF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, currentChargesF, balanceForwardF, balanceDueF, motdF])
+        firstPage = PageTemplate(id=firstPageName,frames=[backgroundF1, billIdentificationF, amountDueF, serviceAddressF, billingAddressF, graphOneF, graphTwoF, graphThreeF, graphFourF, summaryBackgroundF, billPeriodTableF, summaryChargesTableF, balanceF, adjustmentsF, currentChargesF, balanceForwardF, balanceDueF, motdF])
         #
 
         # page two frames
@@ -599,11 +602,23 @@ class ReebillRenderer:
         # populate balances
         balances = [
             [Paragraph("Prior Balance", styles['BillLabelRight']), Paragraph(str(reebill.prior_balance.quantize(Decimal(".00"))),styles['BillFieldRight'])],
-            [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(reebill.payment_received.quantize(Decimal(".00"))), styles['BillFieldRight'])],
-            [Paragraph("Adjustments", styles['BillLabelRight']), Paragraph(str(reebill.total_adjustment.quantize(Decimal(".00"))), styles['BillFieldRight'])],
+            [Paragraph("Payment Received", styles['BillLabelRight']), Paragraph(str(reebill.payment_received.quantize(Decimal(".00"))), styles['BillFieldRight'])]
         ]
 
         t = Table(balances, [180,85])
+        t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,0),(-1,-1),colors.white)]))
+        Elements.append(t)
+        Elements.append(UseUpSpace())
+
+        # populate adjustments
+        manual_adjustments = reebill.manual_adjustment
+        other_adjustments = reebill.total_adjustment - reebill.manual_adjustment
+        adjustments = [
+            [Paragraph("Manual Adjustments", styles['BillLabelRight']), Paragraph(str(manual_adjustments.quantize(Decimal(".00"))), styles['BillFieldRight'])],
+            [Paragraph("Other Adjustments", styles['BillLabelRight']), Paragraph(str(other_adjustments.quantize(Decimal(".00"))), styles['BillFieldRight'])]
+        ]
+        
+        t = Table(adjustments, [180,85])
         t.setStyle(TableStyle([('ALIGN',(0,0),(0,-1),'RIGHT'), ('ALIGN',(1,0),(1,-1),'RIGHT'), ('BOTTOMPADDING', (0,0),(-1,-1), 3), ('TOPPADDING', (0,0),(-1,-1), 5), ('INNERGRID', (1,0), (-1,-1), 0.25, colors.black), ('BOX', (1,0), (-1,-1), 0.25, colors.black), ('BACKGROUND',(1,0),(-1,-1),colors.white)]))
         Elements.append(t)
         Elements.append(UseUpSpace())
