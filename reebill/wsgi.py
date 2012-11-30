@@ -1176,7 +1176,7 @@ class BillToolBridge:
             elif sortcol == 'dayssince':
                 rows.sort(key=lambda r: r['dayssince'], reverse=sortreverse)
             elif sortcol == 'lastissuedate':
-                rows.sort(key=lambda r: r['lastissuedate'], reverse=sortreverse)
+                rows.sort(key=lambda r: r['lastissuedate'] if r['lastissuedate'] != 'Never Issued' else '', reverse=sortreverse)
             elif sortcol == 'lastevent':
                 rows.sort(key=lambda r: r['lastevent'], reverse=sortreverse)
 
