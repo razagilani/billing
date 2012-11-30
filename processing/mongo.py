@@ -121,7 +121,8 @@ class Meter(EmbeddedDocument):
     identifier = StringField(required=True)
     prior_read_date = DateTimeField(required=True)
     present_read_date = DateTimeField(required=True)
-    estimated = BooleanField(required=True)
+    #estimated = BooleanField(required=True)
+    estimated = BooleanField() # TODO change back
 
     def to_dict(self):
         result = {
@@ -183,6 +184,7 @@ class UtilBill(Document):
     end = DateTimeField(required=True)
 
     # optional fields for frozen utility bills
+    # TODO these don't persist when saved
     sequence = IntField()
     version = IntField()
 
@@ -192,7 +194,8 @@ class UtilBill(Document):
     total = FloatField(required=True)
     rate_structure_binding = StringField(required=True)
     service_address = DictField(required=True, field=StringField())
-    billing_address = DictField(required=True, field=StringField())
+    #billing_address = DictField(required=True, field=StringField())
+    billing_address = DictField(field=StringField())
     meters = ListField(field=EmbeddedDocumentField(Meter), required=True)
 
     @property
