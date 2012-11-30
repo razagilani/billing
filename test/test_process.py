@@ -1102,7 +1102,6 @@ class ProcessTest(TestCaseWithSetup):
 
         with DBSession(self.state_db) as session:
             # save reebills and rate structures in mongo
-            import ipdb; ipdb.set_trace()
             self.reebill_dao.save_reebill(example_data.get_reebill(acc, 0,
                     start=date(2012,1,1), end=date(2012,2,1)))
             one = example_data.get_reebill(acc, 1, start=date(2012,2,1), end=date(2012,3,1))
@@ -1138,6 +1137,7 @@ class ProcessTest(TestCaseWithSetup):
 
             # issue reebill #1 and correct it with an adjustment of 100
             self.process.attach_utilbills(session, acc, 1)
+            import ipdb; ipdb.set_trace()
             self.process.issue(session, acc, 1)
             one_corrected = self.process.new_version(session, acc, 1)
             one_corrected.ree_charges = one.ree_charges + 100
