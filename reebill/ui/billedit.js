@@ -5803,6 +5803,8 @@ function reeBillReady() {
             listeners: {
                 rowselect: function (selModel, index, record) {
                     issueReebillButton.setDisabled(!issuableMailListRegex.test(record.data.mailto));
+                    accountGrid.getSelectionModel().clearSelections();
+                    reeBillGrid.getSelectionModel().clearSelections();
                     loadReeBillUIForAccount(record.data.account);
                 },
             },
