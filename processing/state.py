@@ -15,8 +15,7 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import and_
 from sqlalchemy.sql.expression import desc, asc, label
-from sqlalchemy.sql.functions import max as sql_max
-from sqlalchemy.sql.functions import min as sql_min
+from sqlalchemy import func
 from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, StatusUnbilled
 sys.stdout = sys.stderr
 
