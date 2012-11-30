@@ -11,7 +11,7 @@ import string, re
 import ConfigParser
 from datetime import datetime, date, timedelta
 import itertools as it
-from decimal import Decimal, DivisionByZero
+from decimal import Decimal, DivisionByZero, InvalidOperation
 import uuid as UUID # uuid collides with locals so both module and locals are renamed
 import inspect
 import logging
