@@ -182,6 +182,10 @@ class UtilBill(Document):
     start = DateTimeField(required=True) # Mongo does not have plain dates
     end = DateTimeField(required=True)
 
+    # optional fields for frozen utility bills
+    sequence = IntField()
+    version = IntField()
+
     # other fields
     chargegroups = DictField(required=True,
             field=ListField(field=EmbeddedDocumentField(Charge)))
