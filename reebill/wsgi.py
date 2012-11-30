@@ -1976,7 +1976,7 @@ class BillToolBridge:
                     row_dict['id'] = reebill_info[0]
                     row_dict['account'] = reebill_info[0]
                     row_dict['sequence'] = reebill_info[1]
-                    row_dict['util_total'] = Decimal(231.67) #reebill_info[2]
+                    row_dict['util_total'] = reebill_info[2]
                     row_dict['mailto'] = ", ".join(mongo_reebill.bill_recipients)
                     row_dict['reebill_total'] = mongo_reebill.actual_total
                     try:
