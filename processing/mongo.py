@@ -677,7 +677,7 @@ class MongoReebill(object):
         # like a pointer.
         id = utilbill_handle['id']
         matching_utilbills = [u for u in self._utilbills if u.id == id]
-        if len(matching_utilbills) < 0:
+        if len(matching_utilbills) == 0:
             raise ValueError('No utilbill found for id "%s"' % id)
         if len(matching_utilbills) > 1:
             raise ValueError('Multiple utilbills found for id "%s"' % id)
@@ -690,7 +690,7 @@ class MongoReebill(object):
         # there's exactly 1
         matching_indices = [index for (index, doc) in
                 enumerate(self._utilbills) if doc.id == id]
-        if len(matching_indices) < 0:
+        if len(matching_indices) == 0:
             raise ValueError('No utilbill found for id "%s"' % id)
         if len(matching_indices) > 1:
             raise ValueError('Multiple utilbills found for id "%s"' % id)
