@@ -1,7 +1,8 @@
 // necessary for form validation messages to appear when a field's msgTarget qtip config is used
 //Ext.QuickTips.init();
 
-var DEFAULT_RESOLUTION = 100; 
+var DEFAULT_RESOLUTION = 100;
+var DEFAULT_DIFFERENCE_THRESHOLD = 1.0;
 
 /*
 * Test Code.  TODO 25495769: externalize it into a separate file which can be selectively included to troubleshoot.
@@ -4356,7 +4357,7 @@ function reeBillReady() {
                 renderer: accountGridColumnRenderer,
             },{
                 header: 'Last Event',
-                sortable: true,
+                sortable: false,
                 dataIndex: 'lastevent',
                 renderer: accountGridColumnRenderer,
                 width: 350,
@@ -4972,7 +4973,92 @@ function reeBillReady() {
         }
     });
 
+    var differenceThresholdField = new Ext.ux.form.SpinnerField({
+      id: 'differencethresholdmenu',
+      fieldLabel: '% Difference Allowed between Utility Bill and ReeBill',
+      name: 'differencethreshold',
+      value: DEFAULT_DIFFERENCE_THRESHOLD,
+      minValue: .01,
+      maxValue: 100,
+      allowDecimals: true,
+      decimalPrecision: 2,
+      incrementValue: 1,
+      accelerate: true
+    });
 
+    var setThresholdDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/setDifferenceThreshold',
+    });
+    setThresholdDataConn.autoAbort = true;
+    setThresholdDataConn.disableCaching = true;
+    var thresholdFormPanel = new Ext.FormPanel({
+      labelWidth: 240, // label settings here cascade unless overridden
+      frame: true,
+      title: '% Difference Allowed between Utility Bill and ReeBill',
+      bodyStyle: 'padding:5px 5px 0',
+      //width: 610,
+      defaults: {width: 435},
+      layout: 'fit', 
+      defaultType: 'textfield',
+      items: [
+        differenceThresholdField,
+      ],
+      buttons: [
+        new Ext.Button({
+            text: 'Save',
+            handler: function() {
+                setThresholdDataConn.request({
+                    params: { 'threshold': differenceThresholdField.getValue()},
+                    success: function(result, request) {
+                        var jsonData = null;
+                        try {
+                            jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == false) {
+                                Ext.Msg.alert("setDifferenceThreshold failed: " + jsonData.errors)
+                            }
+                            // handle failure here if necessary
+                        } catch (err) {
+                            Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
+                        }
+                    },
+                    failure: function () {
+                        Ext.Msg.alert("setDifferencethreshold request failed");
+                    }
+                });
+            }
+        }),
+      ],
+    });
+
+    // get initial value of this field from the server
+    var getThresholdDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/getDifferenceThreshold',
+    });
+    getThresholdDataConn.autoAbort = true;
+    getThresholdDataConn.disableCaching = true;
+    // TODO: 22360193 populating a form from Ajax creates a race condition.  
+    // What if the network doesn't return and user enters a value nefore the callback is fired?
+    var threshold = null;
+    getThresholdDataConn.request({
+        success: function(result, request) {
+            var jsonData = null;
+            try {
+                jsonData = Ext.util.JSON.decode(result.responseText);
+                if (jsonData.success == true) {
+                    resolution = jsonData['threshold'];
+                    differenceThresholdField.setValue(resolution);
+                } else {
+                    // handle success:false here if needed
+                }
+            } catch (err) {
+                Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
+            }
+        },
+        failure: function () {
+            Ext.Msg.alert("getDifferenceThreshold request failed");
+        }
+    });
+    
     //
     // Instantiate the Preference panel
     //
@@ -4985,7 +5071,7 @@ function reeBillReady() {
             pack : 'start',
             align : 'stretch',
         },
-        items: [preferencesFormPanel, ],
+        items: [preferencesFormPanel, thresholdFormPanel],
     });
 
     ///////////////////////////////////////
