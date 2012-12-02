@@ -1141,8 +1141,11 @@ class ProcessTest(TestCaseWithSetup):
             three = self.reebill_dao.load_reebill(acc, 3)
 
             # issue reebill #1 and correct it with an adjustment of 100
-            self.process.attach_utilbills(session, acc, 1)
             import ipdb; ipdb.set_trace()
+            self.process.attach_utilbills(session, acc, 1)
+            # sequence/version don't get saved because 'one' has not been updated (but db has been updated)
+            #assert one._utilbills[0].sequence == 1
+            #assert one._utilbills[1].version == 0
             self.process.issue(session, acc, 1)
             one_corrected = self.process.new_version(session, acc, 1)
             one_corrected.ree_charges = one.ree_charges + 100
