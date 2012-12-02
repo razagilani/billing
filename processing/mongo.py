@@ -107,13 +107,37 @@ class Register(EmbeddedDocument):
     description = StringField(required=True)
 
     def to_dict(self):
-        return {field : getattr(self, field) for field in ['quantity_units',
+        result = {field : getattr(self, field) for field in ['quantity_units',
             'quantity', 'register_binding', 'identifier', 'type',
             'description']
         }
+        # accomodate rate structure code which wants decimals (TODO remove
+        # this; always use floats except for rounding of money)
+        result = deep_map(float_to_decimal, result)
+        return result
 
     def set_quantity(self, quantity):
         self.quantity = quantity
+
+    def quantity_btu(self, ccf_conversion_factor=None):
+        '''Returns quantity converted to BTU. To convert CCF (a volume unit),
+        CCF-to-therms conversion factor must be supplied. (Note this is not
+        CCF-to-BTU, because bills always show a conversion factor for
+        therms.)'''
+        if self.quantity_units.lower() == 'btu':
+            return self.quantity
+        if self.quantity_units.lower() == 'therms':
+            return self.quantity * 100000.
+        if self.quantity_units.lower() == 'kwh':
+            return self.quantity * 3412.14163
+        if self.quantity.lower() == 'ccf':
+            if ccf_conversion_factor is None:
+                raise ValueError(("Register contains gas measured "
+                    "in ccf: can't convert that into energy "
+                    "without the multiplier."))
+            else:
+                return quantity * 100000 * ccf_conversion_factor
+        raise ValueError('Unknown energy unit "%s"' % self.quantity_units)
 
 class Meter(EmbeddedDocument):
     '''A utility meter inside a utility bill document.'''
@@ -126,8 +150,8 @@ class Meter(EmbeddedDocument):
 
     def to_dict(self):
         result = {
-            field : getattr(self, field) for field in [rsi_binding,
-                    description, uuid, quantity_units, quantity, rate, total]
+            field : getattr(self, field) for field in ['identifier',
+                'prior_read_date', 'present_read_date', 'estimated']
         }
         result['registers'] = [r.to_dict() for r in self.registers()]
         return result
@@ -158,11 +182,23 @@ class Charge(EmbeddedDocument):
     quantity_units = StringField(required=True)
     quantity = FloatField(required=True)
     rate = FloatField(required=True)
+    rate_units = StringField(required=True)
     total = FloatField(required=True)
 
-    def to_dict():
-        return {name : getattr(self, name) for name in [rsi_binding,
-                description, uuid, quantity_units, quantity, rate, total]}
+    def to_dict(self):
+        result = {name : getattr(self, name) for name in ['rsi_binding',
+                'description', 'uuid', 'quantity_units', 'quantity', 'rate',
+                'rate_units', 'total']}
+        # accomodate rate structure code which wants decimals (TODO remove
+        # this; always use floats except for rounding of money)
+        result = deep_map(float_to_decimal, result)
+        return result
+
+    # to acommodate rate structure code messing with internal data structure of
+    # utility bill; TODO remove when possible
+    @classmethod
+    def from_dict(cls, d):
+        return Charge(**d)
 
 class UtilBill(Document):
     '''Schema definition for utility bill document in Mongo.'''
@@ -218,6 +254,11 @@ class UtilBill(Document):
             raise ValueError('Multiple meters with identifier "%s"' %
                     identifier)
         return meters[0]
+
+    def total_energy(self):
+        '''Returns sum of energy quantity in all registers, in BTU.'''
+        return sum(sum(r.quantity_btu() for r in m.registers) for m in
+                self.meters)
 
 ###############################################################################
 # reebill
@@ -607,12 +648,15 @@ class MongoReebill(object):
         self.reebill_dict['statistics'].update(value)
 
     # TODO this must die https://www.pivotaltracker.com/story/show/36492387
+    #@property
+    #def actual_total(self):
+        #return self.reebill_dict['actual_total']
+    #@actual_total.setter
+    #def actual_total(self, value):
+        #self.reebill_dict['actual_total'] = value
     @property
     def actual_total(self):
-        return self.reebill_dict['actual_total']
-    @actual_total.setter
-    def actual_total(self, value):
-        self.reebill_dict['actual_total'] = value
+        return sum(u.total for u in self._utilbills)
 
     @property
     def hypothetical_total(self):
@@ -717,10 +761,10 @@ class MongoReebill(object):
                 = new_total
 
     def actual_total_for_service(self, service_name):
-        return self._get_utilbill_for_service(service_name)['total']
+        return self._get_utilbill_for_service(service_name).total
 
     def set_actual_total_for_service(self, service_name, new_total):
-        self._get_utilbill_for_service(service_name)['total'] = new_total
+        self._get_utilbill_for_service(service_name).total = new_total
 
     def ree_value_for_service(self, service_name):
         '''Returns the total of 'ree_value' (renewable energy value offsetting
@@ -758,19 +802,29 @@ class MongoReebill(object):
                 = new_chargegroups
 
     def actual_chargegroups_for_service(self, service_name):
-        '''Returns the list of actual chargegroups for the utilbill whose
-        service is 'service_name'. There's not supposed to be more than one
-        utilbill per service, so an exception is raised if that happens (or if
-        there's no utilbill for that service).'''
-        return self._get_utilbill_for_service(service_name).chargegroups
+        '''Returns a list of chargegroup dictionaries for the utilbill whose
+        service is 'service_name'. The charges are dictionaries, not Charge
+        objects, because that's what the rate structure code wants.'''
+        #return [{group_name: [c.to_dict() for c in charges]} for (group_name,
+                #charges) in self._get_utilbill_for_service(service_name)
+                #.chargegroups.iteritems()]
+        chargegroups_dict = self._get_utilbill_for_service(service_name)\
+                .chargegroups
+        if type(chargegroups_dict.values()[0][0]) != Charge:
+            import ipdb; ipdb.set_trace()
+        return {group_name: [c.to_dict() for c in charges] for (group_name,
+                charges) in chargegroups_dict.iteritems()}
 
-    # TODO 37477445 better to remove than make work with UtilBill class
+    # TODO 37477445 remove when old rate structure code is removed
     def set_actual_chargegroups_for_service(self, service_name, new_chargegroups):
         '''Set hypothetical chargegroups, based on actual chargegroups.  This is used
         because it is customary to define the actual charges and base the hypothetical
         charges on them.'''
-        self._get_utilbill_for_service(service_name)['chargegroups'] \
-                = new_chargegroups
+        #self._get_utilbill_for_service(service_name)['chargegroups'] \
+                #= new_chargegroups
+        self._get_utilbill_for_service(service_name).chargegroups = {name :
+                [Charge.from_dict(c) for c in charges] for (name, charges) in
+                new_chargegroups.iteritems()}
 
     def chargegroups_model_for_service(self, service_name):
         '''Returns a shallow list of chargegroups for the utilbill whose
@@ -1074,15 +1128,17 @@ class MongoReebill(object):
         '''Returns all renewable energy distributed among shadow registers of
         this reebill, in therms.'''
         # TODO switch to BTU
-        if type(ccf_conversion_factor) not in (type(None), Decimal):
-            raise ValueError("ccf conversion factor must be a Decimal")
+        if type(ccf_conversion_factor) not in (type(None), float, Decimal):
+            raise ValueError("ccf conversion factor must be a float or Decimal")
+        if isinstance(ccf_conversion_factor, Decimal):
+            ccf_conversion_factor = float(ccf_conversion_factor)
         # TODO: CCF is not an energy unit, and registers actually hold CCF
         # instead of therms. we need to start keeping track of CCF-to-therms
         # conversion factors.
         # https://www.pivotaltracker.com/story/show/22171391
-        total_therms = Decimal(0)
+        total_therms = 0
         for utilbill_handle in self.reebill_dict['utilbills']:
-            for register in u['actual_registers']:
+            for register in utilbill_handle['shadow_registers']:
                 quantity = register['quantity']
                 unit = register['quantity_units'].lower()
                 if unit == 'therms':
@@ -1104,7 +1160,7 @@ class MongoReebill(object):
                 else:
                     raise Exception('Unknown energy unit: "%s"' % \
                             register['quantity_units'])
-        return total_therms
+        return float(total_therms)
 
     #
     # Helper functions
@@ -1271,6 +1327,11 @@ class ReebillDAO:
         # MongoEngine get() ensures uniqueness ("raw" means query like regular
         # pymongo)
         docs = UtilBill.objects(__raw__=query)
+        if docs.count() == 0:
+            raise NoSuchBillException('No utility bill found for query %s' % query)
+        elif docs.count() > 1:
+            raise NotUniqueException('Multiple utility bills found for query %s' % query)
+        return docs[0]
 
     def _load_all_utillbills_for_reebill(self, session, reebill_doc):
         '''Loads all utility bill documents from Mongo that match the ones in
@@ -1511,6 +1572,14 @@ class ReebillDAO:
             # tell MongoEngine to force creation of a new document (because the
             # id has just been changed in save_reebill())
             utilbill_doc.save(safe=True, force_insert=True)
+
+            # verify that sequence & version got saved
+            # (TODO remove)
+            assert utilbill_doc.sequence == sequence_and_version[0]
+            assert utilbill_doc.version == sequence_and_version[1]
+            u = UtilBill.objects(id=utilbill_doc.id)[0]
+            assert u.sequence == sequence_and_version[0]
+            assert u.version == sequence_and_version[1]
         else:
             # normal save
             utilbill_doc.save(safe=True)
