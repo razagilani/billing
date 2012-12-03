@@ -1370,8 +1370,7 @@ class ReebillDAO:
                         "should already exist")
             
             for utilbill_handle in reebill.reebill_dict['utilbills']:
-                utilbill_doc = [u for u in reebill._utilbills if u['_id'] ==
-                        utilbill_handle['id']][0]
+                utilbill_doc = reebill._get_utilbill_for_handle(utilbill_handle)
                 if freeze_utilbills:
                     # this reebill is being attached (usually right before
                     # issuing): convert the utility bills into frozen copies by
