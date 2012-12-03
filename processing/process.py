@@ -308,7 +308,6 @@ class Process(object):
         documents in Mongo (by copying the ones originally attached to the
         reebill). compute_bill() should always be called immediately after this
         one so the bill is updated to its current state.'''
-        
         # Allow rolling if the latest reebill has unissued corrections; we need to be able to generate a new reebill
         # to apply corrections, plus it makes sense since such a reebill has technically already been issued in some form
         if reebill.sequence > self.state_db.last_issued_sequence(session, reebill.account) and \
@@ -323,15 +322,20 @@ class Process(object):
             utility_name = reebill.utility_name_for_service(service)
             rate_structure_name = reebill.rate_structure_name_for_service(service)
 
-            # load current CPRS
+            # load current CPRS, save it with same account, next sequence, version 0
             cprs = self.rate_structure_dao.load_cprs(reebill.account, reebill.sequence,
-                reebill.version, utility_name, rate_structure_name)
+                    reebill.version, utility_name, rate_structure_name)
             if cprs is None:
-                raise Exception("No current CPRS")
-
-            # save it with same account, next sequence, version 0
+                raise NoRateStructureError("No current CPRS")
             self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence + 1,
                     0, utility_name, rate_structure_name, cprs)
+
+            # generate predicted UPRS, save it with account, sequence, version 0
+            uprs = self.rate_structure_dao.get_probable_uprs(reebill, service)
+            if uprs is None:
+                raise NoRateStructureError("No current UPRS")
+            self.rate_structure_dao.save_uprs(reebill.account, reebill.sequence + 1,
+                    0, utility_name, rate_structure_name, uprs)
 
         # construct a new reebill from an old one. the new one's version is
         # always 0 even if it was created from a non-0 version of the old one.
@@ -355,7 +359,7 @@ class Process(object):
         # create reebill row in state database
         self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
         self.attach_utilbills(session, new_reebill)
-        self.state_db.attach_utilbills(session, new_reebill.account, new_reebill.sequence, utilbills, new_reebill.suspended_services)
+        self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
         
         return new_reebill
 

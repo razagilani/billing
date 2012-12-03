@@ -146,18 +146,13 @@ class ProcessTest(TestCaseWithSetup):
  
             # save bill1 in Mongo and MySQL, and its rate structure docs in
             # Mongo
-            #self.reebill_dao.save_reebill(bill1)
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
-            #self.state_db.new_rebill(session, bill1.account, bill1.sequence)
-            
 
             # issue bill 1, so a later bill can have a late charge based on the
             # customer's failure to pay bill1 by its due date, i.e. 30 days
             # after bill1's issue date.
-            #self.process.attach_utilbills(session, bill1.account,
-            #        bill1.sequence)
             self.process.issue(session, bill1.account, bill1.sequence,
                     issue_date=date(2012,1,1))
             # since process.issue() only modifies databases, bill1 must be
@@ -169,7 +164,6 @@ class ProcessTest(TestCaseWithSetup):
             # after bill1 is created, it must be computed to get it into a
             # usable state (in particular, it needs a late charge). that
             # requires a sequence 0 template bill.
-            #bill0 = example_data.get_reebill(acc, 0)
             self.process.compute_bill(session, bill0, bill1)
  
             # but compute_bill() destroys bill1's balance_due, so reset it to
@@ -219,11 +213,13 @@ class ProcessTest(TestCaseWithSetup):
                     date(2013,1,1)))
 
 
-            # update the meter like the user normally would
-            # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
-            meter = bill1.meters_for_service('gas')[0]
-            bill1.set_meter_read_date('gas', meter['identifier'], date(2012,2,1), date(2012,1,1))
-            self.reebill_dao.save_reebill(bill1, force=True)
+            # this should be unnecessary now that meter read date is filled in
+            # using utility bill period end date
+            ## update the meter like the user normally would
+            ## This is required for process.new_version => fetch_bill_data.fetch_oltp_data
+            #meter = bill1.meters_for_service('gas')[0]
+            #bill1.set_meter_read_date('gas', meter['identifier'], date(2012,2,1), date(2012,1,1))
+            #self.reebill_dao.save_reebill(bill1, force=True)
 
             # late charge should be based on the version with the least total
             # of the bill from which it derives. on 2013-01-15, make a version
@@ -366,7 +362,6 @@ class ProcessTest(TestCaseWithSetup):
             # make it have 2 services, 1 suspended
             # (create electric bill by duplicating gas bill)
             electric_bill = example_data.get_utilbill_dict(account, service='electric')
-            #electric_bill['service'] = 'electric'
             #self.reebill_dao._save_utilbill(electric_bill)
             # TODO it's bad to directly modify reebill_dict
             bill0.reebill_dict['utilbills'].append({
@@ -379,11 +374,11 @@ class ProcessTest(TestCaseWithSetup):
             bill0._utilbills.append(electric_bill)
             bill0.suspend_service('electric')
             self.reebill_dao.save_reebill(bill0)
-            
-            
+
+
 
             bill1 = self.process.roll_bill(session, bill0)
-            
+
             self.assertEquals(['electric'], bill1.suspended_services)
 
             # only the gas bill should be attached
@@ -763,10 +758,8 @@ class ProcessTest(TestCaseWithSetup):
                 start=date(2011,12,1), end=date(2012,1,1))
         utilbill = example_data.get_utilbill_dict(acc, start=date(2012,1,1), end=date(2012,2,1))
         self.reebill_dao._save_utilbill(utilbill)
-        #one = example_data.get_reebill(acc, 1, version=0, start=date(2012,1,1),
-        #        end=date(2012,2,1))
         self.reebill_dao.save_reebill(zero)
-        
+
         #self.reebill_dao.save_reebill(one)
         self.rate_structure_dao.save_rs(example_data.get_urs_dict())
         self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
@@ -1104,12 +1097,14 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEquals(False, mysql_reebill.issued)
             self.assertEquals(0, mysql_reebill.max_version)
 
-            # TODO ...
+
+        # TODO ...
 
     def test_issue(self):
         '''Tests attach_utilbills and issue.'''
         acc = '99999'
         with DBSession(self.state_db) as session:
+            # two reebills, with utilbills, in mongo & mysql
             # two reebills, with utilbills, in mongo & mysql
             template = example_data.get_reebill(acc, 0)
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 0))
@@ -1129,22 +1124,22 @@ class ProcessTest(TestCaseWithSetup):
             one = self.process.roll_bill(session, template)
 
             # neither reebill should be issued yet
-            self.assertEquals(False, self.state_db.is_issued(session, acc, 1))
-            self.assertEquals(None, one.issue_date)
-            self.assertEquals(None, one.due_date)
-            #self.assertEquals(False, self.state_db.is_issued(session, acc, 2))
-            #self.assertEquals(None, two.issue_date)
-            #self.assertEquals(None, two.due_date)
+            self.assertequals(false, self.state_db.is_issued(session, acc, 1))
+            self.assertequals(none, one.issue_date)
+            self.assertequals(none, one.due_date)
+            #self.assertequals(false, self.state_db.is_issued(session, acc, 2))
+            #self.assertequals(none, two.issue_date)
+            #self.assertequals(none, two.due_date)
 
             # two should not be attachable or issuable until one is issued
-            self.assertRaises(BillStateError, self.process.attach_utilbills, session, one)
-            self.assertRaises(BillStateError, self.process.issue, session, acc, 2)
+            self.assertraises(billstateerror, self.process.attach_utilbills, session, one)
+            self.assertraises(billstateerror, self.process.issue, session, acc, 2)
 
             # one should not be issuable until one is attached
-            #self.assertRaises(BillStateError, self.process.issue, session, acc, 1)
+            #self.assertraises(billstateerror, self.process.issue, session, acc, 1)
 
             # attach & issue one
-            #self.assertRaises(BillStateError, self.process.attach_utilbills, one)
+            #self.assertraises(billstateerror, self.process.attach_utilbills, one)
             self.process.issue(session, acc, 1)
 
             # re-load from mongo to see updated issue date and due date
@@ -1203,7 +1198,7 @@ class ProcessTest(TestCaseWithSetup):
             #self.state_db.record_utilbill_in_database(session, account, 'gas',
                     #date(2012,1,1), date(2012,2,1), datetime.utcnow().date())
             #self.process.attach_utilbills(session, account, 1)
-            
+
             # update the meter like the user normally would
             # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
             meter = b.meters_for_service('gas')[0]
@@ -1216,7 +1211,7 @@ class ProcessTest(TestCaseWithSetup):
             assert len(utilbills) == 1
             u = utilbills[0]
             assert (u.customer.account, u.reebill.sequence) == (account, 1)
-            b = self.reebill_dao.load_reebill(account, 1, version=0)
+            self.reebill_dao.load_reebill(account, 1, version=0)
             self.assertRaises(IssuedBillError, self.process.delete_reebill,
                     session, account, 1)
 
@@ -1226,7 +1221,7 @@ class ProcessTest(TestCaseWithSetup):
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account,
                     1))
-            
+
 
             self.process.new_version(session, account, 1)
             assert self.state_db.max_version(session, account, 1) == 1
