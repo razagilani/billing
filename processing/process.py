@@ -359,7 +359,7 @@ class Process(object):
         # create reebill row in state database
         self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
         self.attach_utilbills(session, new_reebill)
-        self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
+        self.state_db.attach_utilbills(session, new_reebill.account, new_reebill.sequence, utilbills, new_reebill.suspended_services)
         
         return new_reebill
 
