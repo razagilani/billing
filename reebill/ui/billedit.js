@@ -5380,7 +5380,7 @@ function reeBillReady() {
     var curYear = now.getUTCFullYear();
     var curMonth = now.getUTCMonth();
     var year; var month; var ago = 11;
-    if (month == 11) {
+    if (curMonth == 11) { // December (months are numbered from 0)
         year = curYear;
         month = 1;
     } else {
