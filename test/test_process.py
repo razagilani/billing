@@ -96,7 +96,10 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEquals(0, mongo_reebill.total_adjustment)
             self.assertEquals(0, mongo_reebill.manual_adjustment)
             self.assertEquals(None, mongo_reebill.issue_date)
-            self.assertEquals(None, mongo_reebill.recipients)
+            self.assertIsInstance(mongo_reebill.bill_recipients, list)
+            self.assertEquals(0, len(mongo_reebill.bill_recipients))
+            self.assertIsInstance(mongo_reebill.last_recipients, list)
+            self.assertEquals(0, len(mongo_reebill.last_recipients))
             self.assertEquals(Decimal('0.6'), mongo_reebill.discount_rate)
             self.assertEquals(Decimal('0.2'), mongo_reebill.late_charge_rate)
 
@@ -1108,21 +1111,26 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEquals(True, self.state_db.is_issued(session, acc, 1))
             self.assertEquals(datetime.utcnow().date(), one.issue_date)
             self.assertEquals(one.issue_date + timedelta(30), one.due_date)
-            self.assertEquals(one.recipients, None)
+            self.assertIsInstance(one.bill_recipients, list)
+            self.assertEquals(len(one.bill_recipients), 0)
+            self.assertIsInstance(one.last_recipients, list)
+            self.assertEquals(len(one.last_recipients), 0)
 
             two = self.process.roll_bill(session, one)
-
+            two.bill_recipients = ['test1@reebill.us', 'test2@reebill.us']
+            self.reebill_dao.save_reebill(two)
+            
             # attach & issue two
             self.assertRaises(BillStateError, self.process.attach_utilbills, session, two)
-            self.process.issue(session, acc, 2, ['test1@reebill.us', 'test2@reebill.us'])
+            self.process.issue(session, acc, 2)
             # re-load from mongo to see updated issue date and due date
             two = self.reebill_dao.load_reebill(acc, 2)
             self.assertEquals(True, self.state_db.is_issued(session, acc, 2))
             self.assertEquals(datetime.utcnow().date(), two.issue_date)
             self.assertEquals(two.issue_date + timedelta(30), two.due_date)
-            self.assertIsInstance(two.recipients, list)
-            self.assertEquals(len(two.recipients), 2)
-            self.assertEquals(True, all(map(isinstance, two.recipients, [unicode]*len(two.recipients))))
+            self.assertIsInstance(two.bill_recipients, list)
+            self.assertEquals(len(two.bill_recipients), 2)
+            self.assertEquals(True, all(map(isinstance, two.bill_recipients, [unicode]*len(two.bill_recipients))))
 
     def test_delete_reebill(self):
         account = '99999'

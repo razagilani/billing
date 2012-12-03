@@ -11,7 +11,7 @@ import string, re
 import ConfigParser
 from datetime import datetime, date, timedelta
 import itertools as it
-from decimal import Decimal, DivisionByZero
+from decimal import Decimal, DivisionByZero, InvalidOperation
 import uuid as UUID # uuid collides with locals so both module and locals are renamed
 import inspect
 import logging
@@ -731,13 +731,6 @@ class BillToolBridge:
             # (no sequence associated with this)
             journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
                     customer.account)
-            new_reebill = self.process.roll_bill(session, reebill)
-            self.reebill_dao.save_reebill(new_reebill)
-
-            # record reebill roll separately ("so that performance can be
-            # measured": 25282041)
-            journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
-                    customer.account, 0)
 
             # get next account number to send it back to the client so it
             # can be shown in the account-creation form
@@ -1983,6 +1976,8 @@ class BillToolBridge:
                         row_dict['difference'] = abs(1-row_dict['reebill_total']/row_dict['util_total'])
                     except DivisionByZero:
                         row_dict['difference'] = Decimal('Infinity')
+                    except InvalidOperation:
+                        row_dict['difference'] = Decimal(0.0)
                     row_dict['matching'] = row_dict['difference'] < allowable_diff
                     rows.append(row_dict)
                 rows.sort(key=lambda d: d[sort], reverse = (direction == 'ASC'))
