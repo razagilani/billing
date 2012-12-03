@@ -191,6 +191,9 @@ class StateDB:
                 .filter(UtilBill.period_start==start)\
                 .filter(UtilBill.period_end==end).one()
 
+    def get_utilbill_by_id(self, session, ubid):
+        return session.query(UtilBill).filter(UtilBill.id==ubid).one()
+
     def try_to_attach_utilbills(self, session, account, sequence, start, end,
             suspended_services=[]):
         '''Raises an exception if 'attach_utilbills' would fail, does not
@@ -539,6 +542,9 @@ class StateDB:
             .filter(ReeBill.sequence==sequence).one()
 
         return query
+
+    def get_reebill_by_id(self, session, rbid):
+        return session.query(ReeBill).filter(ReeBill.id==rbid).one()
 
     def get_descendent_reebills(self, session, account, sequence):
 
