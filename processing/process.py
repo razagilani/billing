@@ -333,10 +333,14 @@ class Process(object):
             self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence + 1,
                     0, utility_name, rate_structure_name, cprs)
 
+        # TODO Put somewhere nice because this has a specific function
+        active_utilbills = [u for u in reebill._utilbills if u['service'] in reebill.services]
+        reebill.reebill_dict['utilbills'] = [handle for handle in reebill.reebill_dict['utilbills'] if handle['id'] in [u['_id'] for u in active_utilbills]]
+
         # construct a new reebill from an old one. the new one's version is
         # always 0 even if it was created from a non-0 version of the old one.
         reebill.new_utilbill_ids()
-        new_reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
+        new_reebill = MongoReebill(reebill.reebill_dict, active_utilbills)
         new_reebill.version = 0
         new_reebill.new_utilbill_ids()
         new_reebill.clear()

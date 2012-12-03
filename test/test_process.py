@@ -353,12 +353,9 @@ class ProcessTest(TestCaseWithSetup):
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 0))
 
-            self.state_db.record_utilbill_in_database(session, account,
-                    'gas', date(2012,1,1), date(2012,2,1), 100, date.today())
+            self.state_db.record_utilbill_in_database(session, account, 'gas', date(2012,1,1), date(2012,2,1), 100, date.today())
             self.state_db.record_utilbill_in_database(session, account,
                     'electric', date(2012,1,10), date(2012,2,10), 100, date.today())
-            self.reebill_dao._save_utilbill(example_data.get_utilbill_dict(account, date(2012,1,1), date(2012,2,1), service='gas'))
-            self.reebill_dao._save_utilbill(example_data.get_utilbill_dict(account, date(2012,1,10), date(2012,2,10), service='electric'))
 
             # generic reebill
             bill0 = example_data.get_reebill(account, 0)
@@ -378,10 +375,9 @@ class ProcessTest(TestCaseWithSetup):
             })
             bill0._utilbills.append(electric_bill)
             bill0.suspend_service('electric')
+            
             self.reebill_dao.save_reebill(bill0)
             
-            
-
             bill1 = self.process.roll_bill(session, bill0)
             
             self.assertEquals(['electric'], bill1.suspended_services)
@@ -766,7 +762,7 @@ class ProcessTest(TestCaseWithSetup):
         #one = example_data.get_reebill(acc, 1, version=0, start=date(2012,1,1),
         #        end=date(2012,2,1))
         self.reebill_dao.save_reebill(zero)
-        
+
         #self.reebill_dao.save_reebill(one)
         self.rate_structure_dao.save_rs(example_data.get_urs_dict())
         self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
