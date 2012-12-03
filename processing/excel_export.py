@@ -84,7 +84,7 @@ class Exporter(object):
                 # TODO rich hypothesizes that for utilities, the fuzzy "billing
                 # month" is the month in which the billing period ends
                 approximate_month(reebill.period_begin,
-                        reebill.period_end).strftime('%Y-%m'),
+                                  reebill.period_end).strftime('%Y-%m'),
                 'Yes' if estimated else 'No'
             ]
             # pad row with blank cells to match dataset width
