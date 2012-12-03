@@ -605,6 +605,8 @@ class Process(object):
         reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         reebill.billing_address = {}
         reebill.service_address = {}
+        reebill.bill_recipients = []
+        reebill.last_recipients = []
         reebill.late_charge_rate = late_charge_rate
 
         # reset the reebill's fields to 0/blank/etc., even though it's not
