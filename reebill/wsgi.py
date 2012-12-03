@@ -11,7 +11,7 @@ import string, re
 import ConfigParser
 from datetime import datetime, date, timedelta
 import itertools as it
-from decimal import Decimal
+from decimal import Decimal, DivisionByZero, InvalidOperation
 import uuid as UUID # uuid collides with locals so both module and locals are renamed
 import inspect
 import logging
@@ -759,6 +759,8 @@ class BillToolBridge:
             new_reebill = self.reebill_dao.load_reebill(account, lastSequence+1)
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
                     account, new_reebill.sequence)
+            journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
+                account, new_reebill.sequence, new_reebill.version)
             return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -878,8 +880,8 @@ class BillToolBridge:
         services are skipped. Note that this does not issue the reebill or give
         it an issue date.'''
         # finalize utility bill association
-        self.process.attach_utilbills(session, account,
-                sequence)
+        reebill = self.reebill_dao.load_reebill(account, sequence)
+        self.process.attach_utilbills(session, reebill)
 
         version = self.state_db.max_version(session, account, sequence)
         journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
@@ -901,15 +903,15 @@ class BillToolBridge:
             self.attach_utility_bills(session, account, sequence)
             return self.dumps({'success': True})
 
-    def issue_reebills(self, session, account, sequences, recipients,
+    def issue_reebills(self, session, account, sequences,
             apply_corrections=True):
         '''Issues all unissued bills given by account and sequences. These must
         be version 0, not corrections. If apply_corrections is True, all
         unissued corrections will be applied to the earliest unissued bill in
         sequences.'''
         # attach utility bills to all unissued bills
-        for unissued_sequence in sequences:
-            self.attach_utility_bills(session, account, unissued_sequence)
+        #for unissued_sequence in sequences:
+        #    self.attach_utility_bills(session, account, unissued_sequence)
 
         if apply_corrections:
             # get unissued corrections for this account
@@ -926,7 +928,7 @@ class BillToolBridge:
                     unissued_sequence - 1, version=0)
             reebill = self.reebill_dao.load_reebill(account, unissued_sequence)
             self.process.compute_bill(session, predecessor, reebill)
-            self.process.issue(session, account, unissued_sequence, recipients)
+            self.process.issue(session, account, unissued_sequence)
 
         # journal attaching of utility bills
         for unissued_sequence in sequences:
@@ -952,32 +954,52 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def retrieve_mail_addresses(self, account, **kwargs):
-        if not account:
-            raise ValueError("Bad Parameter Value")
-
+    def issue(self, account, sequence, apply_corrections, **kwargs):
+        sequence = int(sequence)
+        apply_corrections = (apply_corrections == 'true')
         with DBSession(self.state_db) as session:
-            # The last issued sequence would be associated with the ReeBill that was
-            # most recently issued. Therefore, if it exists, we can look up the record
-            # for the e-mail addresses of who received that ReeBill
-            # By default, assume there are no such addresses (yielding a null value in the JSON response)
-            mail_addresses = None
-            last_issued_sequence = self.state_db.last_issued_sequence(session, account)
-
-            if last_issued_sequence:
-                last_issued_reebill = self.reebill_dao.load_reebill(account, last_issued_sequence)
-                mail_addresses = last_issued_reebill.recipients
-
-        return self.dumps({'success': True, 'mail_addresses': mail_addresses})
+            mongo_reebill = self.reebill_dao.load_reebill(account, sequence)
+            recipients = mongo_reebill.bill_recipients
+            unissued_corrections = self.process.get_unissued_corrections(session, account)
+            unissued_correction_sequences = [c[0] for c in unissued_corrections]
+            unissued_correction_adjustment = sum(c[2] for c in unissued_corrections)
+            if len(unissued_corrections) > 0 and not apply_corrections:
+                    return self.dumps({'success': False,
+                        'corrections': unissued_correction_sequences,
+                        'adjustment': unissued_correction_adjustment })
+            self.issue_reebills(session, account, [sequence], apply_corrections=apply_corrections)
+            mongo_reebill = self.reebill_dao.load_reebill(account, sequence)
+            self.renderer.render_max_version(session, account, sequence, 
+                                             self.config.get("billdb", "billpath")+ "%s" % account, 
+                                             "%.4d.pdf" % sequence, True)
+            bill_name = "%.4d.pdf" %sequence
+            merge_fields = {}
+            merge_fields["sa_street1"] = mongo_reebill.service_address["sa_street1"]
+            merge_fields["balance_due"] = mongo_reebill.balance_due.quantize(Decimal("0.00"))
+            merge_fields["bill_dates"] = ["%s" % (mongo_reebill.period_end) ]
+            merge_fields["last_bill"] = bill_name
+            bill_mailer.mail(recipients, merge_fields,
+                    os.path.join(self.config.get("billdb", "billpath"),
+                        account), [bill_name]);
+            
+            last_sequence = self.state_db.last_sequence(session, account)
+            if sequence != last_sequence:
+                next_bill = self.reebill_dao.load_reebill(account, sequence+1)
+                next_bill.bill_recipients = recipients
+                self.reebill_dao.save_reebill(next_bill)
+            journal.ReeBillMailedEvent.save_instance(cherrypy.session['user'],
+                                                     account, sequence, ", ".join(recipients))
+            
+        return self.dumps({'success': True})
 
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
     @json_exception
     def mail(self, account, sequences, recipients, **kwargs):
-        if not account or not sequences or not recipients:
+        if not account or not sequences:
             raise ValueError("Bad Parameter Value")
-
+        
         # Go from comma-separated e-mail addresses to a list of e-mail addresses
         recipient_list = [rec.strip() for rec in recipients.split(',')]
 
@@ -988,54 +1010,6 @@ class BillToolBridge:
         else:
             sequences = [int(sequences)]
 
-        # if there are multiple corrections, cherrypy actually parses the JSON,
-        # so "corrections" is a list! but it doesn't turn the contents of the
-        # list into integers
-        # TODO: 32210533 Isn't just easier to make corrections a list? Like above? There should be a consistent pattern or a param_listify() function
-        # Rich really hates using locals() to test for variables.  Is it really necessary?
-        if 'corrections' in kwargs:
-            if isinstance(kwargs['corrections'], basestring):
-                corrections_to_apply = map(int, kwargs['corrections'].split(','))
-            else:
-                corrections_to_apply = map(int, kwargs['corrections'])
-
-        # 1st transaction: issue
-        with DBSession(self.state_db) as session:
-            # don't issue anything unless at least one of the unissued bills is
-            # not a correction (because corrections must be applied to a bill
-            # that isn't a correction)
-            if any(self.state_db.max_version(session, account, s) == 0 and not
-                    self.state_db.is_issued(session, account, s) for s in
-                    sequences):
-                # get unissued subset of 'sequences'
-                unissued_sequences = sorted([s for s in sequences if not
-                        self.state_db.is_issued(session, account, s)])
-
-                # if this account has unissued corrections and there is at least
-                # one unissued bill (about to be issued) and the client didn't
-                # specify corrections to apply, complain (client will show
-                # confirmation message)
-                unissued_corrections = self.process.get_unissued_corrections(
-                        session, account)
-                unissued_correction_sequences = [c[0] for c in unissued_corrections]
-                unissued_correction_adjustment = sum(c[2] for c in unissued_corrections)
-                if len(unissued_corrections) > 0 and len(unissued_sequences) > 0 \
-                        and 'corrections' not in kwargs:
-                    return self.dumps({'success': False,
-                        'corrections': unissued_correction_sequences,
-                        'adjustment': unissued_correction_adjustment })
-                if 'corrections_to_apply' in locals():
-                    # make sure corrections_to_apply is all of them (currently,
-                    # client code guarantees this)
-                    if not sorted(corrections_to_apply) == sorted(
-                            unissued_correction_sequences):
-                        raise ValueError('All corrections must be issued.')
-                self.issue_reebills(session, account, unissued_sequences, recipient_list,
-                        apply_corrections=('corrections_to_apply' in locals()))
-
-
-        # TODO 32204105: Issue and mail - since mail can fail, shouldn't it be first? Or, shouldn't both be in the same transaction?
-        # 2nd transaction: mail
         with DBSession(self.state_db) as session:
             all_bills = [self.reebill_dao.load_reebill(account, sequence) for
                     sequence in sequences]
@@ -1046,10 +1020,7 @@ class BillToolBridge:
             for reebill in all_bills:
                 self.renderer.render_max_version(session, reebill.account, reebill.sequence, 
                     self.config.get("billdb", "billpath")+ "%s" % reebill.account, 
-                    "%.4d.pdf" % int(reebill.sequence),
-                    #"EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
-                    True
-                )
+                    "%.4d.pdf" % int(reebill.sequence), True)
 
             # "the last element" (???)
             most_recent_bill = all_bills[-1]
@@ -1205,7 +1176,7 @@ class BillToolBridge:
             elif sortcol == 'dayssince':
                 rows.sort(key=lambda r: r['dayssince'], reverse=sortreverse)
             elif sortcol == 'lastissuedate':
-                rows.sort(key=lambda r: r['lastissuedate'], reverse=sortreverse)
+                rows.sort(key=lambda r: r['lastissuedate'] if r['lastissuedate'] != 'Never Issued' else '', reverse=sortreverse)
             elif sortcol == 'lastevent':
                 rows.sort(key=lambda r: r['lastevent'], reverse=sortreverse)
 
@@ -1980,7 +1951,54 @@ class BillToolBridge:
                 # necessarily mean that a row disappears from the grid.
                 raise ValueError("Use delete_reebill instead!")
 
-
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def issuable(self, xaction, **kwargs):
+        '''Return a list of the issuable reebills'''
+        if not xaction:
+            raise ValueError("Bad Parameter Value")
+        with DBSession(self.state_db) as session:
+            if xaction == 'read':
+                start = kwargs['start']
+                limit = kwargs['limit']
+                sort = kwargs['sort']
+                direction = kwargs['dir']
+                rows = []
+                allowable_diff = 0
+                try:
+                    allowable_diff = cherrypy.session['user'].preferences['reebill_total-percent_cutoff']
+                except:
+                    allowable_diff = UserDAO.default_user.preferences['difference_threshold']
+                reebills, total = self.state_db.listAllIssuableReebillInfo(session=session)
+                for reebill_info in reebills:
+                    row_dict = {}
+                    mongo_reebill = self.reebill_dao.load_reebill(reebill_info[0], reebill_info[1])
+                    row_dict['id'] = reebill_info[0]
+                    row_dict['account'] = reebill_info[0]
+                    row_dict['sequence'] = reebill_info[1]
+                    row_dict['util_total'] = reebill_info[2]
+                    row_dict['mailto'] = ", ".join(mongo_reebill.bill_recipients)
+                    row_dict['reebill_total'] = mongo_reebill.actual_total
+                    try:
+                        row_dict['difference'] = abs(1-row_dict['reebill_total']/row_dict['util_total'])
+                    except DivisionByZero:
+                        row_dict['difference'] = Decimal('Infinity')
+                    except InvalidOperation:
+                        row_dict['difference'] = Decimal(0.0)
+                    row_dict['matching'] = row_dict['difference'] < allowable_diff
+                    rows.append(row_dict)
+                rows.sort(key=lambda d: d[sort], reverse = (direction == 'ASC'))
+                rows.sort(key=lambda d: d['matching'], reverse = True)
+                return self.dumps({'success': True, 'rows':rows[int(start):int(start)+int(limit)], 'total':total})
+            elif xaction == 'update':
+                row = json.loads(kwargs["rows"])
+                mongo_reebill = self.reebill_dao.load_reebill(row['account'],row['sequence'])
+                mongo_reebill.bill_recipients = [r.strip() for r in row['mailto'].split(',')]
+                self.reebill_dao.save_reebill(mongo_reebill)
+                return self.dumps({'success':True})
+            
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
@@ -2737,7 +2755,7 @@ class BillToolBridge:
                         dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
                 new_period_end = datetime.strptime(rows['period_end'],
                         dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
-                new_service = rows['service']
+                new_service = rows['service'].lower()
                 new_total_charges = rows['total_charges']
 
                 # check that new dates are reasonable
@@ -2859,6 +2877,23 @@ class BillToolBridge:
         self.user_dao.save_user(cherrypy.session['user'])
         return self.dumps({'success':True})
 
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def getDifferenceThreshold(self, **kwargs):
+        threshold = cherrypy.session['user'].preferences['difference_threshold']*100.0
+        return self.dumps({'success':True, 'threshold': threshold})
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def setDifferenceThreshold(self, threshold, **kwargs):
+        cherrypy.session['user'].preferences['difference_threshold'] = float(threshold)/100.0
+        self.user_dao.save_user(cherrypy.session['user'])
+        return self.dumps({'success':True})
+    
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
