@@ -12,7 +12,7 @@ from glob import glob
 import shutil
 import ConfigParser
 from db_objects import Customer, UtilBill
-from billing.dateutils import ISO_8601_DATETIME_WITHOUT_ZONE
+from billing.util.dateutils import ISO_8601_DATETIME_WITHOUT_ZONE
 
 sys.stdout = sys.stderr
 
@@ -113,9 +113,6 @@ class BillUpload(object):
         finally:
             if save_file is not None:
                 save_file.close()
-
-        # make a row in utilbill representing the bill that was uploaded.
-        #self.state_db.insert_bill_in_database(account, begin_date, end_date)
 
         return True
 
