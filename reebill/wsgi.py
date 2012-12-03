@@ -2753,13 +2753,10 @@ class BillToolBridge:
                 self.validate_utilbill_period(new_period_start, new_period_end)
 
                 # find utilbill in mysql
-                utilbill = session.query(db_objects.UtilBill).filter(
-                        db_objects.UtilBill.id==utilbill_id).one()
-                customer = session.query(db_objects.Customer).filter(
-                        db_objects.Customer.id==utilbill.customer_id).one()
+                utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
 
-                # utility bills that have reebills shouldn't be editable
-                if utilbill.has_reebill:
+                # utility bills that have issued reebills shouldn't be editable
+                if utilbill.has_reebill and utilbill.reebill.issued:
                     raise Exception("Can't edit utility bills that have already been attached to a reebill.")
 
                 # move the file, if there is one. (only utility bills that are
@@ -2775,10 +2772,6 @@ class BillToolBridge:
                             new_period_start, new_period_end)
 
                 # change dates in MySQL
-                utilbill = session.query(db_objects.UtilBill)\
-                        .filter(db_objects.UtilBill.id==utilbill_id).one()
-                if utilbill.has_reebill:
-                    raise Exception("Can't edit utility bills that have already been attached to a reebill.")
                 utilbill.period_start = new_period_start
                 utilbill.period_end = new_period_end
                 utilbill.total_charges = new_total_charges
