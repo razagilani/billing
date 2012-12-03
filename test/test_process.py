@@ -1124,12 +1124,12 @@ class ProcessTest(TestCaseWithSetup):
             one = self.process.roll_bill(session, template)
 
             # neither reebill should be issued yet
-            self.assertequals(false, self.state_db.is_issued(session, acc, 1))
-            self.assertequals(none, one.issue_date)
-            self.assertequals(none, one.due_date)
-            #self.assertequals(false, self.state_db.is_issued(session, acc, 2))
-            #self.assertequals(none, two.issue_date)
-            #self.assertequals(none, two.due_date)
+            self.assertEquals(False, self.state_db.is_issued(session, acc, 1))
+            self.assertEquals(none, one.issue_date)
+            self.assertEquals(none, one.due_date)
+            #self.assertEquals(False, self.state_db.is_issued(session, acc, 2))
+            #self.assertEquals(none, two.issue_date)
+            #self.assertEquals(none, two.due_date)
 
             # two should not be attachable or issuable until one is issued
             self.assertraises(billstateerror, self.process.attach_utilbills, session, one)
@@ -1258,9 +1258,6 @@ class ProcessTest(TestCaseWithSetup):
             self.state_db.record_utilbill_in_database(session, acc, 'gas',
                     date(2012,3,1), date(2012,4,1), 100,
                     datetime.utcnow().date())
-            self.reebill_dao._save_utilbill(example_data.get_utilbill_dict(acc, start=date(2012,1,1), end=date(2012,2,1)))
-            self.reebill_dao._save_utilbill(example_data.get_utilbill_dict(acc, start=date(2012,2,1), end=date(2012,3,1)))
-            self.reebill_dao._save_utilbill(example_data.get_utilbill_dict(acc, start=date(2012,3,1), end=date(2012,4,1)))
             
             zero = example_data.get_reebill(acc, 0)
             self.reebill_dao.save_reebill(zero)

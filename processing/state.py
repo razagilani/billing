@@ -593,8 +593,10 @@ class StateDB:
         for service, period_end in service_iter:
             # First, query to find the next unattached utilbill on this account for this customer and this service
             try:
-                utilbill = session.query(UtilBill).filter(UtilBill.customer==customer, UtilBill.service==service, UtilBill.period_start>=period_end, UtilBill.rebill_id == None)\
-                    .order_by(asc(UtilBill.period_start)).first()
+                utilbill = session.query(UtilBill).filter(
+                        UtilBill.customer==customer, UtilBill.service==service,
+                        UtilBill.period_start>=period_end, UtilBill.rebill_id
+                        == None).order_by(asc(UtilBill.period_start)).first()
             except NoResultFound:
                 # If the utilbill is not found, then the rolling process can't proceed
                 raise Exception('No new %s utility bill found' % service)
