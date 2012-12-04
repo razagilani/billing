@@ -2763,7 +2763,7 @@ class BillToolBridge:
                 # Complete (0) or UtilityEstimated (1) have files;
                 # SkylineEstimated (2) and Hypothetical (3) ones don't.)
                 if utilbill.state < db_objects.UtilBill.SkylineEstimated:
-                    self.billUpload.move_utilbill_file(customer.account,
+                    self.billUpload.move_utilbill_file(utilbill.customer.account,
                             # don't trust the client to say what the original dates were
                             # TODO don't pass dates into BillUpload as strings
                             # https://www.pivotaltracker.com/story/show/24869817
@@ -2779,7 +2779,7 @@ class BillToolBridge:
                 # delete any estimated utility bills that were created to
                 # cover gaps that no longer exist
                 self.process.state_db.trim_hypothetical_utilbills(session,
-                        customer.account, utilbill.service)
+                        utilbill.customer.account, utilbill.service)
 
                 # update service in MySQL
                 utilbill.service = new_service
