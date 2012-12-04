@@ -1,0 +1,72 @@
+Technical Notes for Deployment
+==============================
+
+Notable changes - the Mod WSGI/User virtual env scheme is all but lost as all packages are more or less locally installed in the user virtual env.  This scheme would be useful for highly configuration managed multi-tenant configurations but has turned out to be not useful for single install internal usage.
+
+Get the right version of skyliner in the workarea.  hg up -r 14510c3e714e 
+
+For atsite deployment: manually disable tabs not used 25277243
+
+install xlwt
+
+User shell python path needs to be set
+export PYTHONPATH=/var/local/reebill-stage/lib/python2.6/site-packages:/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib
+
+db_upgrade_scripts/fix_reebilldates.py - edit values
+
+db_upgrade_scripts/fix_reebill_dates.py
+
+edit and execute from the billing dir, python db_upgrade_scripts/add_discountrate.py       billdb_config = {
+    'billpath': '/db-stage/skyline/bills/',
+    'database': 'skyline-stage',
+    'utilitybillpath': '/db-stage/skyline/utilitybills/',
+    'collection': 'reebills',
+    'host': 'localhost',
+    'port': '27017'
+}
+statedb_config = {
+    'host': 'localhost',
+    'password': 'stage',
+    'database': 'skyline_stage',
+    'user': 'stage'
+}
+
+billing/scripts/reconciliation.py. See the output of scripts/reconciliation.py -h for command-line arguments. See crontab examples in dedicated setup guide.
+
+Set up crontab on tyrell to generate reconcilation report; ensure MODWSGI python path is used; all dependencies are in the reebill-stage user virtualenv.  Cron needs to have env vars set.  See examples in dedicated setup guide.
+
+for reconciliation to run as a cronjob new modules: argparse, pyyaml, fabulous
+
+
+Notable Features
+================
+
+ReeBills that are not associated to utility bills can be deleted.
+
+A reconciliation report that summarizes billed energy versus energy tracked in our data warehouse.
+
+Many static configurations are now externalized in the application configuration file.
+
+Historical discount rates are now tracked allowing for a discount rate to be variant.
+
+Utility bill periods can be edited after the utility bill is uploaded.
+
+Hypothetical utility charges are automatically updated and calculated.
+
+The utility periodic rate structure is now available and shared across the rate structure by date period.
+
+The global utility rate structure is no longer editable.
+
+The application can be configured to suppress the display of a ReeBill.
+
+A comprehensive XLS format export of all disaggregated bill data is available.
+
+The application can be configured to operate independent of OLAP/OLTP and Nexus.
+
+Client/server protocol (Ajax/JSON) now detects expired user sessions for graceful logout.
+
+ReeBills as associatable to their utility bills prior to completion of processing.
+
+The ReeBill tab now has a grid showing all sequences with the old widgets in the toolbar of that grid.
+
+Charge items are automatically recalculated every time the rate structure is modified.
