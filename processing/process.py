@@ -354,12 +354,11 @@ class Process(object):
         new_reebill.discount_rate = self.state_db.discount_rate(session, reebill.account)
         new_reebill.late_charge_rate = self.state_db.late_charge_rate(session, reebill.account)
 
-        self.reebill_dao.save_reebill(new_reebill)
+        #self.reebill_dao.save_reebill(new_reebill)
 
         # create reebill row in state database
         self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
-        self.attach_utilbills(session, new_reebill)
-        self.state_db.attach_utilbills(session, new_reebill.account, new_reebill.sequence, utilbills, new_reebill.suspended_services)
+        self.attach_utilbills(session, new_reebill, utilbills)        
         
         return new_reebill
 
@@ -644,7 +643,7 @@ class Process(object):
 
 
     # TODO 21052893: probably want to set up the next reebill here.  Automatically roll?
-    def attach_utilbills(self, session, reebill):
+    def attach_utilbills(self, session, reebill, utilbills):
         '''Freeze utilbills from the previous reebill into a new reebill.
 
         This affects only the Mongo document.'''
@@ -658,7 +657,11 @@ class Process(object):
         # but here it must precede MySQL because ReebillDAO.save_reebill will
         # refuse to create frozen utility bills "again" if MySQL says its
         # attached". see https://www.pivotaltracker.com/story/show/38308443)
+        self.state_db.try_to_attach_utilbills(session, reebill.account, reebill.sequence, utilbills, reebill.suspended_services)
+
         self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
+
+        self.state_db.attach_utilbills(session, reebill.account, reebill.sequence, utilbills, reebill.suspended_services)
 
     def bind_rate_structure(self, reebill):
             # process the actual charges across all services
