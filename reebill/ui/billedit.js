@@ -427,6 +427,7 @@ function reeBillReady() {
                     for (var i = 0; i < selections.length; i++) {
                         utilbillGridStore.remove(selections[i]);
                     }
+                    utilbillGrid.getBottomToolbar().doRefresh();
                 }
             }]
         }),
