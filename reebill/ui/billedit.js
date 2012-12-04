@@ -71,11 +71,11 @@ function reeBillReady() {
                                 ReeBill.LoginWindow.show();
                             }
                         } else {
-                            console.log(jsonData);
+                            //console.log(jsonData);
                         }
                     }
                 } else {
-                    console.log(jsonData);
+                    //console.log(jsonData);
                 }
             }
         } catch (e) {
