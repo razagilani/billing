@@ -751,10 +751,10 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def roll(self, account, **kwargs):
+        if not account:
+            raise ValueError("Bad Parameter Value")
         with DBSession(self.state_db) as session:
             lastSequence = self.state_db.last_sequence(session, account)
-            if not account:
-                raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, lastSequence)
             new_reebill = self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(new_reebill)

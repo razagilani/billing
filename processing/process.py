@@ -600,11 +600,12 @@ class Process(object):
         reebill = self.reebill_dao.load_reebill(template_account, template_last_sequence, 0)
 
         reebill.convert_to_new_account(account)
-
         # This 'copy' is set to sequence zero which acts as a 'template' 
         reebill.sequence = 0
         reebill.version = 0
-
+        for utilbill in reebill._utilbills:
+            utilbill['sequence'] = 0
+            utilbill['version'] = 0
         reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         reebill.billing_address = {}
         reebill.service_address = {}
