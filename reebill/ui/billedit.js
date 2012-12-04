@@ -6073,11 +6073,11 @@ function reeBillReady() {
                     return record.data.sequence == sequence + 1; }).first() ==
                     undefined;
 
-            // delete button requires selected unissued reebill whose predecessor
-            // is issued, or whose sequence is the last one
-            deleteButton.setDisabled(! (isLastSequence &&
-                    record.data.max_version == 0) && (record.data.issued == true ||
-                    (prevRecord != null && prevRecord.data.issued == false)));
+            // delete button requires selected unissued correction whose predecessor
+            // is issued, or an unissued reebill whose sequence is the last one
+            deleteButton.setDisabled(!(isLastSequence && record.data.issued == 0 ||
+                    (record.data.issued == false && record.data.max_version > 0 &&
+                    (prevRecord == null || prevRecord.data.issued == true))));
             // new version button requires selected issued reebill
             versionButton.setDisabled(sequence == null || record.data.issued == false);
         }
