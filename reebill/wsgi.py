@@ -262,6 +262,13 @@ class BillToolBridge:
             self.config.set('reebillrendering', 'default_template', DEFAULT_TEMPLATE)
             self.config.set('reebillrendering', 'teva_accounts', '')
 
+            # reebill reconciliation
+            DEFAULT_RECONCILIATION_LOG_DIRECTORY = '/tmp'
+            DEFAULT_RECONCILIATION_REPORT_DIRECTORY = '/tmp'
+            self.config.add_section('reebillreconciliation')
+            self.config.set('reebillreconciliation', 'log_directory', DEFAULT_RECONCILIATION_LOG_DIRECTORY)
+            self.config.set('reebillreconciliation', 'report_directory', DEFAULT_RECONCILIATION_REPORT_DIRECTORY)
+
 
             # TODO default config file is incomplete
 
@@ -389,6 +396,9 @@ class BillToolBridge:
         # determine whether authentication is on or off
         self.authentication_on = self.config.getboolean('authentication', 'authenticate')
 
+        self.reconciliation_log_dir = self.config.get('reebillreconciliation', 'log_directory')
+        self.reconciliation_report_dir = self.config.get('reebillreconciliation', 'report_directory')
+
         # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
 
@@ -434,8 +444,7 @@ class BillToolBridge:
     def get_reconciliation_data(self, start, limit, **kwargs):
         '''Handles AJAX request for data to fill reconciliation report grid.'''
         start, limit = int(start), int(limit)
-        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                'reconciliation_report.json')) as json_file:
+        with open(os.path.join(self.reconciliation_report_dir,'reconciliation_report.json')) as json_file:
             # load all data from json file: it's one JSON dictionary per
             # line (for reasons explained in reconciliation.py) but should
             # be interpreted as a JSON list
