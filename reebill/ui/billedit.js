@@ -1674,127 +1674,6 @@ function reeBillReady() {
     //
     ////////////////////////////////////////////////////////////////////////////
 
-
-
-
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Bill Periods tab
-    //
-    // dynamically create the period forms when a bill is loaded
-    //
-
-    function configureUBPeriodsForms(account, sequence, periods)
-    {
-        var ubPeriodsTab = tabPanel.getItem('ubPeriodsTab');
-
-        ubPeriodsTab.removeAll(true);
-
-        var ubPeriodsFormPanels = [];
-        
-        if (periods) {
-            for (var service in periods["periods"]) { 
-                var ubPeriodsFormPanel = new Ext.FormPanel({
-                    id: service + 'UBPeriodsFormPanel',
-                    title: 'Service ' + service,
-                    header: true,
-                    url: 'http://'+location.host+'/reebill/setUBPeriod',
-                    border: false,
-                    frame: true,
-                    labelWidth: 125,
-                    bodyStyle:'padding:10px 10px 0px 10px',
-                    items:[], // added by configureUBPeriodsForm()
-                    buttons: [
-                        // TODO: the save button is generic in function, refactor
-                        {
-                            text   : 'Save',
-                            handler: saveForm
-                        },{
-                            text   : 'Reset',
-                            handler: function() {
-                                var formPanel = this.findParentByType(Ext.form.FormPanel);
-                                formPanel.getForm().reset();
-                            }
-                        }
-                    ]
-                });
-
-                // add the period date pickers to the form
-                ubPeriodsFormPanel.add(
-                    new Ext.form.DateField({
-                        fieldLabel: 'Begin',
-                        name: 'begin',
-                        value: periods["periods"][service].begin,
-                        format: 'Y-m-d'
-                    }),
-                    new Ext.form.DateField({
-                        fieldLabel: 'End',
-                        name: 'end',
-                        value: periods["periods"][service].end,
-                        format: 'Y-m-d'
-                    })
-                );
-
-                // add base parms for form post
-                ubPeriodsFormPanel.getForm().baseParams = {account: account, sequence: sequence, service:service}
-
-                ubPeriodsFormPanels.push(ubPeriodsFormPanel);
-
-            }
-        }
-        ubPeriodsTab.add(ubPeriodsFormPanels);
-        ubPeriodsTab.doLayout();
-    }
-
-    //
-    // Instantiate the Utility Bill Periods panel
-    //
-    var ubBillPeriodsPanel = new Ext.Panel({
-        id: 'ubPeriodsTab',
-        title: 'Bill Periods',
-        disabled: billPeriodsPanelDisabled,
-        items: null // configureUBPeriodForm set this
-    });
-
-    ubBillPeriodsPanel.on('activate', function () {
-        // because this tab is being displayed, demand the form that it contain 
-        // be populated
-        // disable it during load, the datastore re-enables when loaded.
-        ubBillPeriodsPanel.setDisabled(true);
-
-        // get utilbill period information from server
-        // TODO: fire this request only when the form is displayed
-        ubPeriodsDataConn.request({
-            params: {account: selected_account, sequence: selected_sequence},
-            success: function(result, request) {
-                var jsonData = null;
-                try {
-                    jsonData = Ext.util.JSON.decode(result.responseText);
-                    if (jsonData.success == false)
-                    {
-                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                    } else {
-                        configureUBPeriodsForms(selected_account, selected_sequence, jsonData);
-                    } 
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
-                } finally {
-                    ubBillPeriodsPanel.setDisabled(false);
-                }
-            },
-            failure: function() {
-                try {
-                    Ext.MessageBox.alert('Server Error', result.responseText);
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
-                } finally {
-                    ubBillPeriodsPanel.setDisabled(false);
-                }
-            },
-        });
-
-    });
-
     ////////////////////////////////////////////////////////////////////////////
     // Measured Usage Tab
     //
@@ -5977,7 +5856,6 @@ function reeBillReady() {
             paymentsPanel,
             utilityBillPanel,
             reeBillPanel,
-            ubBillPeriodsPanel,
             ubMeasuredUsagesPanel,
             rateStructurePanel,
             chargeItemsPanel,
@@ -6068,7 +5946,6 @@ function reeBillReady() {
         selected_sequence = null;
 
         // a new account has been selected, deactivate subordinate tabs
-        ubBillPeriodsPanel.setDisabled(true);
         ubMeasuredUsagesPanel.setDisabled(true);
         rateStructurePanel.setDisabled(true);
         chargeItemsPanel.setDisabled(true);
@@ -6167,12 +6044,6 @@ function reeBillReady() {
     // configure data connections for widgets that are not managed by 
     // datastores.
     //
-    var ubPeriodsDataConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/ubPeriods',
-    });
-    ubPeriodsDataConn.autoAbort = true;
-    ubPeriodsDataConn.disableCaching = true;
-
     var ubMeasuredUsagesDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/ubMeasuredUsages',
     });
@@ -6221,7 +6092,6 @@ function reeBillReady() {
         
         /* the rest of this applies only for a valid sequence */
         if (sequence == null) {
-            ubBillPeriodsPanel.setDisabled(true);
             ubMeasuredUsagesPanel.setDisabled(true);
             rateStructurePanel.setDisabled(true);
             chargeItemsPanel.setDisabled(true);
@@ -6293,7 +6163,6 @@ function reeBillReady() {
         // Now that a ReeBill has been loaded, enable the tabs that act on a ReeBill
         // These enabled tabs will then display widgets that will pull data based on
         // the global account and sequence selection
-        ubBillPeriodsPanel.setDisabled(false);
         ubMeasuredUsagesPanel.setDisabled(false);
         rateStructurePanel.setDisabled(false);
         chargeItemsPanel.setDisabled(false);

@@ -2199,57 +2199,6 @@ class BillToolBridge:
     ################
 
     ################
-    # Handle ubPeriods
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    def ubPeriods(self, account, sequence, **args):
-        """ Return all of the utilbill periods on a per service basis so that the forms may be
-        dynamically created."""
-        if not account or not sequence:
-            raise ValueError("Bad Parameter Value")
-
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-
-        # It is possible that there is no reebill for the requested periods 
-        # if this is the case, return no periods.  
-        # This is done so that the UI can configure itself with no data for the
-        # requested measured usage
-        if reebill is None:
-            # TODO: 40161259 must return success field
-            return self.dumps({"periods":None})
-        
-        utilbill_periods = {}
-        for service in reebill.services:
-            (begin, end) = reebill.utilbill_period_for_service(service)
-            utilbill_periods[service] = { 'begin': begin, 'end': end }
-
-        # TODO: 40161259 must return success field
-        return self.dumps({"periods":utilbill_periods})
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    # TODO get rid of it! Also this is no the utility bill period; it's the
-    # reebill period, which the UI calls "Bill Periods"
-    def setUBPeriod(self, account, sequence, service, begin, end, **args):
-        """ 
-        Utilbill period forms are dynamically created in browser, and post back to here individual periods.
-        """ 
-        if not account or not sequence or not service or not begin or not end:
-            raise ValueError("Bad Parameter Value")
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        reebill.set_utilbill_period_for_service(service, (datetime.strptime(begin, "%Y-%m-%d"),datetime.strptime(end, "%Y-%m-%d")))
-        self.reebill_dao.save_reebill(reebill)
-        return self.dumps({'success':True})
-
-
-    #
-    ################
-
-    ################
     # handle actual and hypothetical charges 
 
     @cherrypy.expose
