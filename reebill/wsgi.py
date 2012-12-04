@@ -2832,6 +2832,8 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def setDifferenceThreshold(self, threshold, **kwargs):
+        if not threshold or threshold > 100 or threshold <= 0:
+            return self.dumps({'success':False, 'errors':"Threshold of %s is not valid." % str(threshold)})
         cherrypy.session['user'].preferences['difference_threshold'] = float(threshold)/100.0
         self.user_dao.save_user(cherrypy.session['user'])
         return self.dumps({'success':True})
