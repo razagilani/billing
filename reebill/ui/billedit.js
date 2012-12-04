@@ -594,7 +594,7 @@ function reeBillReady() {
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
                 {text: 'Compute Bill', handler: computeBillOperation},
-                {text: 'Attach Utility Bills to Reebill', handler: attachOperation},
+                //{text: 'Attach Utility Bills to Reebill', handler: attachOperation},
                 {text: 'Render', handler: renderOperation},
             ]
         })
@@ -1598,13 +1598,13 @@ function reeBillReady() {
         });
     }
 
-    var attachDataConn = new Ext.data.Connection({
+    /*var attachDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/attach_utilbills',
     });
     attachDataConn.autoAbort = true;
     attachDataConn.disableCaching = true;
     function attachOperation() {
-        /* Finalize association of utilbills with reebill. */
+        /* Finalize association of utilbills with reebill.
         attachDataConn.request({
             params: {
                 account: selected_account,
@@ -1628,7 +1628,7 @@ function reeBillReady() {
                 Ext.MessageBox.alert('Error', "Attach Utility Bills failed");
             }
         });
-    }
+    }*/
 
 
     ////////////////////////////////////////////////////////////////////////////
