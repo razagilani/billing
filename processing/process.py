@@ -109,8 +109,7 @@ class Process(object):
         file was moved (it never really gets deleted). This path will be None
         if there was no file or it could not be found. Raises a ValueError if
         the utility bill cannot be deleted.'''
-        utilbill = session.query(UtilBill)\
-                .filter(UtilBill.id==utilbill_id).one()
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         if utilbill.has_reebill:
             raise ValueError("Can't delete an attached utility bill.")
 

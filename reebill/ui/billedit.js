@@ -6009,7 +6009,6 @@ function reeBillReady() {
         journalFormPanel.getForm().findField("account").setValue(account)
         // TODO: 20513861 clear reebill data when a new account is selected
         journalFormPanel.getForm().findField("sequence").setValue(null)
-        configureUBPeriodsForms(null, null, null);
         configureUBMeasuredUsagesForms(null, null, null);
         configureReeBillEditor(null, null);
         aChargesStore.loadData({rows: 0, success: true});

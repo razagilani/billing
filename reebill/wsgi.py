@@ -2736,7 +2736,7 @@ class BillToolBridge:
 
                 # delete any estimated utility bills that were created to
                 # cover gaps that no longer exist
-                self.process.state_db.trim_hypothetical_utilbills(session,
+                self.state_db.trim_hypothetical_utilbills(session,
                         utilbill.customer.account, utilbill.service)
 
                 # update service in MySQL
@@ -2773,6 +2773,11 @@ class BillToolBridge:
                     # log it
                     journal.UtilBillDeletedEvent.save_instance(cherrypy.session['user'],
                             account, start, end, service, deleted_path)
+
+                # delete any estimated utility bills that were created to
+                # cover gaps that no longer exist
+                self.state_db.trim_hypothetical_utilbills(session,
+                        utilbill.customer.account, utilbill.service)
 
                 return self.dumps({'success': True})
 
