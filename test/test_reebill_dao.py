@@ -192,7 +192,7 @@ class ReebillDAOTest(TestCaseWithSetup):
             self.state_db.issue(session, '99999', 1)
             self.assertRaises(IssuedBillError, self.reebill_dao.save_reebill,
                     b)
-            self.assertRaises(NotUniqueException,
+            self.assertRaises(IssuedBillError,
                     self.reebill_dao.save_reebill, b, freeze_utilbills=True)
 
     def test_load_utilbill(self):
