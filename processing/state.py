@@ -249,7 +249,8 @@ class StateDB:
         customer = session.query(Customer).filter(Customer.account==account).one()
         reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
                 .filter(ReeBill.sequence==sequence).one()
-        utilbills = session.query(UtilBill).filter(UtilBill.reebill==reebill)
+        utilbills = session.query(UtilBill).filter(UtilBill.reebill==reebill)\
+                .order_by(UtilBill.period_start)
         return utilbills.all()
 
     def delete_reebill(self, session, account, sequence):
