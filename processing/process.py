@@ -653,6 +653,7 @@ class Process(object):
         # attached". see https://www.pivotaltracker.com/story/show/38308443)
         self.state_db.try_to_attach_utilbills(session, reebill.account, reebill.sequence, utilbills, reebill.suspended_services)
 
+        self.reebill_dao.save_reebill(reebill)
         self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
 
         self.state_db.attach_utilbills(session, reebill.account, reebill.sequence, utilbills, reebill.suspended_services)
