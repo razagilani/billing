@@ -13,8 +13,8 @@ pp = pprint.PrettyPrinter().pprint
 host = 'localhost'
 db = 'skyline-dev' # mongo
 statedb = 'skyline_dev' # mysql
-user = 'root'
-password = 'root'
+user = 'dev'
+password = 'dev'
 
 # data-access objects:
 sdb = StateDB(**{
