@@ -1222,63 +1222,66 @@ class ReebillDAO:
         greatest issued version is returned, and after which the greatest
         overall version is returned), or 'max', which specifies the greatest
         version overall.'''
-        #print >> sys.stderr, '********** load_reebill', account, sequence, version
-        with DBSession(self.state_db) as session:
-            # TODO looks like somebody's temporary hack should be removed
-            if account is None: return None
-            if sequence is None: return None
+        # NOTE not using context manager here because it commits the
+        # transaction when the session exits! this method should be usable
+        # inside other transactions.
+        session = self.state_db.session()
 
-            query = {
-                "_id.account": str(account),
-                # TODO stop passing in sequnce as a string from BillToolBridge
-                "_id.sequence": int(sequence),
-            }
+        # TODO looks like somebody's temporary hack should be removed
+        if account is None: return None
+        if sequence is None: return None
 
-            # TODO figure out how to move this into _get_version_query(): it can't
-            # be expressed as part of the query, except maybe with a javascript
-            # "where" clause
-            if isinstance(version, int):
-                query.update({'_id.version': version})
+        query = {
+            "_id.account": str(account),
+            # TODO stop passing in sequnce as a string from BillToolBridge
+            "_id.sequence": int(sequence),
+        }
+
+        # TODO figure out how to move this into _get_version_query(): it can't
+        # be expressed as part of the query, except maybe with a javascript
+        # "where" clause
+        if isinstance(version, int):
+            query.update({'_id.version': version})
+            mongo_doc = self.reebills_collection.find_one(query)
+        elif version == 'max':
+            # get max version from MySQL, since that's the definitive source of
+            # information on what officially exists (but version 0 reebill
+            # documents are templates that do not go in MySQL)
+            try:
+                if sequence != 0:
+                    max_version = self.state_db.max_version(session, account,
+                            sequence)
+                    query.update({'_id.version': max_version})
                 mongo_doc = self.reebills_collection.find_one(query)
-            elif version == 'max':
-                # get max version from MySQL, since that's the definitive source of
-                # information on what officially exists (but version 0 reebill
-                # documents are templates that do not go in MySQL)
-                try:
-                    if sequence != 0:
-                        max_version = self.state_db.max_version(session, account,
-                                sequence)
-                        query.update({'_id.version': max_version})
-                    mongo_doc = self.reebills_collection.find_one(query)
-                except NoResultFound:
-                    # customer not found in MySQL
-                    mongo_doc = None
-            elif isinstance(version, date):
-                version_dt = date_to_datetime(version)
-                docs = self.reebills_collection.find(query, sort=[('_id.version',
-                        pymongo.ASCENDING)])
-                earliest_issue_date = docs[0]['issue_date']
-                if earliest_issue_date is not None and earliest_issue_date < version_dt:
-                    docs_before_date = [d for d in docs if d['issue_date'] < version_dt]
-                    mongo_doc = docs_before_date[len(docs_before_date)-1]
-                else:
-                    mongo_doc = docs[docs.count()-1]
+            except NoResultFound:
+                # customer not found in MySQL
+                mongo_doc = None
+        elif isinstance(version, date):
+            version_dt = date_to_datetime(version)
+            docs = self.reebills_collection.find(query, sort=[('_id.version',
+                    pymongo.ASCENDING)])
+            earliest_issue_date = docs[0]['issue_date']
+            if earliest_issue_date is not None and earliest_issue_date < version_dt:
+                docs_before_date = [d for d in docs if d['issue_date'] < version_dt]
+                mongo_doc = docs_before_date[len(docs_before_date)-1]
             else:
-                raise ValueError('Unknown version specifier "%s"' % version)
+                mongo_doc = docs[docs.count()-1]
+        else:
+            raise ValueError('Unknown version specifier "%s"' % version)
 
-            if mongo_doc is None:
-                raise NoSuchBillException(("no reebill found in %s: query was %s")
-                        % (self.reebills_collection, format_query(query)))
+        if mongo_doc is None:
+            raise NoSuchBillException(("no reebill found in %s: query was %s")
+                    % (self.reebills_collection, format_query(query)))
 
-            # convert types in reebill document
-            mongo_doc = deep_map(float_to_decimal, mongo_doc)
-            mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
+        # convert types in reebill document
+        mongo_doc = deep_map(float_to_decimal, mongo_doc)
+        mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
 
-            # load utility bills
-            utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
+        # load utility bills
+        utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
 
-            mongo_reebill = MongoReebill(mongo_doc, utilbill_docs)
-            return mongo_reebill
+        mongo_reebill = MongoReebill(mongo_doc, utilbill_docs)
+        return mongo_reebill
 
     def load_reebills_for(self, account, version='max'):
         if not account: return None
