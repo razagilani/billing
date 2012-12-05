@@ -112,8 +112,6 @@ print "Checking reebill utilbill IDs"
 print "------------------------"
 import pymongo
 mongodb = pymongo.Connection(host, 27017)[db]
-engine = sqlalchemy.create_engine('mysql://%s:%s@%s:3306/%s' % (user, password, host, statedb), pool_recycle=3600, pool_size=5)
-metadata = sqlalchemy.MetaData(engine)
 i = 0
 for reebill in mongodb.reebills.find().sort([('_id.account',pymongo.ASCENDING),('_id.sequence',pymongo.ASCENDING),('_id.version',pymongo.ASCENDING)]):
     for utilbill in reebill['utilbills']:
