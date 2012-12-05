@@ -1285,8 +1285,9 @@ class ReebillDAO:
 
     def load_reebills_for(self, account, version='max'):
         if not account: return None
-        with DBSession(self.state_db) as session:
-            sequences = self.state_db.listSequences(session, account)
+        # NOTE not using context manager (see comment in load_reebill)
+        session = self.state_db.session()
+        sequences = self.state_db.listSequences(session, account)
         return [self.load_reebill(account, sequence) for sequence in sequences]
     
     def load_reebills_in_period(self, account=None, version=0, start_date=None,
@@ -1360,45 +1361,46 @@ class ReebillDAO:
         # TODO pass session into save_reebill instead of re-creating it
         # https://www.pivotaltracker.com/story/show/36258193
         # TODO 38459029
-        with DBSession(self.state_db) as session:
-            issued = self.state_db.is_issued(session, reebill.account,
-                    reebill.sequence, version=reebill.version, nonexistent=False)
-            attached = self.state_db.is_attached(session, reebill.account,
-                    reebill.sequence, nonexistent=False)
-            if issued and not force:
-                raise IssuedBillError("Can't modify an issued reebill.")
-            if (issued or attached) and freeze_utilbills:
-                raise IssuedBillError("Can't freeze utility bills because this "
-                        "reebill is attached or issued; frozen utility bills "
-                        "should already exist")
-            
-            for utilbill_handle in reebill.reebill_dict['utilbills']:
-                utilbill_doc = reebill._get_utilbill_for_handle(utilbill_handle)
-                if freeze_utilbills:
-                    # this reebill is being attached (usually right before
-                    # issuing): convert the utility bills into frozen copies by
-                    # putting "sequence" and "version" keys in the utility
-                    # bill, and changing its _id to a new one
-                    old_id = utilbill_doc['_id']
-                    new_id = bson.objectid.ObjectId()
+        # NOTE not using context manager (see comment in load_reebill)
+        session = self.state_db.session()
+        issued = self.state_db.is_issued(session, reebill.account,
+                reebill.sequence, version=reebill.version, nonexistent=False)
+        attached = self.state_db.is_attached(session, reebill.account,
+                reebill.sequence, nonexistent=False)
+        if issued and not force:
+            raise IssuedBillError("Can't modify an issued reebill.")
+        if (issued or attached) and freeze_utilbills:
+            raise IssuedBillError("Can't freeze utility bills because this "
+                    "reebill is attached or issued; frozen utility bills "
+                    "should already exist")
+        
+        for utilbill_handle in reebill.reebill_dict['utilbills']:
+            utilbill_doc = reebill._get_utilbill_for_handle(utilbill_handle)
+            if freeze_utilbills:
+                # this reebill is being attached (usually right before
+                # issuing): convert the utility bills into frozen copies by
+                # putting "sequence" and "version" keys in the utility
+                # bill, and changing its _id to a new one
+                old_id = utilbill_doc['_id']
+                new_id = bson.objectid.ObjectId()
 
-                    # copy utility bill doc so changes to it do not persist if
-                    # saving fails below
-                    utilbill_doc = copy.deepcopy(utilbill_doc)
-                    utilbill_doc['_id'] = new_id
-                    self._save_utilbill(utilbill_doc, force=force,
-                            sequence_and_version=(reebill.sequence,
-                            reebill.version))
-                    # saving succeeded: set handle id to match the saved
-                    # utility bill and replace the old utility bill document with the new one
-                    utilbill_handle['id'] = new_id
-                    reebill._set_utilbill_for_id(old_id, utilbill_doc)
-                else:
-                    self._save_utilbill(utilbill_doc, force=force)
+                # copy utility bill doc so changes to it do not persist if
+                # saving fails below
+                utilbill_doc = copy.deepcopy(utilbill_doc)
+                utilbill_doc['_id'] = new_id
+                self._save_utilbill(utilbill_doc, force=force,
+                        sequence_and_version=(reebill.sequence,
+                        reebill.version))
+                # saving succeeded: set handle id to match the saved
+                # utility bill and replace the old utility bill document with the new one
+                utilbill_handle['id'] = new_id
+                reebill._set_utilbill_for_id(old_id, utilbill_doc)
+            else:
+                self._save_utilbill(utilbill_doc, force=force)
 
-            reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
-            self.reebills_collection.save(reebill_doc, safe=True)
-            # TODO catch mongo's return value and raise MongoError
+        reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
+        self.reebills_collection.save(reebill_doc, safe=True)
+        # TODO catch mongo's return value and raise MongoError
 
     def _save_utilbill(self, utilbill_doc, sequence_and_version=None,
             force=False):
