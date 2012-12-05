@@ -715,10 +715,9 @@ class MongoReebill(object):
                 for actual_register in meter['registers']:
                     if actual_register['identifier'] == shadow_register['identifier']:
                         return meter['prior_read_date'], meter['present_read_date']
-        raise Exception(('Utility bill for service "%s" has no meter '
+        raise ValueError(('Utility bill for service "%s" has no meter '
                 'containing a register whose identifier matches that of '
                 'a shadow register') % service)
-        return utilbill['prior_read_date']
 
     @property
     def utilbill_periods(self):
