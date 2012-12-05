@@ -1090,6 +1090,7 @@ class ProcessTest(TestCaseWithSetup):
             self.state_db.record_utilbill_in_database(session, acc,
                     template.services[0], date(2012,2,1), date(2012,3,1),
                     100, date.today())
+            utilbills = session.query(UtilBill).all()
 
             one = self.process.roll_bill(session, template)
 
@@ -1099,7 +1100,8 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEquals(None, one.due_date)
 
             # two should not be attachable or issuable until one is issued
-            self.assertRaises(BillStateError, self.process.attach_utilbills, session, one)
+            self.assertRaises(BillStateError, self.process.attach_utilbills,
+                    session, one, [utilbills[0]])
             self.assertRaises(BillStateError, self.process.issue, session, acc, 2)
 
             # attach & issue one
@@ -1121,7 +1123,8 @@ class ProcessTest(TestCaseWithSetup):
             self.reebill_dao.save_reebill(two)
             
             # attach & issue two
-            self.assertRaises(BillStateError, self.process.attach_utilbills, session, two)
+            self.assertRaises(BillStateError, self.process.attach_utilbills,
+                    session, two, [utilbills[1]])
             self.process.issue(session, acc, 2)
             # re-load from mongo to see updated issue date and due date
             two = self.reebill_dao.load_reebill(acc, 2)
@@ -1130,7 +1133,8 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEquals(two.issue_date + timedelta(30), two.due_date)
             self.assertIsInstance(two.bill_recipients, list)
             self.assertEquals(len(two.bill_recipients), 2)
-            self.assertEquals(True, all(map(isinstance, two.bill_recipients, [unicode]*len(two.bill_recipients))))
+            self.assertEquals(True, all(map(isinstance, two.bill_recipients,
+                    [unicode]*len(two.bill_recipients))))
 
     def test_delete_reebill(self):
         account = '99999'
