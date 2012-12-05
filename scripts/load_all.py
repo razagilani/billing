@@ -116,15 +116,16 @@ i = 0
 for reebill in db.reebills.find().sort([('_id.account',pymongo.ASCENDING),('_id.sequence',pymongo.ASCENDING),('_id.version',pymongo.ASCENDING)]):
     for utilbill in reebill['utilbills']:
         i += 1
-        ub = db.utilbills.find({'_id':utilbill['id']})
-        if ub.count() > 1:
+        utilbills = db.utilbills.find({'_id':utilbill['id']})
+        if utilbills.count() > 1:
             print "For reebill:",reebill['_id']
             print "Multiple utility bills found with id:",utilbill['id']
             continue
-        elif ub.count() < 1:
+        elif utilbills.count() < 1:
             print "Missing utility bill for reebill:",reebill['_id']
             continue
-        ub = ub.next()
+        ub = utilbills.next()
+
         has_error = False
         if not ub.has_key('account'):
             if not has_error:
@@ -136,25 +137,25 @@ for reebill in db.reebills.find().sort([('_id.account',pymongo.ASCENDING),('_id.
                 print "For reebill:",reebill['_id']
                 has_error = True
             print "Wrong account on utilbill:",ub['account']
-        if not ub.has_key('sequence'):
-            if not has_error:
-                print "For reebill:",reebill['_id']
-                has_error = True
-            print "Utility bill missing sequence"
-        elif ub['sequence'] != reebill['_id']['sequence']:
-            if not has_error:
-                print "For reebill:",reebill['_id']
-                has_error = True
-            print "Wrong sequence on utilbill:",ub['sequence']
-        if not ub.has_key('version'):
-            if not has_error:
-                print "For reebill:",reebill['_id']
-                has_error = True
-            print "Utility bill missing version"
-        elif ub['version'] != reebill['_id']['version']:
-            if not has_error:
-                print "For reebill:",reebill['_id']
-                has_error = True
-            print "Wrong version on utilbill:",ub['version']
+        #if not ub.has_key('sequence'):
+            #if not has_error:
+                #print "For reebill:",reebill['_id']
+                #has_error = True
+            #print "Utility bill missing sequence"
+        #elif ub['sequence'] != reebill['_id']['sequence']:
+            #if not has_error:
+                #print "For reebill:",reebill['_id']
+                #has_error = True
+            #print "Wrong sequence on utilbill:",ub['sequence']
+        #if not ub.has_key('version'):
+            #if not has_error:
+                #print "For reebill:",reebill['_id']
+                #has_error = True
+            #print "Utility bill missing version"
+        #elif ub['version'] != reebill['_id']['version']:
+            #if not has_error:
+                #print "For reebill:",reebill['_id']
+                #has_error = True
+            #print "Wrong version on utilbill:",ub['version']
 
 print "Total number of utilbills checked:",i
