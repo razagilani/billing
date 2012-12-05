@@ -31,7 +31,8 @@ class NoRateError(Exception):
 
 class EstimatedRevenue(object):
 
-    def __init__(self, state_db, reebill_dao, ratestructure_dao, billupload, nexus_util, splinter):
+    def __init__(self, state_db, reebill_dao, ratestructure_dao, billupload,
+            nexus_util, splinter):
         self.state_db = state_db
         self.reebill_dao = reebill_dao
         self.splinter = splinter
@@ -410,29 +411,29 @@ if __name__ == '__main__':
         user='dev',
         password='dev'
     )
-    reebill_dao = ReebillDAO({
+    reebill_dao = ReebillDAO(state_db, **{
         'host': 'localhost',
         'port': 27017,
-        'database': 'skyline',
+        'database': 'skyline-dev',
         'collection': 'reebills',
     })
-    ratestructure_dao = RateStructureDAO({
+    ratestructure_dao = RateStructureDAO(**{
         'host': 'localhost',
         'port': 27017,
         'database': 'skyline',
         'collection': 'ratestructure',
     })
     splinter = Splinter('http://duino-drop.appspot.com/', **{
-        'skykit_host': args.host,
-        'skykit_db': args.olapdb,
-        'olap_cache_host': args.host,
-        'olap_cache_db': args.olapdb,
+        'skykit_host': 'localhost',
+        'skykit_db': 'dev',
+        'olap_cache_host': 'localhost',
+        'olap_cache_db': 'dev',
         'monguru_options': {
-            'olap_cache_host': args.host,
-            'olap_cache_db': args.olapdb,
+            'olap_cache_host': 'localhost',
+            'olap_cache_db': 'dev',
             'cartographer_options': {
-                'olap_cache_host': args.host,
-                'olap_cache_db': args.olapdb,
+                'olap_cache_host': 'localhost',
+                'olap_cache_db': 'dev',
                 'measure_collection': 'skymap',
                 'install_collection': 'skyit_installs',
                 'nexus_db': 'nexus',
@@ -440,18 +441,19 @@ if __name__ == '__main__':
             },
         },
         'cartographer_options': {
-            'olap_cache_host': args.host,
-            'olap_cache_db': args.olapdb,
+            'olap_cache_host': 'localhost',
+            'olap_cache_db': 'dev',
             'measure_collection': 'skymap',
             'install_collection': 'skyit_installs',
             'nexus_db': 'nexus',
             'nexus_collection': 'skyline',
         },
     })
+    nexus_util = NexusUtil('nexus')
 
     session = state_db.session()
     er = EstimatedRevenue(state_db, reebill_dao, ratestructure_dao,
-            splinter)
+            None, nexus_util, splinter)
 
     data = er.report(session, failfast=True)
     #data = er.report(session)
