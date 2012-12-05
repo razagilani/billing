@@ -13,8 +13,8 @@ pp = pprint.PrettyPrinter().pprint
 host = 'localhost'
 db = 'skyline-dev' # mongo
 statedb = 'skyline_dev' # mysql
-user = 'root'
-password = 'root'
+user = 'dev'
+password = 'dev'
 
 # data-access objects:
 sdb = StateDB(**{
@@ -111,14 +111,9 @@ print
 print "Checking reebill utilbill IDs"
 print "------------------------"
 import pymongo
-import sqlalchemy
 mongodb = pymongo.Connection(host, 27017)[db]
 engine = sqlalchemy.create_engine('mysql://%s:%s@%s:3306/%s' % (user, password, host, statedb), pool_recycle=3600, pool_size=5)
 metadata = sqlalchemy.MetaData(engine)
-utilbill_table = sqlalchemy.Table('utilbill', metadata, autoload=True)
-reebill_table = sqlalchemy.Table('rebill', metadata, autoload=True)
-customer_table = sqlalchemy.Table('customer', metadata, autoload=True)
-session = sqlalchemy.orm.sessionmaker(bind=engine, autoflush=True)
 i = 0
 for reebill in mongodb.reebills.find().sort([('_id.account',pymongo.ASCENDING),('_id.sequence',pymongo.ASCENDING),('_id.version',pymongo.ASCENDING)]):
     for utilbill in reebill['utilbills']:
