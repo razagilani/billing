@@ -318,18 +318,17 @@ class MongoReebill(object):
         self.reebill_dict = copy.deepcopy(reebill_data)
         self._utilbills = copy.deepcopy(utilbills)
 
+    # TODO 36805917 clear() can go away when ReeBills can be constructed
     def clear(self):
         '''Code for clearing out fields of newly-rolled rebill (moved from
         __init__, called by Process.roll_bill). TODO remove this.'''
         # set start date of each utility bill in this reebill to the end date
         # of the previous utility bill for that service
-        for service in self.services:
-            prev_start, prev_end = self.utilbill_period_for_service(service)
-            self.set_utilbill_period_for_service(service, (prev_end, None))
+        #for service in self.services:
+        #    prev_start, prev_end = self.utilbill_period_for_service(service)
+        #    self.set_utilbill_period_for_service(service, (prev_end, None))
 
         # process rebill
-        self.period_begin = self.period_end
-        self.period_end = None
         self.total_adjustment = Decimal("0.00")
         self.manual_adjustment = Decimal("0.00")
         self.hypothetical_total = Decimal("0.00")
@@ -366,7 +365,7 @@ class MongoReebill(object):
 
             # set new UUID's & clear out the last bound charges
             actual_chargegroups = self.actual_chargegroups_for_service(service)
-            for group, charges in actual_chargegroups.items():
+            for (group, charges) in actual_chargegroups.items():
                 for charge in charges:
                     charge.uuid = str(UUID.uuid1())
                     charge.rate = None
@@ -390,12 +389,11 @@ class MongoReebill(object):
                 utilbill = self._get_utilbill_for_service(service)
                 for meter in utilbill.meters:
                     meter.prior_read_date = meter.present_read_date
-                    meter.prior_read_date = None
+                    meter.present_read_date = None
                     for register in meter.registers:
                         register.quantity = Decimal(0.0)
                 for shadow_register in self.shadow_registers(service):
-                    self.set_shadow_register_quantity(shadow_register['identifier'],
-                            Decimal(0.0))
+                    self.set_shadow_register_quantity(shadow_register['identifier'], Decimal(0.0))
 
             # zero out statistics section
             self.reebill_dict['statistics'] = {
@@ -424,12 +422,16 @@ class MongoReebill(object):
         for converting an existing reebill and its utility bills into a
         template for a new account.'''
         self.account = account
-        for u in self._utilbills:
-            u['account'] = account
-            if 'sequence' in u:
-                del u['sequence']
-            if 'version' in u:
-                del u['version']
+        for handle in self.reebill_dict['utilbills']:
+            u = self._get_utilbill_for_handle(handle)
+            u.account = account
+            # TODO determine how to determine if the field really does not
+            # exist (should not be the same as having None value!)
+            if u.sequence is not None:
+                u.sequence = None
+            if u.version is not None:
+                u.version = None
+                u.id = bson.ObjectId()
 
     def new_utilbill_ids(self):
         '''Replaces _ids in utility bill documents and the reebill document's
@@ -494,19 +496,13 @@ class MongoReebill(object):
     def due_date(self, value):
         self.reebill_dict['due_date'] = value
 
-    # TODO these must die
+    # Periods are read-only on the basis of which utilbills have been attached
     @property
     def period_begin(self):
-        return python_convert(self.reebill_dict['period_begin'])
-    @period_begin.setter
-    def period_begin(self, value):
-        self.reebill_dict['period_begin'] = value
+        return min([self._get_utilbill_for_service(s)['start'] for s in self.services])
     @property
     def period_end(self):
-        return python_convert(self.reebill_dict['period_end'])
-    @period_end.setter
-    def period_end(self, value):
-        self.reebill_dict['period_end'] = value
+        return max([self._get_utilbill_for_service(s)['end'] for s in self.services])
     
     @property
     def discount_rate(self):
@@ -648,12 +644,6 @@ class MongoReebill(object):
         self.reebill_dict['statistics'].update(value)
 
     # TODO this must die https://www.pivotaltracker.com/story/show/36492387
-    #@property
-    #def actual_total(self):
-        #return self.reebill_dict['actual_total']
-    #@actual_total.setter
-    #def actual_total(self, value):
-        #self.reebill_dict['actual_total'] = value
     @property
     def actual_total(self):
         return sum(u.total for u in self._utilbills)
@@ -673,19 +663,37 @@ class MongoReebill(object):
         self.reebill_dict['ree_value'] = value
 
     @property
-    def recipients(self):
+    def bill_recipients(self):
         '''E-mail addresses of bill recipients.
 
         If these data exist, returns a list of strings. Otherwise, returns None.'''
-        return self.reebill_dict.get('bill_recipients', None)
-    @recipients.setter
-    def recipients(self, value):
+        res = self.reebill_dict.get('bill_recipients', None)
+        if res is None:
+            self.reebill_dict['bill_recipients'] = []
+            return self.reebill_dict['bill_recipients']
+        return res
+        
+    @bill_recipients.setter
+    def bill_recipients(self, value):
         '''Assigns a list of e-mail addresses representing bill recipients.'''
-        if value:
-            self.reebill_dict['bill_recipients'] = value
-        else:
-            self.reebill_dict.pop('bill_recipients', None)
+        self.reebill_dict['bill_recipients'] = value
 
+    @property
+    def last_recipients(self):
+        '''E-mail addresses of bill recipients.
+
+        If these data exist, returns a list of strings. Otherwise, returns None.'''
+        res = self.reebill_dict.get('last_recipients', None)
+        if res is None:
+            self.reebill_dict['last_recipients'] = []
+            return self.reebill_dict['last_recipients']
+        return res
+    
+    @last_recipients.setter
+    def last_recipients(self, value):
+        '''Assigns a list of e-mail addresses representing bill recipients.'''
+        self.reebill_dict['last_recipients'] = value
+        
     def _utilbill_ids(self):
         '''Useful for debugging.'''
         # note order is not guranteed so the result may look weird
@@ -836,7 +844,7 @@ class MongoReebill(object):
     @property
     def services(self):
         '''Returns a list of all services for which there are utilbills.'''
-        return [u.service for u in self._utilbills]
+        return [u.service for u in self._utilbills if u.service not in self.suspended_services]
 
     @property
     def suspended_services(self):
@@ -849,7 +857,6 @@ class MongoReebill(object):
     def suspend_service(self, service):
         '''Adds 'service' to the list of suspended services. Returns True iff
         it was added, False if it already present.'''
-        print self.services
         service = service.lower()
         if service not in [s.lower() for s in self.services]:
             raise ValueError('Unknown service %s: services are %s' % (service, self.services))
@@ -858,7 +865,6 @@ class MongoReebill(object):
             self.reebill_dict['suspended_services'] = []
         if service not in self.reebill_dict['suspended_services']:
             self.reebill_dict['suspended_services'].append(service)
-        print '%s-%s suspended_services set to %s' % (self.account, self.sequence, self.reebill_dict['suspended_services'])
 
     def resume_service(self, service):
         '''Removes 'service' from the list of suspended services. Returns True
@@ -1000,6 +1006,13 @@ class MongoReebill(object):
         self._get_handle_for_service(service)['shadow_registers']\
                 .append(new_shadow_register)
         return (new_actual_register.to_dict(), new_shadow_register)
+
+    def set_meter_dates_from_utilbills(self):
+        '''Set the meter read dates to the start and end dates of the associated utilbill.'''
+        for service in self.services:
+            for meter in self.meters_for_service(service):
+                start, end = self.utilbill_period_for_service(service)
+                self.set_meter_read_date(service, meter.identifier, end, start)
 
     # TODO 37477445 repl_ace with utility bill method; remove this method from MongoReebill
     # (part of "reebill structure editor": may be dead)
@@ -1260,25 +1273,35 @@ class ReebillDAO:
         reebill._utilbills = all_new_utilbills
 
 
-    def load_utilbills(self, account=None, service=None, utility=None,
-            start=None, end=None, sequence=None, version=None):
+    def load_utilbills(self, **kwargs):
         '''Loads 0 or more utility bill documents from Mongo, returns a list of
-        the raw dictionaries ordered by start date.'''
+        the raw dictionaries ordered by start date.
+
+        kwargs (any of these added will be added to the query:
+        account
+        service
+        utility
+        start
+        end
+        sequence
+        version
+        '''
+        #check individually for each allowed key in case extra things get thrown into kwargs
         query = {}
-        if account is not None:
-            query.update({'account': account})
-        if utility is not None:
-            query.update({'utility': utility})
-        if service is not None:
-            query.update({'service': service})
-        if start is not None:
-            query.update({'start': date_to_datetime(start)})
-        if end is not None:
-            query.update({'end': date_to_datetime(end)})
-        if sequence is not None:
-            query.update({'sequence': sequence})
-        if version is not None:
-            query.update({'version': version})
+        if kwargs.has_key('account'):
+            query.update({'account': kwargs['account']})
+        if kwargs.has_key('utility'):
+            query.update({'utility': kwargs['utility']})
+        if kwargs.has_key('service'):
+            query.update({'service': kwargs['service']})
+        if kwargs.has_key('start'):
+            query.update({'start': date_to_datetime(kwargs['start'])})
+        if kwargs.has_key('end'):
+            query.update({'end': date_to_datetime(kwargs['end'])})
+        if kwargs.has_key('sequence'):
+            query.update({'sequence': kwargs['sequence']})
+        if kwargs.has_key('version'):
+            query.update({'version': kwargs['version']})
         return list(UtilBill.objects(__raw__=query).all())
 
     def load_utilbill(self, account, service, utility, start, end,
@@ -1348,70 +1371,75 @@ class ReebillDAO:
         greatest issued version is returned, and after which the greatest
         overall version is returned), or 'max', which specifies the greatest
         version overall.'''
-        with DBSession(self.state_db) as session:
-            # TODO looks like somebody's temporary hack should be removed
-            if account is None: return None
-            if sequence is None: return None
+        # NOTE not using context manager here because it commits the
+        # transaction when the session exits! this method should be usable
+        # inside other transactions.
+        session = self.state_db.session()
 
-            query = {
-                "_id.account": str(account),
-                # TODO stop passing in sequnce as a string from BillToolBridge
-                "_id.sequence": int(sequence),
-            }
+        # TODO looks like somebody's temporary hack should be removed
+        if account is None: return None
+        if sequence is None: return None
 
-            # TODO figure out how to move this into _get_version_query(): it can't
-            # be expressed as part of the query, except maybe with a javascript
-            # "where" clause
-            if isinstance(version, int):
-                query.update({'_id.version': version})
+        query = {
+            "_id.account": str(account),
+            # TODO stop passing in sequnce as a string from BillToolBridge
+            "_id.sequence": int(sequence),
+        }
+
+        # TODO figure out how to move this into _get_version_query(): it can't
+        # be expressed as part of the query, except maybe with a javascript
+        # "where" clause
+        if isinstance(version, int):
+            query.update({'_id.version': version})
+            mongo_doc = self.reebills_collection.find_one(query)
+        elif version == 'max':
+            # get max version from MySQL, since that's the definitive source of
+            # information on what officially exists (but version 0 reebill
+            # documents are templates that do not go in MySQL)
+            try:
+                if sequence != 0:
+                    max_version = self.state_db.max_version(session, account,
+                            sequence)
+                    query.update({'_id.version': max_version})
                 mongo_doc = self.reebills_collection.find_one(query)
-            elif version == 'max':
-                # get max version from MySQL, since that's the definitive source of
-                # information on what officially exists (but version 0 reebill
-                # documents are templates that do not go in MySQL)
-                try:
-                    if sequence != 0:
-                        max_version = self.state_db.max_version(session, account,
-                                sequence)
-                        query.update({'_id.version': max_version})
-                    mongo_doc = self.reebills_collection.find_one(query)
-                except NoResultFound:
-                    # customer not found in MySQL
-                    mongo_doc = None
-            elif isinstance(version, date):
-                version_dt = date_to_datetime(version)
-                docs = self.reebills_collection.find(query, sort=[('_id.version',
-                        pymongo.ASCENDING)])
-                earliest_issue_date = docs[0]['issue_date']
-                if earliest_issue_date is not None and earliest_issue_date < version_dt:
-                    docs_before_date = [d for d in docs if d['issue_date'] < version_dt]
-                    mongo_doc = docs_before_date[len(docs_before_date)-1]
-                else:
-                    mongo_doc = docs[docs.count()-1]
+            except NoResultFound:
+                # customer not found in MySQL
+                mongo_doc = None
+        elif isinstance(version, date):
+            version_dt = date_to_datetime(version)
+            docs = self.reebills_collection.find(query, sort=[('_id.version',
+                    pymongo.ASCENDING)])
+            earliest_issue_date = docs[0]['issue_date']
+            if earliest_issue_date is not None and earliest_issue_date < version_dt:
+                docs_before_date = [d for d in docs if d['issue_date'] < version_dt]
+                mongo_doc = docs_before_date[len(docs_before_date)-1]
             else:
-                raise ValueError('Unknown version specifier "%s"' % version)
+                mongo_doc = docs[docs.count()-1]
+        else:
+            raise ValueError('Unknown version specifier "%s"' % version)
 
-            if mongo_doc is None:
-                raise NoSuchBillException(("no reebill found in %s: query was %s")
-                        % (self.reebills_collection, format_query(query)))
+        if mongo_doc is None:
+            raise NoSuchBillException(("no reebill found in %s: query was %s")
+                    % (self.reebills_collection, format_query(query)))
 
-            # convert types in reebill document
-            mongo_doc = deep_map(float_to_decimal, mongo_doc)
-            mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
+        # convert types in reebill document
+        mongo_doc = deep_map(float_to_decimal, mongo_doc)
+        mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
 
-            # load utility bills
-            utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
+        # load utility bills
+        utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
 
-            mongo_reebill = MongoReebill(mongo_doc, utilbill_docs)
-            return mongo_reebill
+        mongo_reebill = MongoReebill(mongo_doc, utilbill_docs)
+        return mongo_reebill
 
     def load_reebills_for(self, account, version='max'):
         if not account: return None
-        with DBSession(self.state_db) as session:
-            sequences = self.state_db.listSequences(session, account)
+        # NOTE not using context manager (see comment in load_reebill)
+        session = self.state_db.session()
+        sequences = self.state_db.listSequences(session, account)
         return [self.load_reebill(account, sequence) for sequence in sequences]
     
-    def load_reebills_in_period(self, account, version=0, start_date=None,
+    def load_reebills_in_period(self, account=None, version=0, start_date=None,
             end_date=None, include_0=False):
         '''Returns a list of MongoReebills whose period began on or before
         'end_date' and ended on or after 'start_date' (i.e. all bills between
@@ -1423,7 +1451,9 @@ class ReebillDAO:
         'version' may be a specific version number, or 'any' to get all
         versions.'''
         with DBSession(self.state_db) as session:
-            query = { '_id.account': str(account) }
+            query = {}
+            if account is not None:
+                query['_id.account'] = account
             if isinstance(version, int):
                 query.update({'_id.version': version})
             elif version == 'any':
@@ -1480,46 +1510,46 @@ class ReebillDAO:
         # TODO pass session into save_reebill instead of re-creating it
         # https://www.pivotaltracker.com/story/show/36258193
         # TODO 38459029
-        with DBSession(self.state_db) as session:
-            issued = self.state_db.is_issued(session, reebill.account,
-                    reebill.sequence, version=reebill.version, nonexistent=False)
-            attached = self.state_db.is_attached(session, reebill.account,
-                    reebill.sequence, nonexistent=False)
-            if issued and not force:
-                raise IssuedBillError("Can't modify an issued reebill.")
-            if (issued or attached) and freeze_utilbills:
-                raise IssuedBillError("Can't freeze utility bills because this "
-                        "reebill is attached or issued; frozen utility bills "
-                        "should already exist")
-            
-            for utilbill_handle in reebill.reebill_dict['utilbills']:
-                utilbill_doc = reebill._get_utilbill_for_handle(utilbill_handle)
-                if freeze_utilbills:
-                    # this reebill is being attached (usually right before
-                    # issuing): convert the utility bills into frozen copies by
-                    # putting "sequence" and "version" keys in the utility
-                    # bill, and changing its _id to a new one
-                    # NOTE MongEngine's name for the _id property is "id";
-                    # don't use "_id"
-                    old_id = utilbill_doc.id
-                    new_id = bson.objectid.ObjectId()
+        # NOTE not using context manager (see comment in load_reebill)
+        session = self.state_db.session()
+        issued = self.state_db.is_issued(session, reebill.account,
+                reebill.sequence, version=reebill.version, nonexistent=False)
+        attached = self.state_db.is_attached(session, reebill.account,
+                reebill.sequence, nonexistent=False)
+        if issued and not force:
+            raise IssuedBillError("Can't modify an issued reebill.")
+        if (issued or attached) and freeze_utilbills:
+            raise IssuedBillError("Can't freeze utility bills because this "
+                    "reebill is attached or issued; frozen utility bills "
+                    "should already exist")
+        
+        for utilbill_handle in reebill.reebill_dict['utilbills']:
+            utilbill_doc = reebill._get_utilbill_for_handle(utilbill_handle)
+            if freeze_utilbills:
+                # this reebill is being attached (usually right before
+                # issuing): convert the utility bills into frozen copies by
+                # putting "sequence" and "version" keys in the utility
+                # bill, and changing its _id to a new one
+                old_id = utilbill_doc['_id']
+                new_id = bson.objectid.ObjectId()
 
-                    # copy utility bill doc so changes to it do not persist if
-                    # saving fails below
-                    utilbill_doc = copy.deepcopy(utilbill_doc)
-                    utilbill_doc.id = new_id
-                    self._save_utilbill(utilbill_doc, force=force,
-                            sequence_and_version=(reebill.sequence,
-                            reebill.version))
-                    # saving succeeded: set handle id to match the saved
-                    # utility bill and replace the old utility bill document with the new one
-                    utilbill_handle['id'] = new_id
-                    reebill._set_utilbill_for_id(old_id, utilbill_doc)
-                else:
-                    self._save_utilbill(utilbill_doc, force=force)
+                # copy utility bill doc so changes to it do not persist if
+                # saving fails below
+                utilbill_doc = copy.deepcopy(utilbill_doc)
+                utilbill_doc['_id'] = new_id
+                self._save_utilbill(utilbill_doc, force=force,
+                        sequence_and_version=(reebill.sequence,
+                        reebill.version))
+                # saving succeeded: set handle id to match the saved
+                # utility bill and replace the old utility bill document with the new one
+                utilbill_handle['id'] = new_id
+                reebill._set_utilbill_for_id(old_id, utilbill_doc)
+            else:
+                self._save_utilbill(utilbill_doc, force=force)
 
-            reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
-            self.reebills_collection.save(reebill_doc, safe=True)
+        reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
+        self.reebills_collection.save(reebill_doc, safe=True)
+        # TODO catch mongo's return value and raise MongoError
 
     def _save_utilbill(self, utilbill_doc, sequence_and_version=None,
             force=False):
@@ -1643,12 +1673,23 @@ class ReebillDAO:
             '_id.account': account,
             '_id.sequence': 1,
         }
-        result = self.reebills_collection.find_one(query)
-        if result == None:
+        reebill_result = self.reebills_collection.find_one(query)
+        if reebill_result is None:
             raise NoSuchBillException('First reebill for account %s is missing'
                     % account)
-        # empty utilbills list because it doesn't matter
-        return MongoReebill(result, []).period_begin
+
+        utilbill_ids = [ub['id'] for ub in reebill_result['utilbills']]
+        query = {
+            '_id': {"$in": utilbill_ids}
+        }
+        utilbill_result = self.utilbills_collection.find(query)
+        if utilbill_result is None:
+            raise NoSuchBillException('Utilbills for first reebill for account %s is missing'
+                    % account)
+        else:
+            utilbill_result = list(utilbill_result)
+
+        return MongoReebill(reebill_result, utilbill_result).period_begin
 
     def get_first_issue_date_for_account(self, account):
         '''Returns the issue date of the account's earliest reebill, or None if
@@ -1669,8 +1710,8 @@ class ReebillDAO:
         reebills in Mongo that are not in MySQL.'''
         result = self.reebills_collection.find_one({
             '_id.account': account
-            }, sort=[('sequence', pymongo.DESCENDING)])
-        if result == None:
+            }, sort=[('_id.sequence', pymongo.DESCENDING)])
+        if result is None:
             return 0
-        return MongoReebill(result).sequence
+        return result['_id']['sequence']
 

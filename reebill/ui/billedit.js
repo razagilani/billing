@@ -1,7 +1,8 @@
 // necessary for form validation messages to appear when a field's msgTarget qtip config is used
 //Ext.QuickTips.init();
 
-var DEFAULT_RESOLUTION = 100; 
+var DEFAULT_RESOLUTION = 100;
+var DEFAULT_DIFFERENCE_THRESHOLD = 1.0;
 
 /*
 * Test Code.  TODO 25495769: externalize it into a separate file which can be selectively included to troubleshoot.
@@ -70,11 +71,11 @@ function reeBillReady() {
                                 ReeBill.LoginWindow.show();
                             }
                         } else {
-                            console.log(jsonData);
+                            //console.log(jsonData);
                         }
                     }
                 } else {
-                    console.log(jsonData);
+                    //console.log(jsonData);
                 }
             }
         } catch (e) {
@@ -426,6 +427,7 @@ function reeBillReady() {
                     for (var i = 0; i < selections.length; i++) {
                         utilbillGridStore.remove(selections[i]);
                     }
+                    utilbillGrid.getBottomToolbar().doRefresh();
                 }
             }]
         }),
@@ -592,7 +594,7 @@ function reeBillReady() {
                 {text: 'Roll Period', handler: rollOperation},
                 {text: 'Bind RE&E Offset', handler: bindREEOperation},
                 {text: 'Compute Bill', handler: computeBillOperation},
-                {text: 'Attach Utility Bills to Reebill', handler: attachOperation},
+                //{text: 'Attach Utility Bills to Reebill', handler: attachOperation},
                 {text: 'Render', handler: renderOperation},
             ]
         })
@@ -1596,13 +1598,13 @@ function reeBillReady() {
         });
     }
 
-    var attachDataConn = new Ext.data.Connection({
+    /*var attachDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/attach_utilbills',
     });
     attachDataConn.autoAbort = true;
     attachDataConn.disableCaching = true;
     function attachOperation() {
-        /* Finalize association of utilbills with reebill. */
+        /* Finalize association of utilbills with reebill.
         attachDataConn.request({
             params: {
                 account: selected_account,
@@ -1626,7 +1628,7 @@ function reeBillReady() {
                 Ext.MessageBox.alert('Error', "Attach Utility Bills failed");
             }
         });
-    }
+    }*/
 
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1672,127 +1674,6 @@ function reeBillReady() {
 
     //
     ////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Bill Periods tab
-    //
-    // dynamically create the period forms when a bill is loaded
-    //
-
-    function configureUBPeriodsForms(account, sequence, periods)
-    {
-        var ubPeriodsTab = tabPanel.getItem('ubPeriodsTab');
-
-        ubPeriodsTab.removeAll(true);
-
-        var ubPeriodsFormPanels = [];
-        
-        if (periods) {
-            for (var service in periods["periods"]) { 
-                var ubPeriodsFormPanel = new Ext.FormPanel({
-                    id: service + 'UBPeriodsFormPanel',
-                    title: 'Service ' + service,
-                    header: true,
-                    url: 'http://'+location.host+'/reebill/setUBPeriod',
-                    border: false,
-                    frame: true,
-                    labelWidth: 125,
-                    bodyStyle:'padding:10px 10px 0px 10px',
-                    items:[], // added by configureUBPeriodsForm()
-                    buttons: [
-                        // TODO: the save button is generic in function, refactor
-                        {
-                            text   : 'Save',
-                            handler: saveForm
-                        },{
-                            text   : 'Reset',
-                            handler: function() {
-                                var formPanel = this.findParentByType(Ext.form.FormPanel);
-                                formPanel.getForm().reset();
-                            }
-                        }
-                    ]
-                });
-
-                // add the period date pickers to the form
-                ubPeriodsFormPanel.add(
-                    new Ext.form.DateField({
-                        fieldLabel: 'Begin',
-                        name: 'begin',
-                        value: periods["periods"][service].begin,
-                        format: 'Y-m-d'
-                    }),
-                    new Ext.form.DateField({
-                        fieldLabel: 'End',
-                        name: 'end',
-                        value: periods["periods"][service].end,
-                        format: 'Y-m-d'
-                    })
-                );
-
-                // add base parms for form post
-                ubPeriodsFormPanel.getForm().baseParams = {account: account, sequence: sequence, service:service}
-
-                ubPeriodsFormPanels.push(ubPeriodsFormPanel);
-
-            }
-        }
-        ubPeriodsTab.add(ubPeriodsFormPanels);
-        ubPeriodsTab.doLayout();
-    }
-
-    //
-    // Instantiate the Utility Bill Periods panel
-    //
-    var ubBillPeriodsPanel = new Ext.Panel({
-        id: 'ubPeriodsTab',
-        title: 'Bill Periods',
-        disabled: billPeriodsPanelDisabled,
-        items: null // configureUBPeriodForm set this
-    });
-
-    ubBillPeriodsPanel.on('activate', function () {
-        // because this tab is being displayed, demand the form that it contain 
-        // be populated
-        // disable it during load, the datastore re-enables when loaded.
-        ubBillPeriodsPanel.setDisabled(true);
-
-        // get utilbill period information from server
-        // TODO: fire this request only when the form is displayed
-        ubPeriodsDataConn.request({
-            params: {account: selected_account, sequence: selected_sequence},
-            success: function(result, request) {
-                var jsonData = null;
-                try {
-                    jsonData = Ext.util.JSON.decode(result.responseText);
-                    if (jsonData.success == false)
-                    {
-                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                    } else {
-                        configureUBPeriodsForms(selected_account, selected_sequence, jsonData);
-                    } 
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
-                } finally {
-                    ubBillPeriodsPanel.setDisabled(false);
-                }
-            },
-            failure: function() {
-                try {
-                    Ext.MessageBox.alert('Server Error', result.responseText);
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
-                } finally {
-                    ubBillPeriodsPanel.setDisabled(false);
-                }
-            },
-        });
-
-    });
 
     ////////////////////////////////////////////////////////////////////////////
     // Measured Usage Tab
@@ -2440,7 +2321,7 @@ function reeBillReady() {
         height: 900,
         width: 1000,
         title: 'Actual Charges',
-        clicksToEdit: 1
+        clicksToEdit: 2
         // config options for stateful behavior
         //stateful: true,
         //stateId: 'grid' 
@@ -2815,7 +2696,7 @@ function reeBillReady() {
         height: 900,
         width: 1000,
         title: 'Hypothetical Charges',
-        clicksToEdit: 1
+        clicksToEdit: 2
         // config options for stateful behavior
         //stateful: true,
         //stateId: 'grid' 
@@ -3168,7 +3049,7 @@ function reeBillReady() {
             forceFit: true,
         },
         title: 'Customer Periodic',
-        clicksToEdit: 1
+        clicksToEdit: 2
     });
 
     CPRSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
@@ -3430,7 +3311,7 @@ function reeBillReady() {
             forceFit: true,
         },
         title: 'Utility Periodic',
-        clicksToEdit: 1
+        clicksToEdit: 2
     });
 
     UPRSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
@@ -3686,7 +3567,7 @@ function reeBillReady() {
             forceFit: true,
         },
         title: 'Utility Global',
-        clicksToEdit: 1
+        clicksToEdit: 2
     });
 
     URSRSIGrid.getSelectionModel().on('selectionchange', function(sm){
@@ -3958,7 +3839,7 @@ function reeBillReady() {
             forceFit: true,
         },
         title: 'Payments',
-        clicksToEdit: 1
+        clicksToEdit: 2
     });
 
 /*    paymentGrid.getSelectionModel().on('selectionchange', function(sm){
@@ -3981,7 +3862,7 @@ function reeBillReady() {
         title: 'Pay',
         disabled: paymentPanelDisabled,
         layout: 'accordion',
-        items: [paymentGrid, ]
+        items: [paymentGrid, ],
     });
 
     // this event is received when the tab panel tab is clicked on
@@ -3998,46 +3879,13 @@ function reeBillReady() {
 
     ///////////////////////////////////////
     // Mail Tab
-    var mailAddressesConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/retrieve_mail_addresses',
-    });
-    mailAddressesConn.autoAbort = true;
-    mailAddressesConn.disableCaching = true;
     var mailDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/mail',
     });
     mailDataConn.autoAbort = true;
     mailDataConn.disableCaching = true;
     function mailReebillOperation(sequences) {
-        mailAddressesConn.request({
-            params: {
-                account: selected_account,
-            },
-            success: function(response, options) {
-                var a = {};
-                try {
-                    a = Ext.decode(response.responseText);
-                }
-                catch(e) {
-                    alert("Could not decode JSON data.");
-                }
-                if(a.success == true) {
-                    if(a.mail_addresses == null)
-                        a.mail_addresses = "";
-                    else
-                        a.mail_addresses = a.mail_addresses.join(", ");
-                    Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', mailCallback, false, false, a.mail_addresses);
-                }
-                else {
-                    Ext.Msg.alert('Error', a.errors.reason + a.errors.details);
-                }
-            },
-            failure: function () {
-                Ext.Msg.alert('Failure', "mail response fail");
-            },
-        });
-
-        function mailCallback(btn, recipients) {
+        Ext.Msg.prompt('Recipient', 'Enter comma seperated email addresses:', function (btn, recipients) {
             if (btn == 'ok') {
                 mailDataConn.request({
                     params: {
@@ -4084,8 +3932,7 @@ function reeBillReady() {
                     }
                 });
             }
-        }
-        
+        });
     }
 
     var initialMailReebill =  {
@@ -4323,8 +4170,8 @@ function reeBillReady() {
         ],
         // looks to be initial order for load
         sortInfo: {
-            field: 'account',
-            direction: 'DESC'
+            field: 'lastissuedate',
+            direction: 'ASC'
         },
     });
 
@@ -4390,7 +4237,7 @@ function reeBillReady() {
                 renderer: accountGridColumnRenderer,
             },{
                 header: 'Last Event',
-                sortable: true,
+                sortable: false,
                 dataIndex: 'lastevent',
                 renderer: accountGridColumnRenderer,
                 width: 350,
@@ -4435,7 +4282,7 @@ function reeBillReady() {
             displayMsg: 'Displaying {0} - {1} of {2}',
             emptyMsg: "No statuses to display",
         }),
-        clicksToEdit: 1,
+        clicksToEdit: 2,
     });
 
     accountGrid.getSelectionModel().on('beforerowselect', function(selModel, rowIndex, keepExisting, record) {
@@ -5006,7 +4853,92 @@ function reeBillReady() {
         }
     });
 
+    var differenceThresholdField = new Ext.ux.form.SpinnerField({
+      id: 'differencethresholdmenu',
+      fieldLabel: '% Difference Allowed between Utility Bill and ReeBill',
+      name: 'differencethreshold',
+      value: DEFAULT_DIFFERENCE_THRESHOLD,
+      minValue: .01,
+      maxValue: 100,
+      allowDecimals: true,
+      decimalPrecision: 2,
+      incrementValue: 1,
+      accelerate: true
+    });
 
+    var setThresholdDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/setDifferenceThreshold',
+    });
+    setThresholdDataConn.autoAbort = true;
+    setThresholdDataConn.disableCaching = true;
+    var thresholdFormPanel = new Ext.FormPanel({
+      labelWidth: 240, // label settings here cascade unless overridden
+      frame: true,
+      title: '% Difference Allowed between Utility Bill and ReeBill',
+      bodyStyle: 'padding:5px 5px 0',
+      //width: 610,
+      defaults: {width: 435},
+      layout: 'fit', 
+      defaultType: 'textfield',
+      items: [
+        differenceThresholdField,
+      ],
+      buttons: [
+        new Ext.Button({
+            text: 'Save',
+            handler: function() {
+                setThresholdDataConn.request({
+                    params: { 'threshold': differenceThresholdField.getValue()},
+                    success: function(result, request) {
+                        var jsonData = null;
+                        try {
+                            jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == false) {
+                                Ext.Msg.alert("setDifferenceThreshold failed: " + jsonData.errors)
+                            }
+                            // handle failure here if necessary
+                        } catch (err) {
+                            Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
+                        }
+                    },
+                    failure: function () {
+                        Ext.Msg.alert("setDifferencethreshold request failed");
+                    }
+                });
+            }
+        }),
+      ],
+    });
+
+    // get initial value of this field from the server
+    var getThresholdDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/getDifferenceThreshold',
+    });
+    getThresholdDataConn.autoAbort = true;
+    getThresholdDataConn.disableCaching = true;
+    // TODO: 22360193 populating a form from Ajax creates a race condition.  
+    // What if the network doesn't return and user enters a value nefore the callback is fired?
+    var threshold = null;
+    getThresholdDataConn.request({
+        success: function(result, request) {
+            var jsonData = null;
+            try {
+                jsonData = Ext.util.JSON.decode(result.responseText);
+                if (jsonData.success == true) {
+                    resolution = jsonData['threshold'];
+                    differenceThresholdField.setValue(resolution);
+                } else {
+                    // handle success:false here if needed
+                }
+            } catch (err) {
+                Ext.MessageBox.alert('ERROR', 'Local:  '+ err + ' Remote: ' + result.responseText);
+            }
+        },
+        failure: function () {
+            Ext.Msg.alert("getDifferenceThreshold request failed");
+        }
+    });
+    
     //
     // Instantiate the Preference panel
     //
@@ -5019,7 +4951,7 @@ function reeBillReady() {
             pack : 'start',
             align : 'stretch',
         },
-        items: [preferencesFormPanel, ],
+        items: [preferencesFormPanel, thresholdFormPanel],
     });
 
     ///////////////////////////////////////
@@ -5242,7 +5174,7 @@ function reeBillReady() {
         },
         // this is actually set in loadReeBillUIForAccount()
         title: 'Journal Entries ' + selected_account,
-        clicksToEdit: 1
+        clicksToEdit: 2
     });
 
     //
@@ -5516,7 +5448,7 @@ function reeBillReady() {
     var curYear = now.getUTCFullYear();
     var curMonth = now.getUTCMonth();
     var year; var month; var ago = 11;
-    if (month == 11) {
+    if (curMonth == 11) { // December (months are numbered from 0)
         year = curYear;
         month = 1;
     } else {
@@ -5601,6 +5533,300 @@ function reeBillReady() {
     // end of tab widgets
     ////////////////////////////////////////////////////////////////////////////
 
+    ///////////////////////////////////////////////////////////////////////////
+    //Issuable Reebills Tab
+    //Show all unissued reebills, show the reebills whose totals match their
+    //  utilbills first
+    
+    var initialIssuable = {
+        rows: [
+        ]
+    };
+
+    var issuableReader = new Ext.data.JsonReader({
+        root: 'rows',
+        totalProperty: 'total',
+        fields: [
+            {name: 'id', mapping: 'id'},
+            {name: 'account', mapping: 'account'},
+            {name: 'sequence', mapping: 'sequence'},
+            {name: 'mailto', mapping: 'mailto'},
+            {name: 'util_total', mapping: 'util_total'},
+            {name: 'reebill_total', mapping: 'reebill_total'},
+            {name: 'matching', mapping: 'matching'},
+            {name: 'difference', mapping: 'difference'},
+        ],
+    });
+
+    var issuableWriter = new Ext.data.JsonWriter({
+        encode: true,
+        writeAllFields: true
+    });
+
+    var issuableStoreProxyConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/issuable'
+    });
+    issuableStoreProxyConn.autoAbort = true;
+    issuableStoreProxyConn.disableCaching = true;
+    
+    var issuableStoreProxy = new Ext.data.HttpProxy(issuableStoreProxyConn);
+
+    var issuableStore = new Ext.data.GroupingStore({
+        proxy: issuableStoreProxy,
+        reader: issuableReader,
+        writer: issuableWriter,
+        autoSave: true,
+        baseParams: {start: 0, limit: 25},
+        data: initialIssuable,
+        groupField: 'matching',
+        sortInfo:{field: 'difference', direction: 'DESC'},
+        remoteSort: true,
+    });
+    
+    issuableStore.on('beforeload', function () {
+        issuableGrid.setDisabled(true);
+    });
+    
+    issuableStore.on('load', function() {
+        issuableGrid.setDisabled(false);
+    });
+
+    issuableMailListRegex = new RegExp("^[\\w!#$%&'*+\\-/=?^_`{\\|}~](\\.?[\\w!#$%&'*+\\-/=?^_`{\\|}~])*@[\\w-](\\.?[\\w-])*(,\\s*[\\w!#$%&'*+\\-/=?^_`{\\|}~](\\.?[\\w!#$%&'*+\\-/=?^_`{\\|}~])*@[\\w-](\\.?[\\w-])*)*$")
+
+    var issuableColModel = new Ext.grid.ColumnModel({
+        columns: [
+            {
+                id: 'matching',
+                header: '',
+                width: 160,
+                sortable: true,
+                dataIndex: 'matching',
+                hidden: true,
+            },{
+                id: 'account',
+                header: 'Account',
+                width: 75,
+                sortable: true,
+                groupable: false,
+                dataIndex: 'account',
+                editable: false,
+                editor: new Ext.form.TextField(),
+            },{
+                id: 'sequence',
+                header: 'Sequence',
+                width: 75,
+                sortable: false,
+                groupable: false,
+                dataIndex: 'sequence',
+                editable: false,
+                editor: new Ext.form.TextField(),
+            },{
+                id: 'mailto',
+                header: 'Recipients',
+                columnWidth: 1,
+                sortable: false,
+                groupable: false,
+                dataIndex: 'mailto',
+                editable: true,
+                editor: new Ext.form.TextField({
+                    //regex: issuableMailListRegex,
+                }),
+            },{
+                id: 'util_total',
+                header: 'Utility Bill Total',
+                width: 125,
+                sortable: false,
+                groupable: false,
+                dataIndex: 'util_total',
+                editable: false,
+                editor: new Ext.form.NumberField(),
+                renderer: function(v, params, record)
+                {
+                    return Ext.util.Format.usMoney(record.data.util_total);
+                },
+            },{
+                id: 'reebill_total',
+                header: 'Reebill Total',
+                width: 125,
+                sortable: false,
+                groupable: false,
+                dataIndex: 'reebill_total',
+                editable: false,
+                editor: new Ext.form.NumberField(),
+                renderer: function(v, params, record)
+                {
+                    return Ext.util.Format.usMoney(record.data.reebill_total);
+                },
+            },{
+                id: 'difference',
+                header: '% Difference',
+                width: 125,
+                sortable: true,
+                groupable: false,
+                dataIndex: 'difference',
+                editable: false,
+                editor: new Ext.form.NumberField(),
+                renderer: function(v, params, record)
+                {
+                    return Ext.util.Format.number(record.data.difference * 100,'0.00')+"%";
+                },
+            },
+        ],
+    });
+
+    var issueDataConn = new Ext.data.Connection({
+        url: 'http://'+location.host+'/reebill/issue',
+    });
+    issueDataConn.autoAbort = true;
+    issueDataConn.disableCaching = true;
+    
+    var issuableCurrentlyEditing = false;
+    
+    var issueReebillButton = new Ext.Button({
+        xtype: 'button',
+        id: 'issueReebillBtn',
+        iconCls: 'icon-mail-go',
+        text: 'Issue',
+        disabled: true,
+        handler: function()
+        {
+            var r = issuableGrid.getSelectionModel().getSelected();
+            issuableGrid.setDisabled(true);
+            issueDataConn.request({
+                params: {
+                    account: r.data.account,
+                    sequence: r.data.sequence,
+                    apply_corrections: false,
+                },
+                success: function (response, options) {
+                    var o = {};
+                    try {
+                        o = Ext.decode(response.responseText);
+                    }
+                    catch(e) {
+                        Ext.Msg.alert("Data Error", "Could not decode response from server");
+                        return;
+                        issuableStore.reload();
+                        issuableGrid.setDisabled(false);
+                    }
+                    if (o.success == true) {
+                        Ext.Msg.alert("Success", "Mail successfully sent");
+                        issuableStore.reload();
+                        issuableGrid.setDisabled(false);
+                    }
+                    else if (o.success !== true && o.corrections != undefined) {
+                        var result = Ext.Msg.confirm('Corrections must be applied',
+                                                     'Corrections from reebills ' + o.corrections +
+                                                     ' will be applied to this bill as an adjusment of $'
+                                + o.adjustment + '. Are you sure you want to issue it?', function(answer) {
+                                    if (answer == 'yes') {
+                                        issueDataConn.request({
+                                            params: { account: r.data.account, sequence: r.data.sequence, apply_corrections: true},
+                                            success: function(response, options) {
+                                                var o2 = Ext.decode(response.responseText);
+                                                if (o2.success == true)
+                                                    Ext.Msg.alert("Success", "Mail successfully sent");
+                                                else
+                                                    Ext.Msg.alert('Error', o2.errors.reason + "\n" + o2.errors.details);
+                                                issuableStore.reload();
+                                                issuableGrid.setDisabled(false);
+                                            },
+                                            failure: function() {
+                                                Ext.Msg.alert('Failure', "Connection Failure");
+                                                issuableStore.reload();
+                                                issuableGrid.setDisabled(false);
+                                            }
+                                        });
+                                    }
+                                });
+                    }
+                    else {
+                        Ext.Msg.alert('Error', o.errors.reason + "\n" + o.errors.details);
+                        issuableStore.reload();
+                        issuableGrid.setDisabled(false);
+                    }
+                },
+                failure: function () {
+                    Ext.Msg.alert('Failure', "Connection Failure");
+                    issuableStore.reload();
+                    issuableGrid.setDisabled(false);
+                }
+            });
+        },
+    });
+    
+    var issueReebillToolbar = new Ext.Toolbar({
+        items: [
+            issueReebillButton,
+        ],
+    });
+    
+    var issuableGrid = new Ext.grid.EditorGridPanel({
+        colModel: issuableColModel,
+        selModel: new Ext.grid.RowSelectionModel({
+            singleSelect: true,
+            moveEditorOnEnter: false,
+            listeners: {
+                rowselect: function (selModel, index, record) {
+                    issueReebillButton.setDisabled(!issuableMailListRegex.test(record.data.mailto));
+                    accountGrid.getSelectionModel().clearSelections();
+                    reeBillGrid.getSelectionModel().clearSelections();
+                    loadReeBillUIForAccount(record.data.account);
+                },
+            },
+        }),
+        tbar: issueReebillToolbar,
+        bbar: new Ext.PagingToolbar({
+            pageSize: 25,
+            store: issuableStore,
+            displayInfo: true,
+            displayMsg: 'Displaying {0} - {1} of {2}',
+            emptyMsg: 'No ReeBills to display',
+        }),
+        store: issuableStore,
+        enableColumnMove: false,
+        view: new Ext.grid.GroupingView({
+            forceFit: false,
+            groupTextTpl: '{[values.gvalue==true?"Reebill"+(values.rs.length>1?"s":"")+" with Matching Totals":"Reebill"+(values.rs.length>1?"s":"")+" without Matching Totals"]}',
+            showGroupName: false,
+        }),
+        frame: true,
+        animCollapse: false,
+        stripeRows: true,
+        autoExpandColumn: 'mailto',
+        height: 900,
+        width: 1000,
+        title: 'Reebills Ready to be Issued',
+        clicksToEdit: 2,
+        forceValidation: true,
+    });
+    
+    issuableGrid.on('validateedit', function (e /*{grid, record, field, value, originalValue, row, column}*/ ) {
+        oldAllowed = issuableMailListRegex.test(e.originalValue)
+        allowed = issuableMailListRegex.test(e.value);
+        issueReebillButton.setDisabled(!allowed && !oldAllowed);
+        if (!allowed && e.value != '') {
+            Ext.Msg.alert('Invalid Input','Please input a comma seperated list of email addresses.')
+        }
+        return allowed
+    });
+
+    issuableGrid.on('beforeedit', function () {
+        issueReebillButton.setDisabled(true);
+    });
+    
+    var  issuablePanel = new Ext.Panel({
+        id: 'issuableTab',
+        title: 'Issuable Reebills',
+        disabled: issuablePanelDisabled,
+        layout: 'accordion',
+        items: [issuableGrid,],
+    });
+
+    issuablePanel.on('activate', function(panel) {
+        issuableStore.reload();
+    });
+
     ////////////////////////////////////////////////////////////////////////////
     // Status bar displayed at footer of every panel in the tabpanel
 
@@ -5631,18 +5857,18 @@ function reeBillReady() {
             paymentsPanel,
             utilityBillPanel,
             reeBillPanel,
-            ubBillPeriodsPanel,
             ubMeasuredUsagesPanel,
             rateStructurePanel,
             chargeItemsPanel,
             journalPanel,
+            issuablePanel,
             mailPanel,
             reportPanel,
             preferencesPanel,
             aboutPanel,
         ]
     });
-
+    
     // end of tab widgets
     ////////////////////////////////////////////////////////////////////////////
 
@@ -5721,7 +5947,6 @@ function reeBillReady() {
         selected_sequence = null;
 
         // a new account has been selected, deactivate subordinate tabs
-        ubBillPeriodsPanel.setDisabled(true);
         ubMeasuredUsagesPanel.setDisabled(true);
         rateStructurePanel.setDisabled(true);
         chargeItemsPanel.setDisabled(true);
@@ -5785,7 +6010,6 @@ function reeBillReady() {
         journalFormPanel.getForm().findField("account").setValue(account)
         // TODO: 20513861 clear reebill data when a new account is selected
         journalFormPanel.getForm().findField("sequence").setValue(null)
-        configureUBPeriodsForms(null, null, null);
         configureUBMeasuredUsagesForms(null, null, null);
         configureReeBillEditor(null, null);
         aChargesStore.loadData({rows: 0, success: true});
@@ -5820,12 +6044,6 @@ function reeBillReady() {
     // configure data connections for widgets that are not managed by 
     // datastores.
     //
-    var ubPeriodsDataConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/ubPeriods',
-    });
-    ubPeriodsDataConn.autoAbort = true;
-    ubPeriodsDataConn.disableCaching = true;
-
     var ubMeasuredUsagesDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/ubMeasuredUsages',
     });
@@ -5856,11 +6074,11 @@ function reeBillReady() {
                     return record.data.sequence == sequence + 1; }).first() ==
                     undefined;
 
-            // delete button requires selected unissued reebill whose predecessor
-            // is issued, or whose sequence is the last one
-            deleteButton.setDisabled(! (isLastSequence &&
-                    record.data.max_version == 0) && (record.data.issued == true ||
-                    (prevRecord != null && prevRecord.data.issued == false)));
+            // delete button requires selected unissued correction whose predecessor
+            // is issued, or an unissued reebill whose sequence is the last one
+            deleteButton.setDisabled(!(isLastSequence && record.data.issued == 0 ||
+                    (record.data.issued == false && record.data.max_version > 0 &&
+                    (prevRecord == null || prevRecord.data.issued == true))));
             // new version button requires selected issued reebill
             versionButton.setDisabled(sequence == null || record.data.issued == false);
         }
@@ -5874,7 +6092,6 @@ function reeBillReady() {
         
         /* the rest of this applies only for a valid sequence */
         if (sequence == null) {
-            ubBillPeriodsPanel.setDisabled(true);
             ubMeasuredUsagesPanel.setDisabled(true);
             rateStructurePanel.setDisabled(true);
             chargeItemsPanel.setDisabled(true);
@@ -5946,7 +6163,6 @@ function reeBillReady() {
         // Now that a ReeBill has been loaded, enable the tabs that act on a ReeBill
         // These enabled tabs will then display widgets that will pull data based on
         // the global account and sequence selection
-        ubBillPeriodsPanel.setDisabled(false);
         ubMeasuredUsagesPanel.setDisabled(false);
         rateStructurePanel.setDisabled(false);
         chargeItemsPanel.setDisabled(false);
