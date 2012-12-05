@@ -113,7 +113,7 @@ print "------------------------"
 import pymongo
 db = pymongo.Connection(host, 27017)[db]
 i = 0
-for reebill in db.reebills.find():
+for reebill in db.reebills.find().sort([('_id.account',pymongo.ASCENDING),('_id.sequence',pymongo.ASCENDING),('_id.version',pymongo.ASCENDING)]):
     for utilbill in reebill['utilbills']:
         i += 1
         ub = db.utilbills.find({'_id':utilbill['id']})
