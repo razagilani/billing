@@ -5804,7 +5804,7 @@ function reeBillReady() {
     issuableGrid.on('validateedit', function (e /*{grid, record, field, value, originalValue, row, column}*/ ) {
         oldAllowed = issuableMailListRegex.test(e.originalValue)
         allowed = issuableMailListRegex.test(e.value);
-        issueReebillButton.setDisabled(!allowed && !oldAllowed);
+        issueReebillButton.setDisabled((!allowed && !oldAllowed) || e.value == '');
         if (!allowed && e.value != '') {
             Ext.Msg.alert('Invalid Input','Please input a comma seperated list of email addresses.')
         }
