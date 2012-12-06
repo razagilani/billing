@@ -21,10 +21,10 @@ from billing.processing import state
 from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
 from skyliner import sky_handlers
-from billing.nexus_util import NexusUtil
+from billing.util.nexus_util import NexusUtil
 from billing.util import json_util
 from billing.util import dateutils
-from billing.dateutils import date_to_datetime
+from billing.util.dateutils import date_to_datetime
 
 OUTPUT_FILE_NAME = 'reconciliation_report.json'
 LOG_FILE_NAME = 'reconciliation.log'
@@ -167,8 +167,14 @@ def generate_report(logger, billdb_config, statedb_config, splinter_config,
 def main():
     # command-line arguments
     parser = argparse.ArgumentParser(description='Generate reconciliation report.')
-    parser.add_argument('--host',  default='localhost',
-            help='host for all databases (default: localhost)')
+    parser.add_argument('--statedbhost',  default='localhost',
+            help='statedb host (default: localhost)')
+    parser.add_argument('--billdbhost',  default='localhost',
+            help='billdb host (default: localhost)')
+    parser.add_argument('--oltphost',  default='localhost',
+            help='oltp host (default: localhost)')
+    parser.add_argument('--olaphost',  default='localhost',
+            help='olap host (default: localhost)')
     parser.add_argument('--statedb', default='skyline_dev',
             help='name of state database (default: skyline_dev)')
     parser.add_argument('--stateuser', default='dev',
@@ -183,31 +189,35 @@ def main():
             help="Don't include OLTP data (much faster)")
     parser.add_argument('--nexushost', default='nexus',
             help="Name of nexus host")
+    parser.add_argument('--reportoutputdir', default='',
+            help="Directory to write static report file.")
+    parser.add_argument('--logoutputdir', default='',
+            help="Directory to write static report file.")
     args = parser.parse_args()
 
     # set up config dicionaries for data access objects used in generate_report
     billdb_config = {
         'database': args.billdb,
-        'host': args.host,
+        'host': args.billdbhost,
         'port': '27017'
     }
     statedb_config = {
-        'host': args.host,
+        'host': args.statedbhost,
         'password': args.statepw,
         'database': args.statedb,
         'user': args.stateuser
     }
     oltp_url = 'http://duino-drop.appspot.com/'
     splinter_config = {
-        'skykit_host': args.host,
+        'skykit_host': args.oltphost,
         'skykit_db': args.olapdb,
-        'olap_cache_host': args.host,
+        'olap_cache_host': args.olaphost,
         'olap_cache_db': args.olapdb,
         'monguru_options': {
-            'olap_cache_host': args.host,
+            'olap_cache_host': args.olaphost,
             'olap_cache_db': args.olapdb,
             'cartographer_options': {
-                'olap_cache_host': args.host,
+                'olap_cache_host': args.olaphost,
                 'olap_cache_db': args.olapdb,
                 'measure_collection': 'skymap',
                 'install_collection': 'skykit_installs',
@@ -216,7 +226,7 @@ def main():
             },
         },
         'cartographer_options': {
-            'olap_cache_host': args.host,
+            'olap_cache_host': args.olaphost,
             'olap_cache_db': args.olapdb,
             'measure_collection': 'skymap',
             'install_collection': 'skykit_installs',
@@ -226,8 +236,8 @@ def main():
     }
 
     # log file goes in billing/reebill (where reebill.log also goes)
-    log_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-            'reebill', LOG_FILE_NAME)
+    log_file_path = os.path.join(args.logoutputdir, LOG_FILE_NAME)
+
     # delete old log file
     try:
         os.remove(log_file_path)
@@ -244,12 +254,9 @@ def main():
     
     try:
         # write the json string to a file: it goes in billing/reebill
-        output_file_path = os.path.join(os.path.dirname(
-                os.path.realpath(__file__)), 'reebill', OUTPUT_FILE_NAME)
-        with open(os.path.join(os.path.dirname(os.path.realpath('billing')),
-                'reebill', output_file_path), 'w') as output_file:
-            logger.info('Generating reconciliation report at %s' %
-                    output_file_path)
+        with open(os.path.join(args.reportoutputdir, OUTPUT_FILE_NAME), 'w') as output_file:
+            logger.info('Generating reconciliation report %s' %
+                    os.path.join(args.reportoutputdir, OUTPUT_FILE_NAME))
             generate_report(logger, billdb_config, statedb_config,
                     splinter_config, oltp_url, output_file, args.nexushost,
                     skip_oltp=args.skip_oltp)

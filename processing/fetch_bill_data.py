@@ -330,7 +330,7 @@ def usage_data_to_virtual_register(reebill, energy_function,
             for m in u['meters']:
                 for r in m['registers']:
                     if r['identifier'] == meter_identifier:
-                        service = u['_id']['service']
+                        service = u['service']
                         prior_read_date = m['prior_read_date']
                         present_read_date = m['present_read_date']
                         stop = True

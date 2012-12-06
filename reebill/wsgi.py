@@ -262,6 +262,13 @@ class BillToolBridge:
             self.config.set('reebillrendering', 'default_template', DEFAULT_TEMPLATE)
             self.config.set('reebillrendering', 'teva_accounts', '')
 
+            # reebill reconciliation
+            DEFAULT_RECONCILIATION_LOG_DIRECTORY = '/tmp'
+            DEFAULT_RECONCILIATION_REPORT_DIRECTORY = '/tmp'
+            self.config.add_section('reebillreconciliation')
+            self.config.set('reebillreconciliation', 'log_directory', DEFAULT_RECONCILIATION_LOG_DIRECTORY)
+            self.config.set('reebillreconciliation', 'report_directory', DEFAULT_RECONCILIATION_REPORT_DIRECTORY)
+
 
             # TODO default config file is incomplete
 
@@ -389,6 +396,9 @@ class BillToolBridge:
         # determine whether authentication is on or off
         self.authentication_on = self.config.getboolean('authentication', 'authenticate')
 
+        self.reconciliation_log_dir = self.config.get('reebillreconciliation', 'log_directory')
+        self.reconciliation_report_dir = self.config.get('reebillreconciliation', 'report_directory')
+
         # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
 
@@ -434,8 +444,7 @@ class BillToolBridge:
     def get_reconciliation_data(self, start, limit, **kwargs):
         '''Handles AJAX request for data to fill reconciliation report grid.'''
         start, limit = int(start), int(limit)
-        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                'reconciliation_report.json')) as json_file:
+        with open(os.path.join(self.reconciliation_report_dir,'reconciliation_report.json')) as json_file:
             # load all data from json file: it's one JSON dictionary per
             # line (for reasons explained in reconciliation.py) but should
             # be interpreted as a JSON list
@@ -731,13 +740,6 @@ class BillToolBridge:
             # (no sequence associated with this)
             journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
                     customer.account)
-            new_reebill = self.process.roll_bill(session, reebill)
-            self.reebill_dao.save_reebill(new_reebill)
-
-            # record reebill roll separately ("so that performance can be
-            # measured": 25282041)
-            journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
-                    customer.account, 0)
 
             # get next account number to send it back to the client so it
             # can be shown in the account-creation form
@@ -749,10 +751,10 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def roll(self, account, **kwargs):
+        if not account:
+            raise ValueError("Bad Parameter Value")
         with DBSession(self.state_db) as session:
             lastSequence = self.state_db.last_sequence(session, account)
-            if not account:
-                raise ValueError("Bad Parameter Value")
             reebill = self.reebill_dao.load_reebill(account, lastSequence)
             new_reebill = self.process.roll_bill(session, reebill)
             self.reebill_dao.save_reebill(new_reebill)
@@ -2017,9 +2019,8 @@ class BillToolBridge:
                 # that client is allowed to delete a range of bills at once, as
                 # long as they're in sequence order)
                 max_version = self.state_db.max_version(session, account, sequence)
-                if sequence != 1 and not (sequence == last_sequence and
-                        max_version == 0) and not self.state_db.is_issued(
-                        session, account, sequence - 1):
+                if not (max_version == 0 and sequence == last_sequence or max_version > 0 and
+                        (sequence == 1 or self.state_db.is_issued(session, account, sequence - 1))):
                     raise ValueError(("Can't delete a reebill version whose "
                             "predecessor is unissued, unless its version is 0 "
                             "and its sequence is the last one. Delete a "
@@ -2194,57 +2195,6 @@ class BillToolBridge:
             'services': reebill.services,
             'suspended_services': reebill.suspended_services
         })
-
-    #
-    ################
-
-    ################
-    # Handle ubPeriods
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    def ubPeriods(self, account, sequence, **args):
-        """ Return all of the utilbill periods on a per service basis so that the forms may be
-        dynamically created."""
-        if not account or not sequence:
-            raise ValueError("Bad Parameter Value")
-
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-
-        # It is possible that there is no reebill for the requested periods 
-        # if this is the case, return no periods.  
-        # This is done so that the UI can configure itself with no data for the
-        # requested measured usage
-        if reebill is None:
-            # TODO: 40161259 must return success field
-            return self.dumps({"periods":None})
-        
-        utilbill_periods = {}
-        for service in reebill.services:
-            (begin, end) = reebill.utilbill_period_for_service(service)
-            utilbill_periods[service] = { 'begin': begin, 'end': end }
-
-        # TODO: 40161259 must return success field
-        return self.dumps({"periods":utilbill_periods})
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    # TODO get rid of it! Also this is no the utility bill period; it's the
-    # reebill period, which the UI calls "Bill Periods"
-    def setUBPeriod(self, account, sequence, service, begin, end, **args):
-        """ 
-        Utilbill period forms are dynamically created in browser, and post back to here individual periods.
-        """ 
-        if not account or not sequence or not service or not begin or not end:
-            raise ValueError("Bad Parameter Value")
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        reebill.set_utilbill_period_for_service(service, (datetime.strptime(begin, "%Y-%m-%d"),datetime.strptime(end, "%Y-%m-%d")))
-        self.reebill_dao.save_reebill(reebill)
-        return self.dumps({'success':True})
-
 
     #
     ################
@@ -2762,20 +2712,17 @@ class BillToolBridge:
                 self.validate_utilbill_period(new_period_start, new_period_end)
 
                 # find utilbill in mysql
-                utilbill = session.query(db_objects.UtilBill).filter(
-                        db_objects.UtilBill.id==utilbill_id).one()
-                customer = session.query(db_objects.Customer).filter(
-                        db_objects.Customer.id==utilbill.customer_id).one()
+                utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
 
-                # utility bills that have reebills shouldn't be editable
-                if utilbill.has_reebill:
+                # utility bills that have issued reebills shouldn't be editable
+                if utilbill.has_reebill and utilbill.reebill.issued:
                     raise Exception("Can't edit utility bills that have already been attached to a reebill.")
 
                 # move the file, if there is one. (only utility bills that are
                 # Complete (0) or UtilityEstimated (1) have files;
                 # SkylineEstimated (2) and Hypothetical (3) ones don't.)
                 if utilbill.state < db_objects.UtilBill.SkylineEstimated:
-                    self.billUpload.move_utilbill_file(customer.account,
+                    self.billUpload.move_utilbill_file(utilbill.customer.account,
                             # don't trust the client to say what the original dates were
                             # TODO don't pass dates into BillUpload as strings
                             # https://www.pivotaltracker.com/story/show/24869817
@@ -2784,18 +2731,14 @@ class BillToolBridge:
                             new_period_start, new_period_end)
 
                 # change dates in MySQL
-                utilbill = session.query(db_objects.UtilBill)\
-                        .filter(db_objects.UtilBill.id==utilbill_id).one()
-                if utilbill.has_reebill:
-                    raise Exception("Can't edit utility bills that have already been attached to a reebill.")
                 utilbill.period_start = new_period_start
                 utilbill.period_end = new_period_end
                 utilbill.total_charges = new_total_charges
 
                 # delete any estimated utility bills that were created to
                 # cover gaps that no longer exist
-                self.process.state_db.trim_hypothetical_utilbills(session,
-                        customer.account, utilbill.service)
+                self.state_db.trim_hypothetical_utilbills(session,
+                        utilbill.customer.account, utilbill.service)
 
                 # update service in MySQL
                 utilbill.service = new_service
@@ -2831,6 +2774,11 @@ class BillToolBridge:
                     # log it
                     journal.UtilBillDeletedEvent.save_instance(cherrypy.session['user'],
                             account, start, end, service, deleted_path)
+
+                # delete any estimated utility bills that were created to
+                # cover gaps that no longer exist
+                self.state_db.trim_hypothetical_utilbills(session,
+                        utilbill.customer.account, utilbill.service)
 
                 return self.dumps({'success': True})
 
@@ -2890,7 +2838,10 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def setDifferenceThreshold(self, threshold, **kwargs):
-        cherrypy.session['user'].preferences['difference_threshold'] = float(threshold)/100.0
+        threshold=float(threshold)
+        if not threshold or threshold > 100 or threshold <= 0:
+            return self.dumps({'success':False, 'errors':"Threshold of %s is not valid." % str(threshold)})
+        cherrypy.session['user'].preferences['difference_threshold'] = threshold/100.0
         self.user_dao.save_user(cherrypy.session['user'])
         return self.dumps({'success':True})
     
