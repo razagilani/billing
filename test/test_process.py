@@ -1097,49 +1097,37 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEquals(False, mysql_reebill.issued)
             self.assertEquals(0, mysql_reebill.max_version)
 
-
-        # TODO ...
+            # TODO ...
 
     def test_issue(self):
         '''Tests attach_utilbills and issue.'''
         acc = '99999'
         with DBSession(self.state_db) as session:
             # two reebills, with utilbills, in mongo & mysql
-            # two reebills, with utilbills, in mongo & mysql
             template = example_data.get_reebill(acc, 0)
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 0))
-            #one = example_data.get_reebill(acc, 1, start=date(2012,1,1), end=date(2012,2,1))
-            #two = example_data.get_reebill(acc, 2, start=date(2012,2,1), end=date(2012,3,1))
-            #self.reebill_dao.save_reebill(one)
-            #self.reebill_dao.save_reebill(two)
-            #self.state_db.new_rebill(session, acc, 1)
-            #self.state_db.new_rebill(session, acc, 2)
             self.state_db.record_utilbill_in_database(session, acc,
                     template.services[0], date(2012,1,1), date(2012,2,1),
                     100, date.today())
             self.state_db.record_utilbill_in_database(session, acc,
                     template.services[0], date(2012,2,1), date(2012,3,1),
                     100, date.today())
+            utilbills = session.query(UtilBill).all()
 
             one = self.process.roll_bill(session, template)
 
             # neither reebill should be issued yet
             self.assertEquals(False, self.state_db.is_issued(session, acc, 1))
-            self.assertEquals(none, one.issue_date)
-            self.assertEquals(none, one.due_date)
-            #self.assertEquals(False, self.state_db.is_issued(session, acc, 2))
-            #self.assertEquals(none, two.issue_date)
-            #self.assertEquals(none, two.due_date)
+            self.assertEquals(None, one.issue_date)
+            self.assertEquals(None, one.due_date)
 
             # two should not be attachable or issuable until one is issued
-            self.assertraises(billstateerror, self.process.attach_utilbills, session, one)
-            self.assertraises(billstateerror, self.process.issue, session, acc, 2)
-
-            # one should not be issuable until one is attached
-            #self.assertraises(billstateerror, self.process.issue, session, acc, 1)
+            self.assertRaises(BillStateError, self.process.attach_utilbills,
+                    session, one, [utilbills[0]])
+            self.assertRaises(BillStateError, self.process.issue, session, acc, 2)
 
             # attach & issue one
-            #self.assertraises(billstateerror, self.process.attach_utilbills, one)
+            #self.assertRaises(BillStateError, self.process.attach_utilbills, one)
             self.process.issue(session, acc, 1)
 
             # re-load from mongo to see updated issue date and due date
@@ -1147,21 +1135,28 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEquals(True, self.state_db.is_issued(session, acc, 1))
             self.assertEquals(datetime.utcnow().date(), one.issue_date)
             self.assertEquals(one.issue_date + timedelta(30), one.due_date)
-            self.assertEquals(one.recipients, None)
+            self.assertIsInstance(one.bill_recipients, list)
+            self.assertEquals(len(one.bill_recipients), 0)
+            self.assertIsInstance(one.last_recipients, list)
+            self.assertEquals(len(one.last_recipients), 0)
 
             two = self.process.roll_bill(session, one)
-
+            two.bill_recipients = ['test1@reebill.us', 'test2@reebill.us']
+            self.reebill_dao.save_reebill(two)
+            
             # attach & issue two
-            self.assertRaises(BillStateError, self.process.attach_utilbills, session, two)
-            self.process.issue(session, acc, 2, ['test1@reebill.us', 'test2@reebill.us'])
+            self.assertRaises(BillStateError, self.process.attach_utilbills,
+                    session, two, [utilbills[1]])
+            self.process.issue(session, acc, 2)
             # re-load from mongo to see updated issue date and due date
             two = self.reebill_dao.load_reebill(acc, 2)
             self.assertEquals(True, self.state_db.is_issued(session, acc, 2))
             self.assertEquals(datetime.utcnow().date(), two.issue_date)
             self.assertEquals(two.issue_date + timedelta(30), two.due_date)
-            self.assertIsInstance(two.recipients, list)
-            self.assertEquals(len(two.recipients), 2)
-            self.assertEquals(True, all(map(isinstance, two.recipients, [unicode]*len(two.recipients))))
+            self.assertIsInstance(two.bill_recipients, list)
+            self.assertEquals(len(two.bill_recipients), 2)
+            self.assertEquals(True, all(map(isinstance, two.bill_recipients,
+                    [unicode]*len(two.bill_recipients))))
 
     def test_delete_reebill(self):
         account = '99999'
@@ -1170,16 +1165,13 @@ class ProcessTest(TestCaseWithSetup):
             template = example_data.get_reebill(account, 0)
             self.reebill_dao.save_reebill(template)
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 0))
-            self.reebill_dao._save_utilbill(example_data.get_utilbill_dict(account, date(2012,1,1), date(2012,2,1)))
 
             customer = self.state_db.get_customer(session, account)
             session.add(UtilBill(customer=customer, state=0, service='gas',\
                 period_start=date(2012,1,1), period_end=date(2012,2,1), reebill=None))
 
             # create sequence 1 version 0, for January 2012, not issued
-            #self.state_db.new_rebill(session, account, 1)
             b = self.process.roll_bill(session, template)
-            #self.reebill_dao.save_reebill(b)
 
             # delete it
             self.process.delete_reebill(session, account, 1)
@@ -1190,15 +1182,9 @@ class ProcessTest(TestCaseWithSetup):
 
             # re-create it, attach it to a utility bill, and issue: can't be
             # deleted
-            #self.state_db.new_rebill(session, account, 1)
-            self.reebill_dao._save_utilbill(example_data.get_utilbill_dict(account, date(2012,1,1), date(2012,2,1)))
             b = self.process.roll_bill(session, template)
-            #self.reebill_dao.save_reebill(b)
             assert self.state_db.listSequences(session, account) == [1]
-            #self.state_db.record_utilbill_in_database(session, account, 'gas',
-                    #date(2012,1,1), date(2012,2,1), datetime.utcnow().date())
-            #self.process.attach_utilbills(session, account, 1)
-
+            
             # update the meter like the user normally would
             # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
             meter = b.meters_for_service('gas')[0]
@@ -1207,11 +1193,11 @@ class ProcessTest(TestCaseWithSetup):
 
             self.process.issue(session, account, 1)
             utilbills = self.state_db.utilbills_for_reebill(session, account, 1)
-            #print utilbills
+            
             assert len(utilbills) == 1
             u = utilbills[0]
             assert (u.customer.account, u.reebill.sequence) == (account, 1)
-            self.reebill_dao.load_reebill(account, 1, version=0)
+            b = self.reebill_dao.load_reebill(account, 1, version=0)
             self.assertRaises(IssuedBillError, self.process.delete_reebill,
                     session, account, 1)
 
@@ -1221,7 +1207,7 @@ class ProcessTest(TestCaseWithSetup):
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account,
                     1))
-
+            
 
             self.process.new_version(session, account, 1)
             assert self.state_db.max_version(session, account, 1) == 1
@@ -1280,10 +1266,6 @@ class ProcessTest(TestCaseWithSetup):
             self.process.issue(session, acc, two.sequence)
             two = self.reebill_dao.load_reebill(acc, two.sequence)
 
-            #three = self.process.roll_bill(session, two)
-            #self.process.issue(session, account, three.sequence)
-            #three = self.reebill_dao.load_reebill(session, account, three.sequence)
-
             # issue reebill #1 and correct it with an adjustment of 100
             #self.process.issue(session, acc, 1)
             one_corrected = self.process.new_version(session, acc, 1)
@@ -1301,7 +1283,6 @@ class ProcessTest(TestCaseWithSetup):
             # bill)
             self.assertEquals(0, one.total_adjustment)
             self.assertEquals(100, two.total_adjustment)
-            #self.assertEquals(0, three.total_adjustment)
 
 
     def test_bind_and_compute_consistency(self):

@@ -551,7 +551,7 @@ class MongoReebill(object):
         # like a pointer.
         id = utilbill_handle['id']
         matching_utilbills = [u for u in self._utilbills if u['_id'] == id]
-        if len(matching_utilbills) < 0:
+        if len(matching_utilbills) == 0:
             raise ValueError('No utilbill found for id "%s"' % id)
         if len(matching_utilbills) > 1:
             raise ValueError('Multiple utilbills found for id "%s"' % id)
@@ -564,7 +564,7 @@ class MongoReebill(object):
         # there's exactly 1
         matching_indices = [index for (index, doc) in
                 enumerate(self._utilbills) if doc['_id'] == id]
-        if len(matching_indices) < 0:
+        if len(matching_indices) == 0:
             raise ValueError('No utilbill found for id "%s"' % id)
         if len(matching_indices) > 1:
             raise ValueError('Multiple utilbills found for id "%s"' % id)
@@ -715,10 +715,9 @@ class MongoReebill(object):
                 for actual_register in meter['registers']:
                     if actual_register['identifier'] == shadow_register['identifier']:
                         return meter['prior_read_date'], meter['present_read_date']
-        raise Exception(('Utility bill for service "%s" has no meter '
+        raise ValueError(('Utility bill for service "%s" has no meter '
                 'containing a register whose identifier matches that of '
                 'a shadow register') % service)
-        return utilbill['prior_read_date']
 
     @property
     def utilbill_periods(self):
@@ -815,7 +814,8 @@ class MongoReebill(object):
         '''Set the meter read dates to the start and end dates of the associated utilbill.'''
         for service in self.services:
             for meter in self.meters_for_service(service):
-                self.set_meter_read_date(service, meter['identifier'], *self.utilbill_period_for_service(service))
+                start, end = self.utilbill_period_for_service(service)
+                self.set_meter_read_date(service, meter['identifier'], end, start)
 
     def set_meter_read_date(self, service, identifier, present_read_date,
             prior_read_date):
@@ -1221,68 +1221,72 @@ class ReebillDAO:
         greatest issued version is returned, and after which the greatest
         overall version is returned), or 'max', which specifies the greatest
         version overall.'''
-        #print >> sys.stderr, '********** load_reebill', account, sequence, version
-        with DBSession(self.state_db) as session:
-            # TODO looks like somebody's temporary hack should be removed
-            if account is None: return None
-            if sequence is None: return None
+        # NOTE not using context manager here because it commits the
+        # transaction when the session exits! this method should be usable
+        # inside other transactions.
+        session = self.state_db.session()
 
-            query = {
-                "_id.account": str(account),
-                # TODO stop passing in sequnce as a string from BillToolBridge
-                "_id.sequence": int(sequence),
-            }
+        # TODO looks like somebody's temporary hack should be removed
+        if account is None: return None
+        if sequence is None: return None
 
-            # TODO figure out how to move this into _get_version_query(): it can't
-            # be expressed as part of the query, except maybe with a javascript
-            # "where" clause
-            if isinstance(version, int):
-                query.update({'_id.version': version})
+        query = {
+            "_id.account": str(account),
+            # TODO stop passing in sequnce as a string from BillToolBridge
+            "_id.sequence": int(sequence),
+        }
+
+        # TODO figure out how to move this into _get_version_query(): it can't
+        # be expressed as part of the query, except maybe with a javascript
+        # "where" clause
+        if isinstance(version, int):
+            query.update({'_id.version': version})
+            mongo_doc = self.reebills_collection.find_one(query)
+        elif version == 'max':
+            # get max version from MySQL, since that's the definitive source of
+            # information on what officially exists (but version 0 reebill
+            # documents are templates that do not go in MySQL)
+            try:
+                if sequence != 0:
+                    max_version = self.state_db.max_version(session, account,
+                            sequence)
+                    query.update({'_id.version': max_version})
                 mongo_doc = self.reebills_collection.find_one(query)
-            elif version == 'max':
-                # get max version from MySQL, since that's the definitive source of
-                # information on what officially exists (but version 0 reebill
-                # documents are templates that do not go in MySQL)
-                try:
-                    if sequence != 0:
-                        max_version = self.state_db.max_version(session, account,
-                                sequence)
-                        query.update({'_id.version': max_version})
-                    mongo_doc = self.reebills_collection.find_one(query)
-                except NoResultFound:
-                    # customer not found in MySQL
-                    mongo_doc = None
-            elif isinstance(version, date):
-                version_dt = date_to_datetime(version)
-                docs = self.reebills_collection.find(query, sort=[('_id.version',
-                        pymongo.ASCENDING)])
-                earliest_issue_date = docs[0]['issue_date']
-                if earliest_issue_date is not None and earliest_issue_date < version_dt:
-                    docs_before_date = [d for d in docs if d['issue_date'] < version_dt]
-                    mongo_doc = docs_before_date[len(docs_before_date)-1]
-                else:
-                    mongo_doc = docs[docs.count()-1]
+            except NoResultFound:
+                # customer not found in MySQL
+                mongo_doc = None
+        elif isinstance(version, date):
+            version_dt = date_to_datetime(version)
+            docs = self.reebills_collection.find(query, sort=[('_id.version',
+                    pymongo.ASCENDING)])
+            earliest_issue_date = docs[0]['issue_date']
+            if earliest_issue_date is not None and earliest_issue_date < version_dt:
+                docs_before_date = [d for d in docs if d['issue_date'] < version_dt]
+                mongo_doc = docs_before_date[len(docs_before_date)-1]
             else:
-                raise ValueError('Unknown version specifier "%s"' % version)
+                mongo_doc = docs[docs.count()-1]
+        else:
+            raise ValueError('Unknown version specifier "%s"' % version)
 
-            if mongo_doc is None:
-                raise NoSuchBillException(("no reebill found in %s: query was %s")
-                        % (self.reebills_collection, format_query(query)))
+        if mongo_doc is None:
+            raise NoSuchBillException(("no reebill found in %s: query was %s")
+                    % (self.reebills_collection, format_query(query)))
 
-            # convert types in reebill document
-            mongo_doc = deep_map(float_to_decimal, mongo_doc)
-            mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
+        # convert types in reebill document
+        mongo_doc = deep_map(float_to_decimal, mongo_doc)
+        mongo_doc = convert_datetimes(mongo_doc) # this must be an assignment because it copies
 
-            # load utility bills
-            utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
+        # load utility bills
+        utilbill_docs = self._load_all_utillbills_for_reebill(session, mongo_doc)
 
-            mongo_reebill = MongoReebill(mongo_doc, utilbill_docs)
-            return mongo_reebill
+        mongo_reebill = MongoReebill(mongo_doc, utilbill_docs)
+        return mongo_reebill
 
     def load_reebills_for(self, account, version='max'):
         if not account: return None
-        with DBSession(self.state_db) as session:
-            sequences = self.state_db.listSequences(session, account)
+        # NOTE not using context manager (see comment in load_reebill)
+        session = self.state_db.session()
+        sequences = self.state_db.listSequences(session, account)
         return [self.load_reebill(account, sequence) for sequence in sequences]
     
     def load_reebills_in_period(self, account=None, version=0, start_date=None,
@@ -1356,46 +1360,46 @@ class ReebillDAO:
         # TODO pass session into save_reebill instead of re-creating it
         # https://www.pivotaltracker.com/story/show/36258193
         # TODO 38459029
-        with DBSession(self.state_db) as session:
-            issued = self.state_db.is_issued(session, reebill.account,
-                    reebill.sequence, version=reebill.version, nonexistent=False)
-            attached = self.state_db.is_attached(session, reebill.account,
-                    reebill.sequence, nonexistent=False)
-            if issued and not force:
-                raise IssuedBillError("Can't modify an issued reebill.")
-            if (issued or attached) and freeze_utilbills:
-                raise IssuedBillError("Can't freeze utility bills because this "
-                        "reebill is attached or issued; frozen utility bills "
-                        "should already exist")
-            
-            for utilbill_handle in reebill.reebill_dict['utilbills']:
-                utilbill_doc = [u for u in reebill._utilbills if u['_id'] ==
-                        utilbill_handle['id']][0]
-                if freeze_utilbills:
-                    # this reebill is being attached (usually right before
-                    # issuing): convert the utility bills into frozen copies by
-                    # putting "sequence" and "version" keys in the utility
-                    # bill, and changing its _id to a new one
-                    old_id = utilbill_doc['_id']
-                    new_id = bson.objectid.ObjectId()
+        # NOTE not using context manager (see comment in load_reebill)
+        session = self.state_db.session()
+        issued = self.state_db.is_issued(session, reebill.account,
+                reebill.sequence, version=reebill.version, nonexistent=False)
+        attached = self.state_db.is_attached(session, reebill.account,
+                reebill.sequence, nonexistent=False)
+        if issued and not force:
+            raise IssuedBillError("Can't modify an issued reebill.")
+        if (issued or attached) and freeze_utilbills:
+            raise IssuedBillError("Can't freeze utility bills because this "
+                    "reebill is attached or issued; frozen utility bills "
+                    "should already exist")
+        
+        for utilbill_handle in reebill.reebill_dict['utilbills']:
+            utilbill_doc = reebill._get_utilbill_for_handle(utilbill_handle)
+            if freeze_utilbills:
+                # this reebill is being attached (usually right before
+                # issuing): convert the utility bills into frozen copies by
+                # putting "sequence" and "version" keys in the utility
+                # bill, and changing its _id to a new one
+                old_id = utilbill_doc['_id']
+                new_id = bson.objectid.ObjectId()
 
-                    # copy utility bill doc so changes to it do not persist if
-                    # saving fails below
-                    utilbill_doc = copy.deepcopy(utilbill_doc)
-                    utilbill_doc['_id'] = new_id
-                    self._save_utilbill(utilbill_doc, force=force,
-                            sequence_and_version=(reebill.sequence,
-                            reebill.version))
-                    # saving succeeded: set handle id to match the saved
-                    # utility bill and replace the old utility bill document with the new one
-                    utilbill_handle['id'] = new_id
-                    reebill._set_utilbill_for_id(old_id, utilbill_doc)
-                else:
-                    self._save_utilbill(utilbill_doc, force=force)
+                # copy utility bill doc so changes to it do not persist if
+                # saving fails below
+                utilbill_doc = copy.deepcopy(utilbill_doc)
+                utilbill_doc['_id'] = new_id
+                self._save_utilbill(utilbill_doc, force=force,
+                        sequence_and_version=(reebill.sequence,
+                        reebill.version))
+                # saving succeeded: set handle id to match the saved
+                # utility bill and replace the old utility bill document with the new one
+                utilbill_handle['id'] = new_id
+                reebill._set_utilbill_for_id(old_id, utilbill_doc)
+            else:
+                self._save_utilbill(utilbill_doc, force=force)
 
-            reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
-            self.reebills_collection.save(reebill_doc, safe=True)
-            # TODO catch mongo's return value and raise MongoError
+        reebill_doc = bson_convert(copy.deepcopy(reebill.reebill_dict))
+        self.reebills_collection.save(reebill_doc, safe=True)
+        # TODO catch mongo's return value and raise MongoError
 
     def _save_utilbill(self, utilbill_doc, sequence_and_version=None,
             force=False):
