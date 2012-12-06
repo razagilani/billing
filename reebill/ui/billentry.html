@@ -69,10 +69,12 @@
     <!-- overrides to base library -->
 
     <!-- page specific -->
+    <script type="text/javascript" src="login.js"></script>
     <script type="text/javascript" src="billedit.js"></script>
 
     <!-- start the execution of javascript code -->
     <script type="text/javascript">
+
 
         /* Global variables for UI configuration */
         var mailPanelDisabled;
@@ -90,6 +92,9 @@
         var paymentPanelDisabled;
 
         Ext.onReady(function() {
+
+          // so that forms show quick tips
+          Ext.QuickTips.init();
 
           // TODO check auth session status first, and the go after configuration
 
@@ -122,6 +127,7 @@
                 utilityBillPanelDisabled = jsonData.utility_bill_panel_disabled;
                 accountsPanelDisabled = jsonData.accounts_panel_disabled;
                 paymentPanelDisabled = jsonData.payment_panel_disabled;
+                issuablePanelDisabled = jsonData.issuable_panel_disabled;
 
                 reeBillReady();
 

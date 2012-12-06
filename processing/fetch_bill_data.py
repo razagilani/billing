@@ -18,11 +18,11 @@ from skyliner import sky_install
 from skyliner import sky_objects
 from skyliner.sky_errors import DataHandlerError
 from skyliner.sky_handlers import cross_range
-from billing import mongo
-from billing.dictutils import dict_merge
-from billing import dateutils, holidays
-from billing.dateutils import date_to_datetime, timedelta_in_hours
-from billing.exceptions import MissingDataError
+from billing.processing import mongo
+from billing.util.dictutils import dict_merge
+from billing.util import dateutils, holidays
+from billing.util.dateutils import date_to_datetime, timedelta_in_hours
+from billing.processing.exceptions import MissingDataError
 from decimal import Decimal
 
 def get_billable_energy_timeseries(splinter, install, start, end,
@@ -330,7 +330,7 @@ def usage_data_to_virtual_register(reebill, energy_function,
             for m in u['meters']:
                 for r in m['registers']:
                     if r['identifier'] == meter_identifier:
-                        service = u['_id']['service']
+                        service = u['service']
                         prior_read_date = m['prior_read_date']
                         present_read_date = m['present_read_date']
                         stop = True
