@@ -5808,7 +5808,7 @@ function reeBillReady() {
         if (!allowed && e.value != '') {
             Ext.Msg.alert('Invalid Input','Please input a comma seperated list of email addresses.')
         }
-        return allowed
+        return allowed || e.value == ''
     });
 
     issuableGrid.on('beforeedit', function () {
