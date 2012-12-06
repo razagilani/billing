@@ -5712,9 +5712,9 @@ function reeBillReady() {
                     }
                     if (o.success == true) {
                         Ext.Msg.alert("Success", "Mail successfully sent");
+                        issuableGrid.getSelectionModel().clearSelections();
                         issuableStore.reload();
                         issuableGrid.setDisabled(false);
-                        issueReebillButton.setDisabled(true);
                     }
                     else if (o.success !== true && o.corrections != undefined) {
                         var result = Ext.Msg.confirm('Corrections must be applied',
@@ -5728,7 +5728,7 @@ function reeBillReady() {
                                                 var o2 = Ext.decode(response.responseText);
                                                 if (o2.success == true) {
                                                     Ext.Msg.alert("Success", "Mail successfully sent");
-                                                    issueReebillButton.setDisabled(true);
+                                                    issuableGrid.getSelectionModel().clearSelections();
                                                 }
                                                 else
                                                     Ext.Msg.alert('Error', o2.errors.reason + "\n" + o2.errors.details);
@@ -5773,9 +5773,12 @@ function reeBillReady() {
             listeners: {
                 rowselect: function (selModel, index, record) {
                     issueReebillButton.setDisabled(!issuableMailListRegex.test(record.data.mailto));
+                    loadReeBillUIForAccount(record.data.account);
+                },
+                rowdeselect: function (selModel, index, record) {
+                    issueReebillButton.setDisabled(true);
                     accountGrid.getSelectionModel().clearSelections();
                     reeBillGrid.getSelectionModel().clearSelections();
-                    loadReeBillUIForAccount(record.data.account);
                 },
             },
         }),
