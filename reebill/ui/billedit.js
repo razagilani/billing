@@ -4258,6 +4258,7 @@ function reeBillReady() {
                 },
                 rowdeselect: function(selModel, index, record) {
                     loadReeBillUIForAccount(null);
+                    reeBillGrid.getSelectionModel().clearSelections();
                 }
             },
         }),
@@ -5713,6 +5714,7 @@ function reeBillReady() {
                         Ext.Msg.alert("Success", "Mail successfully sent");
                         issuableStore.reload();
                         issuableGrid.setDisabled(false);
+                        issueReebillButton.setDisabled(true);
                     }
                     else if (o.success !== true && o.corrections != undefined) {
                         var result = Ext.Msg.confirm('Corrections must be applied',
@@ -5724,8 +5726,10 @@ function reeBillReady() {
                                             params: { account: r.data.account, sequence: r.data.sequence, apply_corrections: true},
                                             success: function(response, options) {
                                                 var o2 = Ext.decode(response.responseText);
-                                                if (o2.success == true)
+                                                if (o2.success == true) {
                                                     Ext.Msg.alert("Success", "Mail successfully sent");
+                                                    issueReebillButton.setDisabled(true);
+                                                }
                                                 else
                                                     Ext.Msg.alert('Error', o2.errors.reason + "\n" + o2.errors.details);
                                                 issuableStore.reload();
