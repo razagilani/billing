@@ -191,28 +191,18 @@ class StateDB:
                 .filter(UtilBill.period_start==start)\
                 .filter(UtilBill.period_end==end).one()
 
-    def try_to_attach_utilbills(self, session, account, sequence, start, end,
+    def get_utilbill_by_id(self, session, ubid):
+        return session.query(UtilBill).filter(UtilBill.id==ubid).one()
+
+    def try_to_attach_utilbills(self, session, account, sequence, utilbills,
             suspended_services=[]):
         '''Raises an exception if 'attach_utilbills' would fail, does not
         modify any databases.'''
-        # get customer id from account and the reebill from account and sequence
-        customer = session.query(Customer).filter(Customer.account==account).one()
-        reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
-                .filter(ReeBill.sequence==sequence).one()
-
-        # get all utilbills for this customer whose dates are between 'start'
-        # and 'end' (inclusive)
-        all_utilbills = session.query(UtilBill) \
-                .filter(UtilBill.customer==customer)\
-                .filter(UtilBill.period_start>=start)\
-                .filter(UtilBill.period_end<=end).all()
-        if all_utilbills == []:
-            raise Exception('No utility bills found between %s and %s' %
-                    (start, end))
-        non_suspended_utilbills = [u for u in all_utilbills if u.service.lower() not in
-                suspended_services]
-        if non_suspended_utilbills == []:
-            raise Exception('No utility bills to attach because the services %s'
+        if not utilbills:
+            raise BillStateError('No utility bills passed')
+        non_suspended_utilbills = [u for u in utilbills if u.service.lower() not in suspended_services]
+        if not non_suspended_utilbills:
+            raise BillStateError('No utility bills to attach because the %s services '
                     ' are suspended' % ', '.join(suspended_services))
 
     # TODO move to process.py?
@@ -222,14 +212,16 @@ class StateDB:
         whose entire periods are within the date interval [start, end] and
         whose services are not in 'suspended_services'. The utility bills are
         marked as processed.'''
-        customer = self.get_customer(session, account)
-        reebill = self.get_reebill(session, account, sequence)
+        if not utilbills:
+            raise BillStateError('No utility bills passed')
 
-        non_suspended_utilbills = filter(lambda ub: ub.service.lower() not in suspended_services, utilbills)
+        non_suspended_utilbills = [u for u in utilbills if u.service.lower() not in suspended_services]
         if not non_suspended_utilbills:
-            raise Exception('No utility bills to attach because %s services'\
+            raise BillStateError('No utility bills to attach because the %s services'\
                     ' are suspended' % ', '.join(suspended_services))
         
+        reebill = self.get_reebill(session, account, sequence)
+
         for utilbill in utilbills:
             utilbill.reebill = reebill
             utilbill.processed = True
@@ -257,7 +249,8 @@ class StateDB:
         customer = session.query(Customer).filter(Customer.account==account).one()
         reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
                 .filter(ReeBill.sequence==sequence).one()
-        utilbills = session.query(UtilBill).filter(UtilBill.reebill==reebill)
+        utilbills = session.query(UtilBill).filter(UtilBill.reebill==reebill)\
+                .order_by(UtilBill.period_start)
         return utilbills.all()
 
     def delete_reebill(self, session, account, sequence):
@@ -542,6 +535,9 @@ class StateDB:
 
         return query
 
+    def get_reebill_by_id(self, session, rbid):
+        return session.query(ReeBill).filter(ReeBill.id==rbid).one()
+
     def get_descendent_reebills(self, session, account, sequence):
 
         query = session.query(ReeBill).join(Customer) \
@@ -574,7 +570,7 @@ class StateDB:
 
     def choose_next_utilbills(self, session, account, services):
         customer = self.get_customer(session, account)
-        sequence = self.last_issued_sequence(session, account, include_corrections=True)
+        sequence = self.last_sequence(session, account)
 
         # If there is a last issued sequence, then we can use the utilbills attached to it as a reference
         # for dates after which subsequent utilbill(s) will occur

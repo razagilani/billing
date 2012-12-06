@@ -109,8 +109,7 @@ class Process(object):
         file was moved (it never really gets deleted). This path will be None
         if there was no file or it could not be found. Raises a ValueError if
         the utility bill cannot be deleted.'''
-        utilbill = session.query(UtilBill)\
-                .filter(UtilBill.id==utilbill_id).one()
+        utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         if utilbill.has_reebill:
             raise ValueError("Can't delete an attached utility bill.")
 
@@ -308,12 +307,6 @@ class Process(object):
         documents in Mongo (by copying the ones originally attached to the
         reebill). compute_bill() should always be called immediately after this
         one so the bill is updated to its current state.'''
-        # Allow rolling if the latest reebill has unissued corrections; we need to be able to generate a new reebill
-        # to apply corrections, plus it makes sense since such a reebill has technically already been issued in some form
-        if reebill.sequence > self.state_db.last_issued_sequence(session, reebill.account) and \
-                reebill.version == self.state_db.max_issued_version(session, reebill.account, reebill.sequence):
-            raise Exception('Cannot roll period on an unissued reebill')
-
         utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
         
         # duplicate the CPRS for each service
@@ -337,10 +330,14 @@ class Process(object):
             self.rate_structure_dao.save_uprs(reebill.account, reebill.sequence + 1,
                     0, utility_name, rate_structure_name, uprs)
 
+        # TODO Put somewhere nice because this has a specific function
+        active_utilbills = [u for u in reebill._utilbills if u['service'] in reebill.services]
+        reebill.reebill_dict['utilbills'] = [handle for handle in reebill.reebill_dict['utilbills'] if handle['id'] in [u['_id'] for u in active_utilbills]]
+
         # construct a new reebill from an old one. the new one's version is
         # always 0 even if it was created from a non-0 version of the old one.
         reebill.new_utilbill_ids()
-        new_reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
+        new_reebill = MongoReebill(reebill.reebill_dict, active_utilbills)
         new_reebill.version = 0
         new_reebill.new_utilbill_ids()
         new_reebill.clear()
@@ -354,12 +351,11 @@ class Process(object):
         new_reebill.discount_rate = self.state_db.discount_rate(session, reebill.account)
         new_reebill.late_charge_rate = self.state_db.late_charge_rate(session, reebill.account)
 
-        self.reebill_dao.save_reebill(new_reebill)
+        #self.reebill_dao.save_reebill(new_reebill)
 
         # create reebill row in state database
         self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
-        self.attach_utilbills(session, new_reebill)
-        self.state_db.attach_utilbills(session, new_reebill.account, new_reebill.sequence, utilbills, new_reebill.suspended_services)
+        self.attach_utilbills(session, new_reebill, utilbills)        
         
         return new_reebill
 
@@ -549,7 +545,7 @@ class Process(object):
         balance due, or if no reebill has ever been issued for the customer.'''
         # get balance due of last reebill
         if sequence == None:
-            sequence = self.state_db.last_sequence(session, account)
+            sequence = self.state_db.last_issued_sequence(session, account)
         if sequence == 0:
             return Decimal(0)
         reebill = self.reebill_dao.load_reebill(account, sequence)
@@ -601,14 +597,17 @@ class Process(object):
         reebill = self.reebill_dao.load_reebill(template_account, template_last_sequence, 0)
 
         reebill.convert_to_new_account(account)
-
         # This 'copy' is set to sequence zero which acts as a 'template' 
         reebill.sequence = 0
         reebill.version = 0
-
+        for utilbill in reebill._utilbills:
+            utilbill['sequence'] = 0
+            utilbill['version'] = 0
         reebill = MongoReebill(reebill.reebill_dict, reebill._utilbills)
         reebill.billing_address = {}
         reebill.service_address = {}
+        reebill.bill_recipients = []
+        reebill.last_recipients = []
         reebill.late_charge_rate = late_charge_rate
 
         # reset the reebill's fields to 0/blank/etc., even though it's not
@@ -642,7 +641,7 @@ class Process(object):
 
 
     # TODO 21052893: probably want to set up the next reebill here.  Automatically roll?
-    def attach_utilbills(self, session, reebill):
+    def attach_utilbills(self, session, reebill, utilbills):
         '''Freeze utilbills from the previous reebill into a new reebill.
 
         This affects only the Mongo document.'''
@@ -656,7 +655,12 @@ class Process(object):
         # but here it must precede MySQL because ReebillDAO.save_reebill will
         # refuse to create frozen utility bills "again" if MySQL says its
         # attached". see https://www.pivotaltracker.com/story/show/38308443)
+        self.state_db.try_to_attach_utilbills(session, reebill.account, reebill.sequence, utilbills, reebill.suspended_services)
+
+        self.reebill_dao.save_reebill(reebill)
         self.reebill_dao.save_reebill(reebill, freeze_utilbills=True)
+
+        self.state_db.attach_utilbills(session, reebill.account, reebill.sequence, utilbills, reebill.suspended_services)
 
     def bind_rate_structure(self, reebill):
             # process the actual charges across all services
