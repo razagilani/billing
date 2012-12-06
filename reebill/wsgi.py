@@ -2017,9 +2017,8 @@ class BillToolBridge:
                 # that client is allowed to delete a range of bills at once, as
                 # long as they're in sequence order)
                 max_version = self.state_db.max_version(session, account, sequence)
-                if sequence != 1 and not (sequence == last_sequence and
-                        max_version == 0) and not self.state_db.is_issued(
-                        session, account, sequence - 1):
+                if not (max_version == 0 and sequence == last_sequence or max_version > 0 and
+                        (sequence == 1 or self.state_db.is_issued(session, account, sequence - 1))):
                     raise ValueError(("Can't delete a reebill version whose "
                             "predecessor is unissued, unless its version is 0 "
                             "and its sequence is the last one. Delete a "
