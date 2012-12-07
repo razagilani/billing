@@ -96,10 +96,7 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEquals(0, mongo_reebill.total_adjustment)
             self.assertEquals(0, mongo_reebill.manual_adjustment)
             self.assertEquals(None, mongo_reebill.issue_date)
-            self.assertIsInstance(mongo_reebill.bill_recipients, list)
-            self.assertEquals(0, len(mongo_reebill.bill_recipients))
-            self.assertIsInstance(mongo_reebill.last_recipients, list)
-            self.assertEquals(0, len(mongo_reebill.last_recipients))
+            self.assertEquals(None, mongo_reebill.recipients)
             self.assertEquals(Decimal('0.6'), mongo_reebill.discount_rate)
             self.assertEquals(Decimal('0.2'), mongo_reebill.late_charge_rate)
 
@@ -117,6 +114,7 @@ class ProcessTest(TestCaseWithSetup):
 
 
     def test_get_late_charge(self):
+        print 'test_get_late_charge'
         '''Tests computation of late charges (without rolling bills).'''
         acc = '99999'
         with DBSession(self.state_db) as session:
@@ -127,6 +125,8 @@ class ProcessTest(TestCaseWithSetup):
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 0))
 
             bill0 = self.reebill_dao.load_reebill(acc, 0)
+
+            self.reebill_dao._save_utilbill(example_data.get_utilbill_dict(acc, date(2012,1,1), date(2012,2,1)))
             self.state_db.record_utilbill_in_database(session, acc, 'gas',
                     date(2012,1,1), date(2012,2,1), 100,
                     datetime.utcnow().date())
@@ -146,7 +146,6 @@ class ProcessTest(TestCaseWithSetup):
  
             # save bill1 in Mongo and MySQL, and its rate structure docs in
             # Mongo
-            #self.reebill_dao.save_reebill(bill1)
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
@@ -154,8 +153,6 @@ class ProcessTest(TestCaseWithSetup):
             # issue bill 1, so a later bill can have a late charge based on the
             # customer's failure to pay bill1 by its due date, i.e. 30 days
             # after bill1's issue date.
-            #self.process.attach_utilbills(session, bill1.account,
-            #        bill1.sequence)
             self.process.issue(session, bill1.account, bill1.sequence,
                     issue_date=date(2012,1,1))
             # since process.issue() only modifies databases, bill1 must be
@@ -167,7 +164,6 @@ class ProcessTest(TestCaseWithSetup):
             # after bill1 is created, it must be computed to get it into a
             # usable state (in particular, it needs a late charge). that
             # requires a sequence 0 template bill.
-            #bill0 = example_data.get_reebill(acc, 0)
             self.process.compute_bill(session, bill0, bill1)
  
             # but compute_bill() destroys bill1's balance_due, so reset it to
@@ -217,11 +213,13 @@ class ProcessTest(TestCaseWithSetup):
                     date(2013,1,1)))
 
 
-            # update the meter like the user normally would
-            # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
-            meter = bill1.meters_for_service('gas')[0]
-            bill1.set_meter_read_date('gas', meter['identifier'], date(2012,2,1), date(2012,1,1))
-            self.reebill_dao.save_reebill(bill1, force=True)
+            # this should be unnecessary now that meter read date is filled in
+            # using utility bill period end date
+            ## update the meter like the user normally would
+            ## This is required for process.new_version => fetch_bill_data.fetch_oltp_data
+            #meter = bill1.meters_for_service('gas')[0]
+            #bill1.set_meter_read_date('gas', meter['identifier'], date(2012,2,1), date(2012,1,1))
+            #self.reebill_dao.save_reebill(bill1, force=True)
 
             # late charge should be based on the version with the least total
             # of the bill from which it derives. on 2013-01-15, make a version
@@ -351,9 +349,12 @@ class ProcessTest(TestCaseWithSetup):
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 0))
 
-            self.state_db.record_utilbill_in_database(session, account, 'gas', date(2012,1,1), date(2012,2,1), 100, date.today())
+            self.state_db.record_utilbill_in_database(session, account,
+                    'gas', date(2012,1,1), date(2012,2,1), 100, date.today())
             self.state_db.record_utilbill_in_database(session, account,
                     'electric', date(2012,1,10), date(2012,2,10), 100, date.today())
+            self.reebill_dao._save_utilbill(example_data.get_utilbill_dict(account, date(2012,1,1), date(2012,2,1), service='gas'))
+            self.reebill_dao._save_utilbill(example_data.get_utilbill_dict(account, date(2012,1,10), date(2012,2,10), service='electric'))
 
             # generic reebill
             bill0 = example_data.get_reebill(account, 0)
@@ -361,6 +362,7 @@ class ProcessTest(TestCaseWithSetup):
             # make it have 2 services, 1 suspended
             # (create electric bill by duplicating gas bill)
             electric_bill = example_data.get_utilbill_dict(account, service='electric')
+            #self.reebill_dao._save_utilbill(electric_bill)
             # TODO it's bad to directly modify reebill_dict
             bill0.reebill_dict['utilbills'].append({
                 'id': electric_bill['_id'],
@@ -371,11 +373,12 @@ class ProcessTest(TestCaseWithSetup):
             })
             bill0._utilbills.append(electric_bill)
             bill0.suspend_service('electric')
-            
             self.reebill_dao.save_reebill(bill0)
-            
+
+
+
             bill1 = self.process.roll_bill(session, bill0)
-            
+
             self.assertEquals(['electric'], bill1.suspended_services)
 
             # only the gas bill should be attached
@@ -753,6 +756,8 @@ class ProcessTest(TestCaseWithSetup):
         acc = '99999'
         zero = example_data.get_reebill(acc, 0, version=0,
                 start=date(2011,12,1), end=date(2012,1,1))
+        utilbill = example_data.get_utilbill_dict(acc, start=date(2012,1,1), end=date(2012,2,1))
+        self.reebill_dao._save_utilbill(utilbill)
         self.reebill_dao.save_reebill(zero)
 
         #self.reebill_dao.save_reebill(one)
@@ -812,6 +817,7 @@ class ProcessTest(TestCaseWithSetup):
                 self.state_db.record_utilbill_in_database(session, acc, 'gas',
                     dates[n], dates[n+1], 100,
                     datetime.utcnow().date())
+                self.reebill_dao._save_utilbill(example_data.get_utilbill_dict(acc, dates[n], dates[n+1]))
             
             zero = example_data.get_reebill(acc, 0)
             zero.ree_charges = 100
@@ -921,6 +927,12 @@ class ProcessTest(TestCaseWithSetup):
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 0))
+            #self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 2))
+
+            utilbill = example_data.get_utilbill_dict(acc, start=date(2012,1,1), end=date(2012,2,1))
+            self.reebill_dao._save_utilbill(utilbill)
+            utilbill = example_data.get_utilbill_dict(acc, start=date(2012,2,1), end=date(2012,3,1))
+            self.reebill_dao._save_utilbill(utilbill)
 
             # 2 reebills, 1 issued 40 days ago and unpaid (so it's 10 days late)
             zero = example_data.get_reebill(acc, 0, start=date(2011,12,31),
@@ -934,6 +946,10 @@ class ProcessTest(TestCaseWithSetup):
                     date(2012,2,1), date(2012,3,1), 100,
                     datetime.utcnow().date())
 
+            #one = example_data.get_reebill(acc, 1, start=date(2012,1,1),
+            #        end=date(2012,2,1))
+            #two0 = example_data.get_reebill(acc, 2, start=date(2012,2,1),
+            #        end=date(2012,3,1))
             one = self.process.roll_bill(session, zero)
             one.balance_due = 100
             # update the meter like the user normally would
@@ -951,7 +967,12 @@ class ProcessTest(TestCaseWithSetup):
             meter = two.meters_for_service('gas')[0]
             two.set_meter_read_date('gas', meter['identifier'], date(2012,3,1), date(2012,2,1))
             self.reebill_dao.save_reebill(two)
+            #self.process.issue(session, acc, two.sequence)
+            #self.state_db.new_rebill(session, acc, 1)
+            #self.state_db.new_rebill(session, acc, 2)
             
+            #self.process.attach_utilbills(session, acc, 1)
+
             # bind & compute 2nd reebill
             # (it needs energy data only so its correction will have the same
             # energy in it; only the late charge will differ)
@@ -966,6 +987,7 @@ class ProcessTest(TestCaseWithSetup):
 
             # save and issue 2nd reebill so a new version can be created
             self.reebill_dao.save_reebill(two)
+            #self.process.attach_utilbills(session, acc, two.sequence)
             self.process.issue(session, acc, two.sequence)
 
             # add a payment of $80 30 days ago (10 days after 1st reebill was
