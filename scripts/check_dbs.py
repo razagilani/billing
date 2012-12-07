@@ -119,12 +119,12 @@ for reebill in mongodb.reebills.find().sort([('_id.account',pymongo.ASCENDING),(
         #Anything not sequence 0 should exist in mysql
         else:
             reebills_with_errors += 1
-            print >> stderr, "Missing mysql entry for reebill %s-%s-%s"%(reebill['_id']['account'], reebill['_id']['sequence'], reebill['_id']['version'])
+            print >> stderr, "Missing mysql entry for reebill " + reebill_string
             print >> stderr
         continue
     if len(reebillresult)>1:
         reebills_with_errors += 1
-        print >> stderr, "Found more than one reebill for %s-%s"%(reebill['_id']['account'], reebill['_id']['sequence'])
+        print >> stderr, "Found more than one reebill for " + reebill_string
         print >> stderr
         continue
 
@@ -139,7 +139,7 @@ for reebill in mongodb.reebills.find().sort([('_id.account',pymongo.ASCENDING),(
     utilbills = reebill['utilbills']
     if len(utilbills) != len(sql_utilbills):
         reebill_error = True
-        print >> stderr, "Wrong number of utility bills for reebill:",reebill['_id']
+        print >> stderr, "Wrong number of utility bills for reebill: " + reebill_string
         print >> stderr, "    Got:",len(utilbills)
         print >> stderr, "    Expected:",len(sql_utilbills)
 
@@ -149,13 +149,13 @@ for reebill in mongodb.reebills.find().sort([('_id.account',pymongo.ASCENDING),(
         #There should only be one
         if utilbillresults.count() == 0:
             reebill_error = True
-            print >> stderr, "No utility bill for reebill %s-%s-%s"%(reebill['_id']['account'], reebill['_id']['sequence'], reebill['_id']['version'])
+            print >> stderr, "No utility bill for reebill " + reebill_string
             print >> stderr, "    utilbill._id:",utilbills[i]['id']
             print >> stderr
             continue
         elif utilbillresults.count() > 1:
             reebill_error = True
-            print >> stderr, "More than one utility bill for reebill %s-%s-%s"%(reebill['_id']['account'], reebill['_id']['sequence'], reebill['_id']['version'])
+            print >> stderr, "More than one utility bill for reebill " + reebill_string
             print >> stderr, "    utilbill._id:",utilbills[i]['id']
             print >> stderr
             continue
