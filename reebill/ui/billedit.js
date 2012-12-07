@@ -733,6 +733,7 @@ function reeBillReady() {
             {name: 'period_start'},
             {name: 'period_end'},
             {name: 'corrections'}, // human-readable (could replace with a nice renderer function for max_version)
+            {name: 'issue_date'},
             {name: 'max_version'}, // machine-readable
             {name: 'hypothetical_total'},
             {name: 'actual_total'},
@@ -873,6 +874,12 @@ function reeBillReady() {
                 header: 'End Date',
                 sortable: false,
                 dataIndex: 'period_end',
+                width: 70,
+                renderer: reeBillGridRenderer,
+            },{
+                header: 'Issue Date',
+                sortable: false,
+                dataIndex: 'issue_date',
                 width: 70,
                 renderer: reeBillGridRenderer,
             },{
