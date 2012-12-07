@@ -3048,7 +3048,7 @@ function reeBillReady() {
             // doesn't seem to work
             forceFit: true,
         },
-        title: 'Customer Periodic',
+        title: 'Individual Rate Structure Items',
         clicksToEdit: 2
     });
 
@@ -3310,7 +3310,7 @@ function reeBillReady() {
             // doesn't seem to work
             forceFit: true,
         },
-        title: 'Utility Periodic',
+        title: 'Shared Rate Structure Items',
         clicksToEdit: 2
     });
 

@@ -307,7 +307,6 @@ class Process(object):
         documents in Mongo (by copying the ones originally attached to the
         reebill). compute_bill() should always be called immediately after this
         one so the bill is updated to its current state.'''
-
         utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
         
         # duplicate the CPRS for each service
@@ -316,15 +315,20 @@ class Process(object):
             utility_name = reebill.utility_name_for_service(service)
             rate_structure_name = reebill.rate_structure_name_for_service(service)
 
-            # load current CPRS
+            # load current CPRS, save it with same account, next sequence, version 0
             cprs = self.rate_structure_dao.load_cprs(reebill.account, reebill.sequence,
-                reebill.version, utility_name, rate_structure_name)
+                    reebill.version, utility_name, rate_structure_name)
             if cprs is None:
-                raise Exception("No current CPRS")
-
-            # save it with same account, next sequence, version 0
+                raise NoRateStructureError("No current CPRS")
             self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence + 1,
                     0, utility_name, rate_structure_name, cprs)
+
+            # generate predicted UPRS, save it with account, sequence, version 0
+            uprs = self.rate_structure_dao.get_probable_uprs(reebill, service)
+            if uprs is None:
+                raise NoRateStructureError("No current UPRS")
+            self.rate_structure_dao.save_uprs(reebill.account, reebill.sequence + 1,
+                    0, utility_name, rate_structure_name, uprs)
 
         # TODO Put somewhere nice because this has a specific function
         active_utilbills = [u for u in reebill._utilbills if u['service'] in reebill.services]
