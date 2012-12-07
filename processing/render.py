@@ -197,9 +197,11 @@ class ReebillRenderer:
     # TODO 32204509 Why don't we just pass in a ReeBill(s) here?  Preferable to passing account/sequence/version around?
     def render(self, session, account, sequence, outputdir, outputfile, verbose):
 
-        # Hack for overriding default template
+        # Hack for overriding default template if a teva account
         if (account in self.teva_accounts):
-            self.default_template = 'teva'
+            self.current_template = 'teva'
+        else:
+            self.current_template = self.default_template
 
         # render each version
         max_version = self.state_db.max_version(session, account, sequence)
@@ -369,7 +371,7 @@ class ReebillRenderer:
         #
 
         # populate backgroundF1
-        pageOneBackground = Image(os.path.join(os.path.join(self.template_directory, self.default_template), "page_one.png"),letter[0], letter[1])
+        pageOneBackground = Image(os.path.join(os.path.join(self.template_directory, self.current_template), "page_one.png"),letter[0], letter[1])
         Elements.append(pageOneBackground)
 
         # populate account number, bill id & issue date
@@ -687,7 +689,7 @@ class ReebillRenderer:
 
 
 
-        pageTwoBackground = Image(os.path.join(self.template_directory, self.default_template, "page_two.png"), letter[0], letter[1])
+        pageTwoBackground = Image(os.path.join(self.template_directory, self.current_template, "page_two.png"), letter[0], letter[1])
         Elements.append(pageTwoBackground)
 
         #populate measured usage header frame
