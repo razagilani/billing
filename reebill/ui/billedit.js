@@ -3048,7 +3048,7 @@ function reeBillReady() {
             // doesn't seem to work
             forceFit: true,
         },
-        title: 'Customer Periodic',
+        title: 'Individual Rate Structure Items',
         clicksToEdit: 2
     });
 
@@ -3310,7 +3310,7 @@ function reeBillReady() {
             // doesn't seem to work
             forceFit: true,
         },
-        title: 'Utility Periodic',
+        title: 'Shared Rate Structure Items',
         clicksToEdit: 2
     });
 
@@ -4258,6 +4258,7 @@ function reeBillReady() {
                 },
                 rowdeselect: function(selModel, index, record) {
                     loadReeBillUIForAccount(null);
+                    reeBillGrid.getSelectionModel().clearSelections();
                 }
             },
         }),
@@ -5711,6 +5712,7 @@ function reeBillReady() {
                     }
                     if (o.success == true) {
                         Ext.Msg.alert("Success", "Mail successfully sent");
+                        issuableGrid.getSelectionModel().clearSelections();
                         issuableStore.reload();
                         issuableGrid.setDisabled(false);
                     }
@@ -5724,8 +5726,10 @@ function reeBillReady() {
                                             params: { account: r.data.account, sequence: r.data.sequence, apply_corrections: true},
                                             success: function(response, options) {
                                                 var o2 = Ext.decode(response.responseText);
-                                                if (o2.success == true)
+                                                if (o2.success == true) {
                                                     Ext.Msg.alert("Success", "Mail successfully sent");
+                                                    issuableGrid.getSelectionModel().clearSelections();
+                                                }
                                                 else
                                                     Ext.Msg.alert('Error', o2.errors.reason + "\n" + o2.errors.details);
                                                 issuableStore.reload();
@@ -5769,9 +5773,12 @@ function reeBillReady() {
             listeners: {
                 rowselect: function (selModel, index, record) {
                     issueReebillButton.setDisabled(!issuableMailListRegex.test(record.data.mailto));
+                    loadReeBillUIForAccount(record.data.account);
+                },
+                rowdeselect: function (selModel, index, record) {
+                    issueReebillButton.setDisabled(true);
                     accountGrid.getSelectionModel().clearSelections();
                     reeBillGrid.getSelectionModel().clearSelections();
-                    loadReeBillUIForAccount(record.data.account);
                 },
             },
         }),
