@@ -5957,6 +5957,8 @@ function reeBillReady() {
         ubMeasuredUsagesPanel.setDisabled(true);
         rateStructurePanel.setDisabled(true);
         chargeItemsPanel.setDisabled(true);
+        accountInfoFormPanel.setDisabled(true);
+
         //journalPanel.setDisabled(true);
 
         // TODO: 25226989 ajax cancelled???
@@ -6104,6 +6106,8 @@ function reeBillReady() {
             chargeItemsPanel.setDisabled(true);
             updateStatusbar(selected_account, null, null);
             deleteButton.setDisabled(true);
+            accountInfoFormPanel.setDisabled(true);
+            configureReeBillEditor(null, null);
             return;
         }
 
@@ -6175,6 +6179,7 @@ function reeBillReady() {
         chargeItemsPanel.setDisabled(false);
         journalPanel.setDisabled(false);
         mailPanel.setDisabled(false);
+        accountInfoFormPanel.setDisabled(false);
 
         /* TODO re-enable service suspension checkboxes
          * https://www.pivotaltracker.com/story/show/29557205
