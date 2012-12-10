@@ -610,8 +610,7 @@ class Process(object):
         reebill.last_recipients = []
         reebill.late_charge_rate = late_charge_rate
 
-        # reset the reebill's fields to 0/blank/etc., even though it's not
-        # strictly necessary (double protection against junk data propagation)
+        # reset the reebill's fields to 0/blank/etc.
         reebill.clear()
         reebill.discount_rate = self.state_db.discount_rate(session, account)
         reebill.late_charge_rate = self.state_db.late_charge_rate(session,
