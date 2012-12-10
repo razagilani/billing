@@ -733,6 +733,7 @@ function reeBillReady() {
             {name: 'period_start'},
             {name: 'period_end'},
             {name: 'corrections'}, // human-readable (could replace with a nice renderer function for max_version)
+            {name: 'issue_date'},
             {name: 'max_version'}, // machine-readable
             {name: 'hypothetical_total'},
             {name: 'actual_total'},
@@ -873,6 +874,12 @@ function reeBillReady() {
                 header: 'End Date',
                 sortable: false,
                 dataIndex: 'period_end',
+                width: 70,
+                renderer: reeBillGridRenderer,
+            },{
+                header: 'Issue Date',
+                sortable: false,
+                dataIndex: 'issue_date',
                 width: 70,
                 renderer: reeBillGridRenderer,
             },{
@@ -3048,7 +3055,7 @@ function reeBillReady() {
             // doesn't seem to work
             forceFit: true,
         },
-        title: 'Customer Periodic',
+        title: 'Individual Rate Structure Items',
         clicksToEdit: 2
     });
 
@@ -3310,7 +3317,7 @@ function reeBillReady() {
             // doesn't seem to work
             forceFit: true,
         },
-        title: 'Utility Periodic',
+        title: 'Shared Rate Structure Items',
         clicksToEdit: 2
     });
 
@@ -4258,6 +4265,7 @@ function reeBillReady() {
                 },
                 rowdeselect: function(selModel, index, record) {
                     loadReeBillUIForAccount(null);
+                    reeBillGrid.getSelectionModel().clearSelections();
                 }
             },
         }),
@@ -5711,6 +5719,7 @@ function reeBillReady() {
                     }
                     if (o.success == true) {
                         Ext.Msg.alert("Success", "Mail successfully sent");
+                        issuableGrid.getSelectionModel().clearSelections();
                         issuableStore.reload();
                         issuableGrid.setDisabled(false);
                     }
@@ -5724,8 +5733,10 @@ function reeBillReady() {
                                             params: { account: r.data.account, sequence: r.data.sequence, apply_corrections: true},
                                             success: function(response, options) {
                                                 var o2 = Ext.decode(response.responseText);
-                                                if (o2.success == true)
+                                                if (o2.success == true) {
                                                     Ext.Msg.alert("Success", "Mail successfully sent");
+                                                    issuableGrid.getSelectionModel().clearSelections();
+                                                }
                                                 else
                                                     Ext.Msg.alert('Error', o2.errors.reason + "\n" + o2.errors.details);
                                                 issuableStore.reload();
@@ -5769,9 +5780,12 @@ function reeBillReady() {
             listeners: {
                 rowselect: function (selModel, index, record) {
                     issueReebillButton.setDisabled(!issuableMailListRegex.test(record.data.mailto));
+                    loadReeBillUIForAccount(record.data.account);
+                },
+                rowdeselect: function (selModel, index, record) {
+                    issueReebillButton.setDisabled(true);
                     accountGrid.getSelectionModel().clearSelections();
                     reeBillGrid.getSelectionModel().clearSelections();
-                    loadReeBillUIForAccount(record.data.account);
                 },
             },
         }),
@@ -5950,6 +5964,8 @@ function reeBillReady() {
         ubMeasuredUsagesPanel.setDisabled(true);
         rateStructurePanel.setDisabled(true);
         chargeItemsPanel.setDisabled(true);
+        accountInfoFormPanel.setDisabled(true);
+
         //journalPanel.setDisabled(true);
 
         // TODO: 25226989 ajax cancelled???
@@ -6097,6 +6113,8 @@ function reeBillReady() {
             chargeItemsPanel.setDisabled(true);
             updateStatusbar(selected_account, null, null);
             deleteButton.setDisabled(true);
+            accountInfoFormPanel.setDisabled(true);
+            configureReeBillEditor(null, null);
             return;
         }
 
@@ -6168,6 +6186,7 @@ function reeBillReady() {
         chargeItemsPanel.setDisabled(false);
         journalPanel.setDisabled(false);
         mailPanel.setDisabled(false);
+        accountInfoFormPanel.setDisabled(false);
 
         /* TODO re-enable service suspension checkboxes
          * https://www.pivotaltracker.com/story/show/29557205
