@@ -4,7 +4,7 @@ import pymongo
 import bcrypt
 import argparse
 
-class User:
+class User(object):
     '''A class representing a user account. This is a thin wrapper around a
     Mongo document.'''
 
@@ -84,6 +84,7 @@ class UserDAO:
 
         # new user is based on default user
         new_user = copy.deepcopy(UserDAO.default_user)
+        # TODO 40963069 user property API
         new_user.dictionary['_id'] = identifier
         new_user.dictionary['name'] = name
         new_user.dictionary['password_hash'] = pw_hash
@@ -149,10 +150,9 @@ class UserDAO:
         existing user with the same identifier.'''
         # for the default user, do nothing
         if user is UserDAO.default_user:
+            # TODO 40962161 log msg, don't print
             print "DID NOT SAVE USER BECAUSE THEY ARE DEFAULT"
             return
-
-        print "will save user ", user
 
         self.collection.save(user.dictionary)
 
