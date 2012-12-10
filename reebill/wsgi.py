@@ -1133,7 +1133,13 @@ class BillToolBridge:
             # {account: full name, dayssince: days}
 
             sortcol = kwargs.get('sort', None)
+            if sortcol is None:
+                sortcol = cherrypy.session['user'].preferences.get('default_account_sort_field',None)
+
             sortdir = kwargs.get('dir', None)
+            if sortdir is None:
+                sortdir = cherrypy.session['user'].preferences.get('default_account_sort_direction',None)
+
             if sortdir == 'ASC':
                 sortreverse = False
             else:
@@ -1222,6 +1228,10 @@ class BillToolBridge:
             # take slice for one page of the grid's data
             rows = rows[start:start+limit]
 
+            cherrypy.session['user'].preferences['default_account_sort_field'] = sortcol
+            cherrypy.session['user'].preferences['default_account_sort_direction'] = sortdir
+            self.user_dao.save_user(cherrypy.session['user'])
+    
             return self.dumps({'success': True, 'rows':rows, 'results':count})
 
     @cherrypy.expose
@@ -2844,7 +2854,7 @@ class BillToolBridge:
         cherrypy.session['user'].preferences['difference_threshold'] = threshold/100.0
         self.user_dao.save_user(cherrypy.session['user'])
         return self.dumps({'success':True})
-    
+
     @cherrypy.expose
     @random_wait
     @authenticate_ajax

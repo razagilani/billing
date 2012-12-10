@@ -4168,11 +4168,6 @@ function reeBillReady() {
             {name: 'lastissuedate'},
             {name: 'provisionable'},
         ],
-        // looks to be initial order for load
-        sortInfo: {
-            field: 'lastissuedate',
-            direction: 'ASC'
-        },
     });
 
     accountStore.on('beforeload', function(store, options) {
