@@ -5069,6 +5069,7 @@ function reeBillReady() {
                 header: 'Account',
                 sortable: true,
                 dataIndex: 'account',
+                hidden: true,
             },{
                 header: 'Sequence',
                 sortable: true,
@@ -5169,7 +5170,7 @@ function reeBillReady() {
             forceFit: true,
         },
         // this is actually set in loadReeBillUIForAccount()
-        title: 'Journal Entries ' + selected_account,
+        title: 'Journal Entries for Account ' + selected_account,
         clicksToEdit: 2
     });
 
@@ -6040,7 +6041,7 @@ function reeBillReady() {
         journalPanel.setDisabled(false);
         mailPanel.setDisabled(false);
 
-        journalGrid.setTitle('Journal Entries for ' + account);
+        journalGrid.setTitle('Journal Entries for Account ' + account);
     }
 
 
