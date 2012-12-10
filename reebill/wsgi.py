@@ -728,14 +728,31 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def new_account(self, name, account, discount_rate, late_charge_rate, template_account, **kwargs):
+    def new_account(self, name, account, discount_rate, late_charge_rate, template_account,
+                    ba_addressee, ba_street1, ba_city, ba_state, ba_postal_code,
+                    sa_addressee, sa_street1, sa_city, sa_state, sa_postal_code, **kwargs):
         with DBSession(self.state_db) as session:
             if not name or not account or not discount_rate or not template_account:
                 raise ValueError("Bad Parameter Value")
             customer = self.process.create_new_account(session, account, name,
                     discount_rate, late_charge_rate, template_account)
             reebill = self.reebill_dao.load_reebill(account, 0)
-
+            ba = {}
+            ba['ba_addressee'] = ba_addressee
+            ba['ba_street1'] = ba_street1
+            ba['ba_city'] = ba_city
+            ba['ba_state'] = ba_state
+            ba['ba_postal_code'] = ba_postal_code
+            reebill.billing_address = ba
+            
+            sa = {}
+            sa['sa_addressee'] = sa_addressee
+            sa['sa_street1'] = sa_street1
+            sa['sa_city'] = sa_city
+            sa['sa_state'] = sa_state
+            sa['sa_postal_code'] = sa_postal_code
+            reebill.service_address = sa
+            self.reebill_dao.save_reebill(reebill)
             # record account creation
             # (no sequence associated with this)
             journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
