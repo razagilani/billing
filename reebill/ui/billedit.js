@@ -4568,6 +4568,11 @@ function reeBillReady() {
 
     billStructureTreeLoader.on("beforeload", function(treeLoader, node) {
     });
+    
+    var moreAccountsCheckbox = new Ext.form.Checkbox({
+        id: "newAccountCheckbox",
+        boxLabel: "Make another account",
+    });
 
     var newAccountDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/new_account',
@@ -4589,6 +4594,7 @@ function reeBillReady() {
             {
                 xtype: 'fieldset',
                 title: 'Account Information',
+                id: 'accountInfoSet',
                 collapsible: false,
                 defaults: {
                     anchor: '0',
@@ -4600,6 +4606,7 @@ function reeBillReady() {
             {
                 xtype: 'fieldset',
                 title: 'Billing Address',
+                id: 'billingAddressSet',
                 collapsible: false,
                 defaults: {
                     anchor: '0',
@@ -4635,6 +4642,7 @@ function reeBillReady() {
             },{
                 xtype: 'fieldset',
                 title: 'Service Address',
+                id: 'serviceAddressSet',
                 collapsible: false,
                 defaults: {
                     anchor: '0',
@@ -4671,6 +4679,7 @@ function reeBillReady() {
             billStructureTree, 
         ],
         buttons: [
+            moreAccountsCheckbox,
             new Ext.Button({
                 id: 'newAccountSaveButton',
                 text: 'Save',
@@ -4707,30 +4716,39 @@ function reeBillReady() {
                                     console.log('1Server Error');
                                 } else {
                                     Ext.Msg.alert('Success', "New account created");
-                                    // update next account number shown in field
-                                    accountsPanel.getLayout().setActiveItem('accountGrid');
                                     accountGrid.getSelectionModel().clearSelections();
-                                    accountStore.setDefaultSort('account','DESC');
-                                    pageSize = accountGrid.getBottomToolbar().pageSize;
-                                    accountStore.load({params: {start: 0, limit: pageSize}, callback: function() {
-                                        accountGrid.getSelectionModel().selectFirstRow();
-                                    }});
-                                    // reload grid to show new account
-                                    // TODO "load" gets no records, "reload" gets records, but neither one causes the grid to update
-                                    reeBillStore.reload({
-                                        //callback: function(records, options, success) {
-                                                      //alert('loaded!');
-                                                      //console.log(records);
-                                        //}
-                                    });
-                                    //Reset account info
-                                    newAccountTemplateCombo.reset();
-                                    //Addresses all have 'xtype' == 'textfield'
-                                    var sets = newAccountFormPanel.findByType('fieldset')
-                                    for (var i = 0;i < sets.length;i++) {
-                                        var fields = sets[i].findByType('textfield');
+                                    if (moreAccountsCheckbox.getValue()) {
+                                        newNameField.reset();
+                                        var set = newAccountFormPanel.find('id','serviceAddressSet')[0];
+                                        var fields = set.findByType('textfield');
                                         for (var j = 0;j < fields.length;j++) {
                                             fields[j].reset();
+                                        }
+                                    } else {
+                                        // update next account number shown in field
+                                        accountsPanel.getLayout().setActiveItem('accountGrid');
+                                        accountStore.setDefaultSort('account','DESC');
+                                        pageSize = accountGrid.getBottomToolbar().pageSize;
+                                        accountStore.load({params: {start: 0, limit: pageSize}, callback: function() {
+                                            accountGrid.getSelectionModel().selectFirstRow();
+                                        }});
+                                        // reload grid to show new account
+                                        // TODO "load" gets no records, "reload" gets records, but neither one causes the grid to update
+                                        reeBillStore.reload({
+                                            //callback: function(records, options, success) {
+                                            //    alert('loaded!');
+                                            //    console.log(records);
+                                            //}
+                                        });
+                                        //Reset account info
+                                        newAccountTemplateCombo.reset();
+                                        //Addresses all have 'xtype' == 'textfield'
+                                        var sets = newAccountFormPanel.findByType('fieldset')
+                                        for (var i = 0;i < sets.length;i++) {
+                                            var fields = sets[i].findByType('textfield');
+                                            for (var j = 0;j < fields.length;j++) {
+                                                fields[j].reset();
+                                            }
                                         }
                                     }
                                     newAccountField.setValue(nextAccount);
