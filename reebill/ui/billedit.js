@@ -5679,7 +5679,7 @@ function reeBillReady() {
     });
 
     var issueDataConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/issue',
+        url: 'http://'+location.host+'/reebill/issue_and_mail',
     });
     issueDataConn.autoAbort = true;
     issueDataConn.disableCaching = true;
