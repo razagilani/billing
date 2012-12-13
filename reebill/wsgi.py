@@ -2671,7 +2671,7 @@ class BillToolBridge:
                 ('state', state_descriptions[ub.state]),
                 # utility bill rows are only editable if they don't have a
                 # reebill attached to them
-                ('editable', not ub.has_reebill)
+                ('editable', (not ub.has_reebill or not ub.reebill.issued))
             ]) for i, ub in enumerate(utilbills)]
 
             return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
@@ -2756,6 +2756,13 @@ class BillToolBridge:
                             utilbill.period_start,
                             utilbill.period_end,
                             new_period_start, new_period_end)
+
+                # change dates in Mongo if needed
+                if (utilbill.period_start != new_period_start or utilbill.period_end != new_period_end) and utilbill.has_reebill:
+                    reebill = self.reebill_dao.load_reebill(utilbill.reebill.customer.account, utilbill.reebill.sequence)
+                    reebill.set_utilbill_period_for_service(utilbill.service, (new_period_start, new_period_end))
+                    reebill.set_meter_dates_from_utilbills()
+                    self.reebill_dao.save_reebill(reebill)
 
                 # change dates in MySQL
                 utilbill.period_start = new_period_start
