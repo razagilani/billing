@@ -3,7 +3,7 @@
 # backup 
 now=`date +"%Y%m%d"`
 cd /tmp
-mysqldump -uroot -pP4IMvFI9DRTd skyline_prod > ${now}billing_mysql.dmp
+mysqldump -uroot -pP4IMvFI9DRTd skyline_prod information_schema > ${now}billing_mysql.dmp
 mongodump --db skyline-prod --collection ratestructure --out ${now}ratestructure_mongo
 mongodump --db skyline-prod --collection reebills --out ${now}reebills_mongo
 mongodump --db skyline-prod --collection utilbills --out ${now}utilbills_mongo
