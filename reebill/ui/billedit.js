@@ -747,6 +747,7 @@ function reeBillReady() {
             {name: 'balance_due'},
             {name: 'total_error'},
             {name: 'issued'},
+            {name: 'services'},
         ],
         remoteSort: true,
         sortInfo: { //Sort in descending order by sequence number
@@ -958,13 +959,18 @@ function reeBillReady() {
                 xtype: 'panel',
                 width: 200,
                 items: [
-                    // TODO:21046353 
+                    // TODO:21046353
                     new Ext.form.ComboBox({
                         id: 'service_for_charges',
                         fieldLabel: 'Service',
                         triggerAction: 'all',
-                        store: ['Gas', 'Electric'],
-                        value: 'Gas',
+                        mode: 'local',
+                        store: new Ext.data.ArrayStore({
+                            id: 0,
+                            fields: ['service'],
+                        }),
+                        valueField: 'service',
+                        displayField: 'service',
                         width: 200,
                     }),
                 ],
@@ -5980,6 +5986,9 @@ function reeBillReady() {
         rateStructurePanel.setDisabled(true);
         chargeItemsPanel.setDisabled(true);
         accountInfoFormPanel.setDisabled(true);
+        Ext.getCmp('service_for_charges').getStore().removeAll();
+        Ext.getCmp('service_for_charges').clearValue();
+        Ext.getCmp('service_for_charges').setDisabled(true);
 
         //journalPanel.setDisabled(true);
 
@@ -6130,6 +6139,9 @@ function reeBillReady() {
             deleteButton.setDisabled(true);
             accountInfoFormPanel.setDisabled(true);
             configureReeBillEditor(null, null);
+            Ext.getCmp('service_for_charges').getStore().removeAll();
+            Ext.getCmp('service_for_charges').clearValue();
+            Ext.getCmp('service_for_charges').setDisabled(true);
             return;
         }
 
@@ -6148,7 +6160,19 @@ function reeBillReady() {
         
         // TODO:23046181 abort connections in progress
         configureReeBillEditor(selected_account, selected_sequence);
-
+        services = record.data.services;
+        for (var i = 0;i < services.length;i++) {
+            services[i] = [services[i]];
+        }
+        Ext.getCmp('service_for_charges').getStore().loadData(services);
+        if (services.length > 0) {
+            Ext.getCmp('service_for_charges').setValue(services[0]);
+            Ext.getCmp('service_for_charges').setDisabled(false);
+        } else {
+            Ext.getCmp('service_for_charges').clearValue();
+            Ext.getCmp('service_for_charges').setDisabled(true);
+        }
+            
         // image rendering resolution
         var menu = document.getElementById('reebillresolutionmenu');
         if (menu) {
@@ -6160,7 +6184,7 @@ function reeBillReady() {
         // while waiting for the next ajax request to finish, show a loading message
         // in the utilbill image box
         Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div', html:LOADING_MESSAGE, id: 'reebillimage'}, true);
-       
+        
         // ajax call to generate image, get the name of it, and display it in a
         // new window
         // abort previous transaction
