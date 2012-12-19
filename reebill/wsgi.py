@@ -1943,6 +1943,8 @@ class BillToolBridge:
                     except: pass
                     try: row_dict['balance_due'] = mongo_reebill.balance_due
                     except: pass
+                    try: row_dict['services'] = [service.title() for service in mongo_reebill.services]
+                    except: pass
 
                     # human-readable description of correction state
                     version = self.state_db.max_version(session, account, reebill.sequence)
