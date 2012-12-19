@@ -156,52 +156,38 @@ def approximate_months(start_date, end_date):
     days_in_months = [(min(month_dates[i+1], end_date)-max(month_dates[i], start_date)).days for i in range(len(month_dates)-1)]
     fractions_of_months = [float(days_in_months[i])/float(days_per_month[i]) for i in range(len(days_in_months))]
     fraction_of_total = [float(days_in_months[i])/float(total_days) for i in range(len(days_in_months))]
-    return [(month_dates[i], days_in_months[i], fractions_of_months[i], fraction_of_total[i]) for i in range(len(days_in_months))]
+    return zip(month_dates[:-1], days_in_months, fractions_of_months, fraction_of_total)
 
 def is_set(month_dict, month):
     '''Determines if the given month has already had a utility bill assigned to it'''
-    return any([_ub[1] for _ub in month_dict.get(month,[])])
+    return any(month_dict.get(month,{}).values())
 
-def set_month_to_utilbill(month_dict, ub_dict, month, utilbill):
-    '''
-    Assign a utility bill to a month
-    '''
-    already_exists = is_set(month_dict[utilbill.service], month)
-    #Print an error if tryint to assign to an already taken month
-    if already_exists:
-        print "  Multiple utility bills for "+month.strftime('%b %Y')
-        for ub_id in month_dict[utilbill.service][month]:
-            print "    "+str(ub_dict[ub_id[0]][0])
-        print "    "+str(ub_dict[utilbill.id][0])
-        return False
-    else:
-        #Assign the utilbill to the month
-        old_ubs = month_dict[utilbill.service][month]
-        old_months = ub_dict[utilbill.id][1]
-        #Clear this utilbill from any months it previously belonged to
-        for entry in old_months:
-            if entry == month:
+def set_utilbill_to_month(month_dict, ub_dict, month, utilbill_id):
+    '''Assign a utility bill to a month'''
+    found = False
+    for entry in ub_dict[utilbill_id][2].keys():
+        if entry == month[0]:
+            found = True
+            continue
+        del ub_dict[utilbill_id][2][entry]
+        del month_dict[entry][utilbill_id]
+    if not is_set(month_dict, month[0]):
+        for entry in month_dict[month[0]]:
+            if entry == utilbill_id:
                 continue
-            if is_set(month_dict[utilbill.service], entry):
-                print "  Utility Bill "+str(utilbill)+" is already applied to "+entry.strftime('%b %Y')
-                print "    Attempted "+month.strftime('%b, %Y')
-                return False
-            else:
-                month_dict[utilbill.service][entry] = [tup for tup in month_dict[utilbill.service][entry] if tup[0] != utilbill.id]
-        month_dict[utilbill.service][month] = [(utilbill.id, True)]
-        ub_dict[utilbill.id][1] = [month]
-        success = True
-        #Go through all the utilbills that were there before and see if they need to be assigned
-        for entry in old_ubs:
-            ub_id = entry[0]
-            if ub_id == utilbill.id:
-                continue
-            ub_dict[ub_id][1].remove(month)
-            #If there's only one possibility left, assign to it
-            if len(ub_dict[ub_id][1]) == 1:
-                success = success and set_month_to_utilbill(month_dict, ub_dict, ub_dict[ub_id][1][0], ub_dict[ub_id][0])
-        return success
-
+            ub_dict[entry][1] -= ub_dict[entry][2][month[0]][0]
+    month_dict[month[0]][utilbill_id] = True
+    if not found:
+        ub_dict[utilbill_id][2][month[0]] = month[1:]
+    ub_dict[utilbill_id][1] = 0
+    
+def add_utilbill_to_month(month_dict, ub_dict, month, utilbill_id):
+    '''Add a utility bill to a month'''
+    month_dict[month[0]][utilbill_id] = False
+    if not is_set(month_dict, month[0]):
+        ub_dict[utilbill_id][1] += month[1]
+    ub_dict[utilbill_id][2][month[0]] = month[1:]
+        
 def get_column_names(columns):
     '''Get the names for all the columns described'''
     names = []
@@ -242,7 +228,7 @@ class Exporter:
         self.state_db = state.StateDB(host, statedb, user, password)
         self.reebill_dao = mongo.ReebillDAO(self.state_db, host, database = mongodb)
 
-    def export_with_month(self, output_file_name, accounts = None, start_date = None, end_date = None, threshold = 0.8, columns = default_columns):
+    def export_by_month(self, output_file_name, accounts = None, start_date = None, end_date = None, threshold = 0.2, columns = default_columns):
         '''
         Export reebill data to a file
 
@@ -260,7 +246,7 @@ class Exporter:
         The start_date and end_date must be the beginning of months or None; both of these months are included
         A start_date of None includes everything since the beginning till the end_date
         An end_date of None includes everything until the end since the start_date
-        threshold determines how tightly a reebill must be coupled to a month to be assigned to it.  0.8 seems to work well
+        threshold determines the minimum % of a bill that has to be in a month to be able to assign to it
         '''
         file_extension = os.path.splitext(output_file_name)[1][1:]
         if file_extension not in ['xls', 'json', 'yaml', 'ods']:
@@ -269,7 +255,7 @@ class Exporter:
 
         if (start_date is not None and start_date.day != 1) or (end_date is not None and end_date.day != 1):
             raise ValueError("Both start and end date must be the beginnings of months")
-        
+
         #output databook
         book = tablib.Databook()
         with DBSession(self.state_db) as session:
@@ -293,52 +279,50 @@ class Exporter:
                     #if start date is none, get all months starting at the first utilbill.
                     #if end date is none, get all months up to the end of the last utilbill
                     months_wanted = months_contained(start_date if start_date else first_date, end_date if end_date else last_date)
-                    #{service: {month: [(utilbill_id, is_assigned), ...]}}
-                    all_months = {service: OrderedDict([(month, []) for month in months_contained(first_date, last_date)]) for service in services}
-                    #{utilbill_id: [utilbill_doc, [months added]]}
+                    #{service: {month: {utilbill_id, is_assigned}}}
+                    all_months= {service: OrderedDict([(month, OrderedDict()) for month in months_contained(first_date, last_date)]) for service in services}
+                    #{utilbill_id: [utilbill_doc, days not set, {month:stats}]}
                     ubs = {}
                     for ub in matching_utilbills:
                         ub.service = ub.service.lower() if ub.service is not None else 'unknown'
-                        ubs[ub.id] = [ub, []]
                         #Figure out which months this bill belongs to
                         month_stats = approximate_months(ub.period_start, ub.period_end)
-                        #Figure out which aren't already taken
-                        months = [month for month in month_stats if not is_set(all_months[ub.service], month[0])]
-                        #Figure out which months this utilbill both contains most of and is mostly contained by
-                        matching_months = [month[0] for month in months if month[2] >= threshold and month[3] >= threshold]
+                        #Figure out which months this utilbill is mostly contained in
+                        matching_months = [month for month in month_stats if month[2] >= (1-threshold) or month[3] >= threshold]
+                        new_total = sum(month[1] for month in matching_months)
+                        for month in matching_months:
+                            month = month[:3]+(month[1] / new_total,)
+                        ubs[ub.id] = [ub, 0, OrderedDict()]
                         #If it matches only one, assign the utilbill to that month
                         if len(matching_months) == 1:
-                            set_month_to_utilbill(all_months, ubs, matching_months[0], ub)
-                        elif len(months) == 1:
-                            set_month_to_utilbill(all_months, ubs, months[0][0], ub)
-                        #If it matches some untaken months, add it to those months (but don't assign it)
-                        elif len(months) > 1:
-                            for month in months:
-                                all_months[ub.service][month[0]].append((ub.id, False))
-                                ubs[ub.id][1].append(month[0])
-                        #If there were some matches but they were taken
-                        elif len(month_stats) > 0:
-                            print "  All months already taken for utility bill:"
+                            set_utilbill_to_month(all_months[ub.service], ubs, matching_months[0], ub.id)
+                            continue
+                        if len(matching_months) == 0:
+                            print "  Error: no month found for utility bill:"
                             print "    "+str(ub)
-                            print "  Possible:"
-                            for month in month_stats:
-                                print "    "+month[0].strftime('%b %Y')
-                        else:
-                            print "Error: no month found for utility bill:"
-                            print "    "+str(ub)
-                    #Go through all utility bills and pick the month that they fit best
-                    for ub, month_list in ubs.itervalues():
-                        if len(month_list) > 1:
-                            month_stats = approximate_months(ub.period_start, ub.period_end)
-                            #Get the available months
-                            months_available = [stats for stats in month_stats if not is_set(all_months, stats[0])]
-                            #Sort by match
-                            months_available.sort(key=lambda s:(s[2] + s[3]), reverse = True)
-                            #Pick the best one
-                            month = months_available[0]
-                            set_month_to_utilbill(all_months, ubs, month[0], ub)
-                    #Get the wanted utilbill ids, determined by those where a wanted month points to them
-                    ubs_wanted = [ub_id for ub_id in ubs.iterkeys() if any([any([any([ub_id_ok[0]==ub_id for ub_id_ok in ub_list]) for month, ub_list in month_dict.iteritems() if month in months_wanted]) for month_dict in all_months.itervalues()])]
+                        #Add this utilbill to any months it contains (but don't assign it)
+                        for month in matching_months:
+                            add_utilbill_to_month(all_months[ub.service], ubs, month, ub.id)
+                    #Fill in unset utility bills
+                    #Pick the utility bill that best fits one of its months still unset.  Utility bills with one unset month will be prioritized
+                    ub_stats = [(ub.id, days) + max([(month,) + stats for month, stats in month_dict.iteritems() if not is_set(all_months[ub.service], month)], key= lambda t:t[3]) for ub, days, month_dict in ubs.itervalues() if len(month_dict) > 1 and days > 0]
+                    while len(ub_stats) > 0:
+                        #Pick the utiliby bill with highest ratio of days in month to days in all months still unset
+                        ub_stats.sort(key= lambda t:t[5], reverse=True)
+                        best_ub = max(ub_stats, key= lambda t:t[3]/float(t[1]))
+                        set_utilbill_to_month(all_months[ubs[best_ub[0]][0].service], ubs, (best_ub[2],)+best_ub[3:], best_ub[0])
+                        ub_stats = [(ub.id, days) + max([(month,) + stats for month, stats in month_dict.iteritems() if not is_set(all_months[ub.service], month)], key= lambda t:t[3]) for ub, days, month_dict in ubs.itervalues() if len(month_dict) > 1 and days > 0]
+                    #Go through any utility bills with no month set, pick their best month.
+                    #(All of these will be adding an extra entry to a month)
+                    for ub, days, month_dict in ubs.itervalues():
+                        if len(month_dict) > 1:
+                            best_month = max(month_dict.items(), key= lambda t: t[1][2])
+                            set_utilbill_to_month(all_months[ub.service], ubs, (best_month[0],)+best_month[1], ub.id)
+                            print "  Warning: Adding multiple utility bills to "+best_month[0].strftime('%b %Y')+" ("+str(ub.service)+"):"
+                            for ub_id in all_months[ub.service][best_month[0]].keys():
+                                print "    "+str(ubs[ub_id][0])
+                    #Get the wanted utilbill ids, determined by those assigned to a wanted month
+                    ubs_wanted = [ub_id for ub_id, value in ubs.iteritems() if any(month in months_wanted for month in value[2].iterkeys())]
                     #If there were no matching utility bills for this account
                     if len(ubs_wanted) == 0:
                         print "  No utility bills matched the months given"
@@ -353,29 +337,23 @@ class Exporter:
                         first = True
                         missing = []
                         #ub_list = [(utilbill_id, is_assigned), ...]
-                        #There should only be one utilbill in that list
-                        for month, ub_list in month_list.iteritems():
+                        for month, ub_dict in month_list.iteritems():
                             #Mark that each of these utilbills was found
-                            if not is_set(month_list, month) and len(ub_list) > 0:
+                            if not is_set(month_list, month) and len(ub_dict) > 0:
                                 print "  No utilbill set for "+month.strftime('%b %Y')
                                 print "  Available: "
-                                for ub_id in ub_list:
+                                for ub_id in ub_dict.keys():
                                     print "    "+str(ubs[ub_id[0]][0])
                                 continue
-                            for ub_id in ub_list:
-                                ubs_found.append(ub_id[0])
+                            for ub_id in ub_dict.keys():
+                                ubs_found.append(ub_id)
                             #Don't continue adding to the totals if the month of the bill is past the end date
                             if month > (end_date if end_date else last_date):
                                 continue
-                            #If this month has no associated utilbill
-                            if not first and len(ub_list) == 0:
+                            if len(ub_dict) == 0 and not first:
                                 missing.append(month)
-                            #If this month has more than one utilbill
-                            elif len(ub_list) > 1:
-                                print "  "+m.strftime('%b %Y')+" has multiple possibilities"
-                            elif len(ub_list) == 1:
+                            for ub_id in ub_dict.keys():
                                 #Get the matching utilbill document using the id
-                                ub_id = ub_list[0][0]
                                 utilbill = ubs[ub_id][0]
                                 #Start checking for missing months
                                 if first:
@@ -400,7 +378,13 @@ class Exporter:
                                     #Add this row to the list
                                     if month not in rows:
                                         rows[month] = OrderedDict()
-                                    rows[month][service] = stats
+                                    if service not in rows[month]:
+                                        rows[month][service] = OrderedDict()
+                                        for name in get_column_names(columns):
+                                            rows[month][service][name] = [stats[name]]
+                                    else:
+                                        for name in get_column_names(columns):
+                                            rows[month][service][name].append(stats[name])
                                 if service not in all_time:
                                     #Check if the all time total for this service has started accumulating
                                     all_time[service] = OrderedDict()
@@ -409,6 +393,7 @@ class Exporter:
                                 else:
                                     for name in get_column_names(columns):
                                         all_time[service][name].append(stats[name])
+                                
                     #Check that all utilbills are accounted for
                     ubs_missing = [ubs[ub_id][0] for ub_id in ubs.iterkeys() if ub_id not in ubs_found]
                     for ub in ubs_missing:
@@ -416,11 +401,12 @@ class Exporter:
                     
                     #Add the accumulated rows in the crrect order
                     for month, row_dict in rows.iteritems():
-                        for service, row in row_dict.iteritems():
-                            format_row(columns, row)
-                            lrow = [month.strftime('%b %Y'), service]
-                            lrow.extend(row.values())
-                            sheet.append(lrow)
+                        for service, column_data in row_dict.iteritems():
+                            totals = summarize(columns, column_data)
+                            format_row(columns, totals)
+                            row = [month.strftime('%b %Y'), service]
+                            row.extend(totals.values())
+                            sheet.append(row)
     
                     for service, column_data in total.iteritems():
                         totals = summarize(columns, column_data)
@@ -437,8 +423,8 @@ class Exporter:
                         sheet.append(row)
                     
                     book.add_sheet(sheet)
-                except:
-                    print "  "+traceback.format_exc().replace('\n','\n  ')[:-3]
+                except Exception as e:
+                    print "  "+e.__class__.__name__+": "+e.args[0]
                 print
 
         with open(output_file_name, 'wb') as output_file:
@@ -489,5 +475,5 @@ if __name__ == '__main__':
     threshold = args.threshold / 100.
     
     exporter = Exporter(host, db, statedb, user, password)
-    exporter.export_with_month(output_file_name, accounts, start_date, end_date, threshold)
+    exporter.export_by_month(output_file_name, accounts, start_date, end_date, threshold)
     
