@@ -728,14 +728,31 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def new_account(self, name, account, discount_rate, late_charge_rate, template_account, **kwargs):
+    def new_account(self, name, account, discount_rate, late_charge_rate, template_account,
+                    ba_addressee, ba_street1, ba_city, ba_state, ba_postal_code,
+                    sa_addressee, sa_street1, sa_city, sa_state, sa_postal_code, **kwargs):
         with DBSession(self.state_db) as session:
             if not name or not account or not discount_rate or not template_account:
                 raise ValueError("Bad Parameter Value")
             customer = self.process.create_new_account(session, account, name,
                     discount_rate, late_charge_rate, template_account)
             reebill = self.reebill_dao.load_reebill(account, 0)
-
+            ba = {}
+            ba['ba_addressee'] = ba_addressee
+            ba['ba_street1'] = ba_street1
+            ba['ba_city'] = ba_city
+            ba['ba_state'] = ba_state
+            ba['ba_postal_code'] = ba_postal_code
+            reebill.billing_address = ba
+            
+            sa = {}
+            sa['sa_addressee'] = sa_addressee
+            sa['sa_street1'] = sa_street1
+            sa['sa_city'] = sa_city
+            sa['sa_state'] = sa_state
+            sa['sa_postal_code'] = sa_postal_code
+            reebill.service_address = sa
+            self.reebill_dao.save_reebill(reebill)
             # record account creation
             # (no sequence associated with this)
             journal.AccountCreatedEvent.save_instance(cherrypy.session['user'],
@@ -956,7 +973,7 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def issue(self, account, sequence, apply_corrections, **kwargs):
+    def issue_and_mail(self, account, sequence, apply_corrections, **kwargs):
         sequence = int(sequence)
         apply_corrections = (apply_corrections == 'true')
         with DBSession(self.state_db) as session:
@@ -1133,7 +1150,13 @@ class BillToolBridge:
             # {account: full name, dayssince: days}
 
             sortcol = kwargs.get('sort', None)
+            if sortcol is None:
+                sortcol = cherrypy.session['user'].preferences.get('default_account_sort_field',None)
+
             sortdir = kwargs.get('dir', None)
+            if sortdir is None:
+                sortdir = cherrypy.session['user'].preferences.get('default_account_sort_direction',None)
+
             if sortdir == 'ASC':
                 sortreverse = False
             else:
@@ -1222,6 +1245,10 @@ class BillToolBridge:
             # take slice for one page of the grid's data
             rows = rows[start:start+limit]
 
+            cherrypy.session['user'].preferences['default_account_sort_field'] = sortcol
+            cherrypy.session['user'].preferences['default_account_sort_direction'] = sortdir
+            self.user_dao.save_user(cherrypy.session['user'])
+    
             return self.dumps({'success': True, 'rows':rows, 'results':count})
 
     @cherrypy.expose
@@ -1562,6 +1589,7 @@ class BillToolBridge:
             raise ValueError("Bad Parameter Value")
         # client sends capitalized service names! workaround:
         service = service.lower()
+        sequence = int(sequence)
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
 
@@ -1575,12 +1603,14 @@ class BillToolBridge:
         utility_name = reebill.utility_name_for_service(service)
         rs_name = reebill.rate_structure_name_for_service(service)
         (effective, expires) = reebill.utilbill_period_for_service(service)
-        rate_structure = self.ratestructure_dao.load_uprs(utility_name, rs_name, effective, expires)
+        rate_structure = self.ratestructure_dao.load_uprs(account, sequence,
+                reebill.version, utility_name, rs_name)
 
         # It is possible the a UPRS does not exist for the utility billing period.
         # If this is the case, create it
         if rate_structure is None:
-            raise Exception("Could not load UPRS for %s, %s %s to %s" % (utility_name, rs_name, effective, expires) )
+            raise Exception("Could not load UPRS for %s, %s %s to %s" %
+                    (utility_name, rs_name, effective, expires) )
 
         rates = rate_structure["rates"]
 
@@ -1625,10 +1655,9 @@ class BillToolBridge:
                 rsi.update(row)
 
             self.ratestructure_dao.save_uprs(
+                reebill.account, reebill.sequence, reebill.version,
                 reebill.utility_name_for_service(service),
                 reebill.rate_structure_name_for_service(service),
-                effective,
-                expires,
                 rate_structure
             )
 
@@ -1646,10 +1675,9 @@ class BillToolBridge:
             rates.append(new_rate)
 
             self.ratestructure_dao.save_uprs(
+                reebill.account, reebill.sequence, reebill.version,
                 reebill.utility_name_for_service(service),
                 reebill.rate_structure_name_for_service(service),
-                effective,
-                expires,
                 rate_structure
             )
 
@@ -1680,6 +1708,7 @@ class BillToolBridge:
                 rates.remove(rsi)
 
             self.ratestructure_dao.save_uprs(
+                reebill.account, reebill.sequence, reebill.version,
                 reebill.utility_name_for_service(service),
                 reebill.rate_structure_name_for_service(service),
                 effective,
@@ -2017,9 +2046,8 @@ class BillToolBridge:
                 # that client is allowed to delete a range of bills at once, as
                 # long as they're in sequence order)
                 max_version = self.state_db.max_version(session, account, sequence)
-                if sequence != 1 and not (sequence == last_sequence and
-                        max_version == 0) and not self.state_db.is_issued(
-                        session, account, sequence - 1):
+                if not (max_version == 0 and sequence == last_sequence or max_version > 0 and
+                        (sequence == 1 or self.state_db.is_issued(session, account, sequence - 1))):
                     raise ValueError(("Can't delete a reebill version whose "
                             "predecessor is unissued, unless its version is 0 "
                             "and its sequence is the last one. Delete a "
@@ -2643,7 +2671,7 @@ class BillToolBridge:
                 ('state', state_descriptions[ub.state]),
                 # utility bill rows are only editable if they don't have a
                 # reebill attached to them
-                ('editable', not ub.has_reebill)
+                ('editable', (not ub.has_reebill or not ub.reebill.issued))
             ]) for i, ub in enumerate(utilbills)]
 
             return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
@@ -2728,6 +2756,13 @@ class BillToolBridge:
                             utilbill.period_start,
                             utilbill.period_end,
                             new_period_start, new_period_end)
+
+                # change dates in Mongo if needed
+                if (utilbill.period_start != new_period_start or utilbill.period_end != new_period_end) and utilbill.has_reebill:
+                    reebill = self.reebill_dao.load_reebill(utilbill.reebill.customer.account, utilbill.reebill.sequence)
+                    reebill.set_utilbill_period_for_service(utilbill.service, (new_period_start, new_period_end))
+                    reebill.set_meter_dates_from_utilbills()
+                    self.reebill_dao.save_reebill(reebill)
 
                 # change dates in MySQL
                 utilbill.period_start = new_period_start
@@ -2843,7 +2878,7 @@ class BillToolBridge:
         cherrypy.session['user'].preferences['difference_threshold'] = threshold/100.0
         self.user_dao.save_user(cherrypy.session['user'])
         return self.dumps({'success':True})
-    
+
     @cherrypy.expose
     @random_wait
     @authenticate_ajax

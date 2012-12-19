@@ -448,7 +448,8 @@ class StateDB:
     def listAccounts(self, session):
         '''List of all customer accounts (ordered).'''    
         # SQLAlchemy returns a list of tuples, so convert it into a plain list
-        result = map((lambda x: x[0]), session.query(Customer.account).all())
+        result = map((lambda x: x[0]),
+                session.query(Customer.account).order_by(Customer.account).all())
         return result
 
     def list_accounts(self, session, start, limit):
@@ -504,8 +505,20 @@ class StateDB:
         count = query.count()
         return slice, count
 
+    def list_issued_utilbills_for_account(self, session, account):
+        utilbill_info_table = session.query(UtilBill.id, UtilBill.total_charges, UtilBill.service, UtilBill.period_start, UtilBill.period_end, UtilBill.rebill_id, Customer.account).filter(Customer.id == UtilBill.customer_id, Customer.account == account).subquery("utilbill_info")
+        Utilbill_info = utilbill_info_table.c
+        matching_utilbills = session.query(Utilbill_info.account, ReeBill.sequence, ReeBill.max_version, Utilbill_info.id, Utilbill_info.service, Utilbill_info.period_start, Utilbill_info.period_end).filter(Utilbill_info.rebill_id == ReeBill.id, ReeBill.issued == 1)
+        first_date = None
+        last_date = None
+        if matching_utilbills.count() > 0:
+            first_date = matching_utilbills.order_by(Utilbill_info.period_start)[0].period_start
+            last_date = matching_utilbills.order_by(Utilbill_info.period_end)[-1].period_end
+        return (matching_utilbills.all(), first_date, last_date)
+
     def reebills(self, session, include_unissued=True):
-        '''Generates (account, sequence) tuples for all reebills in MySQL.'''
+        '''Generates (account, sequence, max version) tuples for all reebills
+        in MySQL.'''
         for account in self.listAccounts(session):
             for sequence in self.listSequences(session, account):
                 reebill = self.get_reebill(session, account, sequence)
@@ -587,8 +600,10 @@ class StateDB:
         for service, period_end in service_iter:
             # First, query to find the next unattached utilbill on this account for this customer and this service
             try:
-                utilbill = session.query(UtilBill).filter(UtilBill.customer==customer, UtilBill.service==service, UtilBill.period_start>=period_end, UtilBill.rebill_id == None)\
-                    .order_by(asc(UtilBill.period_start)).first()
+                utilbill = session.query(UtilBill).filter(
+                        UtilBill.customer==customer, UtilBill.service==service,
+                        UtilBill.period_start>=period_end, UtilBill.rebill_id
+                        == None).order_by(asc(UtilBill.period_start)).first()
             except NoResultFound:
                 # If the utilbill is not found, then the rolling process can't proceed
                 raise Exception('No new %s utility bill found' % service)
