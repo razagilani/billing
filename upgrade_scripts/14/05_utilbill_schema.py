@@ -45,8 +45,7 @@ cur.execute("alter table utilbill_version add constraint utilbill_version_unique
 ###############################################################################
 # utilbill
 
-#cur.execute("alter table utilbill drop foreign key fk_utilbill_rebill")
-cur.execute("drop index fk_utilbill_rebill on utilbill;")
+cur.execute("alter table utilbill drop foreign key fk_utilbill_rebill")
 
 # remove all data that have been moved to the utilbill_version table
 cur.execute("alter table utilbill drop column rebill_id")
