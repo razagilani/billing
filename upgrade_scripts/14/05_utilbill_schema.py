@@ -39,6 +39,8 @@ for account, customer_id, rebill_id, start, end, service, total_charges in cur.f
                 (rebill_id, start, end, service, total_charges, utility))
         doc['mysql_id'] = cur.lastrowid
 
+    # TODO each utilbill_version should get the id of the row for the reebill it belongs to in the now expanded reebill table
+
 # add constraint for uniqueness on {account, service, utility, start, end} (which we already enforce for mongo documents in rebillDAO)
 cur.execute("alter table utilbill_version add constraint utilbill_version_unique unique (customer_id, service, utility, period_start, period_end)")
 
