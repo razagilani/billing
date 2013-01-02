@@ -36,11 +36,15 @@ for utilbill_id, account, customer_id, rebill_id, start, end, service, total_cha
     query = {'account': account, 'start': date_to_datetime(start), 'end': date_to_datetime(end), 'service': service}
     mongo_docs = db.utilbills.find(query)
     if mongo_docs.count() < 1:
-        # problem utility bills: use None as a placeholder for nonexistent mongo doc, so 1 row gets saved in utilbill_version
-        if account == '10001':#utilbill_id in (4, 5, 7, 8, 9, 10):
-            mongo_docs = [None]
-        else:
-            raise Exception("could not find utility bill document (id %s): %s" % (utilbill_id, query))
+        ## problem utility bills: use None as a placeholder for nonexistent mongo doc, so 1 row gets saved in utilbill_version
+        #if utilbill_id in (4, 5, 7, 8, 9, 10):
+            #mongo_docs = [None]
+        #else:
+            #raise Exception("could not find utility bill document (id %s): %s" % (utilbill_id, query))
+        print "could not find utility bill document (id %s): %s" % (utilbill_id, query)
+        # TODO way too many of these can't be found
+    else:
+        print 'success:', utilbill_id
 
     # create one row in utilbill_version for each mongo document, and put the row's id in the document
     for doc in mongo_docs:
@@ -61,7 +65,8 @@ for utilbill_id, account, customer_id, rebill_id, start, end, service, total_cha
     # TODO each utilbill_version should get the id of the row for the reebill it belongs to in the now expanded reebill table
 
 # add constraint for uniqueness on {account, service, utility, start, end} (which we already enforce for mongo documents in rebillDAO)
-cur.execute("alter table utilbill_version add constraint utilbill_version_unique unique (customer_id, service, utility, period_start, period_end)")
+#cur.execute("alter table utilbill_version add constraint utilbill_version_unique unique (customer_id, service, utility, period_start, period_end)")
+# TODO temporarily disabled because the data do not actually allow it
 
 ###############################################################################
 # utilbill
