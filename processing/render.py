@@ -137,6 +137,7 @@ class ReebillRenderer:
         self.temp_directory = config['temp_directory']
         self.template_directory = config['template_directory']
         self.default_template = config['default_template']
+        self.current_template = self.default_template
 
         # set default templates
         #self.default_backgrounds = config['default_backgrounds'].split()
