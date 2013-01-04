@@ -31,6 +31,6 @@ cur.execute('''alter table rebill add unique index (customer_id, sequence, max_v
 
 # rename "max_version" to "version" and "rebill" to "reebill"
 cur.execute('''alter table rebill change max_version version int(11)''')
-cur.execute('''rename table rebill to reebill''')
+#cur.execute('''rename table rebill to reebill''')
 
 con.commit()
