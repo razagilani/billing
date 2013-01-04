@@ -1,6 +1,8 @@
 import MySQLdb
 import pymongo
 from billing.util.dateutils import date_to_datetime
+import pprint
+pp = pprint.PrettyPrinter().pprint
 
 con = MySQLdb.Connection('localhost', 'dev', 'dev', 'skyline_dev')
 db = pymongo.Connection('localhost')['skyline-dev']
@@ -58,6 +60,29 @@ for utilbill_id, account, customer_id, rebill_id, start, end, service, total_cha
     # in the mongo document
     for doc in mongo_docs:
         try:
+            # get the "rebill_id" value for the new utilbill_version row:
+            if 'sequence' in doc:
+                # if this mongo utility bill is attached to a rebill, get the
+                # mysql id of the reebill row in the (now expanded) rebill
+                # table.
+                cur.execute('''select rebill.id from rebill join customer where
+                rebill.customer_id = customer.id and customer.account = %s
+                and rebill.sequence = %s and rebill.version = %s''',
+                (doc['account'], doc['sequence'], doc['version']))
+                if cur.rowcount != 1:
+                    print ("Mongo utilbill's reebill does not exist in MySQL:"
+                            " %s-%s-%s") % (doc['account'], doc['sequence'],
+                            doc['version'])
+                    #import ipdb; ipdb.set_trace()
+                    rebill_id = None
+                    continue
+                rebill_id = cur.fetchone()[0]
+            else:
+                # if the mongo utilbill does not have "sequence" in it, it does
+                # not technically belong to any reebill, even if the utilbill
+                # row in the former utilbill table had a non-null rebill_id
+                rebill_id = None
+
             cur.execute('''insert into utilbill_version (customer_id, rebill_id,
                     utilbill_id, period_start, period_end, service,
                     total_charges, utility, state, date_received) values (%s, %s, %s, %s, %s, %s, %s,
@@ -71,7 +96,7 @@ for utilbill_id, account, customer_id, rebill_id, start, end, service, total_cha
             db.utilbills.save(doc)
 
     # TODO each utilbill_version should get the id of the row for the reebill
-    # it belongs to in the now expanded reebill table
+    # it belongs to in the now expanded rebill table
 
 # add constraint for uniqueness on {account, service, utility, start, end}
 # (which we already enforce for mongo documents in rebillDAO)
