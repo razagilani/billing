@@ -29,9 +29,8 @@ assert final_count == initial_count + new_rows
 # replate old constraint with new one
 cur.execute('''alter table rebill add unique index (customer_id, sequence, max_version)''')
 
-# rename "max_version" to "version" and "rebill" to "reebill"
+# rename "max_version" to "version"
 cur.execute('''alter table rebill change max_version version int(11)''')
-#cur.execute('''rename table rebill to reebill''')
 
 con.commit()
 print 'rebill upgrade done'
