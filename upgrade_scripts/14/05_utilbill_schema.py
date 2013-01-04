@@ -33,12 +33,9 @@ cur.execute("alter table utilbill_version add column id int(11) not null auto_in
 # also add utility name column, since this isn't in mysql yet
 cur.execute("alter table utilbill_version add column utility varchar(45) not null")
 
-# fill utilbill_version with data from utilbill (excluding customer_id, processed, state, date_received), creating one row for each mongo document
-cur.execute('''select utilbill.id, customer.account, customer_id, rebill_id,
-        period_start, period_end, service, total_charges from utilbill join
-        customer where customer_id = customer.id order by customer.account,
-        utilbill.period_start''')
-for utilbill_id, account, customer_id, rebill_id, start, end, service, total_charges in cur.fetchall():
+# fill utilbill_version with data from utilbill (excluding customer_id, processed), creating one row for each mongo document
+cur.execute('''select utilbill.id, customer.account, customer_id, rebill_id, period_start, period_end, service, total_charges, state, date_received from utilbill join customer where customer_id = customer.id order by customer.account, utilbill.period_start''')
+for utilbill_id, account, customer_id, rebill_id, start, end, service, total_charges, state, date_received in cur.fetchall():
     # load all mongo documents corresponding to this utilbill row, except if
     # they have sequence 0 (which means they're just templates)
     query = {
@@ -63,9 +60,9 @@ for utilbill_id, account, customer_id, rebill_id, start, end, service, total_cha
         try:
             cur.execute('''insert into utilbill_version (customer_id, rebill_id,
                     utilbill_id, period_start, period_end, service,
-                    total_charges, utility) values (%s, %s, %s, %s, %s, %s, %s,
-                    %s)''', (customer_id, rebill_id, utilbill_id, start, end,
-                    service, total_charges, doc['utility']))
+                    total_charges, utility, state, date_received) values (%s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s)''', (customer_id, rebill_id, utilbill_id, start, end,
+                    service, total_charges, doc['utility'], state, date_received))
         except MySQLdb.IntegrityError as e:
             print e
             import ipdb; ipdb.set_trace()
@@ -92,6 +89,9 @@ cur.execute("alter table utilbill drop column period_start")
 cur.execute("alter table utilbill drop column period_end")
 cur.execute("alter table utilbill drop column service")
 cur.execute("alter table utilbill drop column total_charges")
+cur.execute("alter table utilbill drop column state")
+cur.execute("alter table utilbill drop column date_received")
+cur.execute("alter table utilbill drop column processed") # completely removed because meaningless
 
 con.commit()
 
