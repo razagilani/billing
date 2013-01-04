@@ -33,25 +33,27 @@ cur.execute("alter table utilbill_version add column utility varchar(45) not nul
 #cur.execute("insert into utilbill_version select (rebill_id, period_start, period_end, service, total_charges) from utilbill")
 cur.execute("select utilbill.id, customer.account, customer_id, rebill_id, period_start, period_end, service, total_charges from utilbill join customer where customer_id = customer.id order by customer.account, utilbill.period_start")
 for utilbill_id, account, customer_id, rebill_id, start, end, service, total_charges in cur.fetchall():
-    query = {'account': account, 'start': date_to_datetime(start), 'end': date_to_datetime(end), 'service': service}
+    # load all mongo documents corresponding to this utilbill row, except if
+    # they have sequence 0 (which means they're just templates)
+    query = {
+        'account': account,
+        'start': date_to_datetime(start),
+        'end': date_to_datetime(end),
+        'service': service,
+        'sequence': {'$ne':0}
+    }
     mongo_docs = db.utilbills.find(query)
-    if mongo_docs.count() < 1:
-        ## problem utility bills: use None as a placeholder for nonexistent mongo doc, so 1 row gets saved in utilbill_version
-        #if utilbill_id in (4, 5, 7, 8, 9, 10):
-            #mongo_docs = [None]
-        #else:
-            #raise Exception("could not find utility bill document (id %s): %s" % (utilbill_id, query))
-        print "could not find utility bill document (id %s): %s" % (utilbill_id, query)
-        # TODO way too many of these can't be found
-    else:
-        print 'success:', utilbill_id
 
-    # create one row in utilbill_version for each mongo document, and put the row's id in the document
+    # a utilbill that is not attached to a reebill should not have any mongo
+    # documents. but if it is attached, not finding any mongo documents is an
+    # error (e.g. the dates in mongo disagree with mysql).
+    if mongo_docs.count() == 0 and rebill_id != None:
+        print "could not find utility bill document (id %s): %s" % (utilbill_id, query)
+
+    # for each mongo document, create one row in utilbill_version, and put the
+    # utilbill_version row id in the document
     for doc in mongo_docs:
-        if doc is not None:
-            utility_name = doc['utility']
-        else:
-            utility_name = ''
+        utility_name = doc['utility']
         try:
             cur.execute("insert into utilbill_version (customer_id, rebill_id, utilbill_id, period_start, period_end, service, total_charges, utility) values (%s, %s, %s, %s, %s, %s, %s, %s)",
                     (customer_id, rebill_id, utilbill_id, start, end, service, total_charges, utility_name))
@@ -82,3 +84,7 @@ cur.execute("alter table utilbill drop column total_charges")
 
 con.commit()
 
+
+total = db.utilbills.count()
+total_nonzero = db.utilbills.find({'sequence': {'$ne': 0}}).count()
+print db.utilbills.find({'mysql_id': {'$exists': True}}).count(), 'of', total_nonzero, 'non-sequence-0 documents have mysql_id; total', total
