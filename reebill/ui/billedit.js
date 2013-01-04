@@ -733,6 +733,7 @@ function reeBillReady() {
             {name: 'period_start'},
             {name: 'period_end'},
             {name: 'corrections'}, // human-readable (could replace with a nice renderer function for max_version)
+            {name: 'issue_date'},
             {name: 'max_version'}, // machine-readable
             {name: 'hypothetical_total'},
             {name: 'actual_total'},
@@ -746,6 +747,7 @@ function reeBillReady() {
             {name: 'balance_due'},
             {name: 'total_error'},
             {name: 'issued'},
+            {name: 'services'},
         ],
         remoteSort: true,
         sortInfo: { //Sort in descending order by sequence number
@@ -876,6 +878,12 @@ function reeBillReady() {
                 width: 70,
                 renderer: reeBillGridRenderer,
             },{
+                header: 'Issue Date',
+                sortable: false,
+                dataIndex: 'issue_date',
+                width: 70,
+                renderer: reeBillGridRenderer,
+            },{
                 header: 'Hypo',
                 sortable: false,
                 dataIndex: 'hypothetical_total',
@@ -951,13 +959,18 @@ function reeBillReady() {
                 xtype: 'panel',
                 width: 200,
                 items: [
-                    // TODO:21046353 
+                    // TODO:21046353
                     new Ext.form.ComboBox({
                         id: 'service_for_charges',
                         fieldLabel: 'Service',
                         triggerAction: 'all',
-                        store: ['Gas', 'Electric'],
-                        value: 'Gas',
+                        mode: 'local',
+                        store: new Ext.data.ArrayStore({
+                            id: 0,
+                            fields: ['service'],
+                        }),
+                        valueField: 'service',
+                        displayField: 'service',
                         width: 200,
                     }),
                 ],
@@ -1855,6 +1868,7 @@ function reeBillReady() {
                                                 {name: '%Y-%m-%d %H:%M:%S',value: '%Y-%m-%d %H:%M:%S'},
                                                 {name: '%Y/%m/%d %H:%M:%S',value: '%Y/%m/%d %H:%M:%S'},
                                                 {name: '%m/%d/%Y %H:%M:%S',value: '%m/%d/%Y %H:%M:%S'},
+                                                {name: '%Y-%m-%dT%H:%M:%SZ',value: '%Y-%m-%dT%H:%M:%SZ'}
                                             ]
                                         })
                                     },{
@@ -3048,7 +3062,7 @@ function reeBillReady() {
             // doesn't seem to work
             forceFit: true,
         },
-        title: 'Customer Periodic',
+        title: 'Individual Rate Structure Items',
         clicksToEdit: 2
     });
 
@@ -3310,7 +3324,7 @@ function reeBillReady() {
             // doesn't seem to work
             forceFit: true,
         },
-        title: 'Utility Periodic',
+        title: 'Shared Rate Structure Items',
         clicksToEdit: 2
     });
 
@@ -4168,11 +4182,6 @@ function reeBillReady() {
             {name: 'lastissuedate'},
             {name: 'provisionable'},
         ],
-        // looks to be initial order for load
-        sortInfo: {
-            field: 'lastissuedate',
-            direction: 'ASC'
-        },
     });
 
     accountStore.on('beforeload', function(store, options) {
@@ -4258,6 +4267,7 @@ function reeBillReady() {
                 },
                 rowdeselect: function(selModel, index, record) {
                     loadReeBillUIForAccount(null);
+                    reeBillGrid.getSelectionModel().clearSelections();
                 }
             },
         }),
@@ -4565,6 +4575,11 @@ function reeBillReady() {
 
     billStructureTreeLoader.on("beforeload", function(treeLoader, node) {
     });
+    
+    var moreAccountsCheckbox = new Ext.form.Checkbox({
+        id: "newAccountCheckbox",
+        boxLabel: "Make another account",
+    });
 
     var newAccountDataConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/new_account',
@@ -4586,6 +4601,7 @@ function reeBillReady() {
             {
                 xtype: 'fieldset',
                 title: 'Account Information',
+                id: 'accountInfoSet',
                 collapsible: false,
                 defaults: {
                     anchor: '0',
@@ -4597,6 +4613,7 @@ function reeBillReady() {
             {
                 xtype: 'fieldset',
                 title: 'Billing Address',
+                id: 'billingAddressSet',
                 collapsible: false,
                 defaults: {
                     anchor: '0',
@@ -4632,6 +4649,7 @@ function reeBillReady() {
             },{
                 xtype: 'fieldset',
                 title: 'Service Address',
+                id: 'serviceAddressSet',
                 collapsible: false,
                 defaults: {
                     anchor: '0',
@@ -4668,6 +4686,7 @@ function reeBillReady() {
             billStructureTree, 
         ],
         buttons: [
+            moreAccountsCheckbox,
             new Ext.Button({
                 id: 'newAccountSaveButton',
                 text: 'Save',
@@ -4681,16 +4700,16 @@ function reeBillReady() {
                           'template_account': newAccountTemplateCombo.getValue(),
                           'discount_rate': newDiscountRate.getValue(),
                           'late_charge_rate': newLateChargeRate.getValue(),
-                          'new_ba_addressee': Ext.getCmp('new_ba_addressee').getValue(),
-                          'new_ba_street1': Ext.getCmp('new_ba_street1').getValue(),
-                          'new_ba_city': Ext.getCmp('new_ba_city').getValue(),
-                          'new_ba_state': Ext.getCmp('new_ba_state').getValue(),
-                          'new_ba_postal_code': Ext.getCmp('new_ba_postal_code').getValue(),
-                          'new_sa_addressee': Ext.getCmp('new_sa_addressee').getValue(),
-                          'new_sa_street1': Ext.getCmp('new_sa_street1').getValue(),
-                          'new_sa_city': Ext.getCmp('new_sa_city').getValue(),
-                          'new_sa_state': Ext.getCmp('new_sa_state').getValue(),
-                          'new_sa_postal_code': Ext.getCmp('new_sa_postal_code').getValue(),
+                          'ba_addressee': Ext.getCmp('new_ba_addressee').getValue(),
+                          'ba_street1': Ext.getCmp('new_ba_street1').getValue(),
+                          'ba_city': Ext.getCmp('new_ba_city').getValue(),
+                          'ba_state': Ext.getCmp('new_ba_state').getValue(),
+                          'ba_postal_code': Ext.getCmp('new_ba_postal_code').getValue(),
+                          'sa_addressee': Ext.getCmp('new_sa_addressee').getValue(),
+                          'sa_street1': Ext.getCmp('new_sa_street1').getValue(),
+                          'sa_city': Ext.getCmp('new_sa_city').getValue(),
+                          'sa_state': Ext.getCmp('new_sa_state').getValue(),
+                          'sa_postal_code': Ext.getCmp('new_sa_postal_code').getValue(),
                         },
                         success: function(result, request) {
                             var jsonData = null;
@@ -4704,30 +4723,39 @@ function reeBillReady() {
                                     console.log('1Server Error');
                                 } else {
                                     Ext.Msg.alert('Success', "New account created");
-                                    // update next account number shown in field
-                                    accountsPanel.getLayout().setActiveItem('accountGrid');
                                     accountGrid.getSelectionModel().clearSelections();
-                                    accountStore.setDefaultSort('account','DESC');
-                                    pageSize = accountGrid.getBottomToolbar().pageSize;
-                                    accountStore.load({params: {start: 0, limit: pageSize}, callback: function() {
-                                        accountGrid.getSelectionModel().selectFirstRow();
-                                    }});
-                                    // reload grid to show new account
-                                    // TODO "load" gets no records, "reload" gets records, but neither one causes the grid to update
-                                    reeBillStore.reload({
-                                        //callback: function(records, options, success) {
-                                                      //alert('loaded!');
-                                                      //console.log(records);
-                                        //}
-                                    });
-                                    //Reset account info
-                                    newAccountTemplateCombo.reset();
-                                    //Addresses all have 'xtype' == 'textfield'
-                                    var sets = newAccountFormPanel.findByType('fieldset')
-                                    for (var i = 0;i < sets.length;i++) {
-                                        var fields = sets[i].findByType('textfield');
+                                    if (moreAccountsCheckbox.getValue()) {
+                                        newNameField.reset();
+                                        var set = newAccountFormPanel.find('id','serviceAddressSet')[0];
+                                        var fields = set.findByType('textfield');
                                         for (var j = 0;j < fields.length;j++) {
                                             fields[j].reset();
+                                        }
+                                    } else {
+                                        // update next account number shown in field
+                                        accountsPanel.getLayout().setActiveItem('accountGrid');
+                                        accountStore.setDefaultSort('account','DESC');
+                                        pageSize = accountGrid.getBottomToolbar().pageSize;
+                                        accountStore.load({params: {start: 0, limit: pageSize}, callback: function() {
+                                            accountGrid.getSelectionModel().selectFirstRow();
+                                        }});
+                                        // reload grid to show new account
+                                        // TODO "load" gets no records, "reload" gets records, but neither one causes the grid to update
+                                        reeBillStore.reload({
+                                            //callback: function(records, options, success) {
+                                            //    alert('loaded!');
+                                            //    console.log(records);
+                                            //}
+                                        });
+                                        //Reset account info
+                                        newAccountTemplateCombo.reset();
+                                        //Addresses all have 'xtype' == 'textfield'
+                                        var sets = newAccountFormPanel.findByType('fieldset')
+                                        for (var i = 0;i < sets.length;i++) {
+                                            var fields = sets[i].findByType('textfield');
+                                            for (var j = 0;j < fields.length;j++) {
+                                                fields[j].reset();
+                                            }
                                         }
                                     }
                                     newAccountField.setValue(nextAccount);
@@ -5073,6 +5101,7 @@ function reeBillReady() {
                 header: 'Account',
                 sortable: true,
                 dataIndex: 'account',
+                hidden: true,
             },{
                 header: 'Sequence',
                 sortable: true,
@@ -5173,7 +5202,7 @@ function reeBillReady() {
             forceFit: true,
         },
         // this is actually set in loadReeBillUIForAccount()
-        title: 'Journal Entries ' + selected_account,
+        title: 'Journal Entries for Account ' + selected_account,
         clicksToEdit: 2
     });
 
@@ -5675,7 +5704,7 @@ function reeBillReady() {
     });
 
     var issueDataConn = new Ext.data.Connection({
-        url: 'http://'+location.host+'/reebill/issue',
+        url: 'http://'+location.host+'/reebill/issue_and_mail',
     });
     issueDataConn.autoAbort = true;
     issueDataConn.disableCaching = true;
@@ -5711,6 +5740,7 @@ function reeBillReady() {
                     }
                     if (o.success == true) {
                         Ext.Msg.alert("Success", "Mail successfully sent");
+                        issuableGrid.getSelectionModel().clearSelections();
                         issuableStore.reload();
                         issuableGrid.setDisabled(false);
                     }
@@ -5724,8 +5754,10 @@ function reeBillReady() {
                                             params: { account: r.data.account, sequence: r.data.sequence, apply_corrections: true},
                                             success: function(response, options) {
                                                 var o2 = Ext.decode(response.responseText);
-                                                if (o2.success == true)
+                                                if (o2.success == true) {
                                                     Ext.Msg.alert("Success", "Mail successfully sent");
+                                                    issuableGrid.getSelectionModel().clearSelections();
+                                                }
                                                 else
                                                     Ext.Msg.alert('Error', o2.errors.reason + "\n" + o2.errors.details);
                                                 issuableStore.reload();
@@ -5769,9 +5801,12 @@ function reeBillReady() {
             listeners: {
                 rowselect: function (selModel, index, record) {
                     issueReebillButton.setDisabled(!issuableMailListRegex.test(record.data.mailto));
+                    loadReeBillUIForAccount(record.data.account);
+                },
+                rowdeselect: function (selModel, index, record) {
+                    issueReebillButton.setDisabled(true);
                     accountGrid.getSelectionModel().clearSelections();
                     reeBillGrid.getSelectionModel().clearSelections();
-                    loadReeBillUIForAccount(record.data.account);
                 },
             },
         }),
@@ -5950,6 +5985,11 @@ function reeBillReady() {
         ubMeasuredUsagesPanel.setDisabled(true);
         rateStructurePanel.setDisabled(true);
         chargeItemsPanel.setDisabled(true);
+        accountInfoFormPanel.setDisabled(true);
+        Ext.getCmp('service_for_charges').getStore().removeAll();
+        Ext.getCmp('service_for_charges').clearValue();
+        Ext.getCmp('service_for_charges').setDisabled(true);
+
         //journalPanel.setDisabled(true);
 
         // TODO: 25226989 ajax cancelled???
@@ -6036,7 +6076,7 @@ function reeBillReady() {
         journalPanel.setDisabled(false);
         mailPanel.setDisabled(false);
 
-        journalGrid.setTitle('Journal Entries for ' + account);
+        journalGrid.setTitle('Journal Entries for Account ' + account);
     }
 
 
@@ -6097,6 +6137,11 @@ function reeBillReady() {
             chargeItemsPanel.setDisabled(true);
             updateStatusbar(selected_account, null, null);
             deleteButton.setDisabled(true);
+            accountInfoFormPanel.setDisabled(true);
+            configureReeBillEditor(null, null);
+            Ext.getCmp('service_for_charges').getStore().removeAll();
+            Ext.getCmp('service_for_charges').clearValue();
+            Ext.getCmp('service_for_charges').setDisabled(true);
             return;
         }
 
@@ -6115,7 +6160,19 @@ function reeBillReady() {
         
         // TODO:23046181 abort connections in progress
         configureReeBillEditor(selected_account, selected_sequence);
-
+        services = record.data.services;
+        for (var i = 0;i < services.length;i++) {
+            services[i] = [services[i]];
+        }
+        Ext.getCmp('service_for_charges').getStore().loadData(services);
+        if (services.length > 0) {
+            Ext.getCmp('service_for_charges').setValue(services[0]);
+            Ext.getCmp('service_for_charges').setDisabled(false);
+        } else {
+            Ext.getCmp('service_for_charges').clearValue();
+            Ext.getCmp('service_for_charges').setDisabled(true);
+        }
+            
         // image rendering resolution
         var menu = document.getElementById('reebillresolutionmenu');
         if (menu) {
@@ -6127,7 +6184,7 @@ function reeBillReady() {
         // while waiting for the next ajax request to finish, show a loading message
         // in the utilbill image box
         Ext.DomHelper.overwrite('reebillimagebox', {tag: 'div', html:LOADING_MESSAGE, id: 'reebillimage'}, true);
-       
+        
         // ajax call to generate image, get the name of it, and display it in a
         // new window
         // abort previous transaction
@@ -6168,6 +6225,7 @@ function reeBillReady() {
         chargeItemsPanel.setDisabled(false);
         journalPanel.setDisabled(false);
         mailPanel.setDisabled(false);
+        accountInfoFormPanel.setDisabled(false);
 
         /* TODO re-enable service suspension checkboxes
          * https://www.pivotaltracker.com/story/show/29557205
