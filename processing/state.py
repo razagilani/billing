@@ -210,8 +210,7 @@ class StateDB:
         '''Records in MySQL the association between the reebill given by
         'account', 'sequence' and all utilbills belonging to that customer
         whose entire periods are within the date interval [start, end] and
-        whose services are not in 'suspended_services'. The utility bills are
-        marked as processed.'''
+        whose services are not in 'suspended_services'.'''
         if not utilbills:
             raise BillStateError('No utility bills passed')
 
@@ -224,7 +223,6 @@ class StateDB:
 
         for utilbill in utilbills:
             utilbill.reebill = reebill
-            utilbill.processed = True
 
     def is_attached(self, session, account, sequence, nonexistent=None):
         '''Returns True iff the given reebill has utility bills attached to it
@@ -641,7 +639,7 @@ class StateDB:
         '''Inserts a row into the utilbill table when a utility bill file has
         been uploaded. The bill is Complete by default but can can have other
         states (see comment in db_objects.UtilBill for explanation of utility
-        bill states). The bill is initially marked as un-processed.'''
+        bill states).'''
         # get customer id from account number
         customer = session.query(Customer).filter(Customer.account==account) \
                 .one()
