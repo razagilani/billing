@@ -52,8 +52,9 @@ class UtilBillVersion(object):
     def __init__(self, customer, state, service, period_start=None,
             period_end=None, total_charges=0, date_received=None,
             reebill=None):
-        '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
-        UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
+        '''State should be one of UtilBillVersion.Complete,
+        UtilBillVersion.UtilityEstimated, UtilBillVersion.SkylineEstimated,
+        UtilBillVersion.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
         # automatically adds from the database column
         self.customer = customer

@@ -6,7 +6,7 @@ from billing.processing import mongo
 from billing.processing import state
 from billing.util import dateutils
 from billing.util.monthmath import approximate_month
-from billing.processing.db_objects import UtilBill, ReeBill, Customer
+from billing.processing.db_objects import UtilBillVersion, ReeBill, Customer
 
 import pprint
 pformat = pprint.PrettyPrinter().pformat
@@ -65,9 +65,9 @@ class Exporter(object):
 
             # load utilbill from mysql to find out if the bill was
             # (utility-)estimated
-            utilbills = statedb_session.query(UtilBill)\
-                    .filter(UtilBill.reebill==rb)
-            estimated = any([u.state == UtilBill.UtilityEstimated
+            utilbills = statedb_session.query(UtilBillVersion)\
+                    .filter(UtilBillVersion.reebill==rb)
+            estimated = any([u.state == UtilBillVersion.UtilityEstimated
                     for u in utilbills])
             if utilbills == []:
                 print 'No utilbills in MySQL for %s-%s' % (account, sequence)
