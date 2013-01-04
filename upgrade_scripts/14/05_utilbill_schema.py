@@ -16,12 +16,16 @@ cur = con.cursor()
 
 cur.execute("create table utilbill_version like utilbill")
 
-# convert promary key column utilbill_version.id into foreign key column "utilbill_id"
-# TODO is there no way to add the foreign key constraint and remove the primary key constraint at the same time as the column is redefined, like other constraints?
+# convert promary key column utilbill_version.id into foreign key column
+# "utilbill_id"
+# TODO is there no way to add the foreign key constraint and remove the primary
+# key constraint at the same time as the column is redefined, like other
+# constraints?
 cur.execute("alter table utilbill_version modify id int not null")
 cur.execute("alter table utilbill_version drop primary key")
 cur.execute("alter table utilbill_version change column id utilbill_id int(11) not null")
-cur.execute("alter table utilbill_version add constraint foreign key (utilbill_id) references utilbill (id)")
+cur.execute('''alter table utilbill_version add constraint foreign key
+        (utilbill_id) references utilbill (id)''')
 
 # add id column for utilbill_version itself
 cur.execute("alter table utilbill_version add column id int(11) not null auto_increment primary key")
@@ -30,8 +34,10 @@ cur.execute("alter table utilbill_version add column id int(11) not null auto_in
 cur.execute("alter table utilbill_version add column utility varchar(45) not null")
 
 # fill utilbill_version with data from utilbill (excluding customer_id, processed, state, date_received), creating one row for each mongo document
-#cur.execute("insert into utilbill_version select (rebill_id, period_start, period_end, service, total_charges) from utilbill")
-cur.execute("select utilbill.id, customer.account, customer_id, rebill_id, period_start, period_end, service, total_charges from utilbill join customer where customer_id = customer.id order by customer.account, utilbill.period_start")
+cur.execute('''select utilbill.id, customer.account, customer_id, rebill_id,
+        period_start, period_end, service, total_charges from utilbill join
+        customer where customer_id = customer.id order by customer.account,
+        utilbill.period_start''')
 for utilbill_id, account, customer_id, rebill_id, start, end, service, total_charges in cur.fetchall():
     # load all mongo documents corresponding to this utilbill row, except if
     # they have sequence 0 (which means they're just templates)
@@ -50,13 +56,16 @@ for utilbill_id, account, customer_id, rebill_id, start, end, service, total_cha
     if mongo_docs.count() == 0 and rebill_id != None:
         print "could not find utility bill document (id %s): %s" % (utilbill_id, query)
 
-    # for each mongo document, create one row in utilbill_version, and put the
-    # utilbill_version row id in the document
+    # for each mongo document, create one utilbill_version row, with the
+    # utilbill row's id as its utilbill_id, and put the utilbill_version row id
+    # in the mongo document
     for doc in mongo_docs:
-        utility_name = doc['utility']
         try:
-            cur.execute("insert into utilbill_version (customer_id, rebill_id, utilbill_id, period_start, period_end, service, total_charges, utility) values (%s, %s, %s, %s, %s, %s, %s, %s)",
-                    (customer_id, rebill_id, utilbill_id, start, end, service, total_charges, utility_name))
+            cur.execute('''insert into utilbill_version (customer_id, rebill_id,
+                    utilbill_id, period_start, period_end, service,
+                    total_charges, utility) values (%s, %s, %s, %s, %s, %s, %s,
+                    %s)''', (customer_id, rebill_id, utilbill_id, start, end,
+                    service, total_charges, doc['utility']))
         except MySQLdb.IntegrityError as e:
             print e
             import ipdb; ipdb.set_trace()
@@ -64,9 +73,11 @@ for utilbill_id, account, customer_id, rebill_id, start, end, service, total_cha
             doc['mysql_id'] = cur.lastrowid
             db.utilbills.save(doc)
 
-    # TODO each utilbill_version should get the id of the row for the reebill it belongs to in the now expanded reebill table
+    # TODO each utilbill_version should get the id of the row for the reebill
+    # it belongs to in the now expanded reebill table
 
-# add constraint for uniqueness on {account, service, utility, start, end} (which we already enforce for mongo documents in rebillDAO)
+# add constraint for uniqueness on {account, service, utility, start, end}
+# (which we already enforce for mongo documents in rebillDAO)
 #cur.execute("alter table utilbill_version add constraint utilbill_version_unique unique (customer_id, service, utility, period_start, period_end)")
 # TODO temporarily disabled because the data do not actually allow it
 
