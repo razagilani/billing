@@ -886,7 +886,7 @@ class BillToolBridge:
                 account,
                 sequence,
                 self.config.get("billdb", "billpath")+ "%s" % account, 
-                "%.4d.pdf" % int(sequence),
+                "%.5d_%.4d.pdf" % (int(account), int(sequence)),
                 #"EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
                 False
             )
@@ -990,8 +990,8 @@ class BillToolBridge:
             mongo_reebill = self.reebill_dao.load_reebill(account, sequence)
             self.renderer.render_max_version(session, account, sequence, 
                                              self.config.get("billdb", "billpath")+ "%s" % account, 
-                                             "%.4d.pdf" % sequence, True)
-            bill_name = "%.4d.pdf" %sequence
+                                             "%.5d_%.4d.pdf" % (int(account), int(sequence)), True)
+            bill_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
             merge_fields = {}
             merge_fields["sa_street1"] = mongo_reebill.service_address["sa_street1"]
             merge_fields["balance_due"] = mongo_reebill.balance_due.quantize(Decimal("0.00"))
@@ -1039,11 +1039,11 @@ class BillToolBridge:
             for reebill in all_bills:
                 self.renderer.render_max_version(session, reebill.account, reebill.sequence, 
                     self.config.get("billdb", "billpath")+ "%s" % reebill.account, 
-                    "%.4d.pdf" % int(reebill.sequence), True)
+                    "%.5d_%.4d.pdf" % (int(account), int(reebill.sequence)), True)
 
             # "the last element" (???)
             most_recent_bill = all_bills[-1]
-            bill_file_names = ["%.4d.pdf" % int(sequence) for sequence in sequences]
+            bill_file_names = ["%.5d_%.4d.pdf" % (int(account), int(sequence)) for sequence in sequences]
             bill_dates = ["%s" % (b.period_end) for b in all_bills]
             bill_dates = ", ".join(bill_dates)
             merge_fields = {}

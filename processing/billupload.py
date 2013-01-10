@@ -276,7 +276,7 @@ class BillUpload(object):
 
         # get path of reebill
         reebill_file_path = os.path.join(self.reebill_directory, account, \
-                "%.4d" % int(sequence) + '.' + REEBILL_EXTENSION)
+                "%.5d_%.4d" % (int(account), int(sequence)) + '.' + REEBILL_EXTENSION)
 
         # make sure it exists and can be read
         if not os.access(reebill_file_path, os.R_OK):
@@ -285,7 +285,7 @@ class BillUpload(object):
 
         # name and path of bill image: name includes date so it's always unique
         bill_image_name_without_extension = 'reebill_' + account + '_' \
-                + ("%.4d" % int(sequence)) + str(datetime.datetime.today()).replace(' ', '') \
+                + ("%.5d_%.4d" % (int(account), int(sequence))) + str(datetime.datetime.today()).replace(' ', '') \
                 .replace('.','').replace(':','')
         bill_image_path_without_extension = os.path.join(
                 self.bill_image_directory,
