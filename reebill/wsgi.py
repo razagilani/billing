@@ -1025,7 +1025,7 @@ class BillToolBridge:
         # sequences will come in as a string if there is one element in post data. 
         # If there are more, it will come in as a list of strings
         if type(sequences) is list:
-            sequences = map(int, sequences)
+            sequences = sorted(map(int, sequences))
         else:
             sequences = [int(sequences)]
 
