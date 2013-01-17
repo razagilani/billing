@@ -28,6 +28,9 @@ now=`date +"%Y%m%d"`
 # need to more uniquely name backup file
 tarball=${now}reebill-prod.tar.z
 ssh_key=$HOME/Dropbox/IT/ec2keys/$PRODHOST.pem
+# Save current directory to CD back to it
+current_dir="$( cd "$( dirname "$0" )" && pwd)"
+
 
 cd /tmp
 
@@ -55,3 +58,7 @@ mongorestore --drop --db skyline-$TOENV --collection utilbills ${now}utilbills_m
 # delete local bill files and replace with destaged copy
 rm -fr /db-$TOENV/*
 cp -r db-prod/* /db-$TOENV
+
+# Scrub Mongo of customer data
+cd $current_dir
+python scrub_prod_data.py $TOENV
