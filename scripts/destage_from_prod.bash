@@ -61,4 +61,4 @@ cp -r db-prod/* /db-$TOENV
 
 # Scrub Mongo of customer data
 cd $current_dir
-python scrub_prod_data.py $TOENV
+mongo --eval "conn = new Mongo(); db = conn.getDB('skyline-$TOENV');" scrub_prod_data.js
