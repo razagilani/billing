@@ -1,7 +1,13 @@
 
 var data_to_scrub = [
-	{collection: 'reebills', field: 'bill_recipients'},
-	{collection: 'reebills', field: 'last_recipients'}
+	{
+		collection: 'reebills',
+		field: 'bill_recipients'
+	},
+	{
+		collection: 'reebills',
+		field: 'last_recipients'
+	}
 ];
 
 data_to_scrub.forEach(function(data) {
