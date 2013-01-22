@@ -13,7 +13,7 @@ from billing.processing import mongo
 from billing.util import dateutils
 from billing.processing import state
 from billing.test import example_data
-from billing.test.mock_skyliner import MockSplinter
+from skyliner.mock_skyliner import MockSplinter
 from datetime import date, datetime, timedelta
 import billing.processing.fetch_bill_data as fbd
 

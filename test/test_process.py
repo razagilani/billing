@@ -26,7 +26,7 @@ import MySQLdb
 from billing.util.mongo_utils import python_convert
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
-from billing.test.mock_skyliner import MockSplinter, MockMonguru
+from skyliner.mock_skyliner import MockSplinter, MockMonguru
 from billing.util.nexus_util import NexusUtil
 from billing.processing.mongo import NoSuchBillException
 from billing.processing.exceptions import BillStateError
