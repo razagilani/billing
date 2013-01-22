@@ -210,6 +210,7 @@ def deploy():
     httpd = host_configurations[fabapi.env.host]["httpd"]
             
     prepare_deploy(project, environment)
+    # TODO: make sure new command creates tmp dir with proper perms so multiple people can deploy
     if  fabcontrib.files.exists("/tmp/%s_deploy" % (project), use_sudo=True) is False:
         print green("Creating directory /tmp/%s_deploy" % (project))
         fabops.run('mkdir /tmp/%s_deploy/' % (project)) 
