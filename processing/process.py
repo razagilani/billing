@@ -973,6 +973,10 @@ class Process(object):
         for account in accounts:
             payments = self.state_db.payments(session, account)
             for reebill in self.reebill_dao.load_reebills_for(account):
+                # Skip over unissued reebills
+                if not reebill.issue_date:
+                    continue
+
                 row = {}
 
                 row['account'] = account
@@ -1029,6 +1033,10 @@ class Process(object):
         for account in accounts:
             payments = self.state_db.payments(session, account)
             for reebill in self.reebill_dao.load_reebills_for(account):
+                # Skip over unissued reebills
+                if not reebill.issue_date:
+                    continue
+                
                 row = {}
 
                 # iterate the payments and find the ones that apply. 
