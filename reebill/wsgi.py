@@ -27,7 +27,7 @@ import mongoengine
 from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
 #TODO don't rely on test code, if we are, it isn't test code
-from skyliner import mock_skyliner
+from billing.skyliner import mock_skyliner
 from billing.util import json_util as ju, dateutils, nexus_util as nu
 from billing.util.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
@@ -1062,6 +1062,16 @@ class BillToolBridge:
 
             return self.dumps({'success': True})
 
+    def all_names_of_accounts(self, accounts):
+        if self.config.getboolean('runtime', 'integrate_nexus') is False:
+            return accounts
+
+        # get list of customer name dictionaries sorted by their billing account
+        all_accounts_all_names = self.nexus_util.all_names_for_accounts(accounts)
+        name_dicts = sorted(all_accounts_all_names.iteritems())
+
+        return name_dicts
+
 
     def full_names_of_accounts(self, accounts):
         '''Given a list of account numbers (as strings), returns a list
@@ -1072,24 +1082,13 @@ class BillToolBridge:
             return accounts
 
         # get list of customer name dictionaries sorted by their billing account
-        all_accounts_all_names = self.nexus_util.all_names_for_accounts(accounts)
-        name_dicts = sorted(all_accounts_all_names.iteritems())
+        name_dicts = self.all_names_of_accounts(accounts)
 
         result = []
         for account, all_names in name_dicts:
             names = [account]
-            try:
-                names.append(all_names['codename'])
-            except KeyError:
-                pass
-            try:
-                names.append(all_names['casualname'])
-            except KeyError:
-                pass
-            try:
-                names.append(all_names['primus'])
-            except KeyError:
-                pass
+            # Only include the names that exist in Nexus
+            names.append([all_names[name] for name in ('codename', 'casualname', 'primus') if all_names.get(name)])
             result.append(' - '.join(names))
         return result
 
@@ -1262,8 +1261,8 @@ class BillToolBridge:
             raise ValueError("Bad Parameter Value")
         with DBSession(self.state_db) as session:
             accounts, totalCount = self.state_db.list_accounts(session, int(start), int(limit))
-            full_names = self.full_names_of_accounts([account for account in accounts])
-            rows = self.process.summary_ree_charges(session, accounts, full_names)
+            account_names = self.all_names_of_accounts([account for account in accounts])
+            rows = self.process.summary_ree_charges(session, accounts, account_names)
             for row in rows:
                 row.update({'outstandingbalance': '$%.2f' % self.process\
                         .get_outstanding_balance(session,row['account'])})
