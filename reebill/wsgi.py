@@ -1295,6 +1295,7 @@ class BillToolBridge:
                 'Adjustment',
                 'Balance Forward',
                 'RE&E Charges',
+                'Late Charges',
                 'Balance Due',
                 '', # spacer
                 'RE&E Energy',
@@ -1334,6 +1335,7 @@ class BillToolBridge:
                         row['total_adjustment'],
                         row['balance_forward'],
                         row['ree_charges'],
+                        row['late_charges'],
                         row['balance_due'],
                         '', # spacer
                         row['total_ree'],
