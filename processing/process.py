@@ -1143,7 +1143,7 @@ class Process(object):
 
         return rows, totalCount
 
-    def summary_ree_charges(self, session, accounts, full_names):
+    def summary_ree_charges(self, session, accounts, all_names):
         rows = [] 
         for i, account in enumerate(accounts):
             row = {}
@@ -1159,7 +1159,9 @@ class Process(object):
                 average_ree_rate = (hypothetical_total - actual_total)/total_energy
 
             row['account'] = account
-            row['fullname'] = full_names[i]
+            row['olap_id'] = all_names[i][1].get('codename', '')
+            row['casual_name'] = all_names[i][1].get('casualname', '')
+            row['primus_name'] = all_names[i][1].get('primus', '')
             row['ree_charges'] = ree_charges
             row['actual_charges'] = actual_total.quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)
             row['hypothetical_charges'] = hypothetical_total.quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)

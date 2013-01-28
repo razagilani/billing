@@ -4337,7 +4337,9 @@ function reeBillReady() {
         reader: accountReeValueReader,
         fields: [
             {name: 'account'},
-            {name: 'fullname'},
+            {name: 'olap_id'},
+            {name: 'casual_name'},
+            {name: 'primus_name'},
             {name: 'ree_charges'},
             {name: 'actual_charges'},
             {name: 'hypothetical_charges'},
@@ -4353,7 +4355,22 @@ function reeBillReady() {
             {
                 header: 'Account',
                 sortable: true,
-                dataIndex: 'fullname',
+                dataIndex: 'account',
+                editable: false,
+            },{
+                header: 'OLAP ID',
+                sortable: true,
+                dataIndex: 'olap_id',
+                editable: false,
+            },{
+                header: 'Casual Name',
+                sortable: true,
+                dataIndex: 'casual_name',
+                editable: false,
+            },{
+                header: 'Primus Name',
+                sortable: true,
+                dataIndex: 'primus_name',
                 editable: false,
             },{
                 header: 'REE Charges',
