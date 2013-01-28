@@ -1015,6 +1015,8 @@ class Process(object):
                 row['balance_due'] = reebill.balance_due.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
 
+                row['discount_rate'] = reebill.discount_rate
+
                 rows.append(row)
                 totalCount += 1
 
