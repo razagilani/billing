@@ -1283,7 +1283,7 @@ class BillToolBridge:
             sheet = workbook.add_sheet('All REE Charges')
             row_index = 0
 
-            headings = ['Account','Sequence', 
+            headings = ['Account','Sequence', 'Version',
                 'Billing Addressee', 'Service Addressee',
                 'Issue Date', 'Period Begin', 'Period End', 
                 'Hypothesized Charges', 'Actual Utility Charges', 
@@ -1322,7 +1322,7 @@ class BillToolBridge:
                     sa['sa_postal_code'] if 'sa_postal_code' in sa and sa['sa_postal_code'] is not None else "",
                 )
 
-                actual_row = [row['account'], row['sequence'], 
+                actual_row = [row['account'], row['sequence'], row['version'],
                         bill_addr_str, service_addr_str, 
                         row['issue_date'], row['period_begin'], row['period_end'],
                         row['hypothetical_charges'], row['actual_charges'], 

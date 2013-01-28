@@ -1041,6 +1041,7 @@ class Process(object):
 
                 row['account'] = account
                 row['sequence'] = reebill.sequence
+                row['version'] = reebill.version
                 row['billing_address'] = reebill.billing_address
                 row['service_address'] = reebill.service_address
                 row['issue_date'] = reebill.issue_date
@@ -1091,6 +1092,7 @@ class Process(object):
                         # ok, there was more than one applicable payment
                         row['account'] = account
                         row['sequence'] = reebill.sequence
+                        row['version'] = reebill.version
                         row['billing_address'] = {}
                         row['service_address'] = {}
                         row['issue_date'] = None
@@ -1120,6 +1122,7 @@ class Process(object):
             row = {}
             row['account'] = None
             row['sequence'] = None
+            row['version'] = None
             row['billing_address'] = {}
             row['service_address'] = {}
             row['issue_date'] = None
