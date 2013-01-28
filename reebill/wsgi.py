@@ -1396,6 +1396,36 @@ class BillToolBridge:
 
     @cherrypy.expose
     @random_wait
+    @authenticate_ajax
+    @json_exception
+    def discount_rates_csv_altitude(self, **args):
+        with DBSession(self.state_db) as session:
+            rows, total_count = self.process.reebill_report_altitude(session)
+
+            import csv
+            import StringIO
+
+            buf = StringIO.StringIO()
+
+            writer = csv.writer(buf)
+
+            writer.writerow(['Account', 'Discount Rate'])
+
+            for account, group in it.groupby(rows, lambda row: row['account']):
+                for row in group:
+                    if row['discount_rate']:
+                        writer.writerow([account, row['discount_rate']])
+                        break
+
+            cherrypy.response.headers['Content-Type'] = 'text/csv'
+            cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=reebill_discount_rates_%s.csv' % datetime.now().strftime("%Y%m%d")
+
+            data = buf.getvalue()
+            return data
+
+
+    @cherrypy.expose
+    @random_wait
     @authenticate
     @json_exception
     def excel_export(self, account=None, **kwargs):
