@@ -1016,6 +1016,12 @@ class Process(object):
 
                 row['ree_charges'] = reebill.ree_charges.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                try:
+                    row['late_charges'] = reebill.late_charges.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                except KeyError:
+                    row['late_charges'] = None
+                
                 row['balance_due'] = reebill.balance_due.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
 
@@ -1036,7 +1042,7 @@ class Process(object):
                 # Skip over unissued reebills
                 if not reebill.issue_date:
                     continue
-                
+
                 row = {}
 
                 # iterate the payments and find the ones that apply. 
@@ -1087,6 +1093,12 @@ class Process(object):
 
                 row['ree_charges'] = reebill.ree_charges.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                try:
+                    row['late_charges'] = reebill.late_charges.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                except KeyError:
+                    row['late_charges'] = None
+
                 row['balance_due'] = reebill.balance_due.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
 
@@ -1118,6 +1130,7 @@ class Process(object):
                         row['total_adjustment'] = None
                         row['payment_applied'] = None
                         row['ree_charges'] = None
+                        row['late_charges'] = None
                         row['balance_due'] = None
                         row['payment_date'] = applicable_payment.date_applied
                         row['payment_amount'] = applicable_payment.credit
@@ -1148,6 +1161,7 @@ class Process(object):
             row['total_adjustment'] = None
             row['payment_applied'] = None
             row['ree_charges'] = None
+            row['late_charges'] = None
             row['balance_due'] = None
             row['payment_date'] = None
             row['payment_amount'] = None
