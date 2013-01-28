@@ -1298,6 +1298,8 @@ class BillToolBridge:
                 'Late Charges',
                 'Balance Due',
                 '', # spacer
+                'Savings',
+                'Cumulative Savings',
                 'RE&E Energy',
                 'Average Rate per Unit RE&E',
                 ]
@@ -1338,6 +1340,8 @@ class BillToolBridge:
                         row['late_charges'],
                         row['balance_due'],
                         '', # spacer
+                        row['savings'],
+                        row['cumulative_savings'],
                         row['total_ree'],
                         row['average_rate_unit_ree'] ]
                 for i, cell_text in enumerate(actual_row):
