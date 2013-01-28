@@ -4327,6 +4327,10 @@ function reeBillReady() {
     accountReeValueProxyConn.autoAbort = true;
     var accountReeValueProxy = new Ext.data.HttpProxy(accountReeValueProxyConn);
 
+    var accountReeValueOutstandingBalanceSort = function(value) {
+        return parseFloat(value.substr(1));
+    };
+
     var accountReeValueStore = new Ext.data.JsonStore({
         proxy: accountReeValueProxy,
         root: 'rows',
@@ -4345,10 +4349,9 @@ function reeBillReady() {
             {name: 'hypothetical_charges'},
             {name: 'total_energy'},
             {name: 'average_ree_rate'},
-            {name: 'outstandingbalance'},
+            {name: 'outstandingbalance', sortType: accountReeValueOutstandingBalanceSort},
         ],
     });
-
 
     var accountReeValueColModel = new Ext.grid.ColumnModel({
         columns: [
