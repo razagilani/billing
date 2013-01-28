@@ -972,6 +972,7 @@ class Process(object):
         totalCount = 0
         for account in accounts:
             payments = self.state_db.payments(session, account)
+            cumulative_savings = 0
             for reebill in self.reebill_dao.load_reebills_for(account):
                 # Skip over unissued reebills
                 if not reebill.issue_date:
@@ -1021,11 +1022,18 @@ class Process(object):
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
                 except KeyError:
                     row['late_charges'] = None
-                
+
                 row['balance_due'] = reebill.balance_due.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
 
                 row['discount_rate'] = reebill.discount_rate
+
+                savings = reebill.ree_value - reebill.ree_charges
+                cumulative_savings += savings
+                row['savings'] = savings.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['cumulative_savings'] = cumulative_savings.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
 
                 rows.append(row)
                 totalCount += 1
@@ -1038,6 +1046,7 @@ class Process(object):
         totalCount = 0
         for account in accounts:
             payments = self.state_db.payments(session, account)
+            cumulative_savings = 0
             for reebill in self.reebill_dao.load_reebills_for(account):
                 # Skip over unissued reebills
                 if not reebill.issue_date:
@@ -1102,6 +1111,13 @@ class Process(object):
                 row['balance_due'] = reebill.balance_due.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
 
+                savings = reebill.ree_value - reebill.ree_charges
+                cumulative_savings += savings
+                row['savings'] = savings.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['cumulative_savings'] = cumulative_savings.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+
                 # normally, only one payment.  Multiple payments their own new rows...
                 if applicable_payments:
                     row['payment_date'] = applicable_payments[0].date_applied
@@ -1134,6 +1150,8 @@ class Process(object):
                         row['balance_due'] = None
                         row['payment_date'] = applicable_payment.date_applied
                         row['payment_amount'] = applicable_payment.credit
+                        row['savings'] = None
+                        row['cumulative_savings'] = None
                         rows.append(row)
                         totalCount += 1
                 else:
@@ -1165,6 +1183,8 @@ class Process(object):
             row['balance_due'] = None
             row['payment_date'] = None
             row['payment_amount'] = None
+            row['savings'] = None
+            row['cumulative_savings'] = None
             rows.append(row)
             totalCount += 1
 
