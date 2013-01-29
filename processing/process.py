@@ -299,7 +299,7 @@ class Process(object):
             actual_chargegroups = reebill.actual_chargegroups_for_service(service)
             reebill.set_hypothetical_chargegroups_for_service(service, actual_chargegroups)
 
-    def roll_bill(self, session, reebill):
+    def roll_bill(self, session, reebill, utility_bill_date=None):
         '''Modifies 'reebill' to convert it into a template for the reebill of
         the next period (including incrementing the sequence). 'reebill' must
         be its customer's last bill before roll_bill is called. This method
@@ -307,7 +307,10 @@ class Process(object):
         documents in Mongo (by copying the ones originally attached to the
         reebill). compute_bill() should always be called immediately after this
         one so the bill is updated to its current state.'''
-        utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
+        if utility_bill_date:
+            utilbills = self.state_db.get_utilbills_on_date(session, reebill.account, utility_bill_date)
+        else:
+            utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
         
         # duplicate the CPRS for each service
         # TODO: 22597151 refactor
