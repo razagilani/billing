@@ -4311,13 +4311,16 @@ function reeBillReady() {
         fields: [
             // map Record's field to json object's key of same name
             {name: 'account', mapping: 'account'},
-            {name: 'fullname', mapping: 'fullname'},
+            {name: 'olap_id', mapping: 'olap_id'},
+            {name: 'casual_name', mapping: 'casual_name'},
+            {name: 'primus_name', mapping: 'primus_name'},
             {name: 'ree_charges', mapping: 'ree_charges'},
             {name: 'actual_charges', mapping: 'actual_charges'},
             {name: 'hypothetical_charges', mapping: 'hypothetical_charges'},
             {name: 'total_energy', mapping: 'total_energy'},
             {name: 'average_ree_rate', mapping: 'average_ree_rate'},
             {name: 'outstandingbalance', mapping: 'outstandingbalance'},
+            {name: 'days_late', mapping: 'days_late'},
         ]
     });
 
@@ -4350,6 +4353,7 @@ function reeBillReady() {
             {name: 'total_energy'},
             {name: 'average_ree_rate'},
             {name: 'outstandingbalance', sortType: accountReeValueOutstandingBalanceSort},
+            {name: 'days_late'},
         ],
     });
 
@@ -4406,6 +4410,11 @@ function reeBillReady() {
                 dataIndex: 'outstandingbalance',
                 //editable: false,
             },
+            {
+                header: 'Days Overdue',
+                sortable: true,
+                dataIndex: 'days_late',
+            }
         ]
     });
 
