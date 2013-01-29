@@ -579,6 +579,11 @@ class StateDB:
         # SQLAlchemy does SQL 'limit' with Python list slicing
         return query[start:start + limit], query.count()
 
+    def get_utilbills_on_date(self, session, account, the_date):
+        customer = self.get_customer(session, account)
+
+        return session.query(UtilBill).filter(UtilBill.customer==customer, UtilBill.period_start<=the_date, UtilBill.period_end>=the_date).all()
+
     def choose_next_utilbills(self, session, account, services):
         customer = self.get_customer(session, account)
         sequence = self.last_sequence(session, account)

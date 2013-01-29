@@ -1538,38 +1538,79 @@ function reeBillReady() {
     {
         tabPanel.setDisabled(true);
 
-        rollOperationConn.request({
-            params: {account: selected_account},
-            success: function(result, request) {
-                var jsonData = null;
-                try {
-                    jsonData = Ext.util.JSON.decode(result.responseText);
-                    if (jsonData.success == false) {
-                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                    } else {
-                        reeBillGrid.getSelectionModel().clearSelections();
-                        reeBillStore.setDefaultSort('sequence', 'DESC');
-                        pageSize = reeBillGrid.getBottomToolbar().pageSize;
-                        reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
-                            reeBillGrid.getSelectionModel().selectFirstRow();
-                        }});
+        if(reeBillStore.getTotalCount() == 0) {
+            Ext.Msg.prompt('Service Start Date', 'Enter the date (YYYY-MM-DD) on which your utility service(s) started', function (btn, service_start_date) {
+                if(btn == 'ok') {
+                    rollOperationConn.request({
+                    params: {account: selected_account, start_date: service_start_date},
+                    success: function(result, request) {
+                        var jsonData = null;
+                        try {
+                            jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == false) {
+                                Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                            } else {
+                                reeBillGrid.getSelectionModel().clearSelections();
+                                reeBillStore.setDefaultSort('sequence', 'DESC');
+                                pageSize = reeBillGrid.getBottomToolbar().pageSize;
+                                reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
+                                    reeBillGrid.getSelectionModel().selectFirstRow();
+                                }});
+                            }
+                        } catch (err) {
+                            Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                        } finally {
+                            tabPanel.setDisabled(false);
+                        }
+                    },
+                    failure: function(result, request) {
+                        try {
+                            Ext.MessageBox.alert('Server Error', result.responseText);
+                        } catch (err) {
+                            Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                        } finally {
+                            tabPanel.setDisabled(false);
+                        }
+                    },
+                    });
+                }
+            });
+        }
+        else
+        {
+            rollOperationConn.request({
+                params: {account: selected_account},
+                success: function(result, request) {
+                    var jsonData = null;
+                    try {
+                        jsonData = Ext.util.JSON.decode(result.responseText);
+                        if (jsonData.success == false) {
+                            Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                        } else {
+                            reeBillGrid.getSelectionModel().clearSelections();
+                            reeBillStore.setDefaultSort('sequence', 'DESC');
+                            pageSize = reeBillGrid.getBottomToolbar().pageSize;
+                            reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
+                                reeBillGrid.getSelectionModel().selectFirstRow();
+                            }});
+                        }
+                    } catch (err) {
+                        Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                    } finally {
+                        tabPanel.setDisabled(false);
                     }
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
-                } finally {
-                    tabPanel.setDisabled(false);
-                }
-            },
-            failure: function(result, request) {
-                try {
-                    Ext.MessageBox.alert('Server Error', result.responseText);
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
-                } finally {
-                    tabPanel.setDisabled(false);
-                }
-            },
-        });
+                },
+                failure: function(result, request) {
+                    try {
+                        Ext.MessageBox.alert('Server Error', result.responseText);
+                    } catch (err) {
+                        Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                    } finally {
+                        tabPanel.setDisabled(false);
+                    }
+                },
+            });
+        }
     }
 
     var renderDataConn = new Ext.data.Connection({
