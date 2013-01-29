@@ -770,10 +770,13 @@ class BillToolBridge:
     def roll(self, account, **kwargs):
         if not account:
             raise ValueError("Bad Parameter Value")
+        start_date = kwargs.get('start_date')
+        if start_date is not None:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
         with DBSession(self.state_db) as session:
             lastSequence = self.state_db.last_sequence(session, account)
             reebill = self.reebill_dao.load_reebill(account, lastSequence)
-            new_reebill = self.process.roll_bill(session, reebill)
+            new_reebill = self.process.roll_bill(session, reebill, start_date)
             self.reebill_dao.save_reebill(new_reebill)
             new_reebill = self.reebill_dao.load_reebill(account, lastSequence+1)
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
