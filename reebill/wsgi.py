@@ -1088,7 +1088,7 @@ class BillToolBridge:
         for account, all_names in name_dicts:
             names = [account]
             # Only include the names that exist in Nexus
-            names.append([all_names[name] for name in ('codename', 'casualname', 'primus') if all_names.get(name)])
+            names += [all_names[name] for name in ('codename', 'casualname', 'primus') if all_names.get(name)]
             result.append(' - '.join(names))
         return result
 
