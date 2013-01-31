@@ -27,7 +27,7 @@ import mongoengine
 from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
 #TODO don't rely on test code, if we are, it isn't test code
-from billing.test import mock_skyliner
+from billing.skyliner import mock_skyliner
 from billing.util import json_util as ju, dateutils, nexus_util as nu
 from billing.util.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
@@ -770,16 +770,31 @@ class BillToolBridge:
     def roll(self, account, **kwargs):
         if not account:
             raise ValueError("Bad Parameter Value")
+        start_date = kwargs.get('start_date')
+        if start_date is not None:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
         with DBSession(self.state_db) as session:
             lastSequence = self.state_db.last_sequence(session, account)
             reebill = self.reebill_dao.load_reebill(account, lastSequence)
-            new_reebill = self.process.roll_bill(session, reebill)
+            new_reebill = self.process.roll_bill(session, reebill, start_date)
             self.reebill_dao.save_reebill(new_reebill)
+
             new_reebill = self.reebill_dao.load_reebill(account, lastSequence+1)
+            if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
+                fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account),
+                    new_reebill, use_olap=True, verbose=True)
+            self.reebill_dao.save_reebill(new_reebill)
+            
+            self.process.compute_bill(session, reebill, new_reebill)
+            self.reebill_dao.save_reebill(new_reebill)
+
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
                     account, new_reebill.sequence)
             journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
                 account, new_reebill.sequence, new_reebill.version)
+            journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
+                account, new_reebill.sequence, new_reebill.version)
+
             return self.dumps({'success': True})
 
     @cherrypy.expose
@@ -886,7 +901,7 @@ class BillToolBridge:
                 account,
                 sequence,
                 self.config.get("billdb", "billpath")+ "%s" % account, 
-                "%.4d.pdf" % int(sequence),
+                "%.5d_%.4d.pdf" % (int(account), int(sequence)),
                 #"EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
                 False
             )
@@ -990,13 +1005,14 @@ class BillToolBridge:
             mongo_reebill = self.reebill_dao.load_reebill(account, sequence)
             self.renderer.render_max_version(session, account, sequence, 
                                              self.config.get("billdb", "billpath")+ "%s" % account, 
-                                             "%.4d.pdf" % sequence, True)
-            bill_name = "%.4d.pdf" %sequence
+                                             "%.5d_%.4d.pdf" % (int(account), int(sequence)), True)
+            bill_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
             merge_fields = {}
-            merge_fields["sa_street1"] = mongo_reebill.service_address["sa_street1"]
+            merge_fields["sa_street1"] = mongo_reebill.service_address.get("sa_street1","")
             merge_fields["balance_due"] = mongo_reebill.balance_due.quantize(Decimal("0.00"))
-            merge_fields["bill_dates"] = ["%s" % (mongo_reebill.period_end) ]
+            merge_fields["bill_dates"] = "%s" % (mongo_reebill.period_end)
             merge_fields["last_bill"] = bill_name
+            print recipients,merge_fields, os.path.join(self.config.get('billdb', 'billpath'), account), [bill_name]
             bill_mailer.mail(recipients, merge_fields,
                     os.path.join(self.config.get("billdb", "billpath"),
                         account), [bill_name]);
@@ -1025,7 +1041,7 @@ class BillToolBridge:
         # sequences will come in as a string if there is one element in post data. 
         # If there are more, it will come in as a list of strings
         if type(sequences) is list:
-            sequences = map(int, sequences)
+            sequences = sorted(map(int, sequences))
         else:
             sequences = [int(sequences)]
 
@@ -1039,18 +1055,19 @@ class BillToolBridge:
             for reebill in all_bills:
                 self.renderer.render_max_version(session, reebill.account, reebill.sequence, 
                     self.config.get("billdb", "billpath")+ "%s" % reebill.account, 
-                    "%.4d.pdf" % int(reebill.sequence), True)
+                    "%.5d_%.4d.pdf" % (int(account), int(reebill.sequence)), True)
 
             # "the last element" (???)
             most_recent_bill = all_bills[-1]
-            bill_file_names = ["%.4d.pdf" % int(sequence) for sequence in sequences]
+            bill_file_names = ["%.5d_%.4d.pdf" % (int(account), int(sequence)) for sequence in sequences]
             bill_dates = ["%s" % (b.period_end) for b in all_bills]
             bill_dates = ", ".join(bill_dates)
             merge_fields = {}
-            merge_fields["sa_street1"] = most_recent_bill.service_address["sa_street1"]
+            merge_fields["sa_street1"] = most_recent_bill.service_address.get("sa_street1","")
             merge_fields["balance_due"] = most_recent_bill.balance_due.quantize(Decimal("0.00"))
             merge_fields["bill_dates"] = bill_dates
             merge_fields["last_bill"] = bill_file_names[-1]
+            print recipient_list, merge_fields,os.path.join(self.config.get("billdb", "billpath"),account), bill_file_names
             bill_mailer.mail(recipient_list, merge_fields,
                     os.path.join(self.config.get("billdb", "billpath"),
                         account), bill_file_names);
@@ -1062,6 +1079,16 @@ class BillToolBridge:
 
             return self.dumps({'success': True})
 
+    def all_names_of_accounts(self, accounts):
+        if self.config.getboolean('runtime', 'integrate_nexus') is False:
+            return accounts
+
+        # get list of customer name dictionaries sorted by their billing account
+        all_accounts_all_names = self.nexus_util.all_names_for_accounts(accounts)
+        name_dicts = sorted(all_accounts_all_names.iteritems())
+
+        return name_dicts
+
 
     def full_names_of_accounts(self, accounts):
         '''Given a list of account numbers (as strings), returns a list
@@ -1072,24 +1099,13 @@ class BillToolBridge:
             return accounts
 
         # get list of customer name dictionaries sorted by their billing account
-        all_accounts_all_names = self.nexus_util.all_names_for_accounts(accounts)
-        name_dicts = sorted(all_accounts_all_names.iteritems())
+        name_dicts = self.all_names_of_accounts(accounts)
 
         result = []
         for account, all_names in name_dicts:
             names = [account]
-            try:
-                names.append(all_names['codename'])
-            except KeyError:
-                pass
-            try:
-                names.append(all_names['casualname'])
-            except KeyError:
-                pass
-            try:
-                names.append(all_names['primus'])
-            except KeyError:
-                pass
+            # Only include the names that exist in Nexus
+            names += [all_names[name] for name in ('codename', 'casualname', 'primus') if all_names.get(name)]
             result.append(' - '.join(names))
         return result
 
@@ -1262,11 +1278,21 @@ class BillToolBridge:
             raise ValueError("Bad Parameter Value")
         with DBSession(self.state_db) as session:
             accounts, totalCount = self.state_db.list_accounts(session, int(start), int(limit))
-            full_names = self.full_names_of_accounts([account for account in accounts])
-            rows = self.process.summary_ree_charges(session, accounts, full_names)
+            account_names = self.all_names_of_accounts([account for account in accounts])
+            rows = self.process.summary_ree_charges(session, accounts, account_names)
             for row in rows:
-                row.update({'outstandingbalance': '$%.2f' % self.process\
-                        .get_outstanding_balance(session,row['account'])})
+                outstanding_balance = self.process.get_outstanding_balance(session, row['account'])
+                days_since_due_date = None
+                if outstanding_balance > 0:
+                    payments = self.state_db.payments(session, row['account'])
+                    if payments:
+                        last_payment_date = payments[-1].date_received
+                        reebills_since = self.reebill_dao.load_reebills_in_period(row['account'], 'any', last_payment_date, date.today())
+                        if reebills_since and reebills_since[0].due_date:
+                            days_since_due_date = (date.today() - reebills_since[0].due_date).days
+                
+                row.update({'outstandingbalance': '$%.2f' % outstanding_balance,
+                           'days_late': days_since_due_date})
             return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
 
     @cherrypy.expose
@@ -1284,7 +1310,7 @@ class BillToolBridge:
             sheet = workbook.add_sheet('All REE Charges')
             row_index = 0
 
-            headings = ['Account','Sequence', 
+            headings = ['Account','Sequence', 'Version',
                 'Billing Addressee', 'Service Addressee',
                 'Issue Date', 'Period Begin', 'Period End', 
                 'Hypothesized Charges', 'Actual Utility Charges', 
@@ -1296,8 +1322,11 @@ class BillToolBridge:
                 'Adjustment',
                 'Balance Forward',
                 'RE&E Charges',
+                'Late Charges',
                 'Balance Due',
                 '', # spacer
+                'Savings',
+                'Cumulative Savings',
                 'RE&E Energy',
                 'Average Rate per Unit RE&E',
                 ]
@@ -1323,7 +1352,7 @@ class BillToolBridge:
                     sa['sa_postal_code'] if 'sa_postal_code' in sa and sa['sa_postal_code'] is not None else "",
                 )
 
-                actual_row = [row['account'], row['sequence'], 
+                actual_row = [row['account'], row['sequence'], row['version'],
                         bill_addr_str, service_addr_str, 
                         row['issue_date'], row['period_begin'], row['period_end'],
                         row['hypothetical_charges'], row['actual_charges'], 
@@ -1335,8 +1364,11 @@ class BillToolBridge:
                         row['total_adjustment'],
                         row['balance_forward'],
                         row['ree_charges'],
+                        row['late_charges'],
                         row['balance_due'],
                         '', # spacer
+                        row['savings'],
+                        row['cumulative_savings'],
                         row['total_ree'],
                         row['average_rate_unit_ree'] ]
                 for i, cell_text in enumerate(actual_row):
@@ -1394,6 +1426,36 @@ class BillToolBridge:
 
             data = buf.getvalue()
             return data
+
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def discount_rates_csv_altitude(self, **args):
+        with DBSession(self.state_db) as session:
+            rows, total_count = self.process.reebill_report_altitude(session)
+
+            import csv
+            import StringIO
+
+            buf = StringIO.StringIO()
+
+            writer = csv.writer(buf)
+
+            writer.writerow(['Account', 'Discount Rate'])
+
+            for account, group in it.groupby(rows, lambda row: row['account']):
+                for row in group:
+                    if row['discount_rate']:
+                        writer.writerow([account, row['discount_rate']])
+                        break
+
+            cherrypy.response.headers['Content-Type'] = 'text/csv'
+            cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=reebill_discount_rates_%s.csv' % datetime.now().strftime("%Y%m%d")
+
+            data = buf.getvalue()
+            return data
+
 
     @cherrypy.expose
     @random_wait

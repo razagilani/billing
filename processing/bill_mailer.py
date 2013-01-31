@@ -14,13 +14,13 @@ The attached file, {{ last_bill }} reflects the current balance and is the only 
 Total Due {{balance_due}}
 
 Best Regards,
-Jules Watson
+Skyline Billing Department
 Skyline Innovations
 
 --
 SKYLINE INNOVATIONS
 Guaranteed Savings Through Green Energy
-1752 Columbia Rd, NW Suite 200, Washington DC 20009
+1785 Massachusetts Avenue, NW Fifth Floor, Washington DC 20036
 Phone: (202) 719-5297  Fax: (888) 907-5996
 http://www.skylineinnovations.com
 """)
@@ -34,7 +34,7 @@ http://www.skylineinnovations.com
 <p>Total Due {{balance_due}}</p>
 
 <p>Best Regards,<br/>
-Jules Watson<br/>
+Skyline Billing Department<br/>
 Skyline Innovations</p>
 <br/>--
 <div style="text-align:center">

@@ -299,7 +299,7 @@ class Process(object):
             actual_chargegroups = reebill.actual_chargegroups_for_service(service)
             reebill.set_hypothetical_chargegroups_for_service(service, actual_chargegroups)
 
-    def roll_bill(self, session, reebill):
+    def roll_bill(self, session, reebill, utility_bill_date=None):
         '''Modifies 'reebill' to convert it into a template for the reebill of
         the next period (including incrementing the sequence). 'reebill' must
         be its customer's last bill before roll_bill is called. This method
@@ -307,7 +307,10 @@ class Process(object):
         documents in Mongo (by copying the ones originally attached to the
         reebill). compute_bill() should always be called immediately after this
         one so the bill is updated to its current state.'''
-        utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
+        if utility_bill_date:
+            utilbills = self.state_db.get_utilbills_on_date(session, reebill.account, utility_bill_date)
+        else:
+            utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
         
         # duplicate the CPRS for each service
         # TODO: 22597151 refactor
@@ -972,7 +975,12 @@ class Process(object):
         totalCount = 0
         for account in accounts:
             payments = self.state_db.payments(session, account)
+            cumulative_savings = 0
             for reebill in self.reebill_dao.load_reebills_for(account):
+                # Skip over unissued reebills
+                if not reebill.issue_date:
+                    continue
+
                 row = {}
 
                 row['account'] = account
@@ -1012,7 +1020,22 @@ class Process(object):
 
                 row['ree_charges'] = reebill.ree_charges.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                try:
+                    row['late_charges'] = reebill.late_charges.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                except KeyError:
+                    row['late_charges'] = None
+
                 row['balance_due'] = reebill.balance_due.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+
+                row['discount_rate'] = reebill.discount_rate
+
+                savings = reebill.ree_value - reebill.ree_charges
+                cumulative_savings += savings
+                row['savings'] = savings.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['cumulative_savings'] = cumulative_savings.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
 
                 rows.append(row)
@@ -1026,7 +1049,12 @@ class Process(object):
         totalCount = 0
         for account in accounts:
             payments = self.state_db.payments(session, account)
+            cumulative_savings = 0
             for reebill in self.reebill_dao.load_reebills_for(account):
+                # Skip over unissued reebills
+                if not reebill.issue_date:
+                    continue
+
                 row = {}
 
                 # iterate the payments and find the ones that apply. 
@@ -1041,6 +1069,7 @@ class Process(object):
 
                 row['account'] = account
                 row['sequence'] = reebill.sequence
+                row['version'] = reebill.version
                 row['billing_address'] = reebill.billing_address
                 row['service_address'] = reebill.service_address
                 row['issue_date'] = reebill.issue_date
@@ -1076,7 +1105,20 @@ class Process(object):
 
                 row['ree_charges'] = reebill.ree_charges.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                try:
+                    row['late_charges'] = reebill.late_charges.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                except KeyError:
+                    row['late_charges'] = None
+
                 row['balance_due'] = reebill.balance_due.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+
+                savings = reebill.ree_value - reebill.ree_charges
+                cumulative_savings += savings
+                row['savings'] = savings.quantize(
+                        Decimal(".00"), rounding=ROUND_HALF_EVEN)
+                row['cumulative_savings'] = cumulative_savings.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
 
                 # normally, only one payment.  Multiple payments their own new rows...
@@ -1091,6 +1133,7 @@ class Process(object):
                         # ok, there was more than one applicable payment
                         row['account'] = account
                         row['sequence'] = reebill.sequence
+                        row['version'] = reebill.version
                         row['billing_address'] = {}
                         row['service_address'] = {}
                         row['issue_date'] = None
@@ -1106,9 +1149,12 @@ class Process(object):
                         row['total_adjustment'] = None
                         row['payment_applied'] = None
                         row['ree_charges'] = None
+                        row['late_charges'] = None
                         row['balance_due'] = None
                         row['payment_date'] = applicable_payment.date_applied
                         row['payment_amount'] = applicable_payment.credit
+                        row['savings'] = None
+                        row['cumulative_savings'] = None
                         rows.append(row)
                         totalCount += 1
                 else:
@@ -1120,6 +1166,7 @@ class Process(object):
             row = {}
             row['account'] = None
             row['sequence'] = None
+            row['version'] = None
             row['billing_address'] = {}
             row['service_address'] = {}
             row['issue_date'] = None
@@ -1135,15 +1182,18 @@ class Process(object):
             row['total_adjustment'] = None
             row['payment_applied'] = None
             row['ree_charges'] = None
+            row['late_charges'] = None
             row['balance_due'] = None
             row['payment_date'] = None
             row['payment_amount'] = None
+            row['savings'] = None
+            row['cumulative_savings'] = None
             rows.append(row)
             totalCount += 1
 
         return rows, totalCount
 
-    def summary_ree_charges(self, session, accounts, full_names):
+    def summary_ree_charges(self, session, accounts, all_names):
         rows = [] 
         for i, account in enumerate(accounts):
             row = {}
@@ -1159,7 +1209,9 @@ class Process(object):
                 average_ree_rate = (hypothetical_total - actual_total)/total_energy
 
             row['account'] = account
-            row['fullname'] = full_names[i]
+            row['olap_id'] = all_names[i][1].get('codename', '')
+            row['casual_name'] = all_names[i][1].get('casualname', '')
+            row['primus_name'] = all_names[i][1].get('primus', '')
             row['ree_charges'] = ree_charges
             row['actual_charges'] = actual_total.quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)
             row['hypothetical_charges'] = hypothetical_total.quantize(Decimal(".00"), rounding=ROUND_HALF_EVEN)

@@ -1538,38 +1538,79 @@ function reeBillReady() {
     {
         tabPanel.setDisabled(true);
 
-        rollOperationConn.request({
-            params: {account: selected_account},
-            success: function(result, request) {
-                var jsonData = null;
-                try {
-                    jsonData = Ext.util.JSON.decode(result.responseText);
-                    if (jsonData.success == false) {
-                        Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
-                    } else {
-                        reeBillGrid.getSelectionModel().clearSelections();
-                        reeBillStore.setDefaultSort('sequence', 'DESC');
-                        pageSize = reeBillGrid.getBottomToolbar().pageSize;
-                        reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
-                            reeBillGrid.getSelectionModel().selectFirstRow();
-                        }});
+        if(reeBillStore.getTotalCount() == 0) {
+            Ext.Msg.prompt('Service Start Date', 'Enter the date (YYYY-MM-DD) on which your utility service(s) started', function (btn, service_start_date) {
+                if(btn == 'ok') {
+                    rollOperationConn.request({
+                    params: {account: selected_account, start_date: service_start_date},
+                    success: function(result, request) {
+                        var jsonData = null;
+                        try {
+                            jsonData = Ext.util.JSON.decode(result.responseText);
+                            if (jsonData.success == false) {
+                                Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                            } else {
+                                reeBillGrid.getSelectionModel().clearSelections();
+                                reeBillStore.setDefaultSort('sequence', 'DESC');
+                                pageSize = reeBillGrid.getBottomToolbar().pageSize;
+                                reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
+                                    reeBillGrid.getSelectionModel().selectFirstRow();
+                                }});
+                            }
+                        } catch (err) {
+                            Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                        } finally {
+                            tabPanel.setDisabled(false);
+                        }
+                    },
+                    failure: function(result, request) {
+                        try {
+                            Ext.MessageBox.alert('Server Error', result.responseText);
+                        } catch (err) {
+                            Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                        } finally {
+                            tabPanel.setDisabled(false);
+                        }
+                    },
+                    });
+                }
+            });
+        }
+        else
+        {
+            rollOperationConn.request({
+                params: {account: selected_account},
+                success: function(result, request) {
+                    var jsonData = null;
+                    try {
+                        jsonData = Ext.util.JSON.decode(result.responseText);
+                        if (jsonData.success == false) {
+                            Ext.MessageBox.alert('Server Error', jsonData.errors.reason + " " + jsonData.errors.details);
+                        } else {
+                            reeBillGrid.getSelectionModel().clearSelections();
+                            reeBillStore.setDefaultSort('sequence', 'DESC');
+                            pageSize = reeBillGrid.getBottomToolbar().pageSize;
+                            reeBillStore.load({params: {start: 0, limit: pageSize}, callback: function () {
+                                reeBillGrid.getSelectionModel().selectFirstRow();
+                            }});
+                        }
+                    } catch (err) {
+                        Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                    } finally {
+                        tabPanel.setDisabled(false);
                     }
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
-                } finally {
-                    tabPanel.setDisabled(false);
-                }
-            },
-            failure: function(result, request) {
-                try {
-                    Ext.MessageBox.alert('Server Error', result.responseText);
-                } catch (err) {
-                    Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
-                } finally {
-                    tabPanel.setDisabled(false);
-                }
-            },
-        });
+                },
+                failure: function(result, request) {
+                    try {
+                        Ext.MessageBox.alert('Server Error', result.responseText);
+                    } catch (err) {
+                        Ext.MessageBox.alert('ERROR', 'Local:  '+ err);
+                    } finally {
+                        tabPanel.setDisabled(false);
+                    }
+                },
+            });
+        }
     }
 
     var renderDataConn = new Ext.data.Connection({
@@ -4311,13 +4352,16 @@ function reeBillReady() {
         fields: [
             // map Record's field to json object's key of same name
             {name: 'account', mapping: 'account'},
-            {name: 'fullname', mapping: 'fullname'},
+            {name: 'olap_id', mapping: 'olap_id'},
+            {name: 'casual_name', mapping: 'casual_name'},
+            {name: 'primus_name', mapping: 'primus_name'},
             {name: 'ree_charges', mapping: 'ree_charges'},
             {name: 'actual_charges', mapping: 'actual_charges'},
             {name: 'hypothetical_charges', mapping: 'hypothetical_charges'},
             {name: 'total_energy', mapping: 'total_energy'},
             {name: 'average_ree_rate', mapping: 'average_ree_rate'},
             {name: 'outstandingbalance', mapping: 'outstandingbalance'},
+            {name: 'days_late', mapping: 'days_late'},
         ]
     });
 
@@ -4326,6 +4370,10 @@ function reeBillReady() {
     });
     accountReeValueProxyConn.autoAbort = true;
     var accountReeValueProxy = new Ext.data.HttpProxy(accountReeValueProxyConn);
+
+    var accountReeValueOutstandingBalanceSort = function(value) {
+        return parseFloat(value.substr(1));
+    };
 
     var accountReeValueStore = new Ext.data.JsonStore({
         proxy: accountReeValueProxy,
@@ -4337,23 +4385,40 @@ function reeBillReady() {
         reader: accountReeValueReader,
         fields: [
             {name: 'account'},
-            {name: 'fullname'},
+            {name: 'olap_id'},
+            {name: 'casual_name'},
+            {name: 'primus_name'},
             {name: 'ree_charges'},
             {name: 'actual_charges'},
             {name: 'hypothetical_charges'},
             {name: 'total_energy'},
             {name: 'average_ree_rate'},
-            {name: 'outstandingbalance'},
+            {name: 'outstandingbalance', sortType: accountReeValueOutstandingBalanceSort},
+            {name: 'days_late'},
         ],
     });
-
 
     var accountReeValueColModel = new Ext.grid.ColumnModel({
         columns: [
             {
                 header: 'Account',
                 sortable: true,
-                dataIndex: 'fullname',
+                dataIndex: 'account',
+                editable: false,
+            },{
+                header: 'OLAP ID',
+                sortable: true,
+                dataIndex: 'olap_id',
+                editable: false,
+            },{
+                header: 'Casual Name',
+                sortable: true,
+                dataIndex: 'casual_name',
+                editable: false,
+            },{
+                header: 'Primus Name',
+                sortable: true,
+                dataIndex: 'primus_name',
                 editable: false,
             },{
                 header: 'REE Charges',
@@ -4386,6 +4451,11 @@ function reeBillReady() {
                 dataIndex: 'outstandingbalance',
                 //editable: false,
             },
+            {
+                header: 'Days Overdue',
+                sortable: true,
+                dataIndex: 'days_late',
+            }
         ]
     });
 
@@ -5663,7 +5733,7 @@ function reeBillReady() {
             },{
                 id: 'util_total',
                 header: 'Utility Bill Total',
-                width: 125,
+                width: 140,
                 sortable: false,
                 groupable: false,
                 dataIndex: 'util_total',
@@ -5675,8 +5745,8 @@ function reeBillReady() {
                 },
             },{
                 id: 'reebill_total',
-                header: 'Reebill Total',
-                width: 125,
+                header: 'Projected Total w/o REE',
+                width: 140,
                 sortable: false,
                 groupable: false,
                 dataIndex: 'reebill_total',
