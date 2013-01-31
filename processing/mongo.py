@@ -1287,7 +1287,7 @@ class ReebillDAO:
         # NOTE not using context manager (see comment in load_reebill)
         session = self.state_db.session()
         sequences = self.state_db.listSequences(session, account)
-        return [self.load_reebill(account, sequence) for sequence in sequences]
+        return [self.load_reebill(account, sequence, version) for sequence in sequences]
     
     def load_reebills_in_period(self, account=None, version=0, start_date=None,
             end_date=None, include_0=False):
