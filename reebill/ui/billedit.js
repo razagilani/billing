@@ -5733,7 +5733,7 @@ function reeBillReady() {
             },{
                 id: 'util_total',
                 header: 'Utility Bill Total',
-                width: 125,
+                width: 140,
                 sortable: false,
                 groupable: false,
                 dataIndex: 'util_total',
@@ -5745,8 +5745,8 @@ function reeBillReady() {
                 },
             },{
                 id: 'reebill_total',
-                header: 'Reebill Total',
-                width: 125,
+                header: 'Projected Total w/o REE',
+                width: 140,
                 sortable: false,
                 groupable: false,
                 dataIndex: 'reebill_total',
