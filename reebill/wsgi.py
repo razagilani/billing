@@ -996,10 +996,11 @@ class BillToolBridge:
                                              "%.5d_%.4d.pdf" % (int(account), int(sequence)), True)
             bill_name = "%.5d_%.4d.pdf" % (int(account), int(sequence))
             merge_fields = {}
-            merge_fields["sa_street1"] = mongo_reebill.service_address["sa_street1"]
+            merge_fields["sa_street1"] = mongo_reebill.service_address.get("sa_street1","")
             merge_fields["balance_due"] = mongo_reebill.balance_due.quantize(Decimal("0.00"))
-            merge_fields["bill_dates"] = ["%s" % (mongo_reebill.period_end) ]
+            merge_fields["bill_dates"] = "%s" % (mongo_reebill.period_end)
             merge_fields["last_bill"] = bill_name
+            print recipients,merge_fields, os.path.join(self.config.get('billdb', 'billpath'), account), [bill_name]
             bill_mailer.mail(recipients, merge_fields,
                     os.path.join(self.config.get("billdb", "billpath"),
                         account), [bill_name]);
@@ -1050,10 +1051,11 @@ class BillToolBridge:
             bill_dates = ["%s" % (b.period_end) for b in all_bills]
             bill_dates = ", ".join(bill_dates)
             merge_fields = {}
-            merge_fields["sa_street1"] = most_recent_bill.service_address["sa_street1"]
+            merge_fields["sa_street1"] = most_recent_bill.service_address.get("sa_street1","")
             merge_fields["balance_due"] = most_recent_bill.balance_due.quantize(Decimal("0.00"))
             merge_fields["bill_dates"] = bill_dates
             merge_fields["last_bill"] = bill_file_names[-1]
+            print recipient_list, merge_fields,os.path.join(self.config.get("billdb", "billpath"),account), bill_file_names
             bill_mailer.mail(recipient_list, merge_fields,
                     os.path.join(self.config.get("billdb", "billpath"),
                         account), bill_file_names);
