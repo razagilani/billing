@@ -1493,7 +1493,7 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             buf = StringIO() 
             # TODO: include all services
-            calendar_reports.write_daily_average_energy_xls(self.reebill_dao, account, buf, service='Gas')
+            calendar_reports.write_daily_average_energy_xls(self.reebill_dao, account, buf, service='gas')
 
             # set MIME type for file download
             cherrypy.response.headers['Content-Type'] = 'application/excel'
