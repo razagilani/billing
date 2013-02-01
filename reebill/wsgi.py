@@ -2857,6 +2857,7 @@ class BillToolBridge:
 
                 # delete each utility bill, and log the deletion in the journal
                 # with the path where the utility bill file was moved
+                print ids
                 for utilbill_id in ids:
                     # load utilbill to get its dates and service
                     utilbill = session.query(db_objects.UtilBill)\
@@ -2866,6 +2867,7 @@ class BillToolBridge:
 
                     # delete it & get new path (will be None if there was never
                     # a utility bill file or the file could not be found)
+                    print start, end, service
                     deleted_path = self.process.delete_utility_bill(session,
                             utilbill_id)
 
