@@ -13,13 +13,20 @@ import sys
 
 calendar = Calendar()
 
-def daily_average_energy(reebill_dao, account, day, service='Gas',
+def daily_average_energy(reebill_dao, account, day, service='gas',
         unit='therms'):
     # find out what reebill covers this day and has a utility bill of the right
     # service that covers day
     possible_reebills = reebill_dao.load_reebills_in_period(account,
             start_date=day, end_date=day)
     reebill = None
+
+    # If none of the possible reebills have the desired service, then return
+    # N/A because there are no applicable data. This isn't necessarily a failure state
+    # deserving an Exception.
+    if not any((service in rb.services for rb in possible_reebills)):
+        return 'N/A'
+    
     for possible_reebill in possible_reebills:
         if service in possible_reebill.services \
                 and day >= possible_reebill.utilbill_period_for_service(service)[0] \
@@ -71,19 +78,19 @@ def daily_average_energy(reebill_dao, account, day, service='Gas',
     return float(total_energy) / float(days_in_period)
 
 def average_energy_for_date_range(reebill_dao, account, start_date, end_date,
-        service='Gas', unit='therms'):
+        service='gas', unit='therms'):
     '''Returns approximate energy for the date interval [start_date, end_date)
     using per-day averages.'''
     return sum(daily_average_energy(reebill_dao, account, day, service=service,
         unit=unit) for day in dateutils.date_generator(start_date, end_date))
 
-def monthly_average_energy(reebill_dao, account, year, month, service='Gas',
+def monthly_average_energy(reebill_dao, account, year, month, service='gas',
         unit='therms'):
     return sum(daily_average_energy(reebill_dao, account, day, service=service,
         unit=unit) for day in calendar.itermonthdates(year, month))
 
 def write_daily_average_energy_xls(reebill_dao, account, output_file,
-        service='Gas', unit='therms'):
+        service='gas', unit='therms'):
     '''Writes an Excel spreadsheet to output_file showing average energy per
     day over all time. Time runs from top to bottom.'''
     reebills = reebill_dao.load_reebills_in_period(account)
