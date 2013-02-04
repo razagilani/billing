@@ -171,7 +171,7 @@ class RateStructureDAO(object):
     def get_probable_uprs(self, reebill, service):
         '''Returns a guess of the rate structure for the given reebill.'''
         utility = reebill.utility_name_for_service(service)
-        rate_structure_name = reebill.utility_name_for_service(service)
+        rate_structure_name = reebill.rate_structure_name_for_service(service)
         return {
             '_id': {
                 'account': reebill.account,
