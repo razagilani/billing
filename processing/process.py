@@ -312,7 +312,7 @@ class Process(object):
         else:
             utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
         
-        # duplicate the CPRS for each service
+        # duplicate the UPRS and CPRS for each service
         # TODO: 22597151 refactor
         for service in reebill.services:
             utility_name = reebill.utility_name_for_service(service)
@@ -332,6 +332,27 @@ class Process(object):
                 raise NoRateStructureError("No current UPRS")
             self.rate_structure_dao.save_uprs(reebill.account, reebill.sequence + 1,
                     0, utility_name, rate_structure_name, uprs)
+
+            # remove charges that don't correspond to any RSI binding (because
+            # their corresponding RSIs were not part of the predicted rate structure)
+            valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
+                    cprs['rates']}
+            chargegroups = reebill._get_utilbill_for_service(service)['chargegroups']
+            for group, charges in chargegroups.iteritems():
+                for charge in charges:
+                    # if the charge matches a valid RSI binding, mark that
+                    # binding as matched; if not, delete the charge
+                    if charge['rsi_binding'] in valid_bindings:
+                        valid_bindings[charge['rsi_binding']] = True
+                    else:
+                        del group['charge']
+                # chargegroup is not removed if it's empty because it might
+                # come back
+
+            # TODO add a charge for every RSI that doesn't have a charge, i.e.
+            # the ones whose value in 'valid_bindings' is False.
+            # we can't do this yet because we don't know what group it goes in.
+            # see https://www.pivotaltracker.com/story/show/43797365
 
         # TODO Put somewhere nice because this has a specific function
         active_utilbills = [u for u in reebill._utilbills if u['service'] in reebill.services]
