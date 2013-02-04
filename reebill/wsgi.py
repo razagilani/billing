@@ -778,7 +778,12 @@ class BillToolBridge:
             reebill = self.reebill_dao.load_reebill(account, lastSequence)
             new_reebill = self.process.roll_bill(session, reebill, start_date)
             self.reebill_dao.save_reebill(new_reebill)
+            journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
+                    account, new_reebill.sequence)
+            journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
+                account, new_reebill.sequence, new_reebill.version)
 
+        with DBSession(self.state_db) as session:
             new_reebill = self.reebill_dao.load_reebill(account, lastSequence+1)
             if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
                 fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account),
@@ -788,10 +793,6 @@ class BillToolBridge:
             self.process.compute_bill(session, reebill, new_reebill)
             self.reebill_dao.save_reebill(new_reebill)
 
-            journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
-                    account, new_reebill.sequence)
-            journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-                account, new_reebill.sequence, new_reebill.version)
             journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
                 account, new_reebill.sequence, new_reebill.version)
 
