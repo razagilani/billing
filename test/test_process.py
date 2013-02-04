@@ -1108,6 +1108,77 @@ class ProcessTest(TestCaseWithSetup):
 
             # TODO ...
 
+    def test_roll_rs_prediction(self):
+        '''Tests that a reebill can be computed even though its rate structure
+        has changed such that some charges no longer match one of the predicted
+        RSIs.'''
+        acc_a, acc_b, acc_c = 'aaaaa', 'bbbbb', 'ccccc'
+
+        with DBSession(self.state_db) as session:
+            session.add(Customer('Customer A', acc_a, .12, .34))
+            session.add(Customer('Customer B', acc_b, .12, .34))
+            session.add(Customer('Customer C', acc_c, .12, .34))
+
+            reebill_a_0 = example_data.get_reebill(acc_a, 0)
+            reebill_b_0 = example_data.get_reebill(acc_b, 0)
+            reebill_c_0 = example_data.get_reebill(acc_c, 0)
+            self.reebill_dao.save_reebill(reebill_a_0, freeze_utilbills=True)
+            self.reebill_dao.save_reebill(reebill_b_0, freeze_utilbills=True)
+            self.reebill_dao.save_reebill(reebill_c_0, freeze_utilbills=True)
+
+            # save default rate structures for A
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc_a, 0))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc_a, 0))
+
+            # unlike A, UPRSs of both B and C have a new RSI "NEW_RSI" and lack
+            # "DELIVERY_TAX"
+            new_rsi = {
+                "rsi_binding" : "NEW_RSI",
+                "uuid" : "af91c4bc-01a9-11e1-af85-002421e88ffb",
+                "rate_units" : "dollars",
+                "rate" : "1.23456",
+                "quantity_units" : "therms",
+                "quantity" : "REG_TOTAL.quantity"
+            }
+            uprs_b = example_data.get_uprs_dict(acc_b, 0)
+            uprs_c = example_data.get_uprs_dict(acc_c, 0)
+            uprs_b['rates'].append(new_rsi)
+            uprs_c['rates'].append(new_rsi)
+            for rsi in uprs_b['rates']:
+                if rsi['rsi_binding'] == 'DELIVERY_TAX':
+                    uprs_b['rates'].remove(rsi)
+            for rsi in uprs_c['rates']:
+                if rsi['rsi_binding'] == 'DELIVERY_TAX':
+                    uprs_c['rates'].remove(rsi)
+            self.rate_structure_dao.save_rs(uprs_b)
+            self.rate_structure_dao.save_rs(uprs_c)
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc_b, 0))
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc_c, 0))
+
+            # create utility bill for A, and roll the reebill
+            utilbill_a_0 = UtilBill(
+                    customer=self.state_db.get_customer(session, acc_a),
+                    state=0, service='gas',
+                    period_start=reebill_a_0.period_begin,
+                    period_end=reebill_a_0.period_end)
+            session.add(utilbill_a_0)
+            import ipdb; ipdb.set_trace();
+            reebill_a_1 = self.process.roll_bill(session, reebill_a_0)
+
+            # the UPRS of A's reebill #1 should matches B and C, because
+            # together they have greater weight than A's reebill #0
+            uprs = self.rate_structure_dao.load_uprs(acc_a, 1, 0,
+                    reebill_a_1.utility_name_for_service('gas'),
+                    reebill_a_1.rate_structure_name_for_service('gas'))
+            self.assertEqual(1, len([rsi for rsi in uprs['rates'] if
+                    rsi['rsi_binding'] == 'NEW_RSI']))
+            self.assertEqual([], [rsi for rsi in uprs['rates'] if
+                    rsi['rsi_binding'] == 'DELIVERY_TAX'])
+
+            # bill should be computable after rolling
+            self.process.compute_bill(session, reebill_a_0, reebill_a_1) 
+
     def test_issue(self):
         '''Tests attach_utilbills and issue.'''
         acc = '99999'
