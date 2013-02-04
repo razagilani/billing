@@ -45,6 +45,11 @@ def gaussian(height, center, fwhm):
 def exp_weight(a, b):
     return lambda x: a**(x * b)
 
+def exp_weight_with_min(a, b, minimum):
+    '''Exponentially-decreasing weight function with a minimum value so it's
+    always nonnegative.'''
+    return lambda x: max(a**(x * b), minimum)
+
 class RateStructureDAO(object):
     '''
     Manages loading and saving rate structures.
@@ -87,7 +92,8 @@ class RateStructureDAO(object):
         self.collection = self.database['ratestructure']
 
     def _get_probable_rsis(self, utility, rate_structure_name, period,
-            distance_func=manhattan_distance, weight_func=exp_weight(0.5, 7),
+            distance_func=manhattan_distance,
+            weight_func=exp_weight_with_min(0.5, 7, 0.000001),
             threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False):
         '''Returns list of RSI dictionaries: a guess of what RSIs will be in a
         new bill for the given rate structure during the given period. The list
@@ -144,12 +150,12 @@ class RateStructureDAO(object):
         # its closest occurrence.
         result = []
         for binding, weight in scores.iteritems():
-            print '%35s %.02f %d' % (binding, weight, 100 * weight /
-                    total_weight[binding])
+            normalized_weight = weight / total_weight[binding] if \
+                    total_weight[binding] != 0 else 0
+            print '%35s %.02f %d' % (binding, weight, 100 * normalized_weight)
 
             # note that total_weight[binding] will never be 0 because it must
             # have occurred somewhere in order to occur in 'scores'
-            normalized_weight = weight / total_weight[binding]
             if normalized_weight >= threshold:
                 rsi_dict = closest_occurrence[binding][1]
                 rate, quantity = 0, 0
