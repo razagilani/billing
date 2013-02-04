@@ -346,7 +346,7 @@ class ProcessTest(TestCaseWithSetup):
         try:
             session = self.state_db.session()
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc, 0))
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(account, 0))
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 0))
 
             self.state_db.record_utilbill_in_database(session, account,
@@ -661,7 +661,8 @@ class ProcessTest(TestCaseWithSetup):
 
             # save rate structures (needed to create new version)
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict('99999',
+                    1))
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999',
                     1))
 
@@ -809,7 +810,7 @@ class ProcessTest(TestCaseWithSetup):
         with DBSession(self.state_db) as session:
             # reebills 1-4, 1-3 issued
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict('99999', 0))
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 0))
             base_date = date(2012,1,1)
             dates = [base_date + timedelta(days=30*x) for x in xrange(5)]
@@ -1237,7 +1238,7 @@ class ProcessTest(TestCaseWithSetup):
         with DBSession(self.state_db) as session:
             # save reebills and rate structures in mongo
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc, 0))
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 0))
 
             self.state_db.record_utilbill_in_database(session, acc, 'gas',
@@ -1301,7 +1302,7 @@ class ProcessTest(TestCaseWithSetup):
                     start=date(2012,1,1), end=date(2012,2,1))
             self.reebill_dao.save_reebill(one)
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc, 1))
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
 
             for use_olap in (True, False):

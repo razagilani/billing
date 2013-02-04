@@ -31,7 +31,7 @@ class RateStructureTest(TestCaseWithSetup):
 
         # get RS docs and put them in mongo
         urs_dict = example_data.get_urs_dict()
-        uprs_dict = example_data.get_uprs_dict()
+        uprs_dict = example_data.get_uprs_dict(account, sequence)
         cprs_dict = example_data.get_cprs_dict(account, sequence)
         self.rate_structure_dao.save_urs(urs_dict['_id']['utility_name'],
                 # 'effective', 'expires' args are ignored
