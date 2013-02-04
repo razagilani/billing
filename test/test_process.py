@@ -1154,7 +1154,7 @@ class ProcessTest(TestCaseWithSetup):
             self.rate_structure_dao.save_rs(uprs_b)
             self.rate_structure_dao.save_rs(uprs_c)
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc_b, 0))
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc_c, 0))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc_c, 0))
 
             # create utility bill for A, and roll the reebill
             utilbill_a_0 = UtilBill(
@@ -1163,7 +1163,6 @@ class ProcessTest(TestCaseWithSetup):
                     period_start=reebill_a_0.period_begin,
                     period_end=reebill_a_0.period_end)
             session.add(utilbill_a_0)
-            import ipdb; ipdb.set_trace();
             reebill_a_1 = self.process.roll_bill(session, reebill_a_0)
 
             # the UPRS of A's reebill #1 should matches B and C, because
