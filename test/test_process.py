@@ -346,7 +346,7 @@ class ProcessTest(TestCaseWithSetup):
         try:
             session = self.state_db.session()
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc, 0))
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 0))
 
             self.state_db.record_utilbill_in_database(session, account,
@@ -762,7 +762,7 @@ class ProcessTest(TestCaseWithSetup):
 
         #self.reebill_dao.save_reebill(one)
         self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-        self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+        self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc, 0))
         self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 0))
 
         # TODO creating new version of 1 should fail until it's issued
@@ -925,7 +925,7 @@ class ProcessTest(TestCaseWithSetup):
         with DBSession(self.state_db) as session:
             # save rate structures for the bills
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc, 0))
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 0))
             #self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 2))
 
@@ -1024,6 +1024,7 @@ class ProcessTest(TestCaseWithSetup):
             self.reebill_dao.save_reebill(reebill_0, freeze_utilbills=True)
             # Set up example rate structure
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 0))
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(account, 0))
 
             # There are no utility bills yet, so rolling should fail.
             with self.assertRaises(Exception) as context:
@@ -1038,6 +1039,9 @@ class ProcessTest(TestCaseWithSetup):
             reebill_1 = self.process.roll_bill(session, reebill_0)
             self.assertEqual(reebill_1.period_begin, target_utilbill.period_start)
             self.assertEqual(reebill_1.period_end, target_utilbill.period_end)
+
+            # bill should be computable after rolling
+            self.process.compute_bill(session, reebill_0, reebill_1) 
 
             self.process.issue(session, account, reebill_1.sequence)
             reebill_1 = self.reebill_dao.load_reebill(account, reebill_1.sequence)
@@ -1055,7 +1059,8 @@ class ProcessTest(TestCaseWithSetup):
                 self.process.roll_bill(session, reebill_1)
             self.assertTrue(re.match(re_no_final_utilbill, str(context.exception)))
 
-            # Set hypo_utilbill to Utility Estimated, save it, and then we should be able to roll on it
+            # Set hypo_utilbill to Utility Estimated, save it, and then we
+            # should be able to roll on it
             hypo_utilbill.state = UtilBill.UtilityEstimated;
             target_utilbill = session.merge(hypo_utilbill)
 
@@ -1066,8 +1071,8 @@ class ProcessTest(TestCaseWithSetup):
             self.process.issue(session, account, reebill_2.sequence)
             reebill_2 = self.reebill_dao.load_reebill(account, reebill_2.sequence)
 
-            # Shift later_utilbill a few days into the future so that there is a time gap
-            # after the last attached utilbill
+            # Shift later_utilbill a few days into the future so that there is
+            # a time gap after the last attached utilbill
             later_utilbill.period_start += timedelta(days=5)
             later_utilbill.period_end += timedelta(days=5)
             later_utilbill = session.merge(later_utilbill)
