@@ -563,6 +563,9 @@ def get_uprs_dict(account, sequence, version=0,
     '''Returns an example customer periodic rate structure document.'''
     uprs_dict = copy.deepcopy(example_uprs)
     uprs_dict['_id'].update({
+        'account': account,
+        'sequence': sequence,
+        'version': version,
         'rate_structure_name': rate_structure_name,
         'utility_name': utility_name,
     })
