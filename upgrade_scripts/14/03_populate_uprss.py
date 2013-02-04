@@ -1,3 +1,5 @@
+'''Copies "rates" (Rate Structure Items) from CPRS documents into UPRS
+documents.'''
 from sys import stderr
 import pymongo
 
@@ -23,6 +25,8 @@ for reebill in db.reebills.find():
         '_id.version': version
     }
     cprs = db.ratestructure.find_one(cprs_query)
+
+    # skip this reebill if the CPRS document is missing or has empty list of RSIs
     if cprs is None:
         print >> stderr, "missing CPRS: %s" % cprs_query
         continue
@@ -38,6 +42,8 @@ for reebill in db.reebills.find():
         '_id.version': version
     }
     uprs = db.ratestructure.find_one(uprs_query)
+
+    # skip this reebill if there's no UPRS
     if uprs is None:
         print >> stderr, '%s-%s-%s' % (account, sequence, version), "missing UPRS: %s" % uprs_query
         continue
