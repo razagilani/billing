@@ -170,7 +170,7 @@ class RateStructureDAO(object):
                     'rate': rate,
                     'quantity': quantity,
                     #'total': 0,
-                    'uuid': uuid.uuid1(), # uuid1 is used in wsgi.py
+                    'uuid': str(uuid.uuid1()), # uuid1 is used in wsgi.py
                 })
         return result
 
