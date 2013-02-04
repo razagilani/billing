@@ -345,7 +345,7 @@ class Process(object):
                     if charge['rsi_binding'] in valid_bindings:
                         valid_bindings[charge['rsi_binding']] = True
                     else:
-                        del group['charge']
+                        charges.remove(charge)
                 # chargegroup is not removed if it's empty because it might
                 # come back
 
