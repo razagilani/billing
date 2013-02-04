@@ -1024,8 +1024,9 @@ class ProcessTest(TestCaseWithSetup):
             reebill_0 = example_data.get_reebill(account, 0, dt-month, dt)
             self.reebill_dao.save_reebill(reebill_0, freeze_utilbills=True)
             # Set up example rate structure
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 0))
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict(account, 0))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 0))
 
             # There are no utility bills yet, so rolling should fail.
             with self.assertRaises(Exception) as context:
@@ -1068,6 +1069,7 @@ class ProcessTest(TestCaseWithSetup):
             reebill_2 = self.process.roll_bill(session, reebill_1)
             self.assertEqual(reebill_2.period_begin, target_utilbill.period_start)
             self.assertEqual(reebill_2.period_end, target_utilbill.period_end)
+            self.process.compute_bill(session, reebill_1, reebill_2) 
 
             self.process.issue(session, account, reebill_2.sequence)
             reebill_2 = self.reebill_dao.load_reebill(account, reebill_2.sequence)
@@ -1092,6 +1094,7 @@ class ProcessTest(TestCaseWithSetup):
             reebill_3 = self.reebill_dao.load_reebill(account, 3)
             self.assertEqual(reebill_3.period_begin, target_utilbill.period_start)
             self.assertEqual(reebill_3.period_end, target_utilbill.period_end)
+            self.process.compute_bill(session, reebill_2, reebill_3) 
 
             # TODO: Test multiple services
 
