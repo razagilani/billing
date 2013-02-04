@@ -51,7 +51,7 @@ class ProcessTest(TestCaseWithSetup):
             self.reebill_dao.save_reebill(example_data.get_reebill('99999', 1,
                     start=date(2012,1,1), end=date(2012,2,1)))
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict('99999', 1))
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
             self.state_db.new_rebill(session, '99999', 1)
             # store template account's reebill (includes utility bill) to check
@@ -147,7 +147,7 @@ class ProcessTest(TestCaseWithSetup):
             # save bill1 in Mongo and MySQL, and its rate structure docs in
             # Mongo
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc, 1))
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
 
             # issue bill 1, so a later bill can have a late charge based on the
@@ -1213,7 +1213,7 @@ class ProcessTest(TestCaseWithSetup):
             # create a new verison and delete it, returning to just version 0
             # (versioning requires a cprs)
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(account, 1))
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account,
                     1))
             
