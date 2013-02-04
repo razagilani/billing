@@ -1532,8 +1532,12 @@ class BillToolBridge:
 
         if xaction == "read":
             return self.dumps({'success': True, 'rows':rates})
-
-        elif xaction == "update":
+        
+        with DBSession(self.state_db) as session:
+            if self.state_db.is_issued(session, account, sequence):
+                raise Exception("Cannot edit rate structure for an issued bill")
+            
+        if xaction == "update":
 
             rows = json.loads(kwargs["rows"])
 
@@ -1678,8 +1682,12 @@ class BillToolBridge:
 
         if xaction == "read":
             return self.dumps({'success': True, 'rows':rates})
-
-        elif xaction == "update":
+        
+        with DBSession(self.state_db) as session:
+            if self.state_db.is_issued(session, account, sequence):
+                raise Exception("Cannot edit rate structure for an issued bill")
+            
+        if xaction == "update":
 
             rows = json.loads(kwargs["rows"])
 
@@ -1812,7 +1820,11 @@ class BillToolBridge:
         if xaction == "read":
             return self.dumps({'success': True, 'rows':rates})
 
-        elif xaction == "update":
+        with DBSession(self.state_db) as session:
+            if self.state_db.is_issued(session, account, sequence):
+                raise Exception("Cannot edit rate structure for an issued bill")
+        
+        if xaction == "update":
 
             rows = json.loads(kwargs["rows"])
 
