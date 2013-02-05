@@ -410,7 +410,7 @@ class ProcessTest(TestCaseWithSetup):
         urs_dict = example_data.get_urs_dict()
         cprs_dict = example_data.get_cprs_dict(account, sequence)
         self.rate_structure_dao.save_urs(utility_name, rate_structure_name,
-                bill1.period_begin, bill1.period_end, urs_dict)
+                urs_dict)
         self.rate_structure_dao.save_cprs(account, sequence, 0, utility_name,
                 rate_structure_name, cprs_dict)
 
