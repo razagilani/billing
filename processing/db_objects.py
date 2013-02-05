@@ -85,7 +85,7 @@ class Payment(object):
             'date_applied': self.date_applied,
             'description': self.description,
             'credit': self.credit,
-            'editable': datetime.utcnow() - self.date_received < timedelta(24)
+            'editable': datetime.utcnow() - self.date_received < timedelta(hours=24)
         }
 
     def __repr__(self):
