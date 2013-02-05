@@ -3488,7 +3488,7 @@ function reeBillReady() {
                 dataIndex: 'uuid',
                 editable: false,
                 editor: new Ext.form.TextField({allowBlank: false}),
-                hiddent: true,
+                hidden: true,
             },{
                 header: 'RSI Binding',
                 sortable: true,
