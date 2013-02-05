@@ -1788,8 +1788,6 @@ class BillToolBridge:
                 reebill.account, reebill.sequence, reebill.version,
                 reebill.utility_name_for_service(service),
                 reebill.rate_structure_name_for_service(service),
-                effective,
-                expires,
                 rate_structure
             )
 
