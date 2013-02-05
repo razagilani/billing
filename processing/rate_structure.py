@@ -80,7 +80,8 @@ class RateStructureDAO(object):
     processing information.
     '''
 
-    def __init__(self, host, port, database, **kwargs):
+    def __init__(self, host, port, database, reebill_dao, **kwargs):
+        # TODO **kwargs == bad and should go away
         '''kwargs catches extra junk from config dictionary unpacked into
         constructor arguments.'''
         try:
@@ -90,6 +91,7 @@ class RateStructureDAO(object):
             raise e
         self.database = self.connection[database]
         self.collection = self.database['ratestructure']
+        self.reebill_dao = reebill_dao
 
     def _get_probable_rsis(self, utility, rate_structure_name, period,
             distance_func=manhattan_distance,
@@ -119,8 +121,15 @@ class RateStructureDAO(object):
         closest_occurrence = defaultdict(lambda: (sys.maxint, None))
         for binding in bindings:
             for uprs in all_uprss:
-                uprs_period = (uprs['_id']['effective'].date(),
-                        uprs['_id']['expires'].date())
+                # get period dates: unfortunately this requires loading the
+                # bill TODO this sucks--figure out how to avoid it, especially
+                # the part that involves using supposedly private methods and
+                # directly accessing document structure
+                reebill = self.reebill_dao.load_reebill(uprs['_id']['account'],
+                        uprs['_id']['sequence'], version=uprs['_id']['version'])
+                utilbill = reebill._get_utilbill_for_rs(utility_name,
+                        rate_structure_name)
+                uprs_period = utilbill['start'], utilbill['end']
 
                 # calculate weighted distance of this UPRS period from the
                 # target period
@@ -309,8 +318,6 @@ class RateStructureDAO(object):
             "_id.type":"URS",
             "_id.utility_name": utility_name,
             "_id.rate_structure_name": rate_structure_name,
-            #"_id.effective": effect<=period_begin,
-            #"_id.expires": expires>=period_begin,
         }
         urs = self.collection.find_one(query)
         return urs
@@ -325,8 +332,10 @@ class RateStructureDAO(object):
         })
         result = []
         for doc in cursor:
-            if doc['_id'].get('effective', None) is None or \
-                    doc['_id'].get('expires', None) is None:
+            if doc['_id'].get('account', None) is None or \
+                    doc['_id'].get('sequence', None) is None or \
+                    doc['_id'].get('version', None) is None or \
+                    'effective' in doc['_id'] or 'expires' in doc['_id']:
                 if verbose:
                     print >> sys.stderr, 'malformed UPRS id:', doc['_id']
             else:
@@ -380,8 +389,7 @@ class RateStructureDAO(object):
         rate_structure_data = bson_convert(rate_structure_data)
         self.collection.save(rate_structure_data)
 
-    def save_urs(self, utility_name, rate_structure_name, effective, expires,
-            rate_structure_data):
+    def save_urs(self, utility_name, rate_structure_name, rate_structure_data):
         '''Saves the dictionary 'rate_structure_data' as a Utility (global)
         Rate Structure document in Mongo.'''
         rate_structure_data['_id'] = { 
