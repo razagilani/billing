@@ -323,8 +323,13 @@ class BillToolBridge:
         self.reebill_dao = mongo.ReebillDAO(self.state_db, **self.billdb_config)
 
         # create a RateStructureDAO
-        rsdb_config_section = self.config.items("rsdb")
-        self.ratestructure_dao = rs.RateStructureDAO(**dict(rsdb_config_section))
+        rsdb_config_section = dict(self.config.items("rsdb"))
+        self.ratestructure_dao = rs.RateStructureDAO(
+            rsdb_config_section['host'],
+            rsdb_config_section['port'],
+            rsdb_config_section['database'],
+            self.reebill_dao
+        )
 
         # configure journal:
         # create a MongoEngine connection "alias" named "journal" with which
