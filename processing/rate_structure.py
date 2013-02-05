@@ -113,6 +113,8 @@ class RateStructureDAO(object):
             for rsi in uprs['rates']:
                 bindings.add(rsi['rsi_binding'])
         
+        #print sorted([(u['_id']['account'], u['_id']['sequence']) for u in all_uprss])
+
         # for each UPRS period, update the presence/absence score, total
         # presence/absence weight (for normalization), and full RSI dictionary
         # for the occurrence of each RSI binding closest to the target period
@@ -127,7 +129,7 @@ class RateStructureDAO(object):
                 # directly accessing document structure
                 reebill = self.reebill_dao.load_reebill(uprs['_id']['account'],
                         uprs['_id']['sequence'], version=uprs['_id']['version'])
-                utilbill = reebill._get_utilbill_for_rs(utility_name,
+                utilbill = reebill._get_utilbill_for_rs(utility,
                         rate_structure_name)
                 uprs_period = utilbill['start'], utilbill['end']
 
