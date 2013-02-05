@@ -8,6 +8,8 @@ database = 'skyline-dev'
 
 db = pymongo.Connection(host, 27017)[database]
 
+uprs_ids_to_remove = []
+
 count = 0
 for reebill in db.reebills.find():
     # get utility bill
@@ -59,10 +61,13 @@ for reebill in db.reebills.find():
     assert 'effective' in new_uprs['_id']
     assert 'expires' in new_uprs['_id']
 
-    db.ratestructure.remove({'_id': original_uprs['_id']})
+    uprs_ids_to_remove.append(original_uprs['_id']
     db.ratestructure.save(new_uprs)
     print 'upgraded', reebill['_id']
     count += 1
+
+for id in uprs_ids_to_remove:
+    db.ratestructure.remove({'_id': id})
 
 not_upgraded = db.ratestructure.find({'_id.type':'UPRS', '_id.account':{'$exists': False}}).count()
 print count, 'upgraded', not_upgraded, 'remaining'
