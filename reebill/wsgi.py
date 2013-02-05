@@ -773,6 +773,8 @@ class BillToolBridge:
         start_date = kwargs.get('start_date')
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
+
+        # 1st transaction: roll
         with DBSession(self.state_db) as session:
             lastSequence = self.state_db.last_sequence(session, account)
             reebill = self.reebill_dao.load_reebill(account, lastSequence)
@@ -780,21 +782,25 @@ class BillToolBridge:
             self.reebill_dao.save_reebill(new_reebill)
             journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
                     account, new_reebill.sequence)
+            # Process.roll includes attachment
             journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
                 account, new_reebill.sequence, new_reebill.version)
 
+        # 2nd transaction: bind and compute. if one of these fails, don't undo
+        # the changes to MySQL above, leaving a Mongo reebill document without
+        # a corresponding MySQL row; only undo the changes related to binding
+        # and computing (currently there are none).
         with DBSession(self.state_db) as session:
             new_reebill = self.reebill_dao.load_reebill(account, lastSequence+1)
             if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
                 fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account),
                     new_reebill, use_olap=True, verbose=True)
             self.reebill_dao.save_reebill(new_reebill)
+            journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
+                account, new_reebill.sequence, new_reebill.version)
             
             self.process.compute_bill(session, reebill, new_reebill)
             self.reebill_dao.save_reebill(new_reebill)
-
-            journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                account, new_reebill.sequence, new_reebill.version)
 
             return self.dumps({'success': True})
 
