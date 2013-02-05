@@ -61,7 +61,7 @@ for reebill in db.reebills.find():
     assert 'effective' in new_uprs['_id']
     assert 'expires' in new_uprs['_id']
 
-    uprs_ids_to_remove.append(original_uprs['_id']
+    uprs_ids_to_remove.append(original_uprs['_id'])
     db.ratestructure.save(new_uprs)
     print 'upgraded', reebill['_id']
     count += 1
