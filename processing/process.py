@@ -419,6 +419,10 @@ class Process(object):
                     reebill.sequence, reebill.version, utility_name, rs_name)
             self.rate_structure_dao.save_cprs(account, sequence, max_version +
                     1, utility_name, rs_name, cprs)
+            uprs = self.rate_structure_dao.load_uprs(reebill.account,
+                    reebill.sequence, reebill.version, utility_name, rs_name)
+            self.rate_structure_dao.save_uprs(account, sequence, max_version +
+                    1, utility_name, rs_name, uprs)
 
         # re-bind
         fetch_bill_data.fetch_oltp_data(self.splinter,

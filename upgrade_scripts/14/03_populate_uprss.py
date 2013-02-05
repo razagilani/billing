@@ -41,12 +41,16 @@ for reebill in db.reebills.find():
         '_id.sequence': sequence,
         '_id.version': version
     }
-    uprs = db.ratestructure.find_one(uprs_query)
+    result = db.ratestructure.find(uprs_query)
 
     # skip this reebill if there's no UPRS
-    if uprs is None:
+    if result.count() == 0:
         print >> stderr, '%s-%s-%s' % (account, sequence, version), "missing UPRS: %s" % uprs_query
         continue
+    if result.count() > 1:
+        import ipdb; ipdb.set_trace()
+        continue
+    uprs = result[0]
 
     # put CPRS rates into UPRS
     for cprs_rsi in cprs['rates']:
