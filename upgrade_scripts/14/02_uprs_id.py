@@ -20,23 +20,23 @@ for reebill in db.reebills.find():
     if utilbill['start'] is None or utilbill['end'] is None:
         continue
 
-    # get CPRS
-    cprs_query = {
-        '_id.type': 'CPRS',
-        '_id.account': reebill['_id']['account'],
-        '_id.sequence': reebill['_id']['sequence'],
-        '_id.version': reebill['_id']['version']
-    }
-    cprs = db.ratestructure.find_one(cprs_query)
-    if cprs is None:
-        #print >> stderr, "missing CPRS: %s" % cprs_query
-        continue
+    ## get CPRS
+    #cprs_query = {
+        #'_id.type': 'CPRS',
+        #'_id.account': reebill['_id']['account'],
+        #'_id.sequence': reebill['_id']['sequence'],
+        #'_id.version': reebill['_id']['version']
+    #}
+    #cprs = db.ratestructure.find_one(cprs_query)
+    #if cprs is None:
+        ##print >> stderr, "missing CPRS: %s" % cprs_query
+        #continue
 
     # get UPRS
     uprs_query = {
         '_id.type': 'UPRS',
-        '_id.utility_name': cprs['_id']['utility_name'],
-        '_id.rate_structure_name': cprs['_id']['rate_structure_name'],
+        '_id.utility_name': utilbill['utility'],
+        '_id.rate_structure_name': utilbill['rate_structure_binding'],
         '_id.effective': utilbill['start'],
         '_id.expires': utilbill['end'],
         '_id.account': {'$exists': False},
