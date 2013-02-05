@@ -561,7 +561,7 @@ class MongoReebill(object):
         '''Returns the utility bill dictionary with the given utility name and
         rate structure name.'''
         matching_utilbills = [u for u in self._utilbills if u['utility'] ==
-                service and u['rate_structure_binding'] == rate_structure_name]
+                utility and u['rate_structure_binding'] == rate_structure_name]
         if len(matching_utilbills) == 0:
             raise ValueError(('No utilbill found for utility "%s", rate'
                     'structure "%s"') % (utility, rate_structure_name))
