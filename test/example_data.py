@@ -408,9 +408,6 @@ example_uprs = {
         # added with rate structure prediction feature
         'account': '10003',
         'sequence': 17,
-        # no longer used
-        "effective": datetime(2000, 1, 1),
-        "expires": datetime(2020, 12, 31)
 	},
 	"rates" : [
 		{
