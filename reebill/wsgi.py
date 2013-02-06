@@ -791,7 +791,6 @@ class BillToolBridge:
             journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
                 account, new_reebill.sequence, new_reebill.version)
 
-        print "finished first transaction"
         # 2nd transaction: bind and compute. if one of these fails, don't undo
         # the changes to MySQL above, leaving a Mongo reebill document without
         # a corresponding MySQL row; only undo the changes related to binding
@@ -808,8 +807,7 @@ class BillToolBridge:
             self.process.compute_bill(session, reebill, new_reebill)
             self.reebill_dao.save_reebill(new_reebill)
 
-        print "finished second transaction"
-        return self.dumps({'success': True})
+            return self.dumps({'success': True})
 
     @cherrypy.expose
     @random_wait
