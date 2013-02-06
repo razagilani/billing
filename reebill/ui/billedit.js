@@ -1574,6 +1574,9 @@ function reeBillReady() {
                     },
                     });
                 }
+                else {
+                    tabPanel.setDisabled(false);
+                }
             });
         }
         else
