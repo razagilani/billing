@@ -343,14 +343,19 @@ class RateStructureDAO(object):
             # only include RS docs that correspond to an actual utility bill
             # with an actual reebill
             try:
-                # would be better to use StateDB.is_issued here (to use only
-                # bills that officially exist in MySQL and are issued), but a
-                # ReeBillDAO is what's available
+                # TODO would be better to use StateDB.is_issued here (to use
+                # only bills that officially exist in MySQL and are issued),
+                # but a ReeBillDAO is what's available
+                # (look up highest version, not the UPRS document's verison,
+                # because UPRS will only be used if its version is the max)
                 reebill = self.reebill_dao.load_reebill(doc['_id']['account'],
-                        doc['_id']['sequence'], version=doc['_id']['version'])
+                        doc['_id']['sequence'], version='max')
                 utilbill = reebill._get_utilbill_for_rs(utility_name,
                         rate_structure_name)
             except NoSuchBillException:
+                continue
+            # skip the UPRS if its version is not the maximum
+            if doc['_id']['version'] != reebill.version:
                 continue
             result.append((doc, utilbill['start'], utilbill['end']))
         return result
