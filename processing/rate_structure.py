@@ -15,7 +15,7 @@ import yaml
 import yaml
 from math import sqrt, log, exp
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
-from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError
+from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError, NoSuchBillException
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -103,18 +103,17 @@ class RateStructureDAO(object):
         score (between 0 and 1) for an RSI to be included. 'ignore' is an
         optional function to exclude UPRSs from the input data (used for
         testing).'''
-        # load all UPRSs (to avoid repeated queries)
-        all_uprss = [uprs for uprs in self.load_uprss(utility,
+        # load all UPRS and their utility bill period dates (to avoid repeated
+        # queries)
+        all_uprss = [uprs for uprs in self._load_uprss_for_prediction(utility,
                 rate_structure_name) if not ignore(uprs)]
 
         # find every RSI binding that ever existed for this rate structure
         bindings = set()
-        for uprs in all_uprss:
+        for uprs, _, _ in all_uprss:
             for rsi in uprs['rates']:
                 bindings.add(rsi['rsi_binding'])
         
-        #print sorted([(u['_id']['account'], u['_id']['sequence']) for u in all_uprss])
-
         # for each UPRS period, update the presence/absence score, total
         # presence/absence weight (for normalization), and full RSI dictionary
         # for the occurrence of each RSI binding closest to the target period
@@ -122,7 +121,7 @@ class RateStructureDAO(object):
         total_weight = defaultdict(lambda: 0)
         closest_occurrence = defaultdict(lambda: (sys.maxint, None))
         for binding in bindings:
-            for uprs in all_uprss:
+            for uprs, start, end in all_uprss:
                 # get period dates: unfortunately this requires loading the
                 # bill TODO this sucks--figure out how to avoid it, especially
                 # the part that involves using supposedly private methods and
@@ -131,11 +130,10 @@ class RateStructureDAO(object):
                         uprs['_id']['sequence'], version=uprs['_id']['version'])
                 utilbill = reebill._get_utilbill_for_rs(utility,
                         rate_structure_name)
-                uprs_period = utilbill['start'], utilbill['end']
 
                 # calculate weighted distance of this UPRS period from the
                 # target period
-                distance = distance_func(uprs_period, period)
+                distance = distance_func((start, end), period)
                 weight = weight_func(distance)
 
                 # update score and total weight for this binding
@@ -324,9 +322,10 @@ class RateStructureDAO(object):
         urs = self.collection.find_one(query)
         return urs
 
-    def load_uprss(self, utility_name, rate_structure_name, verbose=False):
-        '''Returns list of raw UPRS dictionaries with given utility and rate
-        structure name.'''
+    def _load_uprss_for_prediction(self, utility_name, rate_structure_name,
+            verbose=False):
+        '''Returns list of (raw UPRS dictionary, start date, end date) tuples
+        with given utility and rate structure name.'''
         cursor = self.collection.find({
             '_id.type': 'UPRS',
             '_id.utility_name': utility_name,
@@ -334,14 +333,26 @@ class RateStructureDAO(object):
         })
         result = []
         for doc in cursor:
-            if doc['_id'].get('account', None) is None or \
+            if doc is None or doc['_id'].get('account', None) is None or \
                     doc['_id'].get('sequence', None) is None or \
                     doc['_id'].get('version', None) is None or \
                     'effective' in doc['_id'] or 'expires' in doc['_id']:
                 if verbose:
                     print >> sys.stderr, 'malformed UPRS id:', doc['_id']
-            else:
-                result.append(doc)
+                continue
+            # only include RS docs that correspond to an actual utility bill
+            # with an actual reebill
+            try:
+                # would be better to use StateDB.is_issued here (to use only
+                # bills that officially exist in MySQL and are issued), but a
+                # ReeBillDAO is what's available
+                reebill = self.reebill_dao.load_reebill(doc['_id']['account'],
+                        doc['_id']['sequence'], version=doc['_id']['version'])
+                utilbill = reebill._get_utilbill_for_rs(utility_name,
+                        rate_structure_name)
+            except NoSuchBillException:
+                continue
+            result.append((doc, utilbill['start'], utilbill['end']))
         return result
 
     def load_uprs(self, account, sequence, version, utility_name,
