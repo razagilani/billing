@@ -557,11 +557,12 @@ class MongoReebill(object):
             raise ValueError('Multiple utilbills found for id "%s"' % id)
         return matching_utilbills[0]
 
-    def _get_utilbill_for_rs(self, utility, rate_structure_name):
+    def _get_utilbill_for_rs(self, utility, service, rate_structure_name):
         '''Returns the utility bill dictionary with the given utility name and
         rate structure name.'''
         matching_utilbills = [u for u in self._utilbills if u['utility'] ==
-                utility and u['rate_structure_binding'] == rate_structure_name]
+                utility and u['service'] == service and
+                u['rate_structure_binding'] == rate_structure_name]
         if len(matching_utilbills) == 0:
             raise ValueError(('No utilbill found for utility "%s", rate'
                     'structure "%s"') % (utility, rate_structure_name))
