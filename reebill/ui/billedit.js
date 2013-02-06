@@ -1573,10 +1573,9 @@ function reeBillReady() {
                         }
                     },
                     });
-                }
-                else {
+                } else {
                     tabPanel.setDisabled(false);
-                }
+                };
             });
         }
         else
