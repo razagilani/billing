@@ -144,6 +144,7 @@ class Process(object):
         '''Compute everything about the bill that can be continuously
         recomputed. This should be called immediately after roll_bill()
         whenever roll_bill() is called.'''
+        print "enter compute_bill"
         acc = present_reebill.account
 
         ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
@@ -307,6 +308,7 @@ class Process(object):
         documents in Mongo (by copying the ones originally attached to the
         reebill). compute_bill() should always be called immediately after this
         one so the bill is updated to its current state.'''
+        print "enter roll_bill"
         if utility_bill_date:
             utilbills = self.state_db.get_utilbills_on_date(session, reebill.account, utility_bill_date)
         else:
@@ -315,6 +317,7 @@ class Process(object):
         # duplicate the UPRS and CPRS for each service
         # TODO: 22597151 refactor
         for service in reebill.services:
+            print "in loop for "+service
             utility_name = reebill.utility_name_for_service(service)
             rate_structure_name = reebill.rate_structure_name_for_service(service)
 
@@ -326,6 +329,8 @@ class Process(object):
             self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence + 1,
                     0, utility_name, rate_structure_name, cprs)
 
+            print "done cprs"
+            
             # generate predicted UPRS, save it with account, sequence, version 0
             uprs = self.rate_structure_dao.get_probable_uprs(reebill, service)
             if uprs is None:
@@ -333,6 +338,8 @@ class Process(object):
             self.rate_structure_dao.save_uprs(reebill.account, reebill.sequence + 1,
                     0, utility_name, rate_structure_name, uprs)
 
+            print "done uprs"
+            
             # remove charges that don't correspond to any RSI binding (because
             # their corresponding RSIs were not part of the predicted rate structure)
             valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
@@ -354,6 +361,7 @@ class Process(object):
             # we can't do this yet because we don't know what group it goes in.
             # see https://www.pivotaltracker.com/story/show/43797365
 
+        print "finished loop"
         # TODO Put somewhere nice because this has a specific function
         active_utilbills = [u for u in reebill._utilbills if u['service'] in reebill.services]
         reebill.reebill_dict['utilbills'] = [handle for handle in reebill.reebill_dict['utilbills'] if handle['id'] in [u['_id'] for u in active_utilbills]]
