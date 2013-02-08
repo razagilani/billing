@@ -25,7 +25,7 @@ from billing.util.dictutils import deep_map
 import MySQLdb
 from billing.util.mongo_utils import python_convert
 from billing.test import example_data
-from billing.test.mock_skyliner import MockSplinter, MockMonguru
+from skyliner.mock_skyliner import MockSplinter, MockMonguru
 from billing.util.nexus_util import NexusUtil
 from billing.processing.mongo import NoSuchBillException
 from billing.processing.exceptions import BillStateError
@@ -60,12 +60,6 @@ port = 27017
         self.config = ConfigParser.RawConfigParser()
         self.config.readfp(config_file)
         self.billupload = BillUpload(self.config, logging.getLogger('test'))
-        self.rate_structure_dao = rate_structure.RateStructureDAO(**{
-            'database': 'test',
-            'collection': 'ratestructure',
-            'host': 'localhost',
-            'port': 27017
-        })
         self.splinter = MockSplinter(deterministic=True)
         
         # temporary hack to get a bill that's always the same
@@ -110,6 +104,8 @@ port = 27017
             'host': 'localhost',
             'port': 27017
         })
+        self.rate_structure_dao = rate_structure.RateStructureDAO('localhost',
+                27017, 'test', self.reebill_dao)
 
         mongoengine.connect('test', host='localhost', port=27017,
                 alias='utilbills')

@@ -25,25 +25,11 @@ TOENV=$3
 # Script to restore development MySQL, Mongo collections, and filesystem from
 # backups on tyrell-prod. Based on billing/reebill/admin/destage.bash.
 now=`date +"%Y%m%d"`
-# need to more uniquely name backup file
-tarball=${now}reebill-prod.tar.z
-ssh_key=$HOME/Dropbox/IT/ec2keys/$PRODHOST.pem
 # Save current directory to CD back to it
 current_dir="$( cd "$( dirname "$0" )" && pwd)"
 
 
 cd /tmp
-
-if [ -f $tarball ]
-then
-    # TODO don't rely on presence of the tarball to determine whether the mongodump
-    # directiories below also exist; they may not
-    echo "Using previously downloaded $tarball"
-else
-    scp -i $ssh_key ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$tarball .
-fi
-
-tar xzf $tarball
 
 # apparently only root can restore the database
 mysql -uroot -p$MYSQLPASSWORD -D skyline_$TOENV < ${now}billing_mysql.dmp
@@ -54,10 +40,6 @@ mongorestore --drop --db skyline-$TOENV --collection reebills ${now}reebills_mon
 mongorestore --drop --db skyline-$TOENV --collection journal ${now}journal_mongo/skyline-prod/journal.bson
 mongorestore --drop --db skyline-$TOENV --collection users ${now}users_mongo/skyline-prod/users.bson
 mongorestore --drop --db skyline-$TOENV --collection utilbills ${now}utilbills_mongo/skyline-prod/utilbills.bson
-
-# delete local bill files and replace with destaged copy
-rm -fr /db-$TOENV/*
-cp -r db-prod/* /db-$TOENV
 
 # Scrub Mongo of customer data
 cd $current_dir

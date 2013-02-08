@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import sys
 import os  
 from pprint import pprint
@@ -382,7 +382,7 @@ class ReebillRenderer:
         # populate account number, bill id & issue date
         accountNumber = [
             [Paragraph("Account Number", styles['BillLabelRight']),Paragraph(reebill.account + " " + str(reebill.sequence),styles['BillField'])], 
-            [Paragraph("Issue Date", styles['BillLabelRight']), Paragraph(str(reebill.issue_date), styles['BillField'])]
+            [Paragraph("Issue Date", styles['BillLabelRight']), Paragraph(reebill.issue_date.strftime('%m-%d-%Y') if reebill.issue_date is not None else 'None', styles['BillField'])]
         ]
 
         t = Table(accountNumber, [135,85])
@@ -393,7 +393,7 @@ class ReebillRenderer:
 
         # populate due date and amount
         dueDateAndAmount = [
-            [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(str(reebill.due_date), styles['BillFieldRight'])], 
+            [Paragraph("Due Date", styles['BillLabelRight']), Paragraph(reebill.due_date.strftime('%m-%d-%Y') if reebill.due_date is not None else 'None', styles['BillFieldRight'])], 
             [Paragraph("Balance Due", styles['BillLabelRight']), Paragraph(str(reebill.balance_due.quantize(Decimal("0.00"))), styles['BillFieldRight'])]
         ]
         
@@ -580,8 +580,8 @@ class ReebillRenderer:
             ] + [
                 [
                     Paragraph(service + u' service',styles['BillLabelSmRight']), 
-                    Paragraph(str(reebill.utilbill_period_for_service(service)[0]), styles['BillFieldRight']), 
-                    Paragraph(str(reebill.utilbill_period_for_service(service)[1]), styles['BillFieldRight'])
+                    Paragraph(reebill.utilbill_period_for_service(service)[0].strftime('%m-%d-%Y'), styles['BillFieldRight']), 
+                    Paragraph(reebill.utilbill_period_for_service(service)[1].strftime('%m-%d-%Y'), styles['BillFieldRight'])
                 ] for service in reebill.services
             ]
 

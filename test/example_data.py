@@ -405,8 +405,9 @@ example_uprs = {
 		"type" : "UPRS",
 		"rate_structure_name" : "DC Non Residential Non Heat",
 		"utility_name" : "washgas",
-        "effective": datetime(2000, 1, 1),
-        "expires": datetime(2020, 12, 31)
+        # added with rate structure prediction feature
+        'account': '10003',
+        'sequence': 17,
 	},
 	"rates" : [
 		{
@@ -553,9 +554,18 @@ def get_urs_dict():
     urs_dict = copy.deepcopy(example_urs)
     return urs_dict
 
-def get_uprs_dict():
+def get_uprs_dict(account, sequence, version=0,
+        rate_structure_name='DC Non Residential Non Heat',
+        utility_name='washgas'):
     '''Returns an example customer periodic rate structure document.'''
     uprs_dict = copy.deepcopy(example_uprs)
+    uprs_dict['_id'].update({
+        'account': account,
+        'sequence': sequence,
+        'version': version,
+        'rate_structure_name': rate_structure_name,
+        'utility_name': utility_name,
+    })
     return uprs_dict
 
 def get_cprs_dict(account, sequence, version=0):
