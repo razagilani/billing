@@ -2,14 +2,14 @@
 '''This script re-renders all the reebill PDFs. Make sure to set the config
 parameters with "dev" in them to "prod" before running on tyrell.'''
 import traceback
-from billing import mongo
-from billing.reebill import render
+from billing.processing import mongo
+from billing.processing import render
 from billing.processing import state
 from billing.processing.session_contextmanager import DBSession
 
 billdb_config = {
     'billpath': '/db-dev/skyline/bills/',
-    'database': 'skyline',
+    'database': 'skyline-dev',
     'utilitybillpath': '/db-dev/skyline/utilitybills/',
     'collection': 'reebills',
     'host': 'localhost',
@@ -17,12 +17,15 @@ billdb_config = {
 }
 statedb_config = {
     'host': 'localhost',
-    'password': 'dev',
+    'password': 'root',
     'database': 'skyline_dev',
-    'user': 'dev'
+    'user': 'root'
 }
 renderer_config = {
-    'temp_directory': '/tmp/reebill_rendering_files'
+    'temp_directory': '/tmp/reebill_rendering_files',
+    'template_directory': '/home/daniel/workspace/skyline/billing/reebill_templates',
+    'default_template': 'skyline',
+    'teva_accounts': ''
 }
 
 state_db = state.StateDB(**statedb_config)
@@ -46,7 +49,6 @@ with DBSession(state_db) as session:
                     reebill.sequence,
                     billdb_config["billpath"] + account,
                     "%.4d.pdf" % int(sequence),
-                    "EmeraldCity-FullBleed-1v2.png,EmeraldCity-FullBleed-2v2.png",
                     False
                 )
             except Exception as e:
