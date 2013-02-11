@@ -48,7 +48,7 @@ with DBSession(state_db) as session:
                     reebill.account, 
                     reebill.sequence,
                     billdb_config["billpath"] + account,
-                    "%.4d.pdf" % int(sequence),
+                    "%s_%.4d.pdf" % (account, int(sequence)),
                     False
                 )
             except Exception as e:
