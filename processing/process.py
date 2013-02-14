@@ -899,58 +899,63 @@ class Process(object):
 
             # objects for getting olap data
             olap_id = self.nexus_util.olap_id(reebill.account)
-            install = self.splinter.get_install_obj_for(olap_id)
+            try:
+                install = self.splinter.get_install_obj_for(olap_id)
+            except ValueError as ve:
+                print >> sys.stderr, ('Cannot lookup install %s, '
+                        'statistics not completely calculated for %s-%s') % (
+                        olap_id, reebill.account, reebill.sequence)
+            else:
+                bill_year, bill_month = dateutils.estimate_month(
+                        next_bill.period_begin,
+                        next_bill.period_end)
+                next_stats['consumption_trend'] = []
 
-            bill_year, bill_month = dateutils.estimate_month(
-                    next_bill.period_begin,
-                    next_bill.period_end)
-            next_stats['consumption_trend'] = []
+                # get month of first billing date
+                first_bill_date = self.reebill_dao \
+                        .get_first_bill_date_for_account(reebill.account)
+                first_bill_year = first_bill_date.year
+                first_bill_month = first_bill_date.month
 
-            # get month of first billing date
-            first_bill_date = self.reebill_dao \
-                    .get_first_bill_date_for_account(reebill.account)
-            first_bill_year = first_bill_date.year
-            first_bill_month = first_bill_date.month
+                # get month of "install commissioned"
+                commissioned_year = install.install_commissioned.year
+                commissioned_month = install.install_commissioned.month
 
-            # get month of "install commissioned"
-            commissioned_year = install.install_commissioned.year
-            commissioned_month = install.install_commissioned.month
-
-            for year, month in dateutils.months_of_past_year(bill_year, bill_month):
-                # the graph shows 0 energy for months before the first bill
-                # month or the install_commissioned month, whichever is later,
-                # even if data were collected during that time. however, the
-                # graph shows ALL the renewable energy sold during the first
-                # month, including energy sold before the start of the first
-                # billing period or the install_commissioned date.
-                if (year, month) < max((commissioned_year, commissioned_month),
-                        (first_bill_year, first_bill_month)):
-                    renewable_energy_btus = 0
-                else:
-                    # get billing data from OLAP (instead of
-                    # DataHandler.get_single_chunk_for_range()) for speed only.
-                    # we insist that data should be available during the month of
-                    # first billing and all following months; if get_data_for_month()
-                    # fails, that's a real error that we shouldn't ignore.
-                    # (but, inexplicably, that's not true: we bill webster
-                    # house (10019) starting in october 2011 but its first
-                    # monthly olap doc is in november.)
-                    try:
-                        renewable_energy_btus = self.monguru.get_data_for_month(install, year,
-                                month).energy_sold
-                        if (renewable_energy_btus is None):
-                            renewable_energy_btus = 0
-                    except (ValueError, AttributeError) as e:
-                        print >> sys.stderr, ('Missing olap document for %s, '
-                                '%s-%s: skipped, but the graph will be wrong') % (
-                                install.name, year, month)
+                for year, month in dateutils.months_of_past_year(bill_year, bill_month):
+                    # the graph shows 0 energy for months before the first bill
+                    # month or the install_commissioned month, whichever is later,
+                    # even if data were collected during that time. however, the
+                    # graph shows ALL the renewable energy sold during the first
+                    # month, including energy sold before the start of the first
+                    # billing period or the install_commissioned date.
+                    if (year, month) < max((commissioned_year, commissioned_month),
+                            (first_bill_year, first_bill_month)):
                         renewable_energy_btus = 0
+                    else:
+                        # get billing data from OLAP (instead of
+                        # DataHandler.get_single_chunk_for_range()) for speed only.
+                        # we insist that data should be available during the month of
+                        # first billing and all following months; if get_data_for_month()
+                        # fails, that's a real error that we shouldn't ignore.
+                        # (but, inexplicably, that's not true: we bill webster
+                        # house (10019) starting in october 2011 but its first
+                        # monthly olap doc is in november.)
+                        try:
+                            renewable_energy_btus = self.monguru.get_data_for_month(install, year,
+                                    month).energy_sold
+                            if (renewable_energy_btus is None):
+                                renewable_energy_btus = 0
+                        except (ValueError, AttributeError) as e:
+                            print >> sys.stderr, ('Missing olap document for %s, '
+                                    '%s-%s: skipped, but the graph will be wrong') % (
+                                    install.name, year, month)
+                            renewable_energy_btus = 0
 
-                therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
-                next_stats['consumption_trend'].append({
-                    'month': calendar.month_abbr[month],
-                    'quantity': therms
-                })
+                    therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
+                    next_stats['consumption_trend'].append({
+                        'month': calendar.month_abbr[month],
+                        'quantity': therms
+                    })
              
     def issue(self, session, account, sequence,
             issue_date=datetime.utcnow().date()):
