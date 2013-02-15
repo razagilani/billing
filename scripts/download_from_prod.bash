@@ -34,14 +34,7 @@ current_dir="$( cd "$( dirname "$0" )" && pwd)"
 
 cd /tmp
 
-if [ -f $tarball ]
-then
-    # TODO don't rely on presence of the tarball to determine whether the mongodump
-    # directiories below also exist; they may not
-    echo "Using previously downloaded $tarball"
-else
-    scp -i $ssh_key ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$tarball .
-fi
+scp -i $ssh_key ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$tarball .
 
 tar xzf $tarball
 
