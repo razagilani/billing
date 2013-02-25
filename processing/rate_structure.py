@@ -15,7 +15,7 @@ import yaml
 import yaml
 from math import sqrt, log, exp
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
-from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError
+from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError, NoSuchBillException
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -44,6 +44,11 @@ def gaussian(height, center, fwhm):
 
 def exp_weight(a, b):
     return lambda x: a**(x * b)
+
+def exp_weight_with_min(a, b, minimum):
+    '''Exponentially-decreasing weight function with a minimum value so it's
+    always nonnegative.'''
+    return lambda x: max(a**(x * b), minimum)
 
 class RateStructureDAO(object):
     '''
@@ -75,7 +80,8 @@ class RateStructureDAO(object):
     processing information.
     '''
 
-    def __init__(self, host, port, database, **kwargs):
+    def __init__(self, host, port, database, reebill_dao, **kwargs):
+        # TODO **kwargs == bad and should go away
         '''kwargs catches extra junk from config dictionary unpacked into
         constructor arguments.'''
         try:
@@ -85,9 +91,11 @@ class RateStructureDAO(object):
             raise e
         self.database = self.connection[database]
         self.collection = self.database['ratestructure']
+        self.reebill_dao = reebill_dao
 
-    def _get_probable_rsis(self, utility, rate_structure_name, period,
-            distance_func=manhattan_distance, weight_func=exp_weight(0.5, 7),
+    def _get_probable_rsis(self, utility, service, rate_structure_name, period,
+            distance_func=manhattan_distance,
+            weight_func=exp_weight_with_min(0.5, 7, 0.000001),
             threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False):
         '''Returns list of RSI dictionaries: a guess of what RSIs will be in a
         new bill for the given rate structure during the given period. The list
@@ -95,13 +103,14 @@ class RateStructureDAO(object):
         score (between 0 and 1) for an RSI to be included. 'ignore' is an
         optional function to exclude UPRSs from the input data (used for
         testing).'''
-        # load all UPRSs (to avoid repeated queries)
-        all_uprss = [uprs for uprs in self.load_uprss(utility,
-                rate_structure_name) if not ignore(uprs)]
+        # load all UPRS and their utility bill period dates (to avoid repeated
+        # queries)
+        all_uprss = [uprs for uprs in self._load_uprss_for_prediction(utility,
+                service, rate_structure_name) if not ignore(uprs)]
 
         # find every RSI binding that ever existed for this rate structure
         bindings = set()
-        for uprs in all_uprss:
+        for uprs, _, _ in all_uprss:
             for rsi in uprs['rates']:
                 bindings.add(rsi['rsi_binding'])
         
@@ -112,13 +121,17 @@ class RateStructureDAO(object):
         total_weight = defaultdict(lambda: 0)
         closest_occurrence = defaultdict(lambda: (sys.maxint, None))
         for binding in bindings:
-            for uprs in all_uprss:
-                uprs_period = (uprs['_id']['effective'].date(),
-                        uprs['_id']['expires'].date())
+            for uprs, start, end in all_uprss:
+                # get period dates: unfortunately this requires loading the
+                # bill TODO this sucks--figure out how to avoid it, especially
+                # the part that involves using supposedly private methods and
+                # directly accessing document structure
+                reebill = self.reebill_dao.load_reebill(uprs['_id']['account'],
+                        uprs['_id']['sequence'], version=uprs['_id']['version'])
 
                 # calculate weighted distance of this UPRS period from the
                 # target period
-                distance = distance_func(uprs_period, period)
+                distance = distance_func((start, end), period)
                 weight = weight_func(distance)
 
                 # update score and total weight for this binding
@@ -144,12 +157,12 @@ class RateStructureDAO(object):
         # its closest occurrence.
         result = []
         for binding, weight in scores.iteritems():
-            print '%35s %.02f %d' % (binding, weight, 100 * weight /
-                    total_weight[binding])
+            normalized_weight = weight / total_weight[binding] if \
+                    total_weight[binding] != 0 else 0
+            print '%35s %.02f %d' % (binding, weight, 100 * normalized_weight)
 
             # note that total_weight[binding] will never be 0 because it must
             # have occurred somewhere in order to occur in 'scores'
-            normalized_weight = weight / total_weight[binding]
             if normalized_weight >= threshold:
                 rsi_dict = closest_occurrence[binding][1]
                 rate, quantity = 0, 0
@@ -164,14 +177,14 @@ class RateStructureDAO(object):
                     'rate': rate,
                     'quantity': quantity,
                     #'total': 0,
-                    'uuid': uuid.uuid1(), # uuid1 is used in wsgi.py
+                    'uuid': str(uuid.uuid1()), # uuid1 is used in wsgi.py
                 })
         return result
 
     def get_probable_uprs(self, reebill, service):
         '''Returns a guess of the rate structure for the given reebill.'''
         utility = reebill.utility_name_for_service(service)
-        rate_structure_name = reebill.utility_name_for_service(service)
+        rate_structure_name = reebill.rate_structure_name_for_service(service)
         return {
             '_id': {
                 'account': reebill.account,
@@ -180,8 +193,9 @@ class RateStructureDAO(object):
                 'utility_name': utility,
                 'rate_structure_name': rate_structure_name,
             },
-            'rates': self._get_probable_rsis(utility, rate_structure_name,
-                    reebill.utilbill_period_for_service(service))
+            'rates': self._get_probable_rsis(utility, service,
+                rate_structure_name,
+                reebill.utilbill_period_for_service(service))
         }
 
     def _load_combined_rs_dict(self, reebill, service):
@@ -303,15 +317,14 @@ class RateStructureDAO(object):
             "_id.type":"URS",
             "_id.utility_name": utility_name,
             "_id.rate_structure_name": rate_structure_name,
-            #"_id.effective": effect<=period_begin,
-            #"_id.expires": expires>=period_begin,
         }
         urs = self.collection.find_one(query)
         return urs
 
-    def load_uprss(self, utility_name, rate_structure_name, verbose=False):
-        '''Returns list of raw UPRS dictionaries with given utility and rate
-        structure name.'''
+    def _load_uprss_for_prediction(self, utility_name, service,
+            rate_structure_name, verbose=False):
+        '''Returns list of (raw UPRS dictionary, start date, end date) tuples
+        with given utility and rate structure name.'''
         cursor = self.collection.find({
             '_id.type': 'UPRS',
             '_id.utility_name': utility_name,
@@ -319,12 +332,31 @@ class RateStructureDAO(object):
         })
         result = []
         for doc in cursor:
-            if doc['_id'].get('effective', None) is None or \
-                    doc['_id'].get('expires', None) is None:
+            if doc is None or doc['_id'].get('account', None) is None or \
+                    doc['_id'].get('sequence', None) is None or \
+                    doc['_id'].get('version', None) is None or \
+                    'effective' in doc['_id'] or 'expires' in doc['_id']:
                 if verbose:
                     print >> sys.stderr, 'malformed UPRS id:', doc['_id']
-            else:
-                result.append(doc)
+                continue
+            # only include RS docs that correspond to an actual utility bill
+            # with an actual reebill
+            try:
+                # TODO would be better to use StateDB.is_issued here (to use
+                # only bills that officially exist in MySQL and are issued),
+                # but a ReeBillDAO is what's available
+                # (look up highest version, not the UPRS document's verison,
+                # because UPRS will only be used if its version is the max)
+                reebill = self.reebill_dao.load_reebill(doc['_id']['account'],
+                        doc['_id']['sequence'], version='max')
+                utilbill = reebill._get_utilbill_for_rs(utility_name,
+                        service, rate_structure_name)
+            except NoSuchBillException:
+                continue
+            # skip the UPRS if its version is not the maximum
+            if doc['_id']['version'] != reebill.version:
+                continue
+            result.append((doc, utilbill['start'], utilbill['end']))
         return result
 
     def load_uprs(self, account, sequence, version, utility_name,
@@ -374,8 +406,7 @@ class RateStructureDAO(object):
         rate_structure_data = bson_convert(rate_structure_data)
         self.collection.save(rate_structure_data)
 
-    def save_urs(self, utility_name, rate_structure_name, effective, expires,
-            rate_structure_data):
+    def save_urs(self, utility_name, rate_structure_name, rate_structure_data):
         '''Saves the dictionary 'rate_structure_data' as a Utility (global)
         Rate Structure document in Mongo.'''
         rate_structure_data['_id'] = { 

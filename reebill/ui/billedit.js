@@ -427,7 +427,7 @@ function reeBillReady() {
                     for (var i = 0; i < selections.length; i++) {
                         utilbillGridStore.remove(selections[i]);
                     }
-                    utilbillGrid.getBottomToolbar().doRefresh();
+                    //utilbillGridStore.reload();
                 }
             }]
         }),
@@ -458,15 +458,15 @@ function reeBillReady() {
             moveEditorOnEnter: false,
             listeners: {
                 rowdeselect: function (selModel, index, record) {
-                    loadReeBillUIForSequence(record.data.account, null);
+                    //loadReeBillUIForSequence(record.data.account, null);
                 },
                 
                 rowselect: function (selModel, index, record) {
 
                     // a row was selected in the UI, update subordinate ReeBill Data
-                    if (record.data.sequence != null) {
-                        loadReeBillUIForSequence(record.data.account, record.data.sequence);
-                    }
+                    //if (record.data.sequence != null) {
+                    //    loadReeBillUIForSequence(record.data.account, record.data.sequence);
+                    //}
                     // convert the parsed date into a string in the format expected by the back end
                     var formatted_begin_date_string = record.data.period_start.format('Y-m-d');
                     var formatted_end_date_string = record.data.period_end.format('Y-m-d');
@@ -1573,7 +1573,9 @@ function reeBillReady() {
                         }
                     },
                     });
-                }
+                } else {
+                    tabPanel.setDisabled(false);
+                };
             });
         }
         else
@@ -3488,7 +3490,7 @@ function reeBillReady() {
                 dataIndex: 'uuid',
                 editable: false,
                 editor: new Ext.form.TextField({allowBlank: false}),
-                hiddent: true,
+                hidden: true,
             },{
                 header: 'RSI Binding',
                 sortable: true,

@@ -27,7 +27,7 @@ import mongoengine
 from skyliner.skymap.monguru import Monguru
 from skyliner.splinter import Splinter
 #TODO don't rely on test code, if we are, it isn't test code
-from billing.skyliner import mock_skyliner
+from skyliner import mock_skyliner
 from billing.util import json_util as ju, dateutils, nexus_util as nu
 from billing.util.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
@@ -323,8 +323,13 @@ class BillToolBridge:
         self.reebill_dao = mongo.ReebillDAO(self.state_db, **self.billdb_config)
 
         # create a RateStructureDAO
-        rsdb_config_section = self.config.items("rsdb")
-        self.ratestructure_dao = rs.RateStructureDAO(**dict(rsdb_config_section))
+        rsdb_config_section = dict(self.config.items("rsdb"))
+        self.ratestructure_dao = rs.RateStructureDAO(
+            rsdb_config_section['host'],
+            rsdb_config_section['port'],
+            rsdb_config_section['database'],
+            self.reebill_dao
+        )
 
         # configure journal:
         # create a MongoEngine connection "alias" named "journal" with which
@@ -773,27 +778,34 @@ class BillToolBridge:
         start_date = kwargs.get('start_date')
         if start_date is not None:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
+
+        # 1st transaction: roll
         with DBSession(self.state_db) as session:
             lastSequence = self.state_db.last_sequence(session, account)
             reebill = self.reebill_dao.load_reebill(account, lastSequence)
             new_reebill = self.process.roll_bill(session, reebill, start_date)
             self.reebill_dao.save_reebill(new_reebill)
+            journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
+                    account, new_reebill.sequence)
+            # Process.roll includes attachment
+            journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
+                account, new_reebill.sequence, new_reebill.version)
 
+        # 2nd transaction: bind and compute. if one of these fails, don't undo
+        # the changes to MySQL above, leaving a Mongo reebill document without
+        # a corresponding MySQL row; only undo the changes related to binding
+        # and computing (currently there are none).
+        with DBSession(self.state_db) as session:
             new_reebill = self.reebill_dao.load_reebill(account, lastSequence+1)
             if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
                 fbd.fetch_oltp_data(self.splinter, self.nexus_util.olap_id(account),
                     new_reebill, use_olap=True, verbose=True)
             self.reebill_dao.save_reebill(new_reebill)
+            journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
+                account, new_reebill.sequence, new_reebill.version)
             
             self.process.compute_bill(session, reebill, new_reebill)
             self.reebill_dao.save_reebill(new_reebill)
-
-            journal.ReeBillRolledEvent.save_instance(cherrypy.session['user'],
-                    account, new_reebill.sequence)
-            journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-                account, new_reebill.sequence, new_reebill.version)
-            journal.ReeBillBoundEvent.save_instance(cherrypy.session['user'],
-                account, new_reebill.sequence, new_reebill.version)
 
             return self.dumps({'success': True})
 
@@ -1493,7 +1505,7 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             buf = StringIO() 
             # TODO: include all services
-            calendar_reports.write_daily_average_energy_xls(self.reebill_dao, account, buf, service='Gas')
+            calendar_reports.write_daily_average_energy_xls(self.reebill_dao, account, buf, service='gas')
 
             # set MIME type for file download
             cherrypy.response.headers['Content-Type'] = 'application/excel'
@@ -1532,8 +1544,12 @@ class BillToolBridge:
 
         if xaction == "read":
             return self.dumps({'success': True, 'rows':rates})
-
-        elif xaction == "update":
+        
+        with DBSession(self.state_db) as session:
+            if self.state_db.is_issued(session, account, sequence):
+                raise Exception("Cannot edit rate structure for an issued bill")
+            
+        if xaction == "update":
 
             rows = json.loads(kwargs["rows"])
 
@@ -1678,8 +1694,12 @@ class BillToolBridge:
 
         if xaction == "read":
             return self.dumps({'success': True, 'rows':rates})
-
-        elif xaction == "update":
+        
+        with DBSession(self.state_db) as session:
+            if self.state_db.is_issued(session, account, sequence):
+                raise Exception("Cannot edit rate structure for an issued bill")
+            
+        if xaction == "update":
 
             rows = json.loads(kwargs["rows"])
 
@@ -1773,8 +1793,6 @@ class BillToolBridge:
                 reebill.account, reebill.sequence, reebill.version,
                 reebill.utility_name_for_service(service),
                 reebill.rate_structure_name_for_service(service),
-                effective,
-                expires,
                 rate_structure
             )
 
@@ -1812,7 +1830,11 @@ class BillToolBridge:
         if xaction == "read":
             return self.dumps({'success': True, 'rows':rates})
 
-        elif xaction == "update":
+        with DBSession(self.state_db) as session:
+            if self.state_db.is_issued(session, account, sequence):
+                raise Exception("Cannot edit rate structure for an issued bill")
+        
+        if xaction == "update":
 
             rows = json.loads(kwargs["rows"])
 
@@ -2061,7 +2083,7 @@ class BillToolBridge:
                 rows = []
                 allowable_diff = 0
                 try:
-                    allowable_diff = cherrypy.session['user'].preferences['reebill_total-percent_cutoff']
+                    allowable_diff = cherrypy.session['user'].preferences['difference_threshold']
                 except:
                     allowable_diff = UserDAO.default_user.preferences['difference_threshold']
                 reebills, total = self.state_db.listAllIssuableReebillInfo(session=session)
@@ -2857,6 +2879,7 @@ class BillToolBridge:
 
                 # delete each utility bill, and log the deletion in the journal
                 # with the path where the utility bill file was moved
+                print ids
                 for utilbill_id in ids:
                     # load utilbill to get its dates and service
                     utilbill = session.query(db_objects.UtilBill)\
@@ -2866,6 +2889,7 @@ class BillToolBridge:
 
                     # delete it & get new path (will be None if there was never
                     # a utility bill file or the file could not be found)
+                    print start, end, service
                     deleted_path = self.process.delete_utility_bill(session,
                             utilbill_id)
 
