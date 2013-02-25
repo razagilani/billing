@@ -18,7 +18,7 @@ from sqlalchemy.sql.expression import desc, asc, label
 from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy.sql.functions import min as sql_min
 from sqlalchemy import func
-from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, StatusUnbilled
+from db_objects import Customer, UtilBill, UtilBillVersion, ReeBill, Payment, StatusDaysSince, StatusUnbilled
 from billing.processing.exceptions import BillStateError
 sys.stdout = sys.stderr
 
@@ -645,7 +645,8 @@ class StateDB:
         return next_utilbills
 
     def record_utilbill_in_database(self, session, account, service,
-            begin_date, end_date, total_charges, date_received, state=UtilBill.Complete):
+            begin_date, end_date, total_charges, date_received,
+            state=UtilBillVersion.Complete):
         '''Inserts a row into the utilbill table when a utility bill file has
         been uploaded. The bill is Complete by default but can can have other
         states (see comment in db_objects.UtilBill for explanation of utility
