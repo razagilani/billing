@@ -463,8 +463,8 @@ PYTHONPATH=/var/local/reebill-prod/lib/python2.7/site-packages:/var/local/reebil
 MAILTO=randrews@skylineinnovations.com
 
 # m h  dom mon dow   command
-0 2 * * * /var/local/reebill-prod/lib/python2.7/site-packages/billing/scripts/backup_prod.bash
-0 7 * * * source /var/local/reebill-prod/bin/activate && /var/local/reebill-prod/lib/python2.7/site-packages/billing/reconciliation.py --host localhost --statedb skyline_prod --stateuser reebill-prod --statepw NWH7H4wY --billdb skyline-prod --olapdb prod --skip-oltp --nexushost nexus.skylineinnovations.net
+0 2 * * * /var/local/reebill-prod/lib/python2.7/site-packages/billing/scripts/backup_prod.bash > /home/reebill-prod/backup_prod_stdout.log 2> /home/reebill-prod/backup_prod_stderr.log
+0 7 * * * source /var/local/reebill-prod/bin/activate && /var/local/reebill-prod/lib/python2.7/site-packages/billing/scripts/reconciliation.py --reportoutputdir /var/local/reebill-prod --logoutputdir /var/local/reebill-prod --billdbhost localhost --statedb skyline_prod --stateuser reebill-prod --statepw NWH7H4wY --billdb skyline-prod --olaphost localhost --olapdb prod --skip-oltp --nexushost nexus.skylineinnovations.net > /home/reebill-prod/reconciliation_stdout.log 2> /home/reebill-prod/reconciliation_stderr.log
 
 
 For a staging environment
@@ -475,13 +475,11 @@ It is important that the staging environment de-stages production data.
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 PYTHONPATH=/var/local/reebill-stage/lib/python2.7/site-packages:/var/local/reebill-stage/lib/python2.7/site-packages/ChartDirector/lib
+MAILTO=randrews@skylineinnovations.com
 
 # m h  dom mon dow   command
-0 3 * * * /var/local/reebill-stage/lib/python2.7/site-packages/billing/scripts/destage_from_prod.bash P4IMvFI9DRTd tyrell-prod stage
-# old script, to be deleted
-#0 2 * * * /var/local/reebill-stage/lib/python2.7/site-packages/billing/reebill/admin/destage_prod_to_stage.bash
-0 4 * * * source /var/local/reebill-stage/bin/activate && /var/local/reebill-stage/lib/python2.7/site-packages/billing/reconciliation.py --statedb skyline_stage  --stateuser reebill-stage --statepw KdvDzFZeawPy --billdb skyline-stage --olapdb stage --skip-oltp --nexushost nexus.skylineinnovations.net
-
+0 3 * * * /var/local/reebill-stage/lib/python2.7/site-packages/billing/scripts/destage_from_prod.bash P4IMvFI9DRTd tyrell-prod stage  > /home/reebill-stage/destage_from_prod_stdout.log 2> /home/reebill-stage/destage_from_prod_stderr.log
+0 4 * * * source /var/local/reebill-stage/bin/activate && /var/local/reebill-stage/lib/python2.7/site-packages/billing/scripts/reconciliation.py --reportoutputdir /var/local/reebill-stage/ --logoutputdir /var/local/reebill-stage --billdbhost localhost --statedb skyline_stage --stateuser reebill-stage --statepw KdvDzFZeawPy --billdb skyline-stage --olaphost localhost --olapdb stage --skip-oltp --nexushost nexus.skylineinnovations.net > /home/reebill-stage/reconciliation_stdout.log 2> /home/reebill-stage/reconciliation_stderr.log
 
 
 

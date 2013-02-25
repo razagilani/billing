@@ -19,6 +19,7 @@ from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy.sql.functions import min as sql_min
 from sqlalchemy import func
 from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, StatusUnbilled
+from billing.processing.exceptions import BillStateError
 sys.stdout = sys.stderr
 
 # TODO move the 2 functions below to Process? seems like state.py is only about

@@ -312,7 +312,7 @@ class Process(object):
         else:
             utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
         
-        # duplicate the CPRS for each service
+        # duplicate the UPRS and CPRS for each service
         # TODO: 22597151 refactor
         for service in reebill.services:
             utility_name = reebill.utility_name_for_service(service)
@@ -332,6 +332,27 @@ class Process(object):
                 raise NoRateStructureError("No current UPRS")
             self.rate_structure_dao.save_uprs(reebill.account, reebill.sequence + 1,
                     0, utility_name, rate_structure_name, uprs)
+
+            # remove charges that don't correspond to any RSI binding (because
+            # their corresponding RSIs were not part of the predicted rate structure)
+            valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
+                    cprs['rates']}
+            chargegroups = reebill._get_utilbill_for_service(service)['chargegroups']
+            for group, charges in chargegroups.iteritems():
+                for charge in charges:
+                    # if the charge matches a valid RSI binding, mark that
+                    # binding as matched; if not, delete the charge
+                    if charge['rsi_binding'] in valid_bindings:
+                        valid_bindings[charge['rsi_binding']] = True
+                    else:
+                        charges.remove(charge)
+                # chargegroup is not removed if it's empty because it might
+                # come back
+
+            # TODO add a charge for every RSI that doesn't have a charge, i.e.
+            # the ones whose value in 'valid_bindings' is False.
+            # we can't do this yet because we don't know what group it goes in.
+            # see https://www.pivotaltracker.com/story/show/43797365
 
         # TODO Put somewhere nice because this has a specific function
         active_utilbills = [u for u in reebill._utilbills if u['service'] in reebill.services]
@@ -398,6 +419,10 @@ class Process(object):
                     reebill.sequence, reebill.version, utility_name, rs_name)
             self.rate_structure_dao.save_cprs(account, sequence, max_version +
                     1, utility_name, rs_name, cprs)
+            uprs = self.rate_structure_dao.load_uprs(reebill.account,
+                    reebill.sequence, reebill.version, utility_name, rs_name)
+            self.rate_structure_dao.save_uprs(account, sequence, max_version +
+                    1, utility_name, rs_name, uprs)
 
         # re-bind
         fetch_bill_data.fetch_oltp_data(self.splinter,
@@ -874,58 +899,63 @@ class Process(object):
 
             # objects for getting olap data
             olap_id = self.nexus_util.olap_id(reebill.account)
-            install = self.splinter.get_install_obj_for(olap_id)
+            try:
+                install = self.splinter.get_install_obj_for(olap_id)
+            except ValueError as ve:
+                print >> sys.stderr, ('Cannot lookup install %s, '
+                        'statistics not completely calculated for %s-%s') % (
+                        olap_id, reebill.account, reebill.sequence)
+            else:
+                bill_year, bill_month = dateutils.estimate_month(
+                        next_bill.period_begin,
+                        next_bill.period_end)
+                next_stats['consumption_trend'] = []
 
-            bill_year, bill_month = dateutils.estimate_month(
-                    next_bill.period_begin,
-                    next_bill.period_end)
-            next_stats['consumption_trend'] = []
+                # get month of first billing date
+                first_bill_date = self.reebill_dao \
+                        .get_first_bill_date_for_account(reebill.account)
+                first_bill_year = first_bill_date.year
+                first_bill_month = first_bill_date.month
 
-            # get month of first billing date
-            first_bill_date = self.reebill_dao \
-                    .get_first_bill_date_for_account(reebill.account)
-            first_bill_year = first_bill_date.year
-            first_bill_month = first_bill_date.month
+                # get month of "install commissioned"
+                commissioned_year = install.install_commissioned.year
+                commissioned_month = install.install_commissioned.month
 
-            # get month of "install commissioned"
-            commissioned_year = install.install_commissioned.year
-            commissioned_month = install.install_commissioned.month
-
-            for year, month in dateutils.months_of_past_year(bill_year, bill_month):
-                # the graph shows 0 energy for months before the first bill
-                # month or the install_commissioned month, whichever is later,
-                # even if data were collected during that time. however, the
-                # graph shows ALL the renewable energy sold during the first
-                # month, including energy sold before the start of the first
-                # billing period or the install_commissioned date.
-                if (year, month) < max((commissioned_year, commissioned_month),
-                        (first_bill_year, first_bill_month)):
-                    renewable_energy_btus = 0
-                else:
-                    # get billing data from OLAP (instead of
-                    # DataHandler.get_single_chunk_for_range()) for speed only.
-                    # we insist that data should be available during the month of
-                    # first billing and all following months; if get_data_for_month()
-                    # fails, that's a real error that we shouldn't ignore.
-                    # (but, inexplicably, that's not true: we bill webster
-                    # house (10019) starting in october 2011 but its first
-                    # monthly olap doc is in november.)
-                    try:
-                        renewable_energy_btus = self.monguru.get_data_for_month(install, year,
-                                month).energy_sold
-                        if (renewable_energy_btus is None):
-                            renewable_energy_btus = 0
-                    except (ValueError, AttributeError) as e:
-                        print >> sys.stderr, ('Missing olap document for %s, '
-                                '%s-%s: skipped, but the graph will be wrong') % (
-                                install.name, year, month)
+                for year, month in dateutils.months_of_past_year(bill_year, bill_month):
+                    # the graph shows 0 energy for months before the first bill
+                    # month or the install_commissioned month, whichever is later,
+                    # even if data were collected during that time. however, the
+                    # graph shows ALL the renewable energy sold during the first
+                    # month, including energy sold before the start of the first
+                    # billing period or the install_commissioned date.
+                    if (year, month) < max((commissioned_year, commissioned_month),
+                            (first_bill_year, first_bill_month)):
                         renewable_energy_btus = 0
+                    else:
+                        # get billing data from OLAP (instead of
+                        # DataHandler.get_single_chunk_for_range()) for speed only.
+                        # we insist that data should be available during the month of
+                        # first billing and all following months; if get_data_for_month()
+                        # fails, that's a real error that we shouldn't ignore.
+                        # (but, inexplicably, that's not true: we bill webster
+                        # house (10019) starting in october 2011 but its first
+                        # monthly olap doc is in november.)
+                        try:
+                            renewable_energy_btus = self.monguru.get_data_for_month(install, year,
+                                    month).energy_sold
+                            if (renewable_energy_btus is None):
+                                renewable_energy_btus = 0
+                        except (ValueError, AttributeError) as e:
+                            print >> sys.stderr, ('Missing olap document for %s, '
+                                    '%s-%s: skipped, but the graph will be wrong') % (
+                                    install.name, year, month)
+                            renewable_energy_btus = 0
 
-                therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
-                next_stats['consumption_trend'].append({
-                    'month': calendar.month_abbr[month],
-                    'quantity': therms
-                })
+                    therms = Decimal(str(renewable_energy_btus)) / Decimal('100000.0')
+                    next_stats['consumption_trend'].append({
+                        'month': calendar.month_abbr[month],
+                        'quantity': therms
+                    })
              
     def issue(self, session, account, sequence,
             issue_date=datetime.utcnow().date()):
@@ -976,7 +1006,7 @@ class Process(object):
         for account in accounts:
             payments = self.state_db.payments(session, account)
             cumulative_savings = 0
-            for reebill in self.reebill_dao.load_reebills_for(account):
+            for reebill in self.reebill_dao.load_reebills_for(account, 0):
                 # Skip over unissued reebills
                 if not reebill.issue_date:
                     continue
@@ -1050,7 +1080,7 @@ class Process(object):
         for account in accounts:
             payments = self.state_db.payments(session, account)
             cumulative_savings = 0
-            for reebill in self.reebill_dao.load_reebills_for(account):
+            for reebill in self.reebill_dao.load_reebills_for(account, 0):
                 # Skip over unissued reebills
                 if not reebill.issue_date:
                     continue

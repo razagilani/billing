@@ -60,12 +60,6 @@ port = 27017
         self.config = ConfigParser.RawConfigParser()
         self.config.readfp(config_file)
         self.billupload = BillUpload(self.config, logging.getLogger('test'))
-        self.rate_structure_dao = rate_structure.RateStructureDAO(**{
-            'database': 'test',
-            'collection': 'ratestructure',
-            'host': 'localhost',
-            'port': 27017
-        })
         self.splinter = MockSplinter(deterministic=True)
         
         # temporary hack to get a bill that's always the same
@@ -110,6 +104,8 @@ port = 27017
             'host': 'localhost',
             'port': 27017
         })
+        self.rate_structure_dao = rate_structure.RateStructureDAO('localhost',
+                27017, 'test', self.reebill_dao)
 
         mongoengine.connect('test', host='localhost', port=27017,
                 alias='utilbills')
