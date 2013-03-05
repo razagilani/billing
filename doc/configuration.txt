@@ -1,0 +1,699 @@
+Dependencies necessary for ReeBill 
+==================================
+
+Ensure a user and virtualenv have been set up if desired.
+Ensure that Apache and an Apache virtual host has been set up.
+Ensure that the /db utility bill directory exists as specified in the reebill.cfg file
+Ensure that Mongo is available
+Ensure that MySQL Server is available
+
+See /docs/environmentsetup.txt
+- General guidlines for configuring Apache2 
+- Configuring Application Specific Python Virtualenv for WSGI Application
+
+See /docs/host-setup.txt
+- Installing and configuring MySQl
+
+Generic Hosting Configuration Instructions for ReeBill
+======================================================
+
+How to create a dedicated host running once instance of ReeBill
+
+DNS 
+---
+
+[customer].skylineinnovations.net must point to an AWS dynamic name or an Elastic IP
+
+This name is used to point to an Apache virtual host
+
+
+SSL
+---
+
+SSL Certificates are not configured at this time
+
+
+AWS Host Setup
+--------------
+
+Create reebill hosting security group admitting SSH and HTTP/S
+
+32 bit Amazon Linux AMI ami-31814f58, Small instance
+
+
+SSH Keys are saved in IT/ec2keys
+
+Connecting to the newly configured host:   
+ssh -i /home/randrews/Dropbox/Skyline-IT/ec2keys/reebill-atsite.pem ec2-user@ec2-50-16-73-74.compute-1.amazonaws.com
+
+
+Create user for running and deploying ReeBill
+
+    sudo useradd -s /bin/bash --create-home reebill
+
+    sudo passwd reebill [passwd] 
+    set passwd, storing it in keepass (necessary? do we ever log-in as the application user?)
+
+
+.bash_profile/login shell
+=========================
+
+
+development user
+
+login user with virtualenv
+
+staging user
+
+source /var/local/reebill-stage/bin/activate
+export PYTHONPATH=/var/local/reebill-stage/lib/python2.7/site-packages:/var/local/reebill-stage/lib/python2.7/site-packages/ChartDirector/lib
+cd /var/local/reebill-stage
+
+production user
+
+source /var/local/reebill-prod/bin/activate
+export PYTHONPATH=/var/local/reebill-prod/lib/python2.7/site-packages:/var/local/reebill-prod/lib/python2.7/site-packages/ChartDirector/lib
+cd /var/local/reebill-prod
+
+Configure Apache2 
+=================
+
+    Predicates
+    ----------
+
+    Installed Apache2
+    Installed and enabled mod_wsgi for Python WSGI applications
+    Created user that will run the WSGI code
+        sudo mkdir /var/local/reebill
+        sudo chown -R reebill:reebill /var/local/reebill
+
+    Deployed software in the WSGI code directory
+
+
+    Big catch on AWS Linux AMI:  
+        http://code.google.com/p/modwsgi/wiki/ConfigurationIssues
+        Add this to the wsgi module config file
+        WSGISocketPrefix /var/run/wsgi
+    
+
+    Virtual Hosting
+    ---------------
+
+    Configure a name based virtual host for your development environment
+        Ensure that the Apache2 host knows of the virtual hostnames so Apache can start virtual hosts with ServerName directive
+
+        Add to /etc/hosts:
+            [local ip address] atsite
+
+        Ensure that NameVirtualHost *:80 is declared in an appropriate httpd configuration file
+
+        Declare the virtual host's name in the site configuration file
+            ServerName [virtualhostname]
+
+        Ensure that the WSGI directives respect the desired virtualenv
+
+        Restart Apache2
+            sudo service httpd restart
+
+    Example virtual host config directive
+    -------------------------------------
+<VirtualHost *:80>
+        ServerName reebill-prod
+        ServerAlias reebill
+        serverAlias reebill.skylineinnovations.net
+        serverAlias reebill-prod.skylineinnovations.net
+
+        ServerAdmin webmaster@localhost
+
+        DocumentRoot /var/local/reebill-prod/lib/python2.7/site-packages/billing/reebill/ui
+        <Directory /var/local/reebill-prod/lib/python2.7/site-packages/billing/reebill/ui>
+                DirectoryIndex /reebill 
+                Options FollowSymLinks
+                AllowOverride None
+        </Directory>
+        # directory where utility bill images are saved
+        Alias /utilitybillimages /tmp/billimages-prod
+        <Directory /tmp/billimages>
+            #Order deny,allow
+            #Allow from all
+            Options Indexes FollowSymLinks MultiViews
+            #AllowOverride None
+        </Directory>
+
+
+        ErrorLog /var/log/httpd/reebill-prod_error.log
+
+        # Possible values include: debug, info, notice, warn, error, crit,
+        # alert, emerg.
+        LogLevel debug
+
+        CustomLog /var/log/httpd/reebill-prod_access.log combined
+
+        WSGIScriptAlias /reebill /var/local/reebill-prod/lib/python2.7/site-packages/billing/reebill/wsgi.py
+
+        WSGIDaemonProcess reebill-prod user=reebill-prod group=reebill-prod processes=1 threads=1 python-path=/var/local/reebill-prod/lib/python2.7/site-packages/ChartDirector/lib/:/var/local/reebill-prod/lib/python2.7/site-packages
+        WSGIApplicationGroup %{GLOBAL}
+
+        WSGIProcessGroup reebill-prod
+
+</VirtualHost>
+
+
+
+Install Packages
+================
+
+The AWS Linux AMI is based on Fedora and uses yum.
+
+Global system requirements
+
+    gcc
+    python development headers
+    ImageMagick
+    html2ps
+    poppler-utils (for pdftoppm) (please check this against latest pdf strategy)
+
+For example, on AWS:
+
+    Install gcc and python heads so packages like pymongo and numpy can compile C extensions
+        sudo yum install python-devel gcc
+
+    For Rendering Images
+        sudo yum install ImageMagick
+        sudo yum install html2ps
+        sudo yum install poppler-utils (for pdftoppm)
+
+Install the following packages with sudo pip install [package]
+
+	MySQL-Server Dev Headers so MySQL-python can compile
+	Gevent requires libevent-dev to be installed
+
+	requirements.txt will fail without the above two predicates
+
+
+
+
+This list is now maintained in the ./requirements.txt file
+
+    CherryPy==3.2.2
+    Jinja2==2.6
+    MySQL-python==1.2.3
+    PIL==1.1.7
+    PyYAML==3.10
+    SQLAlchemy==0.7.8
+    argparse==1.2.1
+    certifi==0.0.8
+    chardet==1.1
+    fabulous==0.1.5
+    gevent==0.13.7
+    grapefruit==0.1a3
+    greenlet==0.4.0
+    mongoengine==0.6.13
+    mongokit==0.8
+    numpy==1.6.2
+    ordereddict==1.1
+    py-bcrypt==0.2
+    pyPdf==1.13
+    pymongo==2.2.1
+    python-dateutil==2.1
+    reportlab==2.5
+    requests==0.10.8
+    simplejson==2.6.0
+    six==1.1.0
+    tablib==0.9.11
+    wsgiref==0.1.2
+    xlwt==0.7.4
+
+    the following are also required for skyliner:
+    eventlet
+    google
+
+turn on virtualenv
+pip install -r [above file]
+
+    
+
+Chart Director 'pychartdir'
+
+    http://www.advsofteng.com/download.html
+    http://download2.advsofteng.com/chartdir_python_linux.tar.gz
+    http://download2.advsofteng.com/chartdir_python_linux_64.tar.gz
+
+    Chart Director is installed by:
+        tar xvf chartdir_python_linux.tar
+        mv ChartDirector /usr/lib/python2.6/site-packages (or to site-packages in virtualenv)
+        Then add python path to WSGIDaemonProcess directive in Apache2 /usr/lib/python2.6/site-packages/ChartDirector/lib
+    Fonts have to be copied?
+
+Details on installing ChartDirector:
+
+
+    The files for the ChartDirector for Python module are in "ChartDirector/lib". Copy *everything* in "ChartDirector/lib" (including the fonts subdirectory in Linux, FreeBSD and Solaris versions) to a directory in your Python module search path.  This path may have to be set in the WSGI configuration if used by a WSGI app.
+    There is no setup.py, so manually copy to site or dist-packages (may be site-packages under windows)
+        For example, 
+            mkdir /var/local/reebill-[env]/lib/python2.6/site-packages/ChartDirector
+            mkdir /var/local/reebill-[env]/lib/python2.6/site-packages/ChartDirector/lib
+            cp ChartDirector/lib/* /var/local/reebill-[env]/lib/python2.6/site-packages/ChartDirector/lib
+    (ToDo: figure out if there is anything wrong with manually copying to dist-packages as well as how to get python to find it without having to set the path manually)
+    PYTHONPATH must point to .../ChartDirector/lib or the location to where it was copied
+    This is accomplished by adding python path to WSGIDaemonProcess directive in Apache2 .../ChartDirector/lib
+    For example:
+        WSGIDaemonProcess reebill-prod user=reebill-prod group=reebill-prod processes=1 threads=10 python-path=/var/local/reebill-prod/lib/python2.7/site-packages/ChartDirector/lib/:/var/local/reebill-prod/lib/python2.7/site-packages
+
+    Ensure ReeBill fonts are included for Chart Director:
+        Manually add third party fonts to the ChartDirector font directory /usr/lib/python2.6/dist-packages/ChartDirector/lib/fonts
+        For example, sudo cp billing/presentation/fonts/* /usr/lib/python2.6/dist-packages/ChartDirector/lib/fonts/
+        For example, as the application user: cp /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/fonts/* /var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib/fonts/
+
+
+MySQL
+
+    If pip install MySQL-Python fails with the following error, mysql_config is not available.
+    Install it by: sudo apt-get install libmysqlclient-dev
+
+            $ pip install MySQL-Python
+            Downloading/unpacking MySQL-Python
+              Downloading MySQL-python-1.2.3.tar.gz (70Kb): 70Kb downloaded
+              Running setup.py egg_info for package MySQL-Python
+                sh: mysql_config: not found
+                Traceback (most recent call last):
+                  File "<string>", line 14, in <module>
+                  File "/home/randrews/.virtualenvs/reebill/build/MySQL-Python/setup.py", line 15, in <module>
+                    metadata, options = get_config()
+                  File "setup_posix.py", line 43, in get_config
+                    libs = mysql_config("libs_r")
+                  File "setup_posix.py", line 24, in mysql_config
+                    raise EnvironmentError("%s not found" % (mysql_config.path,))
+                EnvironmentError: mysql_config not found
+                Complete output from command python setup.py egg_info:
+                sh: mysql_config: not found
+
+            Traceback (most recent call last):
+
+              File "<string>", line 14, in <module>
+
+              File "/home/randrews/.virtualenvs/reebill/build/MySQL-Python/setup.py", line 15, in <module>
+
+                metadata, options = get_config()
+
+              File "setup_posix.py", line 43, in get_config
+
+                libs = mysql_config("libs_r")
+
+              File "setup_posix.py", line 24, in mysql_config
+
+                raise EnvironmentError("%s not found" % (mysql_config.path,))
+
+            EnvironmentError: mysql_config not found
+
+            ----------------------------------------
+            Command python setup.py egg_info failed with error code 1 in /home/randrews/.virtualenvs/reebill/build/MySQL-Python
+            Storing complete log in /home/randrews/.pip/pip.log
+
+    Configure MySQL Database for bill processing 
+
+        The best thing to do is to execute the destage scripts.
+
+        Set up a local instance of MySQL-Server and configure local accounts following host-setup.txt
+
+        So that an administrative user can run connect remotely - do this only for dev/stage
+        grant all on skyline.* to 'root'@'%.local' identified by '[password]';
+
+
+        Log in as database root user
+        mysql -uroot -p
+
+
+        create database skyline_[env]
+        use skyline_[env]
+
+
+        create user 'reebill-[env]'@'%' identified by '[password]'
+        (does this mean reebill-prod can connect from any host?
+        grant all on skyline_[env].* to 'reebill-[env]'@'%' identified by '[password]';
+
+        This worked on linux AMI version of MySQL
+        create user 'reebill-[env]'@'localhost' identified by '[password]'
+        grant all on skyline_[env].* to 'reebill-[env]'@'localhost' identified by '[password]';
+
+        Loading the database:
+
+	Use destage_from_prod.bash!
+
+        mysql -ureebill-[env] -p[password] -Dskyline_[env] < [workspace]/billing/db/processing/billdb.sql
+        - or -
+        restore from backup (must  be done as root for some reason)
+        mysql --verbose -uroot -p -Dskyline-[env] < ~/[date]billing_mysql.dmp
+
+        scp -i ~/Dropbox/Skyline-IT/ec2keys/tyrell-prod.pem /tmp/20120704reebill-prod.tar.z ec2-user@tyrell-prod.skylineinnovations.net:/tmp
+
+        For Development:
+
+        Install MySQL WorkBench
+            http://dev.mysql.com/downloads/workbench/5.2.html (deb available)
+            http://www.mysql.com/downloads/workbench/#downloads
+
+        How to create a development database
+            create user 'dev'@'10.0.0.%' identified by 'dev'
+            create database skyline_stage
+            grant all on skyline_dev.* to 'dev'@'10.0.0.%' identified by 'dev';
+            mysql --verbose -uroot -p -D skyline_dev < ~/20110606billing_mysql.dmp
+
+        See /docs/host-setup.txt for details on installing MySQL
+
+        grant all on skyline.* to 'root'@'%.local' identified by '[password]';
+
+        create database skyline_[env]
+        use skyline_[env]
+
+        create user 'reebill'@'%' identified by '[password]'
+        # needs to be done to allow connections from localhost
+        create user 'reebill'@'localhost' identified by '[password]';
+        # for connecting from anywhere
+        #grant all on skyline.* to 'reebill'@'%' identified by '[password]';
+        # for connecting from localhost
+        grant all on skyline.* to 'reebill'@'localhost' identified by '[password]';
+
+
+        An example of creating staging on tyrell-prod
+            mysql> create database skyline_stage;
+            Query OK, 1 row affected (0.00 sec)
+
+            mysql> use skyline_stage;
+            Database changed
+            mysql> create user 'reebill-stage'@'localhost' identified by 'KdvDzFZeawPy';
+            Query OK, 0 rows affected (0.00 sec)
+
+            mysql> grant all on skyline_stage.* to 'reebill-stage'@'localhost' identified by 'KdvDzFZeawPy';
+            Query OK, 0 rows affected (0.00 sec)
+
+
+
+
+        Loading the database
+        --------------------
+
+            # root has to create the schema because full privileged users do not have all the privileges to do so
+            mysql -uroot -p[password] -Dskyline < /var/local/reebill/billing/db/processing/billdb.sql
+
+
+
+
+
+
+    Deploy software
+    ---------------
+
+    fab deploy -R atsite
+    
+
+Creating Initial Application User
+=================================
+
+    (this is deprecated - use users.py CLI tool)
+    [ec2-user@domU-12-31-39-07-5C-C2 billing]$ mongo
+    MongoDB shell version: 2.0.2
+    connecting to: test
+    > use skyline
+    switched to db skyline
+    > db.users.find()
+    > db.users.save({ "_id" : "atsite", "username" : "atsite", "preferences" : { "bill_image_resolution" : 90 } })
+
+
+Ensure Ext plug-ins are properly installed
+==========================================
+
+fabexcludes no longer excludes them
+    GET http://atsite.skylineinnovations.net/ext-3.3.1/examples/ux/css/Spinner.css 404 (Not Found)
+    GET http://atsite.skylineinnovations.net/ext-3.3.1/examples/ux/Spinner.js 404 (Not Found)
+    GET http://atsite.skylineinnovations.net/ext-3.3.1/examples/ux/SpinnerField.js 404 (Not Found)
+    GET http://atsite.skylineinnovations.net/ext-3.3.1/examples/ux/GroupSummary.js 404 (Not Found)
+
+
+
+MISC
+====
+
+The WSGI user must own the /db-[env] directory. e.g.  sudo chown -R reebill-stage:reebill-stage /db-stage/
+
+
+CRON
+====
+
+Necessary cron jobs for running ReeBill
+
+The python path for cron jobs should be .:/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib/
+
+python/var/local/reebill-prod/lib/python2.6/site-packages/billing/reconciliation.py --statedb skyline_prod --stateuser prod --statepw AXUPU4XGMSN --billdb skyline-prod
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+PYTHONPATH=/var/local/reebill-stage/lib/python2.6/site-packages:/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib
+
+
+
+For a production environment
+----------------------------
+
+It is important to note that backup_prod.bash creates a file in /tmp that is used by destage_from_prod.bash
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+PYTHONPATH=/var/local/reebill-prod/lib/python2.7/site-packages:/var/local/reebill-prod/lib/python2.7/site-packages/ChartDirector/lib
+MAILTO=randrews@skylineinnovations.com
+
+# m h  dom mon dow   command
+0 2 * * * /var/local/reebill-prod/lib/python2.7/site-packages/billing/scripts/backup_prod.bash > /home/reebill-prod/backup_prod_stdout.log 2> /home/reebill-prod/backup_prod_stderr.log
+0 7 * * * source /var/local/reebill-prod/bin/activate && /var/local/reebill-prod/lib/python2.7/site-packages/billing/scripts/reconciliation.py --reportoutputdir /var/local/reebill-prod --logoutputdir /var/local/reebill-prod --billdbhost localhost --statedb skyline_prod --stateuser reebill-prod --statepw NWH7H4wY --billdb skyline-prod --olaphost localhost --olapdb prod --skip-oltp --nexushost nexus.skylineinnovations.net > /home/reebill-prod/reconciliation_stdout.log 2> /home/reebill-prod/reconciliation_stderr.log
+
+
+For a staging environment
+-------------------------
+
+It is important that the staging environment de-stages production data.
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+PYTHONPATH=/var/local/reebill-stage/lib/python2.7/site-packages:/var/local/reebill-stage/lib/python2.7/site-packages/ChartDirector/lib
+MAILTO=randrews@skylineinnovations.com
+
+# m h  dom mon dow   command
+0 3 * * * /var/local/reebill-stage/lib/python2.7/site-packages/billing/scripts/destage_from_prod.bash P4IMvFI9DRTd tyrell-prod stage  > /home/reebill-stage/destage_from_prod_stdout.log 2> /home/reebill-stage/destage_from_prod_stderr.log
+0 4 * * * source /var/local/reebill-stage/bin/activate && /var/local/reebill-stage/lib/python2.7/site-packages/billing/scripts/reconciliation.py --reportoutputdir /var/local/reebill-stage/ --logoutputdir /var/local/reebill-stage --billdbhost localhost --statedb skyline_stage --stateuser reebill-stage --statepw KdvDzFZeawPy --billdb skyline-stage --olaphost localhost --olapdb stage --skip-oltp --nexushost nexus.skylineinnovations.net > /home/reebill-stage/reconciliation_stdout.log 2> /home/reebill-stage/reconciliation_stderr.log
+
+
+
+ReeBill Apache Configuration Details
+====================================
+
+
+    Configure hostname
+
+        Requires entry in /etc/hosts such that reebill-dev points to local apache
+        May require a network name to be established
+
+    Apache Configurations specific to ReeBill explained:
+
+        Alias for the utilitybillimages - must point to what is in the application configuration file
+
+    Staging example Configuration
+
+        <VirtualHost *:80>
+            ServerName reebill-stage
+
+            ServerAdmin webmaster@localhost
+
+                DocumentRoot /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/ui
+                <Directory /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/ui>
+                DirectoryIndex /reebill/
+                        Options FollowSymLinks
+                        AllowOverride None
+                </Directory>
+            # directory where utility bill images are saved
+            Alias /utilitybillimages /tmp/billimages-stage
+            <Directory /tmp/billimages>
+                #Order deny,allow
+                #Allow from all
+                Options Indexes FollowSymLinks MultiViews
+                #AllowOverride None
+            </Directory>
+
+            ErrorLog ${APACHE_LOG_DIR}/reebill-stage_error.log
+
+            # Possible values include: debug, info, notice, warn, error, crit,
+            # alert, emerg.
+            LogLevel debug
+
+            CustomLog ${APACHE_LOG_DIR}/reebill-stage_access.log combined
+
+                WSGIScriptAlias /reebill /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/wsgi.py
+
+                WSGIDaemonProcess reebill-stage user=reebill-stage group=reebill-stage processes=1 threads=10 python-path=/var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib/:/var/local/reebill-stage/lib/python2.6/site-packages
+
+            WSGIProcessGroup reebill-stage
+
+        </VirtualHost>
+
+    Development:
+
+            <VirtualHost *:80>
+                ServerAdmin webmaster@localhost
+                ServerName reebill-dev
+
+                DocumentRoot /home/randrews/workspace-skyline/billing/reebill/ui/
+                <Directory /home/randrews/workspace-skyline/billing/reebill/ui/>
+                    DirectoryIndex billentry.html
+                    Options Indexes FollowSymLinks MultiViews
+                    AllowOverride None
+                    Order allow,deny
+                    allow from all
+                </Directory>
+
+                ErrorLog /var/log/apache2/reebill-error.log
+
+                # Possible values include: debug, info, notice, warn, error, crit,
+                # alert, emerg.
+                LogLevel debug
+
+                CustomLog /var/log/apache2/reebill-access.log combined
+
+                ProxyRequests Off
+                <Proxy *>
+                    Order deny,allow
+                    Allow from all
+                </Proxy>
+
+                WSGIScriptAlias /billtool /home/randrews/workspace-skyline/billing/reebill/wsgi.py
+                WSGIDaemonProcess billtool user=randrews group=randrews processes=1 threads=10 python-path=/home/randrews/workspace-skyline:/usr/lib/python2.6/dist-packages/ChartDirector/lib
+                WSGIProcessGroup billtool
+
+            </VirtualHost>
+
+            <VirtualHost *:80>
+                ServerAdmin webmaster@localhost
+                ServerName reebill-dev
+
+                DocumentRoot /home/randrews/workspace-skyline/billing/reebill/ui/
+                <Directory /home/randrews/workspace-skyline/billing/reebill/ui/>
+                    DirectoryIndex /reebill 
+                    Options Indexes FollowSymLinks MultiViews
+                    AllowOverride None
+                    Order allow,deny
+                    allow from all
+                </Directory>
+
+                # directory where utility bill images are saved
+                Alias /utilitybillimages /tmp/billimages
+                <Directory /tmp/billimages-dev>
+                    #Order deny,allow
+                    #Allow from all
+                    Options Indexes FollowSymLinks MultiViews
+                    #AllowOverride None
+                </Directory>
+
+
+                ErrorLog /var/log/apache2/reebill-error.log
+
+                # Possible values include: debug, info, notice, warn, error, crit,
+                # alert, emerg.
+                LogLevel debug
+
+                CustomLog /var/log/apache2/reebill-access.log combined
+
+                ProxyRequests Off
+                <Proxy *>
+                    Order deny,allow
+                    Allow from all
+                </Proxy>
+
+                WSGIScriptAlias /reebill /home/randrews/workspace-skyline/billing/reebill/wsgi.py
+                WSGIDaemonProcess reebill user=randrews group=randrews processes=5 threads=1 python-path=/home/randrews/workspace-skyline/billing:/home/randrews/workspace-skyline/:/home/randrews/.virtualenvs/reebill/lib/python2.7/site-packages/ChartDirector/lib:/home/randrews/.virtualenvs/reebill/lib/python2.7/site-packages
+                WSGIProcessGroup reebill
+                WSGIApplicationGroup %{GLOBAL}
+
+            </VirtualHost>
+
+--
+
+    
+    If deploying in a remote virtual env environment, ensure user and virtualenv is set up according to virtualenv section.
+
+    Configure Virtual Host according to sample configuration file above and place it in Apache2 sites-available.
+
+    Enable Apache2 virtual site
+        add to sites-enabled via a2ensite
+
+    Ensure that ReeBill dependencies are installed
+
+    Deploy application
+        fabric -f fabfile.py deploy
+
+ReeBill Cron Jobs
+=================
+
+reebill-prod backs up data daily, every friday backup is stored in ~/reebill-prod
+* 1 * * * /var/local/reebill-prod/lib/python2.6/site-packages/billing/reebill/admin/backup.sh
+
+reebill-stage destages prod data daily
+* 2 * * * /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/admin/destage.bash
+
+
+Running ReeBill Unit Tests
+==========================
+
+General pattern:
+
+nosetests [-x --pdb] modulepath:ClassName.test_method
+
+(-x means stop after the first failure; --pdb brings you into pdb when you get an error.)
+
+For example, to run all tests in the file billing/test/test_process.py:
+
+nosetests billing.test.test_process
+
+To run the specific method "test_adjustment" in the class ProcessTest in that file:
+
+nosetsts billing.test.test_process:ProcessTest.test_adjustment
+
+If want to run all the tests in just one file, you can skip nosetests and use "python filename.py"
+
+
+
+Working with PDF Files
+======================
+
+Splitting apart a PDF document example
+    pdftk scan0015.pdf burst output HACA1-%02d.pdf
+
+Combining pages together
+    pdftk HACA1-2.pdf HACA2-8.pdf cat output HACA2.pdf
+
+
+
+
+Deployment
+==========
+
+To deploy the code:
+
+$ cd billing/reebill
+$ fab deploy -R amazon
+
+When prompted
+
+Environment? [stage] 
+
+Type "stage27" or "prod27" and wait while files are uploaded. Log into staging/production servier using ssh key file from dropbox:
+
+$ ssh -i ~/Dropbox/IT/ec2keys/tyrell-prod.pem ec2-user@tyrell-prod.skylineinnovations.net
+
+Become the user reebill-stage and or reebill-prod and go to the directory where the code is located:
+
+[ec2-user@ip-10-2-197-163 in ~]$ sudo su - reebill-stage
+(reebill-stage)[reebill-stage@ip-10-2-197-163 reebill-stage]$ cd lib/python2.7/site-packages/billing/
+
+Restore database:
+
+reebill/admin/destage_prod_to_stage.bash
+
+Edit and run any upgrade scripts (insert staging/production database credentials).
