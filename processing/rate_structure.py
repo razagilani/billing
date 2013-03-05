@@ -105,7 +105,8 @@ class RateStructureDAO(object):
         testing).'''
         # load all UPRS and their utility bill period dates (to avoid repeated
         # queries)
-        all_uprss = [uprs for uprs in self._load_uprss_for_prediction(utility,
+        all_uprss = [(uprs, start, end) for (uprs, start, end) in
+                self._load_uprss_for_prediction(utility,
                 service, rate_structure_name) if not ignore(uprs)]
 
         # find every RSI binding that ever existed for this rate structure
@@ -181,10 +182,14 @@ class RateStructureDAO(object):
                 })
         return result
 
-    def get_probable_uprs(self, reebill, service):
-        '''Returns a guess of the rate structure for the given reebill.'''
+    def get_probable_uprs(self, reebill, service, ignore=lambda x: False):
+        '''Returns a guess of the rate structure for the utility bill of the
+        given service for the given reebill. 'ignore' is a boolean-valued
+        function that should return True when given a UPRS document that should
+        be excluded from prediction.'''
         utility = reebill.utility_name_for_service(service)
         rate_structure_name = reebill.rate_structure_name_for_service(service)
+
         return {
             '_id': {
                 'account': reebill.account,
@@ -195,7 +200,9 @@ class RateStructureDAO(object):
             },
             'rates': self._get_probable_rsis(utility, service,
                 rate_structure_name,
-                reebill.utilbill_period_for_service(service))
+                reebill.utilbill_period_for_service(service),
+                # exclude certain UPRSs from prediction as specified above
+                ignore=ignore)
         }
 
     def _load_combined_rs_dict(self, reebill, service):
