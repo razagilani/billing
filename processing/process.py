@@ -330,6 +330,27 @@ class Process(object):
         new_reebill.set_meter_dates_from_utilbills()
 
 
+        def ignore_function(uprs):
+            # ignore UPRSs of un-attached utility bills, and utility bills whose
+            # reebill sequence is 0, which are meaningless
+            if 'sequence' not in uprs['_id'] or uprs['_id']['sequence'] == 0:
+                return True
+
+            ## ignore UPRSs whose utility bills are attached to un-issued
+            ## reebills
+            #if not self.state_db.is_issued(session, uprs['_id']['account'],
+                    #uprs['_id']['sequence']):
+                #return True
+
+            # ignore UPRSs belonging to a utility bill whose reebill version is
+            # less than the maximum version (because they may be wrong, and to
+            # prevent multiple-counting)
+            if self.state_db.max_version(session, uprs['_id']['account'],
+                    uprs['_id']['sequence']):
+                return True
+
+            return False
+
         # for each utility bill, duplicate the CPRS, generate a predicted UPRS,
         # and remove any charges that were in the previous bill but are not in
         # the new bill's UPRS
@@ -347,7 +368,8 @@ class Process(object):
                     0, utility_name, rate_structure_name, cprs)
 
             # generate predicted UPRS, save it with account, sequence, version 0
-            uprs = self.rate_structure_dao.get_probable_uprs(new_reebill, service)
+            uprs = self.rate_structure_dao.get_probable_uprs(new_reebill,
+                    service, ignore=ignore_function)
             if uprs is None:
                 raise NoRateStructureError("No current UPRS")
             self.rate_structure_dao.save_uprs(new_reebill.account, new_reebill.sequence,
