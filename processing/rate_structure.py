@@ -157,10 +157,13 @@ class RateStructureDAO(object):
         # exceeds 'threshold', with the rate and quantity formulas it had in
         # its closest occurrence.
         result = []
+        print 'Predicted RSIs for %s %s %s - %s' % (utility,
+                rate_structure_name, period[0], period[1])
+        print '%35s %s %s' % ('binding:', 'weight:', 'normalized weight %:')
         for binding, weight in scores.iteritems():
             normalized_weight = weight / total_weight[binding] if \
                     total_weight[binding] != 0 else 0
-            print '%35s %.02f %d' % (binding, weight, 100 * normalized_weight)
+            print '%35s %f %5d' % (binding, weight, 100 * normalized_weight)
 
             # note that total_weight[binding] will never be 0 because it must
             # have occurred somewhere in order to occur in 'scores'
