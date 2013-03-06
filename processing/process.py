@@ -368,7 +368,7 @@ class Process(object):
                     0, utility_name, rate_structure_name, cprs)
 
             # generate predicted UPRS, save it with account, sequence, version 0
-            uprs = self.rate_structure_dao.get_probable_uprs(new_reebill,
+            uprs = self.rate_structure_dao.get_probable_uprs(reebill,
                     service, ignore=ignore_function)
             if uprs is None:
                 raise NoRateStructureError("No current UPRS")
