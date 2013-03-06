@@ -1109,9 +1109,7 @@ class ProcessTest(TestCaseWithSetup):
             # TODO ...
 
     def test_roll_rs_prediction(self):
-        '''Tests that a reebill can be computed even though its rate structure
-        has changed such that some charges no longer match one of the predicted
-        RSIs.'''
+        '''Basic test of rate structure prediction when rolling bills.'''
         acc_a, acc_b, acc_c = 'aaaaa', 'bbbbb', 'ccccc'
 
         with DBSession(self.state_db) as session:
@@ -1136,6 +1134,7 @@ class ProcessTest(TestCaseWithSetup):
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc_c, 0))
 
             # create utility bills and reebill #1 for all 3 accounts
+            # (note that period dates are not exactly aligned)
             utilbill_a_1 = UtilBill(
                     customer=self.state_db.get_customer(session, acc_a),
                     state=0, service='gas',
@@ -1145,18 +1144,18 @@ class ProcessTest(TestCaseWithSetup):
                     customer=self.state_db.get_customer(session, acc_b),
                     state=0, service='gas',
                     period_start=date(2013,1,1),
-                    period_end=date(2013,2,1))
+                    period_end=date(2013,2,5))
             utilbill_c_1 = UtilBill(
                     customer=self.state_db.get_customer(session, acc_c),
                     state=0, service='gas',
                     period_start=date(2013,1,1),
-                    period_end=date(2013,2,1))
+                    period_end=date(2013,2,3))
             session.add(utilbill_a_1)
             session.add(utilbill_b_1)
             session.add(utilbill_c_1)
             reebill_a_1 = self.process.roll_bill(session, reebill_a_0)
-            self.process.roll_bill(session, reebill_b_0)
-            self.process.roll_bill(session, reebill_c_0)
+            reebill_b_1 = self.process.roll_bill(session, reebill_b_0)
+            reebill_c_1 = self.process.roll_bill(session, reebill_c_0)
 
             # UPRSs of all 3 reebills will be empty, because sequence-0
             # rebills' utility bills' UPRSs are ignored when generating
@@ -1222,16 +1221,45 @@ class ProcessTest(TestCaseWithSetup):
             uprs_a_2 = self.rate_structure_dao.load_uprs(acc_a, 2, 0,
                     reebill_a_2.utility_name_for_service('gas'),
                     reebill_a_2.rate_structure_name_for_service('gas'))
-            self.assertEqual(2, len(uprs_a_2['rates']))
-            self.assertEqual(1, len([rsi for rsi in uprs_a_2['rates'] if
-                    rsi['rsi_binding'] == 'DISTRIBUTION_CHARGE']))
-            self.assertEqual(1, len([rsi for rsi in uprs_a_2['rates'] if
-                    rsi['rsi_binding'] == 'PGC']))
-            self.assertEqual([], [rsi for rsi in uprs_a_2['rates'] if
-                    rsi['rsi_binding'] == 'DELIVERY_TAX'])
+            self.assertEqual(set(['DISTRIBUTION_CHARGE', 'PGC']),
+                    set(rsi['rsi_binding'] for rsi in uprs_a_2['rates']))
 
-            # A's reebill #2 should be computable after rolling
+            # make sure A's reebill #2 is computable after rolling (even though
+            # RSIs have changed, meaning some of the original charges may not
+            # have corresponding RSIs and had to be removed)
             self.process.compute_bill(session, reebill_a_1, reebill_a_2) 
+
+            # now, modify A-2's UPRS so it differs from both A-1 and B/C-1. if
+            # a new bill is rolled, the UPRS it gets depends on whether it's
+            # closer to B/C-1 or to A-2.
+            uprs_a_2['rates'] = [{
+                "rsi_binding" : "RIGHT_OF_WAY",
+                "description" : "DC Rights-of-Way Fee",
+                "quantity" : 750.10197727,
+                "rate_units" : "dollars",
+                "processingnote" : "",
+                "rate" : 0.03059,
+                "quantity_units" : "therms",
+                "total" : 22.95,
+                "uuid" : "c97344f4-2c16-11e1-8c7f-002421e88ffb"
+            },]
+            self.rate_structure_dao.save_rs(uprs_a_2)
+
+            # roll B-2 with period 2-5 to 3-5, closer to A-2 than B-1 and C-1.
+            # the latter are more numerous, but A-1 should outweigh them
+            # because weight decreases quickly with distance.
+            session.add(UtilBill(
+                    customer=self.state_db.get_customer(session, acc_b),
+                    state=0, service='gas',
+                    period_start=date(2013,2,5),
+                    period_end=date(2013,3,5)))
+            reebill_b_2 = self.process.roll_bill(session, reebill_b_1)
+            uprs_b_2 = self.rate_structure_dao.load_uprs(acc_b, 2, 0,
+                    reebill_b_2.utility_name_for_service('gas'),
+                    reebill_b_2.rate_structure_name_for_service('gas'))
+            self.assertEqual(set(['RIGHT_OF_WAY']),
+                    set(rsi['rsi_binding'] for rsi in uprs_a_2['rates']))
+
 
     def test_issue(self):
         '''Tests attach_utilbills and issue.'''
