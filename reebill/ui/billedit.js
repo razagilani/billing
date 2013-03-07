@@ -4473,7 +4473,7 @@ function reeBillReady() {
             },{
                 id: 'exportButton',
                 iconCls: 'icon-application-go',
-                // TODO:25227403 - export on account at a time 
+                // TODO:25227403 - export one account at a time 
                 xtype: 'linkbutton',
                 href: "http://"+location.host+"/reebill/excel_export",
                 text: 'Export All Utility Bills to XLS',
