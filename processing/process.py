@@ -158,7 +158,7 @@ class Process(object):
         # (if current reebill is unissued, its version 0 has None as its
         # issue_date, meaning the payment period lasts up until the present)
         if self.state_db.is_issued(session, acc,
-                prior_reebill.sequence, nonexistent=False):
+                prior_reebill.sequence, version=0, nonexistent=False):
             # if predecessor's version 0 is issued, gather all payments from
             # its issue date until version 0 issue date of current bill, or
             # today if this bill has never been issued
