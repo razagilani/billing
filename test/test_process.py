@@ -1449,7 +1449,6 @@ class ProcessTest(TestCaseWithSetup):
 
     def test_payment_application(self):
         acc = '99999'
-
         with DBSession(self.state_db) as session:
             # save reebills and rate structures in mongo
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
