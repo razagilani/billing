@@ -1447,6 +1447,49 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEquals(100, two.total_adjustment)
 
 
+    def test_payment_application(self):
+        acc = '99999'
+
+        with DBSession(self.state_db) as session:
+            # save reebills and rate structures in mongo
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc, 0))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 0))
+
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), 100,
+                    datetime.utcnow().date())
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,2,1), date(2012,3,1), 100,
+                    datetime.utcnow().date())
+            
+            zero = example_data.get_reebill(acc, 0)
+            self.reebill_dao.save_reebill(zero)
+
+            # create and issue #1
+            one = self.process.roll_bill(session, zero)
+            self.reebill_dao.save_reebill(one)
+            self.process.issue(session, acc, 1, issue_date=date(2012,1,15))
+
+            # create reebill #2
+            two = self.process.roll_bill(session, one)
+
+            # payment on jan. 20 gets applied to #2
+            self.state_db.create_payment(session, acc, date(2012,1,20), 'A payment', 123.45)
+            self.process.compute_bill(session, one, two)
+            self.reebill_dao.save_reebill(two)
+            self.assertEqual(Decimal('123.45'), two.payment_received)
+
+            # make a correction on reebill #1: payment does not get applied to
+            # #1 and does get applied to #2
+            self.process.new_version(session, acc, 1)
+            one = self.reebill_dao.load_reebill(acc, 1, version=1)
+            self.process.compute_bill(session, zero, one)
+            self.process.compute_bill(session, one, two)
+            self.assertEqual(Decimal(0), one.payment_received)
+            self.assertEqual(Decimal('123.45'), two.payment_received)
+
+
     def test_bind_and_compute_consistency(self):
         '''Tests that repeated binding and computing of a reebill do not
         cause it to change (a bug we have seen).'''
@@ -1515,6 +1558,7 @@ class ProcessTest(TestCaseWithSetup):
                 check()
                 self.process.compute_bill(session, one, b)
                 check()
+
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
