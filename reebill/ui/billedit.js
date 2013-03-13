@@ -1532,6 +1532,7 @@ function reeBillReady() {
     var rollOperationConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/roll',
         disableCaching: true,
+        timeout: 120000, // 2 minutes
     });
     rollOperationConn.autoAbort = true;
     function rollOperation()
