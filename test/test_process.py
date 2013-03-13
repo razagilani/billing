@@ -798,7 +798,7 @@ class ProcessTest(TestCaseWithSetup):
         # energy that would be produced for a different period(especially
         # because the length is different).
         correct_energy_amount_therms = sum([hour_of_energy(h) for h in
-                cross_range(datetime(2012,1,15), datetime(2012,3,15))]) / 1e4
+                cross_range(datetime(2012,1,15), datetime(2012,3,15))]) / 1e5
 
         # create new version of 1
         with DBSession(self.state_db) as session:
