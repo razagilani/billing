@@ -10,11 +10,11 @@ import sqlalchemy
 import re
 from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
+from skyliner.sky_handlers import cross_range
 from datetime import date, datetime, timedelta
-from billing.util import dateutils
 from billing.processing import mongo
 from billing.processing.session_contextmanager import DBSession
-from billing.util.dateutils import estimate_month, month_offset
+from billing.util.dateutils import estimate_month, month_offset, date_to_datetime
 from billing.processing import rate_structure
 from billing.processing.process import Process, IssuedBillError
 from billing.processing.state import StateDB
@@ -26,7 +26,7 @@ import MySQLdb
 from billing.util.mongo_utils import python_convert
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
-from skyliner.mock_skyliner import MockSplinter, MockMonguru
+from skyliner.mock_skyliner import MockSplinter, MockMonguru, hour_of_energy
 from billing.util.nexus_util import NexusUtil
 from billing.processing.mongo import NoSuchBillException
 from billing.processing.exceptions import BillStateError
@@ -757,8 +757,6 @@ class ProcessTest(TestCaseWithSetup):
         acc = '99999'
         zero = example_data.get_reebill(acc, 0, version=0,
                 start=date(2011,12,1), end=date(2012,1,1))
-        utilbill = example_data.get_utilbill_dict(acc, start=date(2012,1,1), end=date(2012,2,1))
-        #self.reebill_dao._save_utilbill(utilbill)
         self.reebill_dao.save_reebill(zero)
 
         #self.reebill_dao.save_reebill(one)
@@ -784,16 +782,38 @@ class ProcessTest(TestCaseWithSetup):
             self.reebill_dao.save_reebill(one)
             self.process.issue(session, acc, 1, issue_date=date(2012,1,15))
 
-        #pprint.pprint(one._utilbills)
-        
+        # modify editable utility bill document so its meter read dates are
+        # different from both its period and the frozen document's meter read
+        # dates. this lets us test that the new meter read dates are used,
+        # rather than the period dates or the old meter read dates.
+        # (regression test for bug 46127315)
+        editable_utilbill = self.reebill_dao.load_utilbill(acc, 'gas',
+                'washgas', date(2012,1,1), date(2012,2,1), sequence=False,
+                version=False)
+        editable_utilbill['meters'][0]['prior_read_date'] = date(2012,1,15)
+        editable_utilbill['meters'][0]['present_read_date'] = date(2012,3,15)
+        self.reebill_dao._save_utilbill(editable_utilbill)
+        # find the expected total energy (produced by MockSplinter) if this
+        # period is used. it is extremely unlikely to exactly match the total
+        # energy that would be produced for a different period(especially
+        # because the length is different).
+        correct_energy_amount_therms = sum([hour_of_energy(h) for h in
+                cross_range(datetime(2012,1,15), datetime(2012,3,15))]) / 1e4
 
         # create new version of 1
         with DBSession(self.state_db) as session:
             new_bill = self.process.new_version(session, acc, 1)
+
+        # basic facts about new version
         self.assertEqual(acc, new_bill.account)
         self.assertEqual(1, new_bill.sequence)
         self.assertEqual(1, new_bill.version)
         self.assertEqual(1, self.state_db.max_version(session, acc, 1))
+
+        # the editable utility bill with the new meter read period should be used
+        self.assertEqual((date(2012,1,15), date(2012,3,15)),
+                new_bill.meter_read_dates_for_service('gas'))
+
         # new version of CPRS(s) should also be created, so rate structure
         # should be loadable
         for s in new_bill.services:
@@ -802,6 +822,11 @@ class ProcessTest(TestCaseWithSetup):
                     new_bill.rate_structure_name_for_service(s)))
             self.assertNotEqual(None,
                     self.rate_structure_dao.load_rate_structure(new_bill, s))
+
+        # if the total REE is 'correct_energy_amount_therms' (within
+        # floating-point error), the correct meter read period was used.
+        self.assertAlmostEqual(correct_energy_amount_therms,
+                float(new_bill.total_renewable_energy()))
 
     def test_correction_issuing(self):
         '''Tests get_unissued_corrections(), get_total_adjustment(), and
