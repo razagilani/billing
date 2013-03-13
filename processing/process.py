@@ -454,17 +454,6 @@ class Process(object):
             self.rate_structure_dao.save_uprs(account, sequence, max_version +
                     1, utility_name, rs_name, uprs)
 
-        # re-bind
-        fetch_bill_data.fetch_oltp_data(self.splinter,
-                self.nexus_util.olap_id(account), reebill)
-
-        # recompute, using sequence predecessor to compute balance forward and
-        # prior balance. this is always version 0, because we want those values
-        # to be the same as they were on version 0 of this bill--we don't care
-        # about any corrections that might have been made to that bill later.
-        predecessor = self.reebill_dao.load_reebill(account, sequence-1,
-                version=0)
-
         # increment max version in mysql
         self.state_db.increment_version(session, account, sequence)
 
@@ -472,6 +461,15 @@ class Process(object):
         # current-truth ones
         self.reebill_dao.increment_reebill_version(session, reebill)
 
+        # re-bind and compute
+        # recompute, using sequence predecessor to compute balance forward and
+        # prior balance. this is always version 0, because we want those values
+        # to be the same as they were on version 0 of this bill--we don't care
+        # about any corrections that might have been made to that bill later.
+        fetch_bill_data.fetch_oltp_data(self.splinter,
+                self.nexus_util.olap_id(account), reebill, verbose=True)
+        predecessor = self.reebill_dao.load_reebill(account, sequence-1,
+                version=0)
         self.compute_bill(session, predecessor, reebill)
 
         # save in mongo
