@@ -401,8 +401,13 @@ class BillToolBridge:
         # determine whether authentication is on or off
         self.authentication_on = self.config.getboolean('authentication', 'authenticate')
 
+        # TODO: allow the log to be viewed in the UI
         self.reconciliation_log_dir = self.config.get('reebillreconciliation', 'log_directory')
         self.reconciliation_report_dir = self.config.get('reebillreconciliation', 'report_directory')
+
+        # TODO: allow the log to be viewed in the UI
+        self.estimated_revenue_log_dir = self.config.get('reebillestimatedrevenue', 'log_directory')
+        self.estimated_revenue_report_dir = self.config.get('reebillestimatedrevenue', 'report_directory')
 
         # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
@@ -449,10 +454,12 @@ class BillToolBridge:
     def get_reconciliation_data(self, start, limit, **kwargs):
         '''Handles AJAX request for data to fill reconciliation report grid.'''
         start, limit = int(start), int(limit)
+        # TODO 45793319: hardcoded file name
         with open(os.path.join(self.reconciliation_report_dir,'reconciliation_report.json')) as json_file:
             # load all data from json file: it's one JSON dictionary per
             # line (for reasons explained in reconciliation.py) but should
             # be interpreted as a JSON list
+            # TODO 45793037: not really a json file until now
             items = ju.loads('[' + ', '.join(json_file.readlines()) + ']')
             return self.dumps({
                 'success': True,
@@ -464,41 +471,16 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def estimated_revenue_report(self, start, limit, **kwargs):
-        '''Handles AJAX request for data to fill estimated revenue report
-        grid.''' 
-        with DBSession(self.state_db) as session:
-            start, limit = int(start), int(limit)
-            er = EstimatedRevenue(self.state_db, self.reebill_dao,
-                    self.ratestructure_dao, self.billUpload, self.nexus_util,
-                    self.splinter)
-            data = er.report(session)
-
-            # build list of rows from report data
-            rows = []
-            for account in sorted(data.keys(),
-                    # 'total' first
-                    cmp=lambda x,y: -1 if x == 'total' else 1 if y == 'total' else cmp(x,y)):
-                row = {'account': 'Total' if account == 'total' else account}
-                for month in data[account].keys():
-                    # show error message instead of value if there was one
-                    if 'error' in data[account][month]:
-                        value = 'ERROR: %s' % data[account][month]['error']
-                    elif 'value' in data[account][month]:
-                        value = '%.2f' % data[account][month]['value']
-
-                    row.update({
-                        'revenue_%s_months_ago' % (monthmath.current_utc() - month): {
-                            'value': value,
-                            'estimated': data[account][month].get('estimated', False)
-                        }
-                    })
-                rows.append(row)
-                #print rows
+    def get_estimated_revenue_data(self, start, limit, **kwargs):
+        '''Handles AJAX request for data to fill estimated revenue report grid.'''
+        start, limit = int(start), int(limit)
+        # TODO 45793319: hardcoded file name
+        with open(os.path.join(self.estimated_revenue_report_dir,'estimated_revenue_report.json')) as json_file:
+            items = ju.loads(json_file.read())['rows']
             return self.dumps({
                 'success': True,
-                'rows': rows[start:start+limit],
-                'results': len(rows) 
+                'rows': items[start:start+limit],
+                'results': len(items) # total number of items
             })
 
     @cherrypy.expose
@@ -508,19 +490,15 @@ class BillToolBridge:
     def estimated_revenue_xls(self, **kwargs):
         '''Responds with the data from the estimated revenue report in the form
         of an Excel spreadsheet.'''
-        with DBSession(self.state_db) as session:
-            spreadsheet_name =  'estimated_revenue.xls'
-            er = EstimatedRevenue(self.state_db, self.reebill_dao,
-                    self.ratestructure_dao, self.billUpload, self.nexus_util,
-                    self.splinter)
-            buf = StringIO()
-            er.write_report_xls(session, buf)
+        spreadsheet_name =  'estimated_revenue.xls'
 
+        # TODO 45793319: hardcoded file name
+        with open(os.path.join(self.estimated_revenue_report_dir,'estimated_revenue_report.xls')) as xls_file:
             # set headers for file download
             cherrypy.response.headers['Content-Type'] = 'application/excel'
             cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
 
-            return buf.getvalue()
+            return xls_file.read()
 
     ###########################################################################
     # authentication functions
@@ -1100,7 +1078,6 @@ class BillToolBridge:
         name_dicts = sorted(all_accounts_all_names.iteritems())
 
         return name_dicts
-
 
     def full_names_of_accounts(self, accounts):
         '''Given a list of account numbers (as strings), returns a list

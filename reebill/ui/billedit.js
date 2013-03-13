@@ -4473,7 +4473,7 @@ function reeBillReady() {
             },{
                 id: 'exportButton',
                 iconCls: 'icon-application-go',
-                // TODO:25227403 - export on account at a time 
+                // TODO:25227403 - export one account at a time 
                 xtype: 'linkbutton',
                 href: "http://"+location.host+"/reebill/excel_export",
                 text: 'Export All Utility Bills to XLS',
@@ -5477,7 +5477,7 @@ function reeBillReady() {
     // "Estimated Revenue" grid
 
     var revenueProxyConn = new Ext.data.Connection({
-        url: 'http://' + location.host + '/reebill/estimated_revenue_report',
+        url: 'http://' + location.host + '/reebill/get_estimated_revenue_data',
         timeout: 60000,
     });
     revenueProxyConn.autoAbort = true;
