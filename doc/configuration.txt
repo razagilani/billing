@@ -7,7 +7,7 @@ Ensure that the /db utility bill directory exists as specified in the reebill.cf
 Ensure that Mongo is available
 Ensure that MySQL Server is available
 
-See /docs/environmentsetup.txt
+See /docs/environment-setup.txt
 - General guidlines for configuring Apache2 
 - Configuring Application Specific Python Virtualenv for WSGI Application
 

@@ -158,7 +158,7 @@ class Process(object):
         # (if current reebill is unissued, its version 0 has None as its
         # issue_date, meaning the payment period lasts up until the present)
         if self.state_db.is_issued(session, acc,
-                prior_reebill.sequence, nonexistent=False):
+                prior_reebill.sequence, version=0, nonexistent=False):
             # if predecessor's version 0 is issued, gather all payments from
             # its issue date until version 0 issue date of current bill, or
             # today if this bill has never been issued
@@ -312,48 +312,6 @@ class Process(object):
         else:
             utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
         
-        # duplicate the UPRS and CPRS for each service
-        # TODO: 22597151 refactor
-        for service in reebill.services:
-            utility_name = reebill.utility_name_for_service(service)
-            rate_structure_name = reebill.rate_structure_name_for_service(service)
-
-            # load current CPRS, save it with same account, next sequence, version 0
-            cprs = self.rate_structure_dao.load_cprs(reebill.account, reebill.sequence,
-                    reebill.version, utility_name, rate_structure_name)
-            if cprs is None:
-                raise NoRateStructureError("No current CPRS")
-            self.rate_structure_dao.save_cprs(reebill.account, reebill.sequence + 1,
-                    0, utility_name, rate_structure_name, cprs)
-
-            # generate predicted UPRS, save it with account, sequence, version 0
-            uprs = self.rate_structure_dao.get_probable_uprs(reebill, service)
-            if uprs is None:
-                raise NoRateStructureError("No current UPRS")
-            self.rate_structure_dao.save_uprs(reebill.account, reebill.sequence + 1,
-                    0, utility_name, rate_structure_name, uprs)
-
-            # remove charges that don't correspond to any RSI binding (because
-            # their corresponding RSIs were not part of the predicted rate structure)
-            valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
-                    cprs['rates']}
-            chargegroups = reebill._get_utilbill_for_service(service)['chargegroups']
-            for group, charges in chargegroups.iteritems():
-                for charge in charges:
-                    # if the charge matches a valid RSI binding, mark that
-                    # binding as matched; if not, delete the charge
-                    if charge['rsi_binding'] in valid_bindings:
-                        valid_bindings[charge['rsi_binding']] = True
-                    else:
-                        charges.remove(charge)
-                # chargegroup is not removed if it's empty because it might
-                # come back
-
-            # TODO add a charge for every RSI that doesn't have a charge, i.e.
-            # the ones whose value in 'valid_bindings' is False.
-            # we can't do this yet because we don't know what group it goes in.
-            # see https://www.pivotaltracker.com/story/show/43797365
-
         # TODO Put somewhere nice because this has a specific function
         active_utilbills = [u for u in reebill._utilbills if u['service'] in reebill.services]
         reebill.reebill_dict['utilbills'] = [handle for handle in reebill.reebill_dict['utilbills'] if handle['id'] in [u['_id'] for u in active_utilbills]]
@@ -370,15 +328,87 @@ class Process(object):
         for ub in utilbills:
             new_reebill.set_utilbill_period_for_service(ub.service, (ub.period_start, ub.period_end))
         new_reebill.set_meter_dates_from_utilbills()
+
+
+        def ignore_function(uprs):
+            # ignore UPRSs of un-attached utility bills, and utility bills whose
+            # reebill sequence is 0, which are meaningless
+            if 'sequence' not in uprs['_id'] or uprs['_id']['sequence'] == 0:
+                return True
+
+            ## ignore UPRSs whose utility bills are attached to un-issued
+            ## reebills
+            #if not self.state_db.is_issued(session, uprs['_id']['account'],
+                    #uprs['_id']['sequence']):
+                #return True
+
+            # ignore UPRSs belonging to a utility bill whose reebill version is
+            # less than the maximum version (because they may be wrong, and to
+            # prevent multiple-counting)
+            if self.state_db.max_version(session, uprs['_id']['account'],
+                    uprs['_id']['sequence']):
+                return True
+
+            return False
+
+        # for each utility bill, duplicate the CPRS, generate a predicted UPRS,
+        # and remove any charges that were in the previous bill but are not in
+        # the new bill's UPRS
+        # TODO: 22597151 refactor
+        for service in reebill.services:
+            utility_name = new_reebill.utility_name_for_service(service)
+            rate_structure_name = reebill.rate_structure_name_for_service(service)
+
+            # load previous CPRS, save it with same account, next sequence, version 0
+            cprs = self.rate_structure_dao.load_cprs(reebill.account, reebill.sequence,
+                    reebill.version, utility_name, rate_structure_name)
+            if cprs is None:
+                raise NoRateStructureError("No current CPRS")
+            self.rate_structure_dao.save_cprs(reebill.account, new_reebill.sequence,
+                    0, utility_name, rate_structure_name, cprs)
+
+            # generate predicted UPRS, save it with account, sequence, version 0
+            uprs = self.rate_structure_dao.get_probable_uprs(new_reebill,
+                    service, ignore=ignore_function)
+            if uprs is None:
+                raise NoRateStructureError("No current UPRS")
+            self.rate_structure_dao.save_uprs(new_reebill.account, new_reebill.sequence,
+                    0, utility_name, rate_structure_name, uprs)
+
+            # remove charges that don't correspond to any RSI binding (because
+            # their corresponding RSIs were not part of the predicted rate structure)
+            valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
+                    cprs['rates']}
+            chargegroups = new_reebill._get_utilbill_for_service(service)['chargegroups']
+            for group, charges in chargegroups.iteritems():
+                for charge in charges:
+                    # if the charge matches a valid RSI binding, mark that
+                    # binding as matched; if not, delete the charge
+                    if charge['rsi_binding'] in valid_bindings:
+                        valid_bindings[charge['rsi_binding']] = True
+                    else:
+                        charges.remove(charge)
+                # chargegroup is not removed if it's empty because it might
+                # come back
+
+            # TODO add a charge for every RSI that doesn't have a charge, i.e.
+            # the ones whose value in 'valid_bindings' is False.
+            # we can't do this yet because we don't know what group it goes in.
+            # see https://www.pivotaltracker.com/story/show/43797365
+
+
         # set discount rate & late charge rate to the instananeous value from MySQL
         # NOTE suspended_services list is carried over automatically
-        new_reebill.discount_rate = self.state_db.discount_rate(session, reebill.account)
-        new_reebill.late_charge_rate = self.state_db.late_charge_rate(session, reebill.account)
+        new_reebill.discount_rate = self.state_db.discount_rate(session,
+                reebill.account)
+        new_reebill.late_charge_rate = self.state_db.late_charge_rate(session,
+                reebill.account)
 
         #self.reebill_dao.save_reebill(new_reebill)
 
         # create reebill row in state database
-        self.state_db.new_rebill(session, new_reebill.account, new_reebill.sequence)
+        self.state_db.new_rebill(session, new_reebill.account,
+                new_reebill.sequence)
         self.attach_utilbills(session, new_reebill, utilbills)        
         
         return new_reebill
@@ -424,17 +454,6 @@ class Process(object):
             self.rate_structure_dao.save_uprs(account, sequence, max_version +
                     1, utility_name, rs_name, uprs)
 
-        # re-bind
-        fetch_bill_data.fetch_oltp_data(self.splinter,
-                self.nexus_util.olap_id(account), reebill)
-
-        # recompute, using sequence predecessor to compute balance forward and
-        # prior balance. this is always version 0, because we want those values
-        # to be the same as they were on version 0 of this bill--we don't care
-        # about any corrections that might have been made to that bill later.
-        predecessor = self.reebill_dao.load_reebill(account, sequence-1,
-                version=0)
-
         # increment max version in mysql
         self.state_db.increment_version(session, account, sequence)
 
@@ -442,6 +461,15 @@ class Process(object):
         # current-truth ones
         self.reebill_dao.increment_reebill_version(session, reebill)
 
+        # re-bind and compute
+        # recompute, using sequence predecessor to compute balance forward and
+        # prior balance. this is always version 0, because we want those values
+        # to be the same as they were on version 0 of this bill--we don't care
+        # about any corrections that might have been made to that bill later.
+        fetch_bill_data.fetch_oltp_data(self.splinter,
+                self.nexus_util.olap_id(account), reebill, verbose=True)
+        predecessor = self.reebill_dao.load_reebill(account, sequence-1,
+                version=0)
         self.compute_bill(session, predecessor, reebill)
 
         # save in mongo
