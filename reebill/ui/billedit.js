@@ -737,6 +737,7 @@ function reeBillReady() {
             {name: 'max_version'}, // machine-readable
             {name: 'hypothetical_total'},
             {name: 'actual_total'},
+            {name: 'ree_quantity'},
             {name: 'ree_value'},
             {name: 'prior_balance'},
             {name: 'payment_received'},
@@ -894,6 +895,13 @@ function reeBillReady() {
                 header: 'Actual',
                 sortable: false,
                 dataIndex: 'actual_total',
+                width: 65,
+                align: 'right',
+                renderer: reeBillGridRenderer,
+            },{
+                header: 'RE&E',
+                sortable: false,
+                dataIndex: 'ree_quantity',
                 width: 65,
                 align: 'right',
                 renderer: reeBillGridRenderer,
