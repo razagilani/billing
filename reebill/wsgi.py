@@ -1450,10 +1450,13 @@ class BillToolBridge:
     @random_wait
     @authenticate
     @json_exception
-    def excel_export(self, account=None, **kwargs):
-        '''Responds with an excel spreadsheet containing all actual charges for
-        all utility bills for the given account, or every account (1 per sheet)
-        if 'account' is not given.'''
+    def excel_export(self, account=None, start_date=None, end_date=None, **kwargs):
+        '''
+        Responds with an excel spreadsheet containing all actual charges for all
+        utility bills for the given account, or every account (1 per sheet) if
+        'account' is not given, or all utility bills for the account(s) filtered
+        by time, if 'start_date' and/or 'end_date' are given.
+        '''
         with DBSession(self.state_db) as session:
             if account is not None:
                 spreadsheet_name = account + '.xls'
@@ -1464,7 +1467,8 @@ class BillToolBridge:
 
             # write excel spreadsheet into a StringIO buffer (file-like)
             buf = StringIO()
-            exporter.export(session, buf, account)
+            exporter.export(session, buf, account, start_date=start_date,
+                            end_date=end_date)
 
             # set MIME type for file download
             cherrypy.response.headers['Content-Type'] = 'application/excel'
