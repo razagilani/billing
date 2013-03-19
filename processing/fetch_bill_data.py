@@ -358,8 +358,21 @@ def usage_data_to_virtual_register(reebill, energy_function,
                 assert 'active_periods_holiday' in register
                 hour_ranges = map(tuple,
                         register['active_periods_' + holidays.get_day_type(day)]) 
-            else:
+            elif register.get('type') == 'total':
+                # For non-TOU registers, only insert renewable energy if the
+                # register dictionary has the key "type" and its value is
+                # "total". Every non-TOU utility bill should have exactly one
+                # such register (and every TOU bill should have at most one).
+                # If they don't, renewable energy will be double-counted and
+                # the bill will be wrong. # For explanation see
+                # https://www.pivotaltracker.com/story/show/46469597
                 hour_ranges = [(0,23)]
+            else:
+                if 'type' in register:
+                    print 'register %s skipped because its "type" is "%s"' % (register['identifier'], register['type'])
+                else:
+                    print 'register %s skipped because its "type" key is missing' % (register['identifier'],)
+                continue
 
             energy_today = None
             for hourrange in hour_ranges:
