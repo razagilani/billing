@@ -17,7 +17,7 @@ See /docs/host-setup.txt
 Generic Hosting Configuration Instructions for ReeBill
 ======================================================
 
-How to create a dedicated host running once instance of ReeBill
+How to create a dedicated host running one instance of ReeBill
 
 DNS 
 ---
