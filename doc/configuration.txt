@@ -607,7 +607,7 @@ ReeBill Apache Configuration Details
                 </Proxy>
 
                 WSGIScriptAlias /reebill /home/randrews/workspace-skyline/billing/reebill/wsgi.py
-                WSGIDaemonProcess reebill user=randrews group=randrews processes=5 threads=1 python-path=/home/randrews/workspace-skyline/billing:/home/randrews/workspace-skyline/:/home/randrews/.virtualenvs/reebill/lib/python2.7/site-packages/ChartDirector/lib:/home/randrews/.virtualenvs/reebill/lib/python2.7/site-packages
+                WSGIDaemonProcess reebill user=randrews group=randrews processes=5 threads=1 python-path=/home/randrews/workspace-skyline:/home/randrews/workspace-skyline/billing:/home/randrews/workspace-skyline/:/home/randrews/.virtualenvs/reebill/lib/python2.7/site-packages/ChartDirector/lib:/home/randrews/.virtualenvs/reebill/lib/python2.7/site-packages
                 WSGIProcessGroup reebill
                 WSGIApplicationGroup %{GLOBAL}
 
