@@ -262,8 +262,8 @@ Details on installing ChartDirector:
 
     Ensure ReeBill fonts are included for Chart Director:
         Manually add third party fonts to the ChartDirector font directory /usr/lib/python2.6/dist-packages/ChartDirector/lib/fonts
-        For example, sudo cp billing/presentation/fonts/* /usr/lib/python2.6/dist-packages/ChartDirector/lib/fonts/
-        For example, as the application user: cp /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/fonts/* /var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib/fonts/
+        For example, sudo cp billing/reebill/ui/fonts/* /usr/lib/python2.6/dist-packages/ChartDirector/lib/fonts/
+        For example, as the application user: cp /var/local/reebill-stage/lib/python2.6/site-packages/billing/reebill/ui/fonts/* /var/local/reebill-stage/lib/python2.6/site-packages/ChartDirector/lib/fonts/
 
 
 MySQL
