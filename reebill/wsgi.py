@@ -1994,7 +1994,7 @@ class BillToolBridge:
                     except: pass
                     try: row_dict['actual_total'] = mongo_reebill.actual_total
                     except: pass
-                    try: row_dict['ree_quantity'] = mongo_reebill.total_renewable_energy
+                    try: row_dict['ree_quantity'] = mongo_reebill.total_renewable_energy()
                     except: pass
                     try: row_dict['ree_value'] = mongo_reebill.ree_value
                     except: pass
