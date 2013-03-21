@@ -423,6 +423,9 @@ Creating Initial Application User
 Ensure Ext plug-ins are properly installed
 ==========================================
 For now, this involves getting a tar'd copy from someone else on the team who has Ext 3.3.1 (since this version is no longer downloadable).
+Untar it in: 
+        
+        billing/reebill/ui/ext-3.3.1/
 
 fabexcludes no longer excludes them
     GET http://atsite.skylineinnovations.net/ext-3.3.1/examples/ux/css/Spinner.css 404 (Not Found)
