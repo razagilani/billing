@@ -557,12 +557,6 @@ ReeBill Apache Configuration Details
 
                 CustomLog /var/log/apache2/reebill-access.log combined
 
-                ProxyRequests Off
-                <Proxy *>
-                    Order deny,allow
-                    Allow from all
-                </Proxy>
-
                 WSGIScriptAlias /billtool /home/randrews/workspace-skyline/billing/reebill/wsgi.py
                 WSGIDaemonProcess billtool user=randrews group=randrews processes=1 threads=10 python-path=/home/randrews/workspace-skyline:/usr/lib/python2.6/dist-packages/ChartDirector/lib
                 WSGIProcessGroup billtool
@@ -599,12 +593,6 @@ ReeBill Apache Configuration Details
                 LogLevel debug
 
                 CustomLog /var/log/apache2/reebill-access.log combined
-
-                ProxyRequests Off
-                <Proxy *>
-                    Order deny,allow
-                    Allow from all
-                </Proxy>
 
                 WSGIScriptAlias /reebill /home/randrews/workspace-skyline/billing/reebill/wsgi.py
                 WSGIDaemonProcess reebill user=randrews group=randrews processes=5 threads=1 python-path=/home/randrews/workspace-skyline/billing:/home/randrews/workspace-skyline/:/home/randrews/.virtualenvs/reebill/lib/python2.7/site-packages/ChartDirector/lib:/home/randrews/.virtualenvs/reebill/lib/python2.7/site-packages
@@ -697,3 +685,125 @@ Restore database:
 reebill/admin/destage_prod_to_stage.bash
 
 Edit and run any upgrade scripts (insert staging/production database credentials).
+
+Notes from Stephen to be merged into above
+==========================================
+
+The ReeBill project is a good one to start with, since it's arguably the most complicated to set up. Doing it will give you a better insight into what you need to do with other projects.
+
+	Set Up Virtual Environment
+	--------------------------
+	These steps are generalizable to other projects.
+
+	Install the system dependencies needed for ReeBill. These should be the NumPy, Gevent, PyYAML, Python-MySQL, and Rendering dependencies listed above.
+
+	Then, make sure the ReeBill virtualenv is activated.
+
+	$ workon billing
+
+	Navigate to the billing working directory and use PIP to install all of the listed dependencies in the requirements.txt file.
+
+	$ pip install -r requirements.txt
+
+	With luck, this should work on the first try! If there is an error with a specific package, the most likely cause is a missing system dependency.
+
+
+	Install ChartDirector
+	---------------------
+	Currently, this is used only by ReeBill, but this process is generalizable to installing other Python packages without using PIP, if needed.
+
+	- Navigate to http://www.advsofteng.com/download.html
+	- Download the proper version (chartdir_python_linux_64.tar.gz for 64-bit Linux)
+
+	Extract the file.
+
+	$ tar xzf chartdir_python_linux_64.tar.gz
+
+	Move the resulting directory to the ReeBill virtualenv's site-packages directory. For example, if you are using virtualenvwrapper and your ReeBill virtualenv is called 'billing', invoke the following:
+
+	$ mv ChartDirector ~/.virtualenvs/billing/lib/python2.7/site-packages
+
+
+	Set Up Apache Configuration
+	---------------------------
+	$ sudo a2enmod wsgi
+	$ sudo a2dissite default
+
+	Ensure that NameVirtualHost *:80 is declared in an appropriate configuration file, such as /etc/apache2/ports.conf
+
+	Create a file in /etc/apache2/sites-available/ to hold your Apache configuration. I call mine skyline, so the file is /etc/apache2/sites-available/skyline
+
+	An alternative to putting all of the configurations in one file is to create one site configuration per app. For example, /etc/apache2/sites-available/reebill-dev would have the ReeBill configuration alone
+
+	Copy Apache site configurations from Skyline apps' documentation and paste them into your new Apache site config file. Site configurations take the form <VirtualHost *:80>...</VirtualHost>
+
+	You need to modify the template configuration for each app. Considerations:
+	- Use dev to denote a development configuration, rather than prod for production
+	- Make sure to run the WSGI script as your own user and group
+	- Make sure the paths for the additional Python paths are correct. If you are using virtualenvwrapper, then be sure to copy down paths from that app's virtualenv (e.g., /home/<user>/.virtualenvs/<appname>/lib/python2.7/site-packages/)
+	- An additional path needs to be set for ChartDirector, targeting its lib directory
+	- Double-check where the log for that web app is being stored and what it's called
+
+	Consider the following WSGIDaemonProcess statement for a user 'jones':
+
+	WSGIDaemonProcess reebill-dev user=jones group=jones processes=1 threads=1 python-path=/home/jones/.virtualenvs/billing//lib/python2.7/site-packages/ChartDirector/lib/:/home/jones/.virtualenvs/billing//lib/python2.7/site-packages/
+
+	$ sudo a2ensite skyline (or, sudo a2ensite reebill-dev)
+	$ sudo apache2ctl restart
+
+	You may need to make adjustments to the configuration several times before you have one set up right. Use 'sudo apache2ctl restart' or 'sudo service apache2 restart' to restart Apache and thereby apply the configuration changes.
+
+
+	Set Up MySQL
+	------------
+	When you installed the MySQL package, there should have been a setup stage where you configured a root account password for MySQL.
+
+	$ mysql -u root -p
+	
+	Enter the MySQL root account password at the prompt.
+
+	Create the development database for ReeBill and create a user/password combination for ReeBill to use to connect to the database.
+
+	mysql> create database skyline_dev;
+	mysql> use skyline_dev;
+	mysql> create user 'reebill-dev'@'localhost' identified by 'reebill-dev';
+	mysql> grant all on skyline_dev.* to 'reebill-dev'@'localhost' identified by 'reebill-dev';
+
+
+	Set Up MongoDB
+	--------------
+	If you are using a 32-bit distribution of Linux, then you should edit /etc/mongo.conf and set journaling to false. Mongo runs into memory issues on 32-bit operating systems if journaling is enabled.
+
+	Otherwise, Mongo is more or less set.
+
+
+	Destage Production ReeBill Data
+	-------------------------------
+	$ cd ~/skyline/billing/scripts  (or whatever path you have to /scripts in the billing repository)
+	$ ./destage_from_prod.bash [MySQL root password] tyrell-prod dev
+
+	This will download the current production data from ReeBill and populate the MySQL and MongoDB databases with that data.
+
+
+	Configure ReeBill
+	--------
+	In /billing/reebill, copy the reebill-dev-template.cfg:
+
+	$ cp reebill-dev-template.cfg reebill.cfg
+
+	Edit the new reebill.cfg and change values to match your development environment. You may need to consult with someone, but the general gist:
+
+	- olap_host and nexus_host: tyrell-prod.skylineinnovations.net
+	- olap_database: prod
+	- [statedb] refers to the MySQL database, so database = skyline_dev and user/password = reebill-dev
+	- [usersdb], [rsdb], [billdb], and [journaldb] refer to different MongoDB collections.
+		- database is always: skyline-dev
+		- host is always: localhost
+		- port is always: 27017
+
+
+	Complete
+	--------
+	You should be able to launch a browser to http://reebill-dev/ and see a fully functioning ReeBill.
+
+	Setting up the other applications involves many of the same types of steps. Be sure to check the app-specific documentation for each project in each project's /doc folder
