@@ -203,7 +203,7 @@ class Process(object):
         # reset hypothetical and actual totals so we can accumulate across all
         # services
         present_reebill.hypothetical_total = Decimal("0")
-        present_reebill.actual_total = Decimal("0")
+       #present_reebill.actual_total = Decimal("0")
 
         # sum up chargegroups into total per utility bill and accumulate
         # reebill values
@@ -854,14 +854,13 @@ class Process(object):
                 raise Exception("Units '" + units + "' not supported")
 
 
-        # total renewable energy
-        re = Decimal("0.0")
-        # total conventional energy
-        ce = Decimal("0.0")
-
-        # CO2 is fuel dependent
-        co2 = Decimal("0.0")
-        # TODO these conversions should be treated in a utility class
+        ## total renewable energy
+        #re = Decimal("0.0")
+        ## total conventional energy
+        #ce = Decimal("0.0")
+        ## CO2 is fuel dependent
+        #co2 = Decimal("0.0")
+        ## TODO these conversions should be treated in a utility class
         def calcco2(units, total):
             if (units.lower() == "kwh"):
                 return total * Decimal("1.297")
@@ -869,17 +868,21 @@ class Process(object):
                 return total * Decimal("13.46")
             else:
                 raise Exception("Units '" + units + "' not supported")
+        #for meters in next_bill.meters.itervalues():                        
+            #for meter in meters:
+                #for register in meter['registers']:
+                    #units = register['quantity_units']
+                    #total = register['quantity']
+                    #if register['shadow'] == True:
+                        #re += normalize(units, total)
+                        #co2 += calcco2(units, total)
+                    #else:
+                        #ce += normalize(units, total)
 
-        for meters in next_bill.meters.itervalues():                        
-            for meter in meters:
-                for register in meter['registers']:
-                    units = register['quantity_units']
-                    total = register['quantity']
-                    if register['shadow'] == True:
-                        re += normalize(units, total)
-                        co2 += calcco2(units, total)
-                    else:
-                        ce += normalize(units, total)
+        ce = Decimal(sum(u.total_energy() for u in reebill._utilbills)) / Decimal("100000.") # therms
+        re = Decimal(reebill.total_renewable_energy())
+        co2 = Decimal(re) * Decimal(13.46)
+
         next_stats = next_bill.statistics
         prev_stats = prev_bill.statistics
 

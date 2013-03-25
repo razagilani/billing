@@ -2577,12 +2577,14 @@ class BillToolBridge:
         if not account or not sequence or not service or not meter_identifier \
             or not presentreaddate or not priorreaddate:
             raise ValueError("Bad Parameter Value")
+        prior = datetime.strptime(presentreaddate, "%Y-%m-%d")
+        present = datetime.strptime(priorreaddate, "%Y-%m-%d")
 
         reebill = self.reebill_dao.load_reebill(account, sequence)
-        reebill.set_meter_read_date(service, meter_identifier, 
-            datetime.strptime(presentreaddate, "%Y-%m-%d"), 
-            datetime.strptime(priorreaddate, "%Y-%m-%d")
-        )
+
+        reebill.get_utilbill_for_service(service).get_meter(meter_identifier)\
+                .set_read_period(prior, present)
+
         self.reebill_dao.save_reebill(reebill)
         return self.dumps({'success':True})
 
@@ -2590,12 +2592,13 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def setActualRegister(self, account, sequence, service, register_identifier, meter_identifier, quantity):
-        if not account or not sequence or not service or not register_identifier \
-            or not meter_identifier or not quantity:
-            raise ValueError("Bad Parameter Value")
+    def setActualRegister(self, account, sequence, service,
+            register_identifier, meter_identifier, quantity):
         reebill = self.reebill_dao.load_reebill(account, sequence)
-        reebill.set_meter_actual_register(service, meter_identifier, register_identifier, Decimal(quantity))
+
+        reebill.get_utilbill_for_service(service).get_meter(meter_identifier)\
+                .get_register(register_identifier).set_quantity(quantity)
+
         self.reebill_dao.save_reebill(reebill)
         return self.dumps({'success':True})
 

@@ -875,7 +875,7 @@ def equivalentTrees(poundsCarbonAvoided = 0):
     return int(poundsCarbon) * 1.08
 
 if __name__ == '__main__':
-    from billing.mongo import ReebillDAO
+    from billing.processing.mongo import ReebillDAO
     from billing.processing.state import StateDB
     from billing.processing.session_contextmanager import DBSession
     from billing.processing.process import Process

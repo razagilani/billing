@@ -19,13 +19,24 @@ from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
 from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
+from sqlalchemy.orm.exc import NoResultFound
+
+import mongoengine
+from mongoengine.base import ValidationError
+from mongoengine import Document, EmbeddedDocument
+from mongoengine import StringField, IntField, FloatField, BooleanField
+from mongoengine import DateTimeField, ListField, DictField
+from mongoengine import EmbeddedDocumentField
+from mongoengine import ObjectIdField
+
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
 pp = pprint.PrettyPrinter(indent=1).pprint
 sys.stdout = sys.stderr
 
-
-# type-conversion functions
+###############################################################################
+# utility functions
+###############################################################################
 
 def float_to_decimal(x):
     '''Converts float into Decimal. Used in getter methods.'''
@@ -82,6 +93,177 @@ def unflatten_chargegroups_list(flat_charges):
             new_chargegroups[cg].append(charge)
     return new_chargegroups
 
+###############################################################################
+# utility bill classes
+###############################################################################
+
+class Register(EmbeddedDocument):
+    '''A register inside a meter in a utility bill document.'''
+    quantity_units = StringField(required=True)
+    quantity = FloatField(required=True)
+    register_binding = StringField(required=True)
+    identifier = StringField(required=True)
+    type = StringField(required=True)
+    description = StringField(required=True)
+
+    def to_dict(self):
+        result = {field : getattr(self, field) for field in ['quantity_units',
+            'quantity', 'register_binding', 'identifier', 'type',
+            'description']
+        }
+        # accomodate rate structure code which wants decimals (TODO remove
+        # this; always use floats except for rounding of money)
+        result = deep_map(float_to_decimal, result)
+        return result
+
+    def set_quantity(self, quantity):
+        self.quantity = quantity
+
+    def quantity_btu(self, ccf_conversion_factor=None):
+        '''Returns quantity converted to BTU. To convert CCF (a volume unit),
+        CCF-to-therms conversion factor must be supplied. (Note this is not
+        CCF-to-BTU, because bills always show a conversion factor for
+        therms.)'''
+        if self.quantity_units.lower() == 'btu':
+            return self.quantity
+        if self.quantity_units.lower() == 'therms':
+            return self.quantity * 100000.
+        if self.quantity_units.lower() == 'kwh':
+            return self.quantity * 3412.14163
+        if self.quantity.lower() == 'ccf':
+            if ccf_conversion_factor is None:
+                raise ValueError(("Register contains gas measured "
+                    "in ccf: can't convert that into energy "
+                    "without the multiplier."))
+            else:
+                return quantity * 100000 * ccf_conversion_factor
+        raise ValueError('Unknown energy unit "%s"' % self.quantity_units)
+
+class Meter(EmbeddedDocument):
+    '''A utility meter inside a utility bill document.'''
+    registers = ListField(field=EmbeddedDocumentField(Register))
+    identifier = StringField(required=True)
+    prior_read_date = DateTimeField(required=True)
+    present_read_date = DateTimeField(required=True)
+    #estimated = BooleanField(required=True)
+    estimated = BooleanField() # TODO change back
+
+    def to_dict(self):
+        result = {
+            field : getattr(self, field) for field in ['identifier',
+                'prior_read_date', 'present_read_date', 'estimated']
+        }
+        result['registers'] = [r.to_dict() for r in self.registers()]
+        return result
+
+    def get_register(self, identifier):
+        regs = [r for r in self.regsiters if r.identifier == identifier]
+        if len(regs) == 0:
+            raise ValueError('No register with identifier "%s"' % identifier)
+        if len(regs) > 1:
+            raise ValueError('Multiple registers with identifier "%s"' %
+                    identifier)
+        return regs[0]
+
+    @property
+    def read_period(self):
+        return self.prior_read_date, self.present_read_date
+    def set_read_period(self, prior_read_date, present_read_date):
+        self.prior_read_date = prior_read_date
+        self.present_read_date = present_read_date
+
+class Charge(EmbeddedDocument):
+    '''A charge in a utility bill document.'''
+    # in dictionaries some of these fields were absent but now they should all
+    # be None when there is no value
+    rsi_binding = StringField(required=True)
+    description = StringField(required=True)
+    uuid = StringField(required=True)
+    quantity_units = StringField(required=True)
+    quantity = FloatField(required=True)
+    rate = FloatField(required=True)
+    rate_units = StringField(required=True)
+    total = FloatField(required=True)
+
+    def to_dict(self):
+        result = {name : getattr(self, name) for name in ['rsi_binding',
+                'description', 'uuid', 'quantity_units', 'quantity', 'rate',
+                'rate_units', 'total']}
+        # accomodate rate structure code which wants decimals (TODO remove
+        # this; always use floats except for rounding of money)
+        result = deep_map(float_to_decimal, result)
+        return result
+
+    # to acommodate rate structure code messing with internal data structure of
+    # utility bill; TODO remove when possible
+    @classmethod
+    def from_dict(cls, d):
+        return Charge(**d)
+
+class UtilBill(Document):
+    '''Schema definition for utility bill document in Mongo.'''
+    meta = {
+        # "db_alias" tells MongoEngine which database this goes with, while
+        # still allowing it to be configurable.
+        'db_alias': 'utilbills',
+        'collection': 'utilbills',
+        'allow_inheritance': False
+    }
+
+    id = ObjectIdField(required=True)
+
+    # unofficially unique identifying fields
+    account = StringField(required=True)
+    utility = StringField(required=True)
+    service = StringField(required=True)
+    start = DateTimeField(required=True) # Mongo does not have plain dates
+    end = DateTimeField(required=True)
+
+    # optional fields for frozen utility bills
+    # TODO these don't persist when saved
+    sequence = IntField()
+    version = IntField()
+
+    # other fields
+    chargegroups = DictField(required=True,
+            field=ListField(field=EmbeddedDocumentField(Charge)))
+    total = FloatField(required=True)
+    rate_structure_binding = StringField(required=True)
+    service_address = DictField(required=True, field=StringField())
+    #billing_address = DictField(required=True, field=StringField())
+    billing_address = DictField(field=StringField())
+    meters = ListField(field=EmbeddedDocumentField(Meter), required=True)
+
+    @property
+    def period(self):
+        return self.start, self.end
+
+    #@property
+    #def read_period(self):
+        #if len(self.meters) != 1:
+            #raise ValueError("There must be exactly one meter")
+        #m = meters[0]
+        #return m.prior_read_date, m.present_read_date
+
+    def get_meter(self, identifier):
+        '''Returns the Meter with the given identifier.'''
+        meters = [m for m in self.meters if m.identifier == identifier]
+        if len(meters) == 0:
+            raise ValueError('No meter with identifier "%s"' % identifier)
+        if len(meters) > 1:
+            raise ValueError('Multiple meters with identifier "%s"' %
+                    identifier)
+        return meters[0]
+
+    def total_energy(self):
+        '''Returns sum of energy quantity in all registers, in BTU.'''
+        return sum(sum(r.quantity_btu() for r in m.registers) for m in
+                self.meters)
+
+###############################################################################
+# reebill
+###############################################################################
+
 class MongoReebill(object):
     '''Class representing the reebill data structure stored in MongoDB. All
     data is stored in 'dictionary', which is a Python dict that PyMongo could
@@ -130,11 +312,11 @@ class MongoReebill(object):
         - hide the underlying mongo document organization
         - return cross cutting sets of data (e.g. all registers when registers are grouped by meter)
     '''
-    def __init__(self, reebill_data, utilbill_dicts):
+    def __init__(self, reebill_data, utilbills):
         assert isinstance(reebill_data, dict)
         # defensively copy whatever is passed in; who knows where the caller got it from
         self.reebill_dict = copy.deepcopy(reebill_data)
-        self._utilbills = copy.deepcopy(utilbill_dicts)
+        self._utilbills = copy.deepcopy(utilbills)
 
     # TODO 36805917 clear() can go away when ReeBills can be constructed
     def clear(self):
@@ -185,10 +367,10 @@ class MongoReebill(object):
             actual_chargegroups = self.actual_chargegroups_for_service(service)
             for (group, charges) in actual_chargegroups.items():
                 for charge in charges:
-                    charge['uuid'] = str(UUID.uuid1())
-                    if 'rate' in charge: del charge['rate']
-                    if 'quantity' in charge: del charge['quantity']
-                    if 'total' in charge: del charge['total']
+                    charge.uuid = str(UUID.uuid1())
+                    charge.rate = None
+                    charge.quantity = None
+                    charge.total = None
                     
             self.set_actual_chargegroups_for_service(service, actual_chargegroups)
 
@@ -204,10 +386,12 @@ class MongoReebill(object):
        
             # reset measured usage
             for service in self.services:
-                for meter in self.meters_for_service(service):
-                    self.set_meter_read_date(service, meter['identifier'], None, meter['present_read_date'])
-                for actual_register in self.actual_registers(service):
-                    self.set_actual_register_quantity(actual_register['identifier'], Decimal(0.0))
+                utilbill = self._get_utilbill_for_service(service)
+                for meter in utilbill.meters:
+                    meter.prior_read_date = meter.present_read_date
+                    meter.present_read_date = None
+                    for register in meter.registers:
+                        register.quantity = Decimal(0.0)
                 for shadow_register in self.shadow_registers(service):
                     self.set_shadow_register_quantity(shadow_register['identifier'], Decimal(0.0))
 
@@ -240,12 +424,14 @@ class MongoReebill(object):
         self.account = account
         for handle in self.reebill_dict['utilbills']:
             u = self._get_utilbill_for_handle(handle)
-            u['account'] = account
-            if 'sequence' in u:
-                del u['sequence']
-            if 'version' in u:
-                del u['version']
-            u['_id'] = handle['id'] = bson.ObjectId()
+            u.account = account
+            # TODO determine how to determine if the field really does not
+            # exist (should not be the same as having None value!)
+            if u.sequence is not None:
+                u.sequence = None
+            if u.version is not None:
+                u.version = None
+                u.id = bson.ObjectId()
 
     def new_utilbill_ids(self):
         '''Replaces _ids in utility bill documents and the reebill document's
@@ -460,10 +646,7 @@ class MongoReebill(object):
     # TODO this must die https://www.pivotaltracker.com/story/show/36492387
     @property
     def actual_total(self):
-        return self.reebill_dict['actual_total']
-    @actual_total.setter
-    def actual_total(self, value):
-        self.reebill_dict['actual_total'] = value
+        return sum(u.total for u in self._utilbills)
 
     @property
     def hypothetical_total(self):
@@ -514,13 +697,15 @@ class MongoReebill(object):
     def _utilbill_ids(self):
         '''Useful for debugging.'''
         # note order is not guranteed so the result may look weird
+        # NOTE MongoEngine uses the name "id" for the "_id" property; you set
+        # a property called _id but it won't work
         return zip([h['id'] for h in self.reebill_dict['utilbills']],
-                [u['_id'] for u in self._utilbills])
+                [u.id for u in self._utilbills])
 
     def _get_utilbill_for_service(self, service):
         '''Returns utility bill document having the given service. There must
         be exactly one.'''
-        matching_utilbills = [u for u in self._utilbills if u['service'] ==
+        matching_utilbills = [u for u in self._utilbills if u.service ==
                 service]
         if len(matching_utilbills) == 0:
             raise ValueError('No utilbill found for service "%s"' % service)
@@ -533,7 +718,7 @@ class MongoReebill(object):
         utility bill has the given service. There must be exactly 1.'''
         u = self._get_utilbill_for_service(service)
         handles = [h for h in self.reebill_dict['utilbills'] if h['id'] ==
-                u['_id']]
+                u.id]
         if len(handles) == 0:
             raise ValueError(('Reebill has no reference to utilbill for '
                     'service "%s"') % service)
@@ -543,14 +728,14 @@ class MongoReebill(object):
         return handles[0]
 
     def _get_utilbill_for_handle(self, utilbill_handle):
-        '''Returns the utility bill dictionary whose _id correspinds to the
-        "id" in the given internal utilbill dictionary.'''
+        '''Returns the utility bill document whose id correspinds to the "id"
+        in the given internal utilbill dictionary.'''
         # i am calling each subdocument in the "utilbills" list (which contains
-        # the utility bill's _id and data related to that bill) a "handle"
+        # the utility bill's id and data related to that bill) a "handle"
         # because it is what you use to grab a utility bill and it's kind of
         # like a pointer.
         id = utilbill_handle['id']
-        matching_utilbills = [u for u in self._utilbills if u['_id'] == id]
+        matching_utilbills = [u for u in self._utilbills if u.id == id]
         if len(matching_utilbills) == 0:
             raise ValueError('No utilbill found for id "%s"' % id)
         if len(matching_utilbills) > 1:
@@ -577,7 +762,7 @@ class MongoReebill(object):
         # find all utility bill documents with the given id, and make sure
         # there's exactly 1
         matching_indices = [index for (index, doc) in
-                enumerate(self._utilbills) if doc['_id'] == id]
+                enumerate(self._utilbills) if doc.id == id]
         if len(matching_indices) == 0:
             raise ValueError('No utilbill found for id "%s"' % id)
         if len(matching_indices) > 1:
@@ -598,10 +783,10 @@ class MongoReebill(object):
                 = new_total
 
     def actual_total_for_service(self, service_name):
-        return self._get_utilbill_for_service(service_name)['total']
+        return self._get_utilbill_for_service(service_name).total
 
     def set_actual_total_for_service(self, service_name, new_total):
-        self._get_utilbill_for_service(service_name)['total'] = new_total
+        self._get_utilbill_for_service(service_name).total = new_total
 
     def ree_value_for_service(self, service_name):
         '''Returns the total of 'ree_value' (renewable energy value offsetting
@@ -630,6 +815,7 @@ class MongoReebill(object):
         utilbill per service.'''
         return self._get_handle_for_service(service_name)['hypothetical_chargegroups']
 
+    # TODO 37477445 better to remove than make work with UtilBill class
     def set_hypothetical_chargegroups_for_service(self, service_name, new_chargegroups):
         '''Set hypothetical chargegroups, based on actual chargegroups.  This is used
         because it is customary to define the actual charges and base the hypothetical
@@ -638,31 +824,41 @@ class MongoReebill(object):
                 = new_chargegroups
 
     def actual_chargegroups_for_service(self, service_name):
-        '''Returns the list of actual chargegroups for the utilbill whose
-        service is 'service_name'. There's not supposed to be more than one
-        utilbill per service, so an exception is raised if that happens (or if
-        there's no utilbill for that service).'''
-        return self._get_utilbill_for_service(service_name)['chargegroups']
+        '''Returns a list of chargegroup dictionaries for the utilbill whose
+        service is 'service_name'. The charges are dictionaries, not Charge
+        objects, because that's what the rate structure code wants.'''
+        #return [{group_name: [c.to_dict() for c in charges]} for (group_name,
+                #charges) in self._get_utilbill_for_service(service_name)
+                #.chargegroups.iteritems()]
+        chargegroups_dict = self._get_utilbill_for_service(service_name)\
+                .chargegroups
+        if type(chargegroups_dict.values()[0][0]) != Charge:
+            import ipdb; ipdb.set_trace()
+        return {group_name: [c.to_dict() for c in charges] for (group_name,
+                charges) in chargegroups_dict.iteritems()}
 
+    # TODO 37477445 remove when old rate structure code is removed
     def set_actual_chargegroups_for_service(self, service_name, new_chargegroups):
         '''Set hypothetical chargegroups, based on actual chargegroups.  This is used
         because it is customary to define the actual charges and base the hypothetical
         charges on them.'''
-        self._get_utilbill_for_service(service_name)['chargegroups'] \
-                = new_chargegroups
+        #self._get_utilbill_for_service(service_name)['chargegroups'] \
+                #= new_chargegroups
+        self._get_utilbill_for_service(service_name).chargegroups = {name :
+                [Charge.from_dict(c) for c in charges] for (name, charges) in
+                new_chargegroups.iteritems()}
 
     def chargegroups_model_for_service(self, service_name):
         '''Returns a shallow list of chargegroups for the utilbill whose
         service is 'service_name'. There's not supposed to be more than one
         utilbill per service, so an exception is raised if that happens (or if
         there's no utilbill for that service).'''
-        return self._get_utilbill_for_service(service_name)['chargegroups']\
-                .keys()
+        return self._get_utilbill_for_service(service_name).chargegroups.keys()
 
     @property
     def services(self):
         '''Returns a list of all services for which there are utilbills.'''
-        return [u['service'] for u in self._utilbills if u['service'] not in self.suspended_services]
+        return [u.service for u in self._utilbills if u.service not in self.suspended_services]
 
     @property
     def suspended_services(self):
@@ -701,20 +897,18 @@ class MongoReebill(object):
         '''Returns start & end dates of the first utilbill found whose service
         is 'service_name'. There's not supposed to be more than one utilbill
         per service.'''
-        u = self._get_utilbill_for_service(service_name)
-        return u['start'], u['end']
+        return self._get_utilbill_for_service(service_name).period
 
     def set_utilbill_period_for_service(self, service, period):
         '''Changes the period dates of the first utility bill associated with
         this reebill whose service is 'service'.'''
         u = self._get_utilbill_for_service(service)
-        u['start'], u['end'] = period
+        u.start, u.end = period
 
     def meter_read_period(self, service):
         '''Returns tuple of period dates for first meter found with the given
         service.'''
-        meter = self.meters_for_service(service)[0]
-        return meter['prior_read_date'], meter['present_read_date']
+        return self._get_utilbill_for_service(service).meters[0].read_period
 
     def meter_read_dates_for_service(self, service):
         '''Returns (prior_read_date, present_read_date) of the shadowed meter
@@ -725,10 +919,10 @@ class MongoReebill(object):
         external_utilbill = self._get_utilbill_for_service(service)
         utilbill_handle = self._get_handle_for_service(service)
         for shadow_register in utilbill_handle['shadow_registers']:
-            for meter in external_utilbill['meters']:
-                for actual_register in meter['registers']:
-                    if actual_register['identifier'] == shadow_register['identifier']:
-                        return meter['prior_read_date'], meter['present_read_date']
+            for meter in external_utilbill.meters:
+                for actual_register in meter.registers:
+                    if actual_register.identifier == shadow_register['identifier']:
+                        return meter.prior_read_date, meter.present_read_date
         raise ValueError(('Utility bill for service "%s" has no meter '
                 'containing a register whose identifier matches that of '
                 'a shadow register') % service)
@@ -740,7 +934,7 @@ class MongoReebill(object):
         return dict([(service, self.utilbill_period_for_service(service)) for
             service in self.services])
 
-    # TODO: consider calling this meter readings
+    # TODO 37477445 remove this
     def meters_for_service(self, service_name):
         '''Returns a list of copies of meter dictionaries for the utilbill
         whose service is 'service_name'. There's not supposed to be more than
@@ -767,11 +961,12 @@ class MongoReebill(object):
                         break
         return meters
 
+    # TODO 37477445 replace with utility bill meter; remove this method from MongoReebill
     def meter(self, service, identifier):
-        meter = next((meter for meter in self.meters_for_service(service) if
-                meter['identifier'] == identifier), None)
-        return meter
+        return self._get_utilbill_for_service(service).get_meter(identifier).to_dict()
 
+    # TODO 37477445 replace with utility bill meter; remove this method from MongoReebill
+    # (part of "reebill structure editor": may be dead)
     def delete_meter(self, service, identifier):
         '''Deletes all meters the utility bill for the given service.'''
         ub = self._get_utilbill_for_service(service)
@@ -780,29 +975,32 @@ class MongoReebill(object):
                 for meter in ub['meters']:
                     del meter
 
+    # TODO 37477445 replace with utility bill method; remove this method from MongoReebill
+    # (part of "reebill structure editor": may be dead)
     def new_meter(self, service):
-        new_meter = {
-            'identifier': str(UUID.uuid4()),
-            'present_read_date': None,
-            'prior_read_date': datetime.now(),
-            'estimated': False,
-            'registers': [],
-        }
-        ub = self._get_utilbill_for_service(service)
-        ub['meters'].append(new_meter)
+        new_meter = Meter(
+            identifier=str(UUID.uuid4()),
+            prior_read_date=datetime.now(),
+            present_read_date=None,
+            estimated=False,
+            resgisters=[],
+        )
+        self._get_utilbill_for_service(service).meters.append(new_meter)
         return new_meter
 
+    # TODO 37477445 replace with utility bill method; remove this method from MongoReebill
+    # (part of "reebill structure editor": may be dead)
     def new_register(self, service, meter_identifier):
         identifier = str(UUID.uuid4())
-        new_actual_register = {
-            "description" : "No description",
-            "quantity" : 0,
-            "quantity_units" : "No Units",
-            "shadow" : False,
-            "identifier" : identifier,
-            "type" : "total",
-            "register_binding": "No Binding"
-        }
+        new_actual_register = Register(
+            description="No description",
+            quantity=0,
+            quantity_units= "No units",
+            shadow=False,
+            indentifier=identifier,
+            type=total,
+            register_binding="No binding",
+        )
         new_shadow_register = {
             "description" : "No description",
             "quantity" : 0,
@@ -815,52 +1013,29 @@ class MongoReebill(object):
 
         # put actual register in meter in utilbill document
         utilbill = self._get_utilbill_for_service(service)
-        meter = next(m for m in utilbill['meters'] if m['identifier'] ==
-                meter_identifier)
-        meter['registers'].append(new_actual_register)
+        meter = utilbill.get_meter(meter_identifier)
+        meter.registers.append(new_shadow_register)
 
         # put hypothetical register in 'utilbills' list of reebill document
         self._get_handle_for_service(service)['shadow_registers']\
                 .append(new_shadow_register)
-        return (new_actual_register, new_shadow_register)
+        return (new_actual_register.to_dict(), new_shadow_register)
 
     def set_meter_dates_from_utilbills(self):
         '''Set the meter read dates to the start and end dates of the associated utilbill.'''
         for service in self.services:
             for meter in self.meters_for_service(service):
                 start, end = self.utilbill_period_for_service(service)
-                self.set_meter_read_date(service, meter['identifier'], end, start)
+                self.set_meter_read_date(service, meter.identifier, end, start)
 
-    def set_meter_read_date(self, service, identifier, present_read_date,
-            prior_read_date):
-        ''' Set the read date for a specified meter.'''
-        utilbill = self._get_utilbill_for_service(service)
-        meter = next(m for m in utilbill['meters'] if m['identifier'] ==
-                identifier)
-        meter['present_read_date'] = present_read_date
-        meter['prior_read_date'] = prior_read_date
-
-    def set_meter_actual_register(self, service, meter_identifier, register_identifier, quantity):
-        ''' Set the total for a specified meter register.'''
-        utilbill = self._get_utilbill_for_service(service)
-        meter = next(m for m in utilbill['meters'] if m['identifier'] ==
-                meter_identifier)
-        for register in meter['registers']:
-            if register['identifier'] == register_identifier:
-                register['quantity'] = quantity
-
+    # TODO 37477445 repl_ace with utility bill method; remove this method from MongoReebill
+    # (part of "reebill structure editor": may be dead)
     def set_meter_identifier(self, service, old_identifier, new_identifier):
-        if old_identifier == new_identifier:
-            return
-        utilbill = self._get_utilbill_for_service(service)
-        # complain if any existing meter has the same identifier
-        for meter in utilbill['meters']:
-            if meter['identifier'] == new_identifier:
-                raise Exception("Duplicate Identifier")
-        meter = next(m for m in utilbill['meters'] if m['identifier'] ==
-                meter_identifier)
-        meter['identifier'] = new_identifier
+        self._get_utilbill_for_service(service).get_meter(old_identifier)\
+                .identifier = new_identifier
 
+    # TODO 37477445 replace with utility bill method; remove this method from MongoReebill
+    # (part of "reebill structure editor": may be dead)
     def set_register_identifier(self, service, old_identifier, new_identifier):
         if old_identifier == new_identifier:
             return
@@ -868,14 +1043,14 @@ class MongoReebill(object):
 
         # complain if any register in any existing meter has the same
         # identifier
-        for meter in utilbill['meters']:
-            for register in meter['registers']:
-                if register['identifier'] == new_identifier:
+        for meter in utilbill.meters:
+            for register in meter.registers:
+                if register.identifier == new_identifier:
                     raise Exception("Duplicate Identifier")
 
         # actual register in utilbill
         for meter in utilbill['meters']:
-            for register in meter['registers']:
+            for register in meter.registers:
                 if register['identifier'] == old_identifier:
                     register['identifier'] = new_identifier
 
@@ -885,6 +1060,8 @@ class MongoReebill(object):
                 if register['identifier'] == old_identifier:
                     register['identifier'] = new_identifier
 
+    # TODO delete or move to meter
+    # (part of "reebill structure editor": may be dead)
     def meter_for_register(self, service, identifier):
         meters = self.meters_for_service(service)
         for meter in meters:
@@ -897,6 +1074,8 @@ class MongoReebill(object):
         return dict([(service, self.meters_for_service(service)) for service
                 in self.services])
 
+    # TODO 37477445 replace with utility bill method; remove this method from MongoReebill
+    # (part of "reebill structure editor": may be dead)
     def actual_register(self, service, identifier):
         actual_register = [register for register in
                 self.actual_registers(service)
@@ -909,6 +1088,7 @@ class MongoReebill(object):
             raise Exception("More than one actual register named %s"
                     % identifier)
 
+    # TODO 37477445 replace with utility bill method; remove this method from MongoReebill
     def actual_registers(self, service):
         '''Returns a list of all nonempty non-shadow register dictionaries of
         all meters for the given service. (The "actual" in the name has nothing
@@ -917,31 +1097,15 @@ class MongoReebill(object):
         registers available to rate structure items.'''
         result = []
         for utilbill in self._utilbills:
-            for meter in utilbill['meters']:
-                result.extend(meter['registers'])
+            for meter in utilbill.meters:
+                result.extend([r.to_dict() for r in meter.registers])
         return result
-
-    def set_actual_register_quantity(self, identifier, quantity):
-        '''Sets the value 'quantity' in the first register subdictionary whose
-        identifier is 'identifier' to 'quantity'. Raises an exception if no
-        register with that identified is found.'''
-        for u in self._utilbills:
-            for m in u['meters']:
-                for r in m['registers']:
-                    if r['identifier'] == identifier:
-                        r['quantity'] = quantity
-                        return
-
-    def all_shadow_registers(self):
-        return reduce(operator.add, [self.shadow_registers(s) for s in
-                self.services], [])
 
     def shadow_registers(self, service):
         '''Returns list of copies of shadow register dictionaries for the
         utility bill with the given service.'''
         utilbill_handle = self._get_handle_for_service(service)
-        #print repr(utilbill_handle.get('shadow_registers'))
-        return copy.deepcopy(utilbill_handle.get('shadow_registers'))
+        return copy.deepcopy(utilbill_handle['shadow_registers'])
 
     def set_shadow_register_quantity(self, identifier, quantity):
         '''Sets the value for the key "quantity" in the first shadow register
@@ -971,12 +1135,14 @@ class MongoReebill(object):
                     return
         raise Exception('No register found with identifier "%s"' % quantity)
 
+    # TODO move to utility bill (eventually)
     def utility_name_for_service(self, service_name):
-        return self._get_utilbill_for_service(service_name)['utility']
+        return self._get_utilbill_for_service(service_name).utility
 
+    # TODO move to utility bill (eventually)
     def rate_structure_name_for_service(self, service_name):
         return self._get_utilbill_for_service(service_name)\
-                ['rate_structure_binding']
+                .rate_structure_binding
 
     @property
     def savings(self):
@@ -988,36 +1154,39 @@ class MongoReebill(object):
         '''Returns all renewable energy distributed among shadow registers of
         this reebill, in therms.'''
         # TODO switch to BTU
-        if type(ccf_conversion_factor) not in (type(None), Decimal):
-            raise ValueError("ccf conversion factor must be a Decimal")
+        if type(ccf_conversion_factor) not in (type(None), float, Decimal):
+            raise ValueError("ccf conversion factor must be a float or Decimal")
+        if isinstance(ccf_conversion_factor, Decimal):
+            ccf_conversion_factor = float(ccf_conversion_factor)
         # TODO: CCF is not an energy unit, and registers actually hold CCF
         # instead of therms. we need to start keeping track of CCF-to-therms
         # conversion factors.
         # https://www.pivotaltracker.com/story/show/22171391
-        total_therms = Decimal(0)
-        for register in self.all_shadow_registers():
-            quantity = register['quantity']
-            unit = register['quantity_units'].lower()
-            if unit == 'therms':
-                total_therms += quantity
-            elif unit == 'btu':
-                # TODO physical constants must be global
-                total_therms += quantity / Decimal("100000.0")
-            elif unit == 'kwh':
-                # TODO physical constants must be global
-                total_therms += quantity / Decimal(".0341214163")
-            elif unit == 'ccf':
-                if ccf_conversion_factor is not None:
-                    total_therms += quantity * ccf_conversion_factor
+        total_therms = 0
+        for utilbill_handle in self.reebill_dict['utilbills']:
+            for register in utilbill_handle['shadow_registers']:
+                quantity = register['quantity']
+                unit = register['quantity_units'].lower()
+                if unit == 'therms':
+                    total_therms += quantity
+                elif unit == 'btu':
+                    # TODO physical constants must be global
+                    total_therms += quantity / Decimal("100000.0")
+                elif unit == 'kwh':
+                    # TODO physical constants must be global
+                    total_therms += quantity / Decimal(".0341214163")
+                elif unit == 'ccf':
+                    if ccf_conversion_factor is not None:
+                        total_therms += quantity * ccf_conversion_factor
+                    else:
+                        # TODO: 28825375 - need the conversion factor for this
+                        raise Exception(("Register contains gas measured "
+                            "in ccf: can't convert that into energy "
+                            "without the multiplier."))
                 else:
-                    # TODO: 28825375 - need the conversion factor for this
-                    raise Exception(("Register contains gas measured "
-                        "in ccf: can't convert that into energy "
-                        "without the multiplier."))
-            else:
-                raise Exception('Unknown energy unit: "%s"' % \
-                        register['quantity_units'])
-        return total_therms
+                    raise Exception('Unknown energy unit: "%s"' % \
+                            register['quantity_units'])
+        return float(total_therms)
 
     #
     # Helper functions
@@ -1033,18 +1202,25 @@ class MongoReebill(object):
     def actual_chargegroups_flattened(self, service):
         utilbill = self._get_utilbill_for_service(service)
         return flatten_chargegroups_dict(copy.deepcopy(
-                utilbill['chargegroups']))
+                utilbill.chargegroups))
 
 
+    # TODO 37477445 remove
     def set_hypothetical_chargegroups_flattened(self, service, flat_charges):
         utilbill_handle = self._get_handle_for_service(service)
         utilbill_handle['hypothetical_chargegroups'] = \
                 unflatten_chargegroups_list(flat_charges)
 
+    # TODO 37477445 remove
     def set_actual_chargegroups_flattened(self, service, flat_charges):
         utilbill = self._get_utilbill_for_service(service)
         utilbill['chargegroups'] = unflatten_chargegroups_list(flat_charges)
 
+
+
+###############################################################################
+# DAO
+###############################################################################
 
 class ReebillDAO:
     '''A "data access object" for reading and writing reebills in MongoDB.'''
@@ -1101,14 +1277,10 @@ class ReebillDAO:
                     # must not contain "sequence" or "version" keys
                     sequence=False, version=False)
 
-            # convert types
-            new_utilbill = deep_map(float_to_decimal, new_utilbill)
-            new_utilbill = convert_datetimes(new_utilbill)
-
             all_new_utilbills.append(new_utilbill)
 
             # utilbill_handle's _id should match the new utility bill
-            utilbill_handle['id'] = new_utilbill['_id']
+            utilbill_handle['id'] = new_utilbill.id
 
         # replace utilbills with new ones loaded above (all at once)
         reebill._utilbills = all_new_utilbills
@@ -1143,9 +1315,7 @@ class ReebillDAO:
             query.update({'sequence': kwargs['sequence']})
         if kwargs.has_key('version'):
             query.update({'version': kwargs['version']})
-        cursor = self.utilbills_collection.find(query, sort=[('start',
-                pymongo.ASCENDING)])
-        return list(cursor)
+        return list(UtilBill.objects(__raw__=query).all())
 
     def load_utilbill(self, account, service, utility, start, end,
             sequence=None, version=None):
@@ -1190,44 +1360,23 @@ class ReebillDAO:
         elif version is not None:
             raise ValueError("'version'=%s; must be int or boolean" % version)
 
-        docs = self.utilbills_collection.find(query)
-
-        # make sure exactly one doc was found
+        # MongoEngine get() ensures uniqueness ("raw" means query like regular
+        # pymongo)
+        docs = UtilBill.objects(__raw__=query)
         if docs.count() == 0:
-            raise NoSuchBillException(("No utility bill found in %s: "
-                    "query was %s") % (self.utilbills_collection,
-                    format_query(query)))
+            raise NoSuchBillException('No utility bill found for query %s' % query)
         elif docs.count() > 1:
-            raise NotUniqueException(("Multiple utility bills in %s satisfy "
-                    "query %s") % (self.utilbills_collection,
-                    format_query(query)))
+            raise NotUniqueException('Multiple utility bills found for query %s' % query)
         return docs[0]
-
 
     def _load_all_utillbills_for_reebill(self, session, reebill_doc):
         '''Loads all utility bill documents from Mongo that match the ones in
         the 'utilbills' list in the given reebill dictionary (NOT MongoReebill
         object). Returns list of dictionaries with converted types.'''
         result = []
-
         for utilbill_handle in reebill_doc['utilbills']:
-            query = {'_id': utilbill_handle['id']}
-            utilbill_doc = self.utilbills_collection.find_one(query)
-            if utilbill_doc == None:
-                raise NoSuchBillException(("No utility bill found for reebill "
-                        " %s-%s-%s in %s: query was %s") % (
-                        reebill_doc['_id']['account'], reebill_doc['_id']['sequence'], reebill_doc['_id']['version'],
-                        self.utilbills_collection, format_query(query)))
-
-
-            # convert types
-            utilbill_doc = deep_map(float_to_decimal, utilbill_doc)
-            utilbill_doc = convert_datetimes(utilbill_doc)
-
-            result.append(utilbill_doc)
-
+            result.append(UtilBill.objects().get(id=utilbill_handle['id']))
         return result
-
 
     def load_reebill(self, account, sequence, version='max'):
         '''Returns the reebill with the given account and sequence, and the a
@@ -1430,13 +1579,11 @@ class ReebillDAO:
         # check for uniqueness of {account, service, utility, start, end} (and
         # sequence + version if appropriate). Mongo won't enforce this for us.
         unique_fields = {
-            'account': utilbill_doc['account'],
-            'service': utilbill_doc['service'],
-            'utility': utilbill_doc['utility'],
-            'start': date_to_datetime(utilbill_doc['start']) if
-                    utilbill_doc['start'] is not None else None,
-            'end': date_to_datetime(utilbill_doc['end']) if utilbill_doc['end']
-                    is not None else None,
+            'account': utilbill_doc.account,
+            'service': utilbill_doc.service,
+            'utility': utilbill_doc.utility,
+            'start': utilbill_doc.start,
+            'end': utilbill_doc.end,
         }
         if sequence_and_version is not None:
             # this utility bill is being frozen: check for existing frozen
@@ -1448,33 +1595,37 @@ class ReebillDAO:
             # this utility bill is already a frozen one and has been saved:
             # check for existing frozen utility bills with the same sequence
             # and version (ignoring un-frozen ones)
-            unique_fields['sequence'] = utilbill_doc['sequence']
-            unique_fields['version'] = utilbill_doc['version']
+            unique_fields['sequence'] = utilbill_doc.sequence
+            unique_fields['version'] = utilbill_doc.version
         else:
             # not frozen: only check for existing utility bills that don't have
             # sequence/version keys
             unique_fields['sequence'] = {'$exists': False}
             unique_fields['version'] = {'$exists': False}
-        # NOTE do not use load_utilbills(**unique_fields) here because it
-        # unpacks None values into nonexistent keys!
-        # see bug #39717171
-        for duplicate in self.utilbills_collection.find(unique_fields):
-            if duplicate['_id'] != utilbill_doc['_id']:
+        for duplicate in UtilBill.objects(__raw__=unique_fields):
+            if duplicate.id != utilbill_doc.id:
                 raise NotUniqueException(("Can't save utility bill with "
                         "_id=%s: There's already a utility bill with "
-                        "id=%s matching %s") % (utilbill_doc['_id'],
-                        duplicate['_id'],
-                        format_query(unique_fields)))
+                        "_id=%s matching %s") % (utilbill_doc.id,
+                        duplicate.id, format_query(unique_fields)))
 
         if sequence_and_version is not None:
-            utilbill_doc.update({
-                'sequence': sequence_and_version[0],
-                'version': sequence_and_version[1],
-            })
+            utilbill_doc.sequence = sequence_and_version[0]
+            utilbill_doc.version = sequence_and_version[1]
+            # tell MongoEngine to force creation of a new document (because the
+            # id has just been changed in save_reebill())
+            utilbill_doc.save(safe=True, force_insert=True)
 
-        utilbill_doc = bson_convert(copy.deepcopy(utilbill_doc))
-        self.utilbills_collection.save(utilbill_doc, safe=True)
-        # TODO catch mongo's return value and raise MongoError
+            # verify that sequence & version got saved
+            # (TODO remove)
+            assert utilbill_doc.sequence == sequence_and_version[0]
+            assert utilbill_doc.version == sequence_and_version[1]
+            u = UtilBill.objects(id=utilbill_doc.id)[0]
+            assert u.sequence == sequence_and_version[0]
+            assert u.version == sequence_and_version[1]
+        else:
+            # normal save
+            utilbill_doc.save(safe=True)
 
     def delete_reebill(self, account, sequence, version):
         # load reebill in order to find utility bills
@@ -1483,7 +1634,7 @@ class ReebillDAO:
         # first ensure that each utility bill can be found and the reebill can
         # be found (to help keep this operation atomic)
         for u in reebill._utilbills:
-            self.utilbills_collection.find({'_id': bson_convert(u['_id'])})
+            UtilBill.objects().get(id=u.id)
         self.reebills_collection.find({
             '_id.account': account,
             '_id.sequence': sequence,
@@ -1494,9 +1645,7 @@ class ReebillDAO:
         for u in reebill._utilbills:
             # if this is a frozen utility bill, delete it
             if 'sequence' in u:
-                result = self.utilbills_collection.remove({'_id': bson_convert(u['_id'])}, safe=True)
-                if result['err'] is not None or result['n'] == 0:
-                    raise MongoError(result)
+                u.delete(safe=True)
 
             # if this is an editable utility bill, delete it only if the
             # reebill's version is 0. (the editable document is retained for
@@ -1520,9 +1669,7 @@ class ReebillDAO:
                     'sequence': {'$exists': False},
                     'version': {'$exists': False},
                 }
-                result = self.utilbills_collection.remove(q, safe=True)
-                if result['err'] is not None or result['n'] == 0:
-                    raise MongoError(result)
+                UtilBill.objects(__raw__=q).delete(safe=True)
 
         result = self.reebills_collection.remove({
             '_id.account': account,
