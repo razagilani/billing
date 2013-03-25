@@ -3,6 +3,7 @@ import copy
 from datetime import date, datetime, timedelta
 from bson.objectid import ObjectId
 from billing.processing.mongo import MongoReebill, float_to_decimal
+from billing.processing.mongo import UtilBill, Charge, Meter, Register
 from billing.processing.rate_structure import RateStructure
 from billing.util import dateutils
 from billing.util.dictutils import deep_map, subdict
@@ -13,153 +14,157 @@ ISODate = lambda s: datetime.strptime(s, dateutils.ISO_8601_DATETIME)
 true, false = True, False
 null = None
 
-# editable utility bill (does not contain sequence, version of reebill)
-example_utilbill = {
+example_utilbill = UtilBill(
     # NOTE: "_id" must be inserted at runtime in get_utilbill_dict() because it
     # should be different for each instance
+    account="10003",
+    service="gas",
+    utility="washgas",
+    start=ISODate("2011-11-12T00:00:00Z"),
+    end=ISODate("2011-12-14T00:00:00Z"),
 
-    "account": "10003",
-    "service" : "gas",
-    "utility" : "washgas",
-    "start" : ISODate("2011-11-12T00:00:00Z"),
-    "end" : ISODate("2011-12-14T00:00:00Z"),
-
-    "chargegroups" : {
+    chargegroups={
         "All Charges" : [
-            {
-                "rsi_binding" : "SYSTEM_CHARGE",
-                "description" : "System Charge",
-                "quantity" : 1,
-                "rate_units" : "dollars",
-                "processingnote" : "",
-                "rate" : 11.2,
-                "quantity_units" : "",
-                "total" : 11.2,
-                "uuid" : "c96fc8b0-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                "rsi_binding" : "DISTRIBUTION_CHARGE",
-                "description" : "Distribution charge for all therms",
-                "quantity" : 561.9,
-                "rate_units" : "dollars",
-                "processingnote" : "",
-                "rate" : 0.2935,
-                "quantity_units" : "therms",
-                "total" : 164.92,
-                "uuid" : "c9709ec0-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                "rsi_binding" : "PGC",
-                "description" : "Purchased Gas Charge",
-                "quantity" : 561.9,
-                "rate_units" : "dollars",
-                "processingnote" : "",
-                "rate" : 0.7653,
-                "quantity_units" : "therms",
-                "total" : 430.02,
-                "uuid" : "c9717458-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                "rsi_binding" : "PUC",
-                "quantity_units" : "kWh",
-                "quantity" : 1,
-                "description" : "Peak Usage Charge",
-                "rate_units" : "dollars",
-                "rate" : 23.14,
-                "total" : 23.14,
-                "uuid" : "c97254b8-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                "rsi_binding" : "RIGHT_OF_WAY",
-                "description" : "DC Rights-of-Way Fee",
-                "quantity" : 561.9,
-                "rate_units" : "dollars",
-                "processingnote" : "",
-                "rate" : 0.03059,
-                "quantity_units" : "therms",
-                "total" : 17.19,
-                "uuid" : "c973271c-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                "rsi_binding" : "SETF",
-                "description" : "Sustainable Energy Trust Fund",
-                "quantity" : 561.9,
-                "rate_units" : "dollars",
-                "processingnote" : "",
-                "rate" : 0.01399,
-                "quantity_units" : "therms",
-                "total" : 7.87,
-                "uuid" : "c973320c-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                "rsi_binding" : "EATF",
-                "description" : "DC Energy Assistance Trust Fund",
-                "quantity" : 561.9,
-                "rate_units" : "dollars",
-                "processingnote" : "",
-                "rate" : 0.006,
-                "quantity_units" : "therms",
-                "total" : 3.37,
-                "uuid" : "c973345a-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                "rsi_binding" : "SALES_TAX",
-                "description" : "Sales tax",
-                "quantity" : 701.41,
-                "rate_units" : "dollars",
-                "processingnote" : "",
-                "rate" : 0.06,
-                "quantity_units" : "dollars",
-                "total" : 42.08,
-                "uuid" : "c9733676-2c16-11e1-8c7f-002421e88ffb"
-            },
-            {
-                "rsi_binding" : "DELIVERY_TAX",
-                "description" : "Delivery tax",
-                "quantity" : 561.9,
-                "rate_units" : "dollars",
-                "processingnote" : "",
-                "rate" : 0.07777,
-                "quantity_units" : "therms",
-                "total" : 43.7,
-                "uuid" : "c973386a-2c16-11e1-8c7f-002421e88ffb"
-            }
+            Charge(
+                rsi_binding="SYSTEM_CHARGE",
+                description="System Charge",
+                quantity=1,
+                rate_units="dollars",
+                processingnote="",
+                rate=11.2,
+                quantity_units="",
+                total=11.2,
+                uuid="c96fc8b0-2c16-11e1-8c7f-002421e88ffb"
+            ),
+            Charge(
+                rsi_binding="DISTRIBUTION_CHARGE",
+                description="Distribution charge for all therms",
+                quantity=561.9,
+                rate_units="dollars",
+                processingnote="",
+                rate=0.2935,
+                quantity_units="therms",
+                total=164.92,
+                uuid="c9709ec0-2c16-11e1-8c7f-002421e88ffb"
+            ),
+            Charge(
+                rsi_binding="PGC",
+                description="Purchased Gas Charge",
+                quantity=561.9,
+                rate_units="dollars",
+                processingnote="",
+                rate=0.7653,
+                quantity_units="therms",
+                total=430.02,
+                uuid="c9717458-2c16-11e1-8c7f-002421e88ffb"
+            ),
+            Charge(
+                rsi_binding="PUC",
+                quantity_units="kWh",
+                quantity=1,
+                description="Peak Usage Charge",
+                rate_units="dollars",
+                rate=23.14,
+                total=23.14,
+                uuid="c97254b8-2c16-11e1-8c7f-002421e88ffb"
+            ),
+            Charge(
+                rsi_binding="RIGHT_OF_WAY",
+                description="DC Rights-of-Way Fee",
+                quantity=561.9,
+                rate_units="dollars",
+                processingnote="",
+                rate=0.03059,
+                quantity_units="therms",
+                total=17.19,
+                uuid="c973271c-2c16-11e1-8c7f-002421e88ffb"
+            ),
+            Charge(
+                rsi_binding="SETF",
+                description="Sustainable Energy Trust Fund",
+                quantity=561.9,
+                rate_units="dollars",
+                processingnote="",
+                rate=0.01399,
+                quantity_units="therms",
+                total=7.87,
+                uuid="c973320c-2c16-11e1-8c7f-002421e88ffb"
+            ),
+            Charge(
+                rsi_binding="EATF",
+                description="DC Energy Assistance Trust Fund",
+                quantity=561.9,
+                rate_units="dollars",
+                processingnote="",
+                rate=0.006,
+                quantity_units="therms",
+                total=3.37,
+                uuid="c973345a-2c16-11e1-8c7f-002421e88ffb"
+            ),
+            Charge(
+                rsi_binding="SALES_TAX",
+                description="Sales tax",
+                quantity=701.41,
+                rate_units="dollars",
+                processingnote="",
+                rate=0.06,
+                quantity_units="dollars",
+                total=42.08,
+                uuid="c9733676-2c16-11e1-8c7f-002421e88ffb"
+            ),
+            Charge(
+                rsi_binding="DELIVERY_TAX",
+                description="Delivery tax",
+                quantity=561.9,
+                rate_units="dollars",
+                processingnote="",
+                rate=0.07777,
+                quantity_units="therms",
+                total=43.7,
+                uuid="c973386a-2c16-11e1-8c7f-002421e88ffb"
+            )
         ]
     },
-    "serviceaddress" : {
+    billing_address= {
         "postalcode" : "20010",
         "city" : "Washington",
         "state" : "DC",
         "addressee" : "Monroe Towers",
         "street" : "3501 13TH ST NW #WH"
     },
-    "meters" : [
-        {
-            "present_read_date" : ISODate("2011-12-14T00:00:00Z"),
-            "registers" : [
-                {
-                    "quantity_units" : "therms",
-                    "quantity" : 561.9,
-                    "register_binding" : "REG_TOTAL",
-                    "identifier" : "M60324",
-                    "type" : "total",
-                    "description" : "Therms"
-                },
-            ],
-            "prior_read_date" : ISODate("2011-11-12T00:00:00Z"),
-            "identifier" : "M60324"
-        }
-    ],
-    "total" : 743.49,
-    "rate_structure_binding" : "DC Non Residential Non Heat",
-    "billingaddress" : {
+    service_address= {
+        "postalcode" : "20010",
+        "city" : "Washington",
+        "state" : "DC",
+        "addressee" : "Monroe Towers",
+        "street" : "3501 13TH ST NW #WH"
+    },
+    meters=[Meter(
+        identifier="M60324",
+        prior_read_date=ISODate("2011-11-12T00:00:00Z"),
+        present_read_date=ISODate("2011-12-14T00:00:00Z"),
+        estimated=False,
+        registers=[Register(
+            quantity_units="therms",
+            quantity=561.9,
+            register_binding="REG_TOTAL",
+            identifier="M60324",
+            type="total",
+            description="Therms"
+        )],
+    )],
+    total=743.49,
+    rate_structure_binding="DC Non Residential Non Heat",
+    billing_address={
         "postalcode" : "20910",
         "city" : "Silver Spring",
         "state" : "MD",
         "addressee" : "Managing Member Monroe Towers",
         "street" : "3501 13TH ST NW LLC"
     }
-}
+)
+
+
 
 example_reebill = {
 	"_id" : {
@@ -346,10 +351,10 @@ example_reebill = {
 	"balance_forward" : 1027.79,
 	"period_begin" : ISODate("2011-11-12T00:00:00Z"),
 	"billing_address" : {
-		"ba_addressee" : "Managing Member Monroe Towers",
-		"ba_state" : "MD",
-		"ba_city" : "Silver Spring",
-		"ba_street1" : "3501 13TH ST NW LLC",
+		"ba_addressee" : "managing member monroe towers",
+		"ba_state" : "md",
+		"ba_city" : "silver spring",
+		"ba_street1" : "3501 13th st nw llc",
 		"ba_postal_code" : "20910"
 	}
 }
@@ -519,35 +524,27 @@ def get_reebill(account, sequence, start=date(2011,11,12),
     reebill_dict['utilbills'][0]['id'] = id
 
     u = get_utilbill_dict(account, start=start, end=end)
-
-    # force utilbill to match the utilbill document
-    u.update({
-        '_id': id,
-        'account': account,
-        'start': start,
-        'end': end
-    })
+    u.id = id
 
     return MongoReebill(deep_map(float_to_decimal, reebill_dict),
             [copy.deepcopy(deep_map(float_to_decimal, u))])
 
+# TODO rename to get_utilbill
 def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14),
         utility='washgas', service='gas'):
-    '''Returns an example utility bill dictionary.'''
+    '''Returns an example utility bill.'''
     start, end = date_to_datetime(start), date_to_datetime(end)
-    utilbill_dict = copy.deepcopy(example_utilbill)
-    utilbill_dict.update({
-        '_id': ObjectId(),
-        'account': account,
-        'start': start,
-        'end': end,
-        'service': service,
-        'utility': utility,
-    })
-    for meter in utilbill_dict['meters']:
-        meter['prior_read_date'] = start
-        meter['present_read_date'] = end
-    return utilbill_dict
+    u = copy.deepcopy(example_utilbill)
+    u.id = ObjectId()
+    u.account = account
+    u.start = start
+    u.end = end
+    u.service = service
+    u.utility = utility
+    for meter in u.meters:
+        meter.prior_read_date = start
+        meter.present_read_date = end
+    return u
 
 def get_urs_dict():
     '''Returns an example utility global rate structure document.'''

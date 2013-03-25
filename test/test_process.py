@@ -23,6 +23,7 @@ from billing.processing.billupload import BillUpload
 from decimal import Decimal
 from billing.util.dictutils import deep_map
 import MySQLdb
+import mongoengine
 from billing.util.mongo_utils import python_convert
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.test import example_data
@@ -847,6 +848,10 @@ class ProcessTest(TestCaseWithSetup):
             
             zero = example_data.get_reebill(acc, 0)
             zero.ree_charges = 100
+            one.ree_charges = 100
+            two.ree_charges = 100
+            three.ree_charges = 100
+            four.ree_charges = 100
             self.reebill_dao.save_reebill(zero)
 
             one = self.process.roll_bill(session, zero)
@@ -1582,7 +1587,6 @@ class ProcessTest(TestCaseWithSetup):
                 check()
                 self.process.compute_bill(session, one, b)
                 check()
-
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
