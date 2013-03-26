@@ -29,15 +29,10 @@ class TimeDependentValue(EmbeddedDocument):
     '''RateStructure subdocument representing a value that changes over time.
     We should probably assume every value is one of these, even if we have
     never seen it change or we think it's not supposed to. It has a list of
-    [date, value] pairs, plus a "mapping rule" that determines exactly how one
-    of the values is chosen for a utility bill with a given period using the
-    corresponding date.'''
-    # TODO: instead of using a 'mapping_rule' string, maybe create different
-    # subclasses of TimeDependentValue for different mapping rules
-
-    # rich says the mapping rule itself never changes--if it does, it's a new
-    # rate structure entirely
-    mapping_rule = StringField()
+    [date, value] pairs; the subclss determines which of the values (or some
+    combination of them) is chosen for a utility bill with a given period using
+    the corresponding date.'''
+    meta = {'allow_inheritance': True}
 
     # list of [date, value] pairs, where the exact meaning of the date is
     # determined by the mapping rule. each of these pairs represents a
@@ -46,53 +41,48 @@ class TimeDependentValue(EmbeddedDocument):
     # or multiple types for a list)
     date_value_pairs = ListField(field=ListField())
 
+class StartBasedTDV(TimeDependentValue):
     def __call__(self, utilbill):
-        '''A TimeDependentValue is also a function of a utility bill, like
-        other inputs, but it should use only the utility bill's period to
-        choose a value.'''
+        # bill counts as being in the value period if its start date is
+        # on/after the value period start date. the last condition that
+        # matches is used, so entries can be added from beginning to end.
+        for date, value in reversed(self.date_value_pairs):
+            if utilbill['start'] >= date:
+                # the value for each data can be either callable or
+                # constant (but it's probably always constant)
+                if hasattr(value, '__call__'):
+                    return value(utilbill)
+                else:
+                    return value
+        raise ValueError('No match found for %s' % utilbill['start'])
 
-        if self.mapping_rule == 'start':
-            # bill counts as being in the value period if its start date is
-            # on/after the value period start date. the last condition that
-            # matches is used, so entries can be added from beginning to end.
-            for date, value in reversed(self.date_value_pairs):
-                if utilbill['start'] >= date:
-                    # the value for each data can be either callable or
-                    # constant (but it's probably always constant)
-                    if hasattr(value, '__call__'):
-                        return value(utilbill)
-                    else:
-                        return value
-            raise ValueError('No match found for %s' % utilbill['start'])
+class ProratedTDV(TimeDependentValue):
+    def __call__(self, utilbill):
+        # the value used is not necessarily the stated value of any one
+        # value period. instead, return a weighted average of the values
+        # for each value period that overlaps with the bill.
+        def overlap(a, b, c, d):
+            # wlog assume start1 < start2
+            start1, end1, start2, end2 = (a, b, c, d) if a < b else (c, d, a,
+                    b)
+            if start2 < end1:
+                if end2 < end1:
+                    return (end2 - start2).days
+                return (end1 - start2).days
+            return 0
+        # (TODO optimization: you don't actually need to compute the overlap
+        # for some periods since you know it will be 0.)
+        date, value = self.date_value_pairs[0]
+        overlap_days = (utilbill['end'] - date).days
+        total, total_weight = value * overlap_days, overlap_days
+        for i, (date, value) in enumerate(self.date_value_pairs[1:]):
+            prev_date = self.date_value_pairs[i-1][0]
+            overlap_days = overlap(prev_date, date, utilbill['start'],
+                    utilbill['end'])
+            total += value * overlap_days
+            total_weight += overlap_days
+        return total / float(total_weight)
 
-        elif self.mapping_rule == 'prorate':
-            # the value used is not necessarily the stated value of any one
-            # value period. instead, return a weighted average of the values
-            # for each value period that overlaps with the bill.
-            def overlap(a, b, c, d):
-                # wlog assume start1 < start2
-                start1, end1, start2, end2 = (a, b, c, d) if a < b \
-                        else (c, d, a, b)
-                if start2 < end1:
-                    if end2 < end1:
-                        return (end2 - start2).days
-                    return (end1 - start2).days
-                return 0
-            # (TODO optimization: you don't actually need to compute the overlap
-            # for some periods since you know it will be 0.)
-            date, value = self.date_value_pairs[0]
-            overlap_days = (utilbill['end'] - date).days
-            total, total_weight = value * overlap_days, overlap_days
-            for i, (date, value) in enumerate(self.date_value_pairs[1:]):
-                prev_date = self.date_value_pairs[i-1][0]
-                overlap_days = overlap(prev_date, date, utilbill['start'],
-                        utilbill['end'])
-                total += value * overlap_days
-                total_weight += overlap_days
-            return total / float(total_weight)
-
-        else:
-            raise NotImplementedError
 
 class RSI(EmbeddedDocument):
     '''RSI is supposed to be its own class, but all it has is a string (for
@@ -124,14 +114,14 @@ class SoCalRS(URS):
     utilbill argument) that provide values of symbols in RS expressions.'''
     # values that are fixed, but are represented as time-dependent just in case
     # they change
-    summer_allowance = EmbeddedDocumentField(TimeDependentValue)
-    winter_allowance = EmbeddedDocumentField(TimeDependentValue)
-    summer_start_month = EmbeddedDocumentField(TimeDependentValue)
-    winter_start_month = EmbeddedDocumentField(TimeDependentValue)
+    summer_allowance = EmbeddedDocumentField(StartBasedTDV)
+    winter_allowance = EmbeddedDocumentField(StartBasedTDV)
+    summer_start_month = EmbeddedDocumentField(StartBasedTDV)
+    winter_start_month = EmbeddedDocumentField(StartBasedTDV)
 
     # really time-dependent values (change every month)
-    under_baseline_rate = EmbeddedDocumentField(TimeDependentValue)
-    over_baseline_rate = EmbeddedDocumentField(TimeDependentValue)
+    under_baseline_rate = EmbeddedDocumentField(ProratedTDV)
+    over_baseline_rate = EmbeddedDocumentField(ProratedTDV)
 
     # utility-bill-dependent fixed values
     def climate_zone(self, utilbill):
@@ -166,16 +156,14 @@ socalrs_instance = SoCalRS(
     # periods using the "start" rule). these use the complicated "prorate"
     # mapping rule, meaning that the value that actually gets used in a given
     # bill is usually not any of the specific values below.
-    under_baseline_rate = TimeDependentValue(
-        mapping_rule='prorate',
+    under_baseline_rate = ProratedTDV(
         date_value_pairs= [
             [date(2013,1,1), 1.1],
             [date(2013,2,1), 1.2],
             [date(2013,3,1), 1.3],
         ],
     ),
-    over_baseline_rate = TimeDependentValue(
-        mapping_rule='prorate',
+    over_baseline_rate = ProratedTDV(
         date_value_pairs= [
             [date(2013,1,1), 2.1],
             [date(2013,2,1), 2.2],
@@ -186,26 +174,22 @@ socalrs_instance = SoCalRS(
     # all inputs are time-dependent, but we have never seen these change so
     # far. they use the "start" mapping rule by default, and we expect we will
     # never have to add more entries in 'date_value_pairs'
-    summer_allowance = TimeDependentValue(
-        mapping_rule='start',
+    summer_allowance = StartBasedTDV(
         date_value_pairs=[
             [date(2013,1,1), 2],
         ],
     ),
-    winter_allowance = TimeDependentValue(
-        mapping_rule='start',
+    winter_allowance = StartBasedTDV(
         date_value_pairs=[
             [date(2013,1,1), 3],
         ],
     ),
-    summer_start_month = TimeDependentValue(
-        mapping_rule='start',
+    summer_start_month = StartBasedTDV(
         date_value_pairs=[
             [date(2013,1,1), 4],
         ],
     ),
-    winter_start_month = TimeDependentValue(
-        mapping_rule='start',
+    winter_start_month = StartBasedTDV(
         date_value_pairs=[
             [date(2013,1,1), 10],
         ],
