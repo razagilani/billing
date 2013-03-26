@@ -42,6 +42,8 @@ class TimeDependentValue(EmbeddedDocument):
     date_value_pairs = ListField(field=ListField())
 
 class StartBasedTDV(TimeDependentValue):
+    '''A time-dependent value that chooses the last value in the list whose
+    date is before the start of the utility bill period.'''
     def __call__(self, utilbill):
         # bill counts as being in the value period if its start date is
         # on/after the value period start date. the last condition that
@@ -57,6 +59,9 @@ class StartBasedTDV(TimeDependentValue):
         raise ValueError('No match found for %s' % utilbill['start'])
 
 class ProratedTDV(TimeDependentValue):
+    '''A time-dependent value that chooses a value made by "prorating" the
+    values of multiple periods according to their number of days of overlap
+    with the utility bill period.'''
     def __call__(self, utilbill):
         # the value used is not necessarily the stated value of any one
         # value period. instead, return a weighted average of the values
