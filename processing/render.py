@@ -228,6 +228,11 @@ class ReebillRenderer:
             os.remove(input_path)
  
     def render_max_version(self, session, account, sequence, outputdir, outputfile, verbose):
+        # Hack for overriding default template if a teva account
+        if (account in self.teva_accounts):
+            self.current_template = 'teva'
+        else:
+            self.current_template = self.default_template
         max_version = self.state_db.max_version(session, account, sequence)
         reebill = self.reebill_dao.load_reebill(account, sequence, version=max_version)
         self.render_version(reebill, outputdir, outputfile, verbose)
