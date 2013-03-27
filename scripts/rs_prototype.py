@@ -155,7 +155,7 @@ class SoCalRS(URS):
     def total_register(self, utilbill):
         return utilbill['registers']['total_register']['quantity']
 
-
+# based on 10031-7
 socalrs_instance = SoCalRS(
     # inputs that change monthly (with utility bill periods mapped to calendar
     # periods using the "start" rule). these use the complicated "prorate"
@@ -179,6 +179,8 @@ socalrs_instance = SoCalRS(
     # all inputs are time-dependent, but we have never seen these change so
     # far. they use the "start" mapping rule by default, and we expect we will
     # never have to add more entries in 'date_value_pairs'
+    # TODO maybe we want fixed values after all--if mapping rules never change,
+    # we might be able to assume that some actual values never change either.
     summer_allowance = StartBasedTDV(
         date_value_pairs=[
             [date(2013,1,1), 2],
@@ -200,6 +202,22 @@ socalrs_instance = SoCalRS(
         ],
     ),
 
+    customer_charge_ratge = StartBasedTDV(
+        date_value_pairs=[
+            [date(2013,1,1), .16438],
+        ],
+    ),
+    state_regulatory_rate = StartBasedTDV(
+        date_value_pairs=[
+            [date(2013,1,1), .0068],
+        ],
+    ),
+    public_purpose_rate = StartBasedTDV(
+        date_value_pairs=[
+            [date(2013,1,1), .08231],
+        ],
+    ),
+
     # RSI formulas, named with underscore to distinguish from symbol names
     # (TODO maybe these move somewhere else? or find some other way of
     # distinguishing them from the inputs?)
@@ -212,6 +230,13 @@ socalrs_instance = SoCalRS(
             RSI(formula=('under_baseline_rate * Min(total_register, num_units * '
             '(winter_allowance * days_in_winter + summer_allowance * '
             'days_in_summer))')),
+        'Customer Charge': RSI(formula='customer_charge_ratge * num_units'),
+        'State Regulatory': RSI(formula='state_regulatory_rate * total_register'),
+        'Public Purpose': RSI(formula='public_purpose_rate * total_register'),
+
+        # TODO (taxes should be in different URS, and I haven't worked out
+        # charges that depend on other charges)
+        #'LA City Users': RSI(formula='.01 * ...'),
     }
 )
 
@@ -219,15 +244,23 @@ socalrs_instance = SoCalRS(
 # we are currently using raw dictionaries (with more data than this in them)
 utilbill_doc = {
     'registers': {
-        'total_register': {'quantity': 100},
+    }
+}
+
+# we should be using a class for utility bills (see branch utilbill-class) but
+# we are currently using raw dictionaries (with more data than this in them)
+utilbill_doc = {
+    # based on 10031-7
+    'registers': {
+        'total_register': {'quantity': 440},
     },
     'start': date(2013,1,15),
     'end': date(2013,2,15),
 
     # data that the Sempra Energy rate structure requires that others do not
     # require: building size in units
-    'num_units': 50,
+    'num_units': 30,
 }
 
-for name in ['Gas Service Under Baseline', 'Gas Service Over Baseline']:
+for name in ['Gas Service Under Baseline', 'Gas Service Over Baseline', 'Customer Charge']:
     print '%s: $%.2f' % (name, Process().compute_charge(socalrs_instance, name, utilbill_doc))
