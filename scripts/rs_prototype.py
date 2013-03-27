@@ -163,16 +163,16 @@ socalrs_instance = SoCalRS(
     # bill is usually not any of the specific values below.
     under_baseline_rate = ProratedTDV(
         date_value_pairs= [
-            [date(2013,1,1), 1.1],
-            [date(2013,2,1), 1.2],
-            [date(2013,3,1), 1.3],
+            [date(2012,10,1), 1.1],
+            [date(2012,11,1), 1.2],
+            [date(2012,12,1), 1.3],
         ],
     ),
     over_baseline_rate = ProratedTDV(
         date_value_pairs= [
-            [date(2013,1,1), 2.1],
-            [date(2013,2,1), 2.2],
-            [date(2013,3,1), 2.3],
+            [date(2012,10,1), 2.1],
+            [date(2012,11,1), 2.2],
+            [date(2012,12,1), 2.3],
         ],
     ),
 
@@ -183,38 +183,38 @@ socalrs_instance = SoCalRS(
     # we might be able to assume that some actual values never change either.
     summer_allowance = StartBasedTDV(
         date_value_pairs=[
-            [date(2013,1,1), 2],
+            [date(2012,1,1), 2],
         ],
     ),
     winter_allowance = StartBasedTDV(
         date_value_pairs=[
-            [date(2013,1,1), 3],
+            [date(2012,1,1), 3],
         ],
     ),
     summer_start_month = StartBasedTDV(
         date_value_pairs=[
-            [date(2013,1,1), 4],
+            [date(2012,1,1), 4],
         ],
     ),
     winter_start_month = StartBasedTDV(
         date_value_pairs=[
-            [date(2013,1,1), 10],
+            [date(2012,1,1), 10],
         ],
     ),
 
     customer_charge_ratge = StartBasedTDV(
         date_value_pairs=[
-            [date(2013,1,1), .16438],
+            [date(2012,1,1), .16438],
         ],
     ),
     state_regulatory_rate = StartBasedTDV(
         date_value_pairs=[
-            [date(2013,1,1), .0068],
+            [date(2012,1,1), .0068],
         ],
     ),
     public_purpose_rate = StartBasedTDV(
         date_value_pairs=[
-            [date(2013,1,1), .08231],
+            [date(2012,1,1), .08231],
         ],
     ),
 
@@ -254,13 +254,14 @@ utilbill_doc = {
     'registers': {
         'total_register': {'quantity': 440},
     },
-    'start': date(2013,1,15),
-    'end': date(2013,2,15),
+    'start': date(2012,11,20),
+    'end': date(2013,12,20),
 
     # data that the Sempra Energy rate structure requires that others do not
     # require: building size in units
     'num_units': 30,
 }
 
-for name in ['Gas Service Under Baseline', 'Gas Service Over Baseline', 'Customer Charge']:
+#for name in ['Gas Service Under Baseline', 'Gas Service Over Baseline', 'Customer Charge']:
+for name in socalrs_instance._rsis.keys():
     print '%s: $%.2f' % (name, Process().compute_charge(socalrs_instance, name, utilbill_doc))
