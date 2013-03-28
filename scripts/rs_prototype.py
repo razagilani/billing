@@ -2,13 +2,14 @@ from datetime import date, datetime
 from bisect import bisect_left
 import sympy
 from mongoengine import Document, EmbeddedDocument, ListField, StringField, FloatField, IntField, DictField, EmbeddedDocumentField
+from math import floor, ceil
 
 class Process(object):
     '''Does the actual computing of charges. The 'compute_charge' method should
     go in Process or MongoReebill in a real implementation.'''
     def compute_charge(self, urs, charge_name, utilbill):
-        formula_text = urs._rsis[charge_name].formula
-        formula_expr = sympy.sympify(formula_text)
+        rsi = urs._rsis[charge_name]
+        formula_expr = sympy.sympify(rsi.formula)
 
         # get a value for each input and register that occurs in the formula
         # with the utility bill
@@ -25,7 +26,16 @@ class Process(object):
         #print 'input values %s' % symbol_values
 
         # substitute values of expressions to evaluate it into a float
-        return formula_expr.subs(symbol_values)
+        unrounded_charge = formula_expr.subs(symbol_values)
+
+        if rsi.round_rule is None:
+            return round(unrounded_charge, 2)
+        if rsi.round_rule is 'down':
+           return floor(100 * unrounded_charge) / 100.
+        if rsi.round_rule is 'up':
+           return ceil(100 * unrounded_charge) / 100.
+       # TODO add more
+        raise ValueError('Unknown rounding rule "%s"' % rsi.round_rule)
 
 class TimeDependentValue(EmbeddedDocument):
     '''RateStructure subdocument representing a value that changes over time.
@@ -96,6 +106,7 @@ class RSI(EmbeddedDocument):
     now). Note there is no separation into "quantity" and "rate". Rounding
     rules may be added.'''
     formula = StringField()
+    round_rule = StringField(required=False)
 
 class URS(Document):
     '''General rate structure class. All members should be values of symbols
@@ -157,7 +168,7 @@ class SoCalRS(URS):
     def total_register(self, utilbill):
         return utilbill['registers']['total_register']['quantity']
 
-# based on 10031-7
+# based on 10031-7-1
 socalrs_instance = SoCalRS(
     # inputs that change monthly (with utility bill periods mapped to calendar
     # periods using the "start" rule). these use the complicated "prorate"
@@ -165,33 +176,33 @@ socalrs_instance = SoCalRS(
     # bill is usually not any of the specific values below.
     under_baseline_rate = ProratedTDV(
         date_value_pairs= [
-            [date(2012,10,1), 1.1],
-            [date(2012,11,1), 1.2],
-            [date(2012,12,1), 1.3],
+            [date(2012,10,1), 0.7282],
+            [date(2012,11,1), 0.7282],
+            [date(2012,12,1), 0.7282],
         ],
     ),
     over_baseline_rate = ProratedTDV(
         date_value_pairs= [
-            [date(2012,10,1), 2.1],
-            [date(2012,11,1), 2.2],
-            [date(2012,12,1), 2.3],
+            [date(2012,10,1), 0.9782],
+            [date(2012,11,1), 0.9782],
+            [date(2012,12,1), 0.9782],
         ],
     ),
 
     # inputs that have never changed so far, but may change in the future. the
     # initial value extends indefinitely into the future until a new value is
     # added with a later date.
-    customer_charge_ratge = StartBasedTDV(
+    customer_charge_rate=StartBasedTDV(
         date_value_pairs=[
             [date(2012,1,1), .16438],
         ],
     ),
-    state_regulatory_rate = StartBasedTDV(
+    state_regulatory_rate=StartBasedTDV(
         date_value_pairs=[
-            [date(2012,1,1), .0068],
+            [date(2012,1,1), .00068],
         ],
     ),
-    public_purpose_rate = StartBasedTDV(
+    public_purpose_rate=StartBasedTDV(
         date_value_pairs=[
             [date(2012,1,1), .08231],
         ],
@@ -210,15 +221,15 @@ socalrs_instance = SoCalRS(
     # (TODO maybe these move somewhere else? or find some other way of
     # distinguishing them from the inputs?)
     _rsis = {
-        'Gas Service Over Baseline':
+        'Gas Service Baseline': # over basline
             RSI(formula=('over_baseline_rate * Max(0, total_register - num_units *'
             '(winter_allowance * days_in_winter + summer_allowance * '
-            'days_in_summer))')),
-        'Gas Service Under Baseline':
+            'days_in_summer))'), round_rule='down'),
+        'Gas Service Non Baseline': # under baseline
             RSI(formula=('under_baseline_rate * Min(total_register, num_units * '
             '(winter_allowance * days_in_winter + summer_allowance * '
-            'days_in_summer))')),
-        'Customer Charge': RSI(formula='customer_charge_ratge * num_units'),
+            'days_in_summer))'), round_rule='down'),
+        'Customer Charge': RSI(formula='customer_charge_rate * num_units'),
         'State Regulatory': RSI(formula='state_regulatory_rate * total_register'),
         'Public Purpose': RSI(formula='public_purpose_rate * total_register'),
 
@@ -227,13 +238,6 @@ socalrs_instance = SoCalRS(
         #'LA City Users': RSI(formula='.01 * ...'),
     }
 )
-
-# we should be using a class for utility bills (see branch utilbill-class) but
-# we are currently using raw dictionaries (with more data than this in them)
-utilbill_doc = {
-    'registers': {
-    }
-}
 
 # we should be using a class for utility bills (see branch utilbill-class) but
 # we are currently using raw dictionaries (with more data than this in them)
