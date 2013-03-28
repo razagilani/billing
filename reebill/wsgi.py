@@ -1288,14 +1288,14 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def reebill_details_xls(self, start_date=None, end_date=None, **kwargs):
+    def reebill_details_xls(self, begin_date=None, end_date=None, **kwargs):
         #prep date strings from client
-        make_date = lambda x: datetime.strptime(x, dateutils.ISO_8601_DATE) if x else x
-        start_date = make_date(start_date)
+        make_date = lambda x: datetime.strptime(x, dateutils.ISO_8601_DATE) if x else None
+        begin_date = make_date(begin_date)
         end_date = make_date(end_date)
         #write out spreadsheet(s)
         with DBSession(self.state_db) as session:
-            rows, total_count = self.process.reebill_report(session, start_date,
+            rows, total_count = self.process.reebill_report(session, begin_date,
                                                            end_date)
 
             buf = StringIO()
