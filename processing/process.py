@@ -1101,7 +1101,7 @@ class Process(object):
 
         return rows, totalCount
 
-    def reebill_report(self, session, start_date=None, end_date=None):
+    def reebill_report(self, session, begin_date=None, end_date=None):
         accounts = self.state_db.listAccounts(session)
         rows = [] 
         totalCount = 0
@@ -1112,12 +1112,12 @@ class Process(object):
                 # Skip over unissued reebills
                 if not reebill.issue_date:
                     continue
-                # if the user has chosen a start and/or end date *and* this
+                # if the user has chosen a begin and/or end date *and* this
                 # reebill falls outside of its bounds, skip to the next one
-                have_period_dates = start_date or end_date
-                reebill_starts_in_this_period = start_date and reebill.period_start >= start_date
+                have_period_dates = begin_date or end_date
+                reebill_begins_in_this_period = begin_date and reebill.period_begin >= begin_date
                 reebill_ends_in_this_period = end_date and reebill.period_end <= end_date
-                reebill_in_this_period = reebill_starts_in_this_period or reebill_ends_in_this_period
+                reebill_in_this_period = reebill_begins_in_this_period or reebill_ends_in_this_period
                 if have_period_dates and not reebill_in_this_period:
                     continue
 
