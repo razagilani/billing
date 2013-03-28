@@ -15,12 +15,14 @@ class Process(object):
         symbol_values = {}
         for symbol in formula_expr.atoms(sympy.Symbol):
             value = getattr(urs, symbol.name)
-            # every value is a function of the utility bill, and every one is
-            # assumed to (at least potentially) change over time
-            symbol_values[symbol] = value(utilbill)
+            # some values are functions of the utility bill; others are constant
+            if hasattr(value, '__call__'):
+                symbol_values[symbol] = value(utilbill)
+            else:
+                symbol_values[symbol] = value
 
-        print '%s = %s' % (charge_name, formula_text)
-        print 'input values %s' % symbol_values
+        #print '%s = %s' % (charge_name, formula_text)
+        #print 'input values %s' % symbol_values
 
         # substitute values of expressions to evaluate it into a float
         return formula_expr.subs(symbol_values)
@@ -139,9 +141,9 @@ class SoCalRS(URS):
     def days_in_summer(self, utilbill):
         # assume bill period is within calendar year (not accurate in real life)
         summer_start = date(utilbill['start'].year,
-                self.summer_start_month(utilbill), 1)
+                self.summer_start_month, 1)
         summer_end = date(utilbill['start'].year,
-                self.winter_start_month(utilbill), 1)
+                self.winter_start_month, 1)
         if utilbill['start'] <= summer_start:
             return max(0, (utilbill['end'] - summer_end).days)
         elif utilbill['end'] < summer_end:
@@ -176,32 +178,9 @@ socalrs_instance = SoCalRS(
         ],
     ),
 
-    # all inputs are time-dependent, but we have never seen these change so
-    # far. they use the "start" mapping rule by default, and we expect we will
-    # never have to add more entries in 'date_value_pairs'
-    # TODO maybe we want fixed values after all--if mapping rules never change,
-    # we might be able to assume that some actual values never change either.
-    summer_allowance = StartBasedTDV(
-        date_value_pairs=[
-            [date(2012,1,1), 2],
-        ],
-    ),
-    winter_allowance = StartBasedTDV(
-        date_value_pairs=[
-            [date(2012,1,1), 3],
-        ],
-    ),
-    summer_start_month = StartBasedTDV(
-        date_value_pairs=[
-            [date(2012,1,1), 4],
-        ],
-    ),
-    winter_start_month = StartBasedTDV(
-        date_value_pairs=[
-            [date(2012,1,1), 10],
-        ],
-    ),
-
+    # inputs that have never changed so far, but may change in the future. the
+    # initial value extends indefinitely into the future until a new value is
+    # added with a later date.
     customer_charge_ratge = StartBasedTDV(
         date_value_pairs=[
             [date(2012,1,1), .16438],
@@ -217,6 +196,15 @@ socalrs_instance = SoCalRS(
             [date(2012,1,1), .08231],
         ],
     ),
+
+    # these inputs are constant. should we treat all inputs as possibly
+    # time-dependent even if they're not expected to change? if mapping rules
+    # never change, we might be able to assume that some actual values never
+    # change either.
+    summer_allowance = 2,
+    winter_allowance = 3,
+    summer_start_month = 4,
+    winter_start_month = 10,
 
     # RSI formulas, named with underscore to distinguish from symbol names
     # (TODO maybe these move somewhere else? or find some other way of
@@ -263,5 +251,5 @@ utilbill_doc = {
 }
 
 #for name in ['Gas Service Under Baseline', 'Gas Service Over Baseline', 'Customer Charge']:
-for name in socalrs_instance._rsis.keys():
-    print '%s: $%.2f' % (name, Process().compute_charge(socalrs_instance, name, utilbill_doc))
+for name in sorted(socalrs_instance._rsis.keys()):
+    print '%30s: %.2f' % (name, Process().compute_charge(socalrs_instance, name, utilbill_doc))
