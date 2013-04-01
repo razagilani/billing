@@ -4,6 +4,9 @@ import sympy
 from mongoengine import Document, EmbeddedDocument, ListField, StringField, FloatField, IntField, DictField, EmbeddedDocumentField, ReferenceField
 from math import floor, ceil
 
+# TODO
+# add units (therms, kWh, dollars). SymPy supports units as symbols so use that.
+
 class Process(object):
     '''Does the actual computing of charges. The 'compute_charge' method should
     go in Process or MongoReebill in a real implementation.'''
@@ -174,19 +177,20 @@ class SoCalRS(URS):
 class TaxRS(URS):
     # other URSs that this one can depend on (charge names in those must be unique)
     # (TODO enforce name uniqueness?)
+    other_rss = ListField(field=ReferenceField(URS))
     # TODO is this a good way to do it? should there be a way to apply to all
     # charges of a certain type without explicitly specifying which URSs?
     # what if the tax is charged only on specific charges within a URS?
-    other_rss = ListField(field=ReferenceField(URS))
+    # what if taxes depend on each other, e.g. state tax on top of city tax, or
+    # tax on top of an energy-based fee that is considered a tax because it
+    # comes from the government instead of the utility? (STATE_REGULATORY and
+    # PUBLIC_PURPOSE might be the latter.)
 
     def all_non_tax(self, utilbill):
         '''Sum of all charges in other_rss.'''
         p = Process()
-        total = 0
-        for urs in self.other_rss:
-            for charge_name in urs._rsis.keys():
-                total += p.compute_charge(urs, charge_name, utilbill)
-        return total
+        return sum(sum(p.compute_charge(urs, charge_name, utilbill) for
+                charge_name in urs._rsis.keys()) for urs in self.other_rss)
 
 # based on 10031-7-1
 socalrs_instance = SoCalRS(
@@ -265,7 +269,7 @@ la_tax_rs = TaxRS(
     name = 'LA taxes',
     other_rss=[socalrs_instance],
     _rsis={
-        'LA City Users': RSI(formula='.01 * all_non_tax')
+        'LA City Users': RSI(formula='.1 * all_non_tax')
     }
 )
 
@@ -287,4 +291,5 @@ utilbill_doc = {
 #for name in ['Gas Service Under Baseline', 'Gas Service Over Baseline', 'Customer Charge']:
 for rs in (socalrs_instance, la_tax_rs):
     for charge_name in sorted(rs._rsis.keys()):
-        print '%50s: %6s' % (rs.name + '/' + charge_name, '%.2f' % Process().compute_charge(rs, charge_name, utilbill_doc))
+        print '%50s: %6s' % (rs.name + '/' + charge_name,
+                '%.2f' % Process().compute_charge(rs, charge_name, utilbill_doc))
