@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from bisect import bisect_left
 import sympy
-from mongoengine import Document, EmbeddedDocument, ListField, StringField, FloatField, IntField, DictField, EmbeddedDocumentField
+from mongoengine import Document, EmbeddedDocument, ListField, StringField, FloatField, IntField, DictField, EmbeddedDocumentField, ReferenceField
 from math import floor, ceil
 
 class Process(object):
@@ -113,6 +113,9 @@ class URS(Document):
     that occur in RSI formulas.'''
     meta = {'allow_inheritance': True}
 
+    # human-readable description might be useful
+    name = StringField()
+
     # every rate structure has RSIs (charge name -> formula)
     # TODO should they be stored in this class, where all other members are the
     # values of symbols in RSI formulas?
@@ -168,8 +171,27 @@ class SoCalRS(URS):
     def total_register(self, utilbill):
         return utilbill['registers']['total_register']['quantity']
 
+class TaxRS(URS):
+    # other URSs that this one can depend on (charge names in those must be unique)
+    # (TODO enforce name uniqueness?)
+    # TODO is this a good way to do it? should there be a way to apply to all
+    # charges of a certain type without explicitly specifying which URSs?
+    # what if the tax is charged only on specific charges within a URS?
+    other_rss = ListField(field=ReferenceField(URS))
+
+    def all_non_tax(self, utilbill):
+        '''Sum of all charges in other_rss.'''
+        p = Process()
+        total = 0
+        for urs in self.other_rss:
+            for charge_name in urs._rsis.keys():
+                total += p.compute_charge(urs, charge_name, utilbill)
+        return total
+
 # based on 10031-7-1
 socalrs_instance = SoCalRS(
+    name='GM-E Residential',
+
     # inputs that change monthly (with utility bill periods mapped to calendar
     # periods using the "start" rule). these use the complicated "prorate"
     # mapping rule, meaning that the value that actually gets used in a given
@@ -239,6 +261,14 @@ socalrs_instance = SoCalRS(
     }
 )
 
+la_tax_rs = TaxRS(
+    name = 'LA taxes',
+    other_rss=[socalrs_instance],
+    _rsis={
+        'LA City Users': RSI(formula='.01 * all_non_tax')
+    }
+)
+
 # we should be using a class for utility bills (see branch utilbill-class) but
 # we are currently using raw dictionaries (with more data than this in them)
 utilbill_doc = {
@@ -255,5 +285,6 @@ utilbill_doc = {
 }
 
 #for name in ['Gas Service Under Baseline', 'Gas Service Over Baseline', 'Customer Charge']:
-for name in sorted(socalrs_instance._rsis.keys()):
-    print '%30s: %.2f' % (name, Process().compute_charge(socalrs_instance, name, utilbill_doc))
+for rs in (socalrs_instance, la_tax_rs):
+    for charge_name in sorted(rs._rsis.keys()):
+        print '%50s: %6s' % (rs.name + '/' + charge_name, '%.2f' % Process().compute_charge(rs, charge_name, utilbill_doc))
