@@ -2648,9 +2648,11 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def journal(self, xaction, account, **kwargs):
-        if not xaction or not account:
-            raise ValueError("Bad Parameter Value")
         journal_entries = self.journal_dao.load_entries(account)
+        # TODO processing the entries in this way is slow when loading entries
+        # for all accounts. (yes, "paging" will be needed when the number of
+        # entries gets REALLY large but the real problem here is bad code,
+        # which should be fixed first.)
         for entry in journal_entries:
             # TODO 29715501 replace user identifier with user name
             # (UserDAO.load_user() currently requires a password to load a
