@@ -2649,28 +2649,32 @@ class BillToolBridge:
     @json_exception
     def journal(self, xaction, account, **kwargs):
         journal_entries = self.journal_dao.load_entries(account)
-        # TODO processing the entries in this way is slow when loading entries
-        # for all accounts. (yes, "paging" will be needed when the number of
-        # entries gets REALLY large but the real problem here is bad code,
-        # which should be fixed first.)
-        for entry in journal_entries:
-            # TODO 29715501 replace user identifier with user name
-            # (UserDAO.load_user() currently requires a password to load a
-            # user, but we just want to translate an indentifier into a
-            # name)
-
-            # put a string containing all non-standard journal entry data
-            # in an 'extra' field for display in the browser
-            extra_data = copy.deepcopy(entry)
-            del extra_data['account']
-            if 'sequence' in extra_data:
-                del extra_data['sequence']
-            del extra_data['date']
-            if 'event' in extra_data:
-                del extra_data['event']
-            if 'user' in extra_data:
-                del extra_data['user']
-            entry['extra'] = ', '.join(['%s: %s' % (k,v) for (k,v) in extra_data.iteritems()])
+#        for entry in journal_entries:
+#            # TODO 29715501 replace user identifier with user name
+#            # (UserDAO.load_user() currently requires a password to load a
+#            # user, but we just want to translate an indentifier into a
+#            # name)
+#
+#            # put a string containing all non-standard journal entry data in an
+#            # 'extra' field for display in the browser, because the UI can't
+#            # have column to handle any key that might appear in any event.
+#            # disabled for now because the client doesn't actually show the
+#            #"extra" data.
+#            # TODO processing the entries in this way is slow when loading entries
+#            # for all accounts. (yes, "paging" will be needed when the number of
+#            # entries gets REALLY large but the real problem here is bad code,
+#            # which should be fixed first. mongo aggregation is probably the
+#            # simplest way to do it and it's fast.)
+#            extra_data = copy.deepcopy(entry)
+#            del extra_data['account']
+#            if 'sequence' in extra_data:
+#                del extra_data['sequence']
+#            del extra_data['date']
+#            if 'event' in extra_data:
+#                del extra_data['event']
+#            if 'user' in extra_data:
+#                del extra_data['user']
+#            entry['extra'] = ', '.join(['%s: %s' % (k,v) for (k,v) in extra_data.iteritems()])
 
         if xaction == "read":
             return self.dumps({'success': True, 'rows':journal_entries})

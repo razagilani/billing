@@ -36,12 +36,9 @@ class JournalDAO(object):
     def load_entries(self, account=None):
         '''Returns a list of dictionaries describing all entries for the given
         account.'''
-        result = []
         query = {'account': account} if account else {}
-        for event in Event.objects(**query):
-            d = event.to_dict()
-            d.update({'event': event.description()})
-            result.append(d)
+        result = [dict(e.to_dict(), event=e.description()) for e in
+                Event.objects(**query)]
         return result
 
 class Event(mongoengine.Document):
