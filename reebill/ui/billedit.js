@@ -5121,7 +5121,7 @@ function reeBillReady() {
             {name: 'sequence'},
             {name: 'event'},
             {name: 'msg'},
-            {name: 'extra'},
+            //{name: 'extra'},
         ],
     });
 
@@ -5181,7 +5181,7 @@ function reeBillReady() {
                 header: 'Account',
                 sortable: true,
                 dataIndex: 'account',
-                hidden: true,
+                //hidden: true,
             },{
                 header: 'Sequence',
                 sortable: true,
