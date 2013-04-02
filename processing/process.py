@@ -379,17 +379,22 @@ class Process(object):
             # their corresponding RSIs were not part of the predicted rate structure)
             valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
                     cprs['rates']}
-            chargegroups = new_reebill._get_utilbill_for_service(service)['chargegroups']
-            for group, charges in chargegroups.iteritems():
-                for charge in charges:
-                    # if the charge matches a valid RSI binding, mark that
-                    # binding as matched; if not, delete the charge
-                    if charge['rsi_binding'] in valid_bindings:
-                        valid_bindings[charge['rsi_binding']] = True
-                    else:
-                        charges.remove(charge)
-                # chargegroup is not removed if it's empty because it might
-                # come back
+            actual_chargegroups = new_reebill._get_utilbill_for_service(
+                    service)['chargegroups']
+            hypothetical_chargegroups = new_reebill._get_handle_for_service(
+                    service)['hypothetical_chargegroups']
+            for whichever_chargegroups in [actual_chargegroups,
+                    hypothetical_chargegroups]:
+                for group, charges in whichever_chargegroups.iteritems():
+                    for charge in charges:
+                        # if the charge matches a valid RSI binding, mark that
+                        # binding as matched; if not, delete the charge
+                        if charge['rsi_binding'] in valid_bindings:
+                            valid_bindings[charge['rsi_binding']] = True
+                        else:
+                            charges.remove(charge)
+                # NOTE empty chargegroup is not removed because the user might
+                # want to add charges to it again
 
             # TODO add a charge for every RSI that doesn't have a charge, i.e.
             # the ones whose value in 'valid_bindings' is False.

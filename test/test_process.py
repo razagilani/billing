@@ -1285,6 +1285,15 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEqual(set(['RIGHT_OF_WAY']),
                     set(rsi['rsi_binding'] for rsi in uprs_a_2['rates']))
 
+            ## B-2 and its utility bill should not contain any charges that
+            ## don't correspond to the rate structure.
+            #actual_charge_names = [c['rsi_binding'] for c in reebill_b_2\
+                    #._get_utilbill_for_service('gas')['chargegroups']
+                    #['All Charges']]
+            #hyp_charge_names = [c['rsi_binding'] for c in reebill_b_2\
+                    #._get_handle_for_service('gas')\
+                    #['hypothetical_chargegroups']['All Charges']]
+
 
     def test_issue(self):
         '''Tests attach_utilbills and issue.'''
