@@ -5094,6 +5094,7 @@ function reeBillReady() {
 
     var journalStoreProxyConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/journal',
+        timeout: 60000,
     });
     journalStoreProxyConn.autoAbort = true;
     var journalStoreProxy = new Ext.data.HttpProxy(journalStoreProxyConn);
@@ -5134,8 +5135,6 @@ function reeBillReady() {
     });
 
     journalStore.on('beforeload', function (store, options) {
-
-        // disable the grid before it loads
         journalGrid.setDisabled(true);
 
         // The Ext API is not clear on the relationship between options and baseParams
@@ -5350,7 +5349,7 @@ function reeBillReady() {
     var journalPanel = new Ext.Panel({
         id: 'journalTab',
         title: 'Journal',
-        disabled: true,
+        disabled: journalPanelDisabled,
         xtype: 'panel',
         layout: 'vbox',
         layoutConfig : {
@@ -6158,8 +6157,8 @@ function reeBillReady() {
 
         if (account == null) {
             /* no account selected */
-            journalPanel.setDisabled(true);
             updateStatusbar(null, null, null)
+            journalGrid.setTitle('Journal Entries for All Accounts');
             return;
         }
 

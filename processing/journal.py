@@ -33,11 +33,12 @@ class JournalDAO(object):
         return '%s on %s' % (str(last_entry),
                 last_entry.date.strftime(ISO_8601_DATE))
 
-    def load_entries(self, account):
+    def load_entries(self, account=None):
         '''Returns a list of dictionaries describing all entries for the given
         account.'''
         result = []
-        for event in Event.objects(account=account):
+        query = {'account': account} if account else {}
+        for event in Event.objects(**query):
             d = event.to_dict()
             d.update({'event': event.description()})
             result.append(d)
