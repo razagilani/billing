@@ -188,6 +188,11 @@ class TaxRS(URS):
 
     def all_non_tax(self, utilbill):
         '''Sum of all charges in other_rss.'''
+        # TODO calculating the charges here using a separate object is super
+        # ugly (and in real code, it would be impossible because Process or
+        # MongoReebill wouldn't be in scope). it wouldn't be ugly at all if the
+        # other_rss could do the computation themselves. is there any other
+        # way?
         p = Process()
         return sum(sum(p.compute_charge(urs, charge_name, utilbill) for
                 charge_name in urs._rsis.keys()) for urs in self.other_rss)
