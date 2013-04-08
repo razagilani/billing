@@ -105,9 +105,7 @@ class ProratedTDV(TimeDependentValue):
 
 
 class RSI(EmbeddedDocument):
-    '''RSI is supposed to be its own class, but all it has is a string (for
-    now). Note there is no separation into "quantity" and "rate". Rounding
-    rules may be added.'''
+    # note no separation into "quantity" and "rate"
     formula = StringField()
     round_rule = StringField(required=False)
 
