@@ -4229,6 +4229,7 @@ function reeBillReady() {
             {name: 'codename'},
             {name: 'casualname'},
             {name: 'primusname'},
+            {name: 'utilityserviceaddress'},
             {name: 'dayssince'},
             {name: 'lastevent'},
             {name: 'lastissuedate'},
@@ -4285,6 +4286,11 @@ function reeBillReady() {
                 header: 'Primus Name',
                 sortable: true,
                 dataIndex: 'primusname',
+                renderer: accountGridColumnRenderer,
+            },{
+                header: 'Utility Service Addresses',
+                sortable: true,
+                dataIndex: 'utilityserviceaddress',
                 renderer: accountGridColumnRenderer,
             },{
                 header: 'Last Issued',
@@ -4778,7 +4784,7 @@ function reeBillReady() {
                         params: { 
                           'name': newNameField.getValue(),
                           'account': newAccountField.getValue(),
-                          'template_account': newAccountTemplateCombo.getValue(),
+                          'template_account': newAccountTemplateCombo.getValue(), //obj.valueField
                           'discount_rate': newDiscountRate.getValue(),
                           'late_charge_rate': newLateChargeRate.getValue(),
                           'ba_addressee': Ext.getCmp('new_ba_addressee').getValue(),
@@ -5094,6 +5100,7 @@ function reeBillReady() {
 
     var journalStoreProxyConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/journal',
+        timeout: 60000,
     });
     journalStoreProxyConn.autoAbort = true;
     var journalStoreProxy = new Ext.data.HttpProxy(journalStoreProxyConn);
@@ -5120,7 +5127,7 @@ function reeBillReady() {
             {name: 'sequence'},
             {name: 'event'},
             {name: 'msg'},
-            {name: 'extra'},
+            //{name: 'extra'},
         ],
     });
 
@@ -5134,8 +5141,6 @@ function reeBillReady() {
     });
 
     journalStore.on('beforeload', function (store, options) {
-
-        // disable the grid before it loads
         journalGrid.setDisabled(true);
 
         // The Ext API is not clear on the relationship between options and baseParams
@@ -5182,7 +5187,7 @@ function reeBillReady() {
                 header: 'Account',
                 sortable: true,
                 dataIndex: 'account',
-                hidden: true,
+                //hidden: true,
             },{
                 header: 'Sequence',
                 sortable: true,
@@ -5350,7 +5355,7 @@ function reeBillReady() {
     var journalPanel = new Ext.Panel({
         id: 'journalTab',
         title: 'Journal',
-        disabled: true,
+        disabled: journalPanelDisabled,
         xtype: 'panel',
         layout: 'vbox',
         layoutConfig : {
@@ -5618,6 +5623,83 @@ function reeBillReady() {
         }),
     });
 
+    // reebill export XLS report (with date ranges)
+
+    var reebillExportComboBox = new Ext.form.ComboBox({
+        store: newAccountTemplateStore,
+        fieldLabel: 'Account',
+        displayField:'account', //will be submitted by default, by a form post
+        valueField:'name', //must get at this with a myStore.getValue() call
+        typeAhead: true,
+        triggerAction: 'all',
+        emptyText:'All',
+        selectOnFocus:true,
+        readOnly: false,
+        width: 500,
+    });
+   
+    // date fields
+    var reebillExportStartDateField = new Ext.form.DateField({
+        fieldLabel: 'Begin Date',
+        name: 'begin_date',
+        width: 90,
+        allowBlank: true,
+        format: 'Y-m-d'
+    });
+
+    var reebillExportEndDateField = new Ext.form.DateField({
+        fieldLabel: 'End Date',
+        name: 'end_date',
+        width: 90,
+        allowBlank: true,
+        format: 'Y-m-d'
+    });
+
+    var reebillExportSubmitButton = new Ext.Button({
+        text: 'Download XLS',
+        handler: function(b, e) {
+            //You cannot simply call saveForm, because it needs to be able to find its parent.
+            //Using 'this' as the scope tells it that it is not just in an anonymus function.
+            saveForm(b, e, function(b,e) {
+                //TODO: redirect (or something) to trigger a download of the spreadsheet that gets returned by the WSGI method
+            })
+        },
+    });
+
+    var reebillExportPanel = new Ext.form.FormPanel({
+        id: 'reebillExportPanel',
+        url: 'http://'+location.host+'/reebill/reebill_details_xls',
+        labelwidth: 120,
+        frame: true,
+        title: "Export ReeBill XLS",
+        border: false,
+        defaults: {
+            anchor: '95%',
+            xtype: 'textfield',
+        },
+        defaultType: 'textfield',
+        items: [
+            {
+                xtype: 'fieldset',
+                id: 'reebillExportPanelForm',
+                collapsible: false,
+                defaults: {
+                    anchor: '0',
+                },
+                items: [
+                    reebillExportComboBox,
+                    reebillExportStartDateField,
+                    reebillExportEndDateField,
+                ],
+            },
+        ],
+        buttons: [
+            reebillExportSubmitButton,
+            ]
+
+    });
+
+
     //
     // Instantiate the Report panel
     //
@@ -5627,7 +5709,7 @@ function reeBillReady() {
         disabled: reportPanelDisabled,
         //xtype: 'panel',
         layout: 'accordion',
-        items: [reconciliationGrid, revenueGrid],
+        items: [reconciliationGrid, revenueGrid, reebillExportPanel],
     });
 
     ///////////////////////////////////////////
@@ -6081,8 +6163,8 @@ function reeBillReady() {
 
         if (account == null) {
             /* no account selected */
-            journalPanel.setDisabled(true);
             updateStatusbar(null, null, null)
+            journalGrid.setTitle('Journal Entries for All Accounts');
             return;
         }
 

@@ -76,8 +76,8 @@ class Exporter(object):
 
             # if this reebill is not inside of the given date range, skip this
             # iteration
-            if (start_date and reebill.period_start <= start_date) \
-               or (end_date and reebill.period_end >= end_date):
+            if (start_date and reebill.period_start >= start_date) \
+               or (end_date and reebill.period_end <= end_date):
 
                 # load reebill from MySQL in order to load utilbill below
                 rb = statedb_session.query(ReeBill)\
