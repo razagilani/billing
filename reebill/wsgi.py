@@ -1202,9 +1202,13 @@ class BillToolBridge:
                 reebill = self.reebill_dao.load_reebill(status.account,
                         self.state_db.last_issued_sequence(session, status.account))
 
-                utility_service_addresses = ', '.join(
-                        u['service_address'].get('street', '?') for u in
-                        reebill._utilbills)
+                #utility_service_addresses = ', '.join(
+                        #u['service_address'].get('street', '?') for u in
+                        #reebill._utilbills)
+                # NOTE "utility service address" is currently coming from the
+                # reebill document, but this should change
+                utility_service_addresses = reebill.service_address_formatted()
+
                 last_issue_date = str(reebill.issue_date) if reebill.issue_date is \
                         not None else 'Never Issued'
                 lastevent = self.journal_dao.last_event_summary(status.account)

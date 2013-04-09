@@ -4279,7 +4279,7 @@ function reeBillReady() {
                 dataIndex: 'primusname',
                 renderer: accountGridColumnRenderer,
             },{
-                header: 'Utility Service Addresses',
+                header: 'Utility Service Address',
                 sortable: true,
                 dataIndex: 'utilityserviceaddress',
                 renderer: accountGridColumnRenderer,
