@@ -1284,6 +1284,18 @@ class ProcessTest(TestCaseWithSetup):
                     reebill_b_2.rate_structure_name_for_service('gas'))
             self.assertEqual(set(['RIGHT_OF_WAY']),
                     set(rsi['rsi_binding'] for rsi in uprs_a_2['rates']))
+            # TODO why is this test looking at uprs_a_2 instead of uprs_b_2? is
+            # that a typo or is there a reason behind it?
+
+            # https://www.pivotaltracker.com/story/show/47134189
+            ## B-2 and its utility bill should not contain any charges that
+            ## don't correspond to the rate structure.
+            #actual_charge_names = [c['rsi_binding'] for c in reebill_b_2\
+                    #._get_utilbill_for_service('gas')['chargegroups']
+                    #['All Charges']]
+            #hyp_charge_names = [c['rsi_binding'] for c in reebill_b_2\
+                    #._get_handle_for_service('gas')\
+                    #['hypothetical_chargegroups']['All Charges']]
 
 
     def test_issue(self):

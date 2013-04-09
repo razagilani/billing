@@ -1175,23 +1175,31 @@ class BillToolBridge:
             rows = []
             for i, status in enumerate(statuses):
 
-                last_issue_date = self.reebill_dao.last_issue_date(session, status.account)
-                last_issue_date = str(last_issue_date) if last_issue_date is not None else 'Never Issued'
+                # load highest version of last issued reebill to get data out of it
+                reebill = self.reebill_dao.load_reebill(status.account,
+                        self.state_db.last_issued_sequence(session, status.account))
+
+                utility_service_addresses = ', '.join(
+                        u['service_address'].get('street', '?') for u in
+                        reebill._utilbills)
+                last_issue_date = str(reebill.issue_date) if reebill.issue_date is \
+                        not None else 'Never Issued'
                 lastevent = self.journal_dao.last_event_summary(status.account)
 
-                row = dict([
-                    ('account', status.account),
-                    ('codename', name_dicts[status.account]['codename'] if
-                        'codename' in name_dicts[status.account] else ''),
-                    ('casualname', name_dicts[status.account]['casualname'] if
-                        'casualname' in name_dicts[status.account] else ''),
-                    ('primusname', name_dicts[status.account]['primus'] if
-                        'primus' in name_dicts[status.account] else ''),
-                    ('dayssince', status.dayssince),
-                    ('lastissuedate', last_issue_date),
-                    ('lastevent', lastevent),
-                    ('provisionable', False),
-                ])
+                row = {
+                    'account': status.account,
+                    'codename': name_dicts[status.account]['codename'] if
+                           'codename' in name_dicts[status.account] else '',
+                    'casualname': name_dicts[status.account]['casualname'] if
+                           'casualname' in name_dicts[status.account] else '',
+                    'primusname': name_dicts[status.account]['primus'] if
+                           'primus' in name_dicts[status.account] else '',
+                    'utilityserviceaddress': utility_service_addresses,
+                    'dayssince': status.dayssince,
+                    'lastissuedate': last_issue_date,
+                    'lastevent': lastevent,
+                    'provisionable': False,
+                }
                 
                 rows.append(row)
 
@@ -1288,9 +1296,15 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def reebill_details_xls(self, **args):
+    def reebill_details_xls(self, begin_date=None, end_date=None, **kwargs):
+        #prep date strings from client
+        make_date = lambda x: datetime.strptime(x, dateutils.ISO_8601_DATE) if x else None
+        begin_date = make_date(begin_date)
+        end_date = make_date(end_date)
+        #write out spreadsheet(s)
         with DBSession(self.state_db) as session:
-            rows, total_count = self.process.reebill_report(session)
+            rows, total_count = self.process.reebill_report(session, begin_date,
+                                                           end_date)
 
             buf = StringIO()
 
@@ -2646,27 +2660,33 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def journal(self, xaction, account, **kwargs):
-        if not xaction or not account:
-            raise ValueError("Bad Parameter Value")
         journal_entries = self.journal_dao.load_entries(account)
-        for entry in journal_entries:
-            # TODO 29715501 replace user identifier with user name
-            # (UserDAO.load_user() currently requires a password to load a
-            # user, but we just want to translate an indentifier into a
-            # name)
-
-            # put a string containing all non-standard journal entry data
-            # in an 'extra' field for display in the browser
-            extra_data = copy.deepcopy(entry)
-            del extra_data['account']
-            if 'sequence' in extra_data:
-                del extra_data['sequence']
-            del extra_data['date']
-            if 'event' in extra_data:
-                del extra_data['event']
-            if 'user' in extra_data:
-                del extra_data['user']
-            entry['extra'] = ', '.join(['%s: %s' % (k,v) for (k,v) in extra_data.iteritems()])
+#        for entry in journal_entries:
+#            # TODO 29715501 replace user identifier with user name
+#            # (UserDAO.load_user() currently requires a password to load a
+#            # user, but we just want to translate an indentifier into a
+#            # name)
+#
+#            # put a string containing all non-standard journal entry data in an
+#            # 'extra' field for display in the browser, because the UI can't
+#            # have column to handle any key that might appear in any event.
+#            # disabled for now because the client doesn't actually show the
+#            #"extra" data.
+#            # TODO processing the entries in this way is slow when loading entries
+#            # for all accounts. (yes, "paging" will be needed when the number of
+#            # entries gets REALLY large but the real problem here is bad code,
+#            # which should be fixed first. mongo aggregation is probably the
+#            # simplest way to do it and it's fast.)
+#            extra_data = copy.deepcopy(entry)
+#            del extra_data['account']
+#            if 'sequence' in extra_data:
+#                del extra_data['sequence']
+#            del extra_data['date']
+#            if 'event' in extra_data:
+#                del extra_data['event']
+#            if 'user' in extra_data:
+#                del extra_data['user']
+#            entry['extra'] = ', '.join(['%s: %s' % (k,v) for (k,v) in extra_data.iteritems()])
 
         if xaction == "read":
             return self.dumps({'success': True, 'rows':journal_entries})

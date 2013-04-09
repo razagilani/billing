@@ -1,29 +1,44 @@
 from datetime import date, datetime
 from bisect import bisect_left
 import sympy
-from mongoengine import Document, EmbeddedDocument, ListField, StringField, FloatField, IntField, DictField, EmbeddedDocumentField
+from mongoengine import Document, EmbeddedDocument, ListField, StringField, FloatField, IntField, DictField, EmbeddedDocumentField, ReferenceField
+from math import floor, ceil
+
+# TODO
+# add units (therms, kWh, dollars). SymPy supports units as symbols so use that.
 
 class Process(object):
     '''Does the actual computing of charges. The 'compute_charge' method should
     go in Process or MongoReebill in a real implementation.'''
     def compute_charge(self, urs, charge_name, utilbill):
-        formula_text = urs._rsis[charge_name].formula
-        formula_expr = sympy.sympify(formula_text)
+        rsi = urs._rsis[charge_name]
+        formula_expr = sympy.sympify(rsi.formula)
 
         # get a value for each input and register that occurs in the formula
         # with the utility bill
         symbol_values = {}
         for symbol in formula_expr.atoms(sympy.Symbol):
             value = getattr(urs, symbol.name)
-            # every value is a function of the utility bill, and every one is
-            # assumed to (at least potentially) change over time
-            symbol_values[symbol] = value(utilbill)
+            # some values are functions of the utility bill; others are constant
+            if hasattr(value, '__call__'):
+                symbol_values[symbol] = value(utilbill)
+            else:
+                symbol_values[symbol] = value
 
-        print '%s = %s' % (charge_name, formula_text)
-        print 'input values %s' % symbol_values
+        #print '%s = %s' % (charge_name, formula_text)
+        #print 'input values %s' % symbol_values
 
         # substitute values of expressions to evaluate it into a float
-        return formula_expr.subs(symbol_values)
+        unrounded_charge = formula_expr.subs(symbol_values)
+
+        if rsi.round_rule is None:
+            return round(unrounded_charge, 2)
+        if rsi.round_rule is 'down':
+           return floor(100 * unrounded_charge) / 100.
+        if rsi.round_rule is 'up':
+           return ceil(100 * unrounded_charge) / 100.
+       # TODO add more
+        raise ValueError('Unknown rounding rule "%s"' % rsi.round_rule)
 
 class TimeDependentValue(EmbeddedDocument):
     '''RateStructure subdocument representing a value that changes over time.
@@ -90,15 +105,17 @@ class ProratedTDV(TimeDependentValue):
 
 
 class RSI(EmbeddedDocument):
-    '''RSI is supposed to be its own class, but all it has is a string (for
-    now). Note there is no separation into "quantity" and "rate". Rounding
-    rules may be added.'''
+    # note no separation into "quantity" and "rate"
     formula = StringField()
+    round_rule = StringField(required=False)
 
 class URS(Document):
     '''General rate structure class. All members should be values of symbols
     that occur in RSI formulas.'''
     meta = {'allow_inheritance': True}
+
+    # human-readable description might be useful
+    name = StringField()
 
     # every rate structure has RSIs (charge name -> formula)
     # TODO should they be stored in this class, where all other members are the
@@ -139,9 +156,9 @@ class SoCalRS(URS):
     def days_in_summer(self, utilbill):
         # assume bill period is within calendar year (not accurate in real life)
         summer_start = date(utilbill['start'].year,
-                self.summer_start_month(utilbill), 1)
+                self.summer_start_month, 1)
         summer_end = date(utilbill['start'].year,
-                self.winter_start_month(utilbill), 1)
+                self.winter_start_month, 1)
         if utilbill['start'] <= summer_start:
             return max(0, (utilbill['end'] - summer_end).days)
         elif utilbill['end'] < summer_end:
@@ -155,79 +172,127 @@ class SoCalRS(URS):
     def total_register(self, utilbill):
         return utilbill['registers']['total_register']['quantity']
 
+class TaxRS(URS):
+    # other URSs that this one can depend on (charge names in those must be unique)
+    # (TODO enforce name uniqueness?)
+    other_rss = ListField(field=ReferenceField(URS))
+    # TODO is this a good way to do it? should there be a way to apply to all
+    # charges of a certain type without explicitly specifying which URSs?
+    # what if the tax is charged only on specific charges within a URS?
+    # what if taxes depend on each other, e.g. state tax on top of city tax, or
+    # tax on top of an energy-based fee that is considered a tax because it
+    # comes from the government instead of the utility? (STATE_REGULATORY and
+    # PUBLIC_PURPOSE might be the latter.)
 
+    def all_non_tax(self, utilbill):
+        '''Sum of all charges in other_rss.'''
+        # TODO calculating the charges here using a separate object is super
+        # ugly (and in real code, it would be impossible because Process or
+        # MongoReebill wouldn't be in scope). it wouldn't be ugly at all if the
+        # other_rss could do the computation themselves. is there any other
+        # way?
+        p = Process()
+        return sum(sum(p.compute_charge(urs, charge_name, utilbill) for
+                charge_name in urs._rsis.keys()) for urs in self.other_rss)
+
+# based on 10031-7-1
 socalrs_instance = SoCalRS(
+    name='GM-E Residential',
+
     # inputs that change monthly (with utility bill periods mapped to calendar
     # periods using the "start" rule). these use the complicated "prorate"
     # mapping rule, meaning that the value that actually gets used in a given
     # bill is usually not any of the specific values below.
     under_baseline_rate = ProratedTDV(
         date_value_pairs= [
-            [date(2013,1,1), 1.1],
-            [date(2013,2,1), 1.2],
-            [date(2013,3,1), 1.3],
+            [date(2012,10,1), 0.7282],
+            [date(2012,11,1), 0.7282],
+            [date(2012,12,1), 0.7282],
         ],
     ),
     over_baseline_rate = ProratedTDV(
         date_value_pairs= [
-            [date(2013,1,1), 2.1],
-            [date(2013,2,1), 2.2],
-            [date(2013,3,1), 2.3],
+            [date(2012,10,1), 0.9782],
+            [date(2012,11,1), 0.9782],
+            [date(2012,12,1), 0.9782],
         ],
     ),
 
-    # all inputs are time-dependent, but we have never seen these change so
-    # far. they use the "start" mapping rule by default, and we expect we will
-    # never have to add more entries in 'date_value_pairs'
-    summer_allowance = StartBasedTDV(
+    # inputs that have never changed so far, but may change in the future. the
+    # initial value extends indefinitely into the future until a new value is
+    # added with a later date.
+    customer_charge_rate=StartBasedTDV(
         date_value_pairs=[
-            [date(2013,1,1), 2],
+            [date(2012,1,1), .16438],
         ],
     ),
-    winter_allowance = StartBasedTDV(
+    state_regulatory_rate=StartBasedTDV(
         date_value_pairs=[
-            [date(2013,1,1), 3],
+            [date(2012,1,1), .00068],
         ],
     ),
-    summer_start_month = StartBasedTDV(
+    public_purpose_rate=StartBasedTDV(
         date_value_pairs=[
-            [date(2013,1,1), 4],
+            [date(2012,1,1), .08231],
         ],
     ),
-    winter_start_month = StartBasedTDV(
-        date_value_pairs=[
-            [date(2013,1,1), 10],
-        ],
-    ),
+
+    # these inputs are constant. should we treat all inputs as possibly
+    # time-dependent even if they're not expected to change? if mapping rules
+    # never change, we might be able to assume that some actual values never
+    # change either.
+    summer_allowance = 2,
+    winter_allowance = 3,
+    summer_start_month = 4,
+    winter_start_month = 10,
 
     # RSI formulas, named with underscore to distinguish from symbol names
     # (TODO maybe these move somewhere else? or find some other way of
     # distinguishing them from the inputs?)
     _rsis = {
-        'Gas Service Over Baseline':
+        'Gas Service Baseline': # over basline
             RSI(formula=('over_baseline_rate * Max(0, total_register - num_units *'
             '(winter_allowance * days_in_winter + summer_allowance * '
-            'days_in_summer))')),
-        'Gas Service Under Baseline':
+            'days_in_summer))'), round_rule='down'),
+        'Gas Service Non Baseline': # under baseline
             RSI(formula=('under_baseline_rate * Min(total_register, num_units * '
             '(winter_allowance * days_in_winter + summer_allowance * '
-            'days_in_summer))')),
+            'days_in_summer))'), round_rule='down'),
+        'Customer Charge': RSI(formula='customer_charge_rate * num_units'),
+        'State Regulatory': RSI(formula='state_regulatory_rate * total_register'),
+        'Public Purpose': RSI(formula='public_purpose_rate * total_register'),
+
+        # TODO (taxes should be in different URS, and I haven't worked out
+        # charges that depend on other charges)
+        #'LA City Users': RSI(formula='.01 * ...'),
+    }
+)
+
+la_tax_rs = TaxRS(
+    name = 'LA taxes',
+    other_rss=[socalrs_instance],
+    _rsis={
+        'LA City Users': RSI(formula='.1 * all_non_tax')
     }
 )
 
 # we should be using a class for utility bills (see branch utilbill-class) but
 # we are currently using raw dictionaries (with more data than this in them)
 utilbill_doc = {
+    # based on 10031-7
     'registers': {
-        'total_register': {'quantity': 100},
+        'total_register': {'quantity': 440},
     },
-    'start': date(2013,1,15),
-    'end': date(2013,2,15),
+    'start': date(2012,11,20),
+    'end': date(2013,12,20),
 
     # data that the Sempra Energy rate structure requires that others do not
     # require: building size in units
-    'num_units': 50,
+    'num_units': 30,
 }
 
-for name in ['Gas Service Under Baseline', 'Gas Service Over Baseline']:
-    print '%s: $%.2f' % (name, Process().compute_charge(socalrs_instance, name, utilbill_doc))
+#for name in ['Gas Service Under Baseline', 'Gas Service Over Baseline', 'Customer Charge']:
+for rs in (socalrs_instance, la_tax_rs):
+    for charge_name in sorted(rs._rsis.keys()):
+        print '%50s: %6s' % (rs.name + '/' + charge_name,
+                '%.2f' % Process().compute_charge(rs, charge_name, utilbill_doc))
