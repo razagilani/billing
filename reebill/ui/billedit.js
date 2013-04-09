@@ -4220,6 +4220,7 @@ function reeBillReady() {
             {name: 'codename'},
             {name: 'casualname'},
             {name: 'primusname'},
+            {name: 'utilityserviceaddress'},
             {name: 'dayssince'},
             {name: 'lastevent'},
             {name: 'lastissuedate'},
@@ -4276,6 +4277,11 @@ function reeBillReady() {
                 header: 'Primus Name',
                 sortable: true,
                 dataIndex: 'primusname',
+                renderer: accountGridColumnRenderer,
+            },{
+                header: 'Utility Service Addresses',
+                sortable: true,
+                dataIndex: 'utilityserviceaddress',
                 renderer: accountGridColumnRenderer,
             },{
                 header: 'Last Issued',
