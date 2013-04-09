@@ -401,8 +401,13 @@ class BillToolBridge:
         # determine whether authentication is on or off
         self.authentication_on = self.config.getboolean('authentication', 'authenticate')
 
+        # TODO: allow the log to be viewed in the UI
         self.reconciliation_log_dir = self.config.get('reebillreconciliation', 'log_directory')
         self.reconciliation_report_dir = self.config.get('reebillreconciliation', 'report_directory')
+
+        # TODO: allow the log to be viewed in the UI
+        self.estimated_revenue_log_dir = self.config.get('reebillestimatedrevenue', 'log_directory')
+        self.estimated_revenue_report_dir = self.config.get('reebillestimatedrevenue', 'report_directory')
 
         # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
@@ -449,10 +454,12 @@ class BillToolBridge:
     def get_reconciliation_data(self, start, limit, **kwargs):
         '''Handles AJAX request for data to fill reconciliation report grid.'''
         start, limit = int(start), int(limit)
+        # TODO 45793319: hardcoded file name
         with open(os.path.join(self.reconciliation_report_dir,'reconciliation_report.json')) as json_file:
             # load all data from json file: it's one JSON dictionary per
             # line (for reasons explained in reconciliation.py) but should
             # be interpreted as a JSON list
+            # TODO 45793037: not really a json file until now
             items = ju.loads('[' + ', '.join(json_file.readlines()) + ']')
             return self.dumps({
                 'success': True,
@@ -464,41 +471,16 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def estimated_revenue_report(self, start, limit, **kwargs):
-        '''Handles AJAX request for data to fill estimated revenue report
-        grid.''' 
-        with DBSession(self.state_db) as session:
-            start, limit = int(start), int(limit)
-            er = EstimatedRevenue(self.state_db, self.reebill_dao,
-                    self.ratestructure_dao, self.billUpload, self.nexus_util,
-                    self.splinter)
-            data = er.report(session)
-
-            # build list of rows from report data
-            rows = []
-            for account in sorted(data.keys(),
-                    # 'total' first
-                    cmp=lambda x,y: -1 if x == 'total' else 1 if y == 'total' else cmp(x,y)):
-                row = {'account': 'Total' if account == 'total' else account}
-                for month in data[account].keys():
-                    # show error message instead of value if there was one
-                    if 'error' in data[account][month]:
-                        value = 'ERROR: %s' % data[account][month]['error']
-                    elif 'value' in data[account][month]:
-                        value = '%.2f' % data[account][month]['value']
-
-                    row.update({
-                        'revenue_%s_months_ago' % (monthmath.current_utc() - month): {
-                            'value': value,
-                            'estimated': data[account][month].get('estimated', False)
-                        }
-                    })
-                rows.append(row)
-                #print rows
+    def get_estimated_revenue_data(self, start, limit, **kwargs):
+        '''Handles AJAX request for data to fill estimated revenue report grid.'''
+        start, limit = int(start), int(limit)
+        # TODO 45793319: hardcoded file name
+        with open(os.path.join(self.estimated_revenue_report_dir,'estimated_revenue_report.json')) as json_file:
+            items = ju.loads(json_file.read())['rows']
             return self.dumps({
                 'success': True,
-                'rows': rows[start:start+limit],
-                'results': len(rows) 
+                'rows': items[start:start+limit],
+                'results': len(items) # total number of items
             })
 
     @cherrypy.expose
@@ -508,19 +490,15 @@ class BillToolBridge:
     def estimated_revenue_xls(self, **kwargs):
         '''Responds with the data from the estimated revenue report in the form
         of an Excel spreadsheet.'''
-        with DBSession(self.state_db) as session:
-            spreadsheet_name =  'estimated_revenue.xls'
-            er = EstimatedRevenue(self.state_db, self.reebill_dao,
-                    self.ratestructure_dao, self.billUpload, self.nexus_util,
-                    self.splinter)
-            buf = StringIO()
-            er.write_report_xls(session, buf)
+        spreadsheet_name =  'estimated_revenue.xls'
 
+        # TODO 45793319: hardcoded file name
+        with open(os.path.join(self.estimated_revenue_report_dir,'estimated_revenue_report.xls')) as xls_file:
             # set headers for file download
             cherrypy.response.headers['Content-Type'] = 'application/excel'
             cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
 
-            return buf.getvalue()
+            return xls_file.read()
 
     ###########################################################################
     # authentication functions
@@ -1101,7 +1079,6 @@ class BillToolBridge:
 
         return name_dicts
 
-
     def full_names_of_accounts(self, accounts):
         '''Given a list of account numbers (as strings), returns a list
         containing the "full name" of each account, each of which is of the
@@ -1319,9 +1296,15 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def reebill_details_xls(self, **args):
+    def reebill_details_xls(self, begin_date=None, end_date=None, **kwargs):
+        #prep date strings from client
+        make_date = lambda x: datetime.strptime(x, dateutils.ISO_8601_DATE) if x else None
+        begin_date = make_date(begin_date)
+        end_date = make_date(end_date)
+        #write out spreadsheet(s)
         with DBSession(self.state_db) as session:
-            rows, total_count = self.process.reebill_report(session)
+            rows, total_count = self.process.reebill_report(session, begin_date,
+                                                           end_date)
 
             buf = StringIO()
 
@@ -1481,10 +1464,13 @@ class BillToolBridge:
     @random_wait
     @authenticate
     @json_exception
-    def excel_export(self, account=None, **kwargs):
-        '''Responds with an excel spreadsheet containing all actual charges for
-        all utility bills for the given account, or every account (1 per sheet)
-        if 'account' is not given.'''
+    def excel_export(self, account=None, start_date=None, end_date=None, **kwargs):
+        '''
+        Responds with an excel spreadsheet containing all actual charges for all
+        utility bills for the given account, or every account (1 per sheet) if
+        'account' is not given, or all utility bills for the account(s) filtered
+        by time, if 'start_date' and/or 'end_date' are given.
+        '''
         with DBSession(self.state_db) as session:
             if account is not None:
                 spreadsheet_name = account + '.xls'
@@ -1495,7 +1481,8 @@ class BillToolBridge:
 
             # write excel spreadsheet into a StringIO buffer (file-like)
             buf = StringIO()
-            exporter.export(session, buf, account)
+            exporter.export(session, buf, account, start_date=start_date,
+                            end_date=end_date)
 
             # set MIME type for file download
             cherrypy.response.headers['Content-Type'] = 'application/excel'
@@ -2020,6 +2007,8 @@ class BillToolBridge:
                     try: row_dict['hypothetical_total'] = mongo_reebill.hypothetical_total
                     except: pass
                     try: row_dict['actual_total'] = mongo_reebill.actual_total
+                    except: pass
+                    try: row_dict['ree_quantity'] = mongo_reebill.total_renewable_energy()
                     except: pass
                     try: row_dict['ree_value'] = mongo_reebill.ree_value
                     except: pass
@@ -2667,27 +2656,33 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def journal(self, xaction, account, **kwargs):
-        if not xaction or not account:
-            raise ValueError("Bad Parameter Value")
         journal_entries = self.journal_dao.load_entries(account)
-        for entry in journal_entries:
-            # TODO 29715501 replace user identifier with user name
-            # (UserDAO.load_user() currently requires a password to load a
-            # user, but we just want to translate an indentifier into a
-            # name)
-
-            # put a string containing all non-standard journal entry data
-            # in an 'extra' field for display in the browser
-            extra_data = copy.deepcopy(entry)
-            del extra_data['account']
-            if 'sequence' in extra_data:
-                del extra_data['sequence']
-            del extra_data['date']
-            if 'event' in extra_data:
-                del extra_data['event']
-            if 'user' in extra_data:
-                del extra_data['user']
-            entry['extra'] = ', '.join(['%s: %s' % (k,v) for (k,v) in extra_data.iteritems()])
+#        for entry in journal_entries:
+#            # TODO 29715501 replace user identifier with user name
+#            # (UserDAO.load_user() currently requires a password to load a
+#            # user, but we just want to translate an indentifier into a
+#            # name)
+#
+#            # put a string containing all non-standard journal entry data in an
+#            # 'extra' field for display in the browser, because the UI can't
+#            # have column to handle any key that might appear in any event.
+#            # disabled for now because the client doesn't actually show the
+#            #"extra" data.
+#            # TODO processing the entries in this way is slow when loading entries
+#            # for all accounts. (yes, "paging" will be needed when the number of
+#            # entries gets REALLY large but the real problem here is bad code,
+#            # which should be fixed first. mongo aggregation is probably the
+#            # simplest way to do it and it's fast.)
+#            extra_data = copy.deepcopy(entry)
+#            del extra_data['account']
+#            if 'sequence' in extra_data:
+#                del extra_data['sequence']
+#            del extra_data['date']
+#            if 'event' in extra_data:
+#                del extra_data['event']
+#            if 'user' in extra_data:
+#                del extra_data['user']
+#            entry['extra'] = ', '.join(['%s: %s' % (k,v) for (k,v) in extra_data.iteritems()])
 
         if xaction == "read":
             return self.dumps({'success': True, 'rows':journal_entries})

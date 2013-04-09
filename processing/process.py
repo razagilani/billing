@@ -1106,7 +1106,7 @@ class Process(object):
 
         return rows, totalCount
 
-    def reebill_report(self, session):
+    def reebill_report(self, session, begin_date=None, end_date=None):
         accounts = self.state_db.listAccounts(session)
         rows = [] 
         totalCount = 0
@@ -1117,9 +1117,16 @@ class Process(object):
                 # Skip over unissued reebills
                 if not reebill.issue_date:
                     continue
+                # if the user has chosen a begin and/or end date *and* this
+                # reebill falls outside of its bounds, skip to the next one
+                have_period_dates = begin_date or end_date
+                reebill_begins_in_this_period = begin_date and reebill.period_begin >= begin_date
+                reebill_ends_in_this_period = end_date and reebill.period_end <= end_date
+                reebill_in_this_period = reebill_begins_in_this_period or reebill_ends_in_this_period
+                if have_period_dates and not reebill_in_this_period:
+                    continue
 
                 row = {}
-
                 # iterate the payments and find the ones that apply. 
                 if (reebill.period_begin is not None and reebill.period_end is not None):
                     applicable_payments = filter(lambda x: x.date_applied >
@@ -1226,6 +1233,10 @@ class Process(object):
                     rows.append(row)
                     totalCount += 1
 
+            # TODO: why is this here? it seems that what it's doing is ensuring
+            # there is alwas at least one row present in 'rows', but why isn't
+            # it inside of an 'if/else' block to ensure that the empty row is
+            # only present when no other results are returned?
             row = {}
             row['account'] = None
             row['sequence'] = None
