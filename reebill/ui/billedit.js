@@ -1264,7 +1264,7 @@ function reeBillReady() {
         },
         {
             xtype: 'fieldset',
-            title: 'Billing Address',
+            title: 'Utility Billing Address',
             collapsible: false,
             defaults: {
                 anchor: '0',
@@ -1304,7 +1304,7 @@ function reeBillReady() {
             ]
         },{
             xtype: 'fieldset',
-            title: 'Service Address',
+            title: 'Utility Service Address',
             collapsible: false,
             defaults: {
                 anchor: '0',
