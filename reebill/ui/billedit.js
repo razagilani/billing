@@ -4804,11 +4804,7 @@ function reeBillReady() {
                                     accountGrid.getSelectionModel().clearSelections();
                                     if (moreAccountsCheckbox.getValue()) {
                                         newNameField.reset();
-                                        var set = newAccountFormPanel.find('id','serviceAddressSet')[0];
-                                        var fields = set.findByType('textfield');
-                                        for (var j = 0;j < fields.length;j++) {
-                                            fields[j].reset();
-                                        }
+                                        // don't reset any other fields
                                     } else {
                                         // update next account number shown in field
                                         accountsPanel.getLayout().setActiveItem('accountGrid');
