@@ -36,17 +36,17 @@ socalrs_instance = SoCalRS(
     # added with a later date.
     customer_charge_rate=StartBasedTDV(
         date_value_pairs=[
-            [datetime(2012,1,1), .16438],
+            [datetime(2010,1,1), .16438],
         ],
     ),
     state_regulatory_rate=StartBasedTDV(
         date_value_pairs=[
-            [datetime(2012,1,1), .00068],
+            [datetime(2010,1,1), .00068],
         ],
     ),
     public_purpose_rate=StartBasedTDV(
         date_value_pairs=[
-            [datetime(2012,1,1), .08231],
+            [datetime(2010,1,1), .08231],
         ],
     ),
 
@@ -111,7 +111,7 @@ utilbill_doc = {
         'total_register': {'quantity': 440},
     },
     'start': datetime(2012,11,20),
-    'end': datetime(2010,12,20),
+    'end': datetime(2012,12,20),
 
     # data that the Sempra Energy rate structure requires that others do not
     # require: building size in units
