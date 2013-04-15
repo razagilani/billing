@@ -204,5 +204,3 @@ class TaxRS(URS):
         p = Process()
         return sum(sum(p.compute_charge(urs, charge_name, utilbill) for
                 charge_name in urs._rsis.keys()) for urs in self.other_rss)
-
-
