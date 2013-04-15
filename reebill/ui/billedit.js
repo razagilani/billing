@@ -1272,7 +1272,7 @@ function reeBillReady() {
         },
         {
             xtype: 'fieldset',
-            title: 'Billing Address',
+            title: 'Utility Billing Address',
             collapsible: false,
             defaults: {
                 anchor: '0',
@@ -1312,7 +1312,7 @@ function reeBillReady() {
             ]
         },{
             xtype: 'fieldset',
-            title: 'Service Address',
+            title: 'Utility Service Address',
             collapsible: false,
             defaults: {
                 anchor: '0',
@@ -4288,7 +4288,7 @@ function reeBillReady() {
                 dataIndex: 'primusname',
                 renderer: accountGridColumnRenderer,
             },{
-                header: 'Utility Service Addresses',
+                header: 'Utility Service Address',
                 sortable: true,
                 dataIndex: 'utilityserviceaddress',
                 renderer: accountGridColumnRenderer,
@@ -4813,11 +4813,7 @@ function reeBillReady() {
                                     accountGrid.getSelectionModel().clearSelections();
                                     if (moreAccountsCheckbox.getValue()) {
                                         newNameField.reset();
-                                        var set = newAccountFormPanel.find('id','serviceAddressSet')[0];
-                                        var fields = set.findByType('textfield');
-                                        for (var j = 0;j < fields.length;j++) {
-                                            fields[j].reset();
-                                        }
+                                        // don't reset any other fields
                                     } else {
                                         // update next account number shown in field
                                         accountsPanel.getLayout().setActiveItem('accountGrid');
