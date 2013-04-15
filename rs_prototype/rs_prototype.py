@@ -182,25 +182,25 @@ class SoCalRS(URS):
     def total_register(self, utilbill):
         return utilbill['registers']['total_register']['quantity']
 
-class TaxRS(URS):
-    # other URSs that this one can depend on (charge names in those must be unique)
-    # (TODO enforce name uniqueness?)
-    other_rss = ListField(field=ReferenceField(URS))
-    # TODO is this a good way to do it? should there be a way to apply to all
-    # charges of a certain type without explicitly specifying which URSs?
-    # what if the tax is charged only on specific charges within a URS?
-    # what if taxes depend on each other, e.g. state tax on top of city tax, or
-    # tax on top of an energy-based fee that is considered a tax because it
-    # comes from the government instead of the utility? (STATE_REGULATORY and
-    # PUBLIC_PURPOSE might be the latter.)
-
-    def all_non_tax(self, utilbill):
-        '''Sum of all charges in other_rss.'''
-        # TODO calculating the charges here using a separate object is super
-        # ugly (and in real code, it would be impossible because Process or
-        # MongoReebill wouldn't be in scope). it wouldn't be ugly at all if the
-        # other_rss could do the computation themselves. is there any other
-        # way?
-        p = Process()
-        return sum(sum(p.compute_charge(urs, charge_name, utilbill) for
-                charge_name in urs._rsis.keys()) for urs in self.other_rss)
+#class TaxRS(URS):
+#    # other URSs that this one can depend on (charge names in those must be unique)
+#    # (TODO enforce name uniqueness?)
+#    other_rss = ListField(field=ReferenceField(URS))
+#    # TODO is this a good way to do it? should there be a way to apply to all
+#    # charges of a certain type without explicitly specifying which URSs?
+#    # what if the tax is charged only on specific charges within a URS?
+#    # what if taxes depend on each other, e.g. state tax on top of city tax, or
+#    # tax on top of an energy-based fee that is considered a tax because it
+#    # comes from the government instead of the utility? (STATE_REGULATORY and
+#    # PUBLIC_PURPOSE might be the latter.)
+#
+#    def all_non_tax(self, utilbill):
+#        '''Sum of all charges in other_rss.'''
+#        # TODO calculating the charges here using a separate object is super
+#        # ugly (and in real code, it would be impossible because Process or
+#        # MongoReebill wouldn't be in scope). it wouldn't be ugly at all if the
+#        # other_rss could do the computation themselves. is there any other
+#        # way?
+#        p = Process()
+#        return sum(sum(p.compute_charge(urs, charge_name, utilbill) for
+#                charge_name in urs._rsis.keys()) for urs in self.other_rss)
