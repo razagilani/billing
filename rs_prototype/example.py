@@ -4,7 +4,7 @@ import mongoengine
 from mongoengine import Document, EmbeddedDocument, ListField, StringField, FloatField, IntField, DictField, EmbeddedDocumentField, ReferenceField
 from math import floor, ceil
 import pymongo
-from rs_prototype import TimeDependentValue, StartBasedTDV, ProratedTDV, RSI, URS, SoCalRS, TaxRS, Process
+from rs_prototype import TimeDependentValue, StartBasedTDV, ProratedTDV, RSI, URS, SoCalRS, Process
 
 mongoengine.connect('temp')
 
@@ -83,24 +83,29 @@ socalrs_instance = SoCalRS(
         'State Regulatory': RSI(formula='state_regulatory_rate * total_register'),
         'Public Purpose': RSI(formula='public_purpose_rate * total_register'),
 
-        # TODO (taxes should be in different URS, and I haven't worked out
-        # charges that depend on other charges)
+        # taxes combined with other charges because we believe nothing is to be
+        # gained by separating them (according to Rich, customers in same
+        # jurisdiction with different suppliers/distributors do NOT pay the
+        # same taxes)
+        # TODO how can charges depend on other charges? should they appear as
+        # symbols in the formula? is there a good way to apply a tax to all
+        # other charges "of a certain type" in the same URS?
         #'LA City Users': RSI(formula='.01 * ...'),
     }
 )
 
-la_tax_rs = TaxRS(
-    name = 'LA taxes',
-    other_rss=[socalrs_instance],
-    _rsis={
-        'LA City Users': RSI(formula='.1 * all_non_tax')
-    }
-)
+#la_tax_rs = TaxRS(
+#    name = 'LA taxes',
+#    other_rss=[socalrs_instance],
+#    _rsis={
+#        'LA City Users': RSI(formula='.1 * all_non_tax')
+#    }
+#)
 
 # clear db and save the 2 documents in it
 pymongo.Connection('localhost')['temp']['urs'].drop()
 socalrs_instance.save()
-la_tax_rs.save()
+#la_tax_rs.save()
 socalrs_instance = URS.objects.get(name='GM-E Residential')
 
 # we should be using a class for utility bills (see branch utilbill-class) but
@@ -119,7 +124,7 @@ utilbill_doc = {
 }
 
 #for name in ['Gas Service Under Baseline', 'Gas Service Over Baseline', 'Customer Charge']:
-for rs in (socalrs_instance, la_tax_rs):
+for rs in (socalrs_instance, ):
     for charge_name in sorted(rs._rsis.keys()):
         print '%50s: %6s' % (rs.name + '/' + charge_name,
                 '%.2f' % Process().compute_charge(rs, charge_name, utilbill_doc))
