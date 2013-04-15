@@ -1,8 +1,10 @@
 from datetime import date, datetime
 from bisect import bisect_left
 import sympy
+import mongoengine
 from mongoengine import Document, EmbeddedDocument, ListField, StringField, FloatField, IntField, DictField, EmbeddedDocumentField, ReferenceField
 from math import floor, ceil
+import pymongo
 
 # TODO
 # add units (therms, kWh, dollars). SymPy supports units as symbols so use that.
@@ -33,9 +35,9 @@ class Process(object):
 
         if rsi.round_rule is None:
             return round(unrounded_charge, 2)
-        if rsi.round_rule is 'down':
+        if rsi.round_rule == 'down':
            return floor(100 * unrounded_charge) / 100.
-        if rsi.round_rule is 'up':
+        if rsi.round_rule == 'up':
            return ceil(100 * unrounded_charge) / 100.
        # TODO add more
         raise ValueError('Unknown rounding rule "%s"' % rsi.round_rule)
@@ -112,7 +114,7 @@ class RSI(EmbeddedDocument):
 class URS(Document):
     '''General rate structure class. All members should be values of symbols
     that occur in RSI formulas.'''
-    meta = {'allow_inheritance': True}
+    meta = {'collection': 'urs', 'allow_inheritance': True}
 
     # human-readable description might be useful
     name = StringField()
@@ -138,12 +140,18 @@ class SoCalRS(URS):
     # they change
     summer_allowance = EmbeddedDocumentField(StartBasedTDV)
     winter_allowance = EmbeddedDocumentField(StartBasedTDV)
-    summer_start_month = EmbeddedDocumentField(StartBasedTDV)
-    winter_start_month = EmbeddedDocumentField(StartBasedTDV)
+
+    # values that are REALLY fixed
+    summer_start_month = IntField()
+    winter_start_month = IntField()
 
     # really time-dependent values (change every month)
     under_baseline_rate = EmbeddedDocumentField(ProratedTDV)
     over_baseline_rate = EmbeddedDocumentField(ProratedTDV)
+
+    customer_charge_rate = EmbeddedDocumentField(StartBasedTDV)
+    state_regulatory_rate = EmbeddedDocumentField(StartBasedTDV)
+    public_purpose_rate = EmbeddedDocumentField(StartBasedTDV)
 
     # utility-bill-dependent fixed values
     def climate_zone(self, utilbill):
@@ -155,9 +163,9 @@ class SoCalRS(URS):
 
     def days_in_summer(self, utilbill):
         # assume bill period is within calendar year (not accurate in real life)
-        summer_start = date(utilbill['start'].year,
+        summer_start = datetime(utilbill['start'].year,
                 self.summer_start_month, 1)
-        summer_end = date(utilbill['start'].year,
+        summer_end = datetime(utilbill['start'].year,
                 self.winter_start_month, 1)
         if utilbill['start'] <= summer_start:
             return max(0, (utilbill['end'] - summer_end).days)
@@ -195,6 +203,9 @@ class TaxRS(URS):
         return sum(sum(p.compute_charge(urs, charge_name, utilbill) for
                 charge_name in urs._rsis.keys()) for urs in self.other_rss)
 
+
+mongoengine.connect('temp')
+
 # based on 10031-7-1
 socalrs_instance = SoCalRS(
     name='GM-E Residential',
@@ -205,16 +216,16 @@ socalrs_instance = SoCalRS(
     # bill is usually not any of the specific values below.
     under_baseline_rate = ProratedTDV(
         date_value_pairs= [
-            [date(2012,10,1), 0.7282],
-            [date(2012,11,1), 0.7282],
-            [date(2012,12,1), 0.7282],
+            [datetime(2012,10,1), 0.7282],
+            [datetime(2012,11,1), 0.7282],
+            [datetime(2012,12,1), 0.7282],
         ],
     ),
     over_baseline_rate = ProratedTDV(
         date_value_pairs= [
-            [date(2012,10,1), 0.9782],
-            [date(2012,11,1), 0.9782],
-            [date(2012,12,1), 0.9782],
+            [datetime(2012,10,1), 0.9782],
+            [datetime(2012,11,1), 0.9782],
+            [datetime(2012,12,1), 0.9782],
         ],
     ),
 
@@ -223,17 +234,17 @@ socalrs_instance = SoCalRS(
     # added with a later date.
     customer_charge_rate=StartBasedTDV(
         date_value_pairs=[
-            [date(2012,1,1), .16438],
+            [datetime(2012,1,1), .16438],
         ],
     ),
     state_regulatory_rate=StartBasedTDV(
         date_value_pairs=[
-            [date(2012,1,1), .00068],
+            [datetime(2012,1,1), .00068],
         ],
     ),
     public_purpose_rate=StartBasedTDV(
         date_value_pairs=[
-            [date(2012,1,1), .08231],
+            [datetime(2012,1,1), .08231],
         ],
     ),
 
@@ -241,8 +252,16 @@ socalrs_instance = SoCalRS(
     # time-dependent even if they're not expected to change? if mapping rules
     # never change, we might be able to assume that some actual values never
     # change either.
-    summer_allowance = 2,
-    winter_allowance = 3,
+    summer_allowance = StartBasedTDV(
+        date_value_pairs=[
+            [datetime(2010,1,1), 2]
+        ]
+    ),
+    winter_allowance = StartBasedTDV(
+        date_value_pairs=[
+            [datetime(2010,1,1), 3]
+        ]
+    ),
     summer_start_month = 4,
     winter_start_month = 10,
 
@@ -276,6 +295,12 @@ la_tax_rs = TaxRS(
     }
 )
 
+# clear db and save the 2 documents in it
+pymongo.Connection('localhost')['temp']['urs'].drop()
+socalrs_instance.save()
+la_tax_rs.save()
+socalrs_instance = URS.objects.get(name='GM-E Residential')
+
 # we should be using a class for utility bills (see branch utilbill-class) but
 # we are currently using raw dictionaries (with more data than this in them)
 utilbill_doc = {
@@ -283,8 +308,8 @@ utilbill_doc = {
     'registers': {
         'total_register': {'quantity': 440},
     },
-    'start': date(2012,11,20),
-    'end': date(2013,12,20),
+    'start': datetime(2012,11,20),
+    'end': datetime(2010,12,20),
 
     # data that the Sempra Energy rate structure requires that others do not
     # require: building size in units
@@ -296,3 +321,5 @@ for rs in (socalrs_instance, la_tax_rs):
     for charge_name in sorted(rs._rsis.keys()):
         print '%50s: %6s' % (rs.name + '/' + charge_name,
                 '%.2f' % Process().compute_charge(rs, charge_name, utilbill_doc))
+
+#pymongo.Connection('localhost')['temp']['urs'].drop()
