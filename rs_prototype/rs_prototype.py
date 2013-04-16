@@ -2,7 +2,7 @@ from datetime import date, datetime
 from bisect import bisect_left
 import sympy
 import mongoengine
-from mongoengine import Document, EmbeddedDocument, ListField, StringField, FloatField, IntField, DictField, EmbeddedDocumentField, ReferenceField
+from mongoengine import Document, EmbeddedDocument, ListField, StringField, FloatField, IntField, DictField, EmbeddedDocumentField, ReferenceField, DateTimeField
 from math import floor, ceil
 
 # TODO
@@ -135,6 +135,12 @@ class URS(Document):
     def period_length(self, utilbill):
         return (utilbill['end'] - utilbill['start']).days
 
+    # register values
+    # TODO maybe this goes in another class, since not every RS will have a
+    # total register
+    def total_register(self, utilbill):
+        return utilbill['registers']['total_register']['quantity']
+
 class SoCalRS(URS):
     '''Specific rate structure class: contains variables and methods (with
     utilbill argument) that provide values of symbols in RS expressions.'''
@@ -178,10 +184,6 @@ class SoCalRS(URS):
     def days_in_winter(self, utilbill):
         return self.period_length(utilbill) - self.days_in_summer(utilbill)
 
-    # register values
-    def total_register(self, utilbill):
-        return utilbill['registers']['total_register']['quantity']
-
 #class TaxRS(URS):
 #    # other URSs that this one can depend on (charge names in those must be unique)
 #    # (TODO enforce name uniqueness?)
@@ -204,3 +206,39 @@ class SoCalRS(URS):
 #        p = Process()
 #        return sum(sum(p.compute_charge(urs, charge_name, utilbill) for
 #                charge_name in urs._rsis.keys()) for urs in self.other_rss)
+
+class WGDeliveryInterruptDC(URS):
+    system_charge = FloatField()
+    distribution_rate = EmbeddedDocumentField(StartBasedTDV)
+    balancing_rate = EmbeddedDocumentField(StartBasedTDV)
+
+    dc_rights_of_way_fee = FloatField()
+    sustainable_energy_trust_fund = FloatField()
+    energy_assistance_trust_fund = FloatField()
+
+    delivery_tax_rate = FloatField()
+
+class GasSupplyContract(URS):
+    name = 'Hess supply contract'
+
+    # ID number for the supplier
+    deal_id = StringField()
+
+    # duration of the contract
+    start = DateTimeField()
+    end = DateTimeField()
+
+    contract_volume = FloatField()
+
+    # "allowed" deviation from contract volume: examble Hess bill for 10022 has
+    # only one "swing" volume but we might as well accomodate different
+    # thresholds for under- and over-consumption
+    # NOTE i think high_swing is what Hess calls "swing volume" and low_swing
+    # is what it calls "GSA volume"
+    low_swing = FloatField()
+    high_swing = FloatField()
+
+    low_penalty_rate = FloatField()
+    normal_rate = FloatField()
+    high_penalty_rate = FloatField()
+
