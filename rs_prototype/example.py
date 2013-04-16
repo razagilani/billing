@@ -176,22 +176,30 @@ hess_10022 = GasSupplyContract(
     low_swing = 0,
     high_swing = 0,
 
-    low_penalty_rate = 4.264166, # sell-back rate
+    # sell-back rate
+    low_penalty_rate = 0, # TODO unknown--must get it from the contract itself
     # " Contract Volume" unit price and "Swing Volume [0%]" unit price are the same
     normal_rate = 5.251,
-    high_penalty_rate = 5.251,
+    high_penalty_rate = 4.264166,
 
     _rsis = {
         'Contract Volume': RSI(formula=('contract_volume * normal_rate')),
-        'Swing Volume [0%]': RSI(formula=('Max(0, total_register - contract_volume) * high_penalty_rate')),
-        'GSA Volume': RSI(formula=('- Min(contract_volume, total_register) * high_penalty_rate')),
+        'Swing Volume [0%]': RSI(formula=('Max(0, high_swing - (total_register - contract_volume)) * normal_rate + Max(0, (contract_volume - total_register) - low_swing) * normal_rate')),
+
+        # GSA Volume = under-consumption OR over-consumption: buy more at
+        # high_penalty_rate or sell back at low_penalty_rate (either 1st term
+        # or 2nd term will be non-0 but not both)
+        'GSA Volume': RSI(formula=(('Max(0, total_register - contract_volume)'
+                '* high_penalty_rate + Max(0, contract_volume - total_register)'
+                '* low_penalty_rate')))
+        # TODO DC Sales Tax
     }
 )
 
 
 utilbill_10022_11 = {
     'registers': {
-        'total_register': {'quantity': 12827.4},
+        'total_register': {'quantity': 1271 + 98.8},
     },
     'start': datetime(2012,11,01),
     'end': datetime(2012,01,01),
@@ -206,6 +214,6 @@ print '*'*80
 for rs in (wg_10022, hess_10022):
     for charge_name in sorted(rs._rsis.keys()):
         print '%50s: %8s' % (rs.name + ' - ' + charge_name,
-                '%.2f' % Process().compute_charge(rs, charge_name, utilbill_doc))
+                '%.2f' % Process().compute_charge(rs, charge_name, utilbill_10022_11))
 
 pymongo.Connection('localhost')['temp']['urs'].drop()
