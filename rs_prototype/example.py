@@ -4,7 +4,7 @@ import mongoengine
 from mongoengine import Document, EmbeddedDocument, ListField, StringField, FloatField, IntField, DictField, EmbeddedDocumentField, ReferenceField
 from math import floor, ceil
 import pymongo
-from rs_prototype import TimeDependentValue, StartBasedTDV, ProratedTDV, RSI, URS, SoCalRS, Process
+from rs_prototype import TimeDependentValue, StartBasedTDV, ProratedTDV, RSI, URS, SoCalRS, Process, WGDeliveryInterruptDC, GasSupplyContract
 
 mongoengine.connect('temp')
 
@@ -104,8 +104,7 @@ socalrs_instance = SoCalRS(
 
 # clear db and save the 2 documents in it
 pymongo.Connection('localhost')['temp']['urs'].drop()
-socalrs_instance.save()
-#la_tax_rs.save()
+socalrs_instance.save(safe=True, force_insert=True)
 socalrs_instance = URS.objects.get(name='GM-E Residential')
 
 # we should be using a class for utility bills (see branch utilbill-class) but
@@ -126,7 +125,87 @@ utilbill_doc = {
 #for name in ['Gas Service Under Baseline', 'Gas Service Over Baseline', 'Customer Charge']:
 for rs in (socalrs_instance, ):
     for charge_name in sorted(rs._rsis.keys()):
-        print '%50s: %6s' % (rs.name + '/' + charge_name,
+        print '%50s: %8s' % (rs.name + ' - ' + charge_name,
+                '%.2f' % Process().compute_charge(rs, charge_name, utilbill_doc))
+
+
+
+
+
+
+
+
+
+
+
+# 10022-12 
+
+wg_10022 = WGDeliveryInterruptDC(
+    system_charge = 63.55,
+    distribution_rate = StartBasedTDV(
+        date_value_pairs=[
+            [datetime(2012,1,1), .1721]
+        ]
+    ),
+    balancing_rate = StartBasedTDV(
+        date_value_pairs=[
+            [datetime(2012,1,1), .002]
+        ]
+    ),
+    dc_rights_of_way_fee = 484.95,
+    sustainable_energy_trust_fund = 192.88,
+    energy_assistance_trust_fund = 82.66,
+    delivery_tax_rate = .0707,
+
+    dc_sales_tax_rate = .06, # shown on the supplier (Hess) part of the bill!
+)
+
+hess_10022 = GasSupplyContract(
+    # NOTE all energy quantities are in MMBTU, not therms
+
+    deal_id = '1308690',
+
+    start = datetime(2012,1,1),
+    # real bill says 2012-12-31, probably meaning 2013-01-01 exclusive end date;w
+    end = datetime(2013,1,1),
+
+    contract_volume = 1271,
+
+    # bill suggests there is no "allowed" range of deviation within which you
+    # sell back unused energy at the same rate you can buy it at ('normal_rate')
+    low_swing = 0,
+    high_swing = 0,
+
+    low_penalty_rate = 4.264166, # sell-back rate
+    # " Contract Volume" unit price and "Swing Volume [0%]" unit price are the same
+    normal_rate = 5.251,
+    high_penalty_rate = 5.251,
+
+    _rsis = {
+        'Contract Volume': RSI(formula=('contract_volume * normal_rate')),
+        'Swing Volume [0%]': RSI(formula=('Max(0, total_register - contract_volume) * high_penalty_rate')),
+        'GSA Volume': RSI(formula=('- Min(contract_volume, total_register) * high_penalty_rate')),
+    }
+)
+
+
+utilbill_10022_11 = {
+    'registers': {
+        'total_register': {'quantity': 12827.4},
+    },
+    'start': datetime(2012,11,01),
+    'end': datetime(2012,01,01),
+
+    # data that the Sempra Energy rate structure requires that others do not
+    # require: building size in units
+    'num_units': 30,
+}
+
+
+print '*'*80
+for rs in (wg_10022, hess_10022):
+    for charge_name in sorted(rs._rsis.keys()):
+        print '%50s: %8s' % (rs.name + ' - ' + charge_name,
                 '%.2f' % Process().compute_charge(rs, charge_name, utilbill_doc))
 
 pymongo.Connection('localhost')['temp']['urs'].drop()
