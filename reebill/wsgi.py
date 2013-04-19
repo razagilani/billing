@@ -719,7 +719,7 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value")
             customer = self.process.create_new_account(session, account, name,
                     discount_rate, late_charge_rate, template_account)
-            reebill = self.reebill_dao.load_reebill(account, 0)
+            reebill = self.reebill_dao.load_reebill(account, self.state_db.last_sequence(session, account))
             ba = {}
             ba['ba_addressee'] = ba_addressee
             ba['ba_street1'] = ba_street1
