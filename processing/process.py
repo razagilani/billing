@@ -270,10 +270,14 @@ class Process(object):
 
         # now grab the prior bill and pull values forward
         # TODO balance_forward currently contains adjustment, but it should not
-        present_reebill.prior_balance = prior_reebill.balance_due
-        present_reebill.balance_forward = present_reebill.prior_balance - \
-                present_reebill.payment_received + \
-                present_reebill.total_adjustment
+        if present_reebill.sequence <= 1:
+            # we have to stop copying data from old bills!!!
+            present_reebill.prior_balance = present_reebill.balance_forward = Decimal(0)
+        else:
+            present_reebill.prior_balance = prior_reebill.balance_due
+            present_reebill.balance_forward = present_reebill.prior_balance - \
+                    present_reebill.payment_received + \
+                    present_reebill.total_adjustment
 
         lc = self.get_late_charge(session, present_reebill)
         if lc is not None:
