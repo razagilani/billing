@@ -316,7 +316,8 @@ class Process(object):
         else:
             utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
         
-        # TODO Put somewhere nice because this has a specific function
+        # "TODO Put somewhere nice because this has a specific function"--ST
+        # what does this do? nothing? ('reebill.services' itself looks at utility bills' "service" keys)--DK
         active_utilbills = [u for u in reebill._utilbills if u['service'] in reebill.services]
         reebill.reebill_dict['utilbills'] = [handle for handle in reebill.reebill_dict['utilbills'] if handle['id'] in [u['_id'] for u in active_utilbills]]
 
