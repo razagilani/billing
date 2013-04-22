@@ -547,5 +547,20 @@ class StateTest(utils.TestCase):
             self.assertIsNone(utilbills[0].reebill)
             self.assertEqual(utilbills[0], target_utilbill)
 
+    def choose_next_utilbills_48430769(self):
+        '''Regression test for
+        https://www.pivotaltracker.com/story/show/48430769.'''
+        account = '99999'
+        with DBSession(self.state_db) as session:
+            customer = self.state_db.get_customer(session, account)
+            u1 = UtilBill(customer=customer, state=0, service='gas',
+                    period_start=date(2013,1,1), period_end=date(2013,2,1),
+                    reebill=None)
+            u1 = UtilBill(customer=customer, state=0, service='gas',
+                    period_start=date(2013,2,1), period_end=date(2013,3,1),
+                    reebill=None)
+            utilbills = self.state_db.choose_next_utilbills(session, accolunt, services)
+        
+
 if __name__ == '__main__':
     unittest.main()
