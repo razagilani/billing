@@ -351,11 +351,11 @@ function reeBillReady() {
     });
 
     var utilbillColModel = new Ext.grid.ColumnModel({
-        columns:[{
+        columns:[
+            {
                 id: 'name',
                 header: 'Name',
                 dataIndex: 'name',
-                width:250,
             },
             {
                 id: 'service',
@@ -363,7 +363,7 @@ function reeBillReady() {
                 dataIndex: 'service',
                 editable: true,
                 editor: new Ext.form.TextField({}),
-                width: 50,
+                width: 70,
             },
             new Ext.grid.DateColumn({
                 header: 'Start Date',
@@ -371,7 +371,7 @@ function reeBillReady() {
                 dateFormat: 'Y-m-d',
                 editable: true,
                 editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'}),
-                width: 50
+                width: 70
             }),
             new Ext.grid.DateColumn({
                 header: 'End Date',
@@ -379,7 +379,7 @@ function reeBillReady() {
                 dateFormat: 'Y-m-d',
                 editable: true,
                 editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'}),
-                width: 50
+                width: 70
             }),
             {
                 id: 'total_charges',
@@ -387,16 +387,18 @@ function reeBillReady() {
                 dataIndex: 'total_charges',
                 editable: true,
                 editor: new Ext.form.NumberField({allowBlank: false}),
+                width: 90,
             },{
                 id: 'sequence',
                 header: 'Sequence',
                 dataIndex: 'sequence',
-                width: 30,
+                width: 70,
             },
             {
                 id: 'state',
                 header: 'State',
                 dataIndex: 'state',
+                width: 70,
             },
         ],
     });
@@ -447,10 +449,6 @@ function reeBillReady() {
         collapsible: true,
         animCollapse: false,
         stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
         title: 'Utility Bills',
         clicksToEdit: 2,
         selModel: new Ext.grid.RowSelectionModel({
@@ -847,18 +845,22 @@ function reeBillReady() {
     var reeBillColModel = new Ext.grid.ColumnModel(
     {
         columns: [
+        /* NOTE: "width" is absolute column width in pixels, and one column
+         * must not be given a width (i.e. must expand to take up all available
+         * space) or else column width will not work properly (maybe Ext tries
+         * to distribute the space proportionally). */
             {
                 header: 'Sequence',
                 sortable: true,
                 dataIndex: 'sequence',
                 //editor: new Ext.form.TextField({allowBlank: true})
-                width: 40,
+                width: 70,
                 renderer: reeBillGridRenderer,
             },{
                 header: 'Corrections',
                 sortable: false,
                 dataIndex: 'corrections',
-                width: 60,
+                width: 90,
                 renderer: reeBillGridRenderer,
             //},{
                 //header: 'Total Error',
@@ -902,14 +904,14 @@ function reeBillReady() {
                 header: 'RE&E',
                 sortable: false,
                 dataIndex: 'ree_quantity',
-                width: 65,
+                width: 70,
                 align: 'right',
                 renderer: reeBillGridRenderer,
             },{
                 header: 'RE&E Value',
                 sortable: false,
                 dataIndex: 'ree_value',
-                width: 65,
+                width: 90,
                 align: 'right',
                 renderer: reeBillGridRenderer,
             //},{
@@ -944,7 +946,7 @@ function reeBillReady() {
                 header: 'RE&E Charges',
                 sortable: false,
                 dataIndex: 'ree_charges',
-                width: 65,
+                //width: 65,
                 align: 'right',
                 renderer: reeBillGridRenderer,
             //},{
@@ -1027,10 +1029,6 @@ function reeBillReady() {
         collapsible: true,
         animCollapse: false,
         stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
         title: 'ReeBills',
     });
 
@@ -5811,7 +5809,6 @@ function reeBillReady() {
             },{
                 id: 'mailto',
                 header: 'Recipients',
-                columnWidth: 1,
                 sortable: false,
                 groupable: false,
                 dataIndex: 'mailto',
