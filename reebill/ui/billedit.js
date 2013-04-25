@@ -398,7 +398,7 @@ function reeBillReady() {
                 id: 'state',
                 header: 'State',
                 dataIndex: 'state',
-                width: 70,
+                width: 110,
             },
         ],
     });
