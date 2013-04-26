@@ -240,6 +240,8 @@ function reeBillReady() {
         fields: [
             // map Record's field to json object's key of same name
             {name: 'name', mapping: 'name'},
+            {name: 'rate_structure', mapping: 'rate_structure'},
+            {name: 'utility', mapping: 'utility'},
             {name: 'account', mapping: 'account'},
             {name: 'period_start', mapping: 'period_start'},
             {name: 'period_end', mapping: 'period_end'},
@@ -277,6 +279,8 @@ function reeBillReady() {
         fields: [
         {name: 'name'},
         {name: 'account'},
+        {name: 'rate_structure'},
+        {name: 'utility'},
         {
             name: 'period_start', 
             type: 'date',
@@ -356,6 +360,7 @@ function reeBillReady() {
                 id: 'name',
                 header: 'Name',
                 dataIndex: 'name',
+                hidden: true,
             },
             {
                 id: 'service',
@@ -398,7 +403,22 @@ function reeBillReady() {
                 id: 'state',
                 header: 'State',
                 dataIndex: 'state',
-                width: 110,
+                width: 150,
+            },
+            {
+                id: 'utility',
+                header: 'Utility',
+                dataIndex: 'utility',
+                editable: true,
+                editor: new Ext.form.TextField({}),
+                width: 150,
+            },
+            {
+                id: 'rate_structure',
+                header: 'Rate Structure',
+                dataIndex: 'rate_structure',
+                editable: true,
+                editor: new Ext.form.TextField({}),
             },
         ],
     });
@@ -445,6 +465,7 @@ function reeBillReady() {
         //selModel: new Ext.grid.RowSelectionModel({singleSelect: false}),
         store: utilbillGridStore,
         enableColumnMove: false,
+        autoExpandColumn: 'rate_structure',
         frame: true,
         collapsible: true,
         animCollapse: false,
@@ -529,7 +550,7 @@ function reeBillReady() {
     // disallow rowediting of utility bills that are associated to reebills
     utilbillGrid.on('beforeedit', function(e) {
         if (!e.record.data.editable) {
-            Ext.Msg.alert("Utility bill data cannot be edited once associated to a ReeBill.");
+            Ext.Msg.alert("Utility bill data cannot be edited once associated to an issued ReeBill.");
             return false;
         }
 
