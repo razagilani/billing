@@ -2745,6 +2745,8 @@ class BillToolBridge:
             # number, name: full name, period_start: date, period_end: date,
             # sequence: reebill sequence number (if present)}
             utilbills, totalCount = self.state_db.list_utilbills(session, account, int(start), int(limit))
+            state_reebills = [ub.reebill for ub in utilbills]
+            mongo_reebills = [self.reebill_dao.load_reebill(rb.customer.account, rb.sequence) if rb else None for rb in state_reebills]
 
             full_names = self.full_names_of_accounts([account])
             full_name = full_names[0] if full_names else account
@@ -2755,6 +2757,8 @@ class BillToolBridge:
                 ('id', ub.id),
                 ('account', ub.customer.account),
                 ('name', full_name),
+                ('utility', rb.utility_name_for_service(ub.service) if ub.service is not None and rb is not None else ''),
+                ('rate_structure', rb.rate_structure_name_for_service(ub.service) if ub.service is not None and rb is not None else ''),
                 # capitalize service name
                 ('service', 'Unknown' if ub.service is None else ub.service[0].upper() + ub.service[1:]),
                 ('period_start', ub.period_start),
@@ -2765,7 +2769,7 @@ class BillToolBridge:
                 # utility bill rows are only editable if they don't have a
                 # reebill attached to them
                 ('editable', (not ub.has_reebill or not ub.reebill.issued))
-            ]) for i, ub in enumerate(utilbills)]
+            ]) for rb, ub in zip(mongo_reebills,utilbills)]
 
             return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
     
@@ -2827,6 +2831,9 @@ class BillToolBridge:
                         dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
                 new_service = rows['service'].lower()
                 new_total_charges = rows['total_charges']
+                new_utility = rows['utility']
+                new_ratestructure = rows['rate_structure']
+
 
                 # check that new dates are reasonable
                 self.validate_utilbill_period(new_period_start, new_period_end)
@@ -2834,9 +2841,17 @@ class BillToolBridge:
                 # find utilbill in mysql
                 utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
 
+                reebill = None
+                mongo_reebill = None
+                if utilbill.has_reebill:
+                    reebill = utilbill.reebill
+                    mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
+
+                if reebill is None and (new_utility != '' or new_ratestructure != ''):
+                    raise ValueError("Can't assign a utility and rate structure to an unattached utility bill")
                 # utility bills that have issued reebills shouldn't be editable
                 if utilbill.has_reebill and utilbill.reebill.issued:
-                    raise Exception("Can't edit utility bills that have already been attached to a reebill.")
+                    raise Exception("Can't edit utility bills that are attached to an issued reebill.")
 
                 # move the file, if there is one. (only utility bills that are
                 # Complete (0) or UtilityEstimated (1) have files;
@@ -2852,10 +2867,16 @@ class BillToolBridge:
 
                 # change dates in Mongo if needed
                 if (utilbill.period_start != new_period_start or utilbill.period_end != new_period_end) and utilbill.has_reebill:
-                    reebill = self.reebill_dao.load_reebill(utilbill.reebill.customer.account, utilbill.reebill.sequence)
-                    reebill.set_utilbill_period_for_service(utilbill.service, (new_period_start, new_period_end))
-                    reebill.set_meter_dates_from_utilbills()
-                    self.reebill_dao.save_reebill(reebill)
+                    mongo_reebill.set_utilbill_period_for_service(utilbill.service, (new_period_start, new_period_end))
+                    mongo_reebill.set_meter_dates_from_utilbills()
+                    self.reebill_dao.save_reebill(mongo_reebill)
+
+                #update utility and ratestructure names
+                if mongo_reebill is not None and mongo_reebill.utility_name_for_service(utilbill.service) != new_utility or mongo_reebill.rate_structure_name_for_service(utilbill.service) != new_ratestructure:
+                    old_utility = mongo_reebill.utility_name_for_service(utilbill.service)
+                    old_ratestructure = mongo_reebill.rate_structure_name_for_service(utilbill.service)
+                    self.reebill_dao.update_utility_and_rs(mongo_reebill, utilbill.service, new_utility, new_ratestructure)
+                    self.ratestructure_dao.update_rs_name(utilbill.customer.account, reebill.sequence, reebill.max_version, old_utility, old_ratestructure, new_utility, new_ratestructure)
 
                 # change dates in MySQL
                 utilbill.period_start = new_period_start

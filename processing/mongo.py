@@ -1485,6 +1485,13 @@ class ReebillDAO:
         self.utilbills_collection.save(utilbill_doc, safe=True)
         # TODO catch mongo's return value and raise MongoError
 
+    def update_utility_and_rs(self, reebill, service, utility, rs_binding):
+        ub_doc = reebill._get_utilbill_for_service(service)
+        ub_doc['utility'] = utility
+        ub_doc['rate_structure_binding'] = rs_binding
+        ub_doc = bson_convert(copy.deepcopy(ub_doc))
+        self.utilbills_collection.save(ub_doc, safe=True)
+        
     def delete_reebill(self, account, sequence, version):
         # load reebill in order to find utility bills
         reebill = self.load_reebill(account, sequence, version)
