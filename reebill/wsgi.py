@@ -409,6 +409,18 @@ class BillToolBridge:
         self.estimated_revenue_log_dir = self.config.get('reebillestimatedrevenue', 'log_directory')
         self.estimated_revenue_report_dir = self.config.get('reebillestimatedrevenue', 'report_directory')
 
+
+        ## bill image rendering queue
+        #from celery import Celery
+        #celery = Celery('billing.reebill.wsgi',
+            ## TODO maybe change this to mongo or sqlalchemy
+            #broker='amqp://', backend='amqp://',
+            ## name of module containing the rendering tasks
+            #include=['billing.reebill.image_rendering_queue']
+        #)
+        ## TODO should start() be called here?
+        #celery.start()
+
         # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
 
@@ -855,8 +867,6 @@ class BillToolBridge:
     # https://www.pivotaltracker.com/story/show/31404685
     def compute_bill(self, account, sequence, **args):
         '''Handler for the front end's "Compute Bill" operation.'''
-        if not account or not sequence:
-            raise ValueError("Bad Parameter Value")
         sequence = int(sequence)
         with DBSession(self.state_db) as session:
             for sequence in range(sequence, self.state_db.last_sequence(session,
@@ -876,8 +886,6 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def render(self, account, sequence, **args):
-        if not account or not sequence:
-            raise ValueError("Bad Parameter Value")
         sequence = int(sequence)
         if not self.config.getboolean('billimages', 'show_reebill_images'):
             return self.dumps({'success': False, 'errors': {'reason':
@@ -918,8 +926,6 @@ class BillToolBridge:
     def attach_utilbills(self, account, sequence, **args):
         '''Handles AJAX call to attach utility bills without issuing. Normally
         this is done through 'issue'.'''
-        if not account or not sequence:
-            raise ValueError("Bad Parameter Value")
         with DBSession(self.state_db) as session:
             reebill = self.reebill_dao.load_reebill(account, sequence)
             if reebill is None:

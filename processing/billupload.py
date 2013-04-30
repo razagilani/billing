@@ -259,7 +259,7 @@ class BillUpload(object):
 
     # TODO rename: ImagePath -> ImageName
     def getReeBillImagePath(self, account, sequence, resolution):
-        '''Given an account number and sequence number of a reebill, remnders
+        '''Given an account number and sequence number of a reebill, renders
         that bill as an image in self.bill_image_directory, and returns the
         name of the image file. ("Sequence" means the position of that bill in
         the sequence of bills issued to a particular customer.) The caller is
