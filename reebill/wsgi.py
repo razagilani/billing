@@ -132,6 +132,7 @@ def json_exception(method):
     '''Decorator for exception handling in methods trigged by Ajax requests.'''
     @functools.wraps(method)
     def wrapper(btb_instance, *args, **kwargs):
+        #print >> sys.stderr, '*************', method, args
         try:
             return method(btb_instance, *args, **kwargs)
         except Exception as e:
@@ -3256,6 +3257,9 @@ if __name__ == '__main__':
                              'server.socket_port': int(bridge.config.get("http", "socket_port")),
                              })
     cherrypy.quickstart(bridge, "/", config = local_conf)
+    cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
+    cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
+            stream=sys.stdout)
 else:
     # WSGI Mode
     cherrypy.config.update({
