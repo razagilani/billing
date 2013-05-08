@@ -1198,23 +1198,35 @@ class BillToolBridge:
             rows = []
             for i, status in enumerate(statuses):
 
-                last_issue_date = self.reebill_dao.last_issue_date(session, status.account)
-                last_issue_date = str(last_issue_date) if last_issue_date is not None else 'Never Issued'
+                # load highest version of last issued reebill to get data out of it
+                reebill = self.reebill_dao.load_reebill(status.account,
+                        self.state_db.last_issued_sequence(session, status.account))
+
+                #utility_service_addresses = ', '.join(
+                        #u['service_address'].get('street', '?') for u in
+                        #reebill._utilbills)
+                # NOTE "utility service address" is currently coming from the
+                # reebill document, but this should change
+                utility_service_addresses = reebill.service_address_formatted()
+
+                last_issue_date = str(reebill.issue_date) if reebill.issue_date is \
+                        not None else 'Never Issued'
                 lastevent = self.journal_dao.last_event_summary(status.account)
 
-                row = dict([
-                    ('account', status.account),
-                    ('codename', name_dicts[status.account]['codename'] if
-                        'codename' in name_dicts[status.account] else ''),
-                    ('casualname', name_dicts[status.account]['casualname'] if
-                        'casualname' in name_dicts[status.account] else ''),
-                    ('primusname', name_dicts[status.account]['primus'] if
-                        'primus' in name_dicts[status.account] else ''),
-                    ('dayssince', status.dayssince),
-                    ('lastissuedate', last_issue_date),
-                    ('lastevent', lastevent),
-                    ('provisionable', False),
-                ])
+                row = {
+                    'account': status.account,
+                    'codename': name_dicts[status.account]['codename'] if
+                           'codename' in name_dicts[status.account] else '',
+                    'casualname': name_dicts[status.account]['casualname'] if
+                           'casualname' in name_dicts[status.account] else '',
+                    'primusname': name_dicts[status.account]['primus'] if
+                           'primus' in name_dicts[status.account] else '',
+                    'utilityserviceaddress': utility_service_addresses,
+                    'dayssince': status.dayssince,
+                    'lastissuedate': last_issue_date,
+                    'lastevent': lastevent,
+                    'provisionable': False,
+                }
                 
                 rows.append(row)
 
