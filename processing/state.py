@@ -90,7 +90,7 @@ def guess_utilbills_and_end_date(session, account, start_date):
     else:
         # otherwise, get length of last bill period
         last_reebill_utilbills = session.query(UtilBillVersion) \
-                .filter(UtilBillVersion.rebill_id==last_reebill.id)
+                .filter(UtilBillVersion.reebill_id==last_reebill.id)
         if list(last_reebill_utilbills) == []:
             raise Exception("Can't determine new reebill period without "
                     + "utility bills attached to the last reebill")
@@ -138,7 +138,7 @@ class StateDB:
         status_days_since_view = Table('status_days_since', metadata, autoload=True)
         utilbill_table = Table('utilbill', metadata, autoload=True)
         utilbill_version_table = Table('utilbill_version', metadata, autoload=True)
-        reebill_table = Table('rebill', metadata, autoload=True)
+        reebill_table = Table('reebill', metadata, autoload=True)
         customer_table = Table('customer', metadata, autoload=True)
         payment_table = Table('payment', metadata, autoload=True)
 
@@ -503,16 +503,16 @@ class StateDB:
     def listAllIssuableReebillInfo(self, session, **kwargs):
         unissued = session.query(ReeBill.sequence.label('sequence'), ReeBill.customer_id.label('customer_id')).filter(ReeBill.issued == 0, ReeBill.max_version == 0).subquery('unissued')
         minseq = session.query(unissued.c.customer_id.label('customer_id'), func.min(unissued.c.sequence).label('sequence')).group_by(unissued.c.customer_id).subquery('minseq')
-        query = session.query(Customer.account, ReeBill.sequence, UtilBillVersion.total_charges).filter(ReeBill.sequence == minseq.c.sequence).filter(ReeBill.customer_id == minseq.c.customer_id).filter(UtilBillVersion.customer_id == Customer.id).filter(UtilBillVersion.rebill_id == ReeBill.id)
+        query = session.query(Customer.account, ReeBill.sequence, UtilBillVersion.total_charges).filter(ReeBill.sequence == minseq.c.sequence).filter(ReeBill.customer_id == minseq.c.customer_id).filter(UtilBillVersion.customer_id == Customer.id).filter(UtilBillVersion.reebill_id == ReeBill.id)
 
         slice = query.order_by(asc(Customer.account)).all()
         count = query.count()
         return slice, count
 
     def list_issued_utilbills_for_account(self, session, account):
-        utilbill_info_table = session.query(UtilBillVersion.id, UtilBillVersion.total_charges, UtilBillVersion.service, UtilBillVersion.period_start, UtilBillVersion.period_end, UtilBillVersion.rebill_id, Customer.account).filter(Customer.id == UtilBillVersion.customer_id, Customer.account == account).subquery("utilbill_info")
+        utilbill_info_table = session.query(UtilBillVersion.id, UtilBillVersion.total_charges, UtilBillVersion.service, UtilBillVersion.period_start, UtilBillVersion.period_end, UtilBillVersion.reebill_id, Customer.account).filter(Customer.id == UtilBillVersion.customer_id, Customer.account == account).subquery("utilbill_info")
         Utilbill_info = utilbill_info_table.c
-        matching_utilbills = session.query(Utilbill_info.account, ReeBill.sequence, ReeBill.max_version, Utilbill_info.id, Utilbill_info.service, Utilbill_info.period_start, Utilbill_info.period_end).filter(Utilbill_info.rebill_id == ReeBill.id, ReeBill.issued == 1)
+        matching_utilbills = session.query(Utilbill_info.account, ReeBill.sequence, ReeBill.max_version, Utilbill_info.id, Utilbill_info.service, Utilbill_info.period_start, Utilbill_info.period_end).filter(Utilbill_info.reebill_id == ReeBill.id, ReeBill.issued == 1)
         first_date = None
         last_date = None
         if matching_utilbills.count() > 0:
@@ -603,7 +603,7 @@ class StateDB:
         # looking for utilbills at the beginning of time.
         if last_sequence:
             reebill = self.get_reebill(session, account, last_sequence)
-            last_utilbills = session.query(UtilBill).filter(UtilBill.rebill_id==reebill.id).all()
+            last_utilbills = session.query(UtilBill).filter(UtilBill.reebill_id==reebill.id).all()
             service_iter = ((ub.service, ub.period_end) for ub in last_utilbills if ub.service in services)
         else:
             last_utilbills = None
@@ -616,7 +616,7 @@ class StateDB:
             try:
                 utilbill = session.query(UtilBill).filter(
                         UtilBill.customer==customer, UtilBill.service==service,
-                        UtilBill.period_start>=period_end, UtilBill.rebill_id
+                        UtilBill.period_start>=period_end, UtilBill.reebill_id
                         == None).order_by(asc(UtilBill.period_start)).first()
             except NoResultFound:
                 # If the utilbill is not found, then the rolling process can't proceed
@@ -651,7 +651,7 @@ class StateDB:
         return next_utilbills
 
     def record_utilbill_in_database(self, session, account, service,
-            begin_date, end_date, total_charges, date_received, state=UtilBill.Complete):
+            begin_date, end_date, total_charges, date_received, state=UtilBillVersion.Complete):
         '''Inserts a row into the utilbill table when a utility bill file has
         been uploaded. The bill is Complete by default but can can have other
         states (see comment in db_objects.UtilBill for explanation of utility

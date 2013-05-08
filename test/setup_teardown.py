@@ -82,7 +82,7 @@ port = 27017
         c = mysql_connection.cursor()
         c.execute("delete from payment")
         c.execute("delete from utilbill")
-        c.execute("delete from rebill")
+        c.execute("delete from reebill")
         c.execute("delete from customer")
         # (note that status_days_since is a view and you neither can nor need
         # to delete from it)
@@ -126,7 +126,7 @@ port = 27017
         c = mysql_connection.cursor()
         c.execute("delete from payment")
         c.execute("delete from utilbill")
-        c.execute("delete from rebill")
+        c.execute("delete from reebill")
         c.execute("delete from customer")
         mysql_connection.commit()
 
