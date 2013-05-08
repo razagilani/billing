@@ -668,6 +668,36 @@ Splitting apart a PDF document example
 Combining pages together
     pdftk HACA1-2.pdf HACA2-8.pdf cat output HACA2.pdf
 
+Bill Scanning (very old, needs some care and feeding)
+=============
+
+    Install Tesseract for OCR of bill images
+
+    Download from: http://code.google.com/p/tesseract-ocr/downloads/list
+
+    http://code.google.com/p/tesseract-ocr/downloads/detail?name=tesseract-3.00.tar.gz&can=2&q=
+    http://code.google.com/p/tesseract-ocr/downloads/detail?name=eng.traineddata.gz&can=2&q=
+
+    Ubuntu:
+        sudo apt-get install libpng12-dev
+        sudo apt-get install libjpeg62-dev
+        sudo apt-get install libtiff4-dev
+        sudo apt-get install zlibg-dev
+
+        tesseract-3.00.tar.gz
+
+        configure
+        make
+        ldconfig
+        copy eng.traindata into /usr/local/share/tessdata/
+        make install
+
+        Dependencies:
+            See: http://code.google.com/p/tesseract-ocr/wiki/ReadMe
+
+    PDFTK
+
+        sudo apt-get install pdftk
 
 
 
