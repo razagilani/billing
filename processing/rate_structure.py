@@ -16,6 +16,7 @@ import yaml
 from math import sqrt, log, exp
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError, NoSuchBillException
+from copy import deepcopy
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -416,6 +417,31 @@ class RateStructureDAO(object):
         rate_structure_data = bson_convert(rate_structure_data)
         self.collection.save(rate_structure_data)
 
+    def update_rs_name(self, account, sequence, version, old_utility, old_name, new_utility, new_name):
+        uprs = self.load_uprs(account, sequence, version, old_utility, old_name)
+        cprs = self.load_cprs(account, sequence, version, old_utility, old_name)
+        new_uprs = deepcopy(uprs)
+        new_uprs['_id']['utility_name'] = new_utility
+        new_uprs['_id']['rate_structure_name'] = new_name
+        new_cprs = deepcopy(cprs)
+        new_cprs['_id']['utility_name'] = new_utility
+        new_cprs['_id']['rate_structure_name'] = new_name
+        new_uprs = bson_convert(deepcopy(new_uprs))
+        new_cprs = bson_convert(deepcopy(new_cprs))
+        self.collection.save(new_uprs)
+        self.collection.save(new_cprs)
+        self.collection.remove({'_id.account':account,
+                                '_id.sequence':int(sequence),
+                                '_id.version':int(version),
+                                '_id.utility_name':old_utility,
+                                '_id.rate_structure_name':old_name,
+                                '_id.type':'UPRS'})
+        self.collection.remove({'_id.account':account,
+                                '_id.sequence':int(sequence),
+                                '_id.version':int(version),
+                                '_id.utility_name':old_utility,
+                                '_id.rate_structure_name':old_name,
+                                '_id.type':'CPRS'})
     def save_urs(self, utility_name, rate_structure_name, rate_structure_data):
         '''Saves the dictionary 'rate_structure_data' as a Utility (global)
         Rate Structure document in Mongo.'''
