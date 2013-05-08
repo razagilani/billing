@@ -1,7 +1,8 @@
 from datetime import date, datetime
 from bisect import bisect_left
 import sympy
-from mongoengine import Document, EmbeddedDocument, ListField, StringField, FloatField, IntField, DictField, EmbeddedDocumentField, ReferenceField
+import mongoengine
+from mongoengine import Document, EmbeddedDocument, ListField, StringField, FloatField, IntField, DictField, EmbeddedDocumentField, ReferenceField, DateTimeField
 from math import floor, ceil
 
 # TODO
@@ -33,12 +34,15 @@ class Process(object):
 
         if rsi.round_rule is None:
             return round(unrounded_charge, 2)
-        if rsi.round_rule is 'down':
+        if rsi.round_rule == 'down':
            return floor(100 * unrounded_charge) / 100.
-        if rsi.round_rule is 'up':
+        if rsi.round_rule == 'up':
            return ceil(100 * unrounded_charge) / 100.
        # TODO add more
         raise ValueError('Unknown rounding rule "%s"' % rsi.round_rule)
+
+
+
 
 class TimeDependentValue(EmbeddedDocument):
     '''RateStructure subdocument representing a value that changes over time.
@@ -112,7 +116,7 @@ class RSI(EmbeddedDocument):
 class URS(Document):
     '''General rate structure class. All members should be values of symbols
     that occur in RSI formulas.'''
-    meta = {'allow_inheritance': True}
+    meta = {'collection': 'urs', 'allow_inheritance': True}
 
     # human-readable description might be useful
     name = StringField()
@@ -131,6 +135,12 @@ class URS(Document):
     def period_length(self, utilbill):
         return (utilbill['end'] - utilbill['start']).days
 
+    # register values
+    # TODO maybe this goes in another class, since not every RS will have a
+    # total register
+    def total_register(self, utilbill):
+        return utilbill['registers']['total_register']['quantity']
+
 class SoCalRS(URS):
     '''Specific rate structure class: contains variables and methods (with
     utilbill argument) that provide values of symbols in RS expressions.'''
@@ -138,12 +148,18 @@ class SoCalRS(URS):
     # they change
     summer_allowance = EmbeddedDocumentField(StartBasedTDV)
     winter_allowance = EmbeddedDocumentField(StartBasedTDV)
-    summer_start_month = EmbeddedDocumentField(StartBasedTDV)
-    winter_start_month = EmbeddedDocumentField(StartBasedTDV)
+
+    # values that are REALLY fixed
+    summer_start_month = IntField()
+    winter_start_month = IntField()
 
     # really time-dependent values (change every month)
     under_baseline_rate = EmbeddedDocumentField(ProratedTDV)
     over_baseline_rate = EmbeddedDocumentField(ProratedTDV)
+
+    customer_charge_rate = EmbeddedDocumentField(StartBasedTDV)
+    state_regulatory_rate = EmbeddedDocumentField(StartBasedTDV)
+    public_purpose_rate = EmbeddedDocumentField(StartBasedTDV)
 
     # utility-bill-dependent fixed values
     def climate_zone(self, utilbill):
@@ -155,9 +171,9 @@ class SoCalRS(URS):
 
     def days_in_summer(self, utilbill):
         # assume bill period is within calendar year (not accurate in real life)
-        summer_start = date(utilbill['start'].year,
+        summer_start = datetime(utilbill['start'].year,
                 self.summer_start_month, 1)
-        summer_end = date(utilbill['start'].year,
+        summer_end = datetime(utilbill['start'].year,
                 self.winter_start_month, 1)
         if utilbill['start'] <= summer_start:
             return max(0, (utilbill['end'] - summer_end).days)
@@ -168,131 +184,61 @@ class SoCalRS(URS):
     def days_in_winter(self, utilbill):
         return self.period_length(utilbill) - self.days_in_summer(utilbill)
 
-    # register values
-    def total_register(self, utilbill):
-        return utilbill['registers']['total_register']['quantity']
+#class TaxRS(URS):
+#    # other URSs that this one can depend on (charge names in those must be unique)
+#    # (TODO enforce name uniqueness?)
+#    other_rss = ListField(field=ReferenceField(URS))
+#    # TODO is this a good way to do it? should there be a way to apply to all
+#    # charges of a certain type without explicitly specifying which URSs?
+#    # what if the tax is charged only on specific charges within a URS?
+#    # what if taxes depend on each other, e.g. state tax on top of city tax, or
+#    # tax on top of an energy-based fee that is considered a tax because it
+#    # comes from the government instead of the utility? (STATE_REGULATORY and
+#    # PUBLIC_PURPOSE might be the latter.)
+#
+#    def all_non_tax(self, utilbill):
+#        '''Sum of all charges in other_rss.'''
+#        # TODO calculating the charges here using a separate object is super
+#        # ugly (and in real code, it would be impossible because Process or
+#        # MongoReebill wouldn't be in scope). it wouldn't be ugly at all if the
+#        # other_rss could do the computation themselves. is there any other
+#        # way?
+#        p = Process()
+#        return sum(sum(p.compute_charge(urs, charge_name, utilbill) for
+#                charge_name in urs._rsis.keys()) for urs in self.other_rss)
 
-class TaxRS(URS):
-    # other URSs that this one can depend on (charge names in those must be unique)
-    # (TODO enforce name uniqueness?)
-    other_rss = ListField(field=ReferenceField(URS))
-    # TODO is this a good way to do it? should there be a way to apply to all
-    # charges of a certain type without explicitly specifying which URSs?
-    # what if the tax is charged only on specific charges within a URS?
-    # what if taxes depend on each other, e.g. state tax on top of city tax, or
-    # tax on top of an energy-based fee that is considered a tax because it
-    # comes from the government instead of the utility? (STATE_REGULATORY and
-    # PUBLIC_PURPOSE might be the latter.)
+class WGDeliveryInterruptDC(URS):
+    system_charge = FloatField()
+    distribution_rate = EmbeddedDocumentField(StartBasedTDV)
+    balancing_rate = EmbeddedDocumentField(StartBasedTDV)
 
-    def all_non_tax(self, utilbill):
-        '''Sum of all charges in other_rss.'''
-        # TODO calculating the charges here using a separate object is super
-        # ugly (and in real code, it would be impossible because Process or
-        # MongoReebill wouldn't be in scope). it wouldn't be ugly at all if the
-        # other_rss could do the computation themselves. is there any other
-        # way?
-        p = Process()
-        return sum(sum(p.compute_charge(urs, charge_name, utilbill) for
-                charge_name in urs._rsis.keys()) for urs in self.other_rss)
+    dc_rights_of_way_fee = FloatField()
+    sustainable_energy_trust_fund = FloatField()
+    energy_assistance_trust_fund = FloatField()
 
-# based on 10031-7-1
-socalrs_instance = SoCalRS(
-    name='GM-E Residential',
+    delivery_tax_rate = FloatField()
 
-    # inputs that change monthly (with utility bill periods mapped to calendar
-    # periods using the "start" rule). these use the complicated "prorate"
-    # mapping rule, meaning that the value that actually gets used in a given
-    # bill is usually not any of the specific values below.
-    under_baseline_rate = ProratedTDV(
-        date_value_pairs= [
-            [date(2012,10,1), 0.7282],
-            [date(2012,11,1), 0.7282],
-            [date(2012,12,1), 0.7282],
-        ],
-    ),
-    over_baseline_rate = ProratedTDV(
-        date_value_pairs= [
-            [date(2012,10,1), 0.9782],
-            [date(2012,11,1), 0.9782],
-            [date(2012,12,1), 0.9782],
-        ],
-    ),
+class GasSupplyContract(URS):
+    name = 'Hess supply contract'
 
-    # inputs that have never changed so far, but may change in the future. the
-    # initial value extends indefinitely into the future until a new value is
-    # added with a later date.
-    customer_charge_rate=StartBasedTDV(
-        date_value_pairs=[
-            [date(2012,1,1), .16438],
-        ],
-    ),
-    state_regulatory_rate=StartBasedTDV(
-        date_value_pairs=[
-            [date(2012,1,1), .00068],
-        ],
-    ),
-    public_purpose_rate=StartBasedTDV(
-        date_value_pairs=[
-            [date(2012,1,1), .08231],
-        ],
-    ),
+    # ID number for the supplier
+    deal_id = StringField()
 
-    # these inputs are constant. should we treat all inputs as possibly
-    # time-dependent even if they're not expected to change? if mapping rules
-    # never change, we might be able to assume that some actual values never
-    # change either.
-    summer_allowance = 2,
-    winter_allowance = 3,
-    summer_start_month = 4,
-    winter_start_month = 10,
+    # duration of the contract
+    start = DateTimeField()
+    end = DateTimeField()
 
-    # RSI formulas, named with underscore to distinguish from symbol names
-    # (TODO maybe these move somewhere else? or find some other way of
-    # distinguishing them from the inputs?)
-    _rsis = {
-        'Gas Service Baseline': # over basline
-            RSI(formula=('over_baseline_rate * Max(0, total_register - num_units *'
-            '(winter_allowance * days_in_winter + summer_allowance * '
-            'days_in_summer))'), round_rule='down'),
-        'Gas Service Non Baseline': # under baseline
-            RSI(formula=('under_baseline_rate * Min(total_register, num_units * '
-            '(winter_allowance * days_in_winter + summer_allowance * '
-            'days_in_summer))'), round_rule='down'),
-        'Customer Charge': RSI(formula='customer_charge_rate * num_units'),
-        'State Regulatory': RSI(formula='state_regulatory_rate * total_register'),
-        'Public Purpose': RSI(formula='public_purpose_rate * total_register'),
+    contract_volume = FloatField()
 
-        # TODO (taxes should be in different URS, and I haven't worked out
-        # charges that depend on other charges)
-        #'LA City Users': RSI(formula='.01 * ...'),
-    }
-)
+    # "allowed" deviation from contract volume: examble Hess bill for 10022 has
+    # only one "swing" volume but we might as well accomodate different
+    # thresholds for under- and over-consumption
+    # NOTE i think high_swing is what Hess calls "swing volume" and low_swing
+    # is what it calls "GSA volume"
+    low_swing = FloatField()
+    high_swing = FloatField()
 
-la_tax_rs = TaxRS(
-    name = 'LA taxes',
-    other_rss=[socalrs_instance],
-    _rsis={
-        'LA City Users': RSI(formula='.1 * all_non_tax')
-    }
-)
+    low_penalty_rate = FloatField()
+    normal_rate = FloatField()
+    high_penalty_rate = FloatField()
 
-# we should be using a class for utility bills (see branch utilbill-class) but
-# we are currently using raw dictionaries (with more data than this in them)
-utilbill_doc = {
-    # based on 10031-7
-    'registers': {
-        'total_register': {'quantity': 440},
-    },
-    'start': date(2012,11,20),
-    'end': date(2013,12,20),
-
-    # data that the Sempra Energy rate structure requires that others do not
-    # require: building size in units
-    'num_units': 30,
-}
-
-#for name in ['Gas Service Under Baseline', 'Gas Service Over Baseline', 'Customer Charge']:
-for rs in (socalrs_instance, la_tax_rs):
-    for charge_name in sorted(rs._rsis.keys()):
-        print '%50s: %6s' % (rs.name + '/' + charge_name,
-                '%.2f' % Process().compute_charge(rs, charge_name, utilbill_doc))
