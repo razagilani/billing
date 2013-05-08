@@ -240,6 +240,8 @@ function reeBillReady() {
         fields: [
             // map Record's field to json object's key of same name
             {name: 'name', mapping: 'name'},
+            {name: 'rate_structure', mapping: 'rate_structure'},
+            {name: 'utility', mapping: 'utility'},
             {name: 'account', mapping: 'account'},
             {name: 'period_start', mapping: 'period_start'},
             {name: 'period_end', mapping: 'period_end'},
@@ -277,6 +279,8 @@ function reeBillReady() {
         fields: [
         {name: 'name'},
         {name: 'account'},
+        {name: 'rate_structure'},
+        {name: 'utility'},
         {
             name: 'period_start', 
             type: 'date',
@@ -351,11 +355,12 @@ function reeBillReady() {
     });
 
     var utilbillColModel = new Ext.grid.ColumnModel({
-        columns:[{
+        columns:[
+            {
                 id: 'name',
                 header: 'Name',
                 dataIndex: 'name',
-                width:250,
+                hidden: true,
             },
             {
                 id: 'service',
@@ -363,7 +368,7 @@ function reeBillReady() {
                 dataIndex: 'service',
                 editable: true,
                 editor: new Ext.form.TextField({}),
-                width: 50,
+                width: 70,
             },
             new Ext.grid.DateColumn({
                 header: 'Start Date',
@@ -371,7 +376,7 @@ function reeBillReady() {
                 dateFormat: 'Y-m-d',
                 editable: true,
                 editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'}),
-                width: 50
+                width: 70
             }),
             new Ext.grid.DateColumn({
                 header: 'End Date',
@@ -379,7 +384,7 @@ function reeBillReady() {
                 dateFormat: 'Y-m-d',
                 editable: true,
                 editor: new Ext.form.DateField({allowBlank: false, format: 'Y-m-d'}),
-                width: 50
+                width: 70
             }),
             {
                 id: 'total_charges',
@@ -387,16 +392,33 @@ function reeBillReady() {
                 dataIndex: 'total_charges',
                 editable: true,
                 editor: new Ext.form.NumberField({allowBlank: false}),
+                width: 90,
             },{
                 id: 'sequence',
                 header: 'Sequence',
                 dataIndex: 'sequence',
-                width: 30,
+                width: 70,
             },
             {
                 id: 'state',
                 header: 'State',
                 dataIndex: 'state',
+                width: 150,
+            },
+            {
+                id: 'utility',
+                header: 'Utility',
+                dataIndex: 'utility',
+                editable: true,
+                editor: new Ext.form.TextField({}),
+                width: 150,
+            },
+            {
+                id: 'rate_structure',
+                header: 'Rate Structure',
+                dataIndex: 'rate_structure',
+                editable: true,
+                editor: new Ext.form.TextField({}),
             },
         ],
     });
@@ -443,14 +465,11 @@ function reeBillReady() {
         //selModel: new Ext.grid.RowSelectionModel({singleSelect: false}),
         store: utilbillGridStore,
         enableColumnMove: false,
+        autoExpandColumn: 'rate_structure',
         frame: true,
         collapsible: true,
         animCollapse: false,
         stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
         title: 'Utility Bills',
         clicksToEdit: 2,
         selModel: new Ext.grid.RowSelectionModel({
@@ -531,7 +550,7 @@ function reeBillReady() {
     // disallow rowediting of utility bills that are associated to reebills
     utilbillGrid.on('beforeedit', function(e) {
         if (!e.record.data.editable) {
-            Ext.Msg.alert("Utility bill data cannot be edited once associated to a ReeBill.");
+            Ext.Msg.alert("Utility bill data cannot be edited once associated to an issued ReeBill.");
             return false;
         }
 
@@ -737,6 +756,7 @@ function reeBillReady() {
             {name: 'max_version'}, // machine-readable
             {name: 'hypothetical_total'},
             {name: 'actual_total'},
+            {name: 'ree_quantity'},
             {name: 'ree_value'},
             {name: 'prior_balance'},
             {name: 'payment_received'},
@@ -846,18 +866,22 @@ function reeBillReady() {
     var reeBillColModel = new Ext.grid.ColumnModel(
     {
         columns: [
+        /* NOTE: "width" is absolute column width in pixels, and one column
+         * must not be given a width (i.e. must expand to take up all available
+         * space) or else column width will not work properly (maybe Ext tries
+         * to distribute the space proportionally). */
             {
                 header: 'Sequence',
                 sortable: true,
                 dataIndex: 'sequence',
                 //editor: new Ext.form.TextField({allowBlank: true})
-                width: 40,
+                width: 70,
                 renderer: reeBillGridRenderer,
             },{
                 header: 'Corrections',
                 sortable: false,
                 dataIndex: 'corrections',
-                width: 60,
+                width: 90,
                 renderer: reeBillGridRenderer,
             //},{
                 //header: 'Total Error',
@@ -898,10 +922,17 @@ function reeBillReady() {
                 align: 'right',
                 renderer: reeBillGridRenderer,
             },{
+                header: 'RE&E',
+                sortable: false,
+                dataIndex: 'ree_quantity',
+                width: 70,
+                align: 'right',
+                renderer: reeBillGridRenderer,
+            },{
                 header: 'RE&E Value',
                 sortable: false,
                 dataIndex: 'ree_value',
-                width: 65,
+                width: 90,
                 align: 'right',
                 renderer: reeBillGridRenderer,
             //},{
@@ -936,7 +967,7 @@ function reeBillReady() {
                 header: 'RE&E Charges',
                 sortable: false,
                 dataIndex: 'ree_charges',
-                width: 65,
+                //width: 65,
                 align: 'right',
                 renderer: reeBillGridRenderer,
             //},{
@@ -1019,10 +1050,6 @@ function reeBillReady() {
         collapsible: true,
         animCollapse: false,
         stripeRows: true,
-        viewConfig: {
-            // doesn't seem to work
-            forceFit: true,
-        },
         title: 'ReeBills',
     });
 
@@ -1264,7 +1291,7 @@ function reeBillReady() {
         },
         {
             xtype: 'fieldset',
-            title: 'Billing Address',
+            title: 'Utility Billing Address',
             collapsible: false,
             defaults: {
                 anchor: '0',
@@ -1304,7 +1331,7 @@ function reeBillReady() {
             ]
         },{
             xtype: 'fieldset',
-            title: 'Service Address',
+            title: 'Utility Service Address',
             collapsible: false,
             defaults: {
                 anchor: '0',
@@ -4221,6 +4248,7 @@ function reeBillReady() {
             {name: 'codename'},
             {name: 'casualname'},
             {name: 'primusname'},
+            {name: 'utilityserviceaddress'},
             {name: 'dayssince'},
             {name: 'lastevent'},
             {name: 'lastissuedate'},
@@ -4277,6 +4305,11 @@ function reeBillReady() {
                 header: 'Primus Name',
                 sortable: true,
                 dataIndex: 'primusname',
+                renderer: accountGridColumnRenderer,
+            },{
+                header: 'Utility Service Address',
+                sortable: true,
+                dataIndex: 'utilityserviceaddress',
                 renderer: accountGridColumnRenderer,
             },{
                 header: 'Last Issued',
@@ -4770,7 +4803,7 @@ function reeBillReady() {
                         params: { 
                           'name': newNameField.getValue(),
                           'account': newAccountField.getValue(),
-                          'template_account': newAccountTemplateCombo.getValue(),
+                          'template_account': newAccountTemplateCombo.getValue(), //obj.valueField
                           'discount_rate': newDiscountRate.getValue(),
                           'late_charge_rate': newLateChargeRate.getValue(),
                           'ba_addressee': Ext.getCmp('new_ba_addressee').getValue(),
@@ -4799,11 +4832,7 @@ function reeBillReady() {
                                     accountGrid.getSelectionModel().clearSelections();
                                     if (moreAccountsCheckbox.getValue()) {
                                         newNameField.reset();
-                                        var set = newAccountFormPanel.find('id','serviceAddressSet')[0];
-                                        var fields = set.findByType('textfield');
-                                        for (var j = 0;j < fields.length;j++) {
-                                            fields[j].reset();
-                                        }
+                                        // don't reset any other fields
                                     } else {
                                         // update next account number shown in field
                                         accountsPanel.getLayout().setActiveItem('accountGrid');
@@ -5086,6 +5115,7 @@ function reeBillReady() {
 
     var journalStoreProxyConn = new Ext.data.Connection({
         url: 'http://'+location.host+'/reebill/journal',
+        timeout: 60000,
     });
     journalStoreProxyConn.autoAbort = true;
     var journalStoreProxy = new Ext.data.HttpProxy(journalStoreProxyConn);
@@ -5112,7 +5142,7 @@ function reeBillReady() {
             {name: 'sequence'},
             {name: 'event'},
             {name: 'msg'},
-            {name: 'extra'},
+            //{name: 'extra'},
         ],
     });
 
@@ -5126,8 +5156,6 @@ function reeBillReady() {
     });
 
     journalStore.on('beforeload', function (store, options) {
-
-        // disable the grid before it loads
         journalGrid.setDisabled(true);
 
         // The Ext API is not clear on the relationship between options and baseParams
@@ -5174,7 +5202,7 @@ function reeBillReady() {
                 header: 'Account',
                 sortable: true,
                 dataIndex: 'account',
-                hidden: true,
+                //hidden: true,
             },{
                 header: 'Sequence',
                 sortable: true,
@@ -5342,7 +5370,7 @@ function reeBillReady() {
     var journalPanel = new Ext.Panel({
         id: 'journalTab',
         title: 'Journal',
-        disabled: true,
+        disabled: journalPanelDisabled,
         xtype: 'panel',
         layout: 'vbox',
         layoutConfig : {
@@ -5610,6 +5638,83 @@ function reeBillReady() {
         }),
     });
 
+    // reebill export XLS report (with date ranges)
+
+    var reebillExportComboBox = new Ext.form.ComboBox({
+        store: newAccountTemplateStore,
+        fieldLabel: 'Account',
+        displayField:'account', //will be submitted by default, by a form post
+        valueField:'name', //must get at this with a myStore.getValue() call
+        typeAhead: true,
+        triggerAction: 'all',
+        emptyText:'All',
+        selectOnFocus:true,
+        readOnly: false,
+        width: 500,
+    });
+   
+    // date fields
+    var reebillExportStartDateField = new Ext.form.DateField({
+        fieldLabel: 'Begin Date',
+        name: 'begin_date',
+        width: 90,
+        allowBlank: true,
+        format: 'Y-m-d'
+    });
+
+    var reebillExportEndDateField = new Ext.form.DateField({
+        fieldLabel: 'End Date',
+        name: 'end_date',
+        width: 90,
+        allowBlank: true,
+        format: 'Y-m-d'
+    });
+
+    var reebillExportSubmitButton = new Ext.Button({
+        text: 'Download XLS',
+        handler: function(b, e) {
+            //You cannot simply call saveForm, because it needs to be able to find its parent.
+            //Using 'this' as the scope tells it that it is not just in an anonymus function.
+            saveForm(b, e, function(b,e) {
+                //TODO: redirect (or something) to trigger a download of the spreadsheet that gets returned by the WSGI method
+            })
+        },
+    });
+
+    var reebillExportPanel = new Ext.form.FormPanel({
+        id: 'reebillExportPanel',
+        url: 'http://'+location.host+'/reebill/reebill_details_xls',
+        labelwidth: 120,
+        frame: true,
+        title: "Export ReeBill XLS",
+        border: false,
+        defaults: {
+            anchor: '95%',
+            xtype: 'textfield',
+        },
+        defaultType: 'textfield',
+        items: [
+            {
+                xtype: 'fieldset',
+                id: 'reebillExportPanelForm',
+                collapsible: false,
+                defaults: {
+                    anchor: '0',
+                },
+                items: [
+                    reebillExportComboBox,
+                    reebillExportStartDateField,
+                    reebillExportEndDateField,
+                ],
+            },
+        ],
+        buttons: [
+            reebillExportSubmitButton,
+            ]
+
+    });
+
+
     //
     // Instantiate the Report panel
     //
@@ -5619,7 +5724,7 @@ function reeBillReady() {
         disabled: reportPanelDisabled,
         //xtype: 'panel',
         layout: 'accordion',
-        items: [reconciliationGrid, revenueGrid],
+        items: [reconciliationGrid, revenueGrid, reebillExportPanel],
     });
 
     ///////////////////////////////////////////
@@ -5725,7 +5830,6 @@ function reeBillReady() {
             },{
                 id: 'mailto',
                 header: 'Recipients',
-                columnWidth: 1,
                 sortable: false,
                 groupable: false,
                 dataIndex: 'mailto',
@@ -6073,8 +6177,8 @@ function reeBillReady() {
 
         if (account == null) {
             /* no account selected */
-            journalPanel.setDisabled(true);
             updateStatusbar(null, null, null)
+            journalGrid.setTitle('Journal Entries for All Accounts');
             return;
         }
 

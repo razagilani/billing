@@ -28,8 +28,8 @@ now=`date +"%Y%m%d"`
 # need to more uniquely name backup file
 tarball=${now}reebill-prod.tar.z
 ssh_key=$HOME/Dropbox/IT/ec2keys/$PRODHOST.pem
-# Save current directory to CD back to it
-current_dir="$( cd "$( dirname "$0" )" && pwd)"
+## Save current directory to CD back to it
+#current_dir="$( cd "$( dirname "$0" )" && pwd)"
 
 
 cd /tmp
@@ -42,6 +42,6 @@ tar xzf $tarball
 rm -fr /db-$TOENV/*
 cp -r db-prod/* /db-$TOENV
 
-#Restore databases
-cd $current_dir
-./destage_dbs_from_archive.bash $1 $2 $3
+##Restore databases
+#cd $current_dir
+#./destage_dbs_from_archive.bash $1 $2 $3

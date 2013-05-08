@@ -204,6 +204,7 @@ class StateDB:
         '''Raises an exception if 'attach_utilbills' would fail, does not
         modify any databases.'''
         if not utilbills:
+            # TODO this error message sucks
             raise BillStateError('No utility bills passed')
         non_suspended_utilbills = [u for u in utilbills if u.service.lower() not in suspended_services]
         if not non_suspended_utilbills:
@@ -215,7 +216,8 @@ class StateDB:
         '''Records in MySQL the association between the reebill given by
         'account', 'sequence' and all utilbills belonging to that customer
         whose entire periods are within the date interval [start, end] and
-        whose services are not in 'suspended_services'.'''
+        whose services are not in 'suspended_services'. The utility bills are
+        marked as processed.'''
         if not utilbills:
             raise BillStateError('No utility bills passed')
 
@@ -228,6 +230,7 @@ class StateDB:
 
         for utilbill in utilbills:
             utilbill.reebill = reebill
+            utilbill.processed = True
 
     def is_attached(self, session, account, sequence, nonexistent=None):
         '''Returns True iff the given reebill has utility bills attached to it
@@ -583,22 +586,27 @@ class StateDB:
         return query[start:start + limit], query.count()
 
     def get_utilbills_on_date(self, session, account, the_date):
-        customer = self.get_customer(session, account)
-
-        return session.query(UtilBill).filter(UtilBill.customer==customer, UtilBill.period_start<=the_date, UtilBill.period_end>=the_date).all()
+        '''Returns a list of UtilBill objects representing MySQL utility bills
+        whose periods start before/on and end after/on 'the_date'.'''
+        return session.query(UtilBill).filter(
+            UtilBill.customer==self.get_customer(session, account),
+            UtilBill.period_start<=the_date,
+            UtilBill.period_end>the_date).all()
 
     def choose_next_utilbills(self, session, account, services):
+        '''Returns a list of UtilBill objects representing MySQL utility bills
+        that should be attached to the next reebill for the given account, one
+        for each service name in 'services'.'''
         customer = self.get_customer(session, account)
-        sequence = self.last_sequence(session, account)
+        last_sequence = self.last_sequence(session, account)
 
-        # If there is a last issued sequence, then we can use the utilbills attached to it as a reference
-        # for dates after which subsequent utilbill(s) will occur
-        if sequence:
-            reebill = self.get_reebill(session, account, sequence)
-            last_utilbills = session.query(UtilBillVersion).filter(UtilBillVersion.rebill_id==reebill.id).all()
-            # 
+        # if there is at least one reebill, we can choose utilbills following
+        # the end dates of the ones attached to that reebill. if not, start
+        # looking for utilbills at the beginning of time.
+        if last_sequence:
+            reebill = self.get_reebill(session, account, last_sequence)
+            last_utilbills = session.query(UtilBill).filter(UtilBill.rebill_id==reebill.id).all()
             service_iter = ((ub.service, ub.period_end) for ub in last_utilbills if ub.service in services)
-        # Without a last issued reebill, we can't use any reference dates for our query(ies)
         else:
             last_utilbills = None
             service_iter = ((service, date.min) for service in services)
@@ -606,12 +614,12 @@ class StateDB:
         next_utilbills = []
 
         for service, period_end in service_iter:
-            # First, query to find the next unattached utilbill on this account for this customer and this service
+            # find the next unattached utilbill for this service
             try:
-                utilbill = session.query(UtilBillVersion).filter(
-                        UtilBillVersion.customer==customer, UtilBillVersion.service==service,
-                        UtilBillVersion.period_start>=period_end, UtilBillVersion.rebill_id
-                        == None).order_by(asc(UtilBillVersion.period_start)).first()
+                utilbill = session.query(UtilBill).filter(
+                        UtilBill.customer==customer, UtilBill.service==service,
+                        UtilBill.period_start>=period_end, UtilBill.rebill_id
+                        == None).order_by(asc(UtilBill.period_start)).first()
             except NoResultFound:
                 # If the utilbill is not found, then the rolling process can't proceed
                 raise Exception('No new %s utility bill found' % service)
@@ -629,7 +637,7 @@ class StateDB:
             # Therefore, make sure that new accounts don't fail the time gap condition
             if last_utilbills is not None and time_gap > timedelta(days=1):
                 raise Exception('There is a gap of %d days before the next %s utility bill found' % (abs(time_gap.days), service))
-            elif utilbill.state == UtilBillVersion.Hypothetical:
+            elif utilbill.state == UtilBill.Hypothetical:
                 # Hypothetical utilbills are not an acceptable basis for a reebill. Only allow a roll to subsequent reebills if
                 # the next utilbill(s) have been received or estimated
                 raise Exception("The next %s utility bill exists but has not been fully estimated or received" % service)
@@ -645,12 +653,11 @@ class StateDB:
         return next_utilbills
 
     def record_utilbill_in_database(self, session, account, service,
-            begin_date, end_date, total_charges, date_received,
-            state=UtilBillVersion.Complete):
+            begin_date, end_date, total_charges, date_received, state=UtilBill.Complete):
         '''Inserts a row into the utilbill table when a utility bill file has
         been uploaded. The bill is Complete by default but can can have other
         states (see comment in db_objects.UtilBill for explanation of utility
-        bill states).'''
+        bill states). The bill is initially marked as un-processed.'''
         # get customer id from account number
         customer = session.query(Customer).filter(Customer.account==account) \
                 .one()
