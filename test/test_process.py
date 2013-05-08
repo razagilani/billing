@@ -1595,6 +1595,38 @@ class ProcessTest(TestCaseWithSetup):
                 self.process.compute_bill(session, one, b)
                 check()
 
+    def test_choose_next_utilbills_bug(self):
+        '''Regression test for
+        https://www.pivotaltracker.com/story/show/48430769.'''
+        account = '99999'
+        with DBSession(self.state_db) as session:
+            customer = self.state_db.get_customer(session, account)
+
+            # add 2 utility bills to MySQL
+            u1 = UtilBill(customer=customer, state=0, service='gas',
+                    period_start=date(2013,1,1), period_end=date(2013,2,1),
+                    reebill=None)
+            u2 = UtilBill(customer=customer, state=0, service='gas',
+                    period_start=date(2013,2,1), period_end=date(2013,3,1),
+                    reebill=None)
+            session.add(u1)
+            session.add(u2)
+
+            # save RS documents and reebill template to enable rolling
+            self.rate_structure_dao.save_rs(example_data.get_urs_dict(account, 0))
+            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(account, 0))
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 0))
+            r0 = example_data.get_reebill(account, 0, start=date(2012,12,1),
+                    end=date(2013,1,1))
+        
+            # add a reebill attached to 'u2' (billing start date 2013-02-01)
+            self.reebill_dao.save_reebill(r0)
+            r1 = self.process.roll_bill(session, r0, date(2013,2,1))
+
+        # only u1 should be attached to the reebill
+        self.assertEqual(None, u1.reebill)
+        self.assertNotEqual(None, u2.reebill)
+
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
