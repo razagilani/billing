@@ -446,7 +446,7 @@ class BillToolBridge:
     @random_wait
     @authenticate
     def index(self, **kwargs):
-        raise cherrypy.HTTPRedirect('/billentry.html')
+        raise cherrypy.HTTPRedirect('/reebill/billentry.html')
 
     @cherrypy.expose
     @random_wait
@@ -3253,10 +3253,19 @@ if __name__ == '__main__':
             'tools.sessions.timeout': 240
         },
     }
-    cherrypy.config.update({ 'server.socket_host': bridge.config.get("http", "socket_host"),
-                             'server.socket_port': int(bridge.config.get("http", "socket_port")),
-                             })
-    cherrypy.quickstart(bridge, "/", config = local_conf)
+    cherrypy.config.update({
+        'server.socket_host': bridge.config.get("http", "socket_host"),
+        'server.socket_port': int(bridge.config.get("http", "socket_port")),
+    })
+    #cherrypy.quickstart(bridge, "/", config = local_conf)
+    cherrypy.quickstart(bridge,
+            # cherrypy doc refers to this as 'script_name': "a string
+            # containing the 'mount point' of the application'", i.e. the URL
+            # corresponding to the method 'index' above and prefixed to the
+            # URLs corresponding to the other methods
+            # http://docs.cherrypy.org/stable/refman/cherrypy.html?highlight=quickstart#cherrypy.quickstart
+            "/reebill/",
+            config = local_conf)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
     cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
             stream=sys.stdout)
