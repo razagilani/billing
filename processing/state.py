@@ -833,14 +833,3 @@ class StateDB:
         result = lockmodeQuery.all()
 
         return result
-
-    def retrieve_status_unbilled(self, session, start, limit):
-        # SQLAlchemy query to get account & dates for all utilbills
-        query = session.query(StatusUnbilled).with_lockmode("read")
-
-        # SQLAlchemy does SQL 'limit' with Python list slicing
-        slice = query[start:start + limit]
-
-        count = query.count()
-
-        return slice, count
