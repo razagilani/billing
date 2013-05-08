@@ -549,9 +549,14 @@ def get_utilbill_dict(account, start=date(2011,11,12), end=date(2011,12,14),
         meter['present_read_date'] = end
     return utilbill_dict
 
-def get_urs_dict():
+def get_urs_dict(rate_structure_name='DC Non Residential Non Heat',
+        utility_name='washgas'):
     '''Returns an example utility global rate structure document.'''
     urs_dict = copy.deepcopy(example_urs)
+    urs_dict['_id'].update({
+        'rate_structure_name': rate_structure_name,
+        'utility_name': utility_name,
+    })
     return urs_dict
 
 def get_uprs_dict(account, sequence, version=0,

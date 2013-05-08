@@ -270,10 +270,14 @@ class Process(object):
 
         # now grab the prior bill and pull values forward
         # TODO balance_forward currently contains adjustment, but it should not
-        present_reebill.prior_balance = prior_reebill.balance_due
-        present_reebill.balance_forward = present_reebill.prior_balance - \
-                present_reebill.payment_received + \
-                present_reebill.total_adjustment
+        if present_reebill.sequence <= 1:
+            # we have to stop copying data from old bills!!!
+            present_reebill.prior_balance = present_reebill.balance_forward = Decimal(0)
+        else:
+            present_reebill.prior_balance = prior_reebill.balance_due
+            present_reebill.balance_forward = present_reebill.prior_balance - \
+                    present_reebill.payment_received + \
+                    present_reebill.total_adjustment
 
         lc = self.get_late_charge(session, present_reebill)
         if lc is not None:
@@ -312,7 +316,8 @@ class Process(object):
         else:
             utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
         
-        # TODO Put somewhere nice because this has a specific function
+        # "TODO Put somewhere nice because this has a specific function"--ST
+        # what does this do? nothing? ('reebill.services' itself looks at utility bills' "service" keys)--DK
         active_utilbills = [u for u in reebill._utilbills if u['service'] in reebill.services]
         reebill.reebill_dict['utilbills'] = [handle for handle in reebill.reebill_dict['utilbills'] if handle['id'] in [u['_id'] for u in active_utilbills]]
 
@@ -379,17 +384,22 @@ class Process(object):
             # their corresponding RSIs were not part of the predicted rate structure)
             valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
                     cprs['rates']}
-            chargegroups = new_reebill._get_utilbill_for_service(service)['chargegroups']
-            for group, charges in chargegroups.iteritems():
-                for charge in charges:
-                    # if the charge matches a valid RSI binding, mark that
-                    # binding as matched; if not, delete the charge
-                    if charge['rsi_binding'] in valid_bindings:
-                        valid_bindings[charge['rsi_binding']] = True
-                    else:
-                        charges.remove(charge)
-                # chargegroup is not removed if it's empty because it might
-                # come back
+            actual_chargegroups = new_reebill._get_utilbill_for_service(
+                    service)['chargegroups']
+            hypothetical_chargegroups = new_reebill._get_handle_for_service(
+                    service)['hypothetical_chargegroups']
+            for whichever_chargegroups in [actual_chargegroups,
+                    hypothetical_chargegroups]:
+                for group, charges in whichever_chargegroups.iteritems():
+                    for charge in charges:
+                        # if the charge matches a valid RSI binding, mark that
+                        # binding as matched; if not, delete the charge
+                        if charge['rsi_binding'] in valid_bindings:
+                            valid_bindings[charge['rsi_binding']] = True
+                        else:
+                            charges.remove(charge)
+                # NOTE empty chargegroup is not removed because the user might
+                # want to add charges to it again
 
             # TODO add a charge for every RSI that doesn't have a charge, i.e.
             # the ones whose value in 'valid_bindings' is False.
