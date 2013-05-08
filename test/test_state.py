@@ -8,7 +8,7 @@ from billing.processing.db_objects import Customer, UtilBill
 from billing.processing import mongo
 from billing.util import dateutils
 from billing.processing.session_contextmanager import DBSession
-from billing.test import utils
+from billing.test import utils, example_data
 
 billdb_config = {
     'billpath': '/db-dev/skyline/bills/',
