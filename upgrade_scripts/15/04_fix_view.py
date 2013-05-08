@@ -1,7 +1,7 @@
 '''Rename "rebill" to "reebill".'''
 from MySQLdb import Connection
 
-con = Connection('localhost', 'dev', 'dev', 'skyline_dev')
+con = Connection('localhost', 'root', 'root', 'skyline_dev')
 cur = con.cursor()
 
 cur.execute('''
