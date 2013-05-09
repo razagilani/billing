@@ -35,6 +35,11 @@ cur.execute("alter table utilbill_version add column id int(11) not null auto_in
 # also add utility name column, since this isn't in mysql yet
 cur.execute("alter table utilbill_version add column utility varchar(45) not null")
 
+# re-add constraints that were removed by "create table ... like": customer id, utilbill id, rebill id
+cur.execute("alter table utilbill_version add constraint fk_utilbill_version_customer foreign key (customer_id) references customer (id)")
+cur.execute("alter table utilbill_version add constraint fk_utilbill_version_utilbill foreign key (utilbill_id) references utilbill (id)")
+cur.execute("alter table utilbill_version add constraint fk_utilbill_version_reebill foreign key (rebill_id) references rebill (id)")
+
 # fill utilbill_version with data from utilbill (excluding customer_id, processed), creating one row for each mongo document
 cur.execute('''select utilbill.id, customer.account, customer_id, rebill_id, period_start, period_end, service, total_charges, state, date_received from utilbill join customer where customer_id = customer.id order by customer.account, utilbill.period_start''')
 for utilbill_id, account, customer_id, rebill_id, start, end, service, total_charges, state, date_received in cur.fetchall():
