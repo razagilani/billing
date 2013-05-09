@@ -26,8 +26,7 @@ cur.execute("create table utilbill_version like utilbill")
 cur.execute("alter table utilbill_version modify id int not null")
 cur.execute("alter table utilbill_version drop primary key")
 cur.execute("alter table utilbill_version change column id utilbill_id int(11) not null")
-cur.execute('''alter table utilbill_version add constraint foreign key
-        (utilbill_id) references utilbill (id)''')
+cur.execute('''alter table utilbill_version add constraint fk_utilbill_version_utilbill foreign key (utilbill_id) references utilbill (id) on delete no action on update no action''')
 
 # add id column for utilbill_version itself
 cur.execute("alter table utilbill_version add column id int(11) not null auto_increment primary key")
