@@ -17,7 +17,7 @@ from sqlalchemy import and_
 from sqlalchemy.sql.expression import desc, asc, label
 from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy.sql.functions import min as sql_min
-from sqlalchemy import func
+from sqlalchemy import func, not_
 from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, StatusUnbilled
 from billing.processing.exceptions import BillStateError
 sys.stdout = sys.stderr
@@ -81,7 +81,7 @@ def guess_utilbill_periods(start_date, end_date):
 #            .order_by(desc(ReeBill.sequence))
 #    try:
 #        # get last reebill. note that SQLALchemy cursor object has no len (you
-#        # have to issue another query with func.count)
+##        # have to issue another query with func.count)
 #        last_reebill = previous_reebills[0]
 #    except IndexError:
 #        # if there are no previous bills, guess 30 days
@@ -245,7 +245,7 @@ class StateDB:
             reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
                     .filter(ReeBill.sequence==sequence).one()
             num_utilbills = session.query(UtilBill)\
-                    .filter(UtilBill.reebill==reebill).count()
+                    .filter(UtilBill.reebills.contains(reebill)).count()
         except NoResultFound:
             if nonexistent is not None:
                 return nonexistent
@@ -608,8 +608,10 @@ class StateDB:
         # looking for utilbills at the beginning of time.
         if last_sequence:
             reebill = self.get_reebill(session, account, last_sequence)
-            last_utilbills = session.query(UtilBill).filter(UtilBill.reebill_id==reebill.id).all()
-            service_iter = ((ub.service, ub.period_end) for ub in last_utilbills if ub.service in services)
+            last_utilbills = session.query(UtilBill)\
+                    .filter(UtilBill.reebill_id==reebill.id).all()
+            service_iter = ((ub.service, ub.period_end) for ub in
+                    last_utilbills if ub.service in services)
         else:
             last_utilbills = None
             service_iter = ((service, date.min) for service in services)
@@ -621,8 +623,9 @@ class StateDB:
             try:
                 utilbill = session.query(UtilBill).filter(
                         UtilBill.customer==customer, UtilBill.service==service,
-                        UtilBill.period_start>=period_end, UtilBill.reebill_id
-                        == None).order_by(asc(UtilBill.period_start)).first()
+                        UtilBill.period_start>=period_end)\
+                        .filter(not_(UtilBill.reebills.any()))\
+                        .order_by(asc(UtilBill.period_start)).first()
             except NoResultFound:
                 # If the utilbill is not found, then the rolling process can't proceed
                 raise Exception('No new %s utility bill found' % service)
