@@ -143,19 +143,27 @@ class StateDB:
         payment_table = Table('payment', metadata, autoload=True)
 
         # mappings
-        mapper(StatusDaysSince, status_days_since_view,primary_key=[status_days_since_view.c.account])
+        # note that a "relationship" between two tables should be defined on
+        # only one of its members; the property used to access rows in that
+        # table by by a row of the other table is defined via the "backref"
+        # argument.
+        # http://docs.sqlalchemy.org/en/rel_0_8/orm/relationships.html
+        mapper(StatusDaysSince,
+                status_days_since_view,primary_key=[status_days_since_view.c.account])
         mapper(Customer, customer_table, properties={
-                    'utilbills': relationship(UtilBill, backref='customer'),
-                    'reebills': relationship(ReeBill, backref='customer')
-                })
+            'utilbills': relationship(UtilBill, backref='customer'),
+            'reebills': relationship(ReeBill, backref='customer')
+        })
         mapper(ReeBill, reebill_table, properties={
-            'utilbills': relationship(UtilBill, secondary=utilbill_reebill_table, backref='reebills', lazy='joined')
+            'utilbills': relationship(UtilBill,
+                    secondary=utilbill_reebill_table, backref='reebills',
+                    lazy='joined')
         })
         mapper(UtilBill, utilbill_table, properties={
-            })
+        })
         mapper(Payment, payment_table, properties={
-                    'customer': relationship(Customer, backref='payment')
-                })
+            'customer': relationship(Customer, backref='payment')
+        })
 
 
         # To turn logging on
