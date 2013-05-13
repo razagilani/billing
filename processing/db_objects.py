@@ -24,13 +24,6 @@ class ReeBill(object):
                 % (self.customer, self.sequence, self.max_version, self.issued)
 
 class UtilBill(object):
-    def __init__(self, customer):
-        self.customer = customer
-
-    def __repr__(self):
-        return '<UtilBill(customer=%s)>' % (self.customer)
-
-class UtilBillVersion(object):
     '''Represents a particular version of a utility bill: either the current
     editable version, or a copy that is attached to a particular reebill
     version.'''
@@ -52,9 +45,8 @@ class UtilBillVersion(object):
     def __init__(self, customer, state, service, period_start=None,
             period_end=None, total_charges=0, date_received=None,
             reebill=None):
-        '''State should be one of UtilBillVersion.Complete,
-        UtilBillVersion.UtilityEstimated, UtilBillVersion.SkylineEstimated,
-        UtilBillVersion.Hypothetical.'''
+        '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
+        UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
         # automatically adds from the database column
         self.customer = customer
@@ -71,7 +63,7 @@ class UtilBillVersion(object):
         return self.reebill != None
 
     def __repr__(self):
-        return '<UtilBillVersion(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
+        return '<UtilBill(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
                 % (self.customer, self.service, self.period_start, self.period_end)
 
 
