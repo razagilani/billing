@@ -14,12 +14,12 @@ cur.execute('''drop index unique_constraint on rebill;''')
 # add another row to rebill for each version from 0 up to max_version
 cur.execute('''select max_version, sequence, customer_id, issued from rebill''')
 for row in cur.fetchall():
-    #print row
-    for v in range(row[0]):
+    max_version, sequence, customer_id, issued = row
+    for v in range(max_version):
         statement = '''insert into rebill (max_version, sequence,
                 customer_id, issued) values (%s, %s, %s, %s)'''
-        #print statement % ((v,) + row[1:])
-        cur.execute(statement, (v,) + row[1:])
+        # all versions below the highest are issued; the highest may or may not be issued
+        cur.execute(statement, (v, sequence, customer_id, 1 if v < max_version else issued))
 
 # make sure the right number of rows was added
 cur.execute("select count(*) from rebill")
