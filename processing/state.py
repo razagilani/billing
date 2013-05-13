@@ -137,8 +137,8 @@ class StateDB:
         # table objects loaded automatically from database
         status_days_since_view = Table('status_days_since', metadata, autoload=True)
         utilbill_table = Table('utilbill', metadata, autoload=True)
-        utilbill_version_table = Table('utilbill_version', metadata, autoload=True)
         reebill_table = Table('reebill', metadata, autoload=True)
+        utilbill_reebill_table = Table('utilbill_reebill', metadata, autoload=True)
         customer_table = Table('customer', metadata, autoload=True)
         payment_table = Table('payment', metadata, autoload=True)
 
@@ -148,14 +148,11 @@ class StateDB:
                     'utilbills': relationship(UtilBill, backref='customer'),
                     'reebills': relationship(ReeBill, backref='customer')
                 })
-        mapper(ReeBill, reebill_table)
+        mapper(ReeBill, reebill_table, properties={
+            'utilbills': relationship(UtilBill, secondary=utilbill_reebill_table, backref='reebills', lazy='joined')
+        })
         mapper(UtilBill, utilbill_table, properties={
-                'customer': relationship(Customer, backref='customer')
             })
-        mapper(UtilBill, utilbill_version_table, properties={
-                    # "lazy='joined'" makes SQLAlchemy eagerly load utilbill customers
-                    'reebill': relationship(ReeBill, backref='utilbill', lazy='joined')
-                })
         mapper(Payment, payment_table, properties={
                     'customer': relationship(Customer, backref='payment')
                 })
