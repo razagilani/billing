@@ -82,7 +82,7 @@ class Process(object):
             # anything
             self.state_db.record_utilbill_in_database(session, account,
                     service, begin_date, end_date, total, datetime.utcnow(),
-                    state=UtilBillVersion.SkylineEstimated)
+                    state=UtilBill.SkylineEstimated)
         else:
             # if there is a file, get the Python file object and name
             # string from CherryPy, and pass those to BillUpload to upload
