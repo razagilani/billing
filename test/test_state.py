@@ -26,7 +26,7 @@ class StateTest(utils.TestCase):
         c = mysql_connection.cursor()
         c.execute("delete from payment")
         c.execute("delete from utilbill")
-        c.execute("delete from rebill")
+        c.execute("delete from reebill")
         c.execute("delete from customer")
         mysql_connection.commit()
 
@@ -53,7 +53,7 @@ class StateTest(utils.TestCase):
         c = mysql_connection.cursor()
         c.execute("delete from payment")
         c.execute("delete from utilbill")
-        c.execute("delete from rebill")
+        c.execute("delete from reebill")
         c.execute("delete from customer")
         mysql_connection.commit()
 
@@ -158,7 +158,7 @@ class StateTest(utils.TestCase):
             b = self.state_db.new_rebill(session, '99999', 1)
             self.assertEqual('99999', b.customer.account)
             self.assertEqual(1, b.sequence)
-            self.assertEqual(0, b.max_version)
+            self.assertEqual(0, b.version)
             self.assertEqual(0, b.issued)
             session.commit()
 

@@ -14,14 +14,14 @@ class Customer(object):
                 % (self.name, self.account, self.discountrate)
 
 class ReeBill(object):
-    def __init__(self, customer, sequence, max_version=0):
+    def __init__(self, customer, sequence, version=0):
         self.customer = customer
         self.sequence = sequence
         self.issued = 0
-        self.max_version = max_version
+        self.version = version
     def __repr__(self):
-        return '<ReeBill(account=%s, sequence=%s, max_version=%s, issued=%s)>' \
-                % (self.customer, self.sequence, self.max_version, self.issued)
+        return '<ReeBill(customer=%s, sequence=%s, version=%s, issued=%s)>' \
+                % (self.customer, self.sequence, self.version, self.issued)
 
 class UtilBill(object):
     '''Represents a particular version of a utility bill: either the current
