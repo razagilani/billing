@@ -282,7 +282,8 @@ class StateDB:
         # column even without actually joining with Customer. because of
         # func.max, the result is a tuple rather than a ReeBill object.
         max_version = session.query(func.max(ReeBill.version))\
-                .filter(Customer.account==account).one()[0]
+                .filter(Customer.account==account)\
+                .filter(ReeBill.sequence==sequence).one()[0]
         # SQLAlchemy returns a "long" here for some reason, so convert to int
         return int(max_version)
 
