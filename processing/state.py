@@ -19,7 +19,7 @@ from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy.sql.functions import min as sql_min
 from sqlalchemy import func, not_
 from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, StatusUnbilled
-from billing.processing.exceptions import BillStateError
+from billing.processing.exceptions import BillStateError, IssuedBillError
 sys.stdout = sys.stderr
 
 # TODO move the 2 functions below to Process? seems like state.py is only about
@@ -387,13 +387,14 @@ class StateDB:
         return new_reebill
 
     def issue(self, session, account, sequence):
-        '''Marks the given reebill as issued. Does not set the issue date or
-        due date (which are in Mongo).'''
-        customer = session.query(Customer).filter(Customer.account==account).one()
-        reeBill = session.query(ReeBill) \
-                .filter(ReeBill.customer_id==customer.id) \
-                .filter(ReeBill.sequence==sequence).one()
-        reeBill.issued = 1
+        '''Marks the highest version of the reebill given by account, sequence
+        as issued. Does not set the issue date or due date, since those are
+        stored in Mongo).'''
+        reebill = self.get_reebill(session, account, sequence)
+        if reebill.issued == 1:
+            raise IssuedBillError(("Can't issue reebill %s-%s-%s because it's "
+                    "already issued") % (account, sequence, reebill.version))
+        reebill.issued = 1
 
     def is_issued(self, session, account, sequence, version='max',
             nonexistent=None):
@@ -402,6 +403,10 @@ class StateDB:
         'nonexistent' is given, that value will be returned if the reebill is
         not present in the state database (e.g. False when you want
         non-existent bills to be treated as unissued).'''
+        # NOTE: with the old database schema (one reebill row for all versions)
+        # this method returned False when the 'version' argument was higher
+        # than max_version. that was probably the wrong behavior, even though
+        # test_state:StateTest.test_versions tested for it. 
         try:
             if version == 'max':
                 reebill = self.get_reebill(session, account, sequence)
@@ -526,7 +531,7 @@ class StateDB:
         if version == 'max':
             version = session.query(func.max(ReeBill.version)).join(Customer) \
                 .filter(Customer.account==account) \
-                .filter(ReeBill.sequence==sequence).one()
+                .filter(ReeBill.sequence==sequence).one()[0]
         result = session.query(ReeBill).join(Customer) \
             .filter(Customer.account==account) \
             .filter(ReeBill.sequence==sequence)\
