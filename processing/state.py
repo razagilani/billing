@@ -235,15 +235,17 @@ class StateDB:
             utilbill.reebill = reebill
             utilbill.processed = True
 
+    # TODO this will become obsolete now that reebills can't exist without
+    # being attached
     def is_attached(self, session, account, sequence, nonexistent=None):
-        '''Returns True iff the given reebill has utility bills attached to it
-        in MySQL. If 'nonexistent' is given, that value will be returned if the
-        reebill is not present in the state database (e.g. False when you want
+        '''Returns True iff the the highest version of the reebill given by
+        account, sequence has utility bills attached to it in MySQL. If
+        'nonexistent' is given, that value will be returned if the reebill is
+        not present in the state database (e.g. False when you want
         non-existent bills to be treated as unissued).'''
         try:
-            customer = self.get_customer(session, account)
-            reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
-                    .filter(ReeBill.sequence==sequence).one()
+            reebill = self.get_reebill(session, account, sequence,
+                    version='max')
             num_utilbills = session.query(UtilBill)\
                     .filter(UtilBill.reebills.contains(reebill)).count()
         except NoResultFound:
