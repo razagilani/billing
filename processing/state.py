@@ -284,6 +284,11 @@ class StateDB:
         max_version = session.query(func.max(ReeBill.version))\
                 .filter(Customer.account==account)\
                 .filter(ReeBill.sequence==sequence).one()[0]
+        # SQLAlchemy returns None when the reebill row doesn't exist, but that
+        # should be reported as an exception
+        if max_version == None:
+            raise NoResultFound
+            
         # SQLAlchemy returns a "long" here for some reason, so convert to int
         return int(max_version)
 
