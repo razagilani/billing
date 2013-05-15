@@ -232,7 +232,7 @@ class StateDB:
         reebill = self.get_reebill(session, account, sequence)
 
         for utilbill in utilbills:
-            utilbill.reebill = reebill
+            utilbill.reebills.append(reebill)
             utilbill.processed = True
 
     # TODO this will become obsolete now that reebills can't exist without
@@ -598,9 +598,9 @@ class StateDB:
         # the end dates of the ones attached to that reebill. if not, start
         # looking for utilbills at the beginning of time.
         if last_sequence:
-            reebill = self.get_reebill(session, account, last_sequence)
+            last_reebill = self.get_reebill(session, account, last_sequence)
             last_utilbills = session.query(UtilBill)\
-                    .filter(UtilBill.reebill_id==reebill.id).all()
+                    .filter(UtilBill.reebills.contains(last_reebill)).all()
             service_iter = ((ub.service, ub.period_end) for ub in
                     last_utilbills if ub.service in services)
         else:
