@@ -705,7 +705,7 @@ class ProcessTest(TestCaseWithSetup):
             reebill = self.state_db.new_rebill(session, account, 1)
             utilbill = self.state_db.list_utilbills(session, account)[0].one()
             self.state_db.attach_utilbills(session, account, reebill.sequence, [utilbill])
-            assert utilbill.reebill == reebill
+            assert utilbill.reebills == [reebill]
             self.assertRaises(ValueError, self.process.delete_utility_bill,
                     session, utilbill_id)
 
