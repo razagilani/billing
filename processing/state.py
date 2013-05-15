@@ -282,9 +282,12 @@ class StateDB:
         # surprisingly, it is possible to filter a ReeBill query by a Customer
         # column even without actually joining with Customer. because of
         # func.max, the result is a tuple rather than a ReeBill object.
-        max_version = session.query(func.max(ReeBill.version))\
+        reebills_subquery = session.query(ReeBill).join(Customer)\
+                .filter(ReeBill.customer_id==Customer.id)\
                 .filter(Customer.account==account)\
-                .filter(ReeBill.sequence==sequence).one()[0]
+                .filter(ReeBill.sequence==sequence)
+        max_version = session.query(func.max(
+                reebills_subquery.subquery().columns.version)).one()[0]
         # SQLAlchemy returns None when the reebill row doesn't exist, but that
         # should be reported as an exception
         if max_version == None:
@@ -360,12 +363,15 @@ class StateDB:
             max_sequence =  0
         return max_sequence
         
-    def last_issued_sequence(self, session, account, include_corrections=False):
+    def last_issued_sequence(self, session, account,
+            include_corrections=False):
         '''Returns the sequence of the last issued reebill for 'account', or 0
         if there are no issued reebills.'''
-        customer = session.query(Customer).filter(Customer.account==account).one()
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
         if include_corrections:
-            filter_logic = sqlalchemy.or_(ReeBill.issued==1, sqlalchemy.and_(ReeBill.issued==0, ReeBill.max_version>0))
+            filter_logic = sqlalchemy.or_(ReeBill.issued==1,
+                    sqlalchemy.and_(ReeBill.issued==0, ReeBill.version>0))
         else:
             filter_logic = ReeBill.issued==1
 
