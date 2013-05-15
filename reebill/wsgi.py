@@ -1314,6 +1314,7 @@ class BillToolBridge:
             buf = StringIO()
 
             import xlwt
+            from xlwt import easyxf
             workbook = xlwt.Workbook(encoding='utf-8')
             sheet = workbook.add_sheet('All REE Charges')
             row_index = 0
@@ -1380,7 +1381,10 @@ class BillToolBridge:
                         row['total_ree'],
                         row['average_rate_unit_ree'] ]
                 for i, cell_text in enumerate(actual_row):
-                    sheet.write(row_index, i, cell_text)
+                    if isinstance(cell_text, date):
+                        sheet.write(row_index, i, cell_text, easyxf(num_format_str='YYYY-MM-DD'))
+                    else:
+                        sheet.write(row_index, i, cell_text)
                 row_index += 1
 
                 cherrypy.response.headers['Content-Type'] = 'application/excel'
