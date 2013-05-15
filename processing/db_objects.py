@@ -58,9 +58,10 @@ class UtilBill(object):
         self.date_received = date_received
         self.reebill = reebill # newly-created utilbill has NULL in reebill_id column
 
+    # TODO rename to has_reebills
     @property
     def has_reebill(self):
-        return self.reebill != None
+        return self.reebills != []
 
     def __repr__(self):
         return '<UtilBill(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
