@@ -254,13 +254,12 @@ class StateDB:
             raise
         return num_utilbills >= 1
 
-    def utilbills_for_reebill(self, session, account, sequence):
+    def utilbills_for_reebill(self, session, account, sequence, version='max'):
         '''Returns all utility bills for the reebill given by account,
-        sequence.'''
-        customer = session.query(Customer).filter(Customer.account==account).one()
-        reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
-                .filter(ReeBill.sequence==sequence).one()
-        utilbills = session.query(UtilBill).filter(UtilBill.reebill==reebill)\
+        sequence, version (highest version by default).'''
+        reebill = self.get_reebill(session, account, sequence, version=version)
+        utilbills = session.query(UtilBill)\
+                .filter(UtilBill.reebills.contains(reebill))\
                 .order_by(UtilBill.period_start)
         return utilbills.all()
 

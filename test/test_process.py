@@ -1397,7 +1397,7 @@ class ProcessTest(TestCaseWithSetup):
             
             assert len(utilbills) == 1
             u = utilbills[0]
-            assert (u.customer.account, u.reebill.sequence) == (account, 1)
+            assert (u.customer.account, u.reebills[0].sequence) == (account, 1)
             b = self.reebill_dao.load_reebill(account, 1, version=0)
             self.assertRaises(IssuedBillError, self.process.delete_reebill,
                     session, account, 1)
@@ -1422,8 +1422,8 @@ class ProcessTest(TestCaseWithSetup):
             # https://www.pivotaltracker.com/story/show/31629749
             utilbills = self.state_db.list_utilbills(session, account)[0].all()
             assert len(utilbills) == 1; u = utilbills[0]
-            self.assertEquals(account, u.reebill.customer.account)
-            self.assertEquals(1, u.reebill.sequence)
+            self.assertEquals(account, u.reebills[0].customer.account)
+            self.assertEquals(1, u.reebills[0].sequence)
 
     def test_adjustment(self):
         '''Test that adjustment from a correction is applied to (only) the
