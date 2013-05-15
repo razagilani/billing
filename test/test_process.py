@@ -1131,7 +1131,11 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEquals(3, mysql_reebill.sequence)
             self.assertEquals(customer.id, mysql_reebill.customer_id)
             self.assertEquals(False, mysql_reebill.issued)
-            self.assertEquals(0, mysql_reebill.max_version)
+            self.assertEquals(0, mysql_reebill.version)
+            self.assertEquals(0,
+                    session.query(sqlalchemy.func.max(ReeBill.version))\
+                    .filter(ReeBill.customer==customer)\
+                    .filter(ReeBill.sequence==3).one()[0])
 
             # TODO ...
 
