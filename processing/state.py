@@ -311,16 +311,18 @@ class StateDB:
     # TODO rename to something like "create_next_version"
     def increment_version(self, session, account, sequence):
         '''Creates a new reebill with version number 1 greater than the highest
-        existing version for the given account and sequence.'''
-        max_version = self.max_version(session, account, sequence)
+        existing version for the given account and sequence. The utility
+        bill(s) of the new version are the same as those of its predecessor.'''
         # highest existing version must be issued
-        if not self.is_issued(session, account, sequence, version=max_version):
-            raise ValueError(("Can't increment version of %s-%s because "
-                    "version %s is not issued yet") % (account, sequence,
-                    max_version))
-        customer = session.query(Customer)\
-                .filter(Customer.account==account).one()
-        session.add(ReeBill(customer, sequence, max_version + 1))
+        current_max_version_reebill = self.get_reebill(session, account,
+                sequence)
+        if current_max_version_reebill.issued != 1:
+            raise ValueError(("Can't increment version of reebill %s-%s "
+                    "because version %s is not issued yet") % (account,
+                    sequence, max_version))
+        session.add(ReeBill(current_max_version_reebill.customer, sequence,
+                current_max_version_reebill.version + 1,
+                utilbills=current_max_version_reebill.utilbills))
 
     def get_unissued_corrections(self, session, account):
         '''Returns a list of (sequence, version) pairs for bills that have
