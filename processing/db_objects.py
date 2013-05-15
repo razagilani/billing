@@ -10,15 +10,17 @@ class Customer(object):
         self.discountrate = discount_rate
         self.latechargerate = late_charge_rate
     def __repr__(self):
-        return '<Customer(name=%s, account=%s, discountrate=%s)>' \
-                % (self.name, self.account, self.discountrate)
+        return '<Customer(name=%s, account=%s, discountrate=%s latechargerate=%s)>' \
+                % (self.name, self.account, self.discountrate, self.latechargerate)
 
 class ReeBill(object):
-    def __init__(self, customer, sequence, version=0):
+    def __init__(self, customer, sequence, version=0, utilbills=[]):
         self.customer = customer
         self.sequence = sequence
         self.issued = 0
         self.version = version
+        self.utilbills = utilbills
+
     def __repr__(self):
         return '<ReeBill(customer=%s, sequence=%s, version=%s, issued=%s)>' \
                 % (self.customer, self.sequence, self.version, self.issued)

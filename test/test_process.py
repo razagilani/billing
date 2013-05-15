@@ -118,41 +118,37 @@ class ProcessTest(TestCaseWithSetup):
         '''Tests computation of late charges (without rolling bills).'''
         acc = '99999'
         with DBSession(self.state_db) as session:
-            # sequence 0 template
+            # set customer late charge rate
+            self.state_db.get_customer(session, acc).latechargerate = .34
+
+            # create bill 0 (template) and its utility bill and rate structure
             self.reebill_dao.save_reebill(example_data.get_reebill(acc, 0,
                     start=date(2011,12,31), end=date(2012,1,1)))
-            # Set up example rate structure
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 0))
-
             bill0 = self.reebill_dao.load_reebill(acc, 0)
-
-            #self.reebill_dao._save_utilbill(example_data.get_utilbill_dict(acc, date(2012,1,1), date(2012,2,1)))
             self.state_db.record_utilbill_in_database(session, acc, 'gas',
                     date(2012,1,1), date(2012,2,1), 100,
                     datetime.utcnow().date())
+            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 0))
 
-            # bill 1: no late charge
+            # create bill 1, with no late charge (and its rate structures)
             bill1 = self.process.roll_bill(session, bill0)
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
-                date(2011,12,31)))
+                    date(2011,12,31)))
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
-                date(2012,1,1)))
+                    date(2012,1,1)))
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
-                date(2012,1,2)))
+                    date(2012,1,2)))
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
-                date(2012,2,1)))
+                    date(2012,2,1)))
             self.assertEqual(0, self.process.get_late_charge(session, bill1,
-                date(2012,2,2)))
- 
-            # save bill1 in Mongo and MySQL, and its rate structure docs in
-            # Mongo
+                    date(2012,2,2)))
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc, 1))
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
 
             # issue bill 1, so a later bill can have a late charge based on the
             # customer's failure to pay bill1 by its due date, i.e. 30 days
-            # after bill1's issue date.
+            # after the issue date.
             self.process.issue(session, bill1.account, bill1.sequence,
                     issue_date=date(2012,1,1))
             # since process.issue() only modifies databases, bill1 must be
@@ -171,15 +167,12 @@ class ProcessTest(TestCaseWithSetup):
             bill1.balance_due = Decimal('100.')
             self.reebill_dao.save_reebill(bill1, force=True)
 
-            # create second bill (not by rolling, because process.roll_bill()
-            # is currently a huge mess, and get_late_charge() should be
-            # insulated from that). note that bill1's late charge is set in
-            # mongo by process.issue().
-            bill2 = example_data.get_reebill(acc, 2)
+            # create bill 2
+            self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    date(2012,2,1), date(2012,3,1), 100,
+                    datetime.utcnow().date())
+            bill2 = self.process.roll_bill(session, bill1)
             bill2.balance_due = Decimal('200.')
-            # bill2's late_charge_rate is copied from MySQL during rolling, but
-            # since bill2 is not created by rolling, it must be set explicitly.
-            bill2.late_charge_rate = Decimal('0.34')
 
             # bill2's late charge should be 0 before bill1's due date, and
             # after the due date, it's balance * late charge rate, i.e.
@@ -197,10 +190,7 @@ class ProcessTest(TestCaseWithSetup):
             self.assertEqual(34, self.process.get_late_charge(session, bill2,
                     date(2013,1,1)))
  
-            # in order to get late charge of a 3rd bill, bill2 must be put into
-            # mysql and computed (requires a rate structure)
-            self.state_db.new_rebill(session, bill2.account, bill2.sequence)
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 2))
+            # in order to get late charge of a 3rd bill, bill2 must be computed
             self.process.compute_bill(session, bill1, bill2)
  
             # create a 3rd bill without issuing bill2. bill3 should have None
@@ -230,12 +220,12 @@ class ProcessTest(TestCaseWithSetup):
             bill1_1 = self.reebill_dao.load_reebill(acc, 1, version=1)
             bill1_1.balance_due = 50
             self.reebill_dao.save_reebill(bill1_1)
-            self.process.issue(session, acc, 1, issue_date=date(2013,1,15))
+            self.process.issue(session, acc, 1, issue_date=date(2013,3,15))
             self.process.new_version(session, acc, 1)
             bill1_2 = self.reebill_dao.load_reebill(acc, 1, version=2)
             bill1_2.balance_due = 300
             self.reebill_dao.save_reebill(bill1_2)
-            self.process.issue(session, acc, 1, issue_date=date(2013,3,15))
+            self.process.issue(session, acc, 1)
             # note that the issue date on which the late charge in bill2 is
             # based is the issue date of version 0--it doesn't matter when the
             # corrections were issued.
