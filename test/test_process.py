@@ -383,9 +383,11 @@ class ProcessTest(TestCaseWithSetup):
 
             # only the gas bill should be attached
             customer = self.state_db.get_customer(session, account)
-            reebill = session.query(ReeBill).filter(ReeBill.customer_id == customer.id)\
+            reebill = session.query(ReeBill)\
+                    .filter(ReeBill.customer_id == customer.id)\
                     .filter(ReeBill.sequence==bill1.sequence).one()
-            attached_utilbills = session.query(UtilBill).filter(UtilBill.reebill==reebill).all()
+            attached_utilbills = session.query(UtilBill)\
+                    .filter(UtilBill.reebills.contains(reebill)).all()
             self.assertEquals(1, len(attached_utilbills))
             self.assertEquals('gas', attached_utilbills[0].service.lower())
 
