@@ -1630,8 +1630,8 @@ class ProcessTest(TestCaseWithSetup):
             r1 = self.process.roll_bill(session, r0, date(2013,2,1))
 
         # only u1 should be attached to the reebill
-        self.assertEqual(None, u1.reebill)
-        self.assertNotEqual(None, u2.reebill)
+        self.assertEqual([], u1.reebills)
+        self.assertNotEqual([], u2.reebills)
 
 
 if __name__ == '__main__':
