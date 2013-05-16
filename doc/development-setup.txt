@@ -1,0 +1,87 @@
+This file is obsolete, please do not update it.  Place contributions in ./environment-setup.txt
+
+Development Environment Setup
+=============================
+
+This document was created in the context of the following core technologies and versions:
+- Ubuntu Desktop 12.04.1 LTS 64-bit
+- Python 2.7.3
+- Mercurial 2.0.2
+- MySQL 5.5.28
+- MongoDB 2.0.4 or 2.2.2
+- Apache 2.2.22
+
+You may use a different operating system or program versions, but much of the following should remain relevant.
+
+
+Additional Reference
+--------------------
+Application-specific details and other detailed information may be found in the environment-setup.txt document. 
+
+
+... snipped to environment-setup.txt ...
+
+General: Database --
+$ sudo apt-get install mysql-server mysql-client mongodb sqlite3
+
+Python: Numpy --
+$ sudo apt-get install gfortran liblapack3gf liblapack-dev liblapack3gf libatlas-dev
+
+Python: Matplotlib --
+$ sudo apt-get install zlib1g zlib1g-dev libpng12-0 libpng12-dev libfreetype6 libfreetype6-dev python-gtk2 python-gtk2-dev tk tk-dev libblas-dev libamd2.2.0 libblas3gf libc6 libgcc1 libgfortran3 libumfpack5.4.0 libstdc++6
+
+Python: Gevent --
+$ sudo apt-get install libevent-2.0-5 libevent-dev libev4 libev-dev
+
+Python: Nose --
+$ sudo apt-get install python-nose
+
+Python: PyYAML --
+$ sudo apt-get install libyaml-0-2 libyaml-dev
+
+Python: Python-MySQL dependencies --
+$ sudo apt-get build-dep libmysqlclient-dev
+
+ReeBill: Rendering dependencies --
+sudo apt-get install imagemagick html2ps poppler-utils zlib1g zlib1g-dev libpng12-0 libpng12-dev
+
+NOTE ON RENDERING DEPENDENCIES:
+	Check to see if zlib installed to its common location:
+
+	$ ls -l /usr/lib/libz.so
+
+	If that file exists, disregard this note.
+
+	If that file doesn't exist, run 'ls -l /usr/lib/[your architecture]/libz.so', e.g.:
+    
+    $ ls -l /usr/lib/x86_64-linux-gnu/libz.so
+    $ ls -l /usr/lib/i386-linux-gnu/libz.so
+
+    Once you have found the file, create a symbolic link to it:
+    
+    $ sudo ln -s /usr/lib/[your architecture]/libz.so /usr/lib/libz.so
+
+    This ensures that libraries expecting zlib's dynamic library to be in /usr/lib will be able to find it.
+
+
+
+Create Directory for Reebill Data Files
+---------------------------------------
+$ sudo mkdir /db-dev
+$ sudo chown user:group /db-dev
+
+Where 'user' is your development user account name and 'group' is your development user's group name
+
+Set Up Hosts File
+-----------------
+To make accessing your local development web apps easier, add the following to the file /etc/hosts:
+
+127.0.0.1	reebill-dev
+127.0.0.1	dashboard-dev
+127.0.0.1	nexus-dev
+
+After configuring Apache below, you can, for example, access Reebill by putting 'reebill-dev' into your browser.
+
+
+
+
