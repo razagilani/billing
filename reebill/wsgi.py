@@ -2774,9 +2774,12 @@ class BillToolBridge:
                         r.customer.account == account) if ub.reebills != [] else
                         None),
                 ('state', state_descriptions[ub.state]),
-                # utility bill rows are only editable if they don't have a
-                # reebill attached to them
-                ('editable', (not ub.has_reebill or not ub.reebill.issued))
+                # utility bill rows are only editable if they don't have any
+                # issued reebills attached to them
+                # TODO should become editable all the time; issued reebills
+                # store all relevant history in their own document
+                ('editable', (not ub.has_reebills or not any(r.issued for r in
+                        ub.reebills)))
             ]) for rb, ub in zip(mongo_reebills, utilbills)]
 
             return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
