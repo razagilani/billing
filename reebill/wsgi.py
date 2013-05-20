@@ -22,6 +22,7 @@ import copy
 import functools
 import re
 import md5
+import operator
 from StringIO import StringIO
 import mongoengine
 from skyliner.skymap.monguru import Monguru
@@ -2750,7 +2751,7 @@ class BillToolBridge:
             # number, name: full name, period_start: date, period_end: date,
             # sequence: reebill sequence number (if present)}
             utilbills, totalCount = self.state_db.list_utilbills(session, account, int(start), int(limit))
-            state_reebills = [ub.reebill for ub in utilbills]
+            state_reebills = reduce(operator.add, (ub.reebills for ub in utilbills), [])
             mongo_reebills = [self.reebill_dao.load_reebill(rb.customer.account, rb.sequence) if rb else None for rb in state_reebills]
 
             full_names = self.full_names_of_accounts([account])
@@ -2769,12 +2770,14 @@ class BillToolBridge:
                 ('period_start', ub.period_start),
                 ('period_end', ub.period_end),
                 ('total_charges', ub.total_charges),
-                ('sequence', ub.reebill.sequence if ub.reebill else None),
+                ('sequence', max(r.sequence for r in ub.reebills if
+                        r.customer.account == account) if ub.reebills != [] else
+                        None),
                 ('state', state_descriptions[ub.state]),
                 # utility bill rows are only editable if they don't have a
                 # reebill attached to them
                 ('editable', (not ub.has_reebill or not ub.reebill.issued))
-            ]) for rb, ub in zip(mongo_reebills,utilbills)]
+            ]) for rb, ub in zip(mongo_reebills, utilbills)]
 
             return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
     
