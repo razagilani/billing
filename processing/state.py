@@ -498,13 +498,18 @@ class StateDB:
         return slice, count
 
     def listAllIssuableReebillInfo(self, session, **kwargs):
-        unissued = session.query(ReeBill.sequence.label('sequence'), ReeBill.customer_id.label('customer_id')).filter(ReeBill.issued == 0, ReeBill.version == 0).subquery('unissued')
-        minseq = session.query(unissued.c.customer_id.label('customer_id'), func.min(unissued.c.sequence).label('sequence')).group_by(unissued.c.customer_id).subquery('minseq')
-        query = .filter(ReeBill.sequence == minseq.c.sequence).filter(ReeBill.customer_id == minseq.c.customer_id).filter(UtilBill.customer_id == Customer.id).filter(UtilBill.reebill_id == ReeBill.id)
-
+        unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
+                .filter(ReeBill.issued == 0, ReeBill.max_version == 0).subquery()
+        min_sequence = session.query(unissued_v0_reebills.c.customer_id.label('customer_id'),
+                func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
+                .group_by(unissued_v0_reebills.c.customer_id).subquery()
+        query = session.query(Customer.account, ReeBill.sequence, UtilBill.total_charges)\
+                .filter(UtilBill.rebill_id == ReeBill.id)\
+                .filter(ReeBill.sequence == min_sequence.c.sequence)\
+                .filter(ReeBill.customer_id == min_sequence.c.customer_id)\
+                .filter(UtilBill.customer_id == Customer.id)
         slice = query.order_by(asc(Customer.account)).all()
-        count = query.count()
-        return slice, count
+        return slice, query.count()
 
     def list_issued_utilbills_for_account(self, session, account):
         utilbill_info_table = session.query(UtilBill.id, UtilBill.total_charges, UtilBill.service, UtilBill.period_start, UtilBill.period_end, UtilBill.reebill_id, Customer.account).filter(Customer.id == UtilBill.customer_id, Customer.account == account).subquery("utilbill_info")
