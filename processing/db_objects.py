@@ -62,7 +62,7 @@ class UtilBill(object):
 
     # TODO rename to has_reebills
     @property
-    def has_reebill(self):
+    def has_reebills(self):
         return self.reebills != []
 
     def __repr__(self):
