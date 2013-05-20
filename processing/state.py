@@ -498,9 +498,9 @@ class StateDB:
         return slice, count
 
     def listAllIssuableReebillInfo(self, session, **kwargs):
-        unissued = session.query(ReeBill.sequence.label('sequence'), ReeBill.customer_id.label('customer_id')).filter(ReeBill.issued == 0, ReeBill.max_version == 0).subquery('unissued')
+        unissued = session.query(ReeBill.sequence.label('sequence'), ReeBill.customer_id.label('customer_id')).filter(ReeBill.issued == 0, ReeBill.version == 0).subquery('unissued')
         minseq = session.query(unissued.c.customer_id.label('customer_id'), func.min(unissued.c.sequence).label('sequence')).group_by(unissued.c.customer_id).subquery('minseq')
-        query = session.query(Customer.account, ReeBill.sequence, UtilBill.total_charges).filter(ReeBill.sequence == minseq.c.sequence).filter(ReeBill.customer_id == minseq.c.customer_id).filter(UtilBill.customer_id == Customer.id).filter(UtilBill.reebill_id == ReeBill.id)
+        query = .filter(ReeBill.sequence == minseq.c.sequence).filter(ReeBill.customer_id == minseq.c.customer_id).filter(UtilBill.customer_id == Customer.id).filter(UtilBill.reebill_id == ReeBill.id)
 
         slice = query.order_by(asc(Customer.account)).all()
         count = query.count()
