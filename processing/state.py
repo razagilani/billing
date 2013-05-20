@@ -5,6 +5,7 @@ Utility functions to interact with state database
 import os, sys
 import itertools
 import datetime
+import operator
 from datetime import timedelta, datetime, date
 from decimal import Decimal
 import sqlalchemy
@@ -497,19 +498,27 @@ class StateDB:
 
         return slice, count
 
-    def listAllIssuableReebillInfo(self, session, **kwargs):
+    def listAllIssuableReebillInfo(self, session):
+        '''Returns a list containing the account, sequence, and total utility
+        bill charges (from MySQL) of the earliest unissued version-0 reebill
+        each account, and the size of the list.'''
         unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
-                .filter(ReeBill.issued == 0, ReeBill.max_version == 0).subquery()
+                .filter(ReeBill.issued == 0, ReeBill.version == 0).subquery()
         min_sequence = session.query(unissued_v0_reebills.c.customer_id.label('customer_id'),
                 func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
                 .group_by(unissued_v0_reebills.c.customer_id).subquery()
-        query = session.query(Customer.account, ReeBill.sequence, UtilBill.total_charges)\
-                .filter(UtilBill.rebill_id == ReeBill.id)\
-                .filter(ReeBill.sequence == min_sequence.c.sequence)\
-                .filter(ReeBill.customer_id == min_sequence.c.customer_id)\
-                .filter(UtilBill.customer_id == Customer.id)
-        slice = query.order_by(asc(Customer.account)).all()
-        return slice, query.count()
+        reebills = session.query(ReeBill)\
+                .filter(ReeBill.customer_id==min_sequence.c.customer_id)\
+                .filter(ReeBill.sequence==min_sequence.c.sequence)
+        tuples = sorted([(r.customer.account, r.sequence,
+                # 'total_charges' of all utility bills attached to each reebill
+                session.query(func.sum(UtilBill.total_charges))\
+                        .filter(UtilBill.reebills.contains(r)).one()[0])
+                for r in reebills.all()],
+                # sort by account ascending; worry about performance later
+                # (maybe when sort order is actually configurable)
+                key=operator.itemgetter(0))
+        return tuples, len(tuples)
 
     def list_issued_utilbills_for_account(self, session, account):
         utilbill_info_table = session.query(UtilBill.id, UtilBill.total_charges, UtilBill.service, UtilBill.period_start, UtilBill.period_end, UtilBill.reebill_id, Customer.account).filter(Customer.id == UtilBill.customer_id, Customer.account == account).subquery("utilbill_info")
