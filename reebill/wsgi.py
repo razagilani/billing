@@ -899,35 +899,36 @@ class BillToolBridge:
             )
             return self.dumps({'success': True})
 
-    def attach_utility_bills(self, session, account, sequence):
-        '''Finalizes association between the reebill given by 'account',
-        'sequence' and its utility bills by recording it in the state database
-        and marking the utility bills as processed. Utility bills for suspended
-        services are skipped. Note that this does not issue the reebill or give
-        it an issue date.'''
-        # finalize utility bill association
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        self.process.attach_utilbills(session, reebill)
-
-        version = self.state_db.max_version(session, account, sequence)
-        journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-                account, sequence, version)
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def attach_utilbills(self, account, sequence, **args):
-        '''Handles AJAX call to attach utility bills without issuing. Normally
-        this is done through 'issue'.'''
-        if not account or not sequence:
-            raise ValueError("Bad Parameter Value")
-        with DBSession(self.state_db) as session:
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-            if reebill is None:
-                raise Exception('No reebill for account %s, sequence %s')
-            self.attach_utility_bills(session, account, sequence)
-            return self.dumps({'success': True})
+#    no longer used (also disabled in client code)
+#    def attach_utility_bills(self, session, account, sequence):
+#        '''Finalizes association between the reebill given by 'account',
+#        'sequence' and its utility bills by recording it in the state database
+#        and marking the utility bills as processed. Utility bills for suspended
+#        services are skipped. Note that this does not issue the reebill or give
+#        it an issue date.'''
+#        # finalize utility bill association
+#        reebill = self.reebill_dao.load_reebill(account, sequence)
+#        self.process.attach_utilbills(session, reebill)
+#
+#        version = self.state_db.max_version(session, account, sequence)
+#        journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
+#                account, sequence, version)
+#
+#    @cherrypy.expose
+#    @random_wait
+#    @authenticate_ajax
+#    @json_exception
+#    def attach_utilbills(self, account, sequence, **args):
+#        '''Handles AJAX call to attach utility bills without issuing. Normally
+#        this is done through 'issue'.'''
+#        if not account or not sequence:
+#            raise ValueError("Bad Parameter Value")
+#        with DBSession(self.state_db) as session:
+#            reebill = self.reebill_dao.load_reebill(account, sequence)
+#            if reebill is None:
+#                raise Exception('No reebill for account %s, sequence %s')
+#            self.attach_utility_bills(session, account, sequence)
+#            return self.dumps({'success': True})
 
     def issue_reebills(self, session, account, sequences,
             apply_corrections=True):
