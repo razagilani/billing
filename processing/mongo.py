@@ -249,7 +249,7 @@ class MongoReebill(object):
 
     def new_utilbill_ids(self):
         '''Replaces _ids in utility bill documents and the reebill document's
-        references to them, and removed "sequence" and "version" keys if
+        references to them, and removes "sequence" and "version" keys if
         present (to convert frozen utility bill into editable one). Used when
         rolling to create copies of the utility bills.'''
         for utilbill_handle in self.reebill_dict['utilbills']:
