@@ -10,20 +10,26 @@ class Customer(object):
         self.discountrate = discount_rate
         self.latechargerate = late_charge_rate
     def __repr__(self):
-        return '<Customer(name=%s, account=%s, discountrate=%s)>' \
-                % (self.name, self.account, self.discountrate)
+        return '<Customer(name=%s, account=%s, discountrate=%s latechargerate=%s)>' \
+                % (self.name, self.account, self.discountrate, self.latechargerate)
 
 class ReeBill(object):
-    def __init__(self, customer, sequence, max_version=0):
+    def __init__(self, customer, sequence, version=0, utilbills=[]):
         self.customer = customer
         self.sequence = sequence
         self.issued = 0
-        self.max_version = max_version
+        self.version = version
+        self.utilbills = utilbills
+
     def __repr__(self):
-        return '<ReeBill(account=%s, sequence=%s, max_version=%s, issued=%s)>' \
-                % (self.customer, self.sequence, self.max_version, self.issued)
+        return '<ReeBill(customer=%s, sequence=%s, version=%s, issued=%s)>' \
+                % (self.customer, self.sequence, self.version, self.issued)
 
 class UtilBill(object):
+    '''Represents a particular version of a utility bill: either the current
+    editable version, or a copy that is attached to a particular reebill
+    version.'''
+
     # utility bill states:
     # 0. Complete: actual non-estimated utility bill.
     # 1. Utility estimated: actual utility bill whose contents were estimated by
@@ -39,7 +45,7 @@ class UtilBill(object):
     Complete, UtilityEstimated, SkylineEstimated, Hypothetical = range(4)
 
     def __init__(self, customer, state, service, period_start=None,
-            period_end=None, total_charges=0, date_received=None, processed=False,
+            period_end=None, total_charges=0, date_received=None,
             reebill=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
@@ -52,16 +58,17 @@ class UtilBill(object):
         self.period_end = period_end
         self.total_charges = total_charges
         self.date_received = date_received
-        self.processed = processed
         self.reebill = reebill # newly-created utilbill has NULL in reebill_id column
 
+    # TODO rename to has_reebills
     @property
-    def has_reebill(self):
-        return self.reebill != None
+    def has_reebills(self):
+        return self.reebills != []
 
     def __repr__(self):
         return '<UtilBill(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
                 % (self.customer, self.service, self.period_start, self.period_end)
+
 
 class Payment(object):
     '''date_received is the datetime when Skyline recorded the payment.

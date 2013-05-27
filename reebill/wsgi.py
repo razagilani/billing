@@ -22,6 +22,7 @@ import copy
 import functools
 import re
 import md5
+import operator
 from StringIO import StringIO
 import mongoengine
 from skyliner.skymap.monguru import Monguru
@@ -898,35 +899,36 @@ class BillToolBridge:
             )
             return self.dumps({'success': True})
 
-    def attach_utility_bills(self, session, account, sequence):
-        '''Finalizes association between the reebill given by 'account',
-        'sequence' and its utility bills by recording it in the state database
-        and marking the utility bills as processed. Utility bills for suspended
-        services are skipped. Note that this does not issue the reebill or give
-        it an issue date.'''
-        # finalize utility bill association
-        reebill = self.reebill_dao.load_reebill(account, sequence)
-        self.process.attach_utilbills(session, reebill)
-
-        version = self.state_db.max_version(session, account, sequence)
-        journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
-                account, sequence, version)
-
-    @cherrypy.expose
-    @random_wait
-    @authenticate_ajax
-    @json_exception
-    def attach_utilbills(self, account, sequence, **args):
-        '''Handles AJAX call to attach utility bills without issuing. Normally
-        this is done through 'issue'.'''
-        if not account or not sequence:
-            raise ValueError("Bad Parameter Value")
-        with DBSession(self.state_db) as session:
-            reebill = self.reebill_dao.load_reebill(account, sequence)
-            if reebill is None:
-                raise Exception('No reebill for account %s, sequence %s')
-            self.attach_utility_bills(session, account, sequence)
-            return self.dumps({'success': True})
+#    no longer used (also disabled in client code)
+#    def attach_utility_bills(self, session, account, sequence):
+#        '''Finalizes association between the reebill given by 'account',
+#        'sequence' and its utility bills by recording it in the state database
+#        and marking the utility bills as processed. Utility bills for suspended
+#        services are skipped. Note that this does not issue the reebill or give
+#        it an issue date.'''
+#        # finalize utility bill association
+#        reebill = self.reebill_dao.load_reebill(account, sequence)
+#        self.process.attach_utilbills(session, reebill)
+#
+#        version = self.state_db.max_version(session, account, sequence)
+#        journal.ReeBillAttachedEvent.save_instance(cherrypy.session['user'],
+#                account, sequence, version)
+#
+#    @cherrypy.expose
+#    @random_wait
+#    @authenticate_ajax
+#    @json_exception
+#    def attach_utilbills(self, account, sequence, **args):
+#        '''Handles AJAX call to attach utility bills without issuing. Normally
+#        this is done through 'issue'.'''
+#        if not account or not sequence:
+#            raise ValueError("Bad Parameter Value")
+#        with DBSession(self.state_db) as session:
+#            reebill = self.reebill_dao.load_reebill(account, sequence)
+#            if reebill is None:
+#                raise Exception('No reebill for account %s, sequence %s')
+#            self.attach_utility_bills(session, account, sequence)
+#            return self.dumps({'success': True})
 
     def issue_reebills(self, session, account, sequences,
             apply_corrections=True):
@@ -2750,7 +2752,7 @@ class BillToolBridge:
             # number, name: full name, period_start: date, period_end: date,
             # sequence: reebill sequence number (if present)}
             utilbills, totalCount = self.state_db.list_utilbills(session, account, int(start), int(limit))
-            state_reebills = [ub.reebill for ub in utilbills]
+            state_reebills = reduce(operator.add, (ub.reebills for ub in utilbills), [])
             mongo_reebills = [self.reebill_dao.load_reebill(rb.customer.account, rb.sequence) if rb else None for rb in state_reebills]
 
             full_names = self.full_names_of_accounts([account])
@@ -2769,12 +2771,17 @@ class BillToolBridge:
                 ('period_start', ub.period_start),
                 ('period_end', ub.period_end),
                 ('total_charges', ub.total_charges),
-                ('sequence', ub.reebill.sequence if ub.reebill else None),
+                ('sequence', max(r.sequence for r in ub.reebills if
+                        r.customer.account == account) if ub.reebills != [] else
+                        None),
                 ('state', state_descriptions[ub.state]),
-                # utility bill rows are only editable if they don't have a
-                # reebill attached to them
-                ('editable', (not ub.has_reebill or not ub.reebill.issued))
-            ]) for rb, ub in zip(mongo_reebills,utilbills)]
+                # utility bill rows are only editable if they don't have any
+                # issued reebills attached to them
+                # TODO should become editable all the time; issued reebills
+                # store all relevant history in their own document
+                ('editable', (not ub.has_reebills or not any(r.issued for r in
+                        ub.reebills)))
+            ]) for rb, ub in zip(mongo_reebills, utilbills)]
 
             return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
     
@@ -2839,24 +2846,18 @@ class BillToolBridge:
                 new_utility = rows['utility']
                 new_ratestructure = rows['rate_structure']
 
-
                 # check that new dates are reasonable
                 self.validate_utilbill_period(new_period_start, new_period_end)
 
                 # find utilbill in mysql
                 utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
 
-                reebill = None
-                mongo_reebill = None
-                if utilbill.has_reebill:
-                    reebill = utilbill.reebill
-                    mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
-
-                if reebill is None and (new_utility != '' or new_ratestructure != ''):
-                    raise ValueError("Can't assign a utility and rate structure to an unattached utility bill")
-                # utility bills that have issued reebills shouldn't be editable
-                if utilbill.has_reebill and utilbill.reebill.issued:
-                    raise Exception("Can't edit utility bills that are attached to an issued reebill.")
+                # load editable version of utility bill document from Mongo
+                # TODO unissued reebill must have editable utility bill as its utility bill for this to work.
+                # https://www.pivotaltracker.com/story/show/50223789
+                utilbill_doc = self.reebill_dao.load_utilbill(account,
+                        utilbill.service, utilbill.period_start,
+                        utilbill.period_end, sequence=False, version=False)
 
                 # move the file, if there is one. (only utility bills that are
                 # Complete (0) or UtilityEstimated (1) have files;
@@ -2871,32 +2872,40 @@ class BillToolBridge:
                             new_period_start, new_period_end)
 
                 # change dates in Mongo if needed
-                if (utilbill.period_start != new_period_start or utilbill.period_end != new_period_end) and utilbill.has_reebill:
-                    mongo_reebill.set_utilbill_period_for_service(utilbill.service, (new_period_start, new_period_end))
-                    mongo_reebill.set_meter_dates_from_utilbills()
-                    self.reebill_dao.save_reebill(mongo_reebill)
+                if (utilbill.period_start != new_period_start or utilbill.period_end != new_period_end):
+                    # NOTE meter read date(s) are not modified because there is
+                    # no way to specify which meter in the utility bill grid
+                    utilbill_doc['start'], utilbill_doc['end'] = new_period_start, new_period_end
 
-                #update utility and ratestructure names
-                if mongo_reebill is not None and mongo_reebill.utility_name_for_service(utilbill.service) != new_utility or mongo_reebill.rate_structure_name_for_service(utilbill.service) != new_ratestructure:
-                    old_utility = mongo_reebill.utility_name_for_service(utilbill.service)
-                    old_ratestructure = mongo_reebill.rate_structure_name_for_service(utilbill.service)
-                    self.reebill_dao.update_utility_and_rs(mongo_reebill, utilbill.service, new_utility, new_ratestructure)
-                    self.ratestructure_dao.update_rs_name(utilbill.customer.account, reebill.sequence, reebill.max_version, old_utility, old_ratestructure, new_utility, new_ratestructure)
+                # update utility and ratestructure names
+                # NOTE this is going to fail until RS document _ids no longer
+                # contain reebill data (account, sequence)
+                # https://www.pivotaltracker.com/story/show/50223313
+                self.ratestructure_dao.update_rs_name(utilbill.customer.account,
+                        reebill.sequence, reebill.max_version,
+                        utilbill_doc['utility'],
+                        utilbill_doc['rate_structure_binding'],
+                        new_utility, new_ratestructure)
+                utilbill_doc['utility'] = new_utility
+                utilbill_doc['rate_structure_binding'] = new_ratestructure
 
                 # change dates in MySQL
                 utilbill.period_start = new_period_start
                 utilbill.period_end = new_period_end
                 utilbill.total_charges = new_total_charges
 
-                # delete any estimated utility bills that were created to
-                # cover gaps that no longer exist
+                # delete any estimated utility bills in MySQL that were created
+                # to cover gaps that no longer exist
                 self.state_db.trim_hypothetical_utilbills(session,
                         utilbill.customer.account, utilbill.service)
 
                 # update service in MySQL
                 utilbill.service = new_service
 
+                self.reebill_dao._save_utilbill(utilbill_doc)
+
                 return self.dumps({'success': True})
+
             elif xaction == 'create':
                 # creation happens via upload_utility_bill
                 # TODO move here?
