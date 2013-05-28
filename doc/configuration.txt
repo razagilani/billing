@@ -247,6 +247,11 @@ Chart Director 'pychartdir'
 
 Details on installing ChartDirector:
 
+    wget http://download2.advsofteng.com/chartdir_python_linux_64.tar.gz
+    tar xvzf chartdir_python_linux_64.tar.gz 
+    mv ChartDirector/ ~/.virtualenvs/billing/lib/python2.7/site-packages/
+    cd workspace-skyline/
+    cp billing/reebill/ui/fonts/* ~/.virtualenvs/billing/lib/python2.7/site-packages/ChartDirector/lib/fonts/
 
     The files for the ChartDirector for Python module are in "ChartDirector/lib". Copy *everything* in "ChartDirector/lib" (including the fonts subdirectory in Linux, FreeBSD and Solaris versions) to a directory in your Python module search path.  This path may have to be set in the WSGI configuration if used by a WSGI app.
     There is no setup.py, so manually copy to site or dist-packages (may be site-packages under windows)
@@ -323,78 +328,82 @@ MySQL
         Log in as database root user
         mysql -uroot -p
 
-
         create database skyline_[env]
         use skyline_[env]
 
-
         create user 'reebill-[env]'@'%' identified by '[password]'
-        (does this mean reebill-prod can connect from any host?
+        (TODO does this mean reebill-prod can connect from any host?
         grant all on skyline_[env].* to 'reebill-[env]'@'%' identified by '[password]';
 
+        For example:
+
+            $ mysql -uroot -proot
+            mysql> create database skyline_dev;
+            mysql> create user 'reebill-dev'@'%' identified by 'reebill-dev';
+            mysql> grant all on skyline_dev.* to 'reebill-dev'@'%' identified by 'reebill-dev';
+
+
         This worked on linux AMI version of MySQL
-        create user 'reebill-[env]'@'localhost' identified by '[password]'
-        grant all on skyline_[env].* to 'reebill-[env]'@'localhost' identified by '[password]';
+            create user 'reebill-[env]'@'localhost' identified by '[password]'
+            grant all on skyline_[env].* to 'reebill-[env]'@'localhost' identified by '[password]';
 
         Loading the database:
 
-	Use destage_from_prod.bash!
-
-        mysql -ureebill-[env] -p[password] -Dskyline_[env] < [workspace]/billing/db/processing/billdb.sql
-        - or -
-        restore from backup (must  be done as root for some reason)
-        mysql --verbose -uroot -p -Dskyline-[env] < ~/[date]billing_mysql.dmp
-
-        scp -i ~/Dropbox/Skyline-IT/ec2keys/tyrell-prod.pem /tmp/20120704reebill-prod.tar.z ec2-user@tyrell-prod.skylineinnovations.net:/tmp
-
-        For Development:
-
-        Install MySQL WorkBench
-            http://dev.mysql.com/downloads/workbench/5.2.html (deb available)
-            http://www.mysql.com/downloads/workbench/#downloads
-
-        How to create a development database
-            create user 'dev'@'10.0.0.%' identified by 'dev'
-            create database skyline_stage
-            grant all on skyline_dev.* to 'dev'@'10.0.0.%' identified by 'dev';
-            mysql --verbose -uroot -p -D skyline_dev < ~/20110606billing_mysql.dmp
-
-        See /docs/host-setup.txt for details on installing MySQL
-
-        grant all on skyline.* to 'root'@'%.local' identified by '[password]';
-
-        create database skyline_[env]
-        use skyline_[env]
-
-        create user 'reebill'@'%' identified by '[password]'
-        # needs to be done to allow connections from localhost
-        create user 'reebill'@'localhost' identified by '[password]';
-        # for connecting from anywhere
-        #grant all on skyline.* to 'reebill'@'%' identified by '[password]';
-        # for connecting from localhost
-        grant all on skyline.* to 'reebill'@'localhost' identified by '[password]';
+	    Use destage_from_prod.bash!
 
 
-        An example of creating staging on tyrell-prod
-            mysql> create database skyline_stage;
-            Query OK, 1 row affected (0.00 sec)
+        Manual database creation steps
 
-            mysql> use skyline_stage;
-            Database changed
-            mysql> create user 'reebill-stage'@'localhost' identified by 'KdvDzFZeawPy';
-            Query OK, 0 rows affected (0.00 sec)
+            mysql -ureebill-[env] -p[password] -Dskyline_[env] < [workspace]/billing/db/processing/billdb.sql
+            - or -
+            restore from backup (must  be done as root for some reason)
+            mysql --verbose -uroot -p -Dskyline-[env] < ~/[date]billing_mysql.dmp
 
-            mysql> grant all on skyline_stage.* to 'reebill-stage'@'localhost' identified by 'KdvDzFZeawPy';
-            Query OK, 0 rows affected (0.00 sec)
-
-
-
-
-        Loading the database
-        --------------------
-
-            # root has to create the schema because full privileged users do not have all the privileges to do so
+            # TODO: still valid?  ...root has to create the schema because full privileged users do not have all the privileges to do so
             mysql -uroot -p[password] -Dskyline < /var/local/reebill/billing/db/processing/billdb.sql
+
+            scp -i ~/Dropbox/Skyline-IT/ec2keys/tyrell-prod.pem /tmp/20120704reebill-prod.tar.z ec2-user@tyrell-prod.skylineinnovations.net:/tmp
+
+            For Development:
+
+            Install MySQL WorkBench
+                http://dev.mysql.com/downloads/workbench/5.2.html (deb available)
+                http://www.mysql.com/downloads/workbench/#downloads
+
+            How to create a development database
+                create user 'dev'@'10.0.0.%' identified by 'dev'
+                create database skyline_stage
+                grant all on skyline_dev.* to 'dev'@'10.0.0.%' identified by 'dev';
+                mysql --verbose -uroot -p -D skyline_dev < ~/20110606billing_mysql.dmp
+
+            See /docs/host-setup.txt for details on installing MySQL
+
+            grant all on skyline.* to 'root'@'%.local' identified by '[password]';
+
+            create database skyline_[env]
+            use skyline_[env]
+
+            create user 'reebill'@'%' identified by '[password]'
+            # needs to be done to allow connections from localhost
+            create user 'reebill'@'localhost' identified by '[password]';
+            # for connecting from anywhere
+            #grant all on skyline.* to 'reebill'@'%' identified by '[password]';
+            # for connecting from localhost
+            grant all on skyline.* to 'reebill'@'localhost' identified by '[password]';
+
+
+            An example of creating staging on tyrell-prod
+                mysql> create database skyline_stage;
+                Query OK, 1 row affected (0.00 sec)
+
+                mysql> use skyline_stage;
+                Database changed
+                mysql> create user 'reebill-stage'@'localhost' identified by 'KdvDzFZeawPy';
+                Query OK, 0 rows affected (0.00 sec)
+
+                mysql> grant all on skyline_stage.* to 'reebill-stage'@'localhost' identified by 'KdvDzFZeawPy';
+                Query OK, 0 rows affected (0.00 sec)
+
 
 
 
