@@ -5320,9 +5320,9 @@ function reeBillReady() {
         border: false,
         width: 400,
         layout: 'hbox',
-        defaults: {
-            layout: 'form'
-        },
+        // defaults: {
+        //     layout: 'form'
+        // },
         items: [
             journalEntryField, 
             journalEntryResetButton,
@@ -5330,11 +5330,11 @@ function reeBillReady() {
             journalEntryAccountField,
             journalEntrySequenceField
         ],
-        hideLabels: false,
-        labelAlign: 'left',   // or 'right' or 'top'
-        labelSeparator: '', // takes precedence over layoutConfig value
-        labelWidth: 65,       // defaults to 100
-        labelPad: 8           // defaults to 5, must specify labelWidth to be honored
+        // hideLabels: false,
+        // labelAlign: 'left',   // or 'right' or 'top'
+        // labelSeparator: '', // takes precedence over layoutConfig value
+        // labelWidth: 65,       // defaults to 100
+        // labelPad: 8           // defaults to 5, must specify labelWidth to be honored
     });
 
     //
@@ -5943,7 +5943,7 @@ function reeBillReady() {
         defaultText: 'No REE Bill Selected',
         id: 'statusbar',
         statusAlign: 'right', // the magic config
-        items: [journalFormPanel]
+        items: [{xtype: 'tbtext', text: 'Journal Entry'},journalFormPanel]
     });
 
     ////////////////////////////////////////////////////////////////////////////
