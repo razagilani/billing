@@ -339,6 +339,11 @@ MySQL
 
             $ mysql -uroot -proot
             mysql> create database skyline_dev;
+            mysql> create user 'reebill-dev'@'localhost' identified by 'reebill-dev';
+            mysql> grant all on skyline_dev.* to 'reebill-dev'@'localhost' identified by 'reebill-dev';
+
+
+            Allows remote connections:
             mysql> create user 'reebill-dev'@'%' identified by 'reebill-dev';
             mysql> grant all on skyline_dev.* to 'reebill-dev'@'%' identified by 'reebill-dev';
 
