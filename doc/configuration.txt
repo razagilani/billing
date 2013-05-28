@@ -734,8 +734,8 @@ reebill/admin/destage_prod_to_stage.bash
 
 Edit and run any upgrade scripts (insert staging/production database credentials).
 
-Notes from Stephen to be merged into above
-==========================================
+Notes from Stiles & Stephen to be merged into above
+===================================================
 
 The ReeBill project is a good one to start with, since it's arguably the most complicated to set up. Doing it will give you a better insight into what you need to do with other projects.
 
@@ -744,6 +744,10 @@ The ReeBill project is a good one to start with, since it's arguably the most co
 	These steps are generalizable to other projects.
 
 	Install the system dependencies needed for ReeBill. These should be the NumPy, Gevent, PyYAML, Python-MySQL, and Rendering dependencies listed above.
+
+        Next make the virtualenv:
+
+        $ mkvirtualenv --use-distribute billing
 
 	Then, make sure the ReeBill virtualenv is activated.
 
@@ -755,6 +759,14 @@ The ReeBill project is a good one to start with, since it's arguably the most co
 
 	With luck, this should work on the first try! If there is an error with a specific package, the most likely cause is a missing system dependency.
 
+        Pandas has to be installed separately, because of a pip installation order issue:
+
+        $ pip install pandas
+
+        Last, add the skyline and billing directories to your python path:
+
+        $ add2virtualenv /[home]/[workspace]/skyline /[home]/[workspace]/skyline/billing
+
 
 	Install ChartDirector
 	---------------------
@@ -763,14 +775,23 @@ The ReeBill project is a good one to start with, since it's arguably the most co
 	- Navigate to http://www.advsofteng.com/download.html
 	- Download the proper version (chartdir_python_linux_64.tar.gz for 64-bit Linux)
 
-	Extract the file.
+	Extract the file in your workspace.
 
 	$ tar xzf chartdir_python_linux_64.tar.gz
 
-	Move the resulting directory to the ReeBill virtualenv's site-packages directory. For example, if you are using virtualenvwrapper and your ReeBill virtualenv is called 'billing', invoke the following:
+	Add the directory to your python path
 
-	$ mv ChartDirector ~/.virtualenvs/billing/lib/python2.7/site-packages
+        $ workon billing
+	$ add2virtualenv /[home]/[workspace]/ChartDirector/lib
 
+        Last, copy the reebill fonts into the chartdirector lib:
+        $ cp -r /[home]/[workspace]/skyline/billing/reebill/ui/fonts /[home]/[workspace]/ChartDirector/lib
+
+
+        Install ext-js-3.3.1
+        --------------------
+        Get the tar archive from someone else, and extract it in the billing/reebill/ui folder.
+        
 
 	Set Up Apache Configuration
 	---------------------------
@@ -824,6 +845,10 @@ The ReeBill project is a good one to start with, since it's arguably the most co
 
 	Otherwise, Mongo is more or less set.
 
+        Set up bill database
+        --------------------
+        $ sudo mkdir /db-[env]
+        $ sudo chown [reebill-user] /db-[env]
 
 	Destage Production ReeBill Data
 	-------------------------------
@@ -835,6 +860,7 @@ The ReeBill project is a good one to start with, since it's arguably the most co
 
 	Configure ReeBill
 	--------
+        Make sure billing/skyliner is configured
 	In /billing/reebill, copy the reebill-dev-template.cfg:
 
 	$ cp reebill-dev-template.cfg reebill.cfg
@@ -855,3 +881,62 @@ The ReeBill project is a good one to start with, since it's arguably the most co
 	You should be able to launch a browser to http://reebill-dev/ and see a fully functioning ReeBill.
 
 	Setting up the other applications involves many of the same types of steps. Be sure to check the app-specific documentation for each project in each project's /doc folder
+
+
+Stiles's apache configuration:
+==============================
+I set up a virtual environment with no packages installed to use as the wsgi python.  this way no system site packages will get into the environment.  I also add lines to /etc/apache2/envvars to centralize configuration.
+
+/etc/apache2/envvars: (Appended to the end):
+--------------------------------------------
+export SKYLINE_DIR=/home/dstiles/workspace/skyline
+export VIRTUAL_ENVS_DIR=/home/dstiles/.envs
+
+export REEBILL_USER=dstiles
+export REEBILL_GROUP=dstiles
+
+/etc/apache2/sites-available/reebill-dev:
+-----------------------------------------
+PassEnv SKYLINE_DIR
+PassEnv VIRTUAL_ENVS_DIR
+PassEnv APACHE_LOG_DIR
+PassEnv REEBILL_USER
+PassEnv REEBILL_GROUP
+WSGIPythonHome ${VIRTUAL_ENVS_DIR}/base
+
+<VirtualHost *:80>
+    ServerAdmin webmaster@localhost
+    ServerName reebill-dev
+
+    DocumentRoot ${SKYLINE_DIR}/billing/reebill/ui/
+    <Directory ${SKYLINE_DIR}/billing/reebill/ui/>
+        DirectoryIndex /reebill 
+        Options Indexes FollowSymLinks MultiViews
+        AllowOverride None
+        Order allow,deny
+        allow from all
+    </Directory>
+
+    # directory where utility bill images are saved
+    Alias /utilitybillimages /tmp/billimages
+    <Directory /tmp/billimages-dev>
+        #Order deny,allow
+        #Allow from all
+        Options Indexes FollowSymLinks MultiViews
+        #AllowOverride None
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/reebill-error.log
+
+    # Possible values include: debug, info, notice, warn, error, crit,
+    # alert, emerg.
+    LogLevel debug
+
+    CustomLog ${APACHE_LOG_DIR}/reebill-access.log combined
+
+    WSGIScriptAlias /reebill ${SKYLINE_DIR}/billing/reebill/wsgi.py
+    WSGIDaemonProcess reebill user=${REEBILL_USER} group=${REEBILL_GROUP} python-path=${VIRTUAL_ENVS_DIR}/billing/lib/python2.7/site-packages
+    WSGIProcessGroup reebill
+    WSGIApplicationGroup %{GLOBAL}
+
+</VirtualHost>
