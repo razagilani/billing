@@ -132,6 +132,7 @@ def json_exception(method):
     '''Decorator for exception handling in methods trigged by Ajax requests.'''
     @functools.wraps(method)
     def wrapper(btb_instance, *args, **kwargs):
+        #print >> sys.stderr, '*************', method, args
         try:
             return method(btb_instance, *args, **kwargs)
         except Exception as e:
@@ -401,8 +402,13 @@ class BillToolBridge:
         # determine whether authentication is on or off
         self.authentication_on = self.config.getboolean('authentication', 'authenticate')
 
+        # TODO: allow the log to be viewed in the UI
         self.reconciliation_log_dir = self.config.get('reebillreconciliation', 'log_directory')
         self.reconciliation_report_dir = self.config.get('reebillreconciliation', 'report_directory')
+
+        # TODO: allow the log to be viewed in the UI
+        self.estimated_revenue_log_dir = self.config.get('reebillestimatedrevenue', 'log_directory')
+        self.estimated_revenue_report_dir = self.config.get('reebillestimatedrevenue', 'report_directory')
 
         # print a message in the log--TODO include the software version
         self.logger.info('BillToolBridge initialized')
@@ -449,10 +455,12 @@ class BillToolBridge:
     def get_reconciliation_data(self, start, limit, **kwargs):
         '''Handles AJAX request for data to fill reconciliation report grid.'''
         start, limit = int(start), int(limit)
+        # TODO 45793319: hardcoded file name
         with open(os.path.join(self.reconciliation_report_dir,'reconciliation_report.json')) as json_file:
             # load all data from json file: it's one JSON dictionary per
             # line (for reasons explained in reconciliation.py) but should
             # be interpreted as a JSON list
+            # TODO 45793037: not really a json file until now
             items = ju.loads('[' + ', '.join(json_file.readlines()) + ']')
             return self.dumps({
                 'success': True,
@@ -464,41 +472,16 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def estimated_revenue_report(self, start, limit, **kwargs):
-        '''Handles AJAX request for data to fill estimated revenue report
-        grid.''' 
-        with DBSession(self.state_db) as session:
-            start, limit = int(start), int(limit)
-            er = EstimatedRevenue(self.state_db, self.reebill_dao,
-                    self.ratestructure_dao, self.billUpload, self.nexus_util,
-                    self.splinter)
-            data = er.report(session)
-
-            # build list of rows from report data
-            rows = []
-            for account in sorted(data.keys(),
-                    # 'total' first
-                    cmp=lambda x,y: -1 if x == 'total' else 1 if y == 'total' else cmp(x,y)):
-                row = {'account': 'Total' if account == 'total' else account}
-                for month in data[account].keys():
-                    # show error message instead of value if there was one
-                    if 'error' in data[account][month]:
-                        value = 'ERROR: %s' % data[account][month]['error']
-                    elif 'value' in data[account][month]:
-                        value = '%.2f' % data[account][month]['value']
-
-                    row.update({
-                        'revenue_%s_months_ago' % (monthmath.current_utc() - month): {
-                            'value': value,
-                            'estimated': data[account][month].get('estimated', False)
-                        }
-                    })
-                rows.append(row)
-                #print rows
+    def get_estimated_revenue_data(self, start, limit, **kwargs):
+        '''Handles AJAX request for data to fill estimated revenue report grid.'''
+        start, limit = int(start), int(limit)
+        # TODO 45793319: hardcoded file name
+        with open(os.path.join(self.estimated_revenue_report_dir,'estimated_revenue_report.json')) as json_file:
+            items = ju.loads(json_file.read())['rows']
             return self.dumps({
                 'success': True,
-                'rows': rows[start:start+limit],
-                'results': len(rows) 
+                'rows': items[start:start+limit],
+                'results': len(items) # total number of items
             })
 
     @cherrypy.expose
@@ -508,19 +491,15 @@ class BillToolBridge:
     def estimated_revenue_xls(self, **kwargs):
         '''Responds with the data from the estimated revenue report in the form
         of an Excel spreadsheet.'''
-        with DBSession(self.state_db) as session:
-            spreadsheet_name =  'estimated_revenue.xls'
-            er = EstimatedRevenue(self.state_db, self.reebill_dao,
-                    self.ratestructure_dao, self.billUpload, self.nexus_util,
-                    self.splinter)
-            buf = StringIO()
-            er.write_report_xls(session, buf)
+        spreadsheet_name =  'estimated_revenue.xls'
 
+        # TODO 45793319: hardcoded file name
+        with open(os.path.join(self.estimated_revenue_report_dir,'estimated_revenue_report.xls')) as xls_file:
             # set headers for file download
             cherrypy.response.headers['Content-Type'] = 'application/excel'
             cherrypy.response.headers['Content-Disposition'] = 'attachment; filename=%s' % spreadsheet_name
 
-            return buf.getvalue()
+            return xls_file.read()
 
     ###########################################################################
     # authentication functions
@@ -741,7 +720,7 @@ class BillToolBridge:
                 raise ValueError("Bad Parameter Value")
             customer = self.process.create_new_account(session, account, name,
                     discount_rate, late_charge_rate, template_account)
-            reebill = self.reebill_dao.load_reebill(account, 0)
+            reebill = self.reebill_dao.load_reebill(account, self.state_db.last_sequence(session, account))
             ba = {}
             ba['ba_addressee'] = ba_addressee
             ba['ba_street1'] = ba_street1
@@ -1101,7 +1080,6 @@ class BillToolBridge:
 
         return name_dicts
 
-
     def full_names_of_accounts(self, accounts):
         '''Given a list of account numbers (as strings), returns a list
         containing the "full name" of each account, each of which is of the
@@ -1323,9 +1301,15 @@ class BillToolBridge:
     @random_wait
     @authenticate_ajax
     @json_exception
-    def reebill_details_xls(self, **args):
+    def reebill_details_xls(self, begin_date=None, end_date=None, **kwargs):
+        #prep date strings from client
+        make_date = lambda x: datetime.strptime(x, dateutils.ISO_8601_DATE) if x else None
+        begin_date = make_date(begin_date)
+        end_date = make_date(end_date)
+        #write out spreadsheet(s)
         with DBSession(self.state_db) as session:
-            rows, total_count = self.process.reebill_report(session)
+            rows, total_count = self.process.reebill_report(session, begin_date,
+                                                           end_date)
 
             buf = StringIO()
 
@@ -1489,10 +1473,13 @@ class BillToolBridge:
     @random_wait
     @authenticate
     @json_exception
-    def excel_export(self, account=None, **kwargs):
-        '''Responds with an excel spreadsheet containing all actual charges for
-        all utility bills for the given account, or every account (1 per sheet)
-        if 'account' is not given.'''
+    def excel_export(self, account=None, start_date=None, end_date=None, **kwargs):
+        '''
+        Responds with an excel spreadsheet containing all actual charges for all
+        utility bills for the given account, or every account (1 per sheet) if
+        'account' is not given, or all utility bills for the account(s) filtered
+        by time, if 'start_date' and/or 'end_date' are given.
+        '''
         with DBSession(self.state_db) as session:
             if account is not None:
                 spreadsheet_name = account + '.xls'
@@ -1503,7 +1490,8 @@ class BillToolBridge:
 
             # write excel spreadsheet into a StringIO buffer (file-like)
             buf = StringIO()
-            exporter.export(session, buf, account)
+            exporter.export(session, buf, account, start_date=start_date,
+                            end_date=end_date)
 
             # set MIME type for file download
             cherrypy.response.headers['Content-Type'] = 'application/excel'
@@ -2028,6 +2016,8 @@ class BillToolBridge:
                     try: row_dict['hypothetical_total'] = mongo_reebill.hypothetical_total
                     except: pass
                     try: row_dict['actual_total'] = mongo_reebill.actual_total
+                    except: pass
+                    try: row_dict['ree_quantity'] = mongo_reebill.total_renewable_energy()
                     except: pass
                     try: row_dict['ree_value'] = mongo_reebill.ree_value
                     except: pass
@@ -2675,27 +2665,33 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def journal(self, xaction, account, **kwargs):
-        if not xaction or not account:
-            raise ValueError("Bad Parameter Value")
         journal_entries = self.journal_dao.load_entries(account)
-        for entry in journal_entries:
-            # TODO 29715501 replace user identifier with user name
-            # (UserDAO.load_user() currently requires a password to load a
-            # user, but we just want to translate an indentifier into a
-            # name)
-
-            # put a string containing all non-standard journal entry data
-            # in an 'extra' field for display in the browser
-            extra_data = copy.deepcopy(entry)
-            del extra_data['account']
-            if 'sequence' in extra_data:
-                del extra_data['sequence']
-            del extra_data['date']
-            if 'event' in extra_data:
-                del extra_data['event']
-            if 'user' in extra_data:
-                del extra_data['user']
-            entry['extra'] = ', '.join(['%s: %s' % (k,v) for (k,v) in extra_data.iteritems()])
+#        for entry in journal_entries:
+#            # TODO 29715501 replace user identifier with user name
+#            # (UserDAO.load_user() currently requires a password to load a
+#            # user, but we just want to translate an indentifier into a
+#            # name)
+#
+#            # put a string containing all non-standard journal entry data in an
+#            # 'extra' field for display in the browser, because the UI can't
+#            # have column to handle any key that might appear in any event.
+#            # disabled for now because the client doesn't actually show the
+#            #"extra" data.
+#            # TODO processing the entries in this way is slow when loading entries
+#            # for all accounts. (yes, "paging" will be needed when the number of
+#            # entries gets REALLY large but the real problem here is bad code,
+#            # which should be fixed first. mongo aggregation is probably the
+#            # simplest way to do it and it's fast.)
+#            extra_data = copy.deepcopy(entry)
+#            del extra_data['account']
+#            if 'sequence' in extra_data:
+#                del extra_data['sequence']
+#            del extra_data['date']
+#            if 'event' in extra_data:
+#                del extra_data['event']
+#            if 'user' in extra_data:
+#                del extra_data['user']
+#            entry['extra'] = ', '.join(['%s: %s' % (k,v) for (k,v) in extra_data.iteritems()])
 
         if xaction == "read":
             return self.dumps({'success': True, 'rows':journal_entries})
@@ -2754,6 +2750,8 @@ class BillToolBridge:
             # number, name: full name, period_start: date, period_end: date,
             # sequence: reebill sequence number (if present)}
             utilbills, totalCount = self.state_db.list_utilbills(session, account, int(start), int(limit))
+            state_reebills = [ub.reebill for ub in utilbills]
+            mongo_reebills = [self.reebill_dao.load_reebill(rb.customer.account, rb.sequence) if rb else None for rb in state_reebills]
 
             full_names = self.full_names_of_accounts([account])
             full_name = full_names[0] if full_names else account
@@ -2764,6 +2762,8 @@ class BillToolBridge:
                 ('id', ub.id),
                 ('account', ub.customer.account),
                 ('name', full_name),
+                ('utility', rb.utility_name_for_service(ub.service) if ub.service is not None and rb is not None else ''),
+                ('rate_structure', rb.rate_structure_name_for_service(ub.service) if ub.service is not None and rb is not None else ''),
                 # capitalize service name
                 ('service', 'Unknown' if ub.service is None else ub.service[0].upper() + ub.service[1:]),
                 ('period_start', ub.period_start),
@@ -2774,7 +2774,7 @@ class BillToolBridge:
                 # utility bill rows are only editable if they don't have a
                 # reebill attached to them
                 ('editable', (not ub.has_reebill or not ub.reebill.issued))
-            ]) for i, ub in enumerate(utilbills)]
+            ]) for rb, ub in zip(mongo_reebills,utilbills)]
 
             return self.dumps({'success': True, 'rows':rows, 'results':totalCount})
     
@@ -2836,6 +2836,9 @@ class BillToolBridge:
                         dateutils.ISO_8601_DATETIME_WITHOUT_ZONE).date()
                 new_service = rows['service'].lower()
                 new_total_charges = rows['total_charges']
+                new_utility = rows['utility']
+                new_ratestructure = rows['rate_structure']
+
 
                 # check that new dates are reasonable
                 self.validate_utilbill_period(new_period_start, new_period_end)
@@ -2843,9 +2846,17 @@ class BillToolBridge:
                 # find utilbill in mysql
                 utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
 
+                reebill = None
+                mongo_reebill = None
+                if utilbill.has_reebill:
+                    reebill = utilbill.reebill
+                    mongo_reebill = self.reebill_dao.load_reebill(reebill.customer.account, reebill.sequence)
+
+                if reebill is None and (new_utility != '' or new_ratestructure != ''):
+                    raise ValueError("Can't assign a utility and rate structure to an unattached utility bill")
                 # utility bills that have issued reebills shouldn't be editable
                 if utilbill.has_reebill and utilbill.reebill.issued:
-                    raise Exception("Can't edit utility bills that have already been attached to a reebill.")
+                    raise Exception("Can't edit utility bills that are attached to an issued reebill.")
 
                 # move the file, if there is one. (only utility bills that are
                 # Complete (0) or UtilityEstimated (1) have files;
@@ -2861,10 +2872,16 @@ class BillToolBridge:
 
                 # change dates in Mongo if needed
                 if (utilbill.period_start != new_period_start or utilbill.period_end != new_period_end) and utilbill.has_reebill:
-                    reebill = self.reebill_dao.load_reebill(utilbill.reebill.customer.account, utilbill.reebill.sequence)
-                    reebill.set_utilbill_period_for_service(utilbill.service, (new_period_start, new_period_end))
-                    reebill.set_meter_dates_from_utilbills()
-                    self.reebill_dao.save_reebill(reebill)
+                    mongo_reebill.set_utilbill_period_for_service(utilbill.service, (new_period_start, new_period_end))
+                    mongo_reebill.set_meter_dates_from_utilbills()
+                    self.reebill_dao.save_reebill(mongo_reebill)
+
+                #update utility and ratestructure names
+                if mongo_reebill is not None and mongo_reebill.utility_name_for_service(utilbill.service) != new_utility or mongo_reebill.rate_structure_name_for_service(utilbill.service) != new_ratestructure:
+                    old_utility = mongo_reebill.utility_name_for_service(utilbill.service)
+                    old_ratestructure = mongo_reebill.rate_structure_name_for_service(utilbill.service)
+                    self.reebill_dao.update_utility_and_rs(mongo_reebill, utilbill.service, new_utility, new_ratestructure)
+                    self.ratestructure_dao.update_rs_name(utilbill.customer.account, reebill.sequence, reebill.max_version, old_utility, old_ratestructure, new_utility, new_ratestructure)
 
                 # change dates in MySQL
                 utilbill.period_start = new_period_start
@@ -3240,10 +3257,22 @@ if __name__ == '__main__':
             'tools.sessions.timeout': 240
         },
     }
-    cherrypy.config.update({ 'server.socket_host': bridge.config.get("http", "socket_host"),
-                             'server.socket_port': int(bridge.config.get("http", "socket_port")),
-                             })
-    cherrypy.quickstart(bridge, "/", config = local_conf)
+    cherrypy.config.update({
+        'server.socket_host': bridge.config.get("http", "socket_host"),
+        'server.socket_port': int(bridge.config.get("http", "socket_port")),
+    })
+    #cherrypy.quickstart(bridge, "/", config = local_conf)
+    cherrypy.quickstart(bridge,
+            # cherrypy doc refers to this as 'script_name': "a string
+            # containing the 'mount point' of the application'", i.e. the URL
+            # corresponding to the method 'index' above and prefixed to the
+            # URLs corresponding to the other methods
+            # http://docs.cherrypy.org/stable/refman/cherrypy.html?highlight=quickstart#cherrypy.quickstart
+            "/",
+            config = local_conf)
+    cherrypy.log._set_screen_handler(cherrypy.log.access_log, False)
+    cherrypy.log._set_screen_handler(cherrypy.log.access_log, True,
+            stream=sys.stdout)
 else:
     # WSGI Mode
     cherrypy.config.update({

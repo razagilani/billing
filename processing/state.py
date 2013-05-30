@@ -499,24 +499,18 @@ class StateDB:
         return slice, count
 
     def listAllIssuableReebillInfo(self, session, **kwargs):
-        unissued = session.query(ReeBill.sequence.label('sequence'), ReeBill.customer_id.label('customer_id')).filter(ReeBill.issued == 0, ReeBill.max_version == 0).subquery('unissued')
-        minseq = session.query(unissued.c.customer_id.label('customer_id'), func.min(unissued.c.sequence).label('sequence')).group_by(unissued.c.customer_id).subquery('minseq')
-        query = session.query(Customer.account, ReeBill.sequence, UtilBill.total_charges).filter(ReeBill.sequence == minseq.c.sequence).filter(ReeBill.customer_id == minseq.c.customer_id).filter(UtilBill.customer_id == Customer.id).filter(UtilBill.rebill_id == ReeBill.id)
-
+        unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
+                .filter(ReeBill.issued == 0, ReeBill.max_version == 0).subquery()
+        min_sequence = session.query(unissued_v0_reebills.c.customer_id.label('customer_id'),
+                func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
+                .group_by(unissued_v0_reebills.c.customer_id).subquery()
+        query = session.query(Customer.account, ReeBill.sequence, UtilBill.total_charges)\
+                .filter(UtilBill.rebill_id == ReeBill.id)\
+                .filter(ReeBill.sequence == min_sequence.c.sequence)\
+                .filter(ReeBill.customer_id == min_sequence.c.customer_id)\
+                .filter(UtilBill.customer_id == Customer.id)
         slice = query.order_by(asc(Customer.account)).all()
-        count = query.count()
-        return slice, count
-
-    def list_issued_utilbills_for_account(self, session, account):
-        utilbill_info_table = session.query(UtilBill.id, UtilBill.total_charges, UtilBill.service, UtilBill.period_start, UtilBill.period_end, UtilBill.rebill_id, Customer.account).filter(Customer.id == UtilBill.customer_id, Customer.account == account).subquery("utilbill_info")
-        Utilbill_info = utilbill_info_table.c
-        matching_utilbills = session.query(Utilbill_info.account, ReeBill.sequence, ReeBill.max_version, Utilbill_info.id, Utilbill_info.service, Utilbill_info.period_start, Utilbill_info.period_end).filter(Utilbill_info.rebill_id == ReeBill.id, ReeBill.issued == 1)
-        first_date = None
-        last_date = None
-        if matching_utilbills.count() > 0:
-            first_date = matching_utilbills.order_by(Utilbill_info.period_start)[0].period_start
-            last_date = matching_utilbills.order_by(Utilbill_info.period_end)[-1].period_end
-        return (matching_utilbills.all(), first_date, last_date)
+        return slice, query.count()
 
     def reebills(self, session, include_unissued=True):
         '''Generates (account, sequence, max version) tuples for all reebills
