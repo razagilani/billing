@@ -187,6 +187,7 @@ Install the following packages with sudo pip install [package]
 
 	MySQL-Server Dev Headers so MySQL-python can compile
 	Gevent requires libevent-dev to be installed
+    apt-get install libevent-dev
 
 	requirements.txt will fail without the above two predicates
 
@@ -241,8 +242,8 @@ Chart Director 'pychartdir'
 
     Chart Director is installed by:
         tar xvf chartdir_python_linux.tar
-        mv ChartDirector /usr/lib/python2.6/site-packages (or to site-packages in virtualenv)
-        Then add python path to WSGIDaemonProcess directive in Apache2 /usr/lib/python2.6/site-packages/ChartDirector/lib
+        mv ChartDirector ~/.virtualenvs/billing/lib/python2.7/site-packages (or to global site-packages if no virtualenv)
+        Then add python path to virtual host WSGIDaemonProcess directive in Apache2 /usr/lib/python2.6/site-packages/ChartDirector/lib
     Fonts have to be copied?
 
 Details on installing ChartDirector:
