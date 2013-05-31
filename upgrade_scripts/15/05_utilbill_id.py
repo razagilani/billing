@@ -14,7 +14,7 @@ cur.execute("begin")
 # add column for mongo document id to utilbill table
 # note that MySQL inserts its own default value for a new not-null column based
 # on the type (for a string, it's "").
-#cur.execute("alter table utilbill add column document_id varchar(24) not null")
+cur.execute("alter table utilbill add column document_id varchar(24) not null")
 
 cur.execute("select utilbill.id, customer.account, service, period_start, period_end from utilbill join customer where utilbill.customer_id = customer.id")
 for mysql_id, account, service, start, end in cur.fetchall():
