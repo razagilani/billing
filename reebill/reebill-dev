@@ -2,8 +2,8 @@
     ServerAdmin webmaster@localhost
     ServerName reebill-dev
 
-    DocumentRoot /home/dklothe/skyline/billing/reebill/ui/
-    <Directory /home/dklothe/skyline/billing/reebill/ui/>
+    DocumentRoot /home/[username]/skyline/billing/reebill/ui/
+    <Directory /home/[username]/skyline/billing/reebill/ui/>
         DirectoryIndex /reebill 
         Options Indexes FollowSymLinks MultiViews
         AllowOverride None
@@ -30,9 +30,10 @@
     CustomLog /var/log/apache2/reebill-access.log combined
 
     # release 11 and back
-    #WSGIScriptAlias /reebill /home/dklothe/skyline/billing/reebill/bill_tool_bridge.py
-    WSGIScriptAlias /reebill /home/dklothe/skyline/billing/reebill/wsgi.py
-    WSGIDaemonProcess reebill user=dklothe group=dklothe processes=1 threads=1 python-path=/home/dklothe/skyline/billing:/home/dklothe/skyline/:/home/dklothe/.virtualenvs/reebill/lib/python2.7/site-packages/pychartdir:/home/dklothe/.virtualenvs/reebill/lib/python2.7/site-packages
+    #WSGIScriptAlias /reebill /home/[username]/skyline/billing/reebill/bill_tool_bridge.py
+    WSGIScriptAlias /reebill /home/[username]/skyline/billing/reebill/wsgi.py
+    #WSGIDaemonProcess reebill user=[username] group=[username] processes=1 threads=1 python-path=/home/[username]/skyline/billing:/home/[username]/skyline/:/home/[username]/.virtualenvs/reebill/lib/python2.7/site-packages/pychartdir:/home/[username]/.virtualenvs/reebill/lib/python2.7/site-packages
+    WSGIDaemonProcess reebill user=[username] group=[username] processes=1 threads=1 python-path=/home/[username]/skyline/billing:/home/[username]/skyline/ChartDirector/lib
     WSGIProcessGroup reebill
     WSGIApplicationGroup %{GLOBAL}
 
