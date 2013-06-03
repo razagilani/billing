@@ -1,0 +1,41 @@
+<VirtualHost *:80>
+    ServerAdmin webmaster@localhost
+    ServerName reebill-dev
+
+    DocumentRoot /home/[username]/skyline/billing/reebill/ui/
+    <Directory /home/[username]/skyline/billing/reebill/ui/>
+        DirectoryIndex /reebill 
+        Options Indexes FollowSymLinks MultiViews
+        AllowOverride None
+        Order allow,deny
+        allow from all
+    </Directory>
+
+    # directory where utility bill images are saved
+    Alias /utilitybillimages /tmp/billimages
+    <Directory /tmp/billimages-dev>
+        #Order deny,allow
+        #Allow from all
+        Options Indexes FollowSymLinks MultiViews
+        #AllowOverride None
+    </Directory>
+
+
+    ErrorLog /var/log/apache2/reebill-error.log
+
+    # Possible values include: debug, info, notice, warn, error, crit,
+    # alert, emerg.
+    LogLevel debug
+
+    CustomLog /var/log/apache2/reebill-access.log combined
+
+    # release 11 and back
+    #WSGIScriptAlias /reebill /home/[username]/skyline/billing/reebill/bill_tool_bridge.py
+    WSGIScriptAlias /reebill /home/[username]/skyline/billing/reebill/wsgi.py
+    #WSGIDaemonProcess reebill user=[username] group=[username] processes=1 threads=1 python-path=/home/[username]/skyline/billing:/home/[username]/skyline/:/home/[username]/.virtualenvs/reebill/lib/python2.7/site-packages/pychartdir:/home/[username]/.virtualenvs/reebill/lib/python2.7/site-packages
+    WSGIDaemonProcess reebill user=[username] group=[username] processes=1 threads=1 python-path=/home/[username]/skyline/billing:/home/[username]/skyline/ChartDirector/lib
+    WSGIProcessGroup reebill
+    WSGIApplicationGroup %{GLOBAL}
+
+</VirtualHost>
+
