@@ -819,7 +819,7 @@ class BillToolBridge:
     @authenticate_ajax
     @json_exception
     def upload_interval_meter_csv(self, account, sequence, csv_file,
-            timestamp_column, timestamp_format, energy_column, energy_unit, meter_identifier, **args):
+            timestamp_column, timestamp_format, energy_column, energy_unit, register_identifier, **args):
         '''Takes an upload of an interval meter CSV file (cherrypy file upload
         object) and puts energy from it into the shadow registers of the
         reebill given by account, sequence.'''
@@ -838,7 +838,7 @@ class BillToolBridge:
         # extract data from the file (assuming the format of AtSite's
         # example files)
         fbd.fetch_interval_meter_data(reebill, csv_file.file,
-                meter_identifier=meter_identifier,
+                meter_identifier=register_identifier,
                 timestamp_column=timestamp_column,
                 energy_column=energy_column,
                 timestamp_format=timestamp_format, energy_unit=energy_unit)
@@ -2546,7 +2546,79 @@ class BillToolBridge:
 
     ################
     # Handle measuredUsages
+    @cherrypy.expose
+    @random_wait
+    @authenticate_ajax
+    @json_exception
+    def utilbill_registers(self, account, sequence, **args):
+        """
+        Return all of the measuredusages on a per service basis so that the forms may be
+        dynamically created.
 
+        This function returns a sophisticated data structure to the client. However, the client
+        is expected to flatten it, and return edits keyed by meter or register identifier.
+
+        {"SERVICENAME": [
+        "present_read_date": "2011-10-04", 
+        "prior_read_date": "2011-09-05",
+        "identifier": "028702956",
+        "registers": [
+        {
+        "description": "Total Ccf", 
+        "quantity": 200.0, 
+        "quantity_units": "Ccf", 
+        "shadow": false, 
+        "identifier": "028702956", 
+        "type": "total", 
+        "register_binding": "REG_TOTAL"
+        }
+        ], ...
+        ]}
+        """
+        print args
+        if not account or not sequence:
+            raise ValueError("Bad Parameter Value")
+        reebill = self.reebill_dao.load_reebill(account, sequence)
+
+        # It is possible that there is no reebill for the requested measured usages
+        # if this is the case, return no usages.  
+        # This is done so that the UI can configure itself with no data for the
+        # requested measured usage
+        if reebill is None:
+            # TODO: 40161259 must return success field
+            return self.dumps({'success': True, 'meters':[], 'total':0})
+
+            meters = reebill.meters
+            registers = []
+            for meter_list in meters.values():
+                for meter in meter_list:
+                    meter_id = meter['identifier']
+                    for register in meter['registers']:
+                        if not register['shadow']:
+                            registers.append({'id':meter_id+'/'+register['identifier'], 'meter_id':meter_id,
+                                              'register_id':register['identifier'], 'type':register['type'],
+                                              'binding':register['register_binding'], 'description':register['description'],
+                                              'quantity':register['quantity'], 'quantity_units':register['quantity_units']})
+            return self.dumps({'success':True, "rows":registers, 'total':len(registers)})
+        if args['xaction'] == 'create':
+            pass
+        elif args['xaction'] == 'destroy':
+            pass
+        elif args['xaction'] == 'update':
+            pass
+        meters = reebill.meters
+        registers = []
+        for meter_list in meters.values():
+            for meter in meter_list:
+                meter_id = meter['identifier']
+                for register in meter['registers']:
+                    if not register['shadow']:
+                        registers.append({'id':meter_id+'/'+register['identifier'], 'meter_id':meter_id,
+                                          'register_id':register['identifier'], 'type':register['type'],
+                                          'binding':register['register_binding'], 'description':register['description'],
+                                          'quantity':register['quantity'], 'quantity_units':register['quantity_units']})
+        return self.dumps({'success':True, "rows":registers, 'total':len(registers)})
+    
     @cherrypy.expose
     @random_wait
     @authenticate_ajax
@@ -2590,7 +2662,7 @@ class BillToolBridge:
 
         meters = reebill.meters
         # TODO: 40161259 must return success field
-        return self.dumps({"meters":meters})
+        return self.dumps({'success':True, "meters":meters})
 
     @cherrypy.expose
     @random_wait
