@@ -1041,6 +1041,7 @@ function reeBillReady() {
                 rowselect: function (selModel, index, record) {
                     // TODO: have other widgets pull when this selection is made
                     loadReeBillUIForSequence(selected_account, record.data.sequence);
+                    ubRegisterGrid.getSelectionModel().clearSelections();
                 },
             },
         }),
@@ -2027,7 +2028,43 @@ function reeBillReady() {
         ubMeasuredUsagesTab.add(ubMeasuredUsagesFormPanels);
         ubMeasuredUsagesTab.doLayout();
     }*/
+    var ubRegisterToolbar = new Ext.Toolbar({
+        items: [
+            {
+                xtype: 'button',
+                id: 'ubNewRegisterBtn',
+                iconCls: 'icon-add',
+                text: 'New',
+                disabled: false,
+                handler: function() {
+                    ubRegisterGrid.stopEditing();
 
+                    var ubRegisterType = ubRegisterGrid.getStore().recordType;
+                    var defaultData = 
+                        {
+                        };
+                    var r = new ubRegisterType(defaultData);
+                    
+                    ubRegisterStore.add([r]);
+                }
+            },{
+                xtype: 'tbseparator'
+            },{
+                xtype: 'button',
+                id: 'ubRemoveRegisterBtn',
+                iconCls: 'icon-delete',
+                text: 'Remove',
+                disabled: true,
+                handler: function()
+                {
+                    ubRegisterGrid.stopEditing();
+                    var s = ubRegisterGrid.getSelectionModel().getSelected();
+                    ubRegisterStore.remove(s);
+                }
+            }
+        ]
+    });
+    
     var initialUBRegister = {
         rows: [],
         total: 0
@@ -2038,6 +2075,7 @@ function reeBillReady() {
         totalProperty: 'total',
         fields: [
             {name: 'id', mapping: 'id'},
+            {name: 'service', mapping: 'service'},
             {name: 'meter_id', mapping: 'meter_id'},
             {name: 'register_id', mapping: 'register_id'},
             {name: 'type', mapping: 'type'},
@@ -2051,6 +2089,7 @@ function reeBillReady() {
     var ubRegisterWriter = new Ext.data.JsonWriter({
         encode: true,
         writeAllFields: false,
+        listful: true,
     });
 
     var ubRegisterStoreProxyConn = new Ext.data.Connection({
@@ -2072,17 +2111,8 @@ function reeBillReady() {
     
     ubRegisterStore.on('beforeload', function(store, options) {
         ubRegisterGrid.setDisabled(true);
-
-        // account changed, reset the paging 
-        if (store.baseParams.account && store.baseParams.account != selected_account ||
-            store.baseParams.sequence && store.baseParams.sequence != selected_sequence) {
-            // TODO: 26143175 start new account selection on the last page
-            // reset pagination since it is a new account being loaded.
-            options.params.start = 0;
-        }
         options.params.account = selected_account;
         options.params.sequence = selected_sequence;
-
         // set the current selection into the store's baseParams
         store.baseParams.account = selected_account;
         store.baseParams.sequence = selected_sequence;
@@ -2091,19 +2121,34 @@ function reeBillReady() {
     ubRegisterStore.on('load', function() {
         ubRegisterGrid.setDisabled(false);
     });
-    
-    ubRegisterStore.on('exception', function(dataProxy, type, action,
-                                               options, response, arg) {
-            // catch-all for other errors
-        console.log(type)
-        console.log(action)
-        console.log(options)
-        console.log(response)
-        console.log(arg)
+
+    ubRegisterStore.on('beforewrite', function(store, action, rs, options, arg) {
+        options.params.account = selected_account;
+        options.params.sequence = selected_sequence;
+        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
+            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
+        }
+    });
+
+    ubRegisterStore.on('write', function(store, action, result, res, rs) {
+        ubRegisterGrid.getSelectionModel().clearSelections();
+        ubRegisterStore.loadRecords(ubRegisterReader.readRecords(res.raw), {add:false}, true);
+        if (res.raw.current_selected_id !== undefined) {
+            ubRegisterGrid.getSelectionModel().selectRow(ubRegisterStore.indexOfId(res.raw.current_selected_id))
+        }
     });
     
     ubRegisterColModel = new Ext.grid.ColumnModel({
         columns:[
+            {
+                id: 'service',
+                header: 'Service',
+                dataIndex: 'service',
+                editable: true,
+                sortable: false,
+                editor: new Ext.form.TextField({allowBlank: false}),
+                width: 70,
+            },
             {
                 id: 'meter_id',
                 header: 'Meter ID',
@@ -2175,12 +2220,15 @@ function reeBillReady() {
             singleSelect: true,
             moveEditorOnEnter: false,
             listeners: {
-                rowselect: function (selModel, index, record) {
+                rowdeselect: function(selModel, index, record) {
+                    ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(true);
                 },
-                rowdeselect: function (selModel, index, record) {
+                rowselect: function(selModel, index, record) {
+                    ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(ubRegisterGrid.disableEditing);
                 },
             },
         }),
+        tbar: ubRegisterToolbar,
         store: ubRegisterStore,
         enableColumnMove: false,
         frame: true,
@@ -2190,6 +2238,19 @@ function reeBillReady() {
         title: 'Utility Bill Registers',
         clicksToEdit: 2,
         flex: 1,
+        disableEditing: true,
+        setEditable: function(editable) {
+            this.disableEditing = !editable
+            ubRegisterToolbar.find('id','ubNewRegisterBtn')[0].setDisabled(!editable);
+            ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(!editable);
+        },
+    });
+
+    ubRegisterGrid.on('beforeedit', function(e) {
+        if (e.grid.disableEditing) {
+            return false
+        }
+        return true
     });
 
     var intervalMeterFormPanel = new Ext.form.FormPanel({
@@ -6596,8 +6657,9 @@ function reeBillReady() {
             // delete button requires selected unissued correction whose predecessor
             // is issued, or an unissued reebill whose sequence is the last one
             deleteButton.setDisabled(!(isLastSequence && record.data.issued == 0 ||
-                    (record.data.issued == false && record.data.max_version > 0 &&
-                    (prevRecord == null || prevRecord.data.issued == true))));
+                                        (record.data.issued == false && record.data.max_version > 0 &&
+                                         (prevRecord == null || prevRecord.data.issued == true))));
+            ubRegisterGrid.setEditable(sequence != null  && record.data.issued == false);
             // new version button requires selected issued reebill
             versionButton.setDisabled(sequence == null || record.data.issued == false);
         }

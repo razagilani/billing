@@ -41,7 +41,7 @@ from billing.processing.users import UserDAO, User
 from billing.processing import calendar_reports
 from billing.processing.estimated_revenue import EstimatedRevenue
 from billing.processing.session_contextmanager import DBSession
-from billing.processing.exceptions import Unauthenticated
+from billing.processing.exceptions import Unauthenticated, IssuedBillError
 
 
 
@@ -623,7 +623,7 @@ class BillToolBridge:
             except:
                 print >> sys.stderr, "Logger not functioning\n%s:\n%s" % (
                         e, traceback.format_exc())
-            return self.dumps({'success': False, 'errors':{'reason': str(e),
+            return self.dumps({'success': False, 'code':2, 'errors':{'reason': str(e),
                     'details':traceback.format_exc()}})
 
     @cherrypy.expose
@@ -881,7 +881,7 @@ class BillToolBridge:
             raise ValueError("Bad Parameter Value")
         sequence = int(sequence)
         if not self.config.getboolean('billimages', 'show_reebill_images'):
-            return self.dumps({'success': False, 'errors': {'reason':
+            return self.dumps({'success': False, 'code':2, 'errors': {'reason':
                     ('"Render" does nothing because reebill images have '
                     'been turned off.'), 'details': ''}})
         with DBSession(self.state_db) as session:
@@ -2552,34 +2552,10 @@ class BillToolBridge:
     @json_exception
     def utilbill_registers(self, account, sequence, **args):
         """
-        Return all of the measuredusages on a per service basis so that the forms may be
-        dynamically created.
-
-        This function returns a sophisticated data structure to the client. However, the client
-        is expected to flatten it, and return edits keyed by meter or register identifier.
-
-        {"SERVICENAME": [
-        "present_read_date": "2011-10-04", 
-        "prior_read_date": "2011-09-05",
-        "identifier": "028702956",
-        "registers": [
-        {
-        "description": "Total Ccf", 
-        "quantity": 200.0, 
-        "quantity_units": "Ccf", 
-        "shadow": false, 
-        "identifier": "028702956", 
-        "type": "total", 
-        "register_binding": "REG_TOTAL"
-        }
-        ], ...
-        ]}
         """
-        print args
         if not account or not sequence:
             raise ValueError("Bad Parameter Value")
         reebill = self.reebill_dao.load_reebill(account, sequence)
-
         # It is possible that there is no reebill for the requested measured usages
         # if this is the case, return no usages.  
         # This is done so that the UI can configure itself with no data for the
@@ -2588,36 +2564,98 @@ class BillToolBridge:
             # TODO: 40161259 must return success field
             return self.dumps({'success': True, 'meters':[], 'total':0})
 
-            meters = reebill.meters
-            registers = []
-            for meter_list in meters.values():
-                for meter in meter_list:
-                    meter_id = meter['identifier']
-                    for register in meter['registers']:
-                        if not register['shadow']:
-                            registers.append({'id':meter_id+'/'+register['identifier'], 'meter_id':meter_id,
-                                              'register_id':register['identifier'], 'type':register['type'],
-                                              'binding':register['register_binding'], 'description':register['description'],
-                                              'quantity':register['quantity'], 'quantity_units':register['quantity_units']})
-            return self.dumps({'success':True, "rows":registers, 'total':len(registers)})
-        if args['xaction'] == 'create':
-            pass
-        elif args['xaction'] == 'destroy':
-            pass
-        elif args['xaction'] == 'update':
-            pass
         meters = reebill.meters
         registers = []
-        for meter_list in meters.values():
+        for service, meter_list in meters.items():
             for meter in meter_list:
                 meter_id = meter['identifier']
                 for register in meter['registers']:
                     if not register['shadow']:
-                        registers.append({'id':meter_id+'/'+register['identifier'], 'meter_id':meter_id,
-                                          'register_id':register['identifier'], 'type':register['type'],
-                                          'binding':register['register_binding'], 'description':register['description'],
-                                          'quantity':register['quantity'], 'quantity_units':register['quantity_units']})
-        return self.dumps({'success':True, "rows":registers, 'total':len(registers)})
+                        row = {'id':service+'/'+meter_id+'/'+register['identifier'], 'meter_id':meter_id, 'register_id':register['identifier'], 'service':service}
+                        row['type'] = register.get('type', '')
+                        row['binding'] = register.get('register_binding', '')
+                        row['description'] = register.get('description', '')
+                        row['quantity'] = register.get('quantity', 0)
+                        row['quantity_units'] = register.get('quantity_units','')
+                        registers.append(row)
+            
+        if args['xaction'] == 'read':
+            toRet = {'success':True, "rows":registers, 'total':len(registers)}
+            for r in registers:
+                if 'current_selected_id' in args and r['id'] == args['current_selected_id']:
+                    toRet['current_selected_id'] = r['id']
+            return self.dumps(toRet)
+        rows = json.loads(args['rows'])
+        if type(rows) is not list:
+            rows = [rows]
+        toSelect = None
+        if args['xaction'] == 'create':
+            for row in rows:
+                if not row.has_key('service'):
+                    row['service'] = reebill.services[0]
+                if '/' in row.get('meter_id','') or '/' in row.get('register_id',''):
+                    raise ValueError('Cannot use a \'/\' in a meter or register identifier')
+                meter_id, new_reg = reebill.new_register(row['service'], row.get('meter_id', None), row.get('register_id', None))
+                if not row.has_key('meter_id'):
+                    row['meter_id'] = meter_id
+                if not row.has_key('register_id'):
+                    row['register_id'] = new_reg['identifier']
+                row['id'] = row['service']+'/'+row['meter_id']+'/'+row['register_id']
+                row['type'] = ''
+                row['binding'] = ''
+                row['description'] = ''
+                row['quantity'] = 0
+                row['quantity_units'] = ''
+                registers.append(row)
+            toSelect = rows[0]['id']
+        if args['xaction'] == 'update' or args['xaction'] == 'create':
+            regs = []
+            for row in rows:
+                old_id = row['id']
+                old_ids = old_id.split('/')
+                if len(old_ids) != 3:
+                    raise ValueError('ID doesn\'t split into 3 parts: %s'%id)
+                old_service, old_meter, old_register = old_ids
+                reg = next((r for r in registers if r['id'] == row['id']), None)
+                if reg is None:
+                    raise ValueError('No register found with id %s for meter %s for service %s' %(old_register, old_meter, old_service))
+                reg.update(row)
+                if '/' in row.get('meter_id','') or '/' in row.get('register_id',''):
+                    raise ValueError('Cannot use a \'/\' in a meter or register identifier')
+                if 'service' in row or 'meter_id' in row:
+                    new_service = row.get('service', old_service).lower()
+                    reg['service'] = new_service
+                    new_meter = row.get('meter_id', old_meter)
+                    if new_service != old_service or new_meter != old_meter:
+                        reebill.delete_register(old_service, old_meter, old_register)
+                        reebill.new_register(new_service, new_meter, old_register)
+                    old_service = new_service
+                    old_meter = new_meter
+                new_dict = {}
+                new_dict['identifier'] = reg['register_id']
+                new_dict['description'] = reg['description']
+                new_dict['type'] = reg['type']
+                new_dict['register_binding'] = reg['binding']
+                new_dict['quantity'] = reg['quantity']
+                new_dict['quantity_units'] = reg['quantity_units']
+                reebill.update_register(old_service, old_meter, old_register, new_dict)
+                reg['id'] = reg['service']+'/'+reg['meter_id']+'/'+reg['register_id']
+                if 'current_selected_id' in args and old_id == args['current_selected_id'] and toSelect is None:
+                    toSelect = reg['id']
+        if args['xaction'] == 'destroy':
+            for id in rows:
+                old_ids = id.split('/')
+                if len(old_ids) != 3:
+                    raise ValueError('ID doesn\'t split into 3 parts: %s'%id)
+                old_service, old_meter, old_register = old_ids
+                reebill.delete_register(old_service, old_meter, old_register)
+                registers[:] = [r for r in registers if r['id'] != id]
+        reebill.set_meter_dates_from_utilbills()
+        self.reebill_dao.save_reebill(reebill)
+        toRet = {'success':True, "rows":registers, 'total':len(registers)}
+        if toSelect is not None:
+            toRet['current_selected_id'] = toSelect
+        return self.dumps(toRet)
     
     @cherrypy.expose
     @random_wait
