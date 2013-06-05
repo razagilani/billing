@@ -2110,16 +2110,25 @@ function reeBillReady() {
     });
     
     ubRegisterStore.on('beforeload', function(store, options) {
-        ubRegisterGrid.setDisabled(true);
+        if (ubRegisterGrid.getSelectionModel().hasSelection()) {
+            options.params.current_selected_id = ubRegisterGrid.getSelectionModel().getSelected().id;
+        }
+        ubRegisterGrid.getSelectionModel().clearSelections();
         options.params.account = selected_account;
         options.params.sequence = selected_sequence;
         // set the current selection into the store's baseParams
         store.baseParams.account = selected_account;
         store.baseParams.sequence = selected_sequence;
+        ubRegisterGrid.setDisabled(true);
+        ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(true);
     });
 
-    ubRegisterStore.on('load', function() {
+    ubRegisterStore.on('load', function(store, record, options) {
         ubRegisterGrid.setDisabled(false);
+        o = ubRegisterReader.jsonData
+        if (o.current_selected_id !== undefined) {
+            ubRegisterGrid.getSelectionModel().selectRow(ubRegisterStore.indexOfId(o.current_selected_id))
+        }
     });
 
     ubRegisterStore.on('beforewrite', function(store, action, rs, options, arg) {
@@ -2132,10 +2141,14 @@ function reeBillReady() {
 
     ubRegisterStore.on('write', function(store, action, result, res, rs) {
         ubRegisterGrid.getSelectionModel().clearSelections();
-        ubRegisterStore.loadRecords(ubRegisterReader.readRecords(res.raw), {add:false}, true);
+        ubRegisterStore.loadData(res.raw, false);
         if (res.raw.current_selected_id !== undefined) {
             ubRegisterGrid.getSelectionModel().selectRow(ubRegisterStore.indexOfId(res.raw.current_selected_id))
         }
+    });
+
+    ubRegisterStore.on('remove', function(store, record, index) {
+        ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(true);
     });
     
     ubRegisterColModel = new Ext.grid.ColumnModel({
