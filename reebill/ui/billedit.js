@@ -2149,6 +2149,7 @@ function reeBillReady() {
 
     ubRegisterStore.on('remove', function(store, record, index) {
         ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(true);
+        intervalMeterFormPanel.setDisabled(true);
     });
     
     ubRegisterColModel = new Ext.grid.ColumnModel({
@@ -2235,9 +2236,11 @@ function reeBillReady() {
             listeners: {
                 rowdeselect: function(selModel, index, record) {
                     ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(true);
+                    intervalMeterFormPanel.setDisabled(true);
                 },
                 rowselect: function(selModel, index, record) {
                     ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(ubRegisterGrid.disableEditing);
+                    intervalMeterFormPanel.setDisabled(ubRegisterGrid.disableEditing);
                 },
             },
         }),
@@ -2256,6 +2259,7 @@ function reeBillReady() {
             this.disableEditing = !editable
             ubRegisterToolbar.find('id','ubNewRegisterBtn')[0].setDisabled(!editable);
             ubRegisterToolbar.find('id','ubRemoveRegisterBtn')[0].setDisabled(!editable);
+            intervalMeterFormPanel.setDisabled(!editable);
         },
     });
 
@@ -2275,6 +2279,7 @@ function reeBillReady() {
         //bodyStyle: 'padding: 10px 10px 0 10px;',
         labelWidth: 175,
         flex: 0,
+        disabled: true,
         defaults: {
             anchor: '95%',
             //allowBlank: false,
