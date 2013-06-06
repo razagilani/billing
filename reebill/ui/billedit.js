@@ -1761,7 +1761,7 @@ function reeBillReady() {
     ////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////
-    // Measured Usage Tab
+    // Meters and Registers Tab
     //
     //
     // create a panel to which we can dynamically add/remove components
@@ -2408,11 +2408,11 @@ function reeBillReady() {
     });
     
     //
-    // Instantiate the Utility Bill Measured Usages panel
+    // Instantiate the Utility Bill Meters and Registers panel
     //
     var ubMeasuredUsagesPanel = new Ext.Panel({
         id: 'ubMeasuredUsagesTab',
-        title: 'Measured Usage',
+        title: 'Meters and Registers',
         disabled: usagePeriodsPanelDisabled,
         layout: 'vbox',
         layoutConfig : {
@@ -2435,7 +2435,7 @@ function reeBillReady() {
         // disable it during load, the datastore re-enables when loaded.
         ubMeasuredUsagesPanel.setDisabled(true);
 
-        // get the measured usage dates for each service
+        // get the meter read dates for each service
         ubMeasuredUsagesDataConn.request({
             params: {account: selected_account, sequence: selected_sequence},
             success: function(result, request) {
