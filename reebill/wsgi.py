@@ -2611,24 +2611,30 @@ class BillToolBridge:
         if args['xaction'] == 'update' or args['xaction'] == 'create':
             regs = []
             for row in rows:
+                reg = next((r for r in registers if r['id'] == row['id']), None)
                 old_id = row['id']
                 old_ids = old_id.split('/')
                 if len(old_ids) != 3:
                     raise ValueError('ID doesn\'t split into 3 parts: %s'%id)
                 old_service, old_meter, old_register = old_ids
-                reg = next((r for r in registers if r['id'] == row['id']), None)
                 if reg is None:
                     raise ValueError('No register found with id %s for meter %s for service %s' %(old_register, old_meter, old_service))
                 reg.update(row)
+                new_service = row.get('service', old_service).lower()
+                reg['service'] = new_service
+                new_meter = row.get('meter_id', old_meter)
+                new_register = row.get('register_id', old_register)
                 if '/' in row.get('meter_id','') or '/' in row.get('register_id',''):
                     raise ValueError('Cannot use a \'/\' in a meter or register identifier')
-                if 'service' in row or 'meter_id' in row:
-                    new_service = row.get('service', old_service).lower()
-                    reg['service'] = new_service
-                    new_meter = row.get('meter_id', old_meter)
-                    if new_service != old_service or new_meter != old_meter:
-                        reebill.delete_register(old_service, old_meter, old_register)
-                        reebill.new_register(new_service, new_meter, old_register)
+                if new_service != old_service or new_meter != old_meter or new_register != old_register:
+                    meter = reebill._meter(new_service, new_meter)
+                    if meter is not None:
+                        for _r in meter['registers']:
+                            if _r['identifier'] == new_register:
+                                raise ValueError('Register with id %s for meter %s for service %s already exists' %(new_register, new_meter, new_service))
+                if new_service != old_service or new_meter != old_meter:
+                    reebill.delete_register(old_service, old_meter, old_register)
+                    reebill.new_register(new_service, new_meter, old_register)
                     old_service = new_service
                     old_meter = new_meter
                 new_dict = {}
