@@ -1010,7 +1010,7 @@ class Process(object):
                     "predecessor has not been issued.") % (account, sequence))
         # TODO complain if utility bills have not been attached yet
         if not self.state_db.is_attached(session, account, sequence):
-            raise NotAttachable(("Can't attach reebill %s-%s: it must "
+            raise NotAttachable(("Can't issue reebill %s-%s: it must "
                     "be attached first") % (account, sequence))
 
         # set issue date and due date in mongo

@@ -41,9 +41,8 @@ then
     echo "Using previously downloaded $tarball"
 else
     scp -i $ssh_key ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$tarball .
+    tar xzf $tarball
 fi
-
-tar xzf $tarball
 
 # apparently only root can restore the database
 mysql -uroot -p$MYSQLPASSWORD -D skyline_$TOENV < ${now}billing_mysql.dmp
