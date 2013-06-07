@@ -417,7 +417,9 @@ class RateStructureDAO(object):
         rate_structure_data = bson_convert(rate_structure_data)
         self.collection.save(rate_structure_data)
 
-    def update_rs_name(self, account, sequence, version, old_utility, old_name, new_utility, new_name):
+    def update_rs_name(self, account, sequence, version, old_utility, old_name,
+            new_utility, new_name):
+        # NOTE update cannot be used because keys inside "_id" need to be modified
         uprs = self.load_uprs(account, sequence, version, old_utility, old_name)
         cprs = self.load_cprs(account, sequence, version, old_utility, old_name)
         new_uprs = deepcopy(uprs)
@@ -442,6 +444,7 @@ class RateStructureDAO(object):
                                 '_id.utility_name':old_utility,
                                 '_id.rate_structure_name':old_name,
                                 '_id.type':'CPRS'})
+
     def save_urs(self, utility_name, rate_structure_name, rate_structure_data):
         '''Saves the dictionary 'rate_structure_data' as a Utility (global)
         Rate Structure document in Mongo.'''
