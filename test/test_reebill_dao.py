@@ -59,12 +59,12 @@ class ReebillDAOTest(TestCaseWithSetup):
             self.reebill_dao.save_reebill(b2)
             self.reebill_dao.save_reebill(b3, freeze_utilbills=True)
             self.reebill_dao.save_reebill(b3_1)
-            self.state_db.new_rebill(session, '99999', 1, version=0)
-            self.state_db.new_rebill(session, '99999', 1, version=1)
-            self.state_db.new_rebill(session, '99999', 1, version=2)
-            self.state_db.new_rebill(session, '99999', 2, version=0)
-            self.state_db.new_rebill(session, '99999', 3, version=0)
-            self.state_db.new_rebill(session, '99999', 3, version=1)
+            self.state_db.new_reebill(session, '99999', 1, version=0)
+            self.state_db.new_reebill(session, '99999', 1, version=1)
+            self.state_db.new_reebill(session, '99999', 1, version=2)
+            self.state_db.new_reebill(session, '99999', 2, version=0)
+            self.state_db.new_reebill(session, '99999', 3, version=0)
+            self.state_db.new_reebill(session, '99999', 3, version=1)
 
             # freezing of utililty bills should have created one one frozen
             # copy for each issued reebill (3) in addition to the editable one
@@ -162,7 +162,7 @@ class ReebillDAOTest(TestCaseWithSetup):
         with DBSession(self.state_db) as session:
             b = example_data.get_reebill('99999', 1)
             self.reebill_dao.save_reebill(b)
-            self.state_db.new_rebill(session, '99999', 1)
+            self.state_db.new_reebill(session, '99999', 1)
 
             # save frozen utility bills
             self.reebill_dao.save_reebill(b, freeze_utilbills=True)
@@ -305,7 +305,7 @@ class ReebillDAOTest(TestCaseWithSetup):
             # save reebill (with utility bills)
             b = example_data.get_reebill('99999', 1)
             self.reebill_dao.save_reebill(b)
-            self.state_db.new_rebill(session, '99999', 1)
+            self.state_db.new_reebill(session, '99999', 1)
 
             # reebill and utility bills should be in mongo
             all_reebills = self.reebill_dao.load_reebills_in_period('99999', version=0)

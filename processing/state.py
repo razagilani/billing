@@ -358,7 +358,7 @@ class StateDB:
         max_sequence = session.query(sqlalchemy.func.max(ReeBill.sequence)) \
                 .filter(ReeBill.customer_id==customer.id).one()[0]
         # TODO: because of the way 0.xml templates are made (they are not in
-        # the database) rebill needs to be primed otherwise the last sequence
+        # the database) reebill needs to be primed otherwise the last sequence
         # for a new bill is None. Design a solution to this issue.
         if max_sequence is None:
             max_sequence =  0
@@ -393,7 +393,7 @@ class StateDB:
             return query_results[0]
         return None
 
-    def new_rebill(self, session, account, sequence, version=0):
+    def new_reebill(self, session, account, sequence, version=0):
         '''Creates a new reebill row in the database and returns the new
         ReeBill object corresponding to it.'''
         customer = session.query(Customer)\

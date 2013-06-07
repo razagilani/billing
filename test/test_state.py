@@ -156,7 +156,7 @@ class StateTest(utils.TestCase):
 
     def test_new_reebill(self):
         with DBSession(self.state_db) as session:
-            b = self.state_db.new_rebill(session, '99999', 1)
+            b = self.state_db.new_reebill(session, '99999', 1)
             self.assertEqual('99999', b.customer.account)
             self.assertEqual(1, b.sequence)
             self.assertEqual(0, b.version)
@@ -170,7 +170,7 @@ class StateTest(utils.TestCase):
         with DBSession(self.state_db) as session:
             # initially max_version is 0, max_issued_version is None, and issued
             # is false
-            b = self.state_db.new_rebill(session, acc, seq)
+            b = self.state_db.new_reebill(session, acc, seq)
             self.assertEqual(0, self.state_db.max_version(session, acc, seq))
             self.assertEqual(None, self.state_db.max_issued_version(session,
                     acc, seq))
@@ -262,9 +262,9 @@ class StateTest(utils.TestCase):
     def test_get_unissued_corrections(self):
         with DBSession(self.state_db) as session:
             # reebills 1-4, 1-3 issued
-            self.state_db.new_rebill(session, '99999', 1)
-            self.state_db.new_rebill(session, '99999', 2)
-            self.state_db.new_rebill(session, '99999', 3)
+            self.state_db.new_reebill(session, '99999', 1)
+            self.state_db.new_reebill(session, '99999', 2)
+            self.state_db.new_reebill(session, '99999', 3)
             self.state_db.issue(session, '99999', 1)
             self.state_db.issue(session, '99999', 2)
             self.state_db.issue(session, '99999', 3)
@@ -295,14 +295,14 @@ class StateTest(utils.TestCase):
         account = '99999'
         with DBSession(self.state_db) as session:
             # un-issued bill version 0: row is actually deleted from the table
-            self.state_db.new_rebill(session, account, 1)
+            self.state_db.new_reebill(session, account, 1)
             assert self.state_db.max_version(session, account, 1) == 0
             assert not self.state_db.is_issued(session, account, 1)
             self.state_db.delete_reebill(session, account, 1)
             self.assertEqual([], self.state_db.listSequences(session, account))
 
             # issued bill can't be deleted
-            self.state_db.new_rebill(session, account, 1)
+            self.state_db.new_reebill(session, account, 1)
             self.state_db.issue(session, account, 1)
             self.assertRaises(Exception, self.state_db.delete_reebill, session, account, 1)
 

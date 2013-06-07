@@ -53,7 +53,7 @@ class ProcessTest(TestCaseWithSetup):
             self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999', 1))
             self.rate_structure_dao.save_rs(example_data.get_uprs_dict('99999', 1))
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.state_db.new_rebill(session, '99999', 1)
+            self.state_db.new_reebill(session, '99999', 1)
             # store template account's reebill (includes utility bill) to check
             # for modification
             template_reebill = self.reebill_dao.load_reebill('99999', 1)
@@ -692,7 +692,7 @@ class ProcessTest(TestCaseWithSetup):
             # when utilbill is attached to reebill, deletion should also fail
             # (this reebill is not created by rolling, the way it's usually
             # done, and only exists in MySQL)
-            reebill = self.state_db.new_rebill(session, account, 1)
+            reebill = self.state_db.new_reebill(session, account, 1)
             utilbill = self.state_db.list_utilbills(session, account)[0].one()
             self.state_db.attach_utilbills(session, account, reebill.sequence, [utilbill])
             assert utilbill.reebills == [reebill]
@@ -760,7 +760,7 @@ class ProcessTest(TestCaseWithSetup):
 
         # issue reebill 1
         with DBSession(self.state_db) as session:
-            #self.state_db.new_rebill(session, acc, 1)
+            #self.state_db.new_reebill(session, acc, 1)
             self.state_db.record_utilbill_in_database(session, acc, 'gas',
                     date(2012,1,1), date(2012,2,1), 100,
                     datetime.utcnow().date())
@@ -986,8 +986,8 @@ class ProcessTest(TestCaseWithSetup):
             two.set_meter_read_date('gas', meter['identifier'], date(2012,3,1), date(2012,2,1))
             self.reebill_dao.save_reebill(two)
             #self.process.issue(session, acc, two.sequence)
-            #self.state_db.new_rebill(session, acc, 1)
-            #self.state_db.new_rebill(session, acc, 2)
+            #self.state_db.new_reebill(session, acc, 1)
+            #self.state_db.new_reebill(session, acc, 2)
             
             #self.process.attach_utilbills(session, acc, 1)
 
