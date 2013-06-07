@@ -4,7 +4,7 @@ Please don't put production setup instructions in this file.
 
 
 0. Follow "MongoDB installation" and "Apache installation" in
-docs/development-setup.txt (that's in the separate "docs" repository).
+docs/environment-setup.txt (that's in the separate "docs" repository).
 
 1. Set up virtualenv: mkvirtualenv billing; workon billing; add2virtualenv billing/.. billing
 [TODO: when imports are changed to not include the project directory name,
@@ -46,7 +46,7 @@ When prompted to create a root account, use the username and password "root".
     sudo mkdir /db-dev; sudo chown [your username]:[your username] /db-dev
 
 10. Load a copy of production data into your databases:
-    billing/scripts/destage_from_prod.bash {pass} tyrell-prod dev
+    billing/scripts/destage_from_prod.bash root tyrell-prod dev
 
 11. Create ReeBill config file:
     cp billing/reebill/reebill-dev-template.cfg billing/reebill/reebill.cfg
