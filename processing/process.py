@@ -417,7 +417,7 @@ class Process(object):
         #self.reebill_dao.save_reebill(new_reebill)
 
         # create reebill row in state database
-        self.state_db.new_rebill(session, new_reebill.account,
+        self.state_db.new_reebill(session, new_reebill.account,
                 new_reebill.sequence)
         self.attach_utilbills(session, new_reebill, utilbills)        
         
