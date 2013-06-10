@@ -1252,10 +1252,11 @@ class ReebillDAO:
     def load_doc_for_statedb_utilbill(self, utilbill_row):
         '''Returns the Mongo utility bill document corresponding to the given
         db_objects.UtilBill object.'''
-        # null document_ids should not be possible, once the db is cleaned up
-        # and a "not null" constraint is added
-        if utilbill_row.document_id is None:
-            raise ValueError("Utility bill has null document_id: %s" %
+        # empty document_ids should not be possible, once the db is cleaned up
+        # (there's already a "not null" constraint for 'document_id' but the
+        # default value is "")
+        if utilbill_row.document_id in (None, ''):
+            raise ValueError("Utility bill lacks document_id: %s" %
                     utilbill_row)
 
         docs = self.utilbills_collection.find(
