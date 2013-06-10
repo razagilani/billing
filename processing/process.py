@@ -433,6 +433,27 @@ class Process(object):
         
         return new_reebill
 
+    def _roll_utilbill(self, utilbill, start, end, utility, service):
+        '''Creates and saves a new utility bill document that is the same as
+        the newest one (i.e. latest-ending before 'end') with the given utility
+        name and service, but with period dates 'start' and 'end', new rate
+        structure documents, and charges updated to match the rate
+        structure.'''
+        # find mongo document of predecessor
+        predecessor_row = session.query(UtilBill)\
+                .filter(UtilBill.utility_name == utility)\
+                .filter(UtilBill.service == service)\
+                .filter(UtilBill.period_end < end)\
+                .order_by(desc(UtilBill.period_end)).first()
+        doc = copy.deepcopy(self.reebill_dao.load_doc_for_statedb_utilbill(
+                predecessor_row))
+        
+        # modify predecessor document
+        doc.update({'start': start, 'end': end})
+
+        # TODO roll rate structure documents
+        # TODO update charges in utilbill doc
+
 
     def new_versions(self, session, account, sequence):
         '''Creates new versions of all reebills for 'account' starting at
