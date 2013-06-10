@@ -1249,6 +1249,23 @@ class ReebillDAO:
         return docs[0]
 
 
+    def load_doc_for_statedb_utilbill(self, utilbill_row):
+        '''Returns the Mongo utility bill document corresponding to the given
+        db_objects.UtilBill object.'''
+        # null document_ids should not be possible, once the db is cleaned up
+        # and a "not null" constraint is added
+        if utilbill_row.document_id is None:
+            raise ValueError("Utility bill has null document_id: %s" %
+                    utilbill_row)
+
+        docs = self.utilbills_collection.find(
+                {'_id': ObjectId(utilbill_row.document_id})
+        if docs.count == 0:
+            raise NoSuchBillException(("No utility bill document found in %s"
+                    " corresponding to %s") % utilbill_row)
+        assert docs.count() == 1
+        return docs[0]
+
     def _load_all_utillbills_for_reebill(self, session, reebill_doc):
         '''Loads all utility bill documents from Mongo that match the ones in
         the 'utilbills' list in the given reebill dictionary (NOT MongoReebill
