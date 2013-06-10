@@ -290,8 +290,10 @@ class Process(object):
             present_reebill.balance_due = present_reebill.balance_forward + \
                     present_reebill.ree_charges
 
-        ## TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
-        present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
+        ## TODO: 22726549  hack to ensure the computations from bind_rs come
+        # back as decimal types
+        present_reebill.reebill_dict = deep_map(float_to_decimal,
+                present_reebill.reebill_dict)
         present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
                 present_reebill._utilbills]
         
@@ -312,14 +314,20 @@ class Process(object):
         reebill). compute_bill() should always be called immediately after this
         one so the bill is updated to its current state.'''
         if utility_bill_date:
-            utilbills = self.state_db.get_utilbills_on_date(session, reebill.account, utility_bill_date)
+            utilbills = self.state_db.get_utilbills_on_date(session,
+                    reebill.account, utility_bill_date)
         else:
-            utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
+            utilbills = self.state_db.choose_next_utilbills(session,
+                    reebill.account, reebill.services)
         
         # "TODO Put somewhere nice because this has a specific function"--ST
-        # what does this do? nothing? ('reebill.services' itself looks at utility bills' "service" keys)--DK
-        active_utilbills = [u for u in reebill._utilbills if u['service'] in reebill.services]
-        reebill.reebill_dict['utilbills'] = [handle for handle in reebill.reebill_dict['utilbills'] if handle['id'] in [u['_id'] for u in active_utilbills]]
+        # what does this do? nothing? ('reebill.services' itself looks at
+        # utility bills' "service" keys)--DK
+        active_utilbills = [u for u in reebill._utilbills if u['service'] in
+                reebill.services]
+        reebill.reebill_dict['utilbills'] = [handle for handle in
+                reebill.reebill_dict['utilbills'] if handle['id'] in [u['_id']
+                for u in active_utilbills]]
 
         # construct a new reebill from an old one. the new one's version is
         # always 0 even if it was created from a non-0 version of the old one.
@@ -331,7 +339,8 @@ class Process(object):
         new_reebill.sequence += 1
         # Update the new reebill's periods to the periods identified in the StateDB
         for ub in utilbills:
-            new_reebill.set_utilbill_period_for_service(ub.service, (ub.period_start, ub.period_end))
+            new_reebill.set_utilbill_period_for_service(ub.service,
+                    (ub.period_start, ub.period_end))
         new_reebill.set_meter_dates_from_utilbills()
 
 
@@ -365,10 +374,11 @@ class Process(object):
             rate_structure_name = reebill.rate_structure_name_for_service(service)
 
             # load previous CPRS, save it with same account, next sequence, version 0
-            cprs = self.rate_structure_dao.load_cprs(reebill.account, reebill.sequence,
-                    reebill.version, utility_name, rate_structure_name)
-            if cprs is None:
-                raise NoRateStructureError("No current CPRS")
+            cprs = self.rate_structure_dao.load_cprs(reebill.account,
+                    reebill.sequence, reebill.version, utility_name,
+                    rate_structure_name)
+            if cprs is None: raise
+            NoRateStructureError("No current CPRS")
             self.rate_structure_dao.save_cprs(reebill.account, new_reebill.sequence,
                     0, utility_name, rate_structure_name, cprs)
 
@@ -1138,7 +1148,8 @@ class Process(object):
                             reebill.period_begin and x.date_applied <
                             reebill.period_end, payments)
                     # pop the ones that get applied from the payment list
-                    # (there is a bug due to the reebill periods overlapping, where a payment may be applicable more than ones)
+                    # (there is a bug due to the reebill periods overlapping,
+                    # where a payment may be applicable more than ones)
                     for applicable_payment in applicable_payments:
                         payments.remove(applicable_payment)
 

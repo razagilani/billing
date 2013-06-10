@@ -550,9 +550,6 @@ class ProcessTest(TestCaseWithSetup):
         print 'test_upload_utility_bill'
         with DBSession(self.state_db) as session:
             account, service = '99999', 'gas'
-            #self.process = Process(self.config, self.state_db, self.reebill_dao,
-                    #self.rate_structure_dao, self.billupload, self.splinter,
-                    #self.monguru)
 
             # one utility bill
             file1 = StringIO("Let's pretend this is a PDF")

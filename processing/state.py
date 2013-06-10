@@ -652,8 +652,9 @@ class StateDB:
             # Attach if no failure condition arose
             next_utilbills.append(utilbill)
 
-        # This may be an irrelevant check, but if no specific exceptions were raised and yet there were no
-        # utilbills selected for attachment, there is a problem
+        # This may be an irrelevant check, but if no specific exceptions were
+        # raised and yet there were no utilbills selected for attachment, there
+        # is a problem
         if not next_utilbills:
             raise Exception('No qualifying utility bills found for account #%s' % account)
 
