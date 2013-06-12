@@ -398,17 +398,10 @@ example_urs = {
 	]
 }
 
-# the data in this Utility Periodic Rate Structure are made up--as of when i
-# made this, we have no nonempty URPSs.
 example_uprs = {
-	"_id" : {
-		"type" : "UPRS",
-		"rate_structure_name" : "DC Non Residential Non Heat",
-		"utility_name" : "washgas",
-        # added with rate structure prediction feature
-        'account': '10003',
-        'sequence': 17,
-	},
+    # NOTE: "_id" must be inserted at runtime in get_utilbill_dict() because it
+    # should be different for each instance
+
 	"rates" : [
 		{
 			"rsi_binding" : "SYSTEM_CHARGE",
@@ -429,14 +422,9 @@ example_uprs = {
 }
 
 example_cprs = {
-	"_id" : {
-		"account" : "10003",
-		"sequence" : 17,
-		"utility_name" : "washgas",
-		"rate_structure_name" : "DC Non Residential Non Heat",
-		"version" : 0,
-		"type" : "CPRS"
-	},
+    # NOTE: "_id" must be inserted at runtime in get_utilbill_dict() because it
+    # should be different for each instance
+
 	"rates" : [
 		{
 			"rsi_binding" : "SYSTEM_CHARGE",
@@ -559,27 +547,14 @@ def get_urs_dict(rate_structure_name='DC Non Residential Non Heat',
     })
     return urs_dict
 
-def get_uprs_dict(account, sequence, version=0,
-        rate_structure_name='DC Non Residential Non Heat',
-        utility_name='washgas'):
+def get_uprs_dict():
     '''Returns an example customer periodic rate structure document.'''
     uprs_dict = copy.deepcopy(example_uprs)
-    uprs_dict['_id'].update({
-        'account': account,
-        'sequence': sequence,
-        'version': version,
-        'rate_structure_name': rate_structure_name,
-        'utility_name': utility_name,
-    })
+    uprs_dict['_id'] = ObjectId()
     return uprs_dict
 
-def get_cprs_dict(account, sequence, version=0):
-    '''Returns an example utility customer periodic rate structure document
-    with the given account and sequence.'''
+def get_cprs_dict():
     cprs_dict = copy.deepcopy(example_cprs)
-    cprs_dict['_id']['account'] = account
-    cprs_dict['_id']['sequence'] = sequence
-    cprs_dict['_id']['version'] = version
-    #return RateStructure(cprs_dict)
+    cprs_dict['_id'] = ObjectId()
     return cprs_dict
 
