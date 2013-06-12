@@ -433,26 +433,132 @@ class Process(object):
         
         return new_reebill
 
-    def _roll_utilbill(self, utilbill, start, end, utility, service):
-        '''Creates and saves a new utility bill document that is the same as
-        the newest one (i.e. latest-ending before 'end') with the given utility
-        name and service, but with period dates 'start' and 'end', new rate
-        structure documents, and charges updated to match the rate
-        structure.'''
-        # find mongo document of predecessor
-        predecessor_row = session.query(UtilBill)\
-                .filter(UtilBill.utility_name == utility)\
-                .filter(UtilBill.service == service)\
-                .filter(UtilBill.period_end < end)\
-                .order_by(desc(UtilBill.period_end)).first()
-        doc = copy.deepcopy(self.reebill_dao.load_doc_for_statedb_utilbill(
-                predecessor_row))
-        
-        # modify predecessor document
+#    def _roll_utilbill(self, session, utility, service, start, end):
+#        '''Returns 3 new Mongo documents (utility bill, UPRS, CPRS) for the
+#        "next" utility bill for the same account and service, whose
+#        period is [start, end). These are based on the "newest" utility bill
+#        with those same keys (i.e. latest-ending before 'end').
+#
+#        (Note: utility name is not used for identifying utility bill on which
+#        to base the new one, but it should be!)
+#
+#        Documents are returned but not saved in Mongo.'''
+#        # find MySQL row and Mongo document of predecessor
+#        row = session.query(UtilBill)\
+#                # TODO utility name is not stored in MySQL but should be
+#                #.filter(UtilBill.utility_name == utility)\
+#                .filter(UtilBill.service == service)\
+#                .filter(UtilBill.period_end < end)\
+#                .order_by(desc(UtilBill.period_end)).first()
+#        doc = copy.deepcopy(self.reebill_dao.load_doc_for_statedb_utilbill(
+#                row))
+#
+#        # update _id and dates of utilbill document
+#        doc.update({'_id': ObjectId(), 'start': start, 'end': end})
+#
+#        # duplicate the CPRS, generate a predicted UPRS, and remove any charges
+#        # that were in the previous bill but are not in the new bill's UPRS
+#        # TODO: 22597151 refactor
+#        # load previous CPRS, save it with same account, next sequence, version 0
+#        account = doc['account']
+#        utility, rs_name = doc['utility'], doc['rate_structure_binding']
+#        
+#        # CPRS doesn't change, just gets new _id
+#        cprs = self.rate_structure_dao.load_rs_by_id(row.cprs_id)
+#        cprs['_id'] = ObjectId()
+#
+#        # generate predicted UPRS, save it with account, sequence, version 0
+#        uprs = self.rate_structure_dao.get_probable_uprs(new_reebill,
+#                service, ignore=ignore_function)
+#        if uprs is None:
+#            raise NoRateStructureError("No current UPRS")
+#
+#        # remove charges from utilbill that don't correspond to any RSI binding
+#        # (because their corresponding RSIs were not part of the predicted rate
+#        # structure)
+#        valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
+#                cprs['rates']}
+#        for group, charges in doc['chargegroups']:
+#            for charge in charges:
+#                # if the charge matches a valid RSI binding, mark that
+#                # binding as matched; if not, delete the charge
+#                if charge['rsi_binding'] in valid_bindings:
+#                    valid_bindings[charge['rsi_binding']] = True
+#                else:
+#                    charges.remove(charge)
+#            # NOTE empty chargegroup is not removed because the user might
+#            # want to add charges to it again
+#
+#        # TODO add a charge for every RSI that doesn't have a charge, i.e.
+#        # the ones whose value in 'valid_bindings' is False.
+#        # we can't do this yet because we don't know what group it goes in.
+#        # see https://www.pivotaltracker.com/story/show/43797365
+
+    def _roll_utilbill_doc(self, doc, start, end):
+        '''Returns 3 new Mongo documents (utility bill, UPRS, CPRS) for the
+        "next" utility bill following 'predecessor' (a db_objects.UtilBill
+        object). Documents are returned but not saved in Mongo.'''
+        # remove document _id (so it will get a new one when it's saved) and
+        # update dates)
+        del doc['_id']
         doc.update({'start': start, 'end': end})
 
-        # TODO roll rate structure documents
-        # TODO update charges in utilbill doc
+        def ignore_function(uprs):
+            # ignore UPRSs of un-attached utility bills, and utility bills whose
+            # reebill sequence is 0, which are meaningless
+            if 'sequence' not in uprs['_id'] or uprs['_id']['sequence'] == 0:
+                return True
+
+            ## ignore UPRSs whose utility bills are attached to un-issued
+            ## reebills
+            #if not self.state_db.is_issued(session, uprs['_id']['account'],
+                    #uprs['_id']['sequence']):
+                #return True
+
+            # ignore UPRSs belonging to a utility bill whose reebill version is
+            # less than the maximum version (because they may be wrong, and to
+            # prevent multiple-counting)
+            if self.state_db.max_version(session, uprs['_id']['account'],
+                    uprs['_id']['sequence']):
+                return True
+
+            return False
+
+        # duplicate the CPRS, generate a predicted UPRS, and remove any charges
+        # that were in the previous bill but are not in the new bill's UPRS
+        # TODO: 22597151 refactor
+        # load previous CPRS, save it with same account, next sequence, version 0
+        
+        # CPRS doesn't change, just gets new _id
+        cprs = self.rate_structure_dao.load_rs_by_id(row.cprs_id)
+        cprs['_id'] = ObjectId()
+
+        # generate predicted UPRS, save it with account, sequence, version 0
+        uprs = self.rate_structure_dao.get_probable_uprs(doc['utility'],
+                doc['service'], ignore=ignore_function)
+        if uprs is None:
+            raise NoRateStructureError("No current UPRS")
+
+        # remove charges from utilbill that don't correspond to any RSI binding
+        # (because their corresponding RSIs were not part of the predicted rate
+        # structure)
+        valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
+                cprs['rates']}
+        for group, charges in doc['chargegroups']:
+            for charge in charges:
+                # if the charge matches a valid RSI binding, mark that
+                # binding as matched; if not, delete the charge
+                if charge['rsi_binding'] in valid_bindings:
+                    valid_bindings[charge['rsi_binding']] = True
+                else:
+                    charges.remove(charge)
+            # NOTE empty chargegroup is not removed because the user might
+            # want to add charges to it again
+
+        # TODO add a charge for every RSI that doesn't have a charge, i.e.
+        # the ones whose value in 'valid_bindings' is False.
+        # we can't do this yet because we don't know what group it goes in.
+        # see https://www.pivotaltracker.com/story/show/43797365
 
 
     def new_versions(self, session, account, sequence):

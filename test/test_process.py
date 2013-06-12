@@ -1620,6 +1620,9 @@ class ProcessTest(TestCaseWithSetup):
         self.assertEqual([], u1.reebills)
         self.assertNotEqual([], u2.reebills)
 
+    def test_roll_utilbill_doc(self):
+        # TODO
+        pass
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
