@@ -1260,7 +1260,7 @@ class ReebillDAO:
                     utilbill_row)
 
         docs = self.utilbills_collection.find(
-                {'_id': ObjectId(utilbill_row.document_id})
+                {'_id': ObjectId(utilbill_row.document_id)})
         if docs.count == 0:
             raise NoSuchBillException(("No utility bill document found in %s"
                     " corresponding to %s") % utilbill_row)

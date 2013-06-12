@@ -44,9 +44,9 @@ class UtilBill(object):
     # TODO 38385969: not sure this strategy is a good idea
     Complete, UtilityEstimated, SkylineEstimated, Hypothetical = range(4)
 
-    def __init__(self, customer, state, service, period_start=None,
-            period_end=None, total_charges=0, date_received=None,
-            reebill=None):
+    def __init__(self, customer, state, service, uprs_id, cprs_id,
+            period_start=None, period_end=None, total_charges=0,
+            date_received=None, reebills=[]):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -54,11 +54,13 @@ class UtilBill(object):
         self.customer = customer
         self.state = state
         self.service = service
+        self.uprs_id = uprs_id,
+        self.cprs_id = cprs_id,
         self.period_start = period_start
         self.period_end = period_end
         self.total_charges = total_charges
         self.date_received = date_received
-        self.reebill = reebill # newly-created utilbill has NULL in reebill_id column
+        self.reebills = reebills
 
     # TODO rename to has_reebills
     @property
@@ -69,6 +71,18 @@ class UtilBill(object):
         return '<UtilBill(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
                 % (self.customer, self.service, self.period_start, self.period_end)
 
+
+class UPRS(object):
+    '''Utility Periodic Rate Structure'''
+    def __init__(self, document_id):
+        '''document_id is the Mongo document _id (string).'''
+        self.document_id = document_id
+
+class CPRS(object):
+    '''Customer Periodic Rate Structure'''
+    def __init__(self, document_id):
+        '''document_id is the Mongo document _id (string).'''
+        self.document_id = document_id
 
 class Payment(object):
     '''date_received is the datetime when Skyline recorded the payment.
