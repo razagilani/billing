@@ -10,19 +10,10 @@ con.autocommit(False)
 cur = con.cursor()
 db = pymongo.Connection('localhost')['skyline-dev']
 
-try:
-    # create cprs & uprs tables
-    cur.execute("create table cprs (id integer not null auto_increment primary key, document_id varchar(24) not null)")
-    cur.execute("create table uprs (id integer not null auto_increment primary key, document_id varchar(24) not null)")
-
-    # add foreign key columns to utilbill table (but don't make them "not null" yet,
-    # because insertion of default values violates the foreign key constraint)
-    cur.execute("""alter table utilbill add column cprs_id integer,
-            add foreign key fk_utilbill_cprs(cprs_id) references cprs(id)""")
-    cur.execute("""alter table utilbill add column uprs_id integer,
-            add foreign key fk_utilbill_uprs(uprs_id) references uprs(id)""")
-except MySQLdb.OperationalError:
-    print >> stderr, "Skipped table modifications; already done"
+# add foreign key columns to utilbill table (but don't make them "not null" yet,
+# because insertion of default values violates the foreign key constraint)
+cur.execute("""alter table utilbill add column uprs_document_id varchar(24) not null""")
+cur.execute("""alter table utilbill add column cprs_document_id varchar(24) not null""")
 
 cur.execute("begin")
 
@@ -60,7 +51,7 @@ for account, sequence, version, utilbill_id in cur.fetchall():
     uprs = uprss[0]
 
     # delete CPRS and UPRS docs from collection
-    # TODO do this after saving replacement
+    # TODO do this after saving replacement, not before
     db.ratestructure.remove(cprs)
     db.ratestructure.remove(uprs)
 
@@ -68,19 +59,17 @@ for account, sequence, version, utilbill_id in cur.fetchall():
     cprs['_id'] = ObjectId()
     uprs['_id'] = ObjectId()
 
-    cur.execute("insert into cprs (document_id) values ('%s')" % cprs['_id'])
-    cprs_row_id = cur.lastrowid
-    cur.execute("insert into uprs (document_id) values ('%s')" % uprs['_id'])
-    uprs_row_id = cur.lastrowid
-    cur.execute("update utilbill set cprs_id = %s where id = %s" % (cprs_row_id, utilbill_id))
-    cur.execute("update utilbill set uprs_id = %s where id = %s" % (uprs_row_id, utilbill_id))
+    cur.execute("update utilbill set cprs_document_id = '%s' where id = %s" %
+            (cprs['_id'], utilbill_id))
+    cur.execute("update utilbill set uprs_document_id = '%s' where id = %s" %
+            (uprs['_id'], utilbill_id))
 
     db.ratestructure.save(cprs)
     db.ratestructure.save(uprs)
 
 con.commit()
 
-# TODO enable after verifying that every utilbill gets a cprs_id and uprs_id
-#cur.execute("alter table utilbill modify cprs_id integer not null")
-#cur.execute("alter table utilbill modify uprs_id integer not null")
+# TODO enable after verifying that every utilbill gets a cprs_document_id and uprs_document_id
+#cur.execute("alter table utilbill modify cprs_document_id integer not null")
+#cur.execute("alter table utilbill modify uprs_document_id integer not null")
 
