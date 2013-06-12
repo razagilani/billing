@@ -166,7 +166,6 @@ class StateDB:
             'customer': relationship(Customer, backref='payment')
         })
 
-
         # To turn logging on (set log level to INFO to see SQL statements)
         import logging
         logging.basicConfig()
@@ -661,7 +660,8 @@ class StateDB:
         return next_utilbills
 
     def record_utilbill_in_database(self, session, account, service,
-            begin_date, end_date, total_charges, date_received, state=UtilBill.Complete):
+            begin_date, end_date, total_charges, date_received,
+            state=UtilBill.Complete):
         '''Inserts a row into the utilbill table when a utility bill file has
         been uploaded. The bill is Complete by default but can can have other
         states (see comment in db_objects.UtilBill for explanation of utility
