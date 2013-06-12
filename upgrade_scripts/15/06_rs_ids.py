@@ -55,9 +55,11 @@ for account, sequence, version, utilbill_id in cur.fetchall():
     db.ratestructure.remove(cprs)
     db.ratestructure.remove(uprs)
 
-    # replace ids with new ones
+    # replace ids with new ones, and add "type" field to the body of the document
     cprs['_id'] = ObjectId()
     uprs['_id'] = ObjectId()
+    cprs['type'] = 'CPRS'
+    uprs['type'] = 'UPRS'
 
     cur.execute("update utilbill set cprs_document_id = '%s' where id = %s" %
             (cprs['_id'], utilbill_id))
@@ -73,3 +75,7 @@ con.commit()
 #cur.execute("alter table utilbill modify cprs_document_id integer not null")
 #cur.execute("alter table utilbill modify uprs_document_id integer not null")
 
+
+# TODO clean up remaining documents that have old-style id. are there any?
+
+# TODO what to do with UPRS documents? probably move their RSIs into UPRS whenever they are not overridden.
