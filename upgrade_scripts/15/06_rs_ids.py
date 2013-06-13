@@ -69,6 +69,67 @@ for account, sequence, version, utilbill_id in cur.fetchall():
     db.ratestructure.save(cprs)
     db.ratestructure.save(uprs)
 
+
+# represent "template" utility bills in MySQL
+cur.execute("select account, id from customer")
+for account, customer_id in cur.fetchall():
+    print 'template for', account
+
+    # find utilbill, CPRS and UPRS docs
+    utilbill_query = {
+        'account': account,
+        'sequence': 0
+    }
+    utilbills = db.utilbills.find(utilbill_query)
+    if utilbills.count() == 0:
+        print >> stderr, "Missing template utility bill:", utilbill_query
+        continue
+    elif utilbills.count() > 1:
+        print >> stderr, "Multiple utilbills match", utilbill_query
+        continue
+    utilbill = utilbills[0]
+    cprs_query = {
+        '_id.type': 'CPRS', 
+        '_id.account': account,
+        '_id.sequence': 0
+    }
+    cprss = db.ratestructure.find(cprs_query)
+    if cprss.count() == 0:
+        print >> stderr, "Missing CPRS:", cprs_query
+        continue
+    elif cprss.count() > 1:
+        print >> stderr, "Multiple CPRSs match", cprs_query
+        continue
+    cprs = cprss[0]
+    uprs_query = {
+        '_id.type': 'UPRS', 
+        '_id.account': account,
+        '_id.sequence': 0
+    }
+    uprss = db.ratestructure.find(uprs_query)
+    if uprss.count() == 0:
+        print >> stderr, "Missing UPRS:", uprs_query
+        continue
+    elif uprss.count() > 1:
+        print >> stderr, "Multiple UPRSs match", uprs_query
+        continue
+    uprs = uprss[0]
+
+
+    command = """insert into utilbill (customer_id, period_start, period_end,
+            processed, state, date_received, service, total_charges,
+            document_id) values ('{customer_id}', {period_start}, {period_end},
+            {processed}, {state}, {date_received}, '{service}',
+            {total_charges}, '{document_id}')""".format(
+            customer_id=customer_id,
+            period_start=utilbill['start'].date(),
+            period_end=utilbill['end'].date(),
+            processed='null', state='null', date_received='null',
+            service=utilbill['service'], total_charges='null',
+            document_id=str(utilbill['_id']))
+    cur.execute(command)
+
+
 con.commit()
 
 # TODO enable after verifying that every utilbill gets a cprs_document_id and uprs_document_id
