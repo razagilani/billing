@@ -369,18 +369,18 @@ class Process(object):
         # and remove any charges that were in the previous bill but are not in
         # the new bill's UPRS
         # TODO: 22597151 refactor
-        for service in reebill.services:
+
+        # TODO: this doesn't work for sequence 0
+        reebill_row = self.state_db.get_reebill(session, reebill.account,
+                reebill.sequence, reebill.version)
+        for utilbill_row in reebill_row.utilbills:
             utility_name = new_reebill.utility_name_for_service(service)
             rate_structure_name = reebill.rate_structure_name_for_service(service)
 
             # load previous CPRS, save it with same account, next sequence, version 0
-            cprs = self.rate_structure_dao.load_cprs(reebill.account,
-                    reebill.sequence, reebill.version, utility_name,
-                    rate_structure_name)
-            if cprs is None: raise
-            NoRateStructureError("No current CPRS")
-            self.rate_structure_dao.save_cprs(reebill.account, new_reebill.sequence,
-                    0, utility_name, rate_structure_name, cprs)
+            cprs = self.rate_structure_dao.load_cprs(utilbill_row.cprs_document_id)
+            cprs['_id'] = ObjectId()
+            self.rate_structure_dao.save_rs(cprs)
 
             # generate predicted UPRS, save it with account, sequence, version 0
             uprs = self.rate_structure_dao.get_probable_uprs(new_reebill,

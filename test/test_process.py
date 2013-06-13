@@ -1440,7 +1440,6 @@ class ProcessTest(TestCaseWithSetup):
                 uprs_ids.append(str(uprs['_id']))
                 cprs_ids.append(str(cprs['_id']))
 
-            import ipdb; ipdb.set_trace()
             session.add(UtilBill(customer, UtilBill.Complete, 'gas',
                     utilbill_ids[0], uprs_ids[0], cprs_ids[0],
                     period_start=date(2012,1,1), period_end=date(2012,2,1),
@@ -1453,11 +1452,11 @@ class ProcessTest(TestCaseWithSetup):
                     utilbill_ids[2], uprs_ids[2], cprs_ids[2],
                     period_start=date(2012,3,1), period_end=date(2012,4,1),
                     total_charges=100, date_received=datetime.utcnow().date()))
-            session.flush()
             
             # create reebills #0 and #1
             zero = example_data.get_reebill(acc, 0)
             self.reebill_dao.save_reebill(zero)
+            import ipdb; ipdb.set_trace()
             one = self.process.roll_bill(session, zero)
 
             # update the meter like the user normally would
