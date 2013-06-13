@@ -92,9 +92,26 @@ port = 27017
         self.state_db = StateDB(**statedb_config)
         session = self.state_db.session()
         # name, account, discount rate, late charge rate
-        customer = Customer('Test Customer', '99999', .12, .34)
+        customer = Customer('Test Customer', '99999', .12, .34,
+                '000000000000000000000001', '000000000000000000000002',
+                '000000000000000000000003')
         session.add(customer)
         session.commit()
+
+        # insert template utilbill, UPRS, and CPRS documents for the customer
+        # in Mongo
+        db = pymongo.Connection('localhost')['test']
+        utilbill = example_data.get_utilbill_dict('99999',
+                start=date(1900,01,01), end=date(1900,02,01),
+                utility='washgas', service='gas')
+        utilbill['_id'] = '000000000000000000000001'
+        uprs = example_data.get_uprs_dict()
+        uprs['_id'] = '000000000000000000000002'
+        cprs = example_data.get_cprs_dict()
+        cprs['_id'] = '000000000000000000000003'
+        db.utilbills.save(utilbill)
+        db.ratestructure.save(uprs)
+        db.ratestructure.save(cprs)
 
         self.reebill_dao = mongo.ReebillDAO(self.state_db, **{
             'billpath': '/db-dev/skyline/bills/',

@@ -4,11 +4,15 @@ from datetime import date, datetime, timedelta
 here, due to relationships defined in state.py.'''
 
 class Customer(object):
-    def __init__(self, name, account, discount_rate, late_charge_rate):
+    def __init__(self, name, account, discount_rate, late_charge_rate,
+            utilbill_template_id, uprs_template_id, cprs_template_id):
         self.name = name
         self.account = account
         self.discountrate = discount_rate
         self.latechargerate = late_charge_rate
+        self.utilbill_template_id = utilbill_template_id
+        self.uprs_template_id = uprs_template_id
+        self.cprs_template_id = cprs_template_id
     def __repr__(self):
         return '<Customer(name=%s, account=%s, discountrate=%s latechargerate=%s)>' \
                 % (self.name, self.account, self.discountrate, self.latechargerate)
