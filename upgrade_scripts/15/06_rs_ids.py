@@ -14,6 +14,9 @@ db = pymongo.Connection('localhost')['skyline-dev']
 # because insertion of default values violates the foreign key constraint)
 cur.execute("""alter table utilbill add column uprs_document_id varchar(24) not null""")
 cur.execute("""alter table utilbill add column cprs_document_id varchar(24) not null""")
+cur.execute("""alter table customer add column utilbill_template_id varchar(24) not null""")
+cur.execute("""alter table customer add column uprs_template_id varchar(24) not null""")
+cur.execute("""alter table customer add column cprs_template_id varchar(24) not null""")
 
 cur.execute("begin")
 
@@ -70,10 +73,13 @@ for account, sequence, version, utilbill_id in cur.fetchall():
     db.ratestructure.save(uprs)
 
 
-# represent "template" utility bills in MySQL
-cur.execute("select account, id from customer")
+# put ids of "template" utility bills, UPRSs, and CPRSs in MySQL
+cur.execute("select account, customer.id from customer order by account")
 for account, customer_id in cur.fetchall():
-    print 'template for', account
+    cur.execute("select count(*) from reebill where customer_id = '%s' and issued = 1" % customer_id)
+    num_reebills = cur.fetchone()[0]
+
+    print 'template for %s (%s reebills issued)' % (account, num_reebills)
 
     # find utilbill, CPRS and UPRS docs
     utilbill_query = {
@@ -82,7 +88,10 @@ for account, customer_id in cur.fetchall():
     }
     utilbills = db.utilbills.find(utilbill_query)
     if utilbills.count() == 0:
-        print >> stderr, "Missing template utility bill:", utilbill_query
+        if num_reebills > 0:
+            print >> stderr, "Missing template utility bill:", utilbill_query
+        else:
+            print >> stderr, "Missing template utility bill: %s (but not needed)" % utilbill_query
         continue
     elif utilbills.count() > 1:
         print >> stderr, "Multiple utilbills match", utilbill_query
@@ -115,24 +124,32 @@ for account, customer_id in cur.fetchall():
         continue
     uprs = uprss[0]
 
+    # delete CPRS and UPRS docs from collection
+    # TODO do this after saving replacement, not before
+    db.ratestructure.remove(cprs)
+    db.ratestructure.remove(uprs)
+    # replace ids with new ones, and add "type" field to the body of the document
+    cprs['_id'] = ObjectId()
+    uprs['_id'] = ObjectId()
+    cprs['type'] = 'CPRS'
+    uprs['type'] = 'UPRS'
+    db.ratestructure.save(cprs)
+    db.ratestructure.save(uprs)
 
-    command = """insert into utilbill (customer_id, period_start, period_end,
-            processed, state, date_received, service, total_charges,
-            document_id) values ('{customer_id}', {period_start}, {period_end},
-            {processed}, {state}, {date_received}, '{service}',
-            {total_charges}, '{document_id}')""".format(
-            customer_id=customer_id,
-            period_start=utilbill['start'].date(),
-            period_end=utilbill['end'].date(),
-            processed='null', state='null', date_received='null',
-            service=utilbill['service'], total_charges='null',
-            document_id=str(utilbill['_id']))
+    command = """update customer set
+            utilbill_template_id = '{utilbill_template_id}',
+            uprs_template_id = '{uprs_template_id}',
+            cprs_template_id = '{cprs_template_id}'
+            where id = '{customer_id}'""".format(
+            utilbill_template_id=str(utilbill['_id']),
+            uprs_template_id=str(uprs['_id']),
+            cprs_template_id=str(cprs['_id']),
+            customer_id=customer_id)
     cur.execute(command)
-
 
 con.commit()
 
-# TODO enable after verifying that every utilbill gets a cprs_document_id and uprs_document_id
+# TODO make new columns not null after verifying that every value is filled in?
 #cur.execute("alter table utilbill modify cprs_document_id integer not null")
 #cur.execute("alter table utilbill modify uprs_document_id integer not null")
 

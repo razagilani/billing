@@ -332,6 +332,23 @@ class RateStructureDAO(object):
         urs = self.collection.find_one(query)
         return urs
 
+    def load_uprs_for_statedb_utilbill(self, utilbill):
+        '''Loads and returns the UPRS document for the given
+        db_objects.Utilbill.'''
+        return self._load_rs_by_id(utilbill.uprs_document_id)
+
+    def load_cprs_for_statedb_utilbill(self, utilbill):
+        '''Loads and returns the CPRS document for the given
+        db_objects.Utilbill.'''
+        return self._load_rs_by_id(utilbill.cprs_document_id)
+
+    def _load_rs_by_id(self, _id):
+        '''Loads and returns a rate structure document by its _id.'''
+        doc = self.collection.findOne({'_id': _id})
+        if doc is None:
+            raise NoRateStructureError("No rate structure with _id %s" % _id)
+        return doc
+
     def _load_uprss_for_prediction(self, utility_name, service,
             rate_structure_name, verbose=False):
         '''Returns list of (raw UPRS dictionary, start date, end date) tuples
