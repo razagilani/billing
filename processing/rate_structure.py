@@ -94,8 +94,8 @@ class RateStructureDAO(object):
         self.collection = self.database['ratestructure']
         self.reebill_dao = reebill_dao
 
-    def _get_probable_rsis(self, utility, service, rate_structure_name, period,
-            distance_func=manhattan_distance,
+    def _get_probable_rsis(self, session, utility, service,
+            rate_structure_name, period, distance_func=manhattan_distance,
             weight_func=exp_weight_with_min(0.5, 7, 0.000001),
             threshold=RSI_PRESENCE_THRESHOLD, ignore=lambda x: False):
         '''Returns list of RSI dictionaries: a guess of what RSIs will be in a
@@ -104,10 +104,10 @@ class RateStructureDAO(object):
         score (between 0 and 1) for an RSI to be included. 'ignore' is an
         optional function to exclude UPRSs from the input data (used for
         testing).'''
-        # load all UPRS and their utility bill period dates (to avoid repeated
+        # load all UPRSs and their utility bill period dates (to avoid repeated
         # queries)
         all_uprss = [(uprs, start, end) for (uprs, start, end) in
-                self._load_uprss_for_prediction(utility,
+                self._load_uprss_for_prediction(session, utility,
                 service, rate_structure_name) if not ignore(uprs)]
 
         # find every RSI binding that ever existed for this rate structure
@@ -186,25 +186,21 @@ class RateStructureDAO(object):
                 })
         return result
 
-    def get_probable_uprs(self, reebill, service, ignore=lambda x: False):
-        '''Returns a guess of the rate structure for the utility bill of the
-        given service for the given reebill. 'ignore' is a boolean-valued
+    def get_probable_uprs(self, session, utility, service, rate_structure_name,
+            start, end, ignore=lambda x: False):
+        '''Returns a guess of the rate structure for a new utility bill of the
+        given utility name, service, and dates.
+        
+        'ignore' is a boolean-valued
         function that should return True when given a UPRS document that should
-        be excluded from prediction.'''
-        utility = reebill.utility_name_for_service(service)
-        rate_structure_name = reebill.rate_structure_name_for_service(service)
-
+        be excluded from prediction.
+        
+        The returned document has no _id, so the caller can add one before
+        saving.'''
         return {
-            '_id': {
-                'account': reebill.account,
-                'sequence': reebill.sequence,
-                'version': reebill.version,
-                'utility_name': utility,
-                'rate_structure_name': rate_structure_name,
-            },
-            'rates': self._get_probable_rsis(utility, service,
-                rate_structure_name,
-                reebill.utilbill_period_for_service(service),
+            'rates': self._get_probable_rsis(session,
+                utility, service, rate_structure_name,
+                (start, end),
                 # exclude certain UPRSs from prediction as specified above
                 ignore=ignore)
         }
@@ -349,41 +345,21 @@ class RateStructureDAO(object):
             raise NoRateStructureError("No rate structure with _id %s" % _id)
         return doc
 
-    def _load_uprss_for_prediction(self, utility_name, service,
+    def _load_uprss_for_prediction(self, session, utility_name, service,
             rate_structure_name, verbose=False):
-        '''Returns list of (raw UPRS dictionary, start date, end date) tuples
-        with given utility and rate structure name.'''
-        cursor = self.collection.find({
-            '_id.type': 'UPRS',
-            '_id.utility_name': utility_name,
-            '_id.rate_structure_name': rate_structure_name
-        })
-        result = []
-        for doc in cursor:
-            if doc is None or doc['_id'].get('account', None) is None or \
-                    doc['_id'].get('sequence', None) is None or \
-                    doc['_id'].get('version', None) is None or \
-                    'effective' in doc['_id'] or 'expires' in doc['_id']:
-                if verbose:
-                    print >> sys.stderr, 'malformed UPRS id:', doc['_id']
-                continue
-            # only include RS docs that correspond to an actual utility bill
-            # with an actual reebill
-            try:
-                # TODO would be better to use StateDB.is_issued here (to use
-                # only bills that officially exist in MySQL and are issued),
-                # but a ReeBillDAO is what's available
-                # (look up highest version, not the UPRS document's verison,
-                # because UPRS will only be used if its version is the max)
-                reebill = self.reebill_dao.load_reebill(doc['_id']['account'],
-                        doc['_id']['sequence'], version='max')
-                utilbill = reebill._get_utilbill_for_rs(utility_name,
-                        service, rate_structure_name)
-            except NoSuchBillException:
-                continue
-            # skip the UPRS if its version is not the maximum
-            if doc['_id']['version'] != reebill.version:
-                continue
+        '''Returns list of (UPRS document, start date, end date) tuples
+        with the given utility and rate structure name.'''
+        utilbills = session.query(UtilBill)\
+                .filter(UtilBill.service==service)\
+                # TODO stop ignoring utility name and rate structure name
+                # https://www.pivotaltracker.com/story/show/51683223
+        for utilbill in utilbills:
+            doc = self.load_uprs_for_statedb_utilbill(utilbill)
+            # only include RS docs that correspond to a current utility bill
+            # (not one belonging to a reebill that has been corrected); this
+            # will be subtly broken until old versions of utility bills are
+            # excluded from MySQL: see
+            # https://www.pivotaltracker.com/story/show/51683847
             result.append((doc, utilbill['start'], utilbill['end']))
         return result
 
