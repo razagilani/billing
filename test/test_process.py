@@ -1427,12 +1427,14 @@ class ProcessTest(TestCaseWithSetup):
             # save utility bills and rate structures in mongo and MySQL
             utilbill_ids, uprs_ids, cprs_ids = [], [], []
             for i in range(3):
+                start, end = date(2012,1+i,1), date(2012,i+2,2)
                 self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-                utilbill = example_data.get_utilbill_dict(acc,
-                        start=date(2012,1+i,1), end=date(2012,i+2,1),
-                        utility='washgas', service='gas')
+                utilbill = example_data.get_utilbill_dict(acc, start=start,
+                        end=end, utility='washgas', service='gas')
                 uprs = example_data.get_uprs_dict()
                 cprs = example_data.get_uprs_dict()
+                utilbill = example_data.get_utilbill_dict(acc, start=start,
+                        end=end, utility='washgas', service='gas')
                 self.reebill_dao._save_utilbill(utilbill)
                 self.rate_structure_dao.save_rs(uprs)
                 self.rate_structure_dao.save_rs(cprs)
@@ -1440,18 +1442,11 @@ class ProcessTest(TestCaseWithSetup):
                 uprs_ids.append(str(uprs['_id']))
                 cprs_ids.append(str(cprs['_id']))
 
-            session.add(UtilBill(customer, UtilBill.Complete, 'gas',
-                    utilbill_ids[0], uprs_ids[0], cprs_ids[0],
-                    period_start=date(2012,1,1), period_end=date(2012,2,1),
-                    total_charges=100, date_received=datetime.utcnow().date()))
-            session.add(UtilBill(customer, UtilBill.Complete, 'gas',
-                    utilbill_ids[1], uprs_ids[1], cprs_ids[1],
-                    period_start=date(2012,2,1), period_end=date(2012,3,1),
-                    total_charges=100, date_received=datetime.utcnow().date()))
-            session.add(UtilBill(customer, UtilBill.Complete, 'gas',
-                    utilbill_ids[2], uprs_ids[2], cprs_ids[2],
-                    period_start=date(2012,3,1), period_end=date(2012,4,1),
-                    total_charges=100, date_received=datetime.utcnow().date()))
+                session.add(UtilBill(customer, UtilBill.Complete, 'gas',
+                        str(utilbill['_id']), str(uprs['_id']),
+                        str(cprs['_id']), period_start=start,
+                        period_end=end, total_charges=100,
+                        date_received=datetime.utcnow().date()))
             
             # create reebills #0 and #1
             zero = example_data.get_reebill(acc, 0)
