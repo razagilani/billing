@@ -494,6 +494,14 @@ class Process(object):
 #        # we can't do this yet because we don't know what group it goes in.
 #        # see https://www.pivotaltracker.com/story/show/43797365
 
+    def create_next_utilbill(self, account, service, start, end):
+        predecessor = session.query(UtilBill)\
+            .filter(UtilBill.service==service)\
+            .filter(UtilBill.period_end <= period_end)\
+            .order_by(desc(period_end)).first()
+        doc = self.reebill_dao.load_doc_for_statedb_utilbill(predecessor)
+        new_doc, new_uprs, new_cprs = self._roll_utilbill_doc(doc)
+
     def _roll_utilbill_doc(self, doc, start, end):
         '''Returns 3 new Mongo documents (utility bill, UPRS, CPRS) for the
         "next" utility bill following 'predecessor' (a db_objects.UtilBill
