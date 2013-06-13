@@ -395,21 +395,22 @@ class RateStructureDAO(object):
                     version, utility_name, rate_structure_name, uprs)
         return uprs
 
-    def load_cprs(self, account, sequence, version, utility_name,
-            rate_structure_name):
-        '''Loads Customer Periodic Rate Structure docuemnt from Mongo, returns
-        it as a dictionary.'''
-        query = {
-            "_id.type":"CPRS",
-            "_id.account":account, 
-            "_id.sequence": int(sequence), 
-            "_id.rate_structure_name": rate_structure_name, 
-            "_id.utility_name": utility_name, 
-            "_id.version":int(version)
-        }
+    def load_uprs(self, id):
+        '''Returns a Utility Periodic Rate Structure document from Mongo.'''
+        query = {"_id": ObjectId(id), "type": "UPRS"}
+        uprs = self.collection.find_one(query)
+        if uprs is None:
+            raise ValueError('Could not find UPRS: query was %s' %
+                    format_query(query))
+        return uprs
+
+    def load_cprs(self, id):
+        '''Returns a Customer Periodic Rate Structure document from Mongo.'''
+        query = {"_id": ObjectId(id), "type": "CPRS"}
         cprs = self.collection.find_one(query)
         if cprs is None:
-            raise ValueError('Could not find CPRS: query was %s' % format_query(query))
+            raise ValueError('Could not find CPRS: query was %s' %
+                    format_query(query))
         return cprs
 
     def save_rs(self, rate_structure_data):
