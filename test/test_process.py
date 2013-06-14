@@ -549,6 +549,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         '''Tests saving of utility bills in database (which also belongs partly
         to StateDB); does not test saving of utility bill files (which belongs
         to BillUpload).'''
+        # TODO include test of saving of utility bill files here
         print 'test_upload_utility_bill'
         with DBSession(self.state_db) as session:
             account, service = '99999', 'gas'
