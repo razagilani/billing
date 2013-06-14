@@ -435,6 +435,73 @@ class Process(object):
         
         return new_reebill
 
+    def roll_reebill(self, session, reebill, utility_bill_date=None):
+        '''Creates the successor to the db_objects.ReeBill and its associated
+        Mongo document.'''
+        # find successor to every utility bill belonging to the reebill
+        new_utilbills = []
+        for utilbill in reebill.utilbills:
+            successor = session.query(UtilBill)\
+                .filter(UtilBill.customer == reebill.customer)\
+                .filter(UtilBill.service == utilbill.service)\
+                .filter(UtilBill.utility == utilbill.utility)\
+                .filter(UtilBill.start >= utilbill.end).first()
+            if successor == None:
+                raise NoSuchBillException(("Couldn't find next utility bill "
+                        "with account %s, service %s, utility %s,
+                        start date on/after %s") % (utilbill.customer.account,
+                        utilbill.service, utilbill.utility, utility.start,
+                        utilbill.end))
+
+        # "TODO Put somewhere nice because this has a specific function"--ST
+        # what does this do? nothing? ('reebill.services' itself looks at
+        # utility bills' "service" keys)--DK
+        active_utilbills = [u for u in reebill._utilbills if u['service'] in
+                reebill.services]
+        reebill.reebill_dict['utilbills'] = [handle for handle in
+                reebill.reebill_dict['utilbills'] if handle['id'] in [u['_id']
+                for u in active_utilbills]]
+
+        # construct a new reebill from an old one. the new one's version is
+        # always 0 even if it was created from a non-0 version of the old one.
+        reebill.new_utilbill_ids()
+        new_reebill = MongoReebill(reebill.reebill_dict, active_utilbills)
+        new_reebill.version = 0
+        new_reebill.new_utilbill_ids()
+        new_reebill.clear()
+        new_reebill.sequence += 1
+        # Update the new reebill's periods to the periods identified in the StateDB
+        for ub in utilbills:
+            new_reebill.set_utilbill_period_for_service(ub.service,
+                    (ub.period_start, ub.period_end))
+        new_reebill.set_meter_dates_from_utilbills()
+
+        reebill_row = self.state_db.get_reebill(session, reebill.account,
+                reebill.sequence, reebill.version)
+        for utilbill_row in reebill_row.utilbills:
+            # find successor of each utility bill
+
+
+        # set discount rate & late charge rate to the instananeous value from MySQL
+        # NOTE suspended_services list is carried over automatically
+        new_reebill.discount_rate = self.state_db.discount_rate(session,
+                reebill.account)
+        new_reebill.late_charge_rate = self.state_db.late_charge_rate(session,
+                reebill.account)
+
+        #self.reebill_dao.save_reebill(new_reebill)
+
+        # create reebill row in state database
+        self.state_db.new_reebill(session, new_reebill.account,
+                new_reebill.sequence)
+        self.attach_utilbills(session, new_reebill, utilbills)        
+        
+        return new_reebill
+
+
+
+
+
     def create_new_utility_bill(self, session, account, utility, service,
             start, end, total=0, state=UtilBill.Complete):
         '''Creates a new utility bill based on the db_objects.UtilBill
