@@ -12,8 +12,8 @@ db = pymongo.Connection('localhost')['skyline-dev']
 
 # add foreign key columns to utilbill table (but don't make them "not null" yet,
 # because insertion of default values violates the foreign key constraint)
-cur.execute("""alter table utilbill add column uprs_document_id varchar(24) not null""")
-cur.execute("""alter table utilbill add column cprs_document_id varchar(24) not null""")
+cur.execute("""alter table utilbill add column uprs_document_id varchar(24)""")
+cur.execute("""alter table utilbill add column cprs_document_id varchar(24)""")
 cur.execute("""alter table customer add column utilbill_template_id varchar(24) not null""")
 
 cur.execute("begin")

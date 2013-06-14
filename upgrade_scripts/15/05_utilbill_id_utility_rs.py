@@ -16,7 +16,7 @@ cur.execute("begin")
 # on the type (for a string, it's "").
 cur.execute("alter table utilbill add column utility varchar(45) not null")
 cur.execute("alter table utilbill add column rate_class varchar(45) not null")
-cur.execute("alter table utilbill add column document_id varchar(24) not null")
+cur.execute("alter table utilbill add column document_id varchar(24)")
 
 cur.execute("select utilbill.id, customer.account, service, period_start, period_end from utilbill join customer where utilbill.customer_id = customer.id")
 for mysql_id, account, service, start, end in cur.fetchall():
