@@ -1644,7 +1644,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     '99999')
 
             self.process.create_new_utility_bill(session, '99999', 'washgas',
-                    'gas', date(2013,1,1), date(2013,2,1))
+                    'gas', 'DC Non Residential Non Heat', date(2013,1,1),
+                    date(2013,2,1))
 
             # utility bill MySQL row and Mongo document should be created, with
             # an _id matching the MySQL row
