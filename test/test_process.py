@@ -631,7 +631,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(UtilBill.Complete, bills[i].state)
 
     def test_delete_utility_bill(self):
-        print 'test_delete_utility_bill'
         account, service, = '99999', 'gas'
         start, end = date(2012,1,1), date(2012,2,1)
 
@@ -1636,8 +1635,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         self.assertNotEqual([], u2.reebills)
 
     def test_create_new_utility_bill(self):
+        '''Tests the method Process.create_new_utility_bill. Since this is no
+        longer used by itself, maybe it should become private and not have a
+        test (but the checks of document contents should be moved into another
+        test).'''
         with DBSession(self.state_db) as session:
-            utilbill_template = self.reebill_dao.load_utilbill_template(session, '99999')
+            utilbill_template = self.reebill_dao.load_utilbill_template(session,
+                    '99999')
 
             self.process.create_new_utility_bill(session, '99999', 'washgas',
                     'gas', date(2013,1,1), date(2013,2,1))
@@ -1646,9 +1650,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # an _id matching the MySQL row
             all_utilbills = session.query(UtilBill).all()
             self.assertEqual(1, len(all_utilbills))
-            utilbill = all_utilbills[0]
-            utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill(utilbill)
-            self.assertEqual(utilbill_doc['_id'], ObjectId(utilbill.document_id))
+            ub = all_utilbills[0]
+            utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill( ub)
+            self.assertEqual(utilbill_doc['_id'], ObjectId(ub.document_id))
 
             # real utility bill document should look like the template, except
             # its _id should be different, it has different dates, and it will
@@ -1656,20 +1660,24 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # the UPRS and CPRS are empty)
             self.assertDocumentsEqualExceptKeys(utilbill_doc,
                     utilbill_template, '_id', 'start', 'end', 'chargegroups')
-            self.assertNotEqual(utilbill_doc['_id'], ObjectId(utilbill_template['_id']))
+            self.assertNotEqual(utilbill_doc['_id'],
+                    ObjectId(utilbill_template['_id']))
             self.assertEquals(date(2013,1,1), utilbill_doc['start'].date())
             self.assertEquals(date(2013,2,1), utilbill_doc['end'].date())
             self.assertEquals({'All Charges': []}, utilbill_doc['chargegroups'])
 
             # UPRS and CPRS documents should be created and be empty
-            uprs = self.rate_structure_dao.load_uprs_for_statedb_utilbill(utilbill)
-            cprs = self.rate_structure_dao.load_cprs_for_statedb_utilbill(utilbill)
-            self.assertDocumentsEqualExceptKeys(uprs, {'type': 'UPRS', 'rates': []}, '_id')
-            self.assertDocumentsEqualExceptKeys(cprs, {'type': 'CPRS', 'rates': []}, '_id')
+            uprs = self.rate_structure_dao.load_uprs_for_statedb_utilbill(ub)
+            cprs = self.rate_structure_dao.load_cprs_for_statedb_utilbill(ub)
+            self.assertDocumentsEqualExceptKeys(uprs, {'type': 'UPRS',
+                    'rates': []}, '_id')
+            self.assertDocumentsEqualExceptKeys(cprs, {'type': 'CPRS',
+                    'rates': []}, '_id')
 
-            # utility bill row in MySQL should point to the UPRS and CPRS documents
-            self.assertEqual(uprs['_id'], ObjectId(utilbill.uprs_document_id))
-            self.assertEqual(cprs['_id'], ObjectId(utilbill.cprs_document_id))
+            # utility bill row in MySQL should point to the UPRS and CPRS
+            # documents
+            self.assertEqual(uprs['_id'], ObjectId(ub.uprs_document_id))
+            self.assertEqual(cprs['_id'], ObjectId(ub.cprs_document_id))
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
