@@ -6,6 +6,7 @@ from StringIO import StringIO
 import ConfigParser
 import logging
 import pymongo
+from bson import ObjectId
 import sqlalchemy
 import re
 from skyliner.splinter import Splinter
@@ -31,12 +32,13 @@ from billing.util.nexus_util import NexusUtil
 from billing.processing.mongo import NoSuchBillException
 from billing.processing.exceptions import BillStateError
 from billing.processing import fetch_bill_data as fbd
+from billing.test import utils
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
 pformat = pprint.PrettyPrinter(indent=1).pformat
 
-class ProcessTest(TestCaseWithSetup):
+class ProcessTest(TestCaseWithSetup, utils.TestCase):
     # apparenty this is what you need to do if you override the __init__ method
     # of a TestCase
     #def __init__(self, methodName='runTest', param=None):
@@ -1633,9 +1635,42 @@ class ProcessTest(TestCaseWithSetup):
         self.assertEqual([], u1.reebills)
         self.assertNotEqual([], u2.reebills)
 
-    def test_roll_utilbill_doc(self):
-        # TODO
-        pass
+    def test_create_new_utility_bill(self):
+        with DBSession(self.state_db) as session:
+            utilbill_template = self.reebill_dao.load_utilbill_template(session, '99999')
+
+            self.process.create_new_utility_bill(session, '99999', 'washgas',
+                    'gas', date(2013,1,1), date(2013,2,1))
+
+            # utility bill MySQL row and Mongo document should be created, with
+            # an _id matching the MySQL row
+            all_utilbills = session.query(UtilBill).all()
+            self.assertEqual(1, len(all_utilbills))
+            utilbill = all_utilbills[0]
+            utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill(utilbill)
+            self.assertEqual(utilbill_doc['_id'], ObjectId(utilbill.document_id))
+
+            # real utility bill document should look like the template, except
+            # its _id should be different, it has different dates, and it will
+            # have no charges (all charges in the template get removed because
+            # the UPRS and CPRS are empty)
+            self.assertDocumentsEqualExceptKeys(utilbill_doc,
+                    utilbill_template, '_id', 'start', 'end', 'chargegroups')
+            self.assertNotEqual(utilbill_doc['_id'], ObjectId(utilbill_template['_id']))
+            self.assertEquals(date(2013,1,1), utilbill_doc['start'].date())
+            self.assertEquals(date(2013,2,1), utilbill_doc['end'].date())
+            self.assertEquals({'All Charges': []}, utilbill_doc['chargegroups'])
+
+            # UPRS and CPRS documents should be created and be empty
+            import ipdb; ipdb.set_trace()
+            uprs = self.rate_structure_dao.load_uprs_for_statedb_utilbill(utilbill)
+            cprs = self.rate_structure_dao.load_cprs_for_statedb_utilbill(utilbill)
+            self.assertDocumentsEqualExceptKeys(uprs, {'type': 'UPRS', 'rates': []}, '_id')
+            self.assertDocumentsEqualExceptKeys(cprs, {'type': 'CPRS', 'rates': []}, '_id')
+
+            # utility bill row in MySQL should point to the UPRS and CPRS documents
+            self.assertEqual(uprs['_id'], ObjectId(utilbill.uprs_document_id))
+            self.assertEqual(cprs['_id'], ObjectId(utilbill.cprs_document_id))
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
