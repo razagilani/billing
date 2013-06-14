@@ -1453,7 +1453,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # create reebills #0 and #1
             zero = example_data.get_reebill(acc, 0)
             self.reebill_dao.save_reebill(zero)
-            import ipdb; ipdb.set_trace()
             one = self.process.roll_bill(session, zero)
 
             # update the meter like the user normally would
@@ -1637,7 +1636,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
     def test_create_new_utility_bill(self):
         with DBSession(self.state_db) as session:
-            import ipdb; ipdb.set_trace()
             utilbill_template = self.reebill_dao.load_utilbill_template(session, '99999')
 
             self.process.create_new_utility_bill(session, '99999', 'washgas',
