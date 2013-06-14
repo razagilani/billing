@@ -15,8 +15,6 @@ db = pymongo.Connection('localhost')['skyline-dev']
 cur.execute("""alter table utilbill add column uprs_document_id varchar(24) not null""")
 cur.execute("""alter table utilbill add column cprs_document_id varchar(24) not null""")
 cur.execute("""alter table customer add column utilbill_template_id varchar(24) not null""")
-cur.execute("""alter table customer add column uprs_template_id varchar(24) not null""")
-cur.execute("""alter table customer add column cprs_template_id varchar(24) not null""")
 
 cur.execute("begin")
 
@@ -73,7 +71,7 @@ for account, sequence, version, utilbill_id in cur.fetchall():
     db.ratestructure.save(uprs)
 
 
-# put ids of "template" utility bills, UPRSs, and CPRSs in MySQL
+# put ids of "template" utility bills in MySQL customer table
 cur.execute("select account, customer.id from customer order by account")
 for account, customer_id in cur.fetchall():
     cur.execute("select count(*) from reebill where customer_id = '%s' and issued = 1" % customer_id)
@@ -97,53 +95,11 @@ for account, customer_id in cur.fetchall():
         print >> stderr, "Multiple utilbills match", utilbill_query
         continue
     utilbill = utilbills[0]
-    cprs_query = {
-        '_id.type': 'CPRS', 
-        '_id.account': account,
-        '_id.sequence': 0
-    }
-    cprss = db.ratestructure.find(cprs_query)
-    if cprss.count() == 0:
-        print >> stderr, "Missing CPRS:", cprs_query
-        continue
-    elif cprss.count() > 1:
-        print >> stderr, "Multiple CPRSs match", cprs_query
-        continue
-    cprs = cprss[0]
-    uprs_query = {
-        '_id.type': 'UPRS', 
-        '_id.account': account,
-        '_id.sequence': 0
-    }
-    uprss = db.ratestructure.find(uprs_query)
-    if uprss.count() == 0:
-        print >> stderr, "Missing UPRS:", uprs_query
-        continue
-    elif uprss.count() > 1:
-        print >> stderr, "Multiple UPRSs match", uprs_query
-        continue
-    uprs = uprss[0]
-
-    # delete CPRS and UPRS docs from collection
-    # TODO do this after saving replacement, not before
-    db.ratestructure.remove(cprs)
-    db.ratestructure.remove(uprs)
-    # replace ids with new ones, and add "type" field to the body of the document
-    cprs['_id'] = ObjectId()
-    uprs['_id'] = ObjectId()
-    cprs['type'] = 'CPRS'
-    uprs['type'] = 'UPRS'
-    db.ratestructure.save(cprs)
-    db.ratestructure.save(uprs)
 
     command = """update customer set
-            utilbill_template_id = '{utilbill_template_id}',
-            uprs_template_id = '{uprs_template_id}',
-            cprs_template_id = '{cprs_template_id}'
+            utilbill_template_id = '{utilbill_template_id}'
             where id = '{customer_id}'""".format(
             utilbill_template_id=str(utilbill['_id']),
-            uprs_template_id=str(uprs['_id']),
-            cprs_template_id=str(cprs['_id']),
             customer_id=customer_id)
     cur.execute(command)
 

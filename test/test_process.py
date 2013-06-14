@@ -1637,6 +1637,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
     def test_create_new_utility_bill(self):
         with DBSession(self.state_db) as session:
+            import ipdb; ipdb.set_trace()
             utilbill_template = self.reebill_dao.load_utilbill_template(session, '99999')
 
             self.process.create_new_utility_bill(session, '99999', 'washgas',
@@ -1662,7 +1663,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals({'All Charges': []}, utilbill_doc['chargegroups'])
 
             # UPRS and CPRS documents should be created and be empty
-            import ipdb; ipdb.set_trace()
             uprs = self.rate_structure_dao.load_uprs_for_statedb_utilbill(utilbill)
             cprs = self.rate_structure_dao.load_cprs_for_statedb_utilbill(utilbill)
             self.assertDocumentsEqualExceptKeys(uprs, {'type': 'UPRS', 'rates': []}, '_id')
