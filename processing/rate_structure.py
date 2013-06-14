@@ -354,6 +354,8 @@ class RateStructureDAO(object):
         with the given utility and rate structure name.'''
         utilbills = session.query(UtilBill)\
                 .filter(UtilBill.service==service)\
+                .filter(UtilBill.utility==utility_name)\
+                .filter(UtilBill.rate_class==rate_structure_name)
                 # TODO stop ignoring utility name and rate structure name
                 # https://www.pivotaltracker.com/story/show/51683223
         result = []

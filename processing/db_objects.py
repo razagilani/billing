@@ -47,9 +47,9 @@ class UtilBill(object):
     # TODO 38385969: not sure this strategy is a good idea
     Complete, UtilityEstimated, SkylineEstimated, Hypothetical = range(4)
 
-    def __init__(self, customer, state, service, document_id, uprs_document_id,
-            cprs_document_id, period_start=None, period_end=None,
-            total_charges=0, date_received=None, reebills=[]):
+    def __init__(self, customer, state, service, utility, rate_class,
+            document_id, uprs_document_id, cprs_document_id, period_start=None,
+            period_end=None, total_charges=0, date_received=None, reebills=[]):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -57,6 +57,8 @@ class UtilBill(object):
         self.customer = customer
         self.state = state
         self.service = service
+        self.utility = utility
+        self.rate_class = rate_class
         self.document_id = document_id
         self.uprs_document_id = uprs_document_id
         self.cprs_document_id = cprs_document_id
