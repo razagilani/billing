@@ -1,3 +1,63 @@
+Developer Quickstart
+====================
+
+Follow "MongoDB installation" and "Apache installation" in docs/environment-setup.txt (that's in the separate "docs" repository).
+
+Set up virtualenv: mkvirtualenv billing; workon billing; add2virtualenv billing/.. billing
+TODO: when imports are changed to not include the project directory name, only the project directory should be added to the path
+
+Install Python packages
+    pip install -r billing/skyliner/requirements.txt
+    pip install -r billing/requirements.txt
+
+Install ChartDirector
+    Download
+        http://download2.advsofteng.com/chartdir_python_linux_64.tar.gz
+    Extract, copy directory into ~/skyline/, then add2virtualenv ~/skyline/ChartDirector/lib/
+
+Create Skyliner config file
+    cp billing/skyliner/cfg_tmpl.yaml billing/skyliner/config.yaml
+
+Link Apache config file for ReeBill from the repository to the appropriate directories:
+    ln -s billing/reebill/reebill-dev /etc/apache2/sites-available/
+    ln -s billing/reebill/reebill-dev /etc/apache2/sites-available/
+
+Configure Apache2
+    TODO: these apache configuration strategies need to be documented in host-setup.txt
+    TODO: the development virtual host file should be depicted below
+    Edit Apache "environment variables" (not actual shell environment variables) that give values to the variable names used in the config file.
+    Append the following text to /etc/apache2/envvars:
+        export SKYLINE_DIR=[your workspace directory]
+        export VIRTUAL_ENVS_DIR=[your virtualenvs directory, usually /home/your name/.virtualenvs]
+        export REEBILL_USER=[your username]
+        export REEBILL_GROUP=[your username]
+    Note that you must fill in your literal username and absolute directory paths;
+    $HOME, $USER etc. will not work because Apache is run by root.
+
+Install MySQL
+    sudo apt-get install mysql-server.
+    When prompted to create a root account, use the username and password "root".
+
+Create MySQL database and development user
+    echo "create database skyline_dev; create user dev@localhost identified by dev; grant all on skyline_dev.* to dev" | mysql -uroot -proot
+
+Create directory for bill PDF files
+    sudo mkdir /db-dev; sudo chown [your username]:[your username] /db-dev
+
+Load a copy of production data into your databases
+    billing/scripts/destage_from_prod.bash root tyrell-prod dev
+
+Create ReeBill config file:
+    cp billing/reebill/reebill-dev-template.cfg billing/reebill/reebill.cfg
+    Edit the file to fill in values 
+    TODO: the template is not up to date but it should be)
+
+Create test database (required for running tests)
+    billing/scripts/create_test_db.py
+
+Restart apache: sudo service apache2 restart
+
+
 Dependencies necessary for ReeBill 
 ==================================
 
