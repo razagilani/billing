@@ -11,7 +11,9 @@ from datetime import date, datetime, timedelta
 import calendar
 from optparse import OptionParser
 from decimal import *
+from sqlalchemy.sql import desc
 import operator
+from bson import ObjectId
 #
 # uuid collides with locals so both the locals and package are renamed
 import uuid as UUID
@@ -25,7 +27,7 @@ from billing.processing.mongo import ReebillDAO
 from billing.processing.mongo import float_to_decimal
 from billing.util import nexus_util
 from billing.util import dateutils
-from billing.util.dateutils import estimate_month, month_offset, month_difference
+from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month, approximate_month
 from billing.util.dictutils import deep_map
 from billing.processing.exceptions import IssuedBillError, NotIssuable, NotAttachable, BillStateError
@@ -433,8 +435,8 @@ class Process(object):
         
         return new_reebill
 
-    def create_new_utility_bill(self, session, account, service, start, end,
-            total=0, state=UtilBill.complete):
+    def create_new_utility_bill(self, session, account, utility, service,
+            start, end, total=0, state=UtilBill.Complete):
         '''Creates a new utility bill based on the db_objects.UtilBill
         'predecessor', with period dates 'start', 'end'.'''
         def ignore_function(uprs):
@@ -450,63 +452,72 @@ class Process(object):
                 return True
             return False
 
-        # base this bill on the last one with the same account and service
+        # look for the last utility bill with the same account and service
         # (i.e. the last-ending before 'end')
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
         predecessor = session.query(UtilBill)\
-                .filter(UtilBill.customer.account==account)\
+                .filter(UtilBill.customer==customer)\
                 .filter(UtilBill.service==service)\
                 .filter(UtilBill.period_end<end)\
                 .order_by(desc(UtilBill.period_end)).first()
 
-        # copy CPRS document from predecessor
-        cprs = self.rate_structure_dao.load_cprs_for_statedb_utilbill(
-                predecessor)
-        cprs['_id'] = ObjectId()
-
-        # generate predicted UPRS
-        uprs = self.rate_structure_dao.get_probable_uprs(session,
-                doc['utility'], doc['service'], doc['rate_structure_binding'],
-                ignore=ignore_function)
-        uprs['_id'] = ObjectId()
-
-        # load Mongo document, update its _id and dates
-        doc = self.reebill_dao.load_doc_for_statedb_utilbill(predecessor)
+        # if this is the first bill ever for the account, use template for the
+        # utility bill document, and create new empty CPRS; otherwise copy the
+        # predecessor's utility bill document and CPRS
+        if predecessor is None:
+            doc = self.reebill_dao.load_utilbill_template(session, account)
+            cprs = {'_id': ObjectId(), 'type': 'CPRS', 'rates': []}
+        else:
+            doc = self.reebill_dao.load_doc_for_statedb_utilbill(predecessor)
+            cprs = self.rate_structure_dao.load_cprs_for_statedb_utilbill(
+                    predecessor)
+            cprs['_id'] = ObjectId()
         doc.update({
             '_id': ObjectId(),
             'start': date_to_datetime(start),
             'end': date_to_datetime(end),
-        }
+        })
+
+        # generate predicted UPRS
+        uprs = self.rate_structure_dao.get_probable_uprs(session,
+                utility, service, doc['rate_structure_binding'], start, end,
+                ignore=ignore_function)
+        uprs['_id'] = ObjectId()
 
         # remove charges that don't correspond to any RSI binding (because
         # their corresponding RSIs were not part of the predicted rate structure)
         valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
                 cprs['rates']}
-        for group, charges in doc['chargegroups']:
-            for charge in charges:
+
+        for group, charges in doc['chargegroups'].iteritems():
+            i = 0
+            while i < len(charges):
+                charge = charges[i]
                 # if the charge matches a valid RSI binding, mark that
                 # binding as matched; if not, delete the charge
                 if charge['rsi_binding'] in valid_bindings:
                     valid_bindings[charge['rsi_binding']] = True
+                    i += 1
                 else:
-                    charges.remove(charge)
+                    charges.pop(i)
             # NOTE empty chargegroup is not removed because the user might
             # want to add charges to it again
+
         # TODO add a charge for every RSI that doesn't have a charge, i.e.
         # the ones whose value in 'valid_bindings' is False.
         # we can't do this yet because we don't know what group it goes in.
         # see https://www.pivotaltracker.com/story/show/43797365
 
         # create new row in MySQL
-        session.add(UtilBill(predecessor.customer, state,
-                predecessor.service, doc['_id'], uprs['_id'],
-                cprs['_id'], period_start=stert, period_end=end,
-                total_charges=0, date_received=datetime.utcnow().date()))
+        session.add(UtilBill(customer, state, service, doc['_id'], uprs['_id'],
+            cprs['_id'], period_start=start, period_end=end, total_charges=0,
+            date_received=datetime.utcnow().date()))
 
         # save all 3 mongo documents
-        db.ratestructure_dao.save_rs(uprs)
-        db.ratestructure.save_rs(cprs)
-        self.reebill_dao._save_utilbill(utilbill)
-
+        self.rate_structure_dao.save_rs(uprs)
+        self.rate_structure_dao.save_rs(cprs)
+        self.reebill_dao._save_utilbill(doc)
 
     def new_versions(self, session, account, sequence):
         '''Creates new versions of all reebills for 'account' starting at
