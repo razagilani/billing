@@ -14,6 +14,7 @@ pformat = pprint.PrettyPrinter().pformat
 LOG_FILE_NAME = 'xls_export.log'
 LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 
+
 class Exporter(object):
     '''Exports a spreadsheet with data about utility bill charges.'''
 

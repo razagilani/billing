@@ -11,7 +11,9 @@ from datetime import date, datetime, timedelta
 import calendar
 from optparse import OptionParser
 from decimal import *
+from sqlalchemy.sql import desc
 import operator
+from bson import ObjectId
 #
 # uuid collides with locals so both the locals and package are renamed
 import uuid as UUID
@@ -25,7 +27,7 @@ from billing.processing.mongo import ReebillDAO
 from billing.processing.mongo import float_to_decimal
 from billing.util import nexus_util
 from billing.util import dateutils
-from billing.util.dateutils import estimate_month, month_offset, month_difference
+from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month, approximate_month
 from billing.util.dictutils import deep_map
 from billing.processing.exceptions import IssuedBillError, NotIssuable, NotAttachable, BillStateError
@@ -290,8 +292,10 @@ class Process(object):
             present_reebill.balance_due = present_reebill.balance_forward + \
                     present_reebill.ree_charges
 
-        ## TODO: 22726549  hack to ensure the computations from bind_rs come back as decimal types
-        present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
+        ## TODO: 22726549  hack to ensure the computations from bind_rs come
+        # back as decimal types
+        present_reebill.reebill_dict = deep_map(float_to_decimal,
+                present_reebill.reebill_dict)
         present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
                 present_reebill._utilbills]
         
@@ -312,14 +316,20 @@ class Process(object):
         reebill). compute_bill() should always be called immediately after this
         one so the bill is updated to its current state.'''
         if utility_bill_date:
-            utilbills = self.state_db.get_utilbills_on_date(session, reebill.account, utility_bill_date)
+            utilbills = self.state_db.get_utilbills_on_date(session,
+                    reebill.account, utility_bill_date)
         else:
-            utilbills = self.state_db.choose_next_utilbills(session, reebill.account, reebill.services)
+            utilbills = self.state_db.choose_next_utilbills(session,
+                    reebill.account, reebill.services)
         
         # "TODO Put somewhere nice because this has a specific function"--ST
-        # what does this do? nothing? ('reebill.services' itself looks at utility bills' "service" keys)--DK
-        active_utilbills = [u for u in reebill._utilbills if u['service'] in reebill.services]
-        reebill.reebill_dict['utilbills'] = [handle for handle in reebill.reebill_dict['utilbills'] if handle['id'] in [u['_id'] for u in active_utilbills]]
+        # what does this do? nothing? ('reebill.services' itself looks at
+        # utility bills' "service" keys)--DK
+        active_utilbills = [u for u in reebill._utilbills if u['service'] in
+                reebill.services]
+        reebill.reebill_dict['utilbills'] = [handle for handle in
+                reebill.reebill_dict['utilbills'] if handle['id'] in [u['_id']
+                for u in active_utilbills]]
 
         # construct a new reebill from an old one. the new one's version is
         # always 0 even if it was created from a non-0 version of the old one.
@@ -331,7 +341,8 @@ class Process(object):
         new_reebill.sequence += 1
         # Update the new reebill's periods to the periods identified in the StateDB
         for ub in utilbills:
-            new_reebill.set_utilbill_period_for_service(ub.service, (ub.period_start, ub.period_end))
+            new_reebill.set_utilbill_period_for_service(ub.service,
+                    (ub.period_start, ub.period_end))
         new_reebill.set_meter_dates_from_utilbills()
 
 
@@ -360,17 +371,18 @@ class Process(object):
         # and remove any charges that were in the previous bill but are not in
         # the new bill's UPRS
         # TODO: 22597151 refactor
-        for service in reebill.services:
+
+        # TODO: this doesn't work for sequence 0
+        reebill_row = self.state_db.get_reebill(session, reebill.account,
+                reebill.sequence, reebill.version)
+        for utilbill_row in reebill_row.utilbills:
             utility_name = new_reebill.utility_name_for_service(service)
             rate_structure_name = reebill.rate_structure_name_for_service(service)
 
             # load previous CPRS, save it with same account, next sequence, version 0
-            cprs = self.rate_structure_dao.load_cprs(reebill.account, reebill.sequence,
-                    reebill.version, utility_name, rate_structure_name)
-            if cprs is None:
-                raise NoRateStructureError("No current CPRS")
-            self.rate_structure_dao.save_cprs(reebill.account, new_reebill.sequence,
-                    0, utility_name, rate_structure_name, cprs)
+            cprs = self.rate_structure_dao.load_cprs(utilbill_row.cprs_document_id)
+            cprs['_id'] = ObjectId()
+            self.rate_structure_dao.save_rs(cprs)
 
             # generate predicted UPRS, save it with account, sequence, version 0
             uprs = self.rate_structure_dao.get_probable_uprs(new_reebill,
@@ -417,12 +429,95 @@ class Process(object):
         #self.reebill_dao.save_reebill(new_reebill)
 
         # create reebill row in state database
-        self.state_db.new_rebill(session, new_reebill.account,
+        self.state_db.new_reebill(session, new_reebill.account,
                 new_reebill.sequence)
         self.attach_utilbills(session, new_reebill, utilbills)        
         
         return new_reebill
 
+    def create_new_utility_bill(self, session, account, utility, service,
+            start, end, total=0, state=UtilBill.Complete):
+        '''Creates a new utility bill based on the db_objects.UtilBill
+        'predecessor', with period dates 'start', 'end'.'''
+        def ignore_function(uprs):
+            # ignore UPRSs of un-attached utility bills, and utility bills whose
+            # reebill sequence is 0, which are meaningless
+            if 'sequence' not in uprs['_id'] or uprs['_id']['sequence'] == 0:
+                return True
+            # ignore UPRSs belonging to a utility bill whose reebill version is
+            # less than the maximum version (because they may be wrong, and to
+            # prevent multiple-counting)
+            if self.state_db.max_version(session, uprs['_id']['account'],
+                    uprs['_id']['sequence']):
+                return True
+            return False
+
+        # look for the last utility bill with the same account and service
+        # (i.e. the last-ending before 'end')
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        predecessor = session.query(UtilBill)\
+                .filter(UtilBill.customer==customer)\
+                .filter(UtilBill.service==service)\
+                .filter(UtilBill.period_end<end)\
+                .order_by(desc(UtilBill.period_end)).first()
+
+        # if this is the first bill ever for the account, use template for the
+        # utility bill document, and create new empty CPRS; otherwise copy the
+        # predecessor's utility bill document and CPRS
+        if predecessor is None:
+            doc = self.reebill_dao.load_utilbill_template(session, account)
+            cprs = {'_id': ObjectId(), 'type': 'CPRS', 'rates': []}
+        else:
+            doc = self.reebill_dao.load_doc_for_statedb_utilbill(predecessor)
+            cprs = self.rate_structure_dao.load_cprs_for_statedb_utilbill(
+                    predecessor)
+            cprs['_id'] = ObjectId()
+        doc.update({
+            '_id': ObjectId(),
+            'start': date_to_datetime(start),
+            'end': date_to_datetime(end),
+        })
+
+        # generate predicted UPRS
+        uprs = self.rate_structure_dao.get_probable_uprs(session,
+                utility, service, doc['rate_structure_binding'], start, end,
+                ignore=ignore_function)
+        uprs['_id'] = ObjectId()
+
+        # remove charges that don't correspond to any RSI binding (because
+        # their corresponding RSIs were not part of the predicted rate structure)
+        valid_bindings = {rsi['rsi_binding']: False for rsi in uprs['rates'] +
+                cprs['rates']}
+
+        for group, charges in doc['chargegroups'].iteritems():
+            i = 0
+            while i < len(charges):
+                charge = charges[i]
+                # if the charge matches a valid RSI binding, mark that
+                # binding as matched; if not, delete the charge
+                if charge['rsi_binding'] in valid_bindings:
+                    valid_bindings[charge['rsi_binding']] = True
+                    i += 1
+                else:
+                    charges.pop(i)
+            # NOTE empty chargegroup is not removed because the user might
+            # want to add charges to it again
+
+        # TODO add a charge for every RSI that doesn't have a charge, i.e.
+        # the ones whose value in 'valid_bindings' is False.
+        # we can't do this yet because we don't know what group it goes in.
+        # see https://www.pivotaltracker.com/story/show/43797365
+
+        # create new row in MySQL
+        session.add(UtilBill(customer, state, service, doc['_id'], uprs['_id'],
+            cprs['_id'], period_start=start, period_end=end, total_charges=0,
+            date_received=datetime.utcnow().date()))
+
+        # save all 3 mongo documents
+        self.rate_structure_dao.save_rs(uprs)
+        self.rate_structure_dao.save_rs(cprs)
+        self.reebill_dao._save_utilbill(doc)
 
     def new_versions(self, session, account, sequence):
         '''Creates new versions of all reebills for 'account' starting at
@@ -1010,7 +1105,7 @@ class Process(object):
                     "predecessor has not been issued.") % (account, sequence))
         # TODO complain if utility bills have not been attached yet
         if not self.state_db.is_attached(session, account, sequence):
-            raise NotAttachable(("Can't attach reebill %s-%s: it must "
+            raise NotAttachable(("Can't issue reebill %s-%s: it must "
                     "be attached first") % (account, sequence))
 
         # set issue date and due date in mongo
@@ -1138,7 +1233,8 @@ class Process(object):
                             reebill.period_begin and x.date_applied <
                             reebill.period_end, payments)
                     # pop the ones that get applied from the payment list
-                    # (there is a bug due to the reebill periods overlapping, where a payment may be applicable more than ones)
+                    # (there is a bug due to the reebill periods overlapping,
+                    # where a payment may be applicable more than ones)
                     for applicable_payment in applicable_payments:
                         payments.remove(applicable_payment)
 

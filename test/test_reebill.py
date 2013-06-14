@@ -25,7 +25,7 @@ class ReebillTest(TestCaseWithSetup):
             # a reebill
             b = example_data.get_reebill(acc, 1)
             self.reebill_dao.save_reebill(b)
-            self.state_db.new_rebill(session, acc, 1)
+            self.state_db.new_reebill(session, acc, 1)
 
             # function to check that the utility bill matches the reebill's
             # reference to it

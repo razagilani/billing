@@ -18,6 +18,7 @@ from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
+from billing.processing.db_objects import Customer
 from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
@@ -249,7 +250,7 @@ class MongoReebill(object):
 
     def new_utilbill_ids(self):
         '''Replaces _ids in utility bill documents and the reebill document's
-        references to them, and removed "sequence" and "version" keys if
+        references to them, and removes "sequence" and "version" keys if
         present (to convert frozen utility bill into editable one). Used when
         rolling to create copies of the utility bills.'''
         for utilbill_handle in self.reebill_dict['utilbills']:
@@ -1249,6 +1250,43 @@ class ReebillDAO:
         return docs[0]
 
 
+    def _load_utilbill_by_id(self, _id):
+        docs = self.utilbills_collection.find({'_id': bson.ObjectId(_id)})
+        if docs.count() == 0:
+            raise NoSuchBillException("No utility bill document for _id %s"
+                    % _id)
+        assert docs.count() == 1
+        return docs[0]
+
+    def load_doc_for_statedb_utilbill(self, utilbill_row):
+        '''Returns the Mongo utility bill document corresponding to the given
+        db_objects.UtilBill object.'''
+        # empty document_ids should not be possible, once the db is cleaned up
+        # (there's already a "not null" constraint for 'document_id' but the
+        # default value is "")
+        if utilbill_row.document_id in (None, ''):
+            raise ValueError("Utility bill lacks document_id: %s" %
+                    utilbill_row)
+        try:
+            return self._load_utilbill_by_id(utilbill_row.document_id)
+        except NoSuchBillException:
+            raise NoSuchBillException(("No utility bill document found in %s"
+                    " corresponding to %s") % utilbill_row)
+
+    def load_utilbill_template(self, session, account):
+        '''Returns the Mongo utility bill document template for the customer
+        given by 'account'.'''
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        docs = self.utilbills_collection.find({
+                '_id': bson.ObjectId(customer.utilbill_template_id)})
+        if docs.count() == 0:
+            raise NoSuchBillException("No utility bill template for %s" %
+                    customer)
+        assert docs.count() == 1
+        return docs[0]
+        return self._load_utilbill_by_id(customer.utilbill_template_id)
+
     def _load_all_utillbills_for_reebill(self, session, reebill_doc):
         '''Loads all utility bill documents from Mongo that match the ones in
         the 'utilbills' list in the given reebill dictionary (NOT MongoReebill
@@ -1268,8 +1306,6 @@ class ReebillDAO:
             # convert types
             utilbill_doc = deep_map(float_to_decimal, utilbill_doc)
             utilbill_doc = convert_datetimes(utilbill_doc)
-
-            result.append(utilbill_doc)
 
         return result
 
