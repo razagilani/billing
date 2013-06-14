@@ -418,6 +418,60 @@ example_uprs = {
 			"uuid" : "b11e3216-01a9-11e1-af85-560964835ffb",
 			"quantity" : "REG_TOTAL.quantity"
 		},
+        {
+            "rsi_binding" : "DISTRIBUTION_CHARGE",
+            "description" : "Distribution charge for all therms",
+            "quantity" : 750.10197727,
+            "rate_units" : "dollars",
+            "rate" : 0.2935,
+            "quantity_units" : "therms",
+            "uuid" : "c9733ed2-2c16-11e1-8c7f-002421e88ffb"
+        },
+        {
+            "rsi_binding" : "PGC",
+            "description" : "Purchased Gas Charge",
+            "quantity" : 750.10197727,
+            "rate_units" : "dollars",
+            "rate" : 0.7653,
+            "quantity_units" : "therms",
+            "uuid" : "c97340da-2c16-11e1-8c7f-002421e88ffb"
+        },
+        {
+            "rsi_binding" : "PUC",
+            "quantity_units" : "kWh",
+            "quantity" : 1,
+            "description" : "Peak Usage Charge",
+            "rate_units" : "dollars",
+            "rate" : 23.14,
+            "uuid" : "c97342e2-2c16-11e1-8c7f-002421e88ffb"
+        },
+        {
+            "rsi_binding" : "RIGHT_OF_WAY",
+            "description" : "DC Rights-of-Way Fee",
+            "quantity" : 750.10197727,
+            "rate_units" : "dollars",
+            "rate" : 0.03059,
+            "quantity_units" : "therms",
+            "uuid" : "c97344f4-2c16-11e1-8c7f-002421e88ffb"
+        },
+        {
+            "rsi_binding" : "SETF",
+            "description" : "Sustainable Energy Trust Fund",
+            "quantity" : 750.10197727,
+            "rate_units" : "dollars",
+            "rate" : 0.01399,
+            "quantity_units" : "therms",
+            "uuid" : "c97346f2-2c16-11e1-8c7f-002421e88ffb"
+        },
+        {
+            "rsi_binding" : "EATF",
+            "description" : "DC Energy Assistance Trust Fund",
+            "quantity" : 750.10197727,
+            "rate_units" : "dollars",
+            "rate" : 0.006,
+            "quantity_units" : "therms",
+            "uuid" : "c9734af8-2c16-11e1-8c7f-002421e88ffb"
+        },
 	]
 }
 
