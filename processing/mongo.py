@@ -1273,6 +1273,14 @@ class ReebillDAO:
             raise NoSuchBillException(("No utility bill document found in %s"
                     " corresponding to %s") % utilbill_row)
 
+    def delete_doc_for_statedb_utilbill(self, utilbill_row):
+        '''Deletes the Mongo utility bill document corresponding to the given
+        db_objects.UtilBill object.'''
+        result = self.utilbills_collection.remove({
+                '_id': bson.ObjectId(utilbill_row.document_id)}, safe=True)
+        if result['err'] is not None or result['n'] == 0:
+            raise MongoError(result)
+
     def load_utilbill_template(self, session, account):
         '''Returns the Mongo utility bill document template for the customer
         given by 'account'.'''
