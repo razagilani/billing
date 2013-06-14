@@ -192,7 +192,7 @@ class Process(object):
         if there was no file or it could not be found. Raises a ValueError if
         the utility bill cannot be deleted.'''
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
-        if utilbill.has_reebill:
+        if utilbill.has_reebills:
             raise ValueError("Can't delete an attached utility bill.")
 
         # find out if any version of any reebill in mongo has this utilbill
@@ -217,8 +217,12 @@ class Process(object):
             # file never existed or could not be found
             new_path = None
 
+        # delete from MySQL
         # TODO move to StateDB?
         session.delete(utilbill)
+
+        # delete from Mongo
+        self.reebill_dao.delete_doc_for_statedb_utilbill(utilbill)
 
         return new_path
 

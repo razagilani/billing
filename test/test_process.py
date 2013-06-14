@@ -650,23 +650,20 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     .filter(UtilBill.period_start == start)\
                     .filter(UtilBill.period_end == end).one().id
 
-            # save rate structures (needed to create new version)
-            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict('99999',
-                    1))
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict('99999',
-                    1))
-
-            # unassociated: deletion should succeed (row removed from MySQL,
-            # file moved to trash directory)
+            # with no reebills, deletion should succeed: row removed from
+            # MySQL, document removed from Mongo (only template should be
+            # left), file moved to trash directory
             new_path = self.process.delete_utility_bill(session, utilbill_id)
             self.assertEqual(0, self.state_db.list_utilbills(session, account)[1])
+            self.assertEquals([self.reebill_dao.load_utilbill_template(session, account)],
+                    self.reebill_dao.load_utilbills())
             self.assertFalse(os.access(bill_file_path, os.F_OK))
             self.assertRaises(IOError, self.billupload.get_utilbill_file_path,
                     account, start, end)
             self.assertTrue(os.access(new_path, os.F_OK))
 
             # re-upload the bill
+            import ipdb; ipdb.set_trace()
             self.process.upload_utility_bill(session, account, service, start,
                     end, StringIO("test"), 'january.pdf')
             assert self.state_db.list_utilbills(session, account)[1] == 1
