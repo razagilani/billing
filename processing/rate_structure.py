@@ -8,6 +8,7 @@ import inspect
 import jinja2
 import os
 import pymongo
+from bson import ObjectId
 import sys
 import traceback
 import uuid
@@ -15,7 +16,8 @@ import yaml
 import yaml
 from math import sqrt, log, exp
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
-from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError, NoSuchBillException
+from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError, NoSuchBillException, NoRateStructureError
+from billing.processing.db_objects import UtilBill
 from copy import deepcopy
 
 import pprint
@@ -198,6 +200,7 @@ class RateStructureDAO(object):
         The returned document has no _id, so the caller can add one before
         saving.'''
         return {
+            'type': 'UPRS',
             'rates': self._get_probable_rsis(session,
                 utility, service, rate_structure_name,
                 (start, end),
@@ -340,7 +343,7 @@ class RateStructureDAO(object):
 
     def _load_rs_by_id(self, _id):
         '''Loads and returns a rate structure document by its _id.'''
-        doc = self.collection.findOne({'_id': _id})
+        doc = self.collection.find_one({'_id': ObjectId(_id)})
         if doc is None:
             raise NoRateStructureError("No rate structure with _id %s" % _id)
         return doc
@@ -353,6 +356,7 @@ class RateStructureDAO(object):
                 .filter(UtilBill.service==service)\
                 # TODO stop ignoring utility name and rate structure name
                 # https://www.pivotaltracker.com/story/show/51683223
+        result = []
         for utilbill in utilbills:
             doc = self.load_uprs_for_statedb_utilbill(utilbill)
             # only include RS docs that correspond to a current utility bill
