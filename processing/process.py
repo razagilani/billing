@@ -1670,30 +1670,3 @@ class Process(object):
                 last_sequence).period_end
         return [last_sequence + (query_month - Month(last_reebill_end))]
 
-
-if __name__ == '__main__':
-    from billing.processing.rate_structure import Register
-
-    reg_data = {u'descriptor': u'REG_THERMS', u'description': u'Total therm register', u'quantityunits': u'therm', u'quantity': u'0'}
-    my_reg = Register(reg_data)
-
-    reebill_dao = ReebillDAO({
-        "host":"localhost", 
-        "port":27017, 
-        "database":"skyline", 
-        "collection":"reebills", 
-        "destination_prefix":"http://localhost:8080/exist/rest/db/skyline/bills"
-    })
-
-    ratestructure_dao = RateStructureDAO({
-        "database":"skyline",
-        "rspath":"/db-dev/skyline/ratestructure/",
-        "host":"localhost",
-        "collection":"ratestructure",
-        "port": 27017
-    })
-
-    reebill = reebill_dao.load_reebill("10002","17")
-    Process(None, None, reebill_dao, ratestructure_dao).bind_rate_structure(reebill)
-
-
