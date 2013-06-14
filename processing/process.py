@@ -30,7 +30,7 @@ from billing.util import dateutils
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month, approximate_month
 from billing.util.dictutils import deep_map
-from billing.processing.exceptions import IssuedBillError, NotIssuable, NotAttachable, BillStateError
+from billing.processing.exceptions import IssuedBillError, NotIssuable, NotAttachable, BillStateError, NoSuchBillException
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -66,11 +66,12 @@ class Process(object):
                 end_date, bill_file, file_name, total=0):
         '''Uploads 'bill_file' with the name 'file_name' as a utility bill for
         the given account, service, and dates. If the upload succeeds, a row is
-        added to the utilbill table in MySQL. If this is the newest or oldest
-        utility bill for the given account and service, "estimated" utility
-        bills will be added to cover the gap between this bill's period and the
-        previous newest or oldest one respectively. The total of all charges on
-        the utility bill may be given.'''
+        added to the utilbill table in MySQL and a document is added in Mongo
+        (based on a previous bill or the template). If this is the newest or
+        oldest utility bill for the given account and service, "estimated"
+        utility bills will be added to cover the gap between this bill's period
+        and the previous newest or oldest one respectively. The total of all
+        charges on the utility bill may be given.'''
         # NOTE 'total' does not yet go into the utility bill document in Mongo
 
         # get & save end date of last bill (before uploading a new bill which
@@ -78,12 +79,29 @@ class Process(object):
         original_last_end = self.state_db.last_utilbill_end_date(session,
                 account)
 
+        # find an existing utility bill that will provide rate class and
+        # utility name for the new one, or get it from the template.
+        # note that it doesn't matter if this is wrong because the user can
+        # edit it after uploading.
+        # (TODO it would be better to get these from the utility bill upload
+        # form)
+        try:
+            predecessor = self.state_db.get_last_utilbill(session, account, service,
+                    end=begin_date)
+            rate_class = predecessor.rate_class
+            utility = predecessor.utility
+        except NoSuchBillException:
+            template = self.reebill_dao.load_utilbill_template(session, account)
+            rate_class = template['rate_structure_binding']
+            utility = template['utility']
+
         if bill_file is None:
             # if there's no file, this is a "skyline estimated bill":
             # record it in the database with that state, but don't upload
             # anything
-            self.state_db.record_utilbill_in_database(session, account,
-                    service, begin_date, end_date, total, datetime.utcnow(),
+            self.record_utilbill_in_database(session, account, utility,
+                    service, rate_class, begin_date, end_date, total,
+                    date_received=datetime.utcnow().date(),
                     state=UtilBill.SkylineEstimated)
         else:
             # if there is a file, get the Python file object and name
@@ -92,9 +110,10 @@ class Process(object):
             upload_result = self.billupload.upload(account, begin_date,
                     end_date, bill_file, file_name)
             if upload_result is True:
-                self.state_db.record_utilbill_in_database(session, account,
-                        service, begin_date, end_date, total,
-                        datetime.utcnow())
+                self.record_utilbill_in_database(session, account, utility,
+                        service, rate_class, begin_date, end_date, total,
+                        date_received=datetime.utcnow().date(),
+                        state=UtilBill.Complete)
             else:
                 raise IOError('File upload failed: %s %s %s' % (file_name,
                     begin_date, end_date))
@@ -103,7 +122,68 @@ class Process(object):
         # hypothetical bills to cover the gap
         if original_last_end is not None and begin_date > original_last_end:
             self.state_db.fill_in_hypothetical_utilbills(session, account,
-                    service, original_last_end, begin_date)
+                    service, utility, rate_class, original_last_end,
+                    begin_date)
+
+    def record_utilbill_in_database(self, session, account, utility, service,
+            rate_class, begin_date, end_date, total_charges, date_received,
+            state=UtilBill.Complete):
+        '''Inserts a row into the utilbill table when a utility bill file has
+        been uploaded. The bill is Complete by default but can can have other
+        states (see comment in db_objects.UtilBill for explanation of utility
+        bill states). The bill is initially marked as un-processed.'''
+        # get customer id from account number
+        customer = session.query(Customer).filter(Customer.account==account) \
+                .one()
+
+        ## new utility bill that will be uploaded (if it's allowed)
+        #new_utilbill = UtilBill(customer, state, service,
+                #period_start=begin_date, period_end=end_date,
+                #date_received=date_received)
+        # NOTE: if new_utilbill is created here, but not added, much less
+        # committed, it appears as a result in the query below, triggering an
+        # error message. 26147819
+
+        # get existing bills matching dates and service
+        # (there should be at most one, but you never know)
+        existing_bills = session.query(UtilBill) \
+                .filter(UtilBill.customer_id==customer.id) \
+                .filter(UtilBill.service==service) \
+                .filter(UtilBill.period_start==begin_date) \
+                .filter(UtilBill.period_end==end_date)
+
+        if list(existing_bills) == []:
+            # nothing to replace; just upload the bill
+
+            self.create_new_utility_bill(session, account, utility, service,
+                    rate_class, begin_date, end_date, total=total_charges,
+                    state=state)
+
+        elif len(list(existing_bills)) > 1:
+            raise Exception(("Can't upload a bill for dates %s, %s because"
+                    " there are already %s of them") % (begin_date, end_date,
+                    len(list(existing_bills))))
+        else:
+            # now there is one existing bill with the same dates. if state is
+            # "more final" than an existing non-final bill that matches this
+            # one, replace that bill
+            # TODO 38385969: is this really a good idea?
+            # (we can compare with '>' because states are ordered from "most
+            # final" to least (see db_objects.UtilBill)
+            bills_to_replace = existing_bills.filter(UtilBill.state > state)
+
+            if list(bills_to_replace) == []:
+                # TODO this error message is kind of obscure
+                raise Exception(("Can't upload a utility bill for dates %s,"
+                    " %s because one already exists with a more final"
+                    " state than %s") % (begin_date, end_date, state))
+            bill_to_replace = bills_to_replace.one()
+                
+            # now there is exactly one bill with the same dates and its state is
+            # less final than the one being uploaded, so replace it.
+            session.delete(bill_to_replace)
+            self.create_new_utility_bill(session, account, utility, service,
+                    rate_class, start, end, total=total_charges, state=state)
 
     def delete_utility_bill(self, session, utilbill_id):
         '''Deletes the utility bill given by utilbill_id (if it's not
@@ -500,21 +580,24 @@ class Process(object):
 
 
     def create_new_utility_bill(self, session, account, utility, service,
-            start, end, total=0, state=UtilBill.Complete):
+            rate_class, start, end, total=0, state=UtilBill.Complete):
         '''Creates a new utility bill based on the db_objects.UtilBill
-        'predecessor', with period dates 'start', 'end'.'''
-        def ignore_function(uprs):
-            # ignore UPRSs of un-attached utility bills, and utility bills whose
-            # reebill sequence is 0, which are meaningless
-            if 'sequence' not in uprs['_id'] or uprs['_id']['sequence'] == 0:
-                return True
-            # ignore UPRSs belonging to a utility bill whose reebill version is
-            # less than the maximum version (because they may be wrong, and to
-            # prevent multiple-counting)
-            if self.state_db.max_version(session, uprs['_id']['account'],
-                    uprs['_id']['sequence']):
-                return True
-            return False
+        'predecessor', with period dates 'start', 'end'. (This is the
+        lowest-level method for creating utility bills; it's called called by
+        record_utilbill_in_database, which is called by upload_utility_bill)'''
+#        def ignore_function(uprs):
+#            # ignore UPRSs of un-attached utility bills, and utility bills whose
+#            # reebill sequence is 0, which are meaningless
+#            if 'sequence' not in uprs['_id'] or uprs['_id']['sequence'] == 0:
+#                return True
+#            # ignore UPRSs belonging to a utility bill whose reebill version is
+#            # less than the maximum version (because they may be wrong, and to
+#            # prevent multiple-counting)
+#            if self.state_db.max_version(session, uprs['_id']['account'],
+#                    uprs['_id']['sequence']):
+#                return True
+#            return False
+        ignore_function = lambda uprs: False
 
         # look for the last utility bill with the same account and service
         # (i.e. the last-ending before 'end')
@@ -545,7 +628,7 @@ class Process(object):
 
         # generate predicted UPRS
         uprs = self.rate_structure_dao.get_probable_uprs(session,
-                utility, service, doc['rate_structure_binding'], start, end,
+                utility, service, rate_class, start, end,
                 ignore=ignore_function)
         uprs['_id'] = ObjectId()
 
@@ -575,7 +658,7 @@ class Process(object):
 
         # create new row in MySQL
         session.add(UtilBill(customer, state, service, utility,
-                doc['rate_structure_binding'], doc['_id'], uprs['_id'],
+                rate_class, doc['_id'], uprs['_id'],
                 cprs['_id'], period_start=start, period_end=end,
                 total_charges=0, date_received=datetime.utcnow().date()))
 

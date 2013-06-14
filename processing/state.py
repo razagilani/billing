@@ -20,7 +20,7 @@ from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy.sql.functions import min as sql_min
 from sqlalchemy import func, not_
 from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, StatusUnbilled
-from billing.processing.exceptions import BillStateError, IssuedBillError
+from billing.processing.exceptions import BillStateError, IssuedBillError, NoSuchBillException
 sys.stdout = sys.stderr
 
 # TODO move the 2 functions below to Process? seems like state.py is only about
@@ -382,6 +382,27 @@ class StateDB:
             max_sequence = 0
         return max_sequence
 
+    def get_last_utilbill(self, session, account, service=None, utility=None,
+            rate_class=None, end=None):
+        '''Returns the latest (i.e. last-ending) utility bill for the given
+        account matching the given criteria. If 'end' is given, the last
+        utility bill ending before or on 'end' is returned.'''
+        cursor = session.query(UtilBill).join(Customer)\
+                .filter(UtilBill.customer_id == Customer.id)\
+                .filter(Customer.account == account)
+        if service is not None:
+            cursor = cursor.filter(UtilBill.service == service)
+        if utility is not None:
+            cursor = cursor.filter(UtilBill.utility == utility)
+        if rate_class is not None:
+            cursor = cursor.filter(UtilBill.rate_class == rate_class)
+        if end is not None:
+            cursor = cursor.filter(UtilBill.period_end <= end)
+        result = cursor.order_by(UtilBill.period_end).first()
+        if result is None:
+            raise NoSuchBillException("No utility bill found")
+        return result
+
     def last_utilbill_end_date(self, session, account):
         '''Returns the end date of the latest utilbill for the customer given
         by 'account', or None if there are no utilbills.'''
@@ -659,69 +680,9 @@ class StateDB:
 
         return next_utilbills
 
-    def record_utilbill_in_database(self, session, account, service,
-            begin_date, end_date, total_charges, date_received,
-            state=UtilBill.Complete):
-        '''Inserts a row into the utilbill table when a utility bill file has
-        been uploaded. The bill is Complete by default but can can have other
-        states (see comment in db_objects.UtilBill for explanation of utility
-        bill states). The bill is initially marked as un-processed.'''
-        # get customer id from account number
-        customer = session.query(Customer).filter(Customer.account==account) \
-                .one()
-
-        ## new utility bill that will be uploaded (if it's allowed)
-        #new_utilbill = UtilBill(customer, state, service,
-                #period_start=begin_date, period_end=end_date,
-                #date_received=date_received)
-        # NOTE: if new_utilbill is created here, but not added, much less
-        # committed, it appears as a result in the query below, triggering an
-        # error message. 26147819
-
-        # get existing bills matching dates and service
-        # (there should be at most one, but you never know)
-        existing_bills = session.query(UtilBill) \
-                .filter(UtilBill.customer_id==customer.id) \
-                .filter(UtilBill.service==service) \
-                .filter(UtilBill.period_start==begin_date) \
-                .filter(UtilBill.period_end==end_date)
-
-        if list(existing_bills) == []:
-            # nothing to replace; just upload the bill
-            new_utilbill = UtilBill(customer, state, service,
-                    period_start=begin_date, period_end=end_date,
-                    total_charges=total_charges, date_received=date_received)
-            session.add(new_utilbill)
-        elif len(list(existing_bills)) > 1:
-            raise Exception(("Can't upload a bill for dates %s, %s because"
-                    " there are already %s of them") % (begin_date, end_date,
-                    len(list(existing_bills))))
-        else:
-            # now there is one existing bill with the same dates. if state is
-            # "more final" than an existing non-final bill that matches this
-            # one, replace that bill
-            # TODO 38385969: is this really a good idea?
-            # (we can compare with '>' because states are ordered from "most
-            # final" to least (see db_objects.UtilBill)
-            bills_to_replace = existing_bills.filter(UtilBill.state > state)
-
-            if list(bills_to_replace) == []:
-                # TODO this error message is kind of obscure
-                raise Exception(("Can't upload a utility bill for dates %s,"
-                    " %s because one already exists with a more final"
-                    " state than %s") % (begin_date, end_date, state))
-            bill_to_replace = bills_to_replace.one()
-                
-            # now there is exactly one bill with the same dates and its state is
-            # less final than the one being uploaded, so replace it.
-            session.delete(bill_to_replace)
-            new_utilbill = UtilBill(customer, state, service,
-                    period_start=begin_date, period_end=end_date,
-                    total_charges=total_charges, date_received=date_received)
-            session.add(new_utilbill)
     
     def fill_in_hypothetical_utilbills(self, session, account, service,
-            begin_date, end_date):
+            utility, rate_class, begin_date, end_date):
         '''Creates hypothetical utility bills in MySQL covering the period
         [begin_date, end_date).'''
         # get customer id from account number
@@ -730,8 +691,10 @@ class StateDB:
 
         for (start, end) in guess_utilbill_periods(begin_date, end_date):
             # make a UtilBill
-            utilbill = UtilBill(customer, state=UtilBill.Hypothetical,
-                    service=service, period_start=start, period_end=end)
+            # note that all 3 Mongo documents are None
+            utilbill = UtilBill(customer, UtilBill.Hypothetical, service,
+                    utility, rate_class, None, None, None, period_start=start,
+                    period_end=end)
             # put it in the database
             session.add(utilbill)
 

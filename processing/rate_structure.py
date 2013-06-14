@@ -361,7 +361,7 @@ class RateStructureDAO(object):
             # will be subtly broken until old versions of utility bills are
             # excluded from MySQL: see
             # https://www.pivotaltracker.com/story/show/51683847
-            result.append((doc, utilbill['start'], utilbill['end']))
+            result.append((doc, utilbill.period_start, utilbill.period_end))
         return result
 
     def load_uprs(self, account, sequence, version, utility_name,
