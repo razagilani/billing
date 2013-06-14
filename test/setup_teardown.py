@@ -6,6 +6,7 @@ from StringIO import StringIO
 import ConfigParser
 import logging
 import pymongo
+from bson import ObjectId
 import sqlalchemy
 import mongoengine
 from skyliner.splinter import Splinter
@@ -104,11 +105,11 @@ port = 27017
         utilbill = example_data.get_utilbill_dict('99999',
                 start=date(1900,01,01), end=date(1900,02,01),
                 utility='washgas', service='gas')
-        utilbill['_id'] = '000000000000000000000001'
+        utilbill['_id'] = ObjectId('000000000000000000000001')
         uprs = example_data.get_uprs_dict()
-        uprs['_id'] = '000000000000000000000002'
+        uprs['_id'] = ObjectId('000000000000000000000002')
         cprs = example_data.get_cprs_dict()
-        cprs['_id'] = '000000000000000000000003'
+        cprs['_id'] = ObjectId('000000000000000000000003')
         db.utilbills.save(utilbill)
         db.ratestructure.save(uprs)
         db.ratestructure.save(cprs)
