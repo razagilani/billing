@@ -3,7 +3,6 @@
 USAGE="
 Usage: $0 PRODHOST TOENV
      De-stages production ReeBill data to the specified environment.
-     MYSQLPASSWORD -- local mysql admin password
      PRODHOST -- parameter specifying the hostname containing production data (e.g. tyrell-prod).
      TOENV -- parameter specifying the environment to be targeted by the de-stage (e.g. stage, dev).
      "
@@ -13,7 +12,7 @@ Usage: $0 PRODHOST TOENV
 
 : ${1?"$USAGE"} 
 
-if [ $# -ne 3 ]; then
+if [ $# -ne 2 ]; then
     echo "Specify args."
     exit 1
 fi
@@ -30,6 +29,6 @@ ssh_key=$HOME/Dropbox/IT/ec2keys/$PRODHOST.pem
 # Save current directory to CD back to it
 current_dir="$( cd "$( dirname "$0" )" && pwd)"
 
-rsync -avz -e "\'ssh -i "$ssh_key "\'"ec2-user@$PRODHOST.skylineinnovations.net:/tmp/${now}reebill-prod/db-prod /db-$TOENV
+rsync -ahz --progress -e 'ssh -i ${ssh_key} 'ec2-user@$PRODHOST.skylineinnovations.net:/tmp/${now}reebill-prod/db-prod /db-$TOENV
 
 cd $current_dir
