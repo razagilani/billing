@@ -27,11 +27,6 @@ pp = pprint.PrettyPrinter(indent=1).pprint
 # (between 0 and 1)
 RSI_PRESENCE_THRESHOLD = 0.5
 
-def euclidean_distance(p1, p2):
-    delta_begin = abs(p1[0] - p2[0]).days
-    delta_end = abs(p1[1] - p2[1]).days
-    return sqrt(delta_begin**2 + delta_end**2)
-
 def manhattan_distance(p1, p2):
     # note that 15-day offset is a 30-day distance, 30-day offset is a
     # 60-day difference
