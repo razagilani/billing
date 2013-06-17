@@ -133,7 +133,7 @@ class MongoReebill(object):
     '''
 
     @classmethod
-    def get_reebill_doc_for_utilbills(self, account, sequence, version,
+    def get_reebill_doc_for_utilbills(cls, account, sequence, version,
                 discount_rate, late_charge_rate, utilbill_docs):
         '''Returns a newly-created MongoReebill (dictionary) having the given
         account number, discount rate, late charge rate, and list of utility
