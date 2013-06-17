@@ -185,27 +185,16 @@ class Process(object):
             self.create_new_utility_bill(session, account, utility, service,
                     rate_class, start, end, total=total_charges, state=state)
 
+
     def delete_utility_bill(self, session, utilbill_id):
-        '''Deletes the utility bill given by utilbill_id (if it's not
-        associated or attached to a reebill) and returns the path where the
-        file was moved (it never really gets deleted). This path will be None
-        if there was no file or it could not be found. Raises a ValueError if
-        the utility bill cannot be deleted.'''
+        '''Deletes the utility bill given by its MySQL id 'utilbill_id' (if
+        it's not attached to a reebill) and returns the path where the file was
+        moved (it never really gets deleted). This path will be None if there
+        was no file or it could not be found. Raises a ValueError if the
+        utility bill cannot be deleted.'''
         utilbill = self.state_db.get_utilbill_by_id(session, utilbill_id)
         if utilbill.has_reebills:
             raise ValueError("Can't delete an attached utility bill.")
-
-        # find out if any version of any reebill in mongo has this utilbill
-        # associated with it. if so, it can't be deleted.
-        possible_reebills = self.reebill_dao.load_reebills_in_period(
-                utilbill.customer.account, start_date=utilbill.period_start,
-                end_date=utilbill.period_end, version='any')
-        for pb in possible_reebills:
-            if utilbill.service in pb.services and \
-                    pb.utilbill_period_for_service(utilbill.service) \
-                    == (utilbill.period_start, utilbill.period_end):
-                raise ValueError(("Can't delete a utility bill that has reebill"
-                    " associated with it."))
 
         # OK to delete now.
         # first try to delete the file on disk
@@ -225,6 +214,7 @@ class Process(object):
         self.reebill_dao.delete_doc_for_statedb_utilbill(utilbill)
 
         return new_path
+
 
     def compute_bill(self, session, prior_reebill, present_reebill):
         '''Compute everything about the bill that can be continuously
