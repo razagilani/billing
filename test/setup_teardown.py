@@ -6,6 +6,7 @@ from StringIO import StringIO
 import ConfigParser
 import logging
 import pymongo
+from bson import ObjectId
 import sqlalchemy
 import mongoengine
 from skyliner.splinter import Splinter
@@ -82,19 +83,28 @@ port = 27017
         c = mysql_connection.cursor()
         c.execute("delete from payment")
         c.execute("delete from utilbill")
-        c.execute("delete from rebill")
+        c.execute("delete from reebill")
         c.execute("delete from customer")
-        # (note that status_days_since, status_unbilled are views and you
-        # neither can nor need to delete from them)
+        # (note that status_days_since is a view and you neither can nor need
+        # to delete from it)
         mysql_connection.commit()
 
         # insert one customer
         self.state_db = StateDB(**statedb_config)
         session = self.state_db.session()
         # name, account, discount rate, late charge rate
-        customer = Customer('Test Customer', '99999', .12, .34)
+        customer = Customer('Test Customer', '99999', .12, .34,
+                '000000000000000000000001')
         session.add(customer)
         session.commit()
+
+        # insert template utilbill document for the customer in Mongo
+        db = pymongo.Connection('localhost')['test']
+        utilbill = example_data.get_utilbill_dict('99999',
+                start=date(1900,01,01), end=date(1900,02,01),
+                utility='washgas', service='gas')
+        utilbill['_id'] = ObjectId('000000000000000000000001')
+        db.utilbills.save(utilbill)
 
         self.reebill_dao = mongo.ReebillDAO(self.state_db, **{
             'billpath': '/db-dev/skyline/bills/',
@@ -126,7 +136,7 @@ port = 27017
         c = mysql_connection.cursor()
         c.execute("delete from payment")
         c.execute("delete from utilbill")
-        c.execute("delete from rebill")
+        c.execute("delete from reebill")
         c.execute("delete from customer")
         mysql_connection.commit()
 

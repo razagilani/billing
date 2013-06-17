@@ -18,6 +18,7 @@ from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
+from billing.processing.db_objects import Customer
 from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
@@ -130,6 +131,103 @@ class MongoReebill(object):
         - hide the underlying mongo document organization
         - return cross cutting sets of data (e.g. all registers when registers are grouped by meter)
     '''
+
+    @classmethod
+    def get_reebill_doc_for_utilbills(self, account, sequence, version,
+                discount_rate, late_charge_rate, utilbill_docs):
+        '''Returns a newly-created MongoReebill (dictionary) having the given
+        account number, discount rate, late charge rate, and list of utility
+        bill documents. Service addresses are copied from the utility bill
+        template. Note that the utility bill document _id is not changed; the
+        caller is responsible for properly duplicating utility bill
+        documents.'''
+        # NOTE currently only one utility bill is allowed
+        assert len(utilbill_docs) == 1
+        utilbill = utilbill_docs[0]
+
+        reebill_doc = {
+            "_id" : {
+                "account" : account,
+                "sequence" : sequence,
+                "version" : version,
+            },
+            "ree_charges" : 0,
+            "ree_value" : 0,
+            "discount_rate" : discount_rate,
+            'late_charge_rate': late_charge_rate,
+            'late_charges': 0,
+            "message" : None,
+            "issue_date" : None,
+            "utilbills" : [{
+                'shadow_registers': reduce(operator.add,
+                        [m['registers'] for m in utilbill['meters']], []),
+                'hypothetical_chargegroups': utilbill['chargegroups'],
+                'ree_charges': 0,
+                'ree_savings': 0,
+                'ree_value': 0
+            }],
+            "payment_received" : 0,
+            "actual_total" : 0,
+            "due_date" : None,
+            "total_adjustment" : 0,
+            "ree_savings" : 0,
+            "statistics" : {
+                "renewable_utilization" : 0,
+                "renewable_produced" : None,
+                "total_conventional_consumed" : 0,
+                "total_co2_offset" : 0,
+                "conventional_consumed" : 0,
+                "total_renewable_produced" : None,
+                "total_savings" : 0,
+                "consumption_trend" : [
+                    { "quantity" : 0, "month" : "Dec" },
+                    { "quantity" : 0, "month" : "Jan" },
+                    { "quantity" : 0, "month" : "Feb" },
+                    { "quantity" : 0, "month" : "Mar" },
+                    { "quantity" : 0, "month" : "Apr" },
+                    { "quantity" : 0, "month" : "May" },
+                    { "quantity" : 0, "month" : "Jun" },
+                    { "quantity" : 0, "month" : "Jul" },
+                    { "quantity" : 0, "month" : "Aug" },
+                    { "quantity" : 0, "month" : "Sep" },
+                    { "quantity" : 0, "month" : "Oct" },
+                    { "quantity" : 0, "month" : "Nov" }
+                ],
+                "conventional_utilization" : 0,
+                "total_trees" : 0,
+                "co2_offset" : 0,
+                "total_renewable_consumed" : 0,
+                "renewable_consumed" : 0,
+            },
+            "balance_due" : 0,
+            "prior_balance" : 0,
+            "hypothetical_total" : 0,
+            "balance_forward" : 0,
+            # NOTE these address fields are containers for utility bill
+            # addresses. these addresses will eventually move into utility bill
+            # documents, and if necessary new reebill-specific address fields
+            # will be added. so copying the address from the utility bill to
+            # the reebill is the correct thing (and there is only one utility
+            # bill for now). see
+            # https://www.pivotaltracker.com/story/show/47749247
+
+            # transform from Rich's utility bill address schema to his reebill one
+            "billing_address" : {
+                    ('ba_postal_code' if key == 'postalcode'
+                        else ('ba_street1' if key == 'street'
+                            else 'ba_' + key)): value
+                    for (key, value) in
+                    utilbill['billingaddress'].iteritems()},
+            "service_address" : {
+                    ('sa_postal_code' if key == 'postalcode'
+                        else ('sa_street1' if key == 'street'
+                            else 'sa_' + key)): value
+                    for (key, value) in
+                    utilbill['serviceaddress'].iteritems()}
+        }
+        return MongoReebill(reebill_doc, utilbill_docs)
+
+
     def __init__(self, reebill_data, utilbill_dicts):
         assert isinstance(reebill_data, dict)
         # defensively copy whatever is passed in; who knows where the caller got it from
@@ -249,7 +347,7 @@ class MongoReebill(object):
 
     def new_utilbill_ids(self):
         '''Replaces _ids in utility bill documents and the reebill document's
-        references to them, and removed "sequence" and "version" keys if
+        references to them, and removes "sequence" and "version" keys if
         present (to convert frozen utility bill into editable one). Used when
         rolling to create copies of the utility bills.'''
         for utilbill_handle in self.reebill_dict['utilbills']:
@@ -1249,6 +1347,51 @@ class ReebillDAO:
         return docs[0]
 
 
+    def _load_utilbill_by_id(self, _id):
+        docs = self.utilbills_collection.find({'_id': bson.ObjectId(_id)})
+        if docs.count() == 0:
+            raise NoSuchBillException("No utility bill document for _id %s"
+                    % _id)
+        assert docs.count() == 1
+        return docs[0]
+
+    def load_doc_for_statedb_utilbill(self, utilbill_row):
+        '''Returns the Mongo utility bill document corresponding to the given
+        db_objects.UtilBill object.'''
+        # empty document_ids should not be possible, once the db is cleaned up
+        # (there's already a "not null" constraint for 'document_id' but the
+        # default value is "")
+        if utilbill_row.document_id in (None, ''):
+            raise ValueError("Utility bill lacks document_id: %s" %
+                    utilbill_row)
+        try:
+            return self._load_utilbill_by_id(utilbill_row.document_id)
+        except NoSuchBillException:
+            raise NoSuchBillException(("No utility bill document found in %s"
+                    " corresponding to %s") % utilbill_row)
+
+    def delete_doc_for_statedb_utilbill(self, utilbill_row):
+        '''Deletes the Mongo utility bill document corresponding to the given
+        db_objects.UtilBill object.'''
+        result = self.utilbills_collection.remove({
+                '_id': bson.ObjectId(utilbill_row.document_id)}, safe=True)
+        if result['err'] is not None or result['n'] == 0:
+            raise MongoError(result)
+
+    def load_utilbill_template(self, session, account):
+        '''Returns the Mongo utility bill document template for the customer
+        given by 'account'.'''
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        docs = self.utilbills_collection.find({
+                '_id': bson.ObjectId(customer.utilbill_template_id)})
+        if docs.count() == 0:
+            raise NoSuchBillException("No utility bill template for %s" %
+                    customer)
+        assert docs.count() == 1
+        return docs[0]
+        return self._load_utilbill_by_id(customer.utilbill_template_id)
+
     def _load_all_utillbills_for_reebill(self, session, reebill_doc):
         '''Loads all utility bill documents from Mongo that match the ones in
         the 'utilbills' list in the given reebill dictionary (NOT MongoReebill
@@ -1268,8 +1411,6 @@ class ReebillDAO:
             # convert types
             utilbill_doc = deep_map(float_to_decimal, utilbill_doc)
             utilbill_doc = convert_datetimes(utilbill_doc)
-
-            result.append(utilbill_doc)
 
         return result
 

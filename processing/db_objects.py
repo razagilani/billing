@@ -4,26 +4,35 @@ from datetime import date, datetime, timedelta
 here, due to relationships defined in state.py.'''
 
 class Customer(object):
-    def __init__(self, name, account, discount_rate, late_charge_rate):
+    def __init__(self, name, account, discount_rate, late_charge_rate,
+            utilbill_template_id):
         self.name = name
         self.account = account
         self.discountrate = discount_rate
         self.latechargerate = late_charge_rate
+        self.utilbill_template_id = utilbill_template_id
+
     def __repr__(self):
-        return '<Customer(name=%s, account=%s, discountrate=%s)>' \
-                % (self.name, self.account, self.discountrate)
+        return '<Customer(name=%s, account=%s, discountrate=%s latechargerate=%s)>' \
+                % (self.name, self.account, self.discountrate, self.latechargerate)
 
 class ReeBill(object):
-    def __init__(self, customer, sequence, max_version=0):
+    def __init__(self, customer, sequence, version=0, utilbills=[]):
         self.customer = customer
         self.sequence = sequence
         self.issued = 0
-        self.max_version = max_version
+        self.version = version
+        self.utilbills = utilbills
+
     def __repr__(self):
-        return '<ReeBill(account=%s, sequence=%s, max_version=%s, issued=%s)>' \
-                % (self.customer, self.sequence, self.max_version, self.issued)
+        return '<ReeBill(customer=%s, sequence=%s, version=%s, issued=%s)>' \
+                % (self.customer, self.sequence, self.version, self.issued)
 
 class UtilBill(object):
+    '''Represents a particular version of a utility bill: either the current
+    editable version, or a copy that is attached to a particular reebill
+    version.'''
+
     # utility bill states:
     # 0. Complete: actual non-estimated utility bill.
     # 1. Utility estimated: actual utility bill whose contents were estimated by
@@ -38,9 +47,9 @@ class UtilBill(object):
     # TODO 38385969: not sure this strategy is a good idea
     Complete, UtilityEstimated, SkylineEstimated, Hypothetical = range(4)
 
-    def __init__(self, customer, state, service, period_start=None,
-            period_end=None, total_charges=0, date_received=None, processed=False,
-            reebill=None):
+    def __init__(self, customer, state, service, utility, rate_class,
+            document_id, uprs_document_id, cprs_document_id, period_start=None,
+            period_end=None, total_charges=0, date_received=None, reebills=[]):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
@@ -48,20 +57,26 @@ class UtilBill(object):
         self.customer = customer
         self.state = state
         self.service = service
+        self.utility = utility
+        self.rate_class = rate_class
+        self.document_id = document_id
+        self.uprs_document_id = uprs_document_id
+        self.cprs_document_id = cprs_document_id
         self.period_start = period_start
         self.period_end = period_end
         self.total_charges = total_charges
         self.date_received = date_received
-        self.processed = processed
-        self.reebill = reebill # newly-created utilbill has NULL in reebill_id column
+        self.reebills = reebills
 
     @property
-    def has_reebill(self):
-        return self.reebill != None
+    def has_reebills(self):
+        return self.reebills != []
 
     def __repr__(self):
-        return '<UtilBill(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
-                % (self.customer, self.service, self.period_start, self.period_end)
+        return ('<UtilBill(customer=%s, service=%s, period_start=%s, '
+                'period_end=%s, document_id=%s)>') % (self.customer,
+                        self.service, self.period_start, self.period_end,
+                        self.document_id)
 
 class Payment(object):
     '''date_received is the datetime when Skyline recorded the payment.
