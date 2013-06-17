@@ -137,7 +137,10 @@ class MongoReebill(object):
             late_charge_rate, utilbill_docs):
         '''Returns a newly-created MongoReebill (dictionary) having the given
         account number, discount rate, late charge rate, and list of utility
-        bill documents. Service addresses are copied from the utility bill template.'''
+        bill documents. Service addresses are copied from the utility bill
+        template. Note that the utility bill document _id is not changed; the
+        caller is responsible for properly duplicating utility bill
+        documents.'''
         # NOTE currently only one utility bill is allowed
         assert len(utilbill_docs) == 1
         utilbill = utilbill_docs[0]
