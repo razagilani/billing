@@ -1678,10 +1678,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             utilbill = session.query(UtilBill).one()
             self.process.create_first_reebill(session, utilbill)
             
-            session.query(UtilBill).one()
+            session.query(UtilBill).one() # verify there's only one
             reebill = session.query(ReeBill).one()
             self.assertEqual([utilbill], reebill.utilbills)
             self.assertEqual([reebill], utilbill.reebills)
+
+            # TODO check reebill document contents
+            # (this is already partially handled by
+            # test_reebill.ReebillTest.test_get_reebill_doc_for_utilbills, but
+            # should be done here as well.)
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
