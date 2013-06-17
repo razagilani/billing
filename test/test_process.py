@@ -416,7 +416,7 @@ class ProcessTest(TestCaseWithSetup):
 
         # compute charges in the bill using the rate structure created from the
         # above documents
-        self.process.bindrs(bill1)
+        self.process.bind_rate_structure(bill1)
 
         # ##############################################################
         # check that each actual (utility) charge was computed correctly:
