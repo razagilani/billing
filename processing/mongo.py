@@ -131,6 +131,96 @@ class MongoReebill(object):
         - hide the underlying mongo document organization
         - return cross cutting sets of data (e.g. all registers when registers are grouped by meter)
     '''
+
+    @classmethod
+    def get_reebill_doc_for_utilbills(self, account, discount_rate,
+            late_charge_rate, utilbill_docs):
+        '''Returns a newly-created MongoReebill (dictionary) having the given
+        account number, discount rate, late charge rate, and list of utility
+        bill documents. Service addresses are copied from the utility bill template.'''
+        # NOTE currently only one utility bill is allowed
+        assert len(utilbill_docs) == 1
+        utilbill = utilbill_docs[0]
+
+        reebill_doc = {
+            "_id" : { "account" : account, "sequence" : 1, "version" : 0, },
+            "ree_charges" : 0,
+            "ree_value" : 0,
+            "discount_rate" : discount_rate,
+            'late_charge_rate': late_charge_rate,
+            'late_charges': 0,
+            "message" : None,
+            "issue_date" : None,
+            "utilbills" : [{
+                'shadow_registers': reduce(operator.add,
+                        [m['registers'] for m in utilbill['meters']], []),
+                'hypothetical_chargegroups': utilbill['chargegroups'],
+                'ree_charges': 0,
+                'ree_savings': 0,
+                'ree_value': 0
+            }],
+            "payment_received" : 0,
+            "actual_total" : 0,
+            "due_date" : None,
+            "total_adjustment" : 0,
+            "ree_savings" : 0,
+            "statistics" : {
+                "renewable_utilization" : 0,
+                "renewable_produced" : None,
+                "total_conventional_consumed" : 0,
+                "total_co2_offset" : 0,
+                "conventional_consumed" : 0,
+                "total_renewable_produced" : None,
+                "total_savings" : 0,
+                "consumption_trend" : [
+                    { "quantity" : 0, "month" : "Dec" },
+                    { "quantity" : 0, "month" : "Jan" },
+                    { "quantity" : 0, "month" : "Feb" },
+                    { "quantity" : 0, "month" : "Mar" },
+                    { "quantity" : 0, "month" : "Apr" },
+                    { "quantity" : 0, "month" : "May" },
+                    { "quantity" : 0, "month" : "Jun" },
+                    { "quantity" : 0, "month" : "Jul" },
+                    { "quantity" : 0, "month" : "Aug" },
+                    { "quantity" : 0, "month" : "Sep" },
+                    { "quantity" : 0, "month" : "Oct" },
+                    { "quantity" : 0, "month" : "Nov" }
+                ],
+                "conventional_utilization" : 0,
+                "total_trees" : 0,
+                "co2_offset" : 0,
+                "total_renewable_consumed" : 0,
+                "renewable_consumed" : 0,
+            },
+            "balance_due" : 0,
+            "prior_balance" : 0,
+            "hypothetical_total" : 0,
+            "balance_forward" : 0,
+            # NOTE these address fields are containers for utility bill
+            # addresses. these addresses will eventually move into utility bill
+            # documents, and if necessary new reebill-specific address fields
+            # will be added. so copying the address from the utility bill to
+            # the reebill is the correct thing (and there is only one utility
+            # bill for now). see
+            # https://www.pivotaltracker.com/story/show/47749247
+
+            # transform from Rich's utility bill address schema to his reebill one
+            "billing_address" : {
+                    ('ba_postal_code' if key == 'postalcode'
+                        else ('ba_street1' if key == 'street'
+                            else 'ba_' + key)): value
+                    for (key, value) in
+                    utilbill['billingaddress'].iteritems()},
+            "service_address" : {
+                    ('sa_postal_code' if key == 'postalcode'
+                        else ('sa_street1' if key == 'street'
+                            else 'sa_' + key)): value
+                    for (key, value) in
+                    utilbill['serviceaddress'].iteritems()}
+        }
+        return MongoReebill(reebill_doc, utilbill_docs)
+
+
     def __init__(self, reebill_data, utilbill_dicts):
         assert isinstance(reebill_data, dict)
         # defensively copy whatever is passed in; who knows where the caller got it from
