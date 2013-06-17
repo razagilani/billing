@@ -547,7 +547,8 @@ example_cprs = {
 
 def get_reebill(account, sequence, start=date(2011,11,12),
         end=date(2011,12,14), version=0):
-    '''Returns an example reebill with the given account and sequence.'''
+    '''Returns an example reebill with the given account, sequence, and dates. It comes
+    with one utility bill having the same dates.'''
     reebill_dict = copy.deepcopy(example_reebill)
     reebill_dict['_id'].update({
         'account': account,
