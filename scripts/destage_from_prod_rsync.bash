@@ -26,23 +26,13 @@ TOENV=$3
 # backups on tyrell-prod. Based on billing/reebill/admin/destage.bash.
 now=`date +"%Y%m%d"`
 # need to more uniquely name backup file
-destage_dir=${now}reebill-prod
+destage_dir=${now}reebill-stage
 ssh_key=$HOME/Dropbox/IT/ec2keys/$PRODHOST.pem
 # Save current directory to CD back to it
 current_dir="$( cd "$( dirname "$0" )" && pwd)"
 
-
 cd /tmp
-
-if [ -d $destage_dir ]
-then
-    # TODO don't rely on presence of the tarball to determine whether the mongodump
-    # directiories below also exist; they may not
-    echo "Using previously downloaded $destage_dir"
-else
-    rsync -avz -e "\'ssh -i "$ssh_key "\'"ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir . 
-fi
-
+rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir . 
 cd $destage_dir
 
 # apparently only root can restore the database
