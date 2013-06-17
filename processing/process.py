@@ -980,11 +980,6 @@ class Process(object):
         #self.state_db.attach_utilbills(session, reebill.account, reebill.sequence, utilbills, reebill.suspended_services)
 
     def bind_rate_structure(self, reebill):
-            # process the actual charges across all services
-            self.bindrs(reebill)
-
-    # TODO remove (move to bind_rate_structure)
-    def bindrs(self, reebill):
         """This function binds a rate structure against the actual and
         hypothetical charges found in a bill. If and RSI specifies information
         no in the bill, it is added to the bill. If the bill specifies
