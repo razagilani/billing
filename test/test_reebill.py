@@ -57,8 +57,8 @@ class ReebillTest(TestCaseWithSetup):
         utilbill_template = example_data.get_utilbill_dict('99999',
                 utility='washgas', service='gas', start=date(2013,1,1),
                 end=date(2013,2,1))
-        reebill = MongoReebill.get_reebill_doc_for_utilbills('99999', 0.5, 0.1,
-                [utilbill_template])
+        reebill = MongoReebill.get_reebill_doc_for_utilbills('99999', 1, 0,
+                0.5, 0.1, [utilbill_template])
         self.assertEquals('99999', reebill.account)
         self.assertEquals(1, reebill.sequence)
         self.assertEquals(0, reebill.version)

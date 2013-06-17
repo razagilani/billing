@@ -133,8 +133,8 @@ class MongoReebill(object):
     '''
 
     @classmethod
-    def get_reebill_doc_for_utilbills(self, account, discount_rate,
-            late_charge_rate, utilbill_docs):
+    def get_reebill_doc_for_utilbills(self, account, sequence, version,
+                discount_rate, late_charge_rate, utilbill_docs):
         '''Returns a newly-created MongoReebill (dictionary) having the given
         account number, discount rate, late charge rate, and list of utility
         bill documents. Service addresses are copied from the utility bill
@@ -146,7 +146,11 @@ class MongoReebill(object):
         utilbill = utilbill_docs[0]
 
         reebill_doc = {
-            "_id" : { "account" : account, "sequence" : 1, "version" : 0, },
+            "_id" : {
+                "account" : account,
+                "sequence" : sequence,
+                "version" : version,
+            },
             "ree_charges" : 0,
             "ree_value" : 0,
             "discount_rate" : discount_rate,
