@@ -524,7 +524,7 @@ class Process(object):
         template = self.reebill_dao.load_utilbill_template(session,
                 utilbill.customer.account)
         mongo_reebill = MongoReebill.get_reebill_doc_for_utilbills(
-                utilbill.customer.account, customer.discountrate,
+                utilbill.customer.account, 1, 0, customer.discountrate,
                 utilbill.customer.latechargerate, [template])
 
         # add row in MySQL
