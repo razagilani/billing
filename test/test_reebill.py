@@ -54,9 +54,11 @@ class ReebillTest(TestCaseWithSetup):
             # become changeable, do the same test for them
 
     def test_get_reebill_doc_for_utilbills(self):
+        utilbill_template = example_data.get_utilbill_dict('99999',
+                utility='washgas', service='gas', start=date(2013,1,1),
+                end=date(2013,2,1))
         reebill = MongoReebill.get_reebill_doc_for_utilbills('99999', 0.5, 0.1,
-                [example_data.get_utilbill_dict('99999', utility='washgas',
-                service='gas', start=date(2013,1,1), end=date(2013,2,1))])
+                [utilbill_template])
         self.assertEquals('99999', reebill.account)
         self.assertEquals(1, reebill.sequence)
         self.assertEquals(0, reebill.version)
@@ -65,7 +67,8 @@ class ReebillTest(TestCaseWithSetup):
         self.assertEquals(0.5, reebill.discount_rate)
         self.assertEquals(0.1, reebill.late_charge_rate)
         self.assertEquals(0, reebill.late_charges)
-        self.assertEquals(1, len(reebill._utilbills)) # TODO test content
+        self.assertEquals(1, len(reebill._utilbills))
+        # TODO test utility bill document contents
         self.assertEquals(None, reebill.issue_date)
         self.assertEquals(0, reebill.payment_received)
         self.assertEquals(0, reebill.actual_total)
