@@ -649,7 +649,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     .filter(UtilBill.customer_id == customer.id)\
                     .filter(UtilBill.period_start == start)\
                     .filter(UtilBill.period_end == end).one().id
-            import ipdb; ipdb.set_trace()
 
             # with no reebills, deletion should succeed: row removed from
             # MySQL, document removed from Mongo (only template should be
@@ -673,14 +672,15 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             bill_file_path = self.billupload.get_utilbill_file_path(account,
                     start, end)
             assert os.access(bill_file_path, os.F_OK)
-            utilbill_id = session.query(UtilBill)\
+            utilbill = session.query(UtilBill)\
                     .filter(UtilBill.customer_id == customer.id)\
                     .filter(UtilBill.period_start == start)\
-                    .filter(UtilBill.period_end == end).one().id
+                    .filter(UtilBill.period_end == end).one()
+            utilbill_id = utilbill.id
             
             # when utilbill is attached to reebill, deletion should fail
-            self.process.roll_bill(session,
-                    self.reebill_dao.load_utilbill_template(session, account))
+            reebill = session.query(ReeBill).one() # TODO why is there no reebill row?
+            first_reebill = self.reebill_dao.load_reebill(account, 1)
             assert utilbill.reebills == [reebill]
             self.assertRaises(ValueError, self.process.delete_utility_bill,
                     session, utilbill_id)
