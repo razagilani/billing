@@ -73,8 +73,10 @@ class UtilBill(object):
         return self.reebills != []
 
     def __repr__(self):
-        return '<UtilBill(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
-                % (self.customer, self.service, self.period_start, self.period_end)
+        return ('<UtilBill(customer=%s, service=%s, period_start=%s, '
+                'period_end=%s, document_id=%s)>') % (self.customer,
+                        self.service, self.period_start, self.period_end,
+                        self.document_id)
 
 class Payment(object):
     '''date_received is the datetime when Skyline recorded the payment.
