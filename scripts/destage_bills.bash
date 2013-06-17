@@ -29,5 +29,5 @@ ssh_key=$HOME/Dropbox/IT/ec2keys/$PRODHOST.pem
 # Save current directory to CD back to it
 current_dir="$( cd "$( dirname "$0" )" && pwd)"
 
-rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/${now}reebill-prod/db-prod /db-$TOENV
+rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/${now}reebill-prod/db-prod/ /db-$TOENV
 cd $current_dir

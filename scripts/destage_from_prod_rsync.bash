@@ -26,14 +26,18 @@ TOENV=$3
 # backups on tyrell-prod. Based on billing/reebill/admin/destage.bash.
 now=`date +"%Y%m%d"`
 # need to more uniquely name backup file
-destage_dir=${now}reebill-stage
+destage_dir=${now}reebill-prod
 ssh_key=$HOME/Dropbox/IT/ec2keys/$PRODHOST.pem
 # Save current directory to CD back to it
 current_dir="$( cd "$( dirname "$0" )" && pwd)"
 
 cd /tmp
-rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir . 
-cd $destage_dir
+rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir/${now}billing_mysql.dmp . 
+rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir/${now}ratestructure_mongo . 
+rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir/${now}reebills_mongo . 
+rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir/${now}journal_mongo . 
+rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir/${now}users_mongo . 
+rsync -ahz --progress -e "ssh -i ${ssh_key}" ec2-user@$PRODHOST.skylineinnovations.net:/tmp/$destage_dir/${now}utilbills_mongo . 
 
 # apparently only root can restore the database
 mysql -uroot -p$MYSQLPASSWORD -D skyline_$TOENV < ${now}billing_mysql.dmp
