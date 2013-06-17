@@ -649,6 +649,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     .filter(UtilBill.customer_id == customer.id)\
                     .filter(UtilBill.period_start == start)\
                     .filter(UtilBill.period_end == end).one().id
+            import ipdb; ipdb.set_trace()
 
             # with no reebills, deletion should succeed: row removed from
             # MySQL, document removed from Mongo (only template should be
@@ -662,11 +663,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     account, start, end)
             self.assertTrue(os.access(new_path, os.F_OK))
 
+            ## only the teplate (...01) exists in mongo here
+
             # re-upload the bill
-            import ipdb; ipdb.set_trace()
             self.process.upload_utility_bill(session, account, service, start,
                     end, StringIO("test"), 'january.pdf')
             assert self.state_db.list_utilbills(session, account)[1] == 1
+            self.assertEquals(2, len(self.reebill_dao.load_utilbills()))
             bill_file_path = self.billupload.get_utilbill_file_path(account,
                     start, end)
             assert os.access(bill_file_path, os.F_OK)
@@ -674,23 +677,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     .filter(UtilBill.customer_id == customer.id)\
                     .filter(UtilBill.period_start == start)\
                     .filter(UtilBill.period_end == end).one().id
-
-            # when utilbill is associated (in mongo) with reebill that has not
-            # been issued, deletion should fail (association is currently done
-            # purely by date range)
-            self.reebill_dao.save_reebill(example_data.get_reebill(account, 0))
-            mongo_reebill = example_data.get_reebill(account, 1, start=start,
-                    end=end)
-            self.reebill_dao.save_reebill(mongo_reebill)
-            self.assertRaises(ValueError, self.process.delete_utility_bill,
-                    session, utilbill_id)
-
-            # when utilbill is attached to reebill, deletion should also fail
-            # (this reebill is not created by rolling, the way it's usually
-            # done, and only exists in MySQL)
-            reebill = self.state_db.new_reebill(session, account, 1)
-            utilbill = self.state_db.list_utilbills(session, account)[0].one()
-            self.state_db.attach_utilbills(session, account, reebill.sequence, [utilbill])
+            
+            # when utilbill is attached to reebill, deletion should fail
+            self.process.roll_bill(session,
+                    self.reebill_dao.load_utilbill_template(session, account))
             assert utilbill.reebills == [reebill]
             self.assertRaises(ValueError, self.process.delete_utility_bill,
                     session, utilbill_id)
@@ -1676,6 +1666,22 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # documents
             self.assertEqual(uprs['_id'], ObjectId(ub.uprs_document_id))
             self.assertEqual(cprs['_id'], ObjectId(ub.cprs_document_id))
+
+    def test_create_first_reebill(self):
+        '''Tests Process.create_first_reebill which creates the first reebill
+        (in MySQL and Mongo) attached to a particular utility bill, using the
+        account's utility bill document template.'''
+        with DBSession(self.state_db) as session:
+            self.process.create_new_utility_bill(session, '99999', 'washgas',
+                    'gas', 'DC Non Residential Non Heat', date(2013,1,1),
+                    date(2013,2,1))
+            utilbill = session.query(UtilBill).one()
+            self.process.create_first_reebill(session, utilbill)
+            
+            session.query(UtilBill).one()
+            reebill = session.query(ReeBill).one()
+            self.assertEqual([utilbill], reebill.utilbills)
+            self.assertEqual([reebill], utilbill.reebills)
 
 if __name__ == '__main__':
     #unittest.main(failfast=True)
