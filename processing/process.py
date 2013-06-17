@@ -12,6 +12,7 @@ import calendar
 from optparse import OptionParser
 from decimal import *
 from sqlalchemy.sql import desc
+from sqlalchemy.orm.exc import MultipleResultsFound
 import operator
 from bson import ObjectId
 #
@@ -509,9 +510,30 @@ class Process(object):
         
         return new_reebill
 
+    def create_first_reebill(self, session, utilbill):
+        '''Create and save the account's first reebill, based on the given
+        db_objects.UtilBill.'''
+        customer = utilbill.customer
+
+        # this must be first reebill ever
+        if session.query(ReeBill).join(Customer)\
+                .filter(ReeBill.customer==customer).count() > 0:
+            raise ValueError("Reebills already exist for account" %
+                    utilbill.account)
+        
+        template = self.reebill_dao.load_utilbill_template(session,
+                utilbill.customer.account)
+        mongo_reebill = MongoReebill.get_reebill_doc_for_utilbills(
+                utilbill.customer.account, customer.discountrate,
+                utilbill.customer.latechargerate, [template])
+
+        # add row in MySQL
+        session.add(ReeBill(customer, 1, 0, [utilbill]))
+
+
     #def roll_reebill(self, session, reebill, utility_bill_date=None):
-        #'''Creates the successor to the db_objects.ReeBill and its associated
-        #Mongo document.'''
+        #'''Creates the successor to the given db_objects.ReeBill and its
+        #associated Mongo document.'''
         ## find successor to every utility bill belonging to the reebill
         #new_utilbills = []
         #for utilbill in reebill.utilbills:
@@ -552,8 +574,7 @@ class Process(object):
 
         #reebill_row = self.state_db.get_reebill(session, reebill.account,
                 #reebill.sequence, reebill.version)
-        #for utilbill_row in reebill_row.utilbills:
-            ## find successor of each utility bill
+        ## find successor of each utility bill
 
 
         ## set discount rate & late charge rate to the instananeous value from MySQL
