@@ -135,12 +135,11 @@ class MongoReebill(object):
     @classmethod
     def get_reebill_doc_for_utilbills(cls, account, sequence, version,
                 discount_rate, late_charge_rate, utilbill_docs):
-        '''Returns a newly-created MongoReebill (dictionary) having the given
-        account number, discount rate, late charge rate, and list of utility
-        bill documents. Service addresses are copied from the utility bill
-        template. Note that the utility bill document _id is not changed; the
-        caller is responsible for properly duplicating utility bill
-        documents.'''
+        '''Returns a newly-created MongoReebill object having the given account
+        number, discount rate, late charge rate, and list of utility bill
+        documents. Addresses are copied from the utility bill template. Note
+        that the utility bill document _id is not changed; the caller is
+        responsible for properly duplicating utility bill documents.'''
         # NOTE currently only one utility bill is allowed
         assert len(utilbill_docs) == 1
         utilbill = utilbill_docs[0]
@@ -159,6 +158,7 @@ class MongoReebill(object):
             "message" : None,
             "issue_date" : None,
             "utilbills" : [{
+                'id': utilbill['_id'],
                 'shadow_registers': reduce(operator.add,
                         [m['registers'] for m in utilbill['meters']], []),
                 'hypothetical_chargegroups': utilbill['chargegroups'],
