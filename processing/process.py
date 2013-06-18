@@ -511,21 +511,23 @@ class Process(object):
         #return new_reebill
 
     def create_first_reebill(self, session, utilbill):
-        '''Create and save the account's first reebill, based on the given
-        db_objects.UtilBill.'''
+        '''Create and save the account's first reebill (in Mongo and MySQL),
+        based on the given db_objects.UtilBill.'''
         customer = utilbill.customer
 
-        # this must be first reebill ever
+        # make sure there are no reebills yet
         if session.query(ReeBill).join(Customer)\
                 .filter(ReeBill.customer==customer).count() > 0:
             raise ValueError("Reebills already exist for account" %
                     utilbill.account)
         
-        template = self.reebill_dao.load_utilbill_template(session,
-                utilbill.customer.account)
-        mongo_reebill = MongoReebill.get_reebill_doc_for_utilbills(
+        # load document for the 'utilbill', use it to create the reebill
+        # document, and save the reebill document
+        utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill(utilbill)
+        reebill_doc = MongoReebill.get_reebill_doc_for_utilbills(
                 utilbill.customer.account, 1, 0, customer.discountrate,
-                utilbill.customer.latechargerate, [template])
+                utilbill.customer.latechargerate, [utilbill_doc])
+        self.reebill_dao.save_reebill(reebill_doc)
 
         # add row in MySQL
         session.add(ReeBill(customer, 1, 0, [utilbill]))
