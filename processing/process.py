@@ -230,36 +230,6 @@ class Process(object):
 
         self.bind_rate_structure(present_reebill)
 
-        # get payment_received: all payments between issue date of
-        # predecessor's version 0 and issue date of current reebill's version 0
-        # (if current reebill is unissued, its version 0 has None as its
-        # issue_date, meaning the payment period lasts up until the present)
-        if self.state_db.is_issued(session, acc,
-                prior_reebill.sequence, version=0, nonexistent=False):
-            # if predecessor's version 0 is issued, gather all payments from
-            # its issue date until version 0 issue date of current bill, or
-            # today if this bill has never been issued
-            if self.state_db.is_issued(session, acc, present_reebill.sequence,
-                    version=0):
-                prior_v0_issue_date = self.reebill_dao.load_reebill(acc,
-                        prior_reebill.sequence, version=0).issue_date
-                present_v0_issue_date = self.reebill_dao.load_reebill(acc,
-                        present_reebill.sequence, version=0).issue_date
-                present_reebill.payment_received = self.state_db.\
-                        get_total_payment_since(session, acc,
-                        prior_v0_issue_date,
-                        end=present_v0_issue_date)
-            else:
-                present_reebill.payment_received = self.state_db.\
-                        get_total_payment_since(session, acc,
-                        prior_reebill.issue_date)
-        else:
-            # if predecessor is not issued, there's no way to tell what
-            # payments will go in this bill instead of a previous bill, so
-            # assume there are none (all payments since last issue date go in
-            # the account's first unissued bill)
-            present_reebill.payment_received = Decimal(0)
-
         ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
         present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
@@ -317,7 +287,6 @@ class Process(object):
             present_reebill.set_ree_charges_for_service(service, ree_charges)
             present_reebill.set_ree_savings_for_service(service, ree_savings)
 
-
         # accumulate at the reebill level
         present_reebill.hypothetical_total = present_reebill.hypothetical_total\
                 + hypothetical_total
@@ -345,16 +314,63 @@ class Process(object):
         else:
             present_reebill.total_adjustment = Decimal(0)
 
-        # now grab the prior bill and pull values forward
-        # TODO balance_forward currently contains adjustment, but it should not
-        if present_reebill.sequence <= 1:
-            # we have to stop copying data from old bills!!!
-            present_reebill.prior_balance = present_reebill.balance_forward = Decimal(0)
+        if prior_reebill == None:
+            # this is the first reebill
+            assert present_reebill.sequence == 1
+
+            # include all payments since the beginning of time, in case there
+            # happen to be any, which is unlikely
+            present_v0_issue_date = self.reebill_dao.load_reebill(acc,
+                    present_reebill.sequence, version=0).issue_date
+            present_reebill.payment_received = self.state_db.\
+                    get_total_payment_since(session, acc,
+                    datetime.min,
+                    end=present_v0_issue_date)
+            # obviously balances are 0
+            present_reebill.prior_balance = Decimal(0)
+            present_reebill.balance_forward = Decimal(0)
+
+            # NOTE 'calculate_statistics' is not called because statistics
+            # section should already be zeroed out
         else:
-            present_reebill.prior_balance = prior_reebill.balance_due
-            present_reebill.balance_forward = present_reebill.prior_balance - \
-                    present_reebill.payment_received + \
-                    present_reebill.total_adjustment
+            # calculations that depend on 'prior_reebill' go here.
+            assert present_reebill.sequence > 1
+
+            # get payment_received: all payments between issue date of
+            # predecessor's version 0 and issue date of current reebill's version 0
+            # (if current reebill is unissued, its version 0 has None as its
+            # issue_date, meaning the payment period lasts up until the present)
+            if self.state_db.is_issued(session, acc,
+                    prior_reebill.sequence, version=0, nonexistent=False):
+                # if predecessor's version 0 is issued, gather all payments from
+                # its issue date until version 0 issue date of current bill, or
+                # today if this bill has never been issued
+                if self.state_db.is_issued(session, acc, present_reebill.sequence,
+                        version=0):
+                    prior_v0_issue_date = self.reebill_dao.load_reebill(acc,
+                            prior_reebill.sequence, version=0).issue_date
+                    present_v0_issue_date = self.reebill_dao.load_reebill(acc,
+                            present_reebill.sequence, version=0).issue_date
+                    present_reebill.payment_received = self.state_db.\
+                            get_total_payment_since(session, acc,
+                            prior_v0_issue_date,
+                            end=present_v0_issue_date)
+                else:
+                    present_reebill.payment_received = self.state_db.\
+                            get_total_payment_since(session, acc,
+                            prior_reebill.issue_date)
+            else:
+                # if predecessor is not issued, there's no way to tell what
+                # payments will go in this bill instead of a previous bill, so
+                # assume there are none (all payments since last issue date go in
+                # the account's first unissued bill)
+                present_reebill.payment_received = Decimal(0)
+
+                present_reebill.prior_balance = prior_reebill.balance_due
+                present_reebill.balance_forward = prior_reebill.balance_due - \
+                        present_reebill.payment_received + \
+                        present_reebill.total_adjustment
+            self.calculate_statistics(prior_reebill, present_reebill)
 
         lc = self.get_late_charge(session, present_reebill)
         if lc is not None:
@@ -374,7 +390,6 @@ class Process(object):
         present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
                 present_reebill._utilbills]
         
-        self.calculate_statistics(prior_reebill, present_reebill)
 
 
     def copy_actual_charges(self, reebill):
@@ -732,7 +747,7 @@ class Process(object):
         fetch_bill_data.fetch_oltp_data(self.splinter,
                 self.nexus_util.olap_id(account), reebill_doc, verbose=True)
         predecessor = self.reebill_dao.load_reebill(account, sequence-1,
-                version=0)
+                version=0) if sequence > 1 else None
         self.compute_bill(session, predecessor, reebill_doc)
 
         # save in mongo
