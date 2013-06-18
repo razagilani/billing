@@ -1631,7 +1631,6 @@ class ReebillDAO:
         (i.e. calling save_reebill(freeze_utilbills=True). This puts sequence
         and version keys into the utility bill. (If those keys are already in
         the utility bill, you won't be able to save it.)'''
-        print '****************** saving', utilbill_doc['service'], utilbill_doc['utility']
 
         # check for uniqueness of {account, service, utility, start, end} (and
         # sequence + version if appropriate). Mongo won't enforce this for us.
