@@ -758,7 +758,6 @@ class Process(object):
                 self.nexus_util.olap_id(account), reebill_doc, verbose=True)
         predecessor = self.reebill_dao.load_reebill(account, sequence-1,
                 version=0) if sequence > 1 else None
-        import ipdb; ipdb.set_trace()
         self.compute_bill(session, predecessor, reebill_doc)
 
         # save in mongo

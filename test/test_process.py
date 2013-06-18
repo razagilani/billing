@@ -662,8 +662,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     account, start, end)
             self.assertTrue(os.access(new_path, os.F_OK))
 
-            ## only the teplate (...01) exists in mongo here
-
             # re-upload the bill
             self.process.upload_utility_bill(session, account, service, start,
                     end, StringIO("test"), 'january.pdf')
@@ -676,18 +674,18 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     .filter(UtilBill.customer_id == customer.id)\
                     .filter(UtilBill.period_start == start)\
                     .filter(UtilBill.period_end == end).one()
-            utilbill_id = utilbill.id
             
             # when utilbill is attached to reebill, deletion should fail
-            reebill = session.query(ReeBill).one() # TODO why is there no reebill row?
-            first_reebill = self.reebill_dao.load_reebill(account, 1)
-            assert utilbill.reebills == [reebill]
+            self.process.create_first_reebill(session, utilbill)
+            first_reebill = session.query(ReeBill).one()
+            assert utilbill.reebills == [first_reebill]
             self.assertRaises(ValueError, self.process.delete_utility_bill,
-                    session, utilbill_id)
+                    session, utilbill.id)
 
             # deletion should fail if any version of a reebill has an
-            # association with the utility bill. issue the reebill and create a
-            # new version of the reebill that does not have this utilbill.
+            # association with the utility bill. so issue the reebill and
+            # create a new version of the reebill that does not have this
+            # utility bill.
             self.process.issue(session, account, 1)
             self.process.new_version(session, account, 1)
             mongo_reebill.version = 1
@@ -695,7 +693,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     timedelta(days=365), end - timedelta(days=365)))
             self.reebill_dao.save_reebill(mongo_reebill)
             self.assertRaises(ValueError, self.process.delete_utility_bill,
-                    session, utilbill_id)
+                    session, utilbill.id)
             session.commit()
 
             # test deletion of a Skyline-estimated utility bill (no file)
