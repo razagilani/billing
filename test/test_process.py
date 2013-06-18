@@ -631,13 +631,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEqual(UtilBill.Complete, bills[i].state)
 
     def test_delete_utility_bill(self):
-        account, service, = '99999', 'gas'
+        account = '99999'
         start, end = date(2012,1,1), date(2012,2,1)
 
         with DBSession(self.state_db) as session:
             # create utility bill in MySQL and filesystem (and make sure it
             # exists in both places)
-            self.process.upload_utility_bill(session, account, service, start, end,
+            self.process.upload_utility_bill(session, account, 'gas', start, end,
                     StringIO("test"), 'january.pdf')
             assert self.state_db.list_utilbills(session, account)[1] == 1
             bill_file_path = self.billupload.get_utilbill_file_path(account,
@@ -663,8 +663,8 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertTrue(os.access(new_path, os.F_OK))
 
             # re-upload the bill
-            self.process.upload_utility_bill(session, account, service, start,
-                    end, StringIO("test"), 'january.pdf')
+            self.process.upload_utility_bill(session, account, 'gas', start,
+                    end, StringIO("test"), 'january-gas.pdf')
             assert self.state_db.list_utilbills(session, account)[1] == 1
             self.assertEquals(2, len(self.reebill_dao.load_utilbills()))
             bill_file_path = self.billupload.get_utilbill_file_path(account,
@@ -683,15 +683,28 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     session, utilbill.id)
 
             # deletion should fail if any version of a reebill has an
-            # association with the utility bill. so issue the reebill and
-            # create a new version of the reebill that does not have this
-            # utility bill.
+            # association with the utility bill. so issue the reebill, add
+            # another utility bill, and create a new version of the reebill
+            # attached to that utility bill instead.
             self.process.issue(session, account, 1)
             self.process.new_version(session, account, 1)
-            mongo_reebill.version = 1
-            mongo_reebill.set_utilbill_period_for_service(service, (start -
-                    timedelta(days=365), end - timedelta(days=365)))
-            self.reebill_dao.save_reebill(mongo_reebill)
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2012,2,1), date(2012,3,1), StringIO("test"),
+                    'january-electric.pdf')
+            other_utility_bill = self.state_db.get_utilbill(session, account,
+                    'gas', date(2012,2,1), date(2012,3,1))
+            new_version_reebill = self.state_db.get_reebill(session, account,
+                    1, version=1)
+            # TODO this may not accurately reflect the way reebills get
+            # attached to different utility bills; see
+            # https://www.pivotaltracker.com/story/show/51935657
+            new_version_reebill._utilbills = [other_utility_bill]
+            new_version_reebill_doc = self.reebill_dao.load_reebill(account, 1,
+                    version=1)
+            other_utility_bill_doc = self.reebill_dao\
+                    .load_doc_for_statedb_utilbill(utilbill)
+            new_version_reebill_doc._utilbills[0]['_id'] = other_utility_bill_doc['_id']
+            self.reebill_dao.save_reebill(new_version_reebill_doc)
             self.assertRaises(ValueError, self.process.delete_utility_bill,
                     session, utilbill.id)
             session.commit()
@@ -704,6 +717,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     date(2013,1,1), date(2013,2,1)).id)
 
             # test deletion of utility bill with non-standard file extension
+            ## load_doc_for_statedb_utilbill fails with error
+            ## ValueError: Utility bill lacks document_id: <UtilBill(customer=<Customer(name=Test Customer, account=99999, discountrate=0.12 latechargerate=0.34)>, service=gas, period_start=2012-11-26, period_end=2013-01-01, document_id=None)>
+            ## even though 'other_utility_bill' has a document_id
             self.process.upload_utility_bill(session, account, 'gas',
                     date(2013,2,1), date(2013,3,1), StringIO("a bill"),
                     'billfile.abcdef')
