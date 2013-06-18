@@ -27,7 +27,7 @@ import MySQLdb
 from billing.util.mongo_utils import python_convert
 from billing.test import example_data
 from skyliner.mock_skyliner import MockSplinter, MockMonguru
-from billing.util.nexus_util import NexusUtil
+from billing.util.nexus_util import MockNexusUtil
 from billing.processing.mongo import NoSuchBillException
 from billing.processing.exceptions import BillStateError
 from billing.processing import fetch_bill_data as fbd
@@ -126,7 +126,14 @@ port = 27017
         mongoengine.connect('test', host='localhost', port=27017,
                 alias='utilbills')
 
-        self.nexus_util = NexusUtil('nexus')
+        self.nexus_util = MockNexusUtil([
+            {
+                'billing': '99999',
+                'olap': 'example-1',
+                'casualname': 'Example',
+                'primus': '1785 Massachusetts Ave.',
+            },
+        ])
         self.process = Process(self.state_db, self.reebill_dao,
                 self.rate_structure_dao, self.billupload, self.nexus_util,
                 self.splinter)
