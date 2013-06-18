@@ -106,6 +106,12 @@ port = 27017
         utilbill['_id'] = ObjectId('000000000000000000000001')
         db.utilbills.save(utilbill)
 
+        # insert URS documet for the customer's rate class in Mongo (note that
+        # UPRS and CPRS can be newly-created but URS must already exist)
+        db.ratestructure.save(example_data.get_urs_dict(
+                rate_structure_name='DC Non Residential Non Heat',
+                utility_name='washgas'))
+
         self.reebill_dao = mongo.ReebillDAO(self.state_db, **{
             'billpath': '/db-dev/skyline/bills/',
             'database': 'test',
