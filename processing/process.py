@@ -568,9 +568,7 @@ class Process(object):
         # than the predecessor's and the version is always 0.
         new_mongo_reebill = MongoReebill.get_reebill_doc_for_utilbills(account,
                 last_reebill_row.sequence + 1, 0, customer.dicountrate,
-                customer.latechargerate,
-                [self.reebill_dao.load_doc_for_statedb_utilbill(u) for u in
-                    new_utilbills])
+                customer.latechargerate, new_utilbills)
 
         # copy 'suspended_services' list from predecessor reebill's document
         last_reebill_doc = self.reebill_dao.load_reebill(account,
@@ -702,28 +700,29 @@ class Process(object):
         # from Mongo (even if higher version exists in Mongo, it doesn't count
         # unless MySQL knows about it)
         max_version = self.state_db.max_version(session, account, sequence)
-        reebill = self.reebill_dao.load_reebill(account, sequence,
+        reebill_doc = self.reebill_dao.load_reebill(account, sequence,
                 version=max_version)
 
-        # duplicate rate structures (CPRS)
-        for service in reebill.services:
-            utility_name = reebill.utility_name_for_service(service)
-            rs_name = reebill.rate_structure_name_for_service(service)
-            cprs = self.rate_structure_dao.load_cprs(reebill.account,
-                    reebill.sequence, reebill.version, utility_name, rs_name)
-            self.rate_structure_dao.save_cprs(account, sequence, max_version +
-                    1, utility_name, rs_name, cprs)
-            uprs = self.rate_structure_dao.load_uprs(reebill.account,
-                    reebill.sequence, reebill.version, utility_name, rs_name)
-            self.rate_structure_dao.save_uprs(account, sequence, max_version +
-                    1, utility_name, rs_name, uprs)
+        # duplicate rate structure (CPRS and UPRS)
+        reebill = session.query(ReeBill)\
+                .filter(ReeBill.customer == customer)\
+                .filter(ReeBill.sequence == sequence)\
+                .filter(ReeBill.version == max_version).one()
+        for utilbill in reebill.utilbills:
+            uprs = self.rate_structure_dao.load_uprs_for_statedb_utilbill(utilbill)
+            cprs = self.rate_structure_dao.load_cprs_for_statedb_utilbill(utilbill)
+            utilbill.uprs_id = uprs['_id'] = ObjectId()
+            utilbill.cprs_id = cprs['_id'] = ObjectId()
+            # TODO save at end of function in case of failure
+            self.rate_structure_dao.save_rs(uprs)
+            self.rate_structure_dao.save_rs(cprs)
 
         # increment max version in mysql
         self.state_db.increment_version(session, account, sequence)
 
-        # increment version, make un-issued, and replace utilbills with the
-        # current-truth ones
-        self.reebill_dao.increment_reebill_version(session, reebill)
+        # replace utility bill documents with the "current" nes
+        reebill._utilbills = [self.reebill_dao.load_doc_for_statedb_utilbill(u)
+                for u in reebill.utilbills]
 
         # re-bind and compute
         # recompute, using sequence predecessor to compute balance forward and
@@ -731,15 +730,15 @@ class Process(object):
         # to be the same as they were on version 0 of this bill--we don't care
         # about any corrections that might have been made to that bill later.
         fetch_bill_data.fetch_oltp_data(self.splinter,
-                self.nexus_util.olap_id(account), reebill, verbose=True)
+                self.nexus_util.olap_id(account), reebill_doc, verbose=True)
         predecessor = self.reebill_dao.load_reebill(account, sequence-1,
                 version=0)
-        self.compute_bill(session, predecessor, reebill)
+        self.compute_bill(session, predecessor, reebill_doc)
 
         # save in mongo
-        self.reebill_dao.save_reebill(reebill)
+        self.reebill_dao.save_reebill(reebill_doc)
 
-        return reebill
+        return reebill_doc
 
     def get_unissued_corrections(self, session, account):
         '''Returns [(sequence, max_version, balance adjustment)] of all
