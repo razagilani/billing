@@ -366,6 +366,16 @@ class MongoReebill(object):
             if 'version' in utilbill_doc:
                 del utilbill_doc['version']
 
+    def update_utilbill_subdocs(self):
+        '''Refreshes the "utilbills" sub-documents of the reebill document to
+        match the utility bill documents in _utilbills. (These represent the
+        "hypothetical" version of each utility bill.)'''
+        # TODO maybe this should be done in compute_bill or a method called by
+        # it; see https://www.pivotaltracker.com/story/show/51581067
+        self.reebill_dict['utilbills'] = \
+                [MongoReebill.get_utilbill_subdoc(utilbill_doc) for
+                utilbill_doc in self._utilbills]
+
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
     # strings unless otherwise noted.
