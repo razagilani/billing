@@ -635,11 +635,15 @@ class Process(object):
 
         # look for the last utility bill with the same account and service
         # (i.e. the last-ending before 'end')
+        # TODO pass this predecessor in from upload_utility_bill?
+        # see https://www.pivotaltracker.com/story/show/51749487
         customer = session.query(Customer)\
                 .filter(Customer.account==account).one()
         predecessor = session.query(UtilBill)\
                 .filter(UtilBill.customer==customer)\
                 .filter(UtilBill.service==service)\
+                .filter(UtilBill.utility==utility)\
+                .filter(UtilBill.rate_class==rate_class)\
                 .filter(UtilBill.period_end<end)\
                 .order_by(desc(UtilBill.period_end)).first()
 
@@ -648,6 +652,12 @@ class Process(object):
         # predecessor's utility bill document and CPRS
         if predecessor is None:
             doc = self.reebill_dao.load_utilbill_template(session, account)
+            # template document should have the same service/utility/rate class
+            # as this one; multiple services are not supported since there
+            # would need to be more than one template
+            assert doc['service'] == service
+            assert doc['utility'] == utility
+            assert doc['rate_structure_binding'] == rate_class
             cprs = {'_id': ObjectId(), 'type': 'CPRS', 'rates': []}
         else:
             doc = self.reebill_dao.load_doc_for_statedb_utilbill(predecessor)
@@ -745,9 +755,15 @@ class Process(object):
         # increment max version in mysql
         self.state_db.increment_version(session, account, sequence)
 
-        # replace utility bill documents with the "current" nes
-        reebill._utilbills = [self.reebill_dao.load_doc_for_statedb_utilbill(u)
+        reebill_doc.version = max_version + 1
+
+        # replace utility bill documents with the "current" ones
+        reebill_doc._utilbills = [self.reebill_dao.load_doc_for_statedb_utilbill(u)
                 for u in reebill.utilbills]
+        # update utility bill subdocuments of reebill
+        # TODO maybe this should be done in compute_bill or a method called by
+        # it; see https://www.pivotaltracker.com/story/show/51581067
+        reebill_doc.update_utilbill_subdocs()
 
         # re-bind and compute
         # recompute, using sequence predecessor to compute balance forward and
