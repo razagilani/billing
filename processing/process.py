@@ -37,7 +37,6 @@ import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
 sys.stdout = sys.stderr
 
-sys.stdout = sys.stderr
 class Process(object):
     """ Class with a variety of utility procedures for processing bills.
         The idea here is that this class is instantiated with the data
@@ -335,7 +334,7 @@ class Process(object):
                     present_reebill.sequence, version=0).issue_date
             present_reebill.payment_received = self.state_db.\
                     get_total_payment_since(session, acc,
-                    datetime.min,
+                    state.MYSQLDB_DATETIME_MIN,
                     end=present_v0_issue_date)
             # obviously balances are 0
             present_reebill.prior_balance = Decimal(0)
@@ -759,6 +758,7 @@ class Process(object):
                 self.nexus_util.olap_id(account), reebill_doc, verbose=True)
         predecessor = self.reebill_dao.load_reebill(account, sequence-1,
                 version=0) if sequence > 1 else None
+        import ipdb; ipdb.set_trace()
         self.compute_bill(session, predecessor, reebill_doc)
 
         # save in mongo
