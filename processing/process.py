@@ -228,7 +228,18 @@ class Process(object):
         present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
                 present_reebill._utilbills]
 
-        self.bind_rate_structure(present_reebill)
+
+        # get MySQL reebill row corresponding to the document 'present_reebill'
+        # (would be better to pass in the db_objects.ReeBill itself: see
+        # https://www.pivotaltracker.com/story/show/51922065)
+        customer = self.state_db.get_customer(session, present_reebill.account)
+        reebill_row = session.query(ReeBill)\
+                .filter(ReeBill.customer == customer)\
+                .filter(ReeBill.sequence == present_reebill.sequence)\
+                .filter(ReeBill.version == present_reebill.version).one()
+        for utilbill in reebill_row.utilbills:
+            rs = self.rate_structure_dao.load_rate_structure(utilbill)
+            self.bind_rate_structure(present_reebill, rs)
 
         ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
@@ -306,9 +317,9 @@ class Process(object):
         # (2) at least the 0th version of its predecessor has been issued (it
         #     may have an unissued correction; if so, that correction will
         #     contribute to the adjustment on this bill)
-        if present_reebill.version == 0 and self.state_db.is_issued(session,
-                prior_reebill.account, prior_reebill.sequence, version=0,
-                nonexistent=False):
+        if prior_reebill is not None and present_reebill == 0 \
+                and self.state_db.is_issued(session, prior_reebill.account,
+                prior_reebill.sequence, version=0, nonexistent=False):
             present_reebill.total_adjustment = self.get_total_adjustment(
                     session, present_reebill.account)
         else:
@@ -995,7 +1006,7 @@ class Process(object):
 
         #self.state_db.attach_utilbills(session, reebill.account, reebill.sequence, utilbills, reebill.suspended_services)
 
-    def bind_rate_structure(self, reebill):
+    def bind_rate_structure(self, reebill, the_rate_structure):
         """This function binds a rate structure against the actual and
         hypothetical charges found in a bill. If and RSI specifies information
         no in the bill, it is added to the bill. If the bill specifies
@@ -1014,7 +1025,8 @@ class Process(object):
 
             # actual
 
-            rate_structure = self.rate_structure_dao.load_rate_structure(reebill, service)
+            # copy rate structure because it gets destroyed during use
+            rate_structure = copy.deepcopy(the_rate_structure)
 
             # get non-shadow registers in the reebill
             actual_register_readings = reebill.actual_registers(service)
@@ -1055,7 +1067,7 @@ class Process(object):
             # hypothetical charges
 
             # "re-load rate structure" (doesn't this clear out all the changes above?)
-            rate_structure = self.rate_structure_dao.load_rate_structure(reebill, service)
+            rate_structure = copy.deepcopy(rate_structure)
 
             # get shadow and non-shadow registers in the reebill
             actual_register_readings = reebill.actual_registers(service)
