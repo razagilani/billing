@@ -288,6 +288,8 @@ class RateStructureDAO(object):
         return urs
 
     def load_rate_structure(self, utilbill):
+        '''Returns the combined rate structure (CPRS, UPRS, URS) dictionary for
+        the given db_objects.UtilBill.'''
         return self._load_combined_rs_dict(utilbill)
     
     def load_urs(self, utility_name, rate_structure_name, period_begin=None,
@@ -304,10 +306,10 @@ class RateStructureDAO(object):
         }
         urs = self.collection.find_one(query)
         if urs is None:
+            # don't mention dates in error message because they're ignored
             raise ValueError(("Could not find URS for utility_name %s, "
-                    "rate_structure_name %s, period %s - %s") % (utility_name,
-                    utilbill.rate_class, utilbill.period_start,
-                    utilbill.period_end))
+                    "rate_structure_name %s") % (utility_name,
+                    rate_structure_name))
         return urs
 
     def load_uprs_for_statedb_utilbill(self, utilbill):
