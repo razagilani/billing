@@ -1406,6 +1406,7 @@ class ReebillDAO:
                         " %s-%s-%s in %s: query was %s") % (
                         reebill_doc['_id']['account'], reebill_doc['_id']['sequence'], reebill_doc['_id']['version'],
                         self.utilbills_collection, format_query(query)))
+            result.append(utilbill_doc)
 
 
             # convert types
