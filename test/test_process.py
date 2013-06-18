@@ -1148,6 +1148,28 @@ class ProcessTest(TestCaseWithSetup):
             self.reebill_dao.save_reebill(reebill_a_0, freeze_utilbills=True)
             self.reebill_dao.save_reebill(reebill_b_0, freeze_utilbills=True)
             self.reebill_dao.save_reebill(reebill_c_0, freeze_utilbills=True)
+            # new customers also need to be in nexus for 'fetch_oltp_data' to
+            # work (using mock Skyliner)
+            self.nexus_util._customers.extend([
+                {
+                    'billing': 'aaaaa',
+                    'olap': 'a-1',
+                    'casualname': 'Customer A',
+                    'primus': '1 A St.',
+                },
+                {
+                    'billing': 'bbbbb',
+                    'olap': 'b-1',
+                    'casualname': 'Customer B',
+                    'primus': '1 B St.',
+                },
+                {
+                    'billing': 'ccccc',
+                    'olap': 'c-1',
+                    'casualname': 'Customer C',
+                    'primus': '1 C St.',
+                },
+            ])
 
             # save default rate structure documents all 3 accounts
             self.rate_structure_dao.save_rs(example_data.get_urs_dict())
