@@ -203,27 +203,12 @@ class RateStructureDAO(object):
                 ignore=ignore)
         }
 
-    def _load_combined_rs_dict(self, reebill, service):
+    def _load_combined_rs_dict(self, utilbill):
         '''Returns a dictionary of combined rate structure (derived from URS,
-        UPRS, and CPRS) that should be used to compute the charges of
-        'reebill'.'''
-        # return a probable rate structure for each utilbill in the reebill
-        # all the data needed to identify a probable rate structure
-        account = reebill.account
-        sequence = reebill.sequence
-        version = reebill.version
-        rsbinding = reebill.rate_structure_name_for_service(service)
-        utility_name = reebill.utility_name_for_service(service)
-        rate_structure_name = reebill.rate_structure_name_for_service(service)
-        period_begin, period_end = reebill.utilbill_period_for_service(service)
-
+        UPRS, and CPRS) belonging to the given db_objects.UtilBill.'''
         # load the URS
-        urs = self.load_urs(utility_name, rate_structure_name, period_begin,
-                period_end)
-        if urs is None:
-            raise ValueError(("Could not find URS for utility_name %s, "
-                    "rate_structure_name %s, period %s - %s") % (utility_name,
-                    rate_structure_name, period_begin, period_end))
+        urs = self.load_urs(utilbill.utility, utilbill.rate_class,
+                utilbill.period_start, utilbill.period_end)
 
         # remove the mongo key, because the requester already has this
         # information and we do not want application code depending on the
@@ -238,8 +223,7 @@ class RateStructureDAO(object):
             del urs_reg['uuid']
 
         # load the UPRS
-        uprs = self.load_uprs(reebill.account, reebill.sequence,
-                reebill.version, utility_name, rate_structure_name)
+        uprs = self.load_uprs_for_statedb_utilbill(utilbill)
 
         # remove the mongo key, because the requester already has this
         # information and we do not want application code depending on the
@@ -253,8 +237,7 @@ class RateStructureDAO(object):
                 del uprs_rate['uuid']
 
         # load the CPRS
-        cprs = self.load_cprs(account, sequence, version, utility_name,
-                rate_structure_name)
+        cprs = self.load_cprs_for_statedb_utilbill(utilbill)
 
         # remove the mongo key, because the requester already has this information
         # and we do not want application code depending on the "_id" field.
@@ -304,13 +287,9 @@ class RateStructureDAO(object):
         # the URS has been thoroughly overridden by the UPRS and CPRS
         return urs
 
-    def load_rate_structure(self, reebill, service):
-        '''Returns a RateStructure object representing the combined rate
-        structure used to compute charges for the utility bill of the given
-        service in 'reebill'.'''
-        rs_dict = self._load_combined_rs_dict(reebill, service)
-        return RateStructure(rs_dict)
-
+    def load_rate_structure(self, utilbill):
+        return self._load_combined_rs_dict(utilbill)
+    
     def load_urs(self, utility_name, rate_structure_name, period_begin=None,
             period_end=None):
         '''Loads Utility (global) Rate Structure document from Mongo, returns
@@ -324,6 +303,11 @@ class RateStructureDAO(object):
             "_id.rate_structure_name": rate_structure_name,
         }
         urs = self.collection.find_one(query)
+        if urs is None:
+            raise ValueError(("Could not find URS for utility_name %s, "
+                    "rate_structure_name %s, period %s - %s") % (utility_name,
+                    utilbill.rate_class, utilbill.period_start,
+                    utilbill.period_end))
         return urs
 
     def load_uprs_for_statedb_utilbill(self, utilbill):
