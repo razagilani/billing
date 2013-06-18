@@ -1218,43 +1218,43 @@ class ReebillDAO:
 
         raise ValueError('Unknown version specifier "%s"' % specifier)
 
-    def increment_reebill_version(self, session, reebill):
-        '''Converts the reebill into its version successor: increments
-        _id.version, sets issue_date to None, and reloads the utility bills
-        from Mongo (since the reebill is unissued, these will be the current
-        versionless ones, not the ones that belong to the previous old
-        version of this reebill).'''
-        reebill.issue_date = None
-        reebill.version += 1
+    #def increment_reebill_version(self, session, reebill):
+        #'''Converts the reebill into its version successor: increments
+        #_id.version, sets issue_date to None, and reloads the utility bills
+        #from Mongo (since the reebill is unissued, these will be the current
+        #versionless ones, not the ones that belong to the previous old
+        #version of this reebill).'''
+        #reebill.issue_date = None
+        #reebill.version += 1
 
-        # replace the reebill's utility bill dictionaries with new ones loaded
-        # from mongo. which ones? the un-frozen/editable/"current truth"
-        # versions of the frozen ones currently in the reebill. how do you find
-        # them? i think the only way is by {account, service, utility, start
-        # date, end date}.
-        # TODO reconsider: https://www.pivotaltracker.com/story/show/37521779
-        all_new_utilbills = []
-        for utilbill_handle in reebill.reebill_dict['utilbills']:
-            # load new utility bill
-            old_utilbill = reebill._get_utilbill_for_handle(utilbill_handle)
-            new_utilbill = self.load_utilbill(account=reebill.account,
-                    utility=old_utilbill['utility'],
-                    service=old_utilbill['service'],
-                    start=old_utilbill['start'], end=old_utilbill['end'],
-                    # must not contain "sequence" or "version" keys
-                    sequence=False, version=False)
+        ## replace the reebill's utility bill dictionaries with new ones loaded
+        ## from mongo. which ones? the un-frozen/editable/"current truth"
+        ## versions of the frozen ones currently in the reebill. how do you find
+        ## them? i think the only way is by {account, service, utility, start
+        ## date, end date}.
+        ## TODO reconsider: https://www.pivotaltracker.com/story/show/37521779
+        #all_new_utilbills = []
+        #for utilbill_handle in reebill.reebill_dict['utilbills']:
+            ## load new utility bill
+            #old_utilbill = reebill._get_utilbill_for_handle(utilbill_handle)
+            #new_utilbill = self.load_utilbill(account=reebill.account,
+                    #utility=old_utilbill['utility'],
+                    #service=old_utilbill['service'],
+                    #start=old_utilbill['start'], end=old_utilbill['end'],
+                    ## must not contain "sequence" or "version" keys
+                    #sequence=False, version=False)
 
-            # convert types
-            new_utilbill = deep_map(float_to_decimal, new_utilbill)
-            new_utilbill = convert_datetimes(new_utilbill)
+            ## convert types
+            #new_utilbill = deep_map(float_to_decimal, new_utilbill)
+            #new_utilbill = convert_datetimes(new_utilbill)
 
-            all_new_utilbills.append(new_utilbill)
+            #all_new_utilbills.append(new_utilbill)
 
-            # utilbill_handle's _id should match the new utility bill
-            utilbill_handle['id'] = new_utilbill['_id']
+            ## utilbill_handle's _id should match the new utility bill
+            #utilbill_handle['id'] = new_utilbill['_id']
 
-        # replace utilbills with new ones loaded above (all at once)
-        reebill._utilbills = all_new_utilbills
+        ## replace utilbills with new ones loaded above (all at once)
+        #reebill._utilbills = all_new_utilbills
 
 
     def load_utilbills(self, **kwargs):
@@ -1405,8 +1405,7 @@ class ReebillDAO:
                 raise NoSuchBillException(("No utility bill found for reebill "
                         " %s-%s-%s in %s: query was %s") % (
                         reebill_doc['_id']['account'],
-                        reebill_doc['_id']['sequence'],
-                        reebill_doc['_id']['version'],
+                        reebill_doc['_id']['sequence'], reebill_doc['_id']['version'],
                         self.utilbills_collection, format_query(query)))
             result.append(utilbill_doc)
 
