@@ -1247,10 +1247,9 @@ class Process(object):
     def issue(self, session, account, sequence,
             issue_date=datetime.utcnow().date()):
         '''Sets the issue date of the reebill given by account, sequence to
-        'issue_date' (or today by default),
-        and the due date to 30 days from the issue date. The reebill's late
-        charge is set to its permanent value in mongo, and the reebill is
-        marked as issued in the state database. Does not attach utililty bills.'''
+        'issue_date' (or today by default), and the due date to 30 days from
+        the issue date. The reebill's late charge is set to its permanent value
+        in mongo, and the reebill is marked as issued in the state database.'''
         # version 0 of predecessor must be issued before this bill can be
         # issued:
         if sequence > 1 and not self.state_db.is_issued(session, account,
@@ -1265,8 +1264,6 @@ class Process(object):
         # set issue date and due date in mongo
         reebill = self.reebill_dao.load_reebill(account, sequence)
         reebill.issue_date = issue_date
-
-        # TODO: parameterize for dependence on customer 
         reebill.due_date = issue_date + timedelta(days=30)
 
         # set late charge to its final value (payments after this have no
