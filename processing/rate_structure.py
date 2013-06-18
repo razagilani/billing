@@ -290,7 +290,7 @@ class RateStructureDAO(object):
     def load_rate_structure(self, utilbill):
         '''Returns the combined rate structure (CPRS, UPRS, URS) dictionary for
         the given db_objects.UtilBill.'''
-        return self._load_combined_rs_dict(utilbill)
+        return RateStructure(self._load_combined_rs_dict(utilbill))
     
     def load_urs(self, utility_name, rate_structure_name, period_begin=None,
             period_end=None):
