@@ -1375,6 +1375,8 @@ class ReebillDAO:
     def load_doc_for_statedb_utilbill(self, utilbill_row):
         '''Returns the Mongo utility bill document corresponding to the given
         db_objects.UtilBill object.'''
+        # empty document_ids are legitimate because "hypothetical" utility
+        # bills do not have a document
         # empty document_ids should not be possible, once the db is cleaned up
         # (there's already a "not null" constraint for 'document_id' but the
         # default value is "")
