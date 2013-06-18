@@ -133,6 +133,21 @@ class MongoReebill(object):
     '''
 
     @classmethod
+    def get_utilbill_subdoc(cls, utilbill):
+        '''Returns a a dictionary that is the subdocument of a reebill document
+        representing the "hypothetical" version of the given utility bill
+        document.'''
+        return {
+            'id': utilbill['_id'],
+            'shadow_registers': reduce(operator.add,
+                    [m['registers'] for m in utilbill['meters']], []),
+            'hypothetical_chargegroups': utilbill['chargegroups'],
+            'ree_charges': 0,
+            'ree_savings': 0,
+            'ree_value': 0
+        }
+
+    @classmethod
     def get_reebill_doc_for_utilbills(cls, account, sequence, version,
                 discount_rate, late_charge_rate, utilbill_docs):
         '''Returns a newly-created MongoReebill object having the given account
@@ -157,15 +172,7 @@ class MongoReebill(object):
             'late_charges': 0,
             "message" : None,
             "issue_date" : None,
-            "utilbills" : [{
-                'id': utilbill['_id'],
-                'shadow_registers': reduce(operator.add,
-                        [m['registers'] for m in utilbill['meters']], []),
-                'hypothetical_chargegroups': utilbill['chargegroups'],
-                'ree_charges': 0,
-                'ree_savings': 0,
-                'ree_value': 0
-            }],
+            "utilbills" : [cls.get_utilbill_subdoc(u) for u in utilbill_docs],
             "payment_received" : 0,
             "actual_total" : 0,
             "due_date" : None,
@@ -1614,6 +1621,7 @@ class ReebillDAO:
         (i.e. calling save_reebill(freeze_utilbills=True). This puts sequence
         and version keys into the utility bill. (If those keys are already in
         the utility bill, you won't be able to save it.)'''
+        print '****************** saving', utilbill_doc['service'], utilbill_doc['utility']
 
         # check for uniqueness of {account, service, utility, start, end} (and
         # sequence + version if appropriate). Mongo won't enforce this for us.
