@@ -46,6 +46,7 @@ class UtilBill(object):
     # will probably be different than the guessed ones.
     # TODO 38385969: not sure this strategy is a good idea
     Complete, UtilityEstimated, SkylineEstimated, Hypothetical = range(4)
+    state_names = ['Complete', 'UtilityEstimated', 'SkylineEstimated', 'Hypothetical']
 
     def __init__(self, customer, state, service, utility, rate_class,
             document_id, uprs_document_id, cprs_document_id, period_start=None,
@@ -73,10 +74,10 @@ class UtilBill(object):
         return self.reebills != []
 
     def __repr__(self):
-        return ('<UtilBill(customer=%s, service=%s, period_start=%s, '
-                'period_end=%s, document_id=%s)>') % (self.customer,
+        return ('<utilbill(customer=%s, service=%s, period_start=%s, '
+                'period_end=%s, state=%s, document_id=%s)>') % (self.customer,
                         self.service, self.period_start, self.period_end,
-                        self.document_id)
+                        UtilBill.state_names[self.state], self.document_id)
 
 class Payment(object):
     '''date_received is the datetime when Skyline recorded the payment.
