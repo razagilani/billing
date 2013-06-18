@@ -31,7 +31,7 @@ from billing.util import dateutils
 from billing.util.dateutils import estimate_month, month_offset, month_difference, date_to_datetime
 from billing.util.monthmath import Month, approximate_month
 from billing.util.dictutils import deep_map
-from billing.processing.exceptions import IssuedBillError, NotIssuable, NotAttachable, BillStateError, NoSuchBillException
+from billing.processing.exceptions import IssuedBillError, NotIssuable, NotAttachable, BillStateError, NoSuchBillException, NotUniqueException
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -160,7 +160,7 @@ class Process(object):
                     state=state)
 
         elif len(list(existing_bills)) > 1:
-            raise Exception(("Can't upload a bill for dates %s, %s because"
+            raise NotUniqueException(("Can't upload a bill for dates %s, %s because"
                     " there are already %s of them") % (begin_date, end_date,
                     len(list(existing_bills))))
         else:
@@ -174,8 +174,8 @@ class Process(object):
 
             if list(bills_to_replace) == []:
                 # TODO this error message is kind of obscure
-                raise Exception(("Can't upload a utility bill for dates %s,"
-                    " %s because one already exists with a more final"
+                raise NotUniqueException(("Can't upload a utility bill for "
+                    "dates %s, %s because one already exists with a more final"
                     " state than %s") % (begin_date, end_date, state))
             bill_to_replace = bills_to_replace.one()
                 
