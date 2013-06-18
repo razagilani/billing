@@ -23,6 +23,11 @@ from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, St
 from billing.processing.exceptions import BillStateError, IssuedBillError, NoSuchBillException
 sys.stdout = sys.stderr
 
+# Python's datetime.min is too early for the MySQLdb module; including it in a
+# query to mean "the beginning of time" causes a strptime failure, so this
+# value should be used instead.
+MYSQLDB_DATETIME_MIN = datetime(1900,1,1)
+
 # TODO move the 2 functions below to Process? seems like state.py is only about
 # the state database
 
@@ -167,8 +172,8 @@ class StateDB:
         })
 
         # To turn logging on (set log level to INFO to see SQL statements)
-        import logging
-        logging.basicConfig()
+        #import logging
+        #logging.basicConfig()
         #logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
         #logging.getLogger('sqlalchemy.pool').setLevel(logging.INFO)
 
