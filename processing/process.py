@@ -569,7 +569,8 @@ class Process(object):
                 .order_by(desc(ReeBill.sequence), desc(ReeBill.version)).first()
 
         # find successor to every utility bill belonging to the reebill, along
-        # with its mongo document
+        # with its mongo document. note theat this includes Hypothetical
+        # utility bills.
         new_utilbills, new_utilbill_docs = [], []
         for utilbill in last_reebill_row.utilbills:
             successor = session.query(UtilBill)\
@@ -584,7 +585,7 @@ class Process(object):
                 "successor to %s") % utilbill)
             new_utilbills.append(successor)
             new_utilbill_docs.append(
-                    self.reebil_dao.load_doc_for_statedb_utilbill(successor))
+                    self.reebill_dao.load_doc_for_statedb_utilbill(successor))
 
         # currently only one service is supported
         assert len(new_utilbills) == 1
@@ -595,24 +596,20 @@ class Process(object):
         # than the predecessor's and the version is always 0.
         new_mongo_reebill = MongoReebill.get_reebill_doc_for_utilbills(account,
                 last_reebill_row.sequence + 1, 0, customer.discountrate,
-                customer.latechargerate, new_utilbills)
+                customer.latechargerate, new_utilbill_docs)
 
         # copy 'suspended_services' list from predecessor reebill's document
         last_reebill_doc = self.reebill_dao.load_reebill(account,
                 last_reebill_row.sequence, last_reebill_row.version)
-        new_mongo_reebill['suspended_services'] = \
-                last_reebill_doc['suspended_services']
+        assert all(new_mongo_reebill.suspend_service(s) for s in
+                last_reebill_doc.suspended_services)
 
         # create reebill row in state database
-        self.state_db.new_reebill(session, new_reebill.account,
-                new_reebill.sequence)
-
-        # save reebill row in MySQL
-        session.add(ReeBill(customer, sequence, version,
-                utilbills=new_utilbills))
+        session.add(ReeBill(customer, new_mongo_reebill.sequence,
+                new_mongo_reebill.version, utilbills=new_utilbills))
 
         # save reebill document in Mongo
-        self.reebill_dao.save_reebill(new_reebill)
+        self.reebill_dao.save_reebill(new_mongo_reebill)
 
 
     def create_new_utility_bill(self, session, account, utility, service,
@@ -696,10 +693,10 @@ class Process(object):
         # see https://www.pivotaltracker.com/story/show/43797365
 
         # create new row in MySQL
-        session.add(UtilBill(customer, state, service, utility,
-                rate_class, doc['_id'], uprs['_id'],
-                cprs['_id'], period_start=start, period_end=end,
-                total_charges=0, date_received=datetime.utcnow().date()))
+        session.add(UtilBill(self.state_db.get_customer(session, account),
+                state, service, utility, rate_class, doc['_id'], uprs['_id'],
+                cprs['_id'], period_start=start, period_end=end, total_charges=0,
+                date_received=datetime.utcnow().date()))
 
         # save all 3 mongo documents
         self.rate_structure_dao.save_rs(uprs)

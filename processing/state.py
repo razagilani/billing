@@ -750,6 +750,7 @@ class StateDB:
         result = cursor.order_by(UtilBill.period_end).first()
         if result is None:
             raise NoSuchBillException
+        return result
 
     def create_payment(self, session, account, date_applied, description,
             credit):
