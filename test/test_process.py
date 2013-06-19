@@ -1514,28 +1514,36 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
     def test_payment_application(self):
         acc = '99999'
         with DBSession(self.state_db) as session:
-            # save reebills and rate structures in mongo
-            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc, 0))
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 0))
+            ## save reebills and rate structures in mongo
+            #self.rate_structure_dao.save_rs(example_data.get_urs_dict())
+            #self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc, 0))
+            #self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 0))
 
-            self.state_db.record_utilbill_in_database(session, acc, 'gas',
-                    date(2012,1,1), date(2012,2,1), 100,
-                    datetime.utcnow().date())
-            self.state_db.record_utilbill_in_database(session, acc, 'gas',
-                    date(2012,2,1), date(2012,3,1), 100,
-                    datetime.utcnow().date())
+            #self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    #date(2012,1,1), date(2012,2,1), 100,
+                    #datetime.utcnow().date())
+            #self.state_db.record_utilbill_in_database(session, acc, 'gas',
+                    #date(2012,2,1), date(2012,3,1), 100,
+                    #datetime.utcnow().date())
             
-            zero = example_data.get_reebill(acc, 0)
-            self.reebill_dao.save_reebill(zero)
+            #zero = example_data.get_reebill(acc, 0)
+            #self.reebill_dao.save_reebill(zero)
 
-            # create and issue #1
-            one = self.process.roll_bill(session, zero)
-            self.reebill_dao.save_reebill(one)
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), StringIO('january 2012'),
+                    'january.pdf')
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2012,2,1), date(2012,3,1), StringIO('february 2012'),
+                    'february.pdf')
+
+            # create and issue reebill #1
+            one = self.process.create_first_reebill(session,
+                    session.query(UtilBill)
+                    .order_by(UtilBill.period_start).first())
             self.process.issue(session, acc, 1, issue_date=date(2012,1,15))
 
-            # create reebill #2
-            two = self.process.roll_bill(session, one)
+            # create reebill reebill #2
+            two = self.process.create_next_reebill(session, acc)
 
             # payment on jan. 20 gets applied to #2
             self.state_db.create_payment(session, acc, date(2012,1,20), 'A payment', 123.45)
