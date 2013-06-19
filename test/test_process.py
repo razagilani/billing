@@ -711,24 +711,21 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # test deletion of a Skyline-estimated utility bill (no file)
             self.process.upload_utility_bill(session, account, 'gas',
-                    date(2013,1,1), date(2013,2,1), None, 'no file name')
+                    date(2013,3,1), date(2013,4,1), None, 'no file name')
             self.process.delete_utility_bill(session,
                     self.state_db.get_utilbill(session, account, 'gas',
-                    date(2013,1,1), date(2013,2,1)).id)
+                    date(2013,3,1), date(2013,4,1)).id)
 
             # test deletion of utility bill with non-standard file extension
-            ## load_doc_for_statedb_utilbill fails with error
-            ## ValueError: Utility bill lacks document_id: <UtilBill(customer=<Customer(name=Test Customer, account=99999, discountrate=0.12 latechargerate=0.34)>, service=gas, period_start=2012-11-26, period_end=2013-01-01, document_id=None)>
-            ## even though 'other_utility_bill' has a document_id
             self.process.upload_utility_bill(session, account, 'gas',
-                    date(2013,2,1), date(2013,3,1), StringIO("a bill"),
+                    date(2013,4,1), date(2013,5,1), StringIO("a bill"),
                     'billfile.abcdef')
             the_path = self.billupload.get_utilbill_file_path(account,
-                    date(2013,2,1), date(2013,3,1))
+                    date(2013,4,1), date(2013,5,1))
             assert os.access(the_path, os.F_OK)
             self.process.delete_utility_bill(session,
                     self.state_db.get_utilbill(session, account, 'gas',
-                    date(2013,2,1), date(2013,3,1)).id)
+                    date(2013,4,1), date(2013,5,1)).id)
             self.assertFalse(os.access(os.path.splitext(the_path)[0] + 'abcdef', os.F_OK))
 
             # test deletion of utility bill with no file extension
