@@ -731,6 +731,26 @@ class StateDB:
                     and hb.period_start >= last_real_utilbill.period_start):
                 session.delete(hb)
 
+    def get_last_real_utilbill(self, session, account, end, service=None,
+            utility=None, rate_class=None):
+        '''Returns the latest_ending non-Hypothetical db_objects.UtilBill whose
+        end date is before/on 'end', optionally with the given service,
+        utility, and rate class.'''
+        customer = self.get_customer(session, account)
+        cursor = session.query(UtilBill)\
+                .filter(UtilBill.customer == customer)\
+                .filter(UtilBill.state != UtilBill.Hypothetical)\
+                .filter(UtilBill.period_end <= end)
+        if service is not None:
+            cursor = cursor.filter(UtilBill.service == service)
+        if utility is not None:
+            cursor = cursor.filter(UtilBill.utility == utility)
+        if rate_class is not None:
+            cursor = cursor.filter(UtilBill.rate_class == rate_class)
+        result = cursor.order_by(UtilBill.period_end).first()
+        if result is None:
+            raise NoSuchBillException
+
     def create_payment(self, session, account, date_applied, description,
             credit):
         '''Adds a new payment, returns the new Payment object.'''
