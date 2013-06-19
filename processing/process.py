@@ -635,13 +635,9 @@ class Process(object):
 #            return False
         ignore_function = lambda uprs: False
 
-        # look for the last utility bill with the same account and service,
-        # (i.e. the last-ending before 'end'), ignoring Hypothetical ones
-        # because they don't have Mongo documents
-        # if this is the first bill ever for the account (or all the existing
-        # ones are Hypothetical), use template for the utility bill document,
-        # and create new empty CPRS; otherwise copy the predecessor' utility
-        # bill document and CPRS
+        # look for the last utility bill with the same account, service, and
+        # rate class, (i.e. the last-ending before 'end'), ignoring
+        # Hypothetical ones. copy its mongo document and CPRS.
         # TODO pass this predecessor in from upload_utility_bill?
         # see https://www.pivotaltracker.com/story/show/51749487
         try:
@@ -652,6 +648,9 @@ class Process(object):
                     predecessor)
             cprs['_id'] = ObjectId()
         except NoSuchBillException:
+            # if this is the first bill ever for the account (or all the
+            # existing ones are Hypothetical), use template for the utility
+            # bill document, and create new empty CPRS
             doc = self.reebill_dao.load_utilbill_template(session, account)
             # template document should have the same service/utility/rate class
             # as this one; multiple services are not supported since there
