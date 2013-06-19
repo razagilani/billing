@@ -1344,7 +1344,7 @@ class Process(object):
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
                 row['hypothetical_charges'] = reebill.hypothetical_total.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                total_ree = self.total_ree_in_reebill(reebill)\
+                total_ree = reebill.total_renewable_energy()\
                         .quantize(Decimal(".0"), rounding=ROUND_HALF_EVEN)
                 row['total_ree'] = total_ree
                 if total_ree != Decimal(0):
@@ -1437,7 +1437,7 @@ class Process(object):
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
                 row['hypothetical_charges'] = reebill.hypothetical_total.quantize(
                         Decimal(".00"), rounding=ROUND_HALF_EVEN)
-                total_ree = self.total_ree_in_reebill(reebill)\
+                total_ree = reebill.total_renewable_energy()\
                         .quantize(Decimal(".0"), rounding=ROUND_HALF_EVEN)
                 row['total_ree'] = total_ree
                 if total_ree != Decimal(0):
@@ -1556,6 +1556,12 @@ class Process(object):
         return rows, totalCount
 
     def summary_ree_charges(self, session, accounts, all_names):
+        def total_ree_in_reebills(self, reebills):
+            total_energy = Decimal(0)
+            for reebill in reebills:
+                total_energy += reebill.total_renewable_energy()
+            return total_energy
+        
         rows = [] 
         for i, account in enumerate(accounts):
             row = {}
@@ -1584,36 +1590,6 @@ class Process(object):
 
         return rows
 
-    def total_ree_in_reebill(self, reebill):
-        """ Returns energy in Therms """
-
-        total_energy = Decimal(0)
-
-        services = reebill.services
-        for service in services:
-            registers = reebill.shadow_registers(service)
-            # 20977305 - treat registers the same
-            if service.lower() == 'gas':
-                # add up all registers and normalize energy to BTU
-                # gotta check units
-                for register in registers:
-                    if 'quantity' in register:
-                        total_energy += register['quantity']
-            elif service.lower() == 'electric':
-                # add up only total register and normalize energy
-                for register in registers:
-                    if 'type' in register and register['type'] == 'total':
-                        # 1kWh =  29.30722 Th
-                        total_energy += (register['quantity'] / Decimal("29.30722"))
-
-        return total_energy
-
-    def total_ree_in_reebills(self, reebills):
-        total_energy = Decimal(0)
-        for reebill in reebills:
-            total_energy += self.total_ree_in_reebill(reebill)
-        return total_energy
-        
     def sequences_for_approximate_month(self, session, account, year, month):
         '''Returns a list of sequences of all reebills whose approximate month
         (as determined by dateutils.estimate_month()) is 'month' of 'year', or
