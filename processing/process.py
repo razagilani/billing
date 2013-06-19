@@ -763,7 +763,7 @@ class Process(object):
         # to be the same as they were on version 0 of this bill--we don't care
         # about any corrections that might have been made to that bill later.
         fetch_bill_data.fetch_oltp_data(self.splinter,
-                self.nexus_util.olap_id(account), reebill_doc, verbose=True)
+                self.nexus_util.olap_id(account), reebill_doc)
         predecessor = self.reebill_dao.load_reebill(account, sequence-1,
                 version=0) if sequence > 1 else None
         self.compute_bill(session, predecessor, reebill_doc)
