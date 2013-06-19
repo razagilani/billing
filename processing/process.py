@@ -87,8 +87,8 @@ class Process(object):
         # (TODO it would be better to get these from the utility bill upload
         # form)
         try:
-            predecessor = self.state_db.get_last_utilbill(session, account, service,
-                    end=begin_date)
+            predecessor = self.state_db.get_last_real_utilbill(session,
+                    account, begin_date, service=service)
             rate_class = predecessor.rate_class
             utility = predecessor.utility
         except NoSuchBillException:
@@ -638,26 +638,20 @@ class Process(object):
         # look for the last utility bill with the same account and service,
         # (i.e. the last-ending before 'end'), ignoring Hypothetical ones
         # because they don't have Mongo documents
-        # TODO pass this predecessor in from upload_utility_bill?
-        # see https://www.pivotaltracker.com/story/show/51749487
-        customer = session.query(Customer)\
-                .filter(Customer.account == account).one()
-        # NOTE filtering by state != Hypothetical should be equivalent
-        # to filtering by document_id != None
-        predecessor = session.query(UtilBill)\
-                .filter(UtilBill.customer == customer)\
-                .filter(UtilBill.service == service)\
-                .filter(UtilBill.utility == utility)\
-                .filter(UtilBill.rate_class == rate_class)\
-                .filter(UtilBill.period_end < end)\
-                .filter(UtilBill.state != UtilBill.Hypothetical)\
-                .order_by(desc(UtilBill.period_end)).first()
-
         # if this is the first bill ever for the account (or all the existing
         # ones are Hypothetical), use template for the utility bill document,
         # and create new empty CPRS; otherwise copy the predecessor' utility
         # bill document and CPRS
-        if predecessor is None:
+        # TODO pass this predecessor in from upload_utility_bill?
+        # see https://www.pivotaltracker.com/story/show/51749487
+        try:
+            predecessor = self.state_db.get_last_real_utilbill(session, account,
+                    end, service=service, utility=utility, rate_class=rate_class)
+            doc = self.reebill_dao.load_doc_for_statedb_utilbill(predecessor)
+            cprs = self.rate_structure_dao.load_cprs_for_statedb_utilbill(
+                    predecessor)
+            cprs['_id'] = ObjectId()
+        except NoSuchBillException:
             doc = self.reebill_dao.load_utilbill_template(session, account)
             # template document should have the same service/utility/rate class
             # as this one; multiple services are not supported since there
@@ -666,11 +660,6 @@ class Process(object):
             assert doc['utility'] == utility
             assert doc['rate_structure_binding'] == rate_class
             cprs = {'_id': ObjectId(), 'type': 'CPRS', 'rates': []}
-        else:
-            doc = self.reebill_dao.load_doc_for_statedb_utilbill(predecessor)
-            cprs = self.rate_structure_dao.load_cprs_for_statedb_utilbill(
-                    predecessor)
-            cprs['_id'] = ObjectId()
         doc.update({
             '_id': ObjectId(),
             'start': date_to_datetime(start),
@@ -1596,7 +1585,6 @@ class Process(object):
 
         return rows
 
-    # TODO 20991629: maybe we should move this into ReeBill, because it should know how to report its data?
     def total_ree_in_reebill(self, reebill):
         """ Returns energy in Therms """
 

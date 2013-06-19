@@ -333,16 +333,14 @@ class RateStructureDAO(object):
             rate_structure_name, verbose=False):
         '''Returns list of (UPRS document, start date, end date) tuples
         with the given utility and rate structure name.'''
-        # skip Hypothetical utility bills because they have no UPRS document
-        # (or CPRS or utility bill document); this should be equivalent to
-        # filtering by document_id != None
+        # skip Hypothetical utility bills--they have a UPRS document, but it's
+        # fake, so it should not count toward the probability of RSIs being
+        # included in other bills.
         utilbills = session.query(UtilBill)\
                 .filter(UtilBill.service==service)\
                 .filter(UtilBill.utility==utility_name)\
                 .filter(UtilBill.rate_class==rate_structure_name)\
                 .filter(UtilBill.state != UtilBill.Hypothetical)
-                # TODO stop ignoring utility name and rate structure name
-                # https://www.pivotaltracker.com/story/show/51683223
         result = []
         for utilbill in utilbills:
             doc = self.load_uprs_for_statedb_utilbill(utilbill)
