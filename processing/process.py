@@ -633,23 +633,28 @@ class Process(object):
 #            return False
         ignore_function = lambda uprs: False
 
-        # look for the last utility bill with the same account and service
-        # (i.e. the last-ending before 'end')
+        # look for the last utility bill with the same account and service,
+        # (i.e. the last-ending before 'end'), ignoring Hypothetical ones
+        # because they don't have Mongo documents
         # TODO pass this predecessor in from upload_utility_bill?
         # see https://www.pivotaltracker.com/story/show/51749487
         customer = session.query(Customer)\
-                .filter(Customer.account==account).one()
+                .filter(Customer.account == account).one()
+        # NOTE filtering by state != Hypothetical should be equivalent
+        # to filtering by document_id != None
         predecessor = session.query(UtilBill)\
-                .filter(UtilBill.customer==customer)\
-                .filter(UtilBill.service==service)\
-                .filter(UtilBill.utility==utility)\
-                .filter(UtilBill.rate_class==rate_class)\
-                .filter(UtilBill.period_end<end)\
+                .filter(UtilBill.customer == customer)\
+                .filter(UtilBill.service == service)\
+                .filter(UtilBill.utility == utility)\
+                .filter(UtilBill.rate_class == rate_class)\
+                .filter(UtilBill.period_end < end)\
+                .filter(UtilBill.state != UtilBill.Hypothetical)\
                 .order_by(desc(UtilBill.period_end)).first()
 
-        # if this is the first bill ever for the account, use template for the
-        # utility bill document, and create new empty CPRS; otherwise copy the
-        # predecessor's utility bill document and CPRS
+        # if this is the first bill ever for the account (or all the existing
+        # ones are Hypothetical), use template for the utility bill document,
+        # and create new empty CPRS; otherwise copy the predecessor' utility
+        # bill document and CPRS
         if predecessor is None:
             doc = self.reebill_dao.load_utilbill_template(session, account)
             # template document should have the same service/utility/rate class
