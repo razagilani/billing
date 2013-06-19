@@ -74,7 +74,7 @@ class UtilBill(object):
         return self.reebills != []
 
     def __repr__(self):
-        return ('<utilbill(customer=%s, service=%s, period_start=%s, '
+        return ('<Utilbill(customer=%s, service=%s, period_start=%s, '
                 'period_end=%s, state=%s, document_id=%s)>') % (self.customer,
                         self.service, self.period_start, self.period_end,
                         UtilBill.state_names[self.state], self.document_id)

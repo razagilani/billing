@@ -12,6 +12,7 @@ import calendar
 from optparse import OptionParser
 from decimal import *
 from sqlalchemy.sql import desc
+from sqlalchemy import not_
 from sqlalchemy.orm.exc import MultipleResultsFound
 import operator
 from bson import ObjectId
@@ -559,30 +560,31 @@ class Process(object):
 
     
     def create_next_reebill(self, session, account):
-        '''Creates the successor to the given db_objects.ReeBill and its
-        associated Mongo document.'''
+        '''Creates the successor to the highest-sequence db_objects.ReeBill for
+        the given account, and its associated Mongo document.'''
+        customer = session.query(Customer)\
+                .filter(Customer.account == account).one()
         last_reebill_row = session.query(ReeBill)\
-                .filter(ReeBill.account == account)\
+                .filter(ReeBill.customer == customer)\
                 .order_by(desc(ReeBill.sequence), desc(ReeBill.version)).first()
-        customer = last_reebill_row.customer
 
-        # find successor to every utility bill belonging to the reebill
-        new_utilbills = []
-        for utilbill in reebill.utilbills:
+        # find successor to every utility bill belonging to the reebill, along
+        # with its mongo document
+        new_utilbills, new_utilbill_docs = [], []
+        for utilbill in last_reebill_row.utilbills:
             successor = session.query(UtilBill)\
                 .filter(UtilBill.customer == customer)\
-                .filter(UtilBill.reebills == [])\
+                .filter(not_(UtilBill.reebills.any()))\
                 .filter(UtilBill.service == utilbill.service)\
                 .filter(UtilBill.utility == utilbill.utility)\
-                .filter(UtilBill.start >= utilbill.end)\
+                .filter(UtilBill.period_start >= utilbill.period_end)\
                 .order_by(UtilBill.period_end).first()
             if successor == None:
-                raise NoSuchBillException(("Couldn't find next utility bill "
-                        "with account %s, service %s, utility %s, "
-                        "start date on/after %s") % (utilbill.customer.account,
-                        utilbill.service, utilbill.utility, utility.start,
-                        utilbill.end))
-            new_utilbills.append(utilbill)
+                raise NoSuchBillException(("Couldn't find an unattached "
+                "successor to %s") % utilbill)
+            new_utilbills.append(successor)
+            new_utilbill_docs.append(
+                    self.reebil_dao.load_doc_for_statedb_utilbill(successor))
 
         # currently only one service is supported
         assert len(new_utilbills) == 1
@@ -592,7 +594,7 @@ class Process(object):
         # "current" values for the customer in MySQL. the sequence is 1 greater
         # than the predecessor's and the version is always 0.
         new_mongo_reebill = MongoReebill.get_reebill_doc_for_utilbills(account,
-                last_reebill_row.sequence + 1, 0, customer.dicountrate,
+                last_reebill_row.sequence + 1, 0, customer.discountrate,
                 customer.latechargerate, new_utilbills)
 
         # copy 'suspended_services' list from predecessor reebill's document
