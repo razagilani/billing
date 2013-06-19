@@ -535,7 +535,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         to StateDB); does not test saving of utility bill files (which belongs
         to BillUpload).'''
         # TODO include test of saving of utility bill files here
-        print 'test_upload_utility_bill'
         with DBSession(self.state_db) as session:
             account, service = '99999', 'gas'
 
@@ -1302,31 +1301,29 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         '''Tests attach_utilbills and issue.'''
         acc = '99999'
         with DBSession(self.state_db) as session:
-            # two reebills, with utilbills, in mongo & mysql
-            template = example_data.get_reebill(acc, 0)
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 0))
-            self.state_db.record_utilbill_in_database(session, acc,
-                    template.services[0], date(2012,1,1), date(2012,2,1),
-                    100, date.today())
-            self.state_db.record_utilbill_in_database(session, acc,
-                    template.services[0], date(2012,2,1), date(2012,3,1),
-                    100, date.today())
-            utilbills = session.query(UtilBill).all()
-
-            one = self.process.roll_bill(session, template)
+            # two utilbills, with reebills
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), StringIO('january 2012'),
+                    'january.pdf')
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2012,2,1), date(2012,3,1), StringIO('february 2012'),
+                    'february.pdf')
+            self.process.create_first_reebill(session, session.query(UtilBill)
+                    .order_by(UtilBill.period_start).first())
+            self.process.create_next_reebill(session, acc)
+            one = self.reebill_dao.load_reebill(acc, 1)
+            two = self.reebill_dao.load_reebill(acc, 2)
+            utilbills = session.query(UtilBill).order_by(UtilBill.period_start).all()
 
             # neither reebill should be issued yet
             self.assertEquals(False, self.state_db.is_issued(session, acc, 1))
             self.assertEquals(None, one.issue_date)
             self.assertEquals(None, one.due_date)
 
-            # two should not be attachable or issuable until one is issued
-            self.assertRaises(BillStateError, self.process.attach_utilbills,
-                    session, one, [utilbills[0]])
+            # two should not be issuable until one is issued
             self.assertRaises(BillStateError, self.process.issue, session, acc, 2)
 
             # attach & issue one
-            #self.assertRaises(BillStateError, self.process.attach_utilbills, one)
             self.process.issue(session, acc, 1)
 
             # re-load from mongo to see updated issue date and due date
