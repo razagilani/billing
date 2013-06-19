@@ -336,14 +336,10 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
     def test_service_suspension(self):
         account = '99999'
         with DBSession(self.state_db) as session:
-            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(account, 0))
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 0))
-
-            self.state_db.record_utilbill_in_database(session, account,
-                    'gas', date(2012,1,1), date(2012,2,1), 100, date.today())
-            self.state_db.record_utilbill_in_database(session, account,
-                    'electric', date(2012,1,10), date(2012,2,10), 100, date.today())
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2012,1,1), date(2012,2,1), file1, 'january.pdf')
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2012,1,1), date(2012,2,1), file1, 'february.pdf')
 
             # generic reebill
             bill0 = example_data.get_reebill(account, 0)
