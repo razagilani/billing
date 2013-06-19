@@ -1460,7 +1460,7 @@ class ReebillDAO:
         # TODO figure out how to move this into _get_version_query(): it can't
         # be expressed as part of the query, except maybe with a javascript
         # "where" clause
-        if isinstance(version, int):
+        if isinstance(version, int) or isinstance(version, long):
             query.update({'_id.version': version})
             mongo_doc = self.reebills_collection.find_one(query)
         elif version == 'max':
@@ -1487,7 +1487,8 @@ class ReebillDAO:
             else:
                 mongo_doc = docs[docs.count()-1]
         else:
-            raise ValueError('Unknown version specifier "%s"' % version)
+            raise ValueError('Unknown version specifier "%s" (%s)' %
+                    (version, type(version)))
 
         if mongo_doc is None:
             raise NoSuchBillException(("no reebill found in %s: query was %s")
