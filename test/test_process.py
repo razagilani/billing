@@ -116,7 +116,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
 
     def test_get_late_charge(self):
-        print 'test_get_late_charge'
         '''Tests computation of late charges (without rolling bills).'''
         acc = '99999'
         with DBSession(self.state_db) as session:
@@ -261,7 +260,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             another database, fails with a SQLAlchemy error about multiple
             mappers. SQLAlchemy does provide a way to get around this.''')
     def test_sequences_for_approximate_month(self):
-        print 'test_sequences_for_approximate_month'
         # use real databases instead of the fake ones
         state_db = StateDB(
             host='localhost',
@@ -375,8 +373,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals('gas', attached_utilbills[0].service.lower())
 
     def test_bind_rate_structure(self):
-        print 'test_bind_rate_structure'
-
         # make a reebill
         account, sequence = '99999', 1
         bill1 = example_data.get_reebill(account, sequence)
