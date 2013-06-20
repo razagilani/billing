@@ -1298,7 +1298,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
 
     def test_issue(self):
-        '''Tests attach_utilbills and issue.'''
+        '''Tests issuing of reebills.'''
         acc = '99999'
         with DBSession(self.state_db) as session:
             # two utilbills, with reebills
@@ -1323,7 +1323,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             # two should not be issuable until one is issued
             self.assertRaises(BillStateError, self.process.issue, session, acc, 2)
 
-            # attach & issue one
+            # issue one
             self.process.issue(session, acc, 1)
 
             # re-load from mongo to see updated issue date and due date
@@ -1336,14 +1336,13 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertIsInstance(one.last_recipients, list)
             self.assertEquals(len(one.last_recipients), 0)
 
-            two = self.process.roll_bill(session, one)
+            #two = self.process.roll_bill(session, one)
             two.bill_recipients = ['test1@reebill.us', 'test2@reebill.us']
             self.reebill_dao.save_reebill(two)
             
-            # attach & issue two
-            self.assertRaises(BillStateError, self.process.attach_utilbills,
-                    session, two, [utilbills[1]])
+            # issue two
             self.process.issue(session, acc, 2)
+
             # re-load from mongo to see updated issue date and due date
             two = self.reebill_dao.load_reebill(acc, 2)
             self.assertEquals(True, self.state_db.is_issued(session, acc, 2))
