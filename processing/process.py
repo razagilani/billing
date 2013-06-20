@@ -1077,6 +1077,7 @@ class Process(object):
             rate_structure = copy.deepcopy(rate_structure)
 
             # get shadow and non-shadow registers in the reebill
+            import ipdb; ipdb.set_trace()
             actual_register_readings = reebill.actual_registers(service)
             shadow_register_readings = reebill.shadow_registers(service)
 
