@@ -373,157 +373,152 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertEquals('gas', attached_utilbills[0].service.lower())
 
     def test_bind_rate_structure(self):
-        # make a reebill
-        account, sequence = '99999', 1
-        bill1 = example_data.get_reebill(account, sequence)
-        assert len(bill1.services) == 1
-        service = bill1.services[0]
-        utility_name = bill1.utility_name_for_service(service)
-        rate_structure_name = bill1.rate_structure_name_for_service(service)
+        account = '99999'
+        with DBSession(self.state_db) as session:
+            # create utility bill and reebill
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2012,1,1), date(2012,2,1), StringIO('January 2012'),
+                    'january.pdf')
+            utilbill = session.query(UtilBill).one()
+            self.process.create_first_reebill(session, utilbill)
+            bill1 = self.reebill_dao.load_reebill(account, 1)
 
-        # make rate structure documents and save them in db
-        urs_dict = example_data.get_urs_dict()
-        cprs_dict = example_data.get_cprs_dict(account, sequence)
-        self.rate_structure_dao.save_urs(utility_name, rate_structure_name,
-                urs_dict)
-        self.rate_structure_dao.save_cprs(account, sequence, 0, utility_name,
-                rate_structure_name, cprs_dict)
+            # compute charges in the bill using the rate structure created from the
+            # above documents
+            rate_structure = self.rate_structure_dao.load_rate_structure(utilbill)
+            self.process.bind_rate_structure(bill1, rate_structure)
 
-        # compute charges in the bill using the rate structure created from the
-        # above documents
-        self.process.bind_rate_structure(bill1)
+            # ##############################################################
+            # check that each actual (utility) charge was computed correctly:
+            actual_chargegroups = bill1.actual_chargegroups_for_service('gas')
+            assert actual_chargegroups.keys() == ['All Charges']
+            actual_charges = actual_chargegroups['All Charges']
+            actual_registers = bill1.actual_registers('gas')
+            total_regster = [r for r in actual_registers if r['register_binding'] == 'REG_TOTAL'][0]
 
-        # ##############################################################
-        # check that each actual (utility) charge was computed correctly:
-        actual_chargegroups = bill1.actual_chargegroups_for_service(service)
-        assert actual_chargegroups.keys() == ['All Charges']
-        actual_charges = actual_chargegroups['All Charges']
-        actual_registers = bill1.actual_registers(service)
-        total_regster = [r for r in actual_registers if r['register_binding'] == 'REG_TOTAL'][0]
+            # system charge: $11.2 in CPRS overrides $26.3 in URS
+            system_charge = [c for c in actual_charges if c['rsi_binding'] ==
+                    'SYSTEM_CHARGE'][0]
+            self.assertEquals(11.2, system_charge['total'])
 
-        # system charge: $11.2 in CPRS overrides $26.3 in URS
-        system_charge = [c for c in actual_charges if c['rsi_binding'] ==
-                'SYSTEM_CHARGE'][0]
-        self.assertEquals(11.2, system_charge['total'])
+            # right-of-way fee
+            row_charge = [c for c in actual_charges if c['rsi_binding'] ==
+                    'RIGHT_OF_WAY'][0]
+            self.assertAlmostEqual(0.03059 * float(total_regster['quantity']),
+                    row_charge['total'], places=2) # TODO OK to be so inaccurate?
+            
+            # sustainable energy trust fund
+            setf_charge = [c for c in actual_charges if c['rsi_binding'] ==
+                    'SETF'][0]
+            self.assertAlmostEqual(0.01399 * float(total_regster['quantity']),
+                    setf_charge['total'], places=1) # TODO OK to be so inaccurate?
 
-        # right-of-way fee
-        row_charge = [c for c in actual_charges if c['rsi_binding'] ==
-                'RIGHT_OF_WAY'][0]
-        self.assertAlmostEqual(0.03059 * float(total_regster['quantity']),
-                row_charge['total'], places=2) # TODO OK to be so inaccurate?
-        
-        # sustainable energy trust fund
-        setf_charge = [c for c in actual_charges if c['rsi_binding'] ==
-                'SETF'][0]
-        self.assertAlmostEqual(0.01399 * float(total_regster['quantity']),
-                setf_charge['total'], places=1) # TODO OK to be so inaccurate?
+            # energy assistance trust fund
+            eatf_charge = [c for c in actual_charges if c['rsi_binding'] ==
+                    'EATF'][0]
+            self.assertAlmostEqual(0.006 * float(total_regster['quantity']),
+                    eatf_charge['total'], places=2)
 
-        # energy assistance trust fund
-        eatf_charge = [c for c in actual_charges if c['rsi_binding'] ==
-                'EATF'][0]
-        self.assertAlmostEqual(0.006 * float(total_regster['quantity']),
-                eatf_charge['total'], places=2)
+            # delivery tax
+            delivery_tax = [c for c in actual_charges if c['rsi_binding'] ==
+                    'DELIVERY_TAX'][0]
+            self.assertAlmostEqual(0.07777 * float(total_regster['quantity']),
+                    delivery_tax['total'], places=2)
 
-        # delivery tax
-        delivery_tax = [c for c in actual_charges if c['rsi_binding'] ==
-                'DELIVERY_TAX'][0]
-        self.assertAlmostEqual(0.07777 * float(total_regster['quantity']),
-                delivery_tax['total'], places=2)
+            # peak usage charge
+            peak_usage_charge = [c for c in actual_charges if c['rsi_binding'] ==
+                    'PUC'][0]
+            self.assertEquals(23.14, peak_usage_charge['total'])
 
-        # peak usage charge
-        peak_usage_charge = [c for c in actual_charges if c['rsi_binding'] ==
-                'PUC'][0]
-        self.assertEquals(23.14, peak_usage_charge['total'])
+            # distribution charge
+            distribution_charge = [c for c in actual_charges if c['rsi_binding'] ==
+                    'DISTRIBUTION_CHARGE'][0]
+            self.assertAlmostEqual(.2935 * float(total_regster['quantity']),
+                    distribution_charge['total'], places=2)
+            
+            # purchased gas charge
+            purchased_gas_charge = [c for c in actual_charges if c['rsi_binding'] ==
+                    'PGC'][0]
+            self.assertAlmostEqual(.7653 * float(total_regster['quantity']),
+                    purchased_gas_charge['total'], places=2)
 
-        # distribution charge
-        distribution_charge = [c for c in actual_charges if c['rsi_binding'] ==
-                'DISTRIBUTION_CHARGE'][0]
-        self.assertAlmostEqual(.2935 * float(total_regster['quantity']),
-                distribution_charge['total'], places=2)
-        
-        # purchased gas charge
-        purchased_gas_charge = [c for c in actual_charges if c['rsi_binding'] ==
-                'PGC'][0]
-        self.assertAlmostEqual(.7653 * float(total_regster['quantity']),
-                purchased_gas_charge['total'], places=2)
-
-        # sales tax: depends on all of the above
-        sales_tax = [c for c in actual_charges if c['rsi_binding'] ==
-                'SALES_TAX'][0]
-        self.assertAlmostEqual(0.06 * float(system_charge['total'] +
-                distribution_charge['total'] + purchased_gas_charge['total'] +
-                row_charge['total'] + peak_usage_charge['total'] +
-                setf_charge['total'] + eatf_charge['total'] +
-                delivery_tax['total']),
-                sales_tax['total'],
-                places=2)
+            # sales tax: depends on all of the above
+            sales_tax = [c for c in actual_charges if c['rsi_binding'] ==
+                    'SALES_TAX'][0]
+            self.assertAlmostEqual(0.06 * float(system_charge['total'] +
+                    distribution_charge['total'] + purchased_gas_charge['total'] +
+                    row_charge['total'] + peak_usage_charge['total'] +
+                    setf_charge['total'] + eatf_charge['total'] +
+                    delivery_tax['total']),
+                    sales_tax['total'],
+                    places=2)
 
 
-        # ##############################################################
-        # check that each hypothetical charge was computed correctly:
-        hypothetical_chargegroups = bill1.hypothetical_chargegroups_for_service(service)
-        assert hypothetical_chargegroups.keys() == ['All Charges']
-        hypothetical_charges = hypothetical_chargegroups['All Charges']
-        shadow_registers = bill1.shadow_registers(service)
-        total_shadow_regster = [r for r in shadow_registers if r['register_binding'] == 'REG_TOTAL'][0]
-        hypothetical_quantity = float(total_shadow_regster['quantity'] + total_regster['quantity'])
+            # ##############################################################
+            # check that each hypothetical charge was computed correctly:
+            hypothetical_chargegroups = bill1.hypothetical_chargegroups_for_service('gas')
+            assert hypothetical_chargegroups.keys() == ['All Charges']
+            hypothetical_charges = hypothetical_chargegroups['All Charges']
+            shadow_registers = bill1.shadow_registers('gas')
+            total_shadow_regster = [r for r in shadow_registers if r['register_binding'] == 'REG_TOTAL'][0]
+            hypothetical_quantity = float(total_shadow_regster['quantity'] + total_regster['quantity'])
 
-        # system charge: $11.2 in CPRS overrides $26.3 in URS
-        system_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
-                'SYSTEM_CHARGE'][0]
-        self.assertEquals(11.2, system_charge['total'])
+            # system charge: $11.2 in CPRS overrides $26.3 in URS
+            system_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
+                    'SYSTEM_CHARGE'][0]
+            self.assertEquals(11.2, system_charge['total'])
 
-        # right-of-way fee
-        row_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
-                'RIGHT_OF_WAY'][0]
-        self.assertAlmostEqual(0.03059 * hypothetical_quantity,
-                row_charge['total'], places=2) # TODO OK to be so inaccurate?
-        
-        # sustainable energy trust fund
-        setf_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
-                'SETF'][0]
-        self.assertAlmostEqual(0.01399 * hypothetical_quantity,
-                setf_charge['total'], places=1) # TODO OK to be so inaccurate?
+            # right-of-way fee
+            row_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
+                    'RIGHT_OF_WAY'][0]
+            self.assertAlmostEqual(0.03059 * hypothetical_quantity,
+                    row_charge['total'], places=2) # TODO OK to be so inaccurate?
+            
+            # sustainable energy trust fund
+            setf_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
+                    'SETF'][0]
+            self.assertAlmostEqual(0.01399 * hypothetical_quantity,
+                    setf_charge['total'], places=1) # TODO OK to be so inaccurate?
 
-        # energy assistance trust fund
-        eatf_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
-                'EATF'][0]
-        self.assertAlmostEqual(0.006 * hypothetical_quantity,
-                eatf_charge['total'], places=2)
+            # energy assistance trust fund
+            eatf_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
+                    'EATF'][0]
+            self.assertAlmostEqual(0.006 * hypothetical_quantity,
+                    eatf_charge['total'], places=2)
 
-        # delivery tax
-        delivery_tax = [c for c in hypothetical_charges if c['rsi_binding'] ==
-                'DELIVERY_TAX'][0]
-        self.assertAlmostEqual(0.07777 * hypothetical_quantity,
-                delivery_tax['total'], places=2)
+            # delivery tax
+            delivery_tax = [c for c in hypothetical_charges if c['rsi_binding'] ==
+                    'DELIVERY_TAX'][0]
+            self.assertAlmostEqual(0.07777 * hypothetical_quantity,
+                    delivery_tax['total'], places=2)
 
-        # peak usage charge
-        peak_usage_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
-                'PUC'][0]
-        self.assertEquals(23.14, peak_usage_charge['total'])
+            # peak usage charge
+            peak_usage_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
+                    'PUC'][0]
+            self.assertEquals(23.14, peak_usage_charge['total'])
 
-        # distribution charge
-        distribution_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
-                'DISTRIBUTION_CHARGE'][0]
-        self.assertAlmostEqual(.2935 * hypothetical_quantity,
-                distribution_charge['total'], places=1)
-        
-        # purchased gas charge
-        purchased_gas_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
-                'PGC'][0]
-        self.assertAlmostEqual(.7653 * hypothetical_quantity,
-                purchased_gas_charge['total'], places=2)
+            # distribution charge
+            distribution_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
+                    'DISTRIBUTION_CHARGE'][0]
+            self.assertAlmostEqual(.2935 * hypothetical_quantity,
+                    distribution_charge['total'], places=1)
+            
+            # purchased gas charge
+            purchased_gas_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
+                    'PGC'][0]
+            self.assertAlmostEqual(.7653 * hypothetical_quantity,
+                    purchased_gas_charge['total'], places=2)
 
-        # sales tax: depends on all of the above
-        sales_tax = [c for c in hypothetical_charges if c['rsi_binding'] ==
-                'SALES_TAX'][0]
-        self.assertAlmostEqual(0.06 * float(system_charge['total'] +
-                distribution_charge['total'] + purchased_gas_charge['total'] +
-                row_charge['total'] + peak_usage_charge['total'] +
-                setf_charge['total'] + eatf_charge['total'] +
-                delivery_tax['total']),
-                sales_tax['total'],
-                places=2)
+            # sales tax: depends on all of the above
+            sales_tax = [c for c in hypothetical_charges if c['rsi_binding'] ==
+                    'SALES_TAX'][0]
+            self.assertAlmostEqual(0.06 * float(system_charge['total'] +
+                    distribution_charge['total'] + purchased_gas_charge['total'] +
+                    row_charge['total'] + peak_usage_charge['total'] +
+                    setf_charge['total'] + eatf_charge['total'] +
+                    delivery_tax['total']),
+                    sales_tax['total'],
+                    places=2)
 
 
     def test_upload_utility_bill(self):
