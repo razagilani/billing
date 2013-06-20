@@ -1309,9 +1309,8 @@ class ReebillDAO:
 
     def load_utilbill(self, account, service, utility, start, end,
             sequence=None, version=None):
-        '''Loads exactly one utility bill document from Mongo, returns the raw
-        dictionary. Raises a NoSuchBillException if zero or multiple utility
-        bills are found.
+        '''Loads exactly one utility bill document from Mongo. Raises a
+        NoSuchBillException if zero or multiple utility bills are found.
         
         'start' and 'end' may be None because there are some reebills that have
         None dates (when the dates have not yet been filled in by the user).
@@ -1361,7 +1360,10 @@ class ReebillDAO:
             raise NotUniqueException(("Multiple utility bills in %s satisfy "
                     "query %s") % (self.utilbills_collection,
                     format_query(query)))
-        return docs[0]
+        result = docs[0]
+        result = deep_map(float_to_decimal, result)
+        result = convert_datetimes(result)
+        return result
 
 
     def _load_utilbill_by_id(self, _id):
@@ -1370,7 +1372,10 @@ class ReebillDAO:
             raise NoSuchBillException("No utility bill document for _id %s"
                     % _id)
         assert docs.count() == 1
-        return docs[0]
+        result = docs[0]
+        result = deep_map(float_to_decimal, result)
+        result = convert_datetimes(result)
+        return result
 
     def load_doc_for_statedb_utilbill(self, utilbill_row):
         '''Returns the Mongo utility bill document corresponding to the given
@@ -1426,12 +1431,11 @@ class ReebillDAO:
                         reebill_doc['_id']['account'],
                         reebill_doc['_id']['sequence'], reebill_doc['_id']['version'],
                         self.utilbills_collection, format_query(query)))
-            result.append(utilbill_doc)
-
 
             # convert types
             utilbill_doc = deep_map(float_to_decimal, utilbill_doc)
             utilbill_doc = convert_datetimes(utilbill_doc)
+            result.append(utilbill_doc)
 
         return result
 
