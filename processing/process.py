@@ -246,12 +246,6 @@ class Process(object):
         present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
                 present_reebill._utilbills]
 
-        # get discount rate
-        discount_rate = present_reebill.discount_rate
-        if not discount_rate:
-            raise Exception("%s-%s-%s has no discount rate" % (acc,
-                present_reebill.sequence, present_reebill.version))
-
         # reset ree_charges, ree_value, ree_savings so we can accumulate across
         # all services
         present_reebill.ree_value = Decimal("0")
@@ -289,9 +283,10 @@ class Process(object):
                     hypothetical_total)
 
             ree_value = hypothetical_total - actual_total
-            ree_charges = (Decimal("1") - discount_rate) * (hypothetical_total 
-                    - actual_total)
-            ree_savings = discount_rate * (hypothetical_total - actual_total)
+            ree_charges = (Decimal("1") - present_reebill.discount_rate) * \
+                    (hypothetical_total - actual_total)
+            ree_savings = present_reebill.discount_rate * (hypothetical_total -
+                    actual_total)
 
             present_reebill.set_ree_value_for_service(service, 
                     ree_value.quantize(Decimal('.00')))
