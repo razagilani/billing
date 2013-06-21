@@ -98,6 +98,10 @@ port = 27017
         session.add(customer)
         session.commit()
 
+        # set up logger, but ingore all log output
+        logger = logging.getLogger('test')
+        logger.addHandler(logging.NullHandler())
+
         # insert template utilbill document for the customer in Mongo
         db = pymongo.Connection('localhost')['test']
         utilbill = example_data.get_utilbill_dict('99999',
@@ -121,7 +125,7 @@ port = 27017
             'port': 27017
         })
         self.rate_structure_dao = rate_structure.RateStructureDAO('localhost',
-                27017, 'test', self.reebill_dao)
+                27017, 'test', self.reebill_dao, logger=logger)
 
         mongoengine.connect('test', host='localhost', port=27017,
                 alias='utilbills')
@@ -136,7 +140,7 @@ port = 27017
         ])
         self.process = Process(self.state_db, self.reebill_dao,
                 self.rate_structure_dao, self.billupload, self.nexus_util,
-                self.splinter)
+                self.splinter, logger=logger)
 
     def tearDown(self):
         '''Clears out databases.'''

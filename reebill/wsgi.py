@@ -330,7 +330,8 @@ class BillToolBridge:
             rsdb_config_section['host'],
             rsdb_config_section['port'],
             rsdb_config_section['database'],
-            self.reebill_dao
+            self.reebill_dao,
+            logger=self.logger
         )
 
         # configure journal:
@@ -387,7 +388,7 @@ class BillToolBridge:
         if self.config.getboolean('runtime', 'integrate_skyline_backend') is True:
             self.process = process.Process(self.state_db, self.reebill_dao,
                     self.ratestructure_dao, self.billUpload, self.nexus_util,
-                    self.splinter)
+                    self.splinter, logger=self.logger)
         else:
             self.process = process.Process(self.state_db, self.reebill_dao,
                     self.ratestructure_dao, self.billUpload, None, None)
