@@ -74,6 +74,13 @@ class Process(object):
         utility bills will be added to cover the gap between this bill's period
         and the previous newest or oldest one respectively. The total of all
         charges on the utility bill may be given.'''
+        if end_date <= begin_date:
+            raise ValueError("Start date %s must precede end date %s" %
+                    (begin_date, end_date))
+        if end_date - begin_date > timedelta(days=365):
+            raise ValueError(("Utility bill period %s to %s is longer than "
+                "1 year") % (start, end))
+
         # NOTE 'total' does not yet go into the utility bill document in Mongo
 
         # get & save end date of last bill (before uploading a new bill which
