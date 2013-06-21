@@ -45,7 +45,7 @@ class Process(object):
     config = None
     
     def __init__(self, state_db, reebill_dao, rate_structure_dao, billupload,
-            nexus_util, splinter=None):
+            nexus_util, splinter=None, logger=None):
         '''If 'splinter' is not none, Skyline back-end should be used.'''
         self.state_db = state_db
         self.rate_structure_dao = rate_structure_dao
@@ -54,6 +54,7 @@ class Process(object):
         self.nexus_util = nexus_util
         self.splinter = splinter
         self.monguru = None if splinter is None else splinter.get_monguru()
+        self.logger = logger
 
     def new_account(self, session, name, account, discount_rate, late_charge_rate):
         new_customer = Customer(name, account, discount_rate, late_charge_rate)
