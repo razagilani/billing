@@ -381,19 +381,38 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                     'january.pdf')
             utilbill = session.query(UtilBill).one()
             self.process.create_first_reebill(session, utilbill)
-            bill1 = self.reebill_dao.load_reebill(account, 1)
+
+            # the UPRS for this utility bill will be empty, because there are
+            # no other utility bills in the db, and the bill will have no
+            # charges; all the charges in the template bill get removed because
+            # the rate structure has no RSIs in it. so, add RSIs and charges
+            # corresponding to them from example_data. (this is the same way
+            # the user would manually add RSIs and charges when processing the
+            # first bill for a given rate structure.)
+            uprs = self.rate_structure_dao.load_uprs_for_statedb_utilbill(utilbill)
+            uprs['rates'] = example_data.get_uprs_dict()['rates']
+            utilbill_doc = self.reebill_dao.load_doc_for_statedb_utilbill(utilbill)
+            utilbill_doc['chargegroups'] = example_data.get_utilbill_dict('99999')['chargegroups']
+            self.rate_structure_dao.save_rs(uprs)
+            self.reebill_dao._save_utilbill(utilbill_doc)
+
+            # also add some charges to the CPRS to test overriding of UPRS by CPRS
+            cprs = self.rate_structure_dao.load_cprs_for_statedb_utilbill(utilbill)
+            cprs['rates'] = example_data.get_cprs_dict()['rates']
+            self.rate_structure_dao.save_rs(cprs)
 
             # compute charges in the bill using the rate structure created from the
             # above documents
             rate_structure = self.rate_structure_dao.load_rate_structure(utilbill)
-            self.process.bind_rate_structure(bill1, rate_structure)
+            reebill1 = self.reebill_dao.load_reebill(account, 1)
+            self.process.bind_rate_structure(reebill1, rate_structure)
 
             # ##############################################################
             # check that each actual (utility) charge was computed correctly:
-            actual_chargegroups = bill1.actual_chargegroups_for_service('gas')
+            actual_chargegroups = reebill1.actual_chargegroups_for_service('gas')
             assert actual_chargegroups.keys() == ['All Charges']
             actual_charges = actual_chargegroups['All Charges']
-            actual_registers = bill1.actual_registers('gas')
+            actual_registers = reebill1.actual_registers('gas')
             total_regster = [r for r in actual_registers if r['register_binding'] == 'REG_TOTAL'][0]
 
             # system charge: $11.2 in CPRS overrides $26.3 in URS
@@ -456,13 +475,16 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
             # ##############################################################
             # check that each hypothetical charge was computed correctly:
-            hypothetical_chargegroups = bill1.hypothetical_chargegroups_for_service('gas')
+            self.process.compute_bill(session, None, reebill1)
+            self.reebill_dao.save_reebill(reebill1)
+            reebill1 = self.reebill_dao.load_reebill(account, 1)
+            hypothetical_chargegroups = reebill1.hypothetical_chargegroups_for_service('gas')
             assert hypothetical_chargegroups.keys() == ['All Charges']
             hypothetical_charges = hypothetical_chargegroups['All Charges']
-            shadow_registers = bill1.shadow_registers('gas')
+            shadow_registers = reebill1.shadow_registers('gas')
             total_shadow_regster = [r for r in shadow_registers if r['register_binding'] == 'REG_TOTAL'][0]
             hypothetical_quantity = float(total_shadow_regster['quantity'] + total_regster['quantity'])
-
+            
             # system charge: $11.2 in CPRS overrides $26.3 in URS
             system_charge = [c for c in hypothetical_charges if c['rsi_binding'] ==
                     'SYSTEM_CHARGE'][0]
