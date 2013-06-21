@@ -96,9 +96,9 @@ port = 27017
         session.add(customer)
         session.commit()
 
+        # set up logger, but ingore all log output
         logger = logging.getLogger('test')
-        logger.setLevel(logging.DEBUG)
-        logger.addHandler(logging.StreamHandler())
+        logger.addHandler(logging.NullHandler())
 
         self.reebill_dao = mongo.ReebillDAO(self.state_db, **{
             'billpath': '/db-dev/skyline/bills/',
