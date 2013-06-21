@@ -8,6 +8,7 @@ import logging
 import pymongo
 from bson import ObjectId
 import sqlalchemy
+from sqlalchemy.sql import desc
 import re
 from skyliner.splinter import Splinter
 from skyliner.skymap.monguru import Monguru
@@ -1548,19 +1549,42 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         cause it to change (a bug we have seen).'''
         acc = '99999'
         with DBSession(self.state_db) as session:
-            # setup: two utility bills and two reebills; reebill #1 will serve
-            # as the predecessor to #2 when computing below.
-
+            # create utility bill for January
+            # the UPRS for this utility bill will be empty, because there are
+            # no other utility bills in the db, and the bill will have no
+            # charges; all the charges in the template bill get removed because
+            # the rate structure has no RSIs in it. so, add RSIs and charges
+            # corresponding to them from example_data. (this is the same way
+            # the user would manually add RSIs and charges when processing the
+            # first bill for a given rate structure.)
             self.process.upload_utility_bill(session, acc, 'gas',
                     date(2012,1,1), date(2012,2,1), StringIO('January 2012'),
                     'january.pdf')
+            utilbill_jan = session.query(UtilBill).one()
+            uprs = self.rate_structure_dao.load_uprs_for_statedb_utilbill(
+                    utilbill_jan)
+            uprs['rates'] = example_data.get_uprs_dict()['rates']
+            utilbill_jan_doc = self.reebill_dao.load_doc_for_statedb_utilbill(
+                    utilbill_jan)
+            utilbill_jan_doc['chargegroups'] = example_data.get_utilbill_dict(
+                    '99999')['chargegroups']
+            self.rate_structure_dao.save_rs(uprs)
+            self.reebill_dao._save_utilbill(utilbill_jan_doc)
+
+
+            # create utility bill for February. thie UPRS and charges will be
+            # the same as the one for January.
             self.process.upload_utility_bill(session, acc, 'gas',
                     date(2012,2,1), date(2012,3,1), StringIO('February 2012'),
                     'february.pdf')
-            utilbill_jan, utilbill_feb = session.query(UtilBill)\
-                    .order_by(UtilBill.period_start).all()
+            utilbill_feb = session.query(UtilBill)\
+                    .order_by(desc(UtilBill.period_start)).first()
+
+            # create a reebill for each utility bill. #2 will be computed
+            # repeatedly and #1 will serve as its predecessor when computing
+            # below.
             self.process.create_first_reebill(session, utilbill_jan)
-            one = self.reebill_dao.load_reebill(acc, 1)
+            reebill1 = self.reebill_dao.load_reebill(acc, 1)
             self.process.create_next_reebill(session, acc)
 
             for use_olap in (True, False):
@@ -1571,7 +1595,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 # idempotent.
                 olap_id = 'MockSplinter ignores olap id'
                 fbd.fetch_oltp_data(self.splinter, olap_id, reebill2, use_olap=use_olap)
-                self.process.compute_bill(session, one, reebill2)
+                self.process.compute_bill(session, reebill1, reebill2)
 
                 # save original values
                 # (more fields could be added here)
