@@ -8,7 +8,7 @@ from billing.processing import mongo
 from billing.processing.state import StateDB
 from billing.processing.db_objects import ReeBill, Customer, UtilBill
 import MySQLdb
-from billing.test import example_data
+from billing.test import example_data, utils
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.processing.mongo import NoSuchBillException, IssuedBillError, NotUniqueException
 from billing.processing.session_contextmanager import DBSession
@@ -16,7 +16,7 @@ from billing.processing.session_contextmanager import DBSession
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
 
-class ReebillDAOTest(TestCaseWithSetup):
+class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
     def test_load_reebill(self):
         with DBSession(self.state_db) as session:
             # put some reebills in Mongo, including non-0 versions
@@ -199,18 +199,13 @@ class ReebillDAOTest(TestCaseWithSetup):
                     self.reebill_dao.save_reebill, b, freeze_utilbills=True)
 
     def test_load_utilbill(self):
-        # nothing to load
-        self.assertRaises(NoSuchBillException,
-                self.reebill_dao.load_utilbill, '99999', 'gas', 'washgas',
-                date(2012,11,12), date(2012,12,14))
-
-        # save a utilbill
+        # template utility bill is already saved in Mongo.
         ub = example_data.get_utilbill_dict('99999')
-        self.reebill_dao._save_utilbill(ub)
 
-        # load it
-        self.assertEqual(ub, self.reebill_dao.load_utilbill('99999', 'gas',
-                'washgas', date(2011,11,12), date(2011,12,14)))
+        # load it and make sure it's the same as the one in example_data.
+        self.assertDocumentsEqualExceptKeys(ub,
+                self.reebill_dao.load_utilbill('99999', 'gas', 'washgas',
+                date(1900,1,1), date(1900,2,1)), '_id')
 
         # TODO more
 
