@@ -741,31 +741,27 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             self.assertFalse(os.access(the_path, os.F_OK))
 
     def test_new_version(self):
-        # put reebill documents for sequence 0 and 1 in mongo (0 is needed to
-        # recompute 1), and rate structures for 1
         acc = '99999'
-        zero = example_data.get_reebill(acc, 0, version=0,
-                start=date(2011,12,1), end=date(2012,1,1))
-        self.reebill_dao.save_reebill(zero)
-
-        self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-        self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc, 0))
-        self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 0))
-
-        # TODO creating new version of 1 should fail until it's issued
-
-        # issue reebill 1
         with DBSession(self.state_db) as session:
-            self.state_db.record_utilbill_in_database(session, acc, 'gas',
-                    date(2012,1,1), date(2012,2,1), 100,
-                    datetime.utcnow().date())
-            one = self.process.roll_bill(session, zero)
+            # create utility bill and reebill
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), StringIO('january 2012'),
+                    'january.pdf')
+            self.process.create_first_reebill(session,
+                    session.query(UtilBill).one())
+
+            # TODO creating new version of reebill should fail until it's
+            # issued
 
             # update the meter like the user normally would
             # This is required for process.new_version => fetch_bill_data.fetch_oltp_data
-            meter = one.meters_for_service('gas')[0]
-            one.set_meter_read_date('gas', meter['identifier'], date(2012,2,1), date(2012,1,1))
-            self.reebill_dao.save_reebill(one)
+            reebill = self.reebill_dao.load_reebill(acc, 1)
+            meter = reebill.meters_for_service('gas')[0]
+            reebill.set_meter_read_date('gas', meter['identifier'], date(2012,2,1),
+                    date(2012,1,1))
+            self.reebill_dao.save_reebill(reebill)
+
+            # issue reebill
             self.process.issue(session, acc, 1, issue_date=date(2012,1,15))
 
         # modify editable utility bill document so its meter read dates are
@@ -802,6 +798,7 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
         # new version of CPRS(s) should also be created, so rate structure
         # should be loadable
+        # TODO this will fail until utility bill versioning is figured out
         for s in new_bill.services:
             self.assertNotEqual(None, self.rate_structure_dao.load_cprs(acc, 1,
                     new_bill.version, new_bill.utility_name_for_service(s),
