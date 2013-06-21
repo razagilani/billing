@@ -223,11 +223,16 @@ class Process(object):
         whenever roll_bill() is called.'''
         acc = present_reebill.account
 
-        ## TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types
+        # replace "utilbills" sub-documents of reebill document with new ones
+        # generated directly from the reebill's '_utilbills'. these will
+        # contain hypothetical charges that matche the actual charges until
+        # updated.
+        present_reebill.update_utilbill_subdocs()
+
+        ## "TODO: 22726549 hack to ensure the computations from bind_rs come back as decimal types"
         present_reebill.reebill_dict = deep_map(float_to_decimal, present_reebill.reebill_dict)
         present_reebill._utilbills = [deep_map(float_to_decimal, u) for u in
                 present_reebill._utilbills]
-
 
         # get MySQL reebill row corresponding to the document 'present_reebill'
         # (would be better to pass in the db_objects.ReeBill itself: see
@@ -753,12 +758,10 @@ class Process(object):
         reebill_doc.version = max_version + 1
 
         # replace utility bill documents with the "current" ones
+        # (note that utility bill subdocuments in the reebill get updated in
+        # 'compute_bill' below)
         reebill_doc._utilbills = [self.reebill_dao.load_doc_for_statedb_utilbill(u)
                 for u in reebill.utilbills]
-        # update utility bill subdocuments of reebill
-        # TODO maybe this should be done in compute_bill or a method called by
-        # it; see https://www.pivotaltracker.com/story/show/51581067
-        reebill_doc.update_utilbill_subdocs()
 
         # re-bind and compute
         # recompute, using sequence predecessor to compute balance forward and
