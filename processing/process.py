@@ -550,10 +550,11 @@ class Process(object):
         customer = utilbill.customer
 
         # make sure there are no reebills yet
-        if session.query(ReeBill).join(Customer)\
-                .filter(ReeBill.customer==customer).count() > 0:
-            raise ValueError("Reebills already exist for account" %
-                    utilbill.account)
+        num_existing_reebills = session.query(ReeBill).join(Customer)\
+                .filter(ReeBill.customer==customer).count()
+        if num_existing_reebills > 0:
+            raise ValueError("%s reebill(s) already exist for account %s" %
+                    (num_existing_reebills, customer.account))
         
         # load document for the 'utilbill', use it to create the reebill
         # document, and save the reebill document
