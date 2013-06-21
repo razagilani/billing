@@ -18,6 +18,7 @@ from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
+from billing.processing.db_objects import Customer
 from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
@@ -130,6 +131,114 @@ class MongoReebill(object):
         - hide the underlying mongo document organization
         - return cross cutting sets of data (e.g. all registers when registers are grouped by meter)
     '''
+
+    @classmethod
+    def get_utilbill_subdoc(cls, utilbill):
+        '''Returns a a dictionary that is the subdocument of a reebill document
+        representing the "hypothetical" version of the given utility bill
+        document.'''
+        return {
+            'id': utilbill['_id'],
+            'shadow_registers': reduce(operator.add,
+                    [m['registers'] for m in utilbill['meters']], []),
+            # NOTE hypothetical charges are the same as actual (on the utility
+            # bill); they will not reflect the renewable energy quantity until
+            # computed
+            'hypothetical_chargegroups': utilbill['chargegroups'],
+            'ree_charges': 0,
+            'ree_savings': 0,
+            'ree_value': 0
+        }
+
+    @classmethod
+    def get_reebill_doc_for_utilbills(cls, account, sequence, version,
+                discount_rate, late_charge_rate, utilbill_docs):
+        '''Returns a newly-created MongoReebill object having the given account
+        number, discount rate, late charge rate, and list of utility bill
+        documents. Hypothetical charges are the same as the utility bill's
+        actual charges. Addresses are copied from the utility bill template.
+        Note that the utility bill document _id is not changed; the caller is
+        responsible for properly duplicating utility bill documents.'''
+        # NOTE currently only one utility bill is allowed
+        assert len(utilbill_docs) == 1
+        utilbill = utilbill_docs[0]
+
+        reebill_doc = {
+            "_id" : {
+                "account" : account,
+                "sequence" : sequence,
+                "version" : version,
+            },
+            "ree_charges" : 0,
+            "ree_value" : 0,
+            "discount_rate" : discount_rate,
+            'late_charge_rate': late_charge_rate,
+            'late_charges': 0,
+            "message" : None,
+            "issue_date" : None,
+            "utilbills" : [cls.get_utilbill_subdoc(u) for u in utilbill_docs],
+            "payment_received" : 0,
+            "actual_total" : 0,
+            "due_date" : None,
+            "total_adjustment" : 0,
+            "ree_savings" : 0,
+            "statistics" : {
+                "renewable_utilization" : 0,
+                "renewable_produced" : None,
+                "total_conventional_consumed" : 0,
+                "total_co2_offset" : 0,
+                "conventional_consumed" : 0,
+                "total_renewable_produced" : None,
+                "total_savings" : 0,
+                "consumption_trend" : [
+                    { "quantity" : 0, "month" : "Dec" },
+                    { "quantity" : 0, "month" : "Jan" },
+                    { "quantity" : 0, "month" : "Feb" },
+                    { "quantity" : 0, "month" : "Mar" },
+                    { "quantity" : 0, "month" : "Apr" },
+                    { "quantity" : 0, "month" : "May" },
+                    { "quantity" : 0, "month" : "Jun" },
+                    { "quantity" : 0, "month" : "Jul" },
+                    { "quantity" : 0, "month" : "Aug" },
+                    { "quantity" : 0, "month" : "Sep" },
+                    { "quantity" : 0, "month" : "Oct" },
+                    { "quantity" : 0, "month" : "Nov" }
+                ],
+                "conventional_utilization" : 0,
+                "total_trees" : 0,
+                "co2_offset" : 0,
+                "total_renewable_consumed" : 0,
+                "renewable_consumed" : 0,
+            },
+            "balance_due" : 0,
+            "prior_balance" : 0,
+            "hypothetical_total" : 0,
+            "balance_forward" : 0,
+            # NOTE these address fields are containers for utility bill
+            # addresses. these addresses will eventually move into utility bill
+            # documents, and if necessary new reebill-specific address fields
+            # will be added. so copying the address from the utility bill to
+            # the reebill is the correct thing (and there is only one utility
+            # bill for now). see
+            # https://www.pivotaltracker.com/story/show/47749247
+
+            # transform from Rich's utility bill address schema to his reebill one
+            "billing_address" : {
+                    ('ba_postal_code' if key == 'postalcode'
+                        else ('ba_street1' if key == 'street'
+                            else 'ba_' + key)): value
+                    for (key, value) in
+                    utilbill['billingaddress'].iteritems()},
+            "service_address" : {
+                    ('sa_postal_code' if key == 'postalcode'
+                        else ('sa_street1' if key == 'street'
+                            else 'sa_' + key)): value
+                    for (key, value) in
+                    utilbill['serviceaddress'].iteritems()}
+        }
+        return MongoReebill(reebill_doc, utilbill_docs)
+
+
     def __init__(self, reebill_data, utilbill_dicts):
         assert isinstance(reebill_data, dict)
         # defensively copy whatever is passed in; who knows where the caller got it from
@@ -249,7 +358,7 @@ class MongoReebill(object):
 
     def new_utilbill_ids(self):
         '''Replaces _ids in utility bill documents and the reebill document's
-        references to them, and removed "sequence" and "version" keys if
+        references to them, and removes "sequence" and "version" keys if
         present (to convert frozen utility bill into editable one). Used when
         rolling to create copies of the utility bills.'''
         for utilbill_handle in self.reebill_dict['utilbills']:
@@ -260,6 +369,16 @@ class MongoReebill(object):
                 del utilbill_doc['sequence']
             if 'version' in utilbill_doc:
                 del utilbill_doc['version']
+
+    def update_utilbill_subdocs(self):
+        '''Refreshes the "utilbills" sub-documents of the reebill document to
+        match the utility bill documents in _utilbills. (These represent the
+        "hypothetical" version of each utility bill.)'''
+        # TODO maybe this should be done in compute_bill or a method called by
+        # it; see https://www.pivotaltracker.com/story/show/51581067
+        self.reebill_dict['utilbills'] = \
+                [MongoReebill.get_utilbill_subdoc(utilbill_doc) for
+                utilbill_doc in self._utilbills]
 
     # methods for getting data out of the mongo document: these could change
     # depending on needs in render.py or other consumers. return values are
@@ -1120,43 +1239,43 @@ class ReebillDAO:
 
         raise ValueError('Unknown version specifier "%s"' % specifier)
 
-    def increment_reebill_version(self, session, reebill):
-        '''Converts the reebill into its version successor: increments
-        _id.version, sets issue_date to None, and reloads the utility bills
-        from Mongo (since the reebill is unissued, these will be the current
-        versionless ones, not the ones that belong to the previous old
-        version of this reebill).'''
-        reebill.issue_date = None
-        reebill.version += 1
+    #def increment_reebill_version(self, session, reebill):
+        #'''Converts the reebill into its version successor: increments
+        #_id.version, sets issue_date to None, and reloads the utility bills
+        #from Mongo (since the reebill is unissued, these will be the current
+        #versionless ones, not the ones that belong to the previous old
+        #version of this reebill).'''
+        #reebill.issue_date = None
+        #reebill.version += 1
 
-        # replace the reebill's utility bill dictionaries with new ones loaded
-        # from mongo. which ones? the un-frozen/editable/"current truth"
-        # versions of the frozen ones currently in the reebill. how do you find
-        # them? i think the only way is by {account, service, utility, start
-        # date, end date}.
-        # TODO reconsider: https://www.pivotaltracker.com/story/show/37521779
-        all_new_utilbills = []
-        for utilbill_handle in reebill.reebill_dict['utilbills']:
-            # load new utility bill
-            old_utilbill = reebill._get_utilbill_for_handle(utilbill_handle)
-            new_utilbill = self.load_utilbill(account=reebill.account,
-                    utility=old_utilbill['utility'],
-                    service=old_utilbill['service'],
-                    start=old_utilbill['start'], end=old_utilbill['end'],
-                    # must not contain "sequence" or "version" keys
-                    sequence=False, version=False)
+        ## replace the reebill's utility bill dictionaries with new ones loaded
+        ## from mongo. which ones? the un-frozen/editable/"current truth"
+        ## versions of the frozen ones currently in the reebill. how do you find
+        ## them? i think the only way is by {account, service, utility, start
+        ## date, end date}.
+        ## TODO reconsider: https://www.pivotaltracker.com/story/show/37521779
+        #all_new_utilbills = []
+        #for utilbill_handle in reebill.reebill_dict['utilbills']:
+            ## load new utility bill
+            #old_utilbill = reebill._get_utilbill_for_handle(utilbill_handle)
+            #new_utilbill = self.load_utilbill(account=reebill.account,
+                    #utility=old_utilbill['utility'],
+                    #service=old_utilbill['service'],
+                    #start=old_utilbill['start'], end=old_utilbill['end'],
+                    ## must not contain "sequence" or "version" keys
+                    #sequence=False, version=False)
 
-            # convert types
-            new_utilbill = deep_map(float_to_decimal, new_utilbill)
-            new_utilbill = convert_datetimes(new_utilbill)
+            ## convert types
+            #new_utilbill = deep_map(float_to_decimal, new_utilbill)
+            #new_utilbill = convert_datetimes(new_utilbill)
 
-            all_new_utilbills.append(new_utilbill)
+            #all_new_utilbills.append(new_utilbill)
 
-            # utilbill_handle's _id should match the new utility bill
-            utilbill_handle['id'] = new_utilbill['_id']
+            ## utilbill_handle's _id should match the new utility bill
+            #utilbill_handle['id'] = new_utilbill['_id']
 
-        # replace utilbills with new ones loaded above (all at once)
-        reebill._utilbills = all_new_utilbills
+        ## replace utilbills with new ones loaded above (all at once)
+        #reebill._utilbills = all_new_utilbills
 
 
     def load_utilbills(self, **kwargs):
@@ -1194,9 +1313,8 @@ class ReebillDAO:
 
     def load_utilbill(self, account, service, utility, start, end,
             sequence=None, version=None):
-        '''Loads exactly one utility bill document from Mongo, returns the raw
-        dictionary. Raises a NoSuchBillException if zero or multiple utility
-        bills are found.
+        '''Loads exactly one utility bill document from Mongo. Raises a
+        NoSuchBillException if zero or multiple utility bills are found.
         
         'start' and 'end' may be None because there are some reebills that have
         None dates (when the dates have not yet been filled in by the user).
@@ -1246,8 +1364,61 @@ class ReebillDAO:
             raise NotUniqueException(("Multiple utility bills in %s satisfy "
                     "query %s") % (self.utilbills_collection,
                     format_query(query)))
-        return docs[0]
+        result = docs[0]
+        result = deep_map(float_to_decimal, result)
+        result = convert_datetimes(result)
+        return result
 
+
+    def _load_utilbill_by_id(self, _id):
+        docs = self.utilbills_collection.find({'_id': bson.ObjectId(_id)})
+        if docs.count() == 0:
+            raise NoSuchBillException("No utility bill document for _id %s"
+                    % _id)
+        assert docs.count() == 1
+        result = docs[0]
+        result = deep_map(float_to_decimal, result)
+        result = convert_datetimes(result)
+        return result
+
+    def load_doc_for_statedb_utilbill(self, utilbill_row):
+        '''Returns the Mongo utility bill document corresponding to the given
+        db_objects.UtilBill object.'''
+        # empty document_ids are legitimate because "hypothetical" utility
+        # bills do not have a document
+        # empty document_ids should not be possible, once the db is cleaned up
+        # (there's already a "not null" constraint for 'document_id' but the
+        # default value is "")
+        if utilbill_row.document_id in (None, ''):
+            raise ValueError("Utility bill lacks document_id: %s" %
+                    utilbill_row)
+        try:
+            return self._load_utilbill_by_id(utilbill_row.document_id)
+        except NoSuchBillException:
+            raise NoSuchBillException(("No utility bill document found in %s"
+                    " corresponding to %s") % utilbill_row)
+
+    def delete_doc_for_statedb_utilbill(self, utilbill_row):
+        '''Deletes the Mongo utility bill document corresponding to the given
+        db_objects.UtilBill object.'''
+        result = self.utilbills_collection.remove({
+                '_id': bson.ObjectId(utilbill_row.document_id)}, safe=True)
+        if result['err'] is not None or result['n'] == 0:
+            raise MongoError(result)
+
+    def load_utilbill_template(self, session, account):
+        '''Returns the Mongo utility bill document template for the customer
+        given by 'account'.'''
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        docs = self.utilbills_collection.find({
+                '_id': bson.ObjectId(customer.utilbill_template_id)})
+        if docs.count() == 0:
+            raise NoSuchBillException("No utility bill template for %s" %
+                    customer)
+        assert docs.count() == 1
+        return docs[0]
+        return self._load_utilbill_by_id(customer.utilbill_template_id)
 
     def _load_all_utillbills_for_reebill(self, session, reebill_doc):
         '''Loads all utility bill documents from Mongo that match the ones in
@@ -1261,14 +1432,13 @@ class ReebillDAO:
             if utilbill_doc == None:
                 raise NoSuchBillException(("No utility bill found for reebill "
                         " %s-%s-%s in %s: query was %s") % (
-                        reebill_doc['_id']['account'], reebill_doc['_id']['sequence'], reebill_doc['_id']['version'],
+                        reebill_doc['_id']['account'],
+                        reebill_doc['_id']['sequence'], reebill_doc['_id']['version'],
                         self.utilbills_collection, format_query(query)))
-
 
             # convert types
             utilbill_doc = deep_map(float_to_decimal, utilbill_doc)
             utilbill_doc = convert_datetimes(utilbill_doc)
-
             result.append(utilbill_doc)
 
         return result
@@ -1298,7 +1468,7 @@ class ReebillDAO:
         # TODO figure out how to move this into _get_version_query(): it can't
         # be expressed as part of the query, except maybe with a javascript
         # "where" clause
-        if isinstance(version, int):
+        if isinstance(version, int) or isinstance(version, long):
             query.update({'_id.version': version})
             mongo_doc = self.reebills_collection.find_one(query)
         elif version == 'max':
@@ -1325,7 +1495,8 @@ class ReebillDAO:
             else:
                 mongo_doc = docs[docs.count()-1]
         else:
-            raise ValueError('Unknown version specifier "%s"' % version)
+            raise ValueError('Unknown version specifier "%s" (%s)' %
+                    (version, type(version)))
 
         if mongo_doc is None:
             raise NoSuchBillException(("no reebill found in %s: query was %s")

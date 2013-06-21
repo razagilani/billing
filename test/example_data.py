@@ -398,17 +398,10 @@ example_urs = {
 	]
 }
 
-# the data in this Utility Periodic Rate Structure are made up--as of when i
-# made this, we have no nonempty URPSs.
 example_uprs = {
-	"_id" : {
-		"type" : "UPRS",
-		"rate_structure_name" : "DC Non Residential Non Heat",
-		"utility_name" : "washgas",
-        # added with rate structure prediction feature
-        'account': '10003',
-        'sequence': 17,
-	},
+    # NOTE: "_id" must be inserted at runtime in get_utilbill_dict() because it
+    # should be different for each instance
+
 	"rates" : [
 		{
 			"rsi_binding" : "SYSTEM_CHARGE",
@@ -425,18 +418,67 @@ example_uprs = {
 			"uuid" : "b11e3216-01a9-11e1-af85-560964835ffb",
 			"quantity" : "REG_TOTAL.quantity"
 		},
+        {
+            "rsi_binding" : "DISTRIBUTION_CHARGE",
+            "description" : "Distribution charge for all therms",
+            "quantity" : 750.10197727,
+            "rate_units" : "dollars",
+            "rate" : 0.2935,
+            "quantity_units" : "therms",
+            "uuid" : "c9733ed2-2c16-11e1-8c7f-002421e88ffb"
+        },
+        {
+            "rsi_binding" : "PGC",
+            "description" : "Purchased Gas Charge",
+            "quantity" : 750.10197727,
+            "rate_units" : "dollars",
+            "rate" : 0.7653,
+            "quantity_units" : "therms",
+            "uuid" : "c97340da-2c16-11e1-8c7f-002421e88ffb"
+        },
+        {
+            "rsi_binding" : "PUC",
+            "quantity_units" : "kWh",
+            "quantity" : 1,
+            "description" : "Peak Usage Charge",
+            "rate_units" : "dollars",
+            "rate" : 23.14,
+            "uuid" : "c97342e2-2c16-11e1-8c7f-002421e88ffb"
+        },
+        {
+            "rsi_binding" : "RIGHT_OF_WAY",
+            "description" : "DC Rights-of-Way Fee",
+            "quantity" : 750.10197727,
+            "rate_units" : "dollars",
+            "rate" : 0.03059,
+            "quantity_units" : "therms",
+            "uuid" : "c97344f4-2c16-11e1-8c7f-002421e88ffb"
+        },
+        {
+            "rsi_binding" : "SETF",
+            "description" : "Sustainable Energy Trust Fund",
+            "quantity" : 750.10197727,
+            "rate_units" : "dollars",
+            "rate" : 0.01399,
+            "quantity_units" : "therms",
+            "uuid" : "c97346f2-2c16-11e1-8c7f-002421e88ffb"
+        },
+        {
+            "rsi_binding" : "EATF",
+            "description" : "DC Energy Assistance Trust Fund",
+            "quantity" : 750.10197727,
+            "rate_units" : "dollars",
+            "rate" : 0.006,
+            "quantity_units" : "therms",
+            "uuid" : "c9734af8-2c16-11e1-8c7f-002421e88ffb"
+        },
 	]
 }
 
 example_cprs = {
-	"_id" : {
-		"account" : "10003",
-		"sequence" : 17,
-		"utility_name" : "washgas",
-		"rate_structure_name" : "DC Non Residential Non Heat",
-		"version" : 0,
-		"type" : "CPRS"
-	},
+    # NOTE: "_id" must be inserted at runtime in get_utilbill_dict() because it
+    # should be different for each instance
+
 	"rates" : [
 		{
 			"rsi_binding" : "SYSTEM_CHARGE",
@@ -505,7 +547,8 @@ example_cprs = {
 
 def get_reebill(account, sequence, start=date(2011,11,12),
         end=date(2011,12,14), version=0):
-    '''Returns an example reebill with the given account and sequence.'''
+    '''Returns an example reebill with the given account, sequence, and dates. It comes
+    with one utility bill having the same dates.'''
     reebill_dict = copy.deepcopy(example_reebill)
     reebill_dict['_id'].update({
         'account': account,
@@ -559,27 +602,14 @@ def get_urs_dict(rate_structure_name='DC Non Residential Non Heat',
     })
     return urs_dict
 
-def get_uprs_dict(account, sequence, version=0,
-        rate_structure_name='DC Non Residential Non Heat',
-        utility_name='washgas'):
+def get_uprs_dict():
     '''Returns an example customer periodic rate structure document.'''
     uprs_dict = copy.deepcopy(example_uprs)
-    uprs_dict['_id'].update({
-        'account': account,
-        'sequence': sequence,
-        'version': version,
-        'rate_structure_name': rate_structure_name,
-        'utility_name': utility_name,
-    })
+    uprs_dict['_id'] = ObjectId()
     return uprs_dict
 
-def get_cprs_dict(account, sequence, version=0):
-    '''Returns an example utility customer periodic rate structure document
-    with the given account and sequence.'''
+def get_cprs_dict():
     cprs_dict = copy.deepcopy(example_cprs)
-    cprs_dict['_id']['account'] = account
-    cprs_dict['_id']['sequence'] = sequence
-    cprs_dict['_id']['version'] = version
-    #return RateStructure(cprs_dict)
+    cprs_dict['_id'] = ObjectId()
     return cprs_dict
 

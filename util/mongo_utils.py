@@ -1,3 +1,4 @@
+from sys import maxint
 import datetime
 from datetime import date, time, datetime
 from decimal import Decimal
@@ -42,6 +43,10 @@ def bson_convert(x):
 
     if type(x) in [type(None), str, float, int, bool, datetime, unicode, ObjectId]:
         return x
+    if type(x) is long:
+        if x >= -maxint-1 and x <= maxint:
+            return int(x)
+        raise ValueError("long %s is too big or to small to become an int" % x)
     if type(x) is Decimal:
         return float(x)
     if type(x) is time:
