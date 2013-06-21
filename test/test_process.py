@@ -1548,68 +1548,73 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         cause it to change (a bug we have seen).'''
         acc = '99999'
         with DBSession(self.state_db) as session:
-            # setup: reebill #1 to serve as predecessor for computing below
-            # (must be saved in mongo only so ReebillDAO.get_first_bill_date_for_account works)
-            one = example_data.get_reebill(acc, 1, version=0,
-                    start=date(2012,1,1), end=date(2012,2,1))
-            self.reebill_dao.save_reebill(one)
-            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc, 1))
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 1))
+            # setup: two utility bills and two reebills; reebill #1 will serve
+            # as the predecessor to #2 when computing below.
+
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2012,1,1), date(2012,2,1), StringIO('January 2012'),
+                    'january.pdf')
+            self.process.upload_utility_bill(session, acc, 'gas',
+                    date(2012,2,1), date(2012,3,1), StringIO('February 2012'),
+                    'february.pdf')
+            utilbill_jan, utilbill_feb = session.query(UtilBill)\
+                    .order_by(UtilBill.period_start).all()
+            self.process.create_first_reebill(session, utilbill_jan)
+            one = self.reebill_dao.load_reebill(acc, 1)
+            self.process.create_next_reebill(session, acc)
 
             for use_olap in (True, False):
-                b = example_data.get_reebill(acc, 1, version=0,
-                        start=date(2012,2,1), end=date(2012,3,1))
-                # NOTE no need to save 'b' in mongo
-                olap_id = 'MockSplinter ignores olap id'
+                reebill2 = self.reebill_dao.load_reebill(acc, 2)
+                # NOTE changes to 'reebill2' do not persist in db
 
                 # bind & compute once to start. this change should be
                 # idempotent.
-                fbd.fetch_oltp_data(self.splinter, olap_id, b, use_olap=use_olap)
-                self.process.compute_bill(session, one, b)
+                olap_id = 'MockSplinter ignores olap id'
+                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2, use_olap=use_olap)
+                self.process.compute_bill(session, one, reebill2)
 
                 # save original values
                 # (more fields could be added here)
-                hypo = b.hypothetical_total
-                actual = b.actual_total
-                ree = b.total_renewable_energy
-                ree_value = b.ree_value
-                ree_charges = b.ree_charges
-                total = b.total
-                balance_due = b.balance_due
+                hypo = reebill2.hypothetical_total
+                actual = reebill2.actual_total
+                ree = reebill2.total_renewable_energy
+                ree_value = reebill2.ree_value
+                ree_charges = reebill2.ree_charges
+                total = reebill2.total
+                balance_due = reebill2.balance_due
 
                 # this function checks that current values match the orignals
                 def check():
                     # in approximate "causal" order
-                    self.assertEqual(ree, b.total_renewable_energy)
-                    self.assertEqual(actual, b.actual_total)
-                    self.assertEqual(hypo, b.hypothetical_total)
-                    self.assertEqual(ree_value, b.ree_value)
-                    self.assertEqual(ree_charges, b.ree_charges)
-                    self.assertEqual(total, b.total)
-                    self.assertEqual(balance_due, b.balance_due)
+                    self.assertEqual(ree, reebill2.total_renewable_energy)
+                    self.assertEqual(actual, reebill2.actual_total)
+                    self.assertEqual(hypo, reebill2.hypothetical_total)
+                    self.assertEqual(ree_value, reebill2.ree_value)
+                    self.assertEqual(ree_charges, reebill2.ree_charges)
+                    self.assertEqual(total, reebill2.total)
+                    self.assertEqual(balance_due, reebill2.balance_due)
 
                 # this better succeed, since nothing was done
                 check()
 
                 # bind and compute repeatedly
-                self.process.compute_bill(session, one, b)
+                self.process.compute_bill(session, one, reebill2)
                 check()
-                fbd.fetch_oltp_data(self.splinter, olap_id, b)
+                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
                 check()
-                self.process.compute_bill(session, one, b)
+                self.process.compute_bill(session, one, reebill2)
                 check()
-                self.process.compute_bill(session, one, b)
+                self.process.compute_bill(session, one, reebill2)
                 check()
-                fbd.fetch_oltp_data(self.splinter, olap_id, b)
-                fbd.fetch_oltp_data(self.splinter, olap_id, b)
-                fbd.fetch_oltp_data(self.splinter, olap_id, b)
+                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
+                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
+                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
                 check()
-                self.process.compute_bill(session, one, b)
+                self.process.compute_bill(session, one, reebill2)
                 check()
-                fbd.fetch_oltp_data(self.splinter, olap_id, b)
+                fbd.fetch_oltp_data(self.splinter, olap_id, reebill2)
                 check()
-                self.process.compute_bill(session, one, b)
+                self.process.compute_bill(session, one, reebill2)
                 check()
 
     def test_choose_next_utilbills_bug(self):
