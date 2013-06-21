@@ -192,7 +192,8 @@ class Process(object):
             # less final than the one being uploaded, so replace it.
             session.delete(bill_to_replace)
             self.create_new_utility_bill(session, account, utility, service,
-                    rate_class, start, end, total=total_charges, state=state)
+                    rate_class, begin_date, end_date, total=total_charges,
+                    state=state)
 
 
     def delete_utility_bill(self, session, utilbill_id):
