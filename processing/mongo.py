@@ -141,6 +141,9 @@ class MongoReebill(object):
             'id': utilbill['_id'],
             'shadow_registers': reduce(operator.add,
                     [m['registers'] for m in utilbill['meters']], []),
+            # NOTE hypothetical charges are the same as actual (on the utility
+            # bill); they will not reflect the renewable energy quantity until
+            # computed
             'hypothetical_chargegroups': utilbill['chargegroups'],
             'ree_charges': 0,
             'ree_savings': 0,
@@ -152,8 +155,9 @@ class MongoReebill(object):
                 discount_rate, late_charge_rate, utilbill_docs):
         '''Returns a newly-created MongoReebill object having the given account
         number, discount rate, late charge rate, and list of utility bill
-        documents. Addresses are copied from the utility bill template. Note
-        that the utility bill document _id is not changed; the caller is
+        documents. Hypothetical charges are the same as the utility bill's
+        actual charges. Addresses are copied from the utility bill template.
+        Note that the utility bill document _id is not changed; the caller is
         responsible for properly duplicating utility bill documents.'''
         # NOTE currently only one utility bill is allowed
         assert len(utilbill_docs) == 1

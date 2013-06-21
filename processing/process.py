@@ -325,13 +325,21 @@ class Process(object):
             assert present_reebill.sequence == 1
 
             # include all payments since the beginning of time, in case there
-            # happen to be any, which is unlikely
+            # happen to be any.
+            # if any version of this bill has been issued, get payments up
+            # until the issue date; otherwise get payments up until the
+            # present.
             present_v0_issue_date = self.reebill_dao.load_reebill(acc,
                     present_reebill.sequence, version=0).issue_date
-            present_reebill.payment_received = self.state_db.\
-                    get_total_payment_since(session, acc,
-                    state.MYSQLDB_DATETIME_MIN,
-                    end=present_v0_issue_date)
+            if present_v0_issue_date is None:
+                present_reebill.payment_received = self.state_db.\
+                        get_total_payment_since(session, acc,
+                        state.MYSQLDB_DATETIME_MIN)
+            else:
+                present_reebill.payment_received = self.state_db.\
+                        get_total_payment_since(session, acc,
+                        state.MYSQLDB_DATETIME_MIN,
+                        end=present_v0_issue_date)
             # obviously balances are 0
             present_reebill.prior_balance = Decimal(0)
             present_reebill.balance_forward = Decimal(0)
