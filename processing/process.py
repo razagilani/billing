@@ -1068,8 +1068,8 @@ class Process(object):
 
             # hypothetical charges
 
-            # "re-load rate structure" (doesn't this clear out all the changes above?)
-            rate_structure = copy.deepcopy(rate_structure)
+            # re-copy rate structure because it gets destroyed during use
+            rate_structure = copy.deepcopy(the_rate_structure)
 
             # get shadow and non-shadow registers in the reebill
             actual_register_readings = reebill.actual_registers(service)
