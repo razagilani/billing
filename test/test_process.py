@@ -748,7 +748,6 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 start=date(2011,12,1), end=date(2012,1,1))
         self.reebill_dao.save_reebill(zero)
 
-        #self.reebill_dao.save_reebill(one)
         self.rate_structure_dao.save_rs(example_data.get_urs_dict())
         self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc, 0))
         self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc, 0))
@@ -757,11 +756,9 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
 
         # issue reebill 1
         with DBSession(self.state_db) as session:
-            #self.state_db.new_reebill(session, acc, 1)
             self.state_db.record_utilbill_in_database(session, acc, 'gas',
                     date(2012,1,1), date(2012,2,1), 100,
                     datetime.utcnow().date())
-            #self.process.attach_utilbills(session, acc, 1)
             one = self.process.roll_bill(session, zero)
 
             # update the meter like the user normally would
