@@ -65,7 +65,7 @@ class Process(object):
         return new_customer
 
     def upload_utility_bill(self, session, account, service, begin_date,
-                end_date, bill_file, file_name, total=0):
+            end_date, bill_file, file_name, total=0, state=UtilBill.Complete):
         '''Uploads 'bill_file' with the name 'file_name' as a utility bill for
         the given account, service, and dates. If the upload succeeds, a row is
         added to the utilbill table in MySQL and a document is added in Mongo
@@ -80,6 +80,14 @@ class Process(object):
         if end_date - begin_date > timedelta(days=365):
             raise ValueError(("Utility bill period %s to %s is longer than "
                 "1 year") % (start, end))
+        if bill_file is None and state in (UtilBill.UtilityEstimated,
+                UtilBill.Complete):
+            raise ValueError(("Bill file is required for a complete or "
+                    "utility-estimated utility bill"))
+        if bill_file is not None and state in (UtilBill.Hypothetical,
+                UtilBill.SkylineEstimated):
+            raise ValueError("Hypothetical or Skyline-estimated utility bills "
+                    "can't have file")
 
         # NOTE 'total' does not yet go into the utility bill document in Mongo
 
@@ -104,28 +112,21 @@ class Process(object):
             rate_class = template['rate_structure_binding']
             utility = template['utility']
 
-        if bill_file is None:
-            # if there's no file, this is a "skyline estimated bill":
-            # record it in the database with that state, but don't upload
-            # anything
-            self.record_utilbill_in_database(session, account, utility,
-                    service, rate_class, begin_date, end_date, total,
-                    date_received=datetime.utcnow().date(),
-                    state=UtilBill.SkylineEstimated)
-        else:
+        if bill_file is not None:
             # if there is a file, get the Python file object and name
             # string from CherryPy, and pass those to BillUpload to upload
             # the file (so BillUpload can stay independent of CherryPy)
             upload_result = self.billupload.upload(account, begin_date,
                     end_date, bill_file, file_name)
-            if upload_result is True:
-                self.record_utilbill_in_database(session, account, utility,
-                        service, rate_class, begin_date, end_date, total,
-                        date_received=datetime.utcnow().date(),
-                        state=UtilBill.Complete)
-            else:
+            if not upload_result:
                 raise IOError('File upload failed: %s %s %s' % (file_name,
                     begin_date, end_date))
+
+        # record the bill in state DB
+        self.record_utilbill_in_database(session, account, utility,
+                service, rate_class, begin_date, end_date, total,
+                date_received=datetime.utcnow().date(),
+                state=state)
 
         # if begin_date does not match end date of latest existing bill, create
         # hypothetical bills to cover the gap
@@ -186,6 +187,7 @@ class Process(object):
                 raise NotUniqueException(("Can't upload a utility bill for "
                     "dates %s, %s because one already exists with a more final"
                     " state than %s") % (begin_date, end_date, state))
+                    
             bill_to_replace = bills_to_replace.one()
                 
             # now there is exactly one bill with the same dates and its state is
