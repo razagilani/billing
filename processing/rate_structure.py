@@ -128,8 +128,8 @@ class RateStructureDAO(object):
                 # bill TODO this sucks--figure out how to avoid it, especially
                 # the part that involves using supposedly private methods and
                 # directly accessing document structure
-                reebill = self.reebill_dao.load_reebill(uprs['_id']['account'],
-                        uprs['_id']['sequence'], version=uprs['_id']['version'])
+                #reebill = self.reebill_dao.load_reebill(uprs['_id']['account'],
+                        #uprs['_id']['sequence'], version=uprs['_id']['version'])
 
                 # calculate weighted distance of this UPRS period from the
                 # target period
