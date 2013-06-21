@@ -31,7 +31,7 @@ from billing.test import example_data
 from skyliner.mock_skyliner import MockSplinter, MockMonguru, hour_of_energy
 from billing.util.nexus_util import NexusUtil
 from billing.processing.mongo import NoSuchBillException
-from billing.processing.exceptions import BillStateError
+from billing.processing.exceptions import BillStateError, NotUniqueException
 from billing.processing import fetch_bill_data as fbd
 from billing.test import utils
 
@@ -1016,58 +1016,55 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
             assert len(corrections) == 1
             self.assertEquals((2, 1, Decimal(-40)), corrections[0])
 
+    # TODO rename
     def test_roll(self):
-        '''Tests Process.roll_bill, which modifies a MongoReebill to convert it
-        into its sequence successor, and copies the CPRS in Mongo. (The bill
-        itself is not saved in any database.)'''
+        '''Tests creation of reebills and dependency of each reebill on its
+        predecessor.'''
         account = '99999'
-        dt = date.today()
-        month = timedelta(days=30)
-        re_no_utilbill = re.compile('No new [a-z]+ utility bill found')
-        re_no_final_utilbill = re.compile('The next [a-z]+ utility bill exists but has not been fully estimated or received')
-        re_time_gap = re.compile('There is a gap of [0-9]+ days before the next [a-z]+ utility bill found')
-
         with DBSession(self.state_db) as session:
             customer = self.state_db.get_customer(session, account)
-            reebill_0 = example_data.get_reebill(account, 0, dt-month, dt)
-            self.reebill_dao.save_reebill(reebill_0, freeze_utilbills=True)
-            # Set up example rate structure
-            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(account, 0))
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(account, 0))
 
-            # There are no utility bills yet, so rolling should fail.
-            with self.assertRaises(Exception) as context:
-                self.process.roll_bill(session, reebill_0)
-            self.assertTrue(re.match(re_no_utilbill, str(context.exception)))
+            # create 2 utility bills
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2013,4,4), date(2013,5,2), StringIO('April 2013'),
+                    'april.pdf')
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2013,5,2), date(2013,6,3), StringIO('May 2013'),
+                    'may.pdf')
 
-            target_utilbill = UtilBill(customer=customer, state=0, service='gas',\
-                period_start=dt, period_end=dt+month, reebill=None)
-            session.add(target_utilbill)
+            # create reebill based on first utility bill
+            self.process.create_first_reebill(session,
+                    session.query(UtilBill).order_by(UtilBill.period_start).first())
 
-            # Make sure the reebill period reflects the correct utilbill
-            reebill_1 = self.process.roll_bill(session, reebill_0)
-            self.assertEqual(reebill_1.period_begin, target_utilbill.period_start)
-            self.assertEqual(reebill_1.period_end, target_utilbill.period_end)
+            # Make sure the reebill period matches the utility bill
+            reebill_1 = self.reebill_dao.load_reebill(account, 1)
+            self.assertEqual(reebill_1.period_begin, date(2013,4,4))
+            self.assertEqual(reebill_1.period_end, date(2013,5,2))
 
-            # bill should be computable after rolling
-            self.process.compute_bill(session, reebill_0, reebill_1) 
+            # reebill should be computable after rolling
+            self.process.compute_bill(session, None, reebill_1) 
 
-            self.process.issue(session, account, reebill_1.sequence)
-            reebill_1 = self.reebill_dao.load_reebill(account, reebill_1.sequence)
+            self.process.issue(session, account, 1)
+            reebill_1 = self.reebill_dao.load_reebill(account, 1)
 
-            # Add two utilbills: one hypothetical followed by one final one
-            hypo_utilbill = UtilBill(customer=customer, state=3, service='gas',\
-                period_start=dt+month, period_end=dt+(month*2), reebill=None)
-            later_utilbill = UtilBill(customer=customer, state=0, service='gas',\
-                period_start=dt+(month*2), period_end=dt+(month*3), reebill=None)
-
-            session.add_all([hypo_utilbill, later_utilbill])
+            # add two more utility bills: a Hypothetical one, then a Complete one
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2013,6,3), date(2013,7,1), None, 'no file',
+                    state=UtilBill.Hypothetical)
+            self.process.upload_utility_bill(session, account, 'gas',
+                    date(2013,7,1), date(2013,7,30), StringIO('July 2013'),
+                    'july.pdf')
+            hypo_utilbill, later_utilbill = session.query(UtilBill)\
+                    .order_by(UtilBill.period_start).all()[2:4]
+            assert hypo_utilbill.state == UtilBill.Hypothetical
+            assert later_utilbill.state == UtilBill.Complete
 
             # The next utility bill isn't estimated or final, so rolling should fail
-            with self.assertRaises(Exception) as context:
-                self.process.roll_bill(session, reebill_1)
-            self.assertTrue(re.match(re_no_final_utilbill, str(context.exception)))
+            ### TODO fails here--attaching reebill to hypothetical utility bill
+            ### is allowed but probably should not be; see
+            ### https://www.pivotaltracker.com/story/show/52159363
+            self.assertRaises(NotUniqueException,
+                    self.process.create_next_reebill, session, account)
 
             # Set hypo_utilbill to Utility Estimated, save it, and then we
             # should be able to roll on it
