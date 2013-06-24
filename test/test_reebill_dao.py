@@ -3,11 +3,12 @@ import pymongo
 import sqlalchemy
 import copy
 from datetime import date, datetime, timedelta
+from bson import ObjectId
+import MySQLdb
 from billing.util import dateutils
 from billing.processing import mongo
 from billing.processing.state import StateDB
 from billing.processing.db_objects import ReeBill, Customer, UtilBill
-import MySQLdb
 from billing.test import example_data, utils
 from billing.test.setup_teardown import TestCaseWithSetup
 from billing.processing.mongo import NoSuchBillException, IssuedBillError, NotUniqueException, float_to_decimal
@@ -315,33 +316,40 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
             self.reebill_dao.save_reebill(b)
             self.state_db.new_reebill(session, '99999', 1)
 
-            # reebill and utility bills should be in mongo
+            # reebill and utility bills should be in mongo. there are 2 utility
+            # bills because of the template document that is already there.
             all_reebills = self.reebill_dao.load_reebills_in_period('99999', version=0)
             all_utilbill_docs = self.reebill_dao.load_utilbills(account='99999')
             self.assertEquals(1, len(all_reebills))
-            self.assertEquals(1, len(all_utilbill_docs))
+            self.assertEquals(2, len(all_utilbill_docs))
 
             # delete
             self.reebill_dao.delete_reebill('99999', 1, 0)
 
-            # both reebill and utilbills should be gone
+            # both reebill and utilbills should be gone. ensure that the
+            # utility bill left is the template.
             all_reebills = self.reebill_dao.load_reebills_in_period('99999', version=0)
             all_utilbill_docs = self.reebill_dao.load_utilbills(account='99999')
             self.assertEquals(0, len(all_reebills))
-            self.assertEquals(0, len(all_utilbill_docs))
+            self.assertEquals(1, len(all_utilbill_docs))
+            self.assertEquals(ObjectId('000000000000000000000001'),
+                    all_utilbill_docs[0]['_id'])
 
             # save reebill and utility bills again
             b = example_data.get_reebill('99999', 1)
             self.reebill_dao.save_reebill(b)
 
             # if utility bill is frozen and verison == 0, both frozen utility
-            # bill and editable one should be deleted
+            # bill and editable one should be deleted. again only the template
+            # should be left.
             self.reebill_dao.save_reebill(b, freeze_utilbills=True)
             self.reebill_dao.delete_reebill('99999', 1, 0)
             all_reebills = self.reebill_dao.load_reebills_in_period('99999', version=0)
             all_utilbill_docs = self.reebill_dao.load_utilbills(account='99999')
             self.assertEquals(0, len(all_reebills))
-            self.assertEquals(0, len(all_utilbill_docs))
+            self.assertEquals(1, len(all_utilbill_docs))
+            self.assertEquals(ObjectId('000000000000000000000001'),
+                    all_utilbill_docs[0]['_id'])
 
             # if utility bill is frozen and version > 0, nothing should be
             # deleted
@@ -353,7 +361,7 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
             all_utilbill_docs = self.reebill_dao.load_utilbills(account='99999')
             self.assertEquals(1, len(all_reebills))
             self.assertEquals(1, all_reebills[0].version)
-            self.assertEquals(1, len(all_utilbill_docs))
+            self.assertEquals(2, len(all_utilbill_docs))
             self.assertFalse('sequence' in all_utilbill_docs[0])
             self.assertFalse('version' in all_utilbill_docs[0])
 
@@ -363,12 +371,12 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
             all_reebills = self.reebill_dao.load_reebills_in_period('99999', version='any', include_0=True)
             all_utilbill_docs = self.reebill_dao.load_utilbills(account='99999')
             assert len(all_reebills) == 1
-            assert len(all_utilbill_docs) == 2
+            assert len(all_utilbill_docs) == 3
             self.reebill_dao.delete_reebill('99999', 1, 1)
             all_reebills = self.reebill_dao.load_reebills_in_period('99999', version='any', include_0=True)
             all_utilbill_docs = self.reebill_dao.load_utilbills(account='99999')
             self.assertEquals(0, len(all_reebills))
-            self.assertEquals(1, len(all_utilbill_docs))
+            self.assertEquals(2, len(all_utilbill_docs))
             self.assertFalse('sequence' in all_utilbill_docs[0])
             self.assertFalse('version' in all_utilbill_docs[0])
 
