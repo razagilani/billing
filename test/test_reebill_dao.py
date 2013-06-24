@@ -21,7 +21,8 @@ pp = pprint.PrettyPrinter(indent=1).pprint
 class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
     def test_load_reebill(self):
         with DBSession(self.state_db) as session:
-            # put some reebills in Mongo, including non-0 versions
+            # put some reebills in Mongo, including non-0 versions. note that a
+            # sequence-0 utility bill template is already present.
             b0 = example_data.get_reebill('99999', 0, start=date(2012,1,1), end=date(2012,2,1), version=0)
             b1 = example_data.get_reebill('99999', 1, start=date(2012,2,1), end=date(2012,3,1), version=0)
             b1_1 = example_data.get_reebill('99999', 1, start=date(2012,2,1), end=date(2012,3,1), version=1)
@@ -70,9 +71,10 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
 
             # freezing of utililty bills should have created one one frozen
             # copy for each issued reebill (3) in addition to the editable one
-            # for each sequence (4), for a total of 7
+            # for each sequence (4), plus the template that was already there,
+            # for a total of 8
             all_utilbill_docs = self.reebill_dao.load_utilbills(account='99999')
-            self.assertEquals(7, len(all_utilbill_docs))
+            self.assertEquals(8, len(all_utilbill_docs))
 
             # with no extra args to load_reebill(), maximum version should come out
             b0_max = self.reebill_dao.load_reebill('99999', 0)
