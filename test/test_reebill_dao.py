@@ -10,8 +10,10 @@ from billing.processing.db_objects import ReeBill, Customer, UtilBill
 import MySQLdb
 from billing.test import example_data, utils
 from billing.test.setup_teardown import TestCaseWithSetup
-from billing.processing.mongo import NoSuchBillException, IssuedBillError, NotUniqueException
+from billing.processing.mongo import NoSuchBillException, IssuedBillError, NotUniqueException, float_to_decimal
 from billing.processing.session_contextmanager import DBSession
+from billing.util.dictutils import deep_map
+from billing.util.dateutils import date_to_datetime
 
 import pprint
 pp = pprint.PrettyPrinter(indent=1).pprint
@@ -199,13 +201,18 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
                     self.reebill_dao.save_reebill, b, freeze_utilbills=True)
 
     def test_load_utilbill(self):
-        # template utility bill is already saved in Mongo.
-        ub = example_data.get_utilbill_dict('99999')
+        # template utility bill is already saved in Mongo; load it and make
+        # sure it's the same as the one in example_data.
+        # example_data bill must be modified to get it to match (the same type
+        # conversions happen when it's loaded out of mongo too)
+        ub = example_data.get_utilbill_dict(u'99999', start=date(1900,1,1),
+                end=date(1900,2,1), utility=u'washgas', service=u'gas')
+        ub = deep_map(lambda x: x.date() if isinstance(x, datetime) else x, ub)
+        ub = deep_map(float_to_decimal, ub)
 
-        # load it and make sure it's the same as the one in example_data.
         self.assertDocumentsEqualExceptKeys(ub,
                 self.reebill_dao.load_utilbill('99999', 'gas', 'washgas',
-                date(1900,1,1), date(1900,2,1)), '_id')
+                date(1900,1,1), date(1900,2,1)), '_id', 'chargegroups')
 
         # TODO more
 
