@@ -23,13 +23,20 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
         with DBSession(self.state_db) as session:
             # put some reebills in Mongo, including non-0 versions. note that a
             # sequence-0 utility bill template is already present.
-            b0 = example_data.get_reebill('99999', 0, start=date(2012,1,1), end=date(2012,2,1), version=0)
-            b1 = example_data.get_reebill('99999', 1, start=date(2012,2,1), end=date(2012,3,1), version=0)
-            b1_1 = example_data.get_reebill('99999', 1, start=date(2012,2,1), end=date(2012,3,1), version=1)
-            b1_2 = example_data.get_reebill('99999', 1, start=date(2012,2,1), end=date(2012,3,1), version=2)
-            b2 = example_data.get_reebill('99999', 2, start=date(2012,3,1), end=date(2012,4,1), version=0)
-            b3 = example_data.get_reebill('99999', 3, start=date(2012,4,1), end=date(2012,5,1), version=0)
-            b3_1 = example_data.get_reebill('99999', 3, start=date(2012,4,1), end=date(2012,5,1), version=1)
+            b0 = example_data.get_reebill('99999', 0, start=date(2012,1,1),
+                    end=date(2012,2,1), version=0)
+            b1 = example_data.get_reebill('99999', 1, start=date(2012,2,1),
+                    end=date(2012,3,1), version=0)
+            b1_1 = example_data.get_reebill('99999', 1, start=date(2012,2,1),
+                    end=date(2012,3,1), version=1)
+            b1_2 = example_data.get_reebill('99999', 1, start=date(2012,2,1),
+                    end=date(2012,3,1), version=2)
+            b2 = example_data.get_reebill('99999', 2, start=date(2012,3,1),
+                    end=date(2012,4,1), version=0)
+            b3 = example_data.get_reebill('99999', 3, start=date(2012,4,1),
+                    end=date(2012,5,1), version=0)
+            b3_1 = example_data.get_reebill('99999', 3, start=date(2012,4,1),
+                    end=date(2012,5,1), version=1)
 
             # change something in each utility bill to make it identifiable:
             # meter identifier works as well as anything else
@@ -76,7 +83,8 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
             all_utilbill_docs = self.reebill_dao.load_utilbills(account='99999')
             self.assertEquals(8, len(all_utilbill_docs))
 
-            # with no extra args to load_reebill(), maximum version should come out
+            # with no extra args to load_reebill(), it should load the maximum
+            # version
             b0_max = self.reebill_dao.load_reebill('99999', 0)
             b1_max = self.reebill_dao.load_reebill('99999', 1)
             b2_max = self.reebill_dao.load_reebill('99999', 2)
