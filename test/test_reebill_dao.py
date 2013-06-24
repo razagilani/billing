@@ -217,12 +217,7 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
         # TODO more
 
     def test_load_utilbills(self):
-        # no utility bills
-        self.assertEqual([], self.reebill_dao.load_utilbills())
-
-        # 1 utility bill
-        first = example_data.get_utilbill_dict('99999')
-        self.reebill_dao._save_utilbill(first)
+        # there's 1 utility bill already in the db
         self.assertEquals(1, len(self.reebill_dao.load_utilbills()))
 
         # query by each _id field
@@ -233,20 +228,20 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
         self.assertEquals(1, len(self.reebill_dao.load_utilbills(
                 utility='washgas')))
         self.assertEquals(1, len(self.reebill_dao.load_utilbills(
-                start=date(2011,11,12))))
+                start=date(1900,01,01))))
         self.assertEquals(1, len(self.reebill_dao.load_utilbills(
-                end=date(2011,12,14))))
+                end=date(1900,02,01))))
 
         # query by everything together
         self.assertEquals(1, len(self.reebill_dao.load_utilbills(
                 account='99999', service='gas', utility='washgas',
-                start=date(2011,11,12), end=date(2011,12,14))))
+                start=date(1900,01,01), end=date(1900,02,01))))
 
         # everything together + nonexistence of "sequence", "version"
         # (load_utilbill insists on getting exactly 1 result)
         self.reebill_dao.load_utilbill(account='99999', service='gas',
-                utility='washgas', start=date(2011,11,12),
-                end=date(2011,12,14), sequence=False, version=False)
+                utility='washgas', start=date(1900,01,01),
+                end=date(1900,02,01), sequence=False, version=False)
 
         # a 2nd utility bill
         second = example_data.get_utilbill_dict('99999', start=date(2012,7,22),
@@ -256,6 +251,7 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
         self.reebill_dao._save_utilbill(second)
         bills = self.reebill_dao.load_utilbills()
         self.assertEquals(2, len(bills))
+        first = self.reebill_dao.load_utilbills()[0]
         self.assertEquals(first, bills[0])
         self.assertEquals(second, bills[1])
 
@@ -269,7 +265,7 @@ class ReebillDAOTest(TestCaseWithSetup, utils.TestCase):
         self.assertEquals(1, len(self.reebill_dao.load_utilbills(
                 start=datetime(2012,7,22), end=datetime(2012,8,22))))
         self.assertEquals(1, len(self.reebill_dao.load_utilbills(
-                end=datetime(2011,12,14))))
+                end=datetime(1900,02,01))))
         self.assertEquals([], self.reebill_dao.load_utilbills(
                 service='cold fusion'))
 
