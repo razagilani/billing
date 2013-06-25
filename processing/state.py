@@ -309,43 +309,13 @@ class StateDB:
         # statements that are executed
         engine = create_engine('mysql://%s:%s@%s:3306/%s' % (user, password,
                 host, database), pool_recycle=3600, pool_size=db_connections)
-        #self.engine = engine
-        #metadata = MetaData(engine)
-
-        # table objects loaded automatically from database
-        #status_days_since_view = Table('status_days_since', metadata,
-                #autoload=True)
-        #utilbill_table = Table('utilbill', metadata, autoload=True)
-        #reebill_table = Table('rebill', metadata, autoload=True)
-        #customer_table = Table('customer', metadata, autoload=True)
-        #payment_table = Table('payment', metadata, autoload=True)
-
-        ## mappings
-        #mapper(StatusDaysSince, status_days_since_view,
-                #primary_key=[status_days_since_view.c.account])
-        #mapper(Customer, customer_table, properties={
-                    #'utilbills': relationship(UtilBill, backref='customer'),
-                    #'reebills': relationship(ReeBill, backref='customer')
-                #})
-        #mapper(ReeBill, reebill_table)
-        #mapper(UtilBill, utilbill_table, properties={
-                    ## "lazy='joined'" makes SQLAlchemy eagerly load utilbill customers
-                    #'reebill': relationship(ReeBill, backref='utilbill',
-                            #lazy='joined')
-                #})
-        #mapper(Payment, payment_table, properties={
-                    #'customer': relationship(Customer, backref='payment')
-                #})
-
 
         # To turn logging on
         import logging
         logging.basicConfig()
         #logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
         #logging.getLogger('sqlalchemy.pool').setLevel(logging.DEBUG)
-        # NOTE alternative is to pass echo=True to create_engine()
 
-        # session
         # global variable for the database session: SQLAlchemy will give an error if
         # this is created more than once, so don't call _getSession() anywhere else
         # wrapped by scoped_session for thread contextualization
