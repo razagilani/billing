@@ -74,6 +74,7 @@ class UtilBill(Base):
 
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    rebill_id = Column(Integer, ForeignKey('rebill.id'))
     state = Column(Integer, nullable=False)
     service = Column(String, nullable=False)
     period_start = Column(Date, nullable=False)
@@ -84,6 +85,8 @@ class UtilBill(Base):
 
     customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
+    reebill = relationship("ReeBill", backref=backref('utilbill',
+            lazy='joined', order_by=id))
 
     # utility bill states:
     # 0. Complete: actual non-estimated utility bill.
