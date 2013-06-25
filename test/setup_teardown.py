@@ -20,7 +20,6 @@ from billing.processing import rate_structure
 from billing.processing.process import Process, IssuedBillError
 from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
 from billing.processing.billupload import BillUpload
-from decimal import Decimal
 from billing.util.dictutils import deep_map
 import MySQLdb
 from billing.util.mongo_utils import python_convert
@@ -40,7 +39,7 @@ class TestCaseWithSetup(unittest.TestCase):
         ReebillDAO, RateStructureDAO, StateDB, Splinter, Process,
         NexusUtil.'''
         # clear SQLAlchemy mappers so StateDB can be instantiated again
-        sqlalchemy.orm.clear_mappers()
+        #sqlalchemy.orm.clear_mappers()
 
         # everything needed to create a Process object
         config_file = StringIO('''[runtime]
