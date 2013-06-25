@@ -300,7 +300,7 @@ def guess_utilbills_and_end_date(session, account, start_date):
             u.period_end <= probable_end_date]
 
 
-class StateDB:
+class StateDB(object):
 
     config = None
 
