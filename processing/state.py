@@ -24,8 +24,18 @@ from sqlalchemy.ext.declarative import declarative_base
 from billing.processing.exceptions import BillStateError, IssuedBillError, NoSuchBillException
 sys.stdout = sys.stderr
 
+# Python's datetime.min is too early for the MySQLdb module; including it in a
+# query to mean "the beginning of time" causes a strptime failure, so this
+# value should be used instead.
+MYSQLDB_DATETIME_MIN = datetime(1900,1,1)
+
+
+# this base class should be extended by all objects representing SQLAlchemy
+# tables
 Base = declarative_base()
 
+# SQLAlchemy table object to be used in creating the association between the
+# UtilBill and ReeBill classes below
 utilbill_reebill_table = Table('utilbill_reebill', Base.metadata,
         Column('utilbill_id', Integer, ForeignKey('utilbill.id')),
         Column('reebill_id', Integer, ForeignKey('reebill.id')),
@@ -189,7 +199,7 @@ class Payment(Base):
                 % (self.customer, self.date_received, \
                         self.date_applied, self.description, self.credit)
 
-
+# NOTE this is a view
 class StatusDaysSince(Base):
     __tablename__ = 'status_days_since'
 
@@ -206,11 +216,6 @@ class StatusDaysSince(Base):
         return '<StatusDaysSince(%s, %s)>' \
                 % (self.account, self.dayssince)
 
-
-# Python's datetime.min is too early for the MySQLdb module; including it in a
-# query to mean "the beginning of time" causes a strptime failure, so this
-# value should be used instead.
-MYSQLDB_DATETIME_MIN = datetime(1900,1,1)
 
 # TODO move the 2 functions below to Process? seems like state.py is only about
 # the state database
