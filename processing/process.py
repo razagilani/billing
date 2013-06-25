@@ -20,7 +20,7 @@ from billing.processing import state
 from billing.processing.mongo import MongoReebill
 from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state, fetch_bill_data
-from billing.processing.db_objects import Payment, Customer, UtilBill, ReeBill
+from billing.processing.state import Payment, Customer, UtilBill, ReeBill
 from billing.processing.mongo import ReebillDAO
 from billing.processing.mongo import float_to_decimal
 from billing.util import nexus_util

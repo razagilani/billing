@@ -6,7 +6,7 @@ from billing.processing import mongo
 from billing.processing import state
 from billing.util import dateutils
 from billing.util.monthmath import approximate_month
-from billing.processing.db_objects import UtilBill, ReeBill, Customer
+from billing.processing.state import UtilBill, ReeBill, Customer
 
 import pprint
 pformat = pprint.PrettyPrinter().pformat
