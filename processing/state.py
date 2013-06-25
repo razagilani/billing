@@ -981,3 +981,9 @@ class StateDB(object):
         result = lockmodeQuery.all()
 
         return result
+
+if __name__ == '__main__':
+    # verify that SQLAlchemy setup is working
+    s = StateDB(host='localhost', database='skyline_dev', user='dev', password='dev')
+    session = s.session()
+    print session.query(Customer).all()
