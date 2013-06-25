@@ -18,8 +18,7 @@ from billing.processing.session_contextmanager import DBSession
 from billing.util.dateutils import estimate_month, month_offset
 from billing.processing import rate_structure
 from billing.processing.process import Process, IssuedBillError
-from billing.processing.state import StateDB
-from billing.processing.db_objects import ReeBill, Customer, UtilBill
+from billing.processing.state import StateDB, ReeBill, Customer, UtilBill
 from billing.processing.billupload import BillUpload
 from decimal import Decimal
 from billing.util.dictutils import deep_map

@@ -18,7 +18,7 @@ from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.util.dictutils import deep_map, subdict
 from billing.util.dateutils import date_to_datetime
 from billing.processing.session_contextmanager import DBSession
-from billing.processing.db_objects import Customer
+from billing.processing.state import Customer
 from billing.processing.exceptions import NoSuchBillException, NotUniqueException, NoRateStructureError, NoUtilityNameError, IssuedBillError, MongoError
 import pprint
 from sqlalchemy.orm.exc import NoResultFound
@@ -1383,7 +1383,7 @@ class ReebillDAO:
 
     def load_doc_for_statedb_utilbill(self, utilbill_row):
         '''Returns the Mongo utility bill document corresponding to the given
-        db_objects.UtilBill object.'''
+        state.UtilBill object.'''
         # empty document_ids are legitimate because "hypothetical" utility
         # bills do not have a document
         # empty document_ids should not be possible, once the db is cleaned up
@@ -1400,7 +1400,7 @@ class ReebillDAO:
 
     def delete_doc_for_statedb_utilbill(self, utilbill_row):
         '''Deletes the Mongo utility bill document corresponding to the given
-        db_objects.UtilBill object.'''
+        state.UtilBill object.'''
         result = self.utilbills_collection.remove({
                 '_id': bson.ObjectId(utilbill_row.document_id)}, safe=True)
         if result['err'] is not None or result['n'] == 0:

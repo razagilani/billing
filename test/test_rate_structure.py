@@ -4,8 +4,7 @@ import pymongo
 import MySQLdb
 import sqlalchemy
 from billing.processing import rate_structure
-from billing.processing.db_objects import Customer
-from billing.processing.state import StateDB
+from billing.processing.state import StateDB, Customer
 from billing.processing import mongo
 from billing.test import example_data
 from billing.test.setup_teardown import TestCaseWithSetup

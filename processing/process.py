@@ -24,7 +24,7 @@ from billing.processing import state
 from billing.processing.mongo import MongoReebill
 from billing.processing.rate_structure import RateStructureDAO
 from billing.processing import state, fetch_bill_data
-from billing.processing.db_objects import Payment, Customer, UtilBill, ReeBill
+from billing.processing.state import Payment, Customer, UtilBill, ReeBill
 from billing.processing.mongo import ReebillDAO
 from billing.processing.mongo import float_to_decimal
 from billing.util import nexus_util
@@ -140,7 +140,7 @@ class Process(object):
             state=UtilBill.Complete):
         '''Inserts a row into the utilbill table when a utility bill file has
         been uploaded. The bill is Complete by default but can can have other
-        states (see comment in db_objects.UtilBill for explanation of utility
+        states (see comment in state.UtilBill for explanation of utility
         bill states). The bill is initially marked as un-processed.'''
         # get customer id from account number
         customer = session.query(Customer).filter(Customer.account==account) \
@@ -179,7 +179,7 @@ class Process(object):
             # one, replace that bill
             # TODO 38385969: is this really a good idea?
             # (we can compare with '>' because states are ordered from "most
-            # final" to least (see db_objects.UtilBill)
+            # final" to least (see state.UtilBill)
             bills_to_replace = existing_bills.filter(UtilBill.state > state)
 
             if list(bills_to_replace) == []:
@@ -246,7 +246,7 @@ class Process(object):
                 present_reebill._utilbills]
 
         # get MySQL reebill row corresponding to the document 'present_reebill'
-        # (would be better to pass in the db_objects.ReeBill itself: see
+        # (would be better to pass in the state.ReeBill itself: see
         # https://www.pivotaltracker.com/story/show/51922065)
         customer = self.state_db.get_customer(session, present_reebill.account)
         reebill_row = session.query(ReeBill)\
@@ -557,7 +557,7 @@ class Process(object):
 
     def create_first_reebill(self, session, utilbill):
         '''Create and save the account's first reebill (in Mongo and MySQL),
-        based on the given db_objects.UtilBill.'''
+        based on the given state.UtilBill.'''
         customer = utilbill.customer
 
         # make sure there are no reebills yet
@@ -580,7 +580,7 @@ class Process(object):
 
     
     def create_next_reebill(self, session, account):
-        '''Creates the successor to the highest-sequence db_objects.ReeBill for
+        '''Creates the successor to the highest-sequence state.ReeBill for
         the given account, and its associated Mongo document.'''
         customer = session.query(Customer)\
                 .filter(Customer.account == account).one()
@@ -634,7 +634,7 @@ class Process(object):
 
     def create_new_utility_bill(self, session, account, utility, service,
             rate_class, start, end, total=0, state=UtilBill.Complete):
-        '''Creates a new utility bill based on the db_objects.UtilBill
+        '''Creates a new utility bill based on the state.UtilBill
         'predecessor', with period dates 'start', 'end'. (This is the
         lowest-level method for creating utility bills; it's called called by
         record_utilbill_in_database, which is called by upload_utility_bill)'''

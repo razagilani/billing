@@ -19,9 +19,128 @@ from sqlalchemy.sql.expression import desc, asc, label
 from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy.sql.functions import min as sql_min
 from sqlalchemy import func, not_
-from db_objects import Customer, UtilBill, ReeBill, Payment, StatusDaysSince, StatusUnbilled
 from billing.processing.exceptions import BillStateError, IssuedBillError, NoSuchBillException
 sys.stdout = sys.stderr
+
+'''Note that these objects have additional properties besides the ones defined
+here, due to relationships defined in state.py.'''
+
+class Customer(object):
+    def __init__(self, name, account, discount_rate, late_charge_rate):
+        self.name = name
+        self.account = account
+        self.discountrate = discount_rate
+        self.latechargerate = late_charge_rate
+    def __repr__(self):
+        return '<Customer(name=%s, account=%s, discountrate=%s)>' \
+                % (self.name, self.account, self.discountrate)
+
+class ReeBill(object):
+    def __init__(self, customer, sequence, max_version=0):
+        self.customer = customer
+        self.sequence = sequence
+        self.issued = 0
+        self.max_version = max_version
+    def __repr__(self):
+        return '<ReeBill(account=%s, sequence=%s, max_version=%s, issued=%s)>' \
+                % (self.customer, self.sequence, self.max_version, self.issued)
+
+class UtilBill(object):
+    # utility bill states:
+    # 0. Complete: actual non-estimated utility bill.
+    # 1. Utility estimated: actual utility bill whose contents were estimated by
+    # the utility (and which will be corrected later to become Complete).
+    # 2. Skyline estimated: a bill that is known to exist (and whose dates are
+    # correct) but whose contents were estimated by Skyline.
+    # 3. Hypothetical: Skyline supposes that there is probably a bill during a
+    # certain time period and estimates what its contents would be if it existed.
+    # Such a bill may not really exist (since we can't even know how many bills
+    # there are in a given period of time), and if it does exist, its actual dates
+    # will probably be different than the guessed ones.
+    # TODO 38385969: not sure this strategy is a good idea
+    Complete, UtilityEstimated, SkylineEstimated, Hypothetical = range(4)
+
+    def __init__(self, customer, state, service, period_start=None,
+            period_end=None, total_charges=0, date_received=None, processed=False,
+            reebill=None):
+        '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
+        UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
+        # utility bill objects also have an 'id' property that SQLAlchemy
+        # automatically adds from the database column
+        self.customer = customer
+        self.state = state
+        self.service = service
+        self.period_start = period_start
+        self.period_end = period_end
+        self.total_charges = total_charges
+        self.date_received = date_received
+        self.processed = processed
+        self.reebill = reebill # newly-created utilbill has NULL in reebill_id column
+
+    @property
+    def has_reebill(self):
+        return self.reebill != None
+
+    def __repr__(self):
+        return '<UtilBill(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
+                % (self.customer, self.service, self.period_start, self.period_end)
+
+#class UtilBillReeBill(object):
+    #'''Class corresponding to the "utilbill_reebill" table which represents the
+    #many-to-many relationship between "utilbill" and "reebill".'''
+    #def __init__(self, utilbill_id, reebill_id, document_id=None):
+        #self.utilbill_id = utilbill_id
+        #self.reebill_id = reebill_id
+        #self.document_id = document_id
+
+    #def __repr__(self):
+        #return 'UtilBillReeBill(utilbill_id=%s, reebill_id=%s, document_id=%s)' % (
+                #self.utilbill_id, self.reebill_id, self.document_id)
+
+class Payment(object):
+    '''date_received is the datetime when Skyline recorded the payment.
+    date_applied is the date that the payment is "for", from the customer's
+    perspective. Normally these are on the same day, but an error in an old
+    payment can be corrected by entering a new payment with the same
+    date_applied as the old one, whose credit is the true amount minus the
+    previously-entered amount.'''
+    def __init__(self, customer, date_received, date_applied, description,
+            credit):
+        self.customer = customer
+        self.date_received = date_received # datetime
+        self.date_applied = date_applied   # date
+        self.description = description
+        self.credit = credit
+
+    def to_dict(self):
+        return {
+            'id': self.id, 
+            'date_received': self.date_received,
+            'date_applied': self.date_applied,
+            'description': self.description,
+            'credit': self.credit,
+            'editable': datetime.utcnow() - self.date_received < timedelta(hours=24)
+        }
+
+    def __repr__(self):
+        return '<Payment(%s, %s, %s, %s, %s)>' \
+                % (self.customer, self.date_received, \
+                        self.date_applied, self.description, self.credit)
+
+class StatusUnbilled(object):
+    def __init__(self, account):
+        self.account = account
+    def __repr__(self):
+        return '<StatusUnbilled(%s)>' \
+                % (self.account)
+
+class StatusDaysSince(object):
+    def __init__(self, account, dayssince):
+        self.account = account
+        self.dayssince = dayssince
+    def __repr__(self):
+        return '<StatusDaysSince(%s, %s)>' \
+                % (self.account, self.dayssince)
 
 # Python's datetime.min is too early for the MySQLdb module; including it in a
 # query to mean "the beginning of time" causes a strptime failure, so this
@@ -733,7 +852,7 @@ class StateDB:
 
     def get_last_real_utilbill(self, session, account, end, service=None,
             utility=None, rate_class=None):
-        '''Returns the latest_ending non-Hypothetical db_objects.UtilBill whose
+        '''Returns the latest_ending non-Hypothetical UtilBill whose
         end date is before/on 'end', optionally with the given service,
         utility, and rate class.'''
         customer = self.get_customer(session, account)

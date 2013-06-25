@@ -34,7 +34,7 @@ from billing.util.nexus_util import NexusUtil
 from billing.util.dictutils import deep_map
 from billing.processing import mongo, billupload, excel_export
 from billing.util import monthmath
-from billing.processing import process, state, db_objects, fetch_bill_data as fbd, rate_structure as rs
+from billing.processing import process, state, fetch_bill_data as fbd, rate_structure as rs
 from billing.processing.billupload import BillUpload
 from billing.processing import journal, bill_mailer
 from billing.processing import render
@@ -2856,10 +2856,10 @@ class BillToolBridge:
         with DBSession(self.state_db) as session:
             # names for utilbill states in the UI
             state_descriptions = {
-                db_objects.UtilBill.Complete: 'Final',
-                db_objects.UtilBill.UtilityEstimated: 'Utility Estimated',
-                db_objects.UtilBill.SkylineEstimated: 'Skyline Estimated',
-                db_objects.UtilBill.Hypothetical: 'Missing'
+                state.UtilBill.Complete: 'Final',
+                state.UtilBill.UtilityEstimated: 'Utility Estimated',
+                state.UtilBill.SkylineEstimated: 'Skyline Estimated',
+                state.UtilBill.Hypothetical: 'Missing'
             }
 
             if not start or not limit or not account:
@@ -2979,7 +2979,7 @@ class BillToolBridge:
                 # move the file, if there is one. (only utility bills that are
                 # Complete (0) or UtilityEstimated (1) have files;
                 # SkylineEstimated (2) and Hypothetical (3) ones don't.)
-                if utilbill.state < db_objects.UtilBill.SkylineEstimated:
+                if utilbill.state < state.UtilBill.SkylineEstimated:
                     self.billUpload.move_utilbill_file(utilbill.customer.account,
                             # don't trust the client to say what the original dates were
                             # TODO don't pass dates into BillUpload as strings
@@ -3041,8 +3041,8 @@ class BillToolBridge:
                 print ids
                 for utilbill_id in ids:
                     # load utilbill to get its dates and service
-                    utilbill = session.query(db_objects.UtilBill)\
-                            .filter(db_objects.UtilBill.id == utilbill_id).one()
+                    utilbill = session.query(state.UtilBill)\
+                            .filter(state.UtilBill.id == utilbill_id).one()
                     start, end = utilbill.period_start, utilbill.period_end
                     service = utilbill.service
 

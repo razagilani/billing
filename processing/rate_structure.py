@@ -17,7 +17,7 @@ import yaml
 from math import sqrt, log, exp
 from billing.util.mongo_utils import bson_convert, python_convert, format_query
 from billing.processing.exceptions import RSIError, RecursionError, NoPropertyError, NoSuchRSIError, BadExpressionError, NoSuchBillException, NoRateStructureError
-from billing.processing.db_objects import UtilBill
+from billing.processing.state import UtilBill
 from copy import deepcopy
 
 import pprint
@@ -210,7 +210,7 @@ class RateStructureDAO(object):
 
     def _load_combined_rs_dict(self, utilbill):
         '''Returns a dictionary of combined rate structure (derived from URS,
-        UPRS, and CPRS) belonging to the given db_objects.UtilBill.'''
+        UPRS, and CPRS) belonging to the given state.UtilBill.'''
         # load the URS
         urs = self.load_urs(utilbill.utility, utilbill.rate_class,
                 utilbill.period_start, utilbill.period_end)
@@ -294,7 +294,7 @@ class RateStructureDAO(object):
 
     def load_rate_structure(self, utilbill):
         '''Returns the combined rate structure (CPRS, UPRS, URS) dictionary for
-        the given db_objects.UtilBill.'''
+        the given state.UtilBill.'''
         return RateStructure(self._load_combined_rs_dict(utilbill))
     
     def load_urs(self, utility_name, rate_structure_name, period_begin=None,
@@ -319,12 +319,12 @@ class RateStructureDAO(object):
 
     def load_uprs_for_statedb_utilbill(self, utilbill):
         '''Loads and returns the UPRS document for the given
-        db_objects.Utilbill.'''
+        state.Utilbill.'''
         return self._load_rs_by_id(utilbill.uprs_document_id)
 
     def load_cprs_for_statedb_utilbill(self, utilbill):
         '''Loads and returns the CPRS document for the given
-        db_objects.Utilbill.'''
+        state.Utilbill.'''
         return self._load_rs_by_id(utilbill.cprs_document_id)
 
     def _load_rs_by_id(self, _id):
