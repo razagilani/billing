@@ -254,16 +254,20 @@ class StateDB:
         metadata = MetaData(engine)
 
         # table objects loaded automatically from database
-        status_days_since_view = Table('status_days_since', metadata, autoload=True)
-        status_unbilled_view = Table('status_unbilled', metadata, autoload=True)
+        status_days_since_view = Table('status_days_since', metadata,
+                autoload=True)
+        status_unbilled_view = Table('status_unbilled', metadata,
+                autoload=True)
         utilbill_table = Table('utilbill', metadata, autoload=True)
         reebill_table = Table('rebill', metadata, autoload=True)
         customer_table = Table('customer', metadata, autoload=True)
         payment_table = Table('payment', metadata, autoload=True)
 
         # mappings
-        mapper(StatusDaysSince, status_days_since_view,primary_key=[status_days_since_view.c.account])
-        mapper(StatusUnbilled, status_unbilled_view, primary_key=[status_unbilled_view.c.account])
+        mapper(StatusDaysSince, status_days_since_view,
+                primary_key=[status_days_since_view.c.account])
+        mapper(StatusUnbilled, status_unbilled_view,
+                primary_key=[status_unbilled_view.c.account])
         mapper(Customer, customer_table, properties={
                     'utilbills': relationship(UtilBill, backref='customer'),
                     'reebills': relationship(ReeBill, backref='customer')
@@ -271,7 +275,8 @@ class StateDB:
         mapper(ReeBill, reebill_table)
         mapper(UtilBill, utilbill_table, properties={
                     # "lazy='joined'" makes SQLAlchemy eagerly load utilbill customers
-                    'reebill': relationship(ReeBill, backref='utilbill', lazy='joined')
+                    'reebill': relationship(ReeBill, backref='utilbill',
+                            lazy='joined')
                 })
         mapper(Payment, payment_table, properties={
                     'customer': relationship(Customer, backref='payment')
@@ -289,7 +294,8 @@ class StateDB:
         # this is created more than once, so don't call _getSession() anywhere else
         # wrapped by scoped_session for thread contextualization
         # http://docs.sqlalchemy.org/en/latest/orm/session.html#unitofwork-contextual
-        self.session = scoped_session(sessionmaker(bind=engine, autoflush=True))
+        self.session = scoped_session(sessionmaker(bind=engine,
+                autoflush=True))
 
     def get_customer(self, session, account):
         return session.query(Customer).filter(Customer.account==account).one()
