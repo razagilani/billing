@@ -93,8 +93,8 @@ class UtilBill(Base):
 
     customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
-    reebills = relationship('ReeBill', backref=backref('utilbills',
-            secondary=utilbill_reebill_table, order_by=id))
+    reebills = relationship('ReeBill', backref='utilbills',
+            secondary=utilbill_reebill_table)
 
     # utility bill states:
     # 0. Complete: actual non-estimated utility bill.
