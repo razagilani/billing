@@ -18,33 +18,76 @@ from sqlalchemy.sql.expression import desc, asc, label
 from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy.sql.functions import min as sql_min
 from sqlalchemy import func
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date
+from sqlalchemy.ext.declarative import declarative_base
 from billing.processing.exceptions import BillStateError
 sys.stdout = sys.stderr
 
 '''Note that these objects have additional properties besides the ones defined
 here, due to relationships defined in state.py.'''
 
-class Customer(object):
+Base = declarative_base()
+
+class Customer(Base):
+    __tablename__ = 'customer'
+
+    id = Column(Integer, primary_key=True)
+    account = Column(String, nullable=False)
+    name = Column(String)
+    discountrate = Column(Float, nullable=False)
+    latechargerate = Column(Float, nullable=False)
+
     def __init__(self, name, account, discount_rate, late_charge_rate):
         self.name = name
         self.account = account
         self.discountrate = discount_rate
         self.latechargerate = late_charge_rate
+
     def __repr__(self):
         return '<Customer(name=%s, account=%s, discountrate=%s)>' \
                 % (self.name, self.account, self.discountrate)
 
-class ReeBill(object):
+class ReeBill(Base):
+    __tablename__ = 'rebill'
+
+    id = Column(Integer, primary_key=True)
+    customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    sequence = Column(Integer, nullable=False)
+    issued = Column(Integer, nullable=False)
+    max_version = Column(Integer, nullable=False)
+
+    customer = relationship("Customer", backref=backref('reebills',
+            order_by=id))
+
     def __init__(self, customer, sequence, max_version=0):
         self.customer = customer
         self.sequence = sequence
         self.issued = 0
         self.max_version = max_version
+
     def __repr__(self):
         return '<ReeBill(account=%s, sequence=%s, max_version=%s, issued=%s)>' \
                 % (self.customer, self.sequence, self.max_version, self.issued)
 
-class UtilBill(object):
+class UtilBill(Base):
+    __tablename__ = 'utilbill'
+
+    id = Column(Integer, primary_key=True)
+    customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    rebill_id = Column(Integer, ForeignKey('rebill.id'))
+    state = Column(Integer, nullable=False)
+    service = Column(String, nullable=False)
+    period_start = Column(Date, nullable=False)
+    period_end = Column(Date, nullable=False)
+    total_charges = Column(Float)
+    date_received = Column(Date)
+    processed = Column(Integer, nullable=False)
+
+    customer = relationship("Customer", backref=backref('utilbills',
+            order_by=id))
+    reebill = relationship("ReeBill", backref=backref('utilbill',
+            lazy='joined', order_by=id))
+
     # utility bill states:
     # 0. Complete: actual non-estimated utility bill.
     # 1. Utility estimated: actual utility bill whose contents were estimated by
@@ -96,7 +139,19 @@ class UtilBill(object):
         #return 'UtilBillReeBill(utilbill_id=%s, reebill_id=%s, document_id=%s)' % (
                 #self.utilbill_id, self.reebill_id, self.document_id)
 
-class Payment(object):
+class Payment(Base):
+    __tablename__ = 'payment'
+
+    id = Column(Integer, primary_key=True)
+    customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    date_received = Column(Date, nullable=False)
+    date_applied = Column(Date, nullable=False)
+    description = Column(String)
+    credit = Column(Float)
+
+    customer = relationship("Customer", backref=backref('payments',
+            order_by=id))
+
     '''date_received is the datetime when Skyline recorded the payment.
     date_applied is the date that the payment is "for", from the customer's
     perspective. Normally these are on the same day, but an error in an old
@@ -126,13 +181,24 @@ class Payment(object):
                 % (self.customer, self.date_received, \
                         self.date_applied, self.description, self.credit)
 
-class StatusDaysSince(object):
+class StatusDaysSince(Base):
+    __tablename__ = 'status_days_since'
+
+    # NOTE it seems that SQLAlchemy requires at least one column to be
+    # identified as a "primary key" even though the table doesn't really have a
+    # primary key in the db.
+    account = Column(String, primary_key=True)
+    dayssince = Column(Integer)
+
     def __init__(self, account, dayssince):
         self.account = account
         self.dayssince = dayssince
+
     def __repr__(self):
         return '<StatusDaysSince(%s, %s)>' \
                 % (self.account, self.dayssince)
+
+
 # TODO move the 2 functions below to Process? seems like state.py is only about
 # the state database
 
@@ -234,7 +300,7 @@ def guess_utilbills_and_end_date(session, account, start_date):
             u.period_end <= probable_end_date]
 
 
-class StateDB:
+class StateDB(object):
 
     config = None
 
@@ -243,34 +309,6 @@ class StateDB:
         # statements that are executed
         engine = create_engine('mysql://%s:%s@%s:3306/%s' % (user, password,
                 host, database), pool_recycle=3600, pool_size=db_connections)
-        self.engine = engine
-        metadata = MetaData(engine)
-
-        # table objects loaded automatically from database
-        status_days_since_view = Table('status_days_since', metadata,
-                autoload=True)
-        utilbill_table = Table('utilbill', metadata, autoload=True)
-        reebill_table = Table('rebill', metadata, autoload=True)
-        customer_table = Table('customer', metadata, autoload=True)
-        payment_table = Table('payment', metadata, autoload=True)
-
-        # mappings
-        mapper(StatusDaysSince, status_days_since_view,
-                primary_key=[status_days_since_view.c.account])
-        mapper(Customer, customer_table, properties={
-                    'utilbills': relationship(UtilBill, backref='customer'),
-                    'reebills': relationship(ReeBill, backref='customer')
-                })
-        mapper(ReeBill, reebill_table)
-        mapper(UtilBill, utilbill_table, properties={
-                    # "lazy='joined'" makes SQLAlchemy eagerly load utilbill customers
-                    'reebill': relationship(ReeBill, backref='utilbill',
-                            lazy='joined')
-                })
-        mapper(Payment, payment_table, properties={
-                    'customer': relationship(Customer, backref='payment')
-                })
-
 
         # To turn logging on
         import logging
@@ -278,7 +316,6 @@ class StateDB:
         #logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
         #logging.getLogger('sqlalchemy.pool').setLevel(logging.DEBUG)
 
-        # session
         # global variable for the database session: SQLAlchemy will give an error if
         # this is created more than once, so don't call _getSession() anywhere else
         # wrapped by scoped_session for thread contextualization
@@ -938,3 +975,8 @@ class StateDB:
 
         return result
 
+if __name__ == '__main__':
+    # verify that SQLAlchemy setup is working
+    s = StateDB(host='localhost', database='skyline_dev', user='dev', password='dev')
+    session = s.session()
+    print session.query(Customer).all()
