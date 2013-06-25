@@ -20,13 +20,17 @@ from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy.sql.functions import min as sql_min
 from sqlalchemy import func, not_
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date
+from sqlalchemy.ext.declarative import declarative_base
 from billing.processing.exceptions import BillStateError, IssuedBillError, NoSuchBillException
 sys.stdout = sys.stderr
 
-'''Note that these objects have additional properties besides the ones defined
-here, due to relationships defined in state.py.'''
-
 Base = declarative_base()
+
+utilbill_reebill_table = Table('utilbill_reebill', Base.metadata,
+        Column('utilbill_id', Integer, ForeignKey('utilbill.id')),
+        Column('reebill_id', Integer, ForeignKey('reebill.id')),
+        #Column('document_id', String))
+)
 
 class Customer(Base):
     __tablename__ = 'customer'
@@ -56,16 +60,16 @@ class ReeBill(Base):
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
     sequence = Column(Integer, nullable=False)
     issued = Column(Integer, nullable=False)
-    max_version = Column(Integer, nullable=False)
+    version = Column(Integer, nullable=False)
 
     customer = relationship("Customer", backref=backref('reebills',
             order_by=id))
 
-    def __init__(self, customer, sequence, max_version=0):
+    def __init__(self, customer, sequence, version=0):
         self.customer = customer
         self.sequence = sequence
         self.issued = 0
-        self.max_version = max_version
+        self.version = version
 
     def __repr__(self):
         return '<ReeBill(account=%s, sequence=%s, max_version=%s, issued=%s)>' \
@@ -76,7 +80,6 @@ class UtilBill(Base):
 
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
-    rebill_id = Column(Integer, ForeignKey('rebill.id'))
     state = Column(Integer, nullable=False)
     service = Column(String, nullable=False)
     period_start = Column(Date, nullable=False)
@@ -84,11 +87,14 @@ class UtilBill(Base):
     total_charges = Column(Float)
     date_received = Column(Date)
     processed = Column(Integer, nullable=False)
+    document_id = Column(String)
+    cprs_document_id = Column(String)
+    uprs_document_id = Column(String)
 
     customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
-    reebill = relationship("ReeBill", backref=backref('utilbill',
-            lazy='joined', order_by=id))
+    reebills = relationship('ReeBill', backref=backref('utilbills',
+            secondary=utilbill_reebill_table, order_by=id))
 
     # utility bill states:
     # 0. Complete: actual non-estimated utility bill.
@@ -105,8 +111,8 @@ class UtilBill(Base):
     Complete, UtilityEstimated, SkylineEstimated, Hypothetical = range(4)
 
     def __init__(self, customer, state, service, period_start=None,
-            period_end=None, total_charges=0, date_received=None, processed=False,
-            reebill=None):
+            period_end=None, total_charges=0, date_received=None,
+            processed=False, reebill=None):
         '''State should be one of UtilBill.Complete, UtilBill.UtilityEstimated,
         UtilBill.SkylineEstimated, UtilBill.Hypothetical.'''
         # utility bill objects also have an 'id' property that SQLAlchemy
