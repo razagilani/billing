@@ -70,6 +70,7 @@ class ReeBill(Base):
                 % (self.customer, self.sequence, self.max_version, self.issued)
 
 class UtilBill(Base):
+    __tablename__ = 'utilbill'
 
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
@@ -81,7 +82,7 @@ class UtilBill(Base):
     date_received = Column(Date)
     processed = Column(Integer, nullable=False)
 
-    customer = Relationship("Customer", backref=backref('utilbills',
+    customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
 
     # utility bill states:
@@ -136,15 +137,16 @@ class UtilBill(Base):
                 #self.utilbill_id, self.reebill_id, self.document_id)
 
 class Payment(Base):
+    __tablename__ = 'payment'
 
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
     date_received = Column(Date, nullable=False)
-    self.date_applied = Column(Date, nullable=False)
-    self.description = Column(String)
-    self.credit = Column(Float)
+    date_applied = Column(Date, nullable=False)
+    description = Column(String)
+    credit = Column(Float)
 
-    customer = Relationship("Customer", backref=backref('utilbills',
+    customer = relationship("Customer", backref=backref('payments',
             order_by=id))
 
     '''date_received is the datetime when Skyline recorded the payment.
@@ -176,13 +178,24 @@ class Payment(Base):
                 % (self.customer, self.date_received, \
                         self.date_applied, self.description, self.credit)
 
-class StatusDaysSince(object):
+class StatusDaysSince(Base):
+    __tablename__ = 'status_days_since'
+
+    # NOTE it seems that SQLAlchemy requires at least one column to be
+    # identified as a "primary key" even though the table doesn't really have a
+    # primary key in the db.
+    account = Column(String, primary_key=True)
+    dayssince = Column(Integer)
+
     def __init__(self, account, dayssince):
         self.account = account
         self.dayssince = dayssince
+
     def __repr__(self):
         return '<StatusDaysSince(%s, %s)>' \
                 % (self.account, self.dayssince)
+
+
 # TODO move the 2 functions below to Process? seems like state.py is only about
 # the state database
 
@@ -293,33 +306,33 @@ class StateDB:
         # statements that are executed
         engine = create_engine('mysql://%s:%s@%s:3306/%s' % (user, password,
                 host, database), pool_recycle=3600, pool_size=db_connections)
-        self.engine = engine
-        metadata = MetaData(engine)
+        #self.engine = engine
+        #metadata = MetaData(engine)
 
         # table objects loaded automatically from database
-        status_days_since_view = Table('status_days_since', metadata,
-                autoload=True)
-        utilbill_table = Table('utilbill', metadata, autoload=True)
-        reebill_table = Table('rebill', metadata, autoload=True)
-        customer_table = Table('customer', metadata, autoload=True)
-        payment_table = Table('payment', metadata, autoload=True)
+        #status_days_since_view = Table('status_days_since', metadata,
+                #autoload=True)
+        #utilbill_table = Table('utilbill', metadata, autoload=True)
+        #reebill_table = Table('rebill', metadata, autoload=True)
+        #customer_table = Table('customer', metadata, autoload=True)
+        #payment_table = Table('payment', metadata, autoload=True)
 
-        # mappings
-        mapper(StatusDaysSince, status_days_since_view,
-                primary_key=[status_days_since_view.c.account])
-        mapper(Customer, customer_table, properties={
-                    'utilbills': relationship(UtilBill, backref='customer'),
-                    'reebills': relationship(ReeBill, backref='customer')
-                })
-        mapper(ReeBill, reebill_table)
-        mapper(UtilBill, utilbill_table, properties={
-                    # "lazy='joined'" makes SQLAlchemy eagerly load utilbill customers
-                    'reebill': relationship(ReeBill, backref='utilbill',
-                            lazy='joined')
-                })
-        mapper(Payment, payment_table, properties={
-                    'customer': relationship(Customer, backref='payment')
-                })
+        ## mappings
+        #mapper(StatusDaysSince, status_days_since_view,
+                #primary_key=[status_days_since_view.c.account])
+        #mapper(Customer, customer_table, properties={
+                    #'utilbills': relationship(UtilBill, backref='customer'),
+                    #'reebills': relationship(ReeBill, backref='customer')
+                #})
+        #mapper(ReeBill, reebill_table)
+        #mapper(UtilBill, utilbill_table, properties={
+                    ## "lazy='joined'" makes SQLAlchemy eagerly load utilbill customers
+                    #'reebill': relationship(ReeBill, backref='utilbill',
+                            #lazy='joined')
+                #})
+        #mapper(Payment, payment_table, properties={
+                    #'customer': relationship(Customer, backref='payment')
+                #})
 
 
         # To turn logging on
@@ -327,6 +340,7 @@ class StateDB:
         logging.basicConfig()
         #logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
         #logging.getLogger('sqlalchemy.pool').setLevel(logging.DEBUG)
+        # NOTE alternative is to pass echo=True to create_engine()
 
         # session
         # global variable for the database session: SQLAlchemy will give an error if
@@ -988,3 +1002,8 @@ class StateDB:
 
         return result
 
+if __name__ == '__main__':
+    # verify that SQLAlchemy setup is working
+    s = StateDB(host='localhost', database='skyline_dev', user='dev', password='dev')
+    session = s.session()
+    print session.query(Customer).all()
