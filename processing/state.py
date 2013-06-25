@@ -21,6 +21,7 @@ from sqlalchemy.sql.functions import min as sql_min
 from sqlalchemy import func, not_
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.associationproxy import association_proxy
 from billing.processing.exceptions import BillStateError, IssuedBillError, NoSuchBillException
 sys.stdout = sys.stderr
 
@@ -33,14 +34,6 @@ MYSQLDB_DATETIME_MIN = datetime(1900,1,1)
 # this base class should be extended by all objects representing SQLAlchemy
 # tables
 Base = declarative_base()
-
-# SQLAlchemy table object to be used in creating the association between the
-# UtilBill and ReeBill classes below
-utilbill_reebill_table = Table('utilbill_reebill', Base.metadata,
-        Column('utilbill_id', Integer, ForeignKey('utilbill.id')),
-        Column('reebill_id', Integer, ForeignKey('reebill.id')),
-        Column('document_id', String)
-)
 
 class Customer(Base):
     __tablename__ = 'customer'
@@ -85,6 +78,43 @@ class ReeBill(Base):
         return '<ReeBill(account=%s, sequence=%s, max_version=%s, issued=%s)>' \
                 % (self.customer, self.sequence, self.max_version, self.issued)
 
+## SQLAlchemy table object to be used in creating the association between the
+## UtilBill and ReeBill classes below
+#utilbill_reebill_table = Table('utilbill_reebill', Base.metadata,
+        #Column('utilbill_id', Integer, ForeignKey('utilbill.id')),
+        #Column('reebill_id', Integer, ForeignKey('reebill.id')),
+        #Column('document_id', String)
+#)
+
+class UtilbillReebill(Base):
+    '''Class corresponding to the "utilbill_reebill" table which represents the
+    many-to-many relationship between "utilbill" and "reebill".'''
+    __tablename__ = 'utilbill_reebill'
+
+    utilbill_id = Column(Integer, ForeignKey('utilbill.id'), primary_key=True)
+    reebill_id = Column(Integer, ForeignKey('reebill.id'), primary_key=True)
+    document_id = Column(String)
+
+    # example code shows class coressponding to the association table having a
+    # relationship to one of the related classes.
+    # Order and Item are associated by OrderItem. Order has a 'relationship' to
+    # OrderItem and an 'association_proxy' to Item via OrderItem. OrderItem has
+    # only a 'relationship' to Item. Item has no relationships at all.
+    # I don't know why that is but to replicate it the chain should be Utilbill
+    # --> UtilbillReebill --> Reebill. But maybe more is needed when the
+    # relationship should be bidirectional; example code shows only
+    # order.items, not item.orders.
+    reebills = relationship(ReeBill)
+
+    def __init__(self, utilbill_id, reebill_id, document_id=None):
+        self.utilbill_id = utilbill_id
+        self.reebill_id = reebill_id
+        self.document_id = document_id
+
+    def __repr__(self):
+        return 'UtilBillReeBill(utilbill_id=%s, reebill_id=%s, document_id=%s)' % (
+                self.utilbill_id, self.reebill_id, self.document_id)
+
 class UtilBill(Base):
     __tablename__ = 'utilbill'
 
@@ -103,8 +133,17 @@ class UtilBill(Base):
 
     customer = relationship("Customer", backref=backref('utilbills',
             order_by=id))
-    reebills = relationship('ReeBill', backref='utilbills',
-            secondary=utilbill_reebill_table)
+    utilbill_reebills = relationship('UtilbillReebill',
+            backref='utilbill_reebills')
+
+    # "association proxy" that defines the 'reebills' property as a "view" of
+    # the underlying property 'utilbill_reebills'
+    # http://docs.sqlalchemy.org/en/rel_0_8/orm/extensions/associationproxy.html
+    # TODO despite the documentation I have no idea what the second argument,
+    # "attr", means here
+    # for usage example, see
+    # https://github.com/zzzeek/sqlalchemy/blob/master/examples/association/proxied_association.py
+    reebills = association_proxy('utilbill_reebills', 'reebills')
 
     # utility bill states:
     # 0. Complete: actual non-estimated utility bill.
@@ -144,18 +183,6 @@ class UtilBill(Base):
     def __repr__(self):
         return '<UtilBill(customer=%s, service=%s, period_start=%s, period_end=%s)>' \
                 % (self.customer, self.service, self.period_start, self.period_end)
-
-#class UtilBillReeBill(object):
-    #'''Class corresponding to the "utilbill_reebill" table which represents the
-    #many-to-many relationship between "utilbill" and "reebill".'''
-    #def __init__(self, utilbill_id, reebill_id, document_id=None):
-        #self.utilbill_id = utilbill_id
-        #self.reebill_id = reebill_id
-        #self.document_id = document_id
-
-    #def __repr__(self):
-        #return 'UtilBillReeBill(utilbill_id=%s, reebill_id=%s, document_id=%s)' % (
-                #self.utilbill_id, self.reebill_id, self.document_id)
 
 class Payment(Base):
     __tablename__ = 'payment'
