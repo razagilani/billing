@@ -18,33 +18,72 @@ from sqlalchemy.sql.expression import desc, asc, label
 from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy.sql.functions import min as sql_min
 from sqlalchemy import func
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date
+from sqlalchemy.ext.declarative import declarative_base
 from billing.processing.exceptions import BillStateError
 sys.stdout = sys.stderr
 
 '''Note that these objects have additional properties besides the ones defined
 here, due to relationships defined in state.py.'''
 
-class Customer(object):
+Base = declarative_base()
+
+class Customer(Base):
+    __tablename__ = 'customer'
+
+    id = Column(Integer, primary_key=True)
+    account = Column(String, nullable=False)
+    name = Column(String)
+    discountrate = Column(Float, nullable=False)
+    latechargerate = Column(Float, nullable=False)
+
     def __init__(self, name, account, discount_rate, late_charge_rate):
         self.name = name
         self.account = account
         self.discountrate = discount_rate
         self.latechargerate = late_charge_rate
+
     def __repr__(self):
         return '<Customer(name=%s, account=%s, discountrate=%s)>' \
                 % (self.name, self.account, self.discountrate)
 
-class ReeBill(object):
+class ReeBill(Base):
+    __tablename__ = 'rebill'
+
+    id = Column(Integer, primary_key=True)
+    customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    sequence = Column(Integer, nullable=False)
+    issued = Column(Integer, nullable=False)
+    max_version = Column(Integer, nullable=False)
+
+    customer = relationship("Customer", backref=backref('reebills',
+            order_by=id))
+
     def __init__(self, customer, sequence, max_version=0):
         self.customer = customer
         self.sequence = sequence
         self.issued = 0
         self.max_version = max_version
+
     def __repr__(self):
         return '<ReeBill(account=%s, sequence=%s, max_version=%s, issued=%s)>' \
                 % (self.customer, self.sequence, self.max_version, self.issued)
 
-class UtilBill(object):
+class UtilBill(Base):
+
+    id = Column(Integer, primary_key=True)
+    customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    state = Column(Integer, nullable=False)
+    service = Column(String, nullable=False)
+    period_start = Column(Date, nullable=False)
+    period_end = Column(Date, nullable=False)
+    total_charges = Column(Float)
+    date_received = Column(Date)
+    processed = Column(Integer, nullable=False)
+
+    customer = Relationship("Customer", backref=backref('utilbills',
+            order_by=id))
+
     # utility bill states:
     # 0. Complete: actual non-estimated utility bill.
     # 1. Utility estimated: actual utility bill whose contents were estimated by
@@ -96,7 +135,18 @@ class UtilBill(object):
         #return 'UtilBillReeBill(utilbill_id=%s, reebill_id=%s, document_id=%s)' % (
                 #self.utilbill_id, self.reebill_id, self.document_id)
 
-class Payment(object):
+class Payment(Base):
+
+    id = Column(Integer, primary_key=True)
+    customer_id = Column(Integer, ForeignKey('customer.id'), nullable=False)
+    date_received = Column(Date, nullable=False)
+    self.date_applied = Column(Date, nullable=False)
+    self.description = Column(String)
+    self.credit = Column(Float)
+
+    customer = Relationship("Customer", backref=backref('utilbills',
+            order_by=id))
+
     '''date_received is the datetime when Skyline recorded the payment.
     date_applied is the date that the payment is "for", from the customer's
     perspective. Normally these are on the same day, but an error in an old
