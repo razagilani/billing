@@ -3,6 +3,7 @@ import unittest
 from datetime import date, datetime
 import MySQLdb
 import sqlalchemy
+from sqlalchemy.orm.exc import NoResultFound
 from billing.processing import state
 from billing.processing.state import Customer, UtilBill
 from billing.processing import mongo
@@ -26,7 +27,7 @@ class StateTest(utils.TestCase):
         c = mysql_connection.cursor()
         c.execute("delete from payment")
         c.execute("delete from utilbill")
-        c.execute("delete from rebill")
+        c.execute("delete from reebill")
         c.execute("delete from customer")
         mysql_connection.commit()
 
@@ -53,7 +54,7 @@ class StateTest(utils.TestCase):
         c = mysql_connection.cursor()
         c.execute("delete from payment")
         c.execute("delete from utilbill")
-        c.execute("delete from rebill")
+        c.execute("delete from reebill")
         c.execute("delete from customer")
         mysql_connection.commit()
 
@@ -155,10 +156,10 @@ class StateTest(utils.TestCase):
 
     def test_new_reebill(self):
         with DBSession(self.state_db) as session:
-            b = self.state_db.new_rebill(session, '99999', 1)
+            b = self.state_db.new_reebill(session, '99999', 1)
             self.assertEqual('99999', b.customer.account)
             self.assertEqual(1, b.sequence)
-            self.assertEqual(0, b.max_version)
+            self.assertEqual(0, b.version)
             self.assertEqual(0, b.issued)
             session.commit()
 
@@ -169,95 +170,101 @@ class StateTest(utils.TestCase):
         with DBSession(self.state_db) as session:
             # initially max_version is 0, max_issued_version is None, and issued
             # is false
-            b = self.state_db.new_rebill(session, acc, seq)
+            b = self.state_db.new_reebill(session, acc, seq)
             self.assertEqual(0, self.state_db.max_version(session, acc, seq))
-            self.assertEqual(None, self.state_db.max_issued_version(session, acc,
-                seq))
+            self.assertEqual(None, self.state_db.max_issued_version(session,
+                    acc, seq))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=0))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=1))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=2))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=10))
+                    version=0))
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=1)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=2)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=10)
 
             # incrementing version to 1 should fail when the bill is not issued
-            self.assertRaises(Exception, self.state_db.increment_version, session, acc, seq)
+            self.assertRaises(Exception, self.state_db.increment_version,
+                    session, acc, seq)
             self.assertEqual(0, self.state_db.max_version(session, acc, seq))
-            self.assertEqual(None, self.state_db.max_issued_version(session, acc, seq))
+            self.assertEqual(None, self.state_db.max_issued_version(session,
+                    acc, seq))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=0))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=1))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=2))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=10))
+                    version=0))
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=1)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=2)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=10)
 
             # issue & increment version to 1
             self.state_db.issue(session, acc, seq)
-            self.assertEqual(True, self.state_db.is_issued(session, acc, seq))
+            self.assertEqual(True, self.state_db.is_issued(session, acc, seq)) # default version for is_issued is highest, i.e. 1
             self.assertEqual(True, self.state_db.is_issued(session, acc, seq,
-                version=0))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=1))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=2))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=10))
+                    version=0))
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=1)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=2)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=10)
             self.state_db.increment_version(session, acc, seq)
             self.assertEqual(1, self.state_db.max_version(session, acc, seq))
-            self.assertEqual(0, self.state_db.max_issued_version(session, acc, seq))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq))
+            self.assertEqual(0, self.state_db.max_issued_version(session, acc,
+                    seq))
             self.assertEqual(True, self.state_db.is_issued(session, acc, seq,
-                version=0))
+                    version=0))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=1))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=2))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=10))
+                    version=1))
+            self.assertEqual(False, self.state_db.is_issued(session, acc, seq))
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=2)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=10)
 
-            # issue & increment version to 2
+            # issue version 1 & create version 2
             self.state_db.issue(session, acc, seq)
-            self.assertEqual(1, self.state_db.max_issued_version(session, acc, seq))
+            self.assertEqual(1, self.state_db.max_issued_version(session, acc,
+                    seq))
             self.assertEqual(True, self.state_db.is_issued(session, acc, seq))
             self.assertEqual(True, self.state_db.is_issued(session, acc, seq,
-                version=0))
+                    version=0))
             self.assertEqual(True, self.state_db.is_issued(session, acc, seq,
-                version=1))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=2))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=10))
+                    version=1))
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=2)
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=10)
             self.state_db.increment_version(session, acc, seq)
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq))
             self.assertEqual(True, self.state_db.is_issued(session, acc, seq,
-                version=0))
+                    version=0))
             self.assertEqual(True, self.state_db.is_issued(session, acc, seq,
-                version=1))
+                    version=1))
             self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=2))
-            self.assertEqual(False, self.state_db.is_issued(session, acc, seq,
-                version=10))
+                    version=2))
+            self.assertRaises(NoResultFound, self.state_db.is_issued, session,
+                    acc, seq, version=10)
             self.assertEqual(2, self.state_db.max_version(session, acc, seq))
-            self.assertEqual(1, self.state_db.max_issued_version(session, acc, seq))
+            self.assertEqual(1, self.state_db.max_issued_version(session, acc,
+                    seq))
 
             # issue version 2
             self.state_db.issue(session, acc, seq)
-            self.assertEqual(2, self.state_db.max_issued_version(session, acc, seq))
+            self.assertEqual(2, self.state_db.max_issued_version(session, acc,
+                    seq))
 
             session.commit()
 
     def test_get_unissued_corrections(self):
         with DBSession(self.state_db) as session:
             # reebills 1-4, 1-3 issued
-            self.state_db.new_rebill(session, '99999', 1)
-            self.state_db.new_rebill(session, '99999', 2)
-            self.state_db.new_rebill(session, '99999', 3)
+            self.state_db.new_reebill(session, '99999', 1)
+            self.state_db.new_reebill(session, '99999', 2)
+            self.state_db.new_reebill(session, '99999', 3)
             self.state_db.issue(session, '99999', 1)
             self.state_db.issue(session, '99999', 2)
             self.state_db.issue(session, '99999', 3)
@@ -288,14 +295,14 @@ class StateTest(utils.TestCase):
         account = '99999'
         with DBSession(self.state_db) as session:
             # un-issued bill version 0: row is actually deleted from the table
-            self.state_db.new_rebill(session, account, 1)
+            self.state_db.new_reebill(session, account, 1)
             assert self.state_db.max_version(session, account, 1) == 0
             assert not self.state_db.is_issued(session, account, 1)
             self.state_db.delete_reebill(session, account, 1)
             self.assertEqual([], self.state_db.listSequences(session, account))
 
             # issued bill can't be deleted
-            self.state_db.new_rebill(session, account, 1)
+            self.state_db.new_reebill(session, account, 1)
             self.state_db.issue(session, account, 1)
             self.assertRaises(Exception, self.state_db.delete_reebill, session, account, 1)
 

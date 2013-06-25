@@ -5,6 +5,7 @@ Utility functions to interact with state database
 import os, sys
 import itertools
 import datetime
+import operator
 from datetime import timedelta, datetime, date
 from decimal import Decimal
 import sqlalchemy
@@ -17,8 +18,8 @@ from sqlalchemy import and_
 from sqlalchemy.sql.expression import desc, asc, label
 from sqlalchemy.sql.functions import max as sql_max
 from sqlalchemy.sql.functions import min as sql_min
-from sqlalchemy import func
-from billing.processing.exceptions import BillStateError
+from sqlalchemy import func, not_
+from billing.processing.exceptions import BillStateError, IssuedBillError, NoSuchBillException
 sys.stdout = sys.stderr
 
 '''Note that these objects have additional properties besides the ones defined
@@ -140,6 +141,12 @@ class StatusDaysSince(object):
     def __repr__(self):
         return '<StatusDaysSince(%s, %s)>' \
                 % (self.account, self.dayssince)
+
+# Python's datetime.min is too early for the MySQLdb module; including it in a
+# query to mean "the beginning of time" causes a strptime failure, so this
+# value should be used instead.
+MYSQLDB_DATETIME_MIN = datetime(1900,1,1)
+
 # TODO move the 2 functions below to Process? seems like state.py is only about
 # the state database
 
@@ -175,71 +182,70 @@ def guess_utilbill_periods(start_date, end_date):
         end_date))
     return periods
 
-def guess_utilbills_and_end_date(session, account, start_date):
-    '''Returns a tuple (end_date, [utilbills]): a list of utility bills that
-    will probably be associated with a newly-created reebill for the customer
-    given by 'account' starting on 'start_date', and a guess for the reebills'
-    end date.'''
-    # TODO:25731853 test this method with multi-service customers. it works very well
-    # for customers with one utility service, but the more utility bills the
-    # customer has, the less accurate it will be.
-
-    # Rich added this because of bug 26512637, which is really a data problem
-    # (reebill period dates are missing)
-    # TODO remove this because it's a temporary workaround
-    if start_date == None:
-        print >> sys.stderr, 'guess_utilbills_and_end_date got start_date == None'
-        return (None, []) 
-
-    # get length of last reebill (note that we don't store dates for reebills
-    # in MySQL)
-    customer = session.query(Customer).filter(Customer.account==account).one()
-    previous_reebills = session.query(ReeBill) \
-            .filter(ReeBill.customer_id==customer.id) \
-            .order_by(desc(ReeBill.sequence))
-    try:
-        # get last reebill. note that SQLALchemy cursor object has no len (you
-        # have to issue another query with func.count)
-        last_reebill = previous_reebills[0]
-    except IndexError:
-        # if there are no previous bills, guess 30 days
-        # TODO make this guess better?
-        length = timedelta(days=30)
-    else:
-        # otherwise, get length of last bill period
-        last_reebill_utilbills = session.query(UtilBill) \
-                .filter(UtilBill.rebill_id==last_reebill.id)
-        if list(last_reebill_utilbills) == []:
-            raise Exception("Can't determine new reebill period without "
-                    + "utility bills attached to the last reebill")
-        earliest_start = min(ub.period_start for ub in last_reebill_utilbills)
-        latest_end = max(ub.period_end for ub in last_reebill_utilbills)
-        length = (latest_end - earliest_start)
-
-    # first guess that this reebill's period has the same length as the last.
-    # this guess will be adjusted to match the closest utility bill end date
-    # after 'start_date', if there are any such utility bills.
-    probable_end_date = start_date + length
-
-    # get all utility bills that end after start_date
-    utilbills_after_start_date = session.query(UtilBill) \
-            .filter(UtilBill.customer_id==customer.id) \
-            .filter(UtilBill.period_end > start_date).all()
-
-    # if there are no utility bills that might be associated with this reebill,
-    # we can't guess very well--just assume that this reebill's period will be
-    # exactly the same length as its predecessor's.
-    if len(utilbills_after_start_date) == 0:
-        return probable_end_date, []
-
-    # otherwise, adjust the guess to the closest utility bill end date (either
-    # forward or back); return that date and all utilbills that end in the date
-    # interval (start_date, probable_end_date].
-    probable_end_date = min([u.period_end for u in utilbills_after_start_date],
-            key = lambda x: abs(probable_end_date - x))
-    return probable_end_date, [u for u in utilbills_after_start_date if
-            u.period_end <= probable_end_date]
-
+#def guess_utilbills_and_end_date(session, account, start_date):
+#    '''Returns a tuple (end_date, [utilbills]): a list of utility bills that
+#    will probably be associated with a newly-created reebill for the customer
+#    given by 'account' starting on 'start_date', and a guess for the reebills'
+#    end date.'''
+#    # TODO:25731853 test this method with multi-service customers. it works very well
+#    # for customers with one utility service, but the more utility bills the
+#    # customer has, the less accurate it will be.
+#
+#    # Rich added this because of bug 26512637, which is really a data problem
+#    # (reebill period dates are missing)
+#    # TODO remove this because it's a temporary workaround
+#    if start_date == None:
+#        print >> sys.stderr, 'guess_utilbills_and_end_date got start_date == None'
+#        return (None, []) 
+#
+#    # get length of last reebill (note that we don't store dates for reebills
+#    # in MySQL)
+#    customer = session.query(Customer).filter(Customer.account==account).one()
+#    previous_reebills = session.query(ReeBill) \
+#            .filter(ReeBill.customer_id==customer.id) \
+#            .order_by(desc(ReeBill.sequence))
+#    try:
+#        # get last reebill. note that SQLALchemy cursor object has no len (you
+##        # have to issue another query with func.count)
+#        last_reebill = previous_reebills[0]
+#    except IndexError:
+#        # if there are no previous bills, guess 30 days
+#        # TODO make this guess better?
+#        length = timedelta(days=30)
+#    else:
+#        # otherwise, get length of last bill period
+#        last_reebill_utilbills = session.query(UtilBill) \
+#                .filter(UtilBill.reebill_id==last_reebill.id)
+#        if list(last_reebill_utilbills) == []:
+#            raise Exception("Can't determine new reebill period without "
+#                    + "utility bills attached to the last reebill")
+#        earliest_start = min(ub.period_start for ub in last_reebill_utilbills)
+#        latest_end = max(ub.period_end for ub in last_reebill_utilbills)
+#        length = (latest_end - earliest_start)
+#
+#    # first guess that this reebill's period has the same length as the last.
+#    # this guess will be adjusted to match the closest utility bill end date
+#    # after 'start_date', if there are any such utility bills.
+#    probable_end_date = start_date + length
+#
+#    # get all utility bills that end after start_date
+#    utilbills_after_start_date = session.query(UtilBill) \
+#            .filter(UtilBill.customer_id==customer.id) \
+#            .filter(UtilBill.period_end > start_date).all()
+#
+#    # if there are no utility bills that might be associated with this reebill,
+#    # we can't guess very well--just assume that this reebill's period will be
+#    # exactly the same length as its predecessor's.
+#    if len(utilbills_after_start_date) == 0:
+#        return probable_end_date, []
+#
+#    # otherwise, adjust the guess to the closest utility bill end date (either
+#    # forward or back); return that date and all utilbills that end in the date
+#    # interval (start_date, probable_end_date].
+#    probable_end_date = min([u.period_end for u in utilbills_after_start_date],
+#            key = lambda x: abs(probable_end_date - x))
+#    return probable_end_date, [u for u in utilbills_after_start_date if
+#            u.period_end <= probable_end_date]
 
 class StateDB:
 
@@ -255,34 +261,40 @@ class StateDB:
 
         # table objects loaded automatically from database
         status_days_since_view = Table('status_days_since', metadata, autoload=True)
-        status_unbilled_view = Table('status_unbilled', metadata, autoload=True)
         utilbill_table = Table('utilbill', metadata, autoload=True)
-        reebill_table = Table('rebill', metadata, autoload=True)
+        reebill_table = Table('reebill', metadata, autoload=True)
+        utilbill_reebill_table = Table('utilbill_reebill', metadata, autoload=True)
         customer_table = Table('customer', metadata, autoload=True)
         payment_table = Table('payment', metadata, autoload=True)
 
         # mappings
-        mapper(StatusDaysSince, status_days_since_view,primary_key=[status_days_since_view.c.account])
-        mapper(StatusUnbilled, status_unbilled_view, primary_key=[status_unbilled_view.c.account])
+        # note that a "relationship" between two tables should be defined on
+        # only one of its members; the property used to access rows in that
+        # table by by a row of the other table is defined via the "backref"
+        # argument.
+        # http://docs.sqlalchemy.org/en/rel_0_8/orm/relationships.html
+        mapper(StatusDaysSince,
+                status_days_since_view,primary_key=[status_days_since_view.c.account])
         mapper(Customer, customer_table, properties={
-                    'utilbills': relationship(UtilBill, backref='customer'),
-                    'reebills': relationship(ReeBill, backref='customer')
-                })
-        mapper(ReeBill, reebill_table)
+            'utilbills': relationship(UtilBill, backref='customer'),
+            'reebills': relationship(ReeBill, backref='customer')
+        })
+        mapper(ReeBill, reebill_table, properties={
+            'utilbills': relationship(UtilBill,
+                    secondary=utilbill_reebill_table, backref='reebills',
+                    lazy='joined')
+        })
         mapper(UtilBill, utilbill_table, properties={
-                    # "lazy='joined'" makes SQLAlchemy eagerly load utilbill customers
-                    'reebill': relationship(ReeBill, backref='utilbill', lazy='joined')
-                })
+        })
         mapper(Payment, payment_table, properties={
-                    'customer': relationship(Customer, backref='payment')
-                })
+            'customer': relationship(Customer, backref='payment')
+        })
 
-
-        # To turn logging on
-        import logging
-        logging.basicConfig()
-        #logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
-        #logging.getLogger('sqlalchemy.pool').setLevel(logging.DEBUG)
+        # To turn logging on (set log level to INFO to see SQL statements)
+        #import logging
+        #logging.basicConfig()
+        #logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+        #logging.getLogger('sqlalchemy.pool').setLevel(logging.INFO)
 
         # session
         # global variable for the database session: SQLAlchemy will give an error if
@@ -344,119 +356,109 @@ class StateDB:
         reebill = self.get_reebill(session, account, sequence)
 
         for utilbill in utilbills:
-            utilbill.reebill = reebill
+            utilbill.reebills.append(reebill)
             utilbill.processed = True
 
+    # TODO this will become obsolete now that reebills can't exist without
+    # being attached
     def is_attached(self, session, account, sequence, nonexistent=None):
-        '''Returns True iff the given reebill has utility bills attached to it
-        in MySQL. If 'nonexistent' is given, that value will be returned if the
-        reebill is not present in the state database (e.g. False when you want
+        '''Returns True iff the the highest version of the reebill given by
+        account, sequence has utility bills attached to it in MySQL. If
+        'nonexistent' is given, that value will be returned if the reebill is
+        not present in the state database (e.g. False when you want
         non-existent bills to be treated as unissued).'''
         try:
-            customer = self.get_customer(session, account)
-            reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
-                    .filter(ReeBill.sequence==sequence).one()
+            reebill = self.get_reebill(session, account, sequence,
+                    version='max')
             num_utilbills = session.query(UtilBill)\
-                    .filter(UtilBill.reebill==reebill).count()
+                    .filter(UtilBill.reebills.contains(reebill)).count()
         except NoResultFound:
             if nonexistent is not None:
                 return nonexistent
             raise
         return num_utilbills >= 1
 
-    def utilbills_for_reebill(self, session, account, sequence):
+    def utilbills_for_reebill(self, session, account, sequence, version='max'):
         '''Returns all utility bills for the reebill given by account,
-        sequence.'''
-        customer = session.query(Customer).filter(Customer.account==account).one()
-        reebill = session.query(ReeBill).filter(ReeBill.customer==customer)\
-                .filter(ReeBill.sequence==sequence).one()
-        utilbills = session.query(UtilBill).filter(UtilBill.reebill==reebill)\
+        sequence, version (highest version by default).'''
+        reebill = self.get_reebill(session, account, sequence, version=version)
+        utilbills = session.query(UtilBill)\
+                .filter(UtilBill.reebills.contains(reebill))\
                 .order_by(UtilBill.period_start)
         return utilbills.all()
 
     def delete_reebill(self, session, account, sequence):
-        '''Deletes the latest version of the given reebill, if it's not
+        '''Deletes the highest version of the given reebill, if it's not
         issued.'''
-        customer = session.query(Customer)\
-                .filter(Customer.account==account).one()
-        reebill = session.query(ReeBill)\
-                .filter(ReeBill.customer==customer) \
-                .filter(ReeBill.sequence==sequence).one()
+        # note that reebills whose version is below the maximum version should
+        # always be issued
         if self.is_issued(session, account, sequence):
-            raise Exception("Can't delete an issued reebill")
-        
-        # if the version is 0, detach all utility bills. otherwise leave them
-        # as they are, because the attachment needs to be preserved for the
-        # decremented version.
-        # NOTE see https://www.pivotaltracker.com/story/show/31629749
-        if reebill.max_version == 0:
-            for utilbill in session.query(UtilBill)\
-                    .filter(UtilBill.reebill==reebill):
-                utilbill.reebill = None
+            raise IssuedBillError("Can't delete an issued reebill")
 
-        if reebill.max_version > 0:
-            # all versions except the last are considered issued, so decrement
-            # max_version and set issued to true
-            reebill.max_version -= 1
-            reebill.issued = 1
-        else:
-            # there's only one version, so really delete it
-            session.delete(reebill)
+        reebill = self.get_reebill(session, account, sequence)
+
+        # utility bill association is removed automatically because of "on
+        # delete cascade" setting on foreign key constraint of the
+        # utilbill_reebill table
+        session.delete(reebill)
 
     def max_version(self, session, account, sequence):
-        customer = session.query(Customer)\
-                .filter(Customer.account==account).one()
-        reebill = session.query(ReeBill)\
-                .filter(ReeBill.customer==customer)\
-                .filter(ReeBill.sequence==sequence).one()
+        # surprisingly, it is possible to filter a ReeBill query by a Customer
+        # column even without actually joining with Customer. because of
+        # func.max, the result is a tuple rather than a ReeBill object.
+        reebills_subquery = session.query(ReeBill).join(Customer)\
+                .filter(ReeBill.customer_id==Customer.id)\
+                .filter(Customer.account==account)\
+                .filter(ReeBill.sequence==sequence)
+        max_version = session.query(func.max(
+                reebills_subquery.subquery().columns.version)).one()[0]
+        # SQLAlchemy returns None when the reebill row doesn't exist, but that
+        # should be reported as an exception
+        if max_version == None:
+            raise NoResultFound
+            
         # SQLAlchemy returns a "long" here for some reason, so convert to int
-        return int(reebill.max_version)
+        return int(max_version)
 
     def max_issued_version(self, session, account, sequence):
         '''Returns the greatest version of the given reebill that has been
         issued. (This should differ by at most 1 from the maximum version
         overall, since a new version can't be created if the last one hasn't
         been issued.) If no version has ever been issued, returns None.'''
-        customer = session.query(Customer)\
-                .filter(Customer.account==account).one()
-        reebill = session.query(ReeBill)\
-                .filter(ReeBill.customer==customer)\
-                .filter(ReeBill.sequence==sequence).one()
-        # SQLAlchemy returns a "long" here for some reason, so convert to int
-        if reebill.issued == 1:
-            return int(reebill.max_version)
-        elif reebill.max_version == 0:
+        # weird filtering on other table without a join
+        result = session.query(func.max(ReeBill.version))\
+                .filter(Customer.account==account)\
+                .filter(ReeBill.issued==1).one()[0]
+        # SQLAlchemy returns None if no reebills with that customer are issued
+        if result is None:
             return None
-        else:
-            return int(reebill.max_version - 1)
-        
+        # version number is a long, so convert to int
+        return int(result)
+
+    # TODO rename to something like "create_next_version"
     def increment_version(self, session, account, sequence):
-        '''Incrementes the max_version of the given issued reebill (to indicate
-        that a new version was successfully created). After the new version is
-        created, the reebill is no longer issued, because the newest version
-        has not been issued.'''
-        customer = session.query(Customer)\
-                .filter(Customer.account==account).one()
-        reebill = session.query(ReeBill)\
-                .filter(ReeBill.customer==customer)\
-                .filter(ReeBill.sequence==sequence).one()
-        if not self.is_issued(session, account, sequence):
-            raise ValueError(("Can't increment version of %s-%s because "
-                    "version %s is not issued yet") % (account, sequence,
-                        reebill.max_version))
-        reebill.issued = 0
-        reebill.max_version += 1
+        '''Creates a new reebill with version number 1 greater than the highest
+        existing version for the given account and sequence. The utility
+        bill(s) of the new version are the same as those of its predecessor.'''
+        # highest existing version must be issued
+        current_max_version_reebill = self.get_reebill(session, account,
+                sequence)
+        if current_max_version_reebill.issued != 1:
+            raise ValueError(("Can't increment version of reebill %s-%s "
+                    "because version %s is not issued yet") % (account,
+                    sequence, max_version))
+        session.add(ReeBill(current_max_version_reebill.customer, sequence,
+                current_max_version_reebill.version + 1,
+                utilbills=current_max_version_reebill.utilbills))
 
     def get_unissued_corrections(self, session, account):
-        '''Returns a list of (sequence, max_version) pairs for bills that have
+        '''Returns a list of (sequence, version) pairs for bills that have
         versions > 0 that have not been issued.'''
-        customer = session.query(Customer)\
-                .filter(Customer.account==account).one()
-        reebills = session.query(ReeBill)\
-                .filter(ReeBill.customer==customer)\
-                .filter(ReeBill.max_version > 0)\
+        reebills = session.query(ReeBill).join(Customer)\
+                .filter(Customer.account==account)\
+                .filter(ReeBill.version > 0)\
                 .filter(ReeBill.issued==0).all()
-        return [(int(reebill.sequence), int(reebill.max_version)) for reebill
+        return [(int(reebill.sequence), int(reebill.version)) for reebill
                 in reebills]
 
     def discount_rate(self, session, account):
@@ -479,18 +481,21 @@ class StateDB:
         max_sequence = session.query(sqlalchemy.func.max(ReeBill.sequence)) \
                 .filter(ReeBill.customer_id==customer.id).one()[0]
         # TODO: because of the way 0.xml templates are made (they are not in
-        # the database) rebill needs to be primed otherwise the last sequence
+        # the database) reebill needs to be primed otherwise the last sequence
         # for a new bill is None. Design a solution to this issue.
         if max_sequence is None:
             max_sequence =  0
         return max_sequence
         
-    def last_issued_sequence(self, session, account, include_corrections=False):
+    def last_issued_sequence(self, session, account,
+            include_corrections=False):
         '''Returns the sequence of the last issued reebill for 'account', or 0
         if there are no issued reebills.'''
-        customer = session.query(Customer).filter(Customer.account==account).one()
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
         if include_corrections:
-            filter_logic = sqlalchemy.or_(ReeBill.issued==1, sqlalchemy.and_(ReeBill.issued==0, ReeBill.max_version>0))
+            filter_logic = sqlalchemy.or_(ReeBill.issued==1,
+                    sqlalchemy.and_(ReeBill.issued==0, ReeBill.version>0))
         else:
             filter_logic = ReeBill.issued==1
 
@@ -500,6 +505,27 @@ class StateDB:
         if max_sequence is None:
             max_sequence = 0
         return max_sequence
+
+    def get_last_utilbill(self, session, account, service=None, utility=None,
+            rate_class=None, end=None):
+        '''Returns the latest (i.e. last-ending) utility bill for the given
+        account matching the given criteria. If 'end' is given, the last
+        utility bill ending before or on 'end' is returned.'''
+        cursor = session.query(UtilBill).join(Customer)\
+                .filter(UtilBill.customer_id == Customer.id)\
+                .filter(Customer.account == account)
+        if service is not None:
+            cursor = cursor.filter(UtilBill.service == service)
+        if utility is not None:
+            cursor = cursor.filter(UtilBill.utility == utility)
+        if rate_class is not None:
+            cursor = cursor.filter(UtilBill.rate_class == rate_class)
+        if end is not None:
+            cursor = cursor.filter(UtilBill.period_end <= end)
+        result = cursor.order_by(UtilBill.period_end).first()
+        if result is None:
+            raise NoSuchBillException("No utility bill found")
+        return result
 
     def last_utilbill_end_date(self, session, account):
         '''Returns the end date of the latest utilbill for the customer given
@@ -511,22 +537,24 @@ class StateDB:
             return query_results[0]
         return None
 
-    def new_rebill(self, session, account, sequence, max_version=0):
-        '''Creates a new ReeBill row in the database and returns the new
+    def new_reebill(self, session, account, sequence, version=0):
+        '''Creates a new reebill row in the database and returns the new
         ReeBill object corresponding to it.'''
-        customer = session.query(Customer).filter(Customer.account==account).one()
-        new_reebill = ReeBill(customer, sequence, max_version)
+        customer = session.query(Customer)\
+                .filter(Customer.account==account).one()
+        new_reebill = ReeBill(customer, sequence, version)
         session.add(new_reebill)
         return new_reebill
 
     def issue(self, session, account, sequence):
-        '''Marks the given reebill as issued. Does not set the issue date or
-        due date (which are in Mongo).'''
-        customer = session.query(Customer).filter(Customer.account==account).one()
-        reeBill = session.query(ReeBill) \
-                .filter(ReeBill.customer_id==customer.id) \
-                .filter(ReeBill.sequence==sequence).one()
-        reeBill.issued = 1
+        '''Marks the highest version of the reebill given by account, sequence
+        as issued. Does not set the issue date or due date, since those are
+        stored in Mongo).'''
+        reebill = self.get_reebill(session, account, sequence)
+        if reebill.issued == 1:
+            raise IssuedBillError(("Can't issue reebill %s-%s-%s because it's "
+                    "already issued") % (account, sequence, reebill.version))
+        reebill.issued = 1
 
     def is_issued(self, session, account, sequence, version='max',
             nonexistent=None):
@@ -535,28 +563,25 @@ class StateDB:
         'nonexistent' is given, that value will be returned if the reebill is
         not present in the state database (e.g. False when you want
         non-existent bills to be treated as unissued).'''
+        # NOTE: with the old database schema (one reebill row for all versions)
+        # this method returned False when the 'version' argument was higher
+        # than max_version. that was probably the wrong behavior, even though
+        # test_state:StateTest.test_versions tested for it. 
         try:
-            customer = session.query(Customer)\
-                    .filter(Customer.account==account).one()
-            reebill = session.query(ReeBill) \
-                    .filter(ReeBill.customer_id==customer.id) \
-                    .filter(ReeBill.sequence==sequence).one()
-        except NoResultFound:
-            if nonexistent is not None:
-                return nonexistent
-            raise
-        if version == 'max':
+            if version == 'max':
+                reebill = self.get_reebill(session, account, sequence)
+            elif isinstance(version, int):
+                reebill = self.get_reebill(session, account, sequence, version)
+            else:
+                raise ValueError('Unknown version specifier "%s"' % version)
             # NOTE: reebill.issued is an int, and it converts the entire
             # expression to an int unless explicitly cast! see
             # https://www.pivotaltracker.com/story/show/35965271
             return bool(reebill.issued == 1)
-        elif isinstance(version, int):
-            # any version prior to the latest is assumed to be issued, since
-            # otherwise the latest version could not have been created
-            return bool((version < reebill.max_version) \
-                    or (version == reebill.max_version and reebill.issued))
-        else:
-            raise ValueError('Unknown version specifier "%s"' % version)
+        except NoResultFound:
+            if nonexistent is not None:
+                return nonexistent
+            raise
 
     def account_exists(self, session, account):
         try:
@@ -617,19 +642,27 @@ class StateDB:
 
         return slice, count
 
-    def listAllIssuableReebillInfo(self, session, **kwargs):
+    def listAllIssuableReebillInfo(self, session):
+        '''Returns a list containing the account, sequence, and total utility
+        bill charges (from MySQL) of the earliest unissued version-0 reebill
+        each account, and the size of the list.'''
         unissued_v0_reebills = session.query(ReeBill.sequence, ReeBill.customer_id)\
-                .filter(ReeBill.issued == 0, ReeBill.max_version == 0).subquery()
+                .filter(ReeBill.issued == 0, ReeBill.version == 0).subquery()
         min_sequence = session.query(unissued_v0_reebills.c.customer_id.label('customer_id'),
                 func.min(unissued_v0_reebills.c.sequence).label('sequence'))\
                 .group_by(unissued_v0_reebills.c.customer_id).subquery()
-        query = session.query(Customer.account, ReeBill.sequence, UtilBill.total_charges)\
-                .filter(UtilBill.rebill_id == ReeBill.id)\
-                .filter(ReeBill.sequence == min_sequence.c.sequence)\
-                .filter(ReeBill.customer_id == min_sequence.c.customer_id)\
-                .filter(UtilBill.customer_id == Customer.id)
-        slice = query.order_by(asc(Customer.account)).all()
-        return slice, query.count()
+        reebills = session.query(ReeBill)\
+                .filter(ReeBill.customer_id==min_sequence.c.customer_id)\
+                .filter(ReeBill.sequence==min_sequence.c.sequence)
+        tuples = sorted([(r.customer.account, r.sequence,
+                # 'total_charges' of all utility bills attached to each reebill
+                session.query(func.sum(UtilBill.total_charges))\
+                        .filter(UtilBill.reebills.contains(r)).one()[0])
+                for r in reebills.all()],
+                # sort by account ascending; worry about performance later
+                # (maybe when sort order is actually configurable)
+                key=operator.itemgetter(0))
+        return tuples, len(tuples)
 
     def reebills(self, session, include_unissued=True):
         '''Generates (account, sequence, max version) tuples for all reebills
@@ -653,13 +686,19 @@ class StateDB:
                 for version in range(max_version + 1):
                     yield account, sequence, version
 
-    def get_reebill(self, session, account, sequence):
-
-        query = session.query(ReeBill).join(Customer) \
+    def get_reebill(self, session, account, sequence, version='max'):
+        '''Returns the ReeBill object corresponding to the given account,
+        sequence, and version (the highest version if no version number is
+        given).'''
+        if version == 'max':
+            version = session.query(func.max(ReeBill.version)).join(Customer) \
+                .filter(Customer.account==account) \
+                .filter(ReeBill.sequence==sequence).one()[0]
+        result = session.query(ReeBill).join(Customer) \
             .filter(Customer.account==account) \
-            .filter(ReeBill.sequence==sequence).one()
-
-        return query
+            .filter(ReeBill.sequence==sequence)\
+            .filter(ReeBill.version==version).one()
+        return result
 
     def get_reebill_by_id(self, session, rbid):
         return session.query(ReeBill).filter(ReeBill.id==rbid).one()
@@ -713,9 +752,11 @@ class StateDB:
         # the end dates of the ones attached to that reebill. if not, start
         # looking for utilbills at the beginning of time.
         if last_sequence:
-            reebill = self.get_reebill(session, account, last_sequence)
-            last_utilbills = session.query(UtilBill).filter(UtilBill.rebill_id==reebill.id).all()
-            service_iter = ((ub.service, ub.period_end) for ub in last_utilbills if ub.service in services)
+            last_reebill = self.get_reebill(session, account, last_sequence)
+            last_utilbills = session.query(UtilBill)\
+                    .filter(UtilBill.reebills.contains(last_reebill)).all()
+            service_iter = ((ub.service, ub.period_end) for ub in
+                    last_utilbills if ub.service in services)
         else:
             last_utilbills = None
             service_iter = ((service, date.min) for service in services)
@@ -727,8 +768,9 @@ class StateDB:
             try:
                 utilbill = session.query(UtilBill).filter(
                         UtilBill.customer==customer, UtilBill.service==service,
-                        UtilBill.period_start>=period_end, UtilBill.rebill_id
-                        == None).order_by(asc(UtilBill.period_start)).first()
+                        UtilBill.period_start>=period_end)\
+                        .filter(not_(UtilBill.reebills.any()))\
+                        .order_by(asc(UtilBill.period_start)).first()
             except NoResultFound:
                 # If the utilbill is not found, then the rolling process can't proceed
                 raise Exception('No new %s utility bill found' % service)
@@ -754,75 +796,17 @@ class StateDB:
             # Attach if no failure condition arose
             next_utilbills.append(utilbill)
 
-        # This may be an irrelevant check, but if no specific exceptions were raised and yet there were no
-        # utilbills selected for attachment, there is a problem
+        # This may be an irrelevant check, but if no specific exceptions were
+        # raised and yet there were no utilbills selected for attachment, there
+        # is a problem
         if not next_utilbills:
             raise Exception('No qualifying utility bills found for account #%s' % account)
 
         return next_utilbills
 
-    def record_utilbill_in_database(self, session, account, service,
-            begin_date, end_date, total_charges, date_received, state=UtilBill.Complete):
-        '''Inserts a row into the utilbill table when a utility bill file has
-        been uploaded. The bill is Complete by default but can can have other
-        states (see comment in UtilBill for explanation of utility
-        bill states). The bill is initially marked as un-processed.'''
-        # get customer id from account number
-        customer = session.query(Customer).filter(Customer.account==account) \
-                .one()
-
-        ## new utility bill that will be uploaded (if it's allowed)
-        #new_utilbill = UtilBill(customer, state, service,
-                #period_start=begin_date, period_end=end_date,
-                #date_received=date_received)
-        # NOTE: if new_utilbill is created here, but not added, much less
-        # committed, it appears as a result in the query below, triggering an
-        # error message. 26147819
-
-        # get existing bills matching dates and service
-        # (there should be at most one, but you never know)
-        existing_bills = session.query(UtilBill) \
-                .filter(UtilBill.customer_id==customer.id) \
-                .filter(UtilBill.service==service) \
-                .filter(UtilBill.period_start==begin_date) \
-                .filter(UtilBill.period_end==end_date)
-
-        if list(existing_bills) == []:
-            # nothing to replace; just upload the bill
-            new_utilbill = UtilBill(customer, state, service,
-                    period_start=begin_date, period_end=end_date,
-                    total_charges=total_charges, date_received=date_received)
-            session.add(new_utilbill)
-        elif len(list(existing_bills)) > 1:
-            raise Exception(("Can't upload a bill for dates %s, %s because"
-                    " there are already %s of them") % (begin_date, end_date,
-                    len(list(existing_bills))))
-        else:
-            # now there is one existing bill with the same dates. if state is
-            # "more final" than an existing non-final bill that matches this
-            # one, replace that bill
-            # TODO 38385969: is this really a good idea?
-            # (we can compare with '>' because states are ordered from "most
-            # final" to least (see UtilBill)
-            bills_to_replace = existing_bills.filter(UtilBill.state > state)
-
-            if list(bills_to_replace) == []:
-                # TODO this error message is kind of obscure
-                raise Exception(("Can't upload a utility bill for dates %s,"
-                    " %s because one already exists with a more final"
-                    " state than %s") % (begin_date, end_date, state))
-            bill_to_replace = bills_to_replace.one()
-                
-            # now there is exactly one bill with the same dates and its state is
-            # less final than the one being uploaded, so replace it.
-            session.delete(bill_to_replace)
-            new_utilbill = UtilBill(customer, state, service,
-                    period_start=begin_date, period_end=end_date,
-                    total_charges=total_charges, date_received=date_received)
-            session.add(new_utilbill)
     
     def fill_in_hypothetical_utilbills(self, session, account, service,
-            begin_date, end_date):
+            utility, rate_class, begin_date, end_date):
         '''Creates hypothetical utility bills in MySQL covering the period
         [begin_date, end_date).'''
         # get customer id from account number
@@ -831,8 +815,10 @@ class StateDB:
 
         for (start, end) in guess_utilbill_periods(begin_date, end_date):
             # make a UtilBill
-            utilbill = UtilBill(customer, state=UtilBill.Hypothetical,
-                    service=service, period_start=start, period_end=end)
+            # note that all 3 Mongo documents are None
+            utilbill = UtilBill(customer, UtilBill.Hypothetical, service,
+                    utility, rate_class, None, None, None, period_start=start,
+                    period_end=end)
             # put it in the database
             session.add(utilbill)
 
@@ -863,6 +849,27 @@ class StateDB:
                     or (hb.period_end >= last_real_utilbill.period_start\
                     and hb.period_start >= last_real_utilbill.period_start):
                 session.delete(hb)
+
+    def get_last_real_utilbill(self, session, account, end, service=None,
+            utility=None, rate_class=None):
+        '''Returns the latest_ending non-Hypothetical UtilBill whose
+        end date is before/on 'end', optionally with the given service,
+        utility, and rate class.'''
+        customer = self.get_customer(session, account)
+        cursor = session.query(UtilBill)\
+                .filter(UtilBill.customer == customer)\
+                .filter(UtilBill.state != UtilBill.Hypothetical)\
+                .filter(UtilBill.period_end <= end)
+        if service is not None:
+            cursor = cursor.filter(UtilBill.service == service)
+        if utility is not None:
+            cursor = cursor.filter(UtilBill.utility == utility)
+        if rate_class is not None:
+            cursor = cursor.filter(UtilBill.rate_class == rate_class)
+        result = cursor.order_by(UtilBill.period_end).first()
+        if result is None:
+            raise NoSuchBillException
+        return result
 
     def create_payment(self, session, account, date_applied, description,
             credit):
@@ -942,14 +949,3 @@ class StateDB:
         result = lockmodeQuery.all()
 
         return result
-
-    def retrieve_status_unbilled(self, session, start, limit):
-        # SQLAlchemy query to get account & dates for all utilbills
-        query = session.query(StatusUnbilled).with_lockmode("read")
-
-        # SQLAlchemy does SQL 'limit' with Python list slicing
-        slice = query[start:start + limit]
-
-        count = query.count()
-
-        return slice, count
