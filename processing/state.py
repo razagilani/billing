@@ -29,7 +29,7 @@ Base = declarative_base()
 utilbill_reebill_table = Table('utilbill_reebill', Base.metadata,
         Column('utilbill_id', Integer, ForeignKey('utilbill.id')),
         Column('reebill_id', Integer, ForeignKey('reebill.id')),
-        #Column('document_id', String))
+        Column('document_id', String)
 )
 
 class Customer(Base):
