@@ -126,13 +126,6 @@ class Payment(object):
                 % (self.customer, self.date_received, \
                         self.date_applied, self.description, self.credit)
 
-class StatusUnbilled(object):
-    def __init__(self, account):
-        self.account = account
-    def __repr__(self):
-        return '<StatusUnbilled(%s)>' \
-                % (self.account)
-
 class StatusDaysSince(object):
     def __init__(self, account, dayssince):
         self.account = account
@@ -256,8 +249,6 @@ class StateDB:
         # table objects loaded automatically from database
         status_days_since_view = Table('status_days_since', metadata,
                 autoload=True)
-        status_unbilled_view = Table('status_unbilled', metadata,
-                autoload=True)
         utilbill_table = Table('utilbill', metadata, autoload=True)
         reebill_table = Table('rebill', metadata, autoload=True)
         customer_table = Table('customer', metadata, autoload=True)
@@ -266,8 +257,6 @@ class StateDB:
         # mappings
         mapper(StatusDaysSince, status_days_since_view,
                 primary_key=[status_days_since_view.c.account])
-        mapper(StatusUnbilled, status_unbilled_view,
-                primary_key=[status_unbilled_view.c.account])
         mapper(Customer, customer_table, properties={
                     'utilbills': relationship(UtilBill, backref='customer'),
                     'reebills': relationship(ReeBill, backref='customer')
@@ -949,13 +938,3 @@ class StateDB:
 
         return result
 
-    def retrieve_status_unbilled(self, session, start, limit):
-        # SQLAlchemy query to get account & dates for all utilbills
-        query = session.query(StatusUnbilled).with_lockmode("read")
-
-        # SQLAlchemy does SQL 'limit' with Python list slicing
-        slice = query[start:start + limit]
-
-        count = query.count()
-
-        return slice, count
