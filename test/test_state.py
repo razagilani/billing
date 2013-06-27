@@ -388,16 +388,19 @@ class StateTest(utils.TestCase):
             reebills = [ReeBill(customer, x) for x in xrange(1, 11)]
             for r in reebills:
                 r.issued = 1
-            utilbills = [UtilBill(customer, 0, 'gas', 'washgas', dt+timedelta(days=30*x),\
-                    dt+timedelta(days=30*(x+1)), reebill=reebills[x]) for x in xrange(0, 10)]
+            utilbills = [UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat', dt+timedelta(days=30*x),
+                    dt+timedelta(days=30*(x+1)), reebill=reebills[x])
+                    for x in xrange(0, 10)]
             for x in xrange(10):
                 session.add(reebills[x])
                 session.add(utilbills[x])
 
             # Add one utilbill that comes after the last utilbill from the above loop
-            target_utilbill = UtilBill(customer, 0, 'gas', 'washgas'\
-                    period_start=dt+timedelta(days=30*10),\
-                    period_end=dt+timedelta(days=30*11),\ reebill=None)
+            target_utilbill = UtilBill(customer, 0, 'gas', 'washgas'
+                    'DC Non Residential Non Heat',
+                    period_start=dt+timedelta(days=30*10),
+                    period_end=dt+timedelta(days=30*11), reebill=None)
             session.add(target_utilbill)
 
             utilbills = self.state_db.choose_next_utilbills(session, account, services)
@@ -420,6 +423,7 @@ class StateTest(utils.TestCase):
             for r in reebills:
                 r.issued = 1
             utilbills = [UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat',
                     dt+timedelta(days=30*x),\ dt+timedelta(days=30*(x+1)),
                     reebill=reebills[x]) for x in xrange(0, 10)]
             for x in xrange(10):
@@ -428,17 +432,18 @@ class StateTest(utils.TestCase):
 
             # Add multiple utilbills that come after the last utilbill from the above loop
             target_utilbill = UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat',
                     period_start=dt+timedelta(days=30*10),
                     period_end=dt+timedelta(days=30*11), reebill=None)
             session.add(target_utilbill)
-            session.add(UtilBill(customer=customer, state=0, service='gas',\
-                    period_start=dt+timedelta(days=30*11),\
-                    period_end=dt+timedelta(days=30*12),\
-                    reebill=None))
-            session.add(UtilBill(customer=customer, state=0, service='gas',\
-                    period_start=dt+timedelta(days=30*12),\
-                    period_end=dt+timedelta(days=30*13),\
-                    reebill=None))
+            session.add(UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat',
+                    period_start=dt+timedelta(days=30*11),
+                    period_end=dt+timedelta(days=30*12), reebill=None))
+            session.add(UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat',
+                    period_start=dt+timedelta(days=30*12),
+                    period_end=dt+timedelta(days=30*13), reebill=None))
 
             # Same tests
             utilbills = self.state_db.choose_next_utilbills(session, account, services) self.assertListEqual(services, [ub.service for ub in utilbills])
@@ -460,7 +465,8 @@ class StateTest(utils.TestCase):
                 if r is not None:
                     r.issued = 1
             utilbills = [UtilBill(customer, 0, 'gas', 'washgas',
-                    dt+timedelta(days=30*x),\ dt+timedelta(days=30*(x+1)),
+                    'DC Non Residential Non Heat', dt+timedelta(days=30*x),
+                    dt+timedelta(days=30*(x+1)),
                     reebill=reebills[x]) for x in xrange(0, 10)]
 
             # None entries in reebills won't go into the database, so they are stripped here
@@ -473,7 +479,8 @@ class StateTest(utils.TestCase):
                 session.add(ub)
 
             # Add an unattached utilbill that comes after the last utilbill from the above loop
-            target_utilbill = UtilBill(customer, 0, 'gas', 'washgas'
+            target_utilbill = UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat',
                     period_start=dt+timedelta(days=30*10),
                     period_end=dt+timedelta(days=30*11), reebill=None)
             session.add(target_utilbill)
@@ -499,9 +506,11 @@ class StateTest(utils.TestCase):
             for r in reebills:
                 r.issued = 1
             gas_utilbills = [UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat',
                     dt_gas+timedelta(days=30*x),\ dt_gas+timedelta(days=30*(x+1)),
                     reebill=reebills[x]) for x in xrange(0, 10)]
             elec_utilbills = [UtilBill(customer, 0, 'electric', 'pepco',
+                    'DC Non Residential Non Heat',
                     dt_elec+timedelta(days=30*x),\
                     dt_elec+timedelta(days=30*(x+1)), reebill=reebills[x])
                     for x in xrange(0, 10)]
@@ -514,11 +523,13 @@ class StateTest(utils.TestCase):
                 session.add(elec_utilbills[x])
 
             target_gas_utilbill = UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat',
                     period_start=dt_gas+timedelta(days=30*10),
                     period_end=dt_gas+timedelta(days=30*11), reebill=None)
             session.add(target_gas_utilbill)
 
             target_elec_utilbill = UtilBill(customer, 0, 'electric', 'pepco',
+                    'DC Non Residential Non Heat',
                     period_start=dt_elec+timedelta(days=30*10),
                     period_end=dt_elec+timedelta(days=30*11), reebill=None)
             session.add(target_elec_utilbill)
@@ -544,6 +555,7 @@ class StateTest(utils.TestCase):
             customer = self.state_db.get_customer(session, account)
 
             target_utilbill = UtilBill(customer, 0, 'gas', 'washgas',
+                    'DC Non Residential Non Heat',
                     period_start=dt, period_end=dt+timedelta(days=30),
                     reebill=None)
             session.add(target_utilbill)
