@@ -1121,13 +1121,33 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
         acc_a, acc_b, acc_c = 'aaaaa', 'bbbbb', 'ccccc'
 
         with DBSession(self.state_db) as session:
-            # create customers A, B, and C, and reebills #0 for each (which include utility bills)
-            session.add(Customer('Customer A', acc_a, .12, .34))
-            session.add(Customer('Customer B', acc_b, .12, .34))
-            session.add(Customer('Customer C', acc_c, .12, .34))
-            reebill_a_0 = example_data.get_reebill(acc_a, 0, start=date(2012,12,1), end=date(2013,1,1))
-            reebill_b_0 = example_data.get_reebill(acc_b, 0, start=date(2012,12,1), end=date(2013,1,1))
-            reebill_c_0 = example_data.get_reebill(acc_c, 0, start=date(2012,12,1), end=date(2013,1,1))
+            # create customers A, B, and C, their utility bill template
+            # documents, and reebills #0 for each (which include utility bills)
+            customer_a = Customer('Customer A', acc_a, .12, .34,
+                    '00000000000000000000000a')
+            customer_b = Customer('Customer B', acc_b, .12, .34,
+                    '00000000000000000000000b')
+            customer_c = Customer('Customer C', acc_c, .12, .34,
+                    '00000000000000000000000c')
+            session.add_all([customer_a, customer_b, customer_c])
+            template_a = example_data.get_utilbill_dict(acc_a,
+                    start=date(1900,1,1,), end=date(1900,2,1))
+            template_b = example_data.get_utilbill_dict(acc_b,
+                    start=date(1900,1,1,), end=date(1900,2,1))
+            template_c = example_data.get_utilbill_dict(acc_c,
+                    start=date(1900,1,1,), end=date(1900,2,1))
+            template_a['_id'] = ObjectId('00000000000000000000000a')
+            template_b['_id'] = ObjectId('00000000000000000000000b')
+            template_c['_id'] = ObjectId('00000000000000000000000c')
+            self.reebill_dao._save_utilbill(template_a)
+            self.reebill_dao._save_utilbill(template_b)
+            self.reebill_dao._save_utilbill(template_c)
+            reebill_a_0 = example_data.get_reebill(acc_a, 0,
+                    start=date(2012,12,1), end=date(2013,1,1))
+            reebill_b_0 = example_data.get_reebill(acc_b, 0,
+                    start=date(2012,12,1), end=date(2013,1,1))
+            reebill_c_0 = example_data.get_reebill(acc_c, 0,
+                    start=date(2012,12,1), end=date(2013,1,1))
             self.reebill_dao.save_reebill(reebill_a_0, freeze_utilbills=True)
             self.reebill_dao.save_reebill(reebill_b_0, freeze_utilbills=True)
             self.reebill_dao.save_reebill(reebill_c_0, freeze_utilbills=True)
@@ -1154,35 +1174,23 @@ class ProcessTest(TestCaseWithSetup, utils.TestCase):
                 },
             ])
 
-            # save default rate structure documents all 3 accounts
-            self.rate_structure_dao.save_rs(example_data.get_urs_dict())
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc_a, 0))
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc_a, 0))
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc_b, 0))
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc_b, 0))
-            self.rate_structure_dao.save_rs(example_data.get_uprs_dict(acc_c, 0))
-            self.rate_structure_dao.save_rs(example_data.get_cprs_dict(acc_c, 0))
-
             # create utility bills and reebill #1 for all 3 accounts
             # (note that period dates are not exactly aligned)
-            utilbill_a_1 = UtilBill(
-                    self.state_db.get_customer(session, acc_a), 0, 'gas',
-                    'washgas', period_start=date(2013,1,1),
-                    period_end=date(2013,2,1))
-            utilbill_b_1 = UtilBill(
-                    self.state_db.get_customer(session, acc_b), 0, 'gas',
-                    'washgas', period_start=date(2013,1,1),
-                    period_end=date(2013,2,5))
-            utilbill_c_1 = UtilBill(
-                    self.state_db.get_customer(session, acc_c), 0, 'gas',
-                    'washgas', period_start=date(2013,1,1),
-                    period_end=date(2013,2,3))
-            session.add(utilbill_a_1)
-            session.add(utilbill_b_1)
-            session.add(utilbill_c_1)
-            reebill_a_1 = self.process.roll_bill(session, reebill_a_0)
-            reebill_b_1 = self.process.roll_bill(session, reebill_b_0)
-            reebill_c_1 = self.process.roll_bill(session, reebill_c_0)
+            self.process.upload_utility_bill(session, acc_a, 'gas',
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013 A'),
+                    'january-a.pdf', total=0, state=UtilBill.Complete)
+            self.process.upload_utility_bill(session, acc_b, 'gas',
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013 B'),
+                    'january-b.pdf', total=0, state=UtilBill.Complete)
+            self.process.upload_utility_bill(session, acc_c, 'gas',
+                    date(2013,1,1), date(2013,2,1), StringIO('January 2013 C'),
+                    'january-c.pdf', total=0, state=UtilBill.Complete)
+            self.process.create_first_reebill(session, session.query(UtilBill)
+                    .filter(UtilBill.customer==customer_a).one())
+            self.process.create_first_reebill(session, session.query(UtilBill)
+                    .filter(UtilBill.customer==customer_b).one())
+            self.process.create_first_reebill(session, session.query(UtilBill)
+                    .filter(UtilBill.customer==customer_c).one())
 
             # UPRSs of all 3 reebills will be empty, because sequence-0
             # rebills' utility bills' UPRSs are ignored when generating

@@ -81,9 +81,9 @@ class ReeBill(Base):
     def __init__(self, customer, sequence, version=0, utilbills=[]):
         self.customer = customer
         self.sequence = sequence
-        self.issued = 0
         self.version = version
         self.utilbills = utilbills
+        self.issued = 0
 
     def __repr__(self):
         return '<ReeBill %s-%s-%s, %s, %s utilbills>' % (
